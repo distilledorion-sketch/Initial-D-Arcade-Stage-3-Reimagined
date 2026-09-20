@@ -239,7 +239,7 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     private static string Quote(string value)=>"\""+value.Replace("\"","\\\"")+"\"";
     private void Update(){
-        if(!WindowVisible||Time.frameCount<=windowOpenedFrame)return;
+        if(!WindowVisible||Time.frameCount<=windowOpenedFrame||!Application.isFocused)return;
         var keyboard=Keyboard.current;var pad=Gamepad.current;
         bool left=(keyboard?.leftArrowKey.wasPressedThisFrame??false)||(pad?.dpad.left.wasPressedThisFrame??false);
         bool right=(keyboard?.rightArrowKey.wasPressedThisFrame??false)||(pad?.dpad.right.wasPressedThisFrame??false);
