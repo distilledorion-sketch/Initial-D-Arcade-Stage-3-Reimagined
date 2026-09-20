@@ -18,10 +18,11 @@ struct OriginalHudState {
     // Caller supplies the selected car's original value; no car-ID guess here.
     unsigned tachType=0;
     std::uint32_t elapsedTicks6000=0;
-    // Opt in to the settled original normal-layout TIME / SECTION TIME panel.
+    // Opt in to the original normal-layout TIME / SECTION TIME panel.
     // Inputs are original6000/sec cumulative checkpoints, not section deltas.
     // 065DF0..065E32 subtracts the preceding checkpoint for each visible row.
     bool timePanel=false;
+    float slide208=0,slide212=0; // Original +D0 labels / +D4 backing strips.
     bool extendedCountdown=false; // Imported courses may start above the original 99-second cap.
     std::int32_t remainingTicks6000=0;
     std::array<std::uint32_t,4> sectionTimes6000{};

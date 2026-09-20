@@ -1,5 +1,6 @@
 #include "unity_ui_capture.h"
 #include "ui.h"
+#include "original_hud_entrance.h"
 #include "frontend.h"
 #include "original_battle_metrics.h"
 #include <algorithm>
@@ -373,7 +374,9 @@ const std::uint32_t* Hud::paint(const UiState& s){
     }else if(settledTimeAttackResults){
         originalResults.paint(std::span<std::uint32_t>(pixels,std::size_t(width)*height),width,height,*s.results);
     }else if(!s.menu&&useOriginalHud){
+        const auto entrance=original::originalHudEntrance(s.hudIntroFrame);
         OriginalHudState state;state.speedKmh=v.speedKmh();state.gear=v.gear;state.automatic=s.automatic;
+        state.slide208=entrance.labels;state.slide212=entrance.backings;
         state.elapsedTicks6000=race.originalTiming?race.elapsed6000:std::uint32_t(std::min<std::uint64_t>(race.ticks*100,UINT32_MAX));
         state.extendedCountdown=s.extendedCountdown;state.timePanel=race.originalTiming&&!s.debug;state.remainingTicks6000=race.remaining6000;
         if(s.useDisplayedRemaining)state.remainingTicks6000=s.displayedRemaining6000;
@@ -401,8 +404,9 @@ const std::uint32_t* Hud::paint(const UiState& s){
         }
         if(s.results&&s.results->livePanel&&!battleHud&&!announcement){
             const auto target=std::span<std::uint32_t>(pixels,std::size_t(width)*height);
-            originalResults.paint(target,width,height,*s.results);
-            originalBattleNames.paintTimeAttack(target,width,height,s.frontend?unsigned(s.frontend->car):0u,s.frontend?&s.frontend->battleProfile:nullptr);
+            auto records=*s.results;records.slide208=entrance.labels;records.slide212=entrance.backings;
+            originalResults.paint(target,width,height,records);
+            if(s.hudIntroFrame>40)originalBattleNames.paintTimeAttack(target,width,height,s.frontend?unsigned(s.frontend->car):0u,s.frontend?&s.frontend->battleProfile:nullptr);
         }
         if(battleHud&&!announcement){
             const auto frame=onlineBattle?s.onlineBattleHud.frame:s.battleHudFrame;
@@ -413,6 +417,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
             const bool newFrame=newBattle||frame!=lastBattleFrame;
             if(newFrame)battleFrameAnimation=battleAnimation;
             OriginalBattleHudState battle; //0C71E0 source default plus caller fields
+            battle.slide208=entrance.labels;battle.slide212=entrance.backings;
             battle.flags104=0x001ffffe|(s.rearView?1u:0u);battle.profileMode0C31C99C=mode;
             battle.frame204=frame;battle.validity96=onlineBattle?s.onlineBattleHud.rivalPositionFraction:s.battleRivalPositionFraction;
             battle.signedAdvantage100=onlineBattle?s.onlineBattleHud.advantage:s.battleAdvantage;

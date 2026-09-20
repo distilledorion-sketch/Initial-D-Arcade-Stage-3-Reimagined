@@ -143,13 +143,13 @@ std::vector<OriginalResultsDraw> OriginalTimeAttackResults::drawList(const Origi
     };
     if(s.announcementOnly){announcement();return out;}
     auto m=identity;
-    // 0CED20..0CEDEE: settled normal-layout labels, slide+D0/+D4=0,
+    // 0CED20..0CEDEE: normal-layout labels and independent +D0/+D4 slides,
     // global31CE38 bit512 clear. Keep cumulative matrix arithmetic and order.
-    original::translateOriginalMatrix(m,{0,lit(0xbc23d70a),0});draw(Bank::race,142,m);
+    original::translateOriginalMatrix(m,{s.livePanel?s.slide208:0.f,lit(0xbc23d70a),0});draw(Bank::race,142,m);
     original::translateOriginalMatrix(m,{0,lit(0xbd75c28f),0});draw(Bank::race,138,m);draw(Bank::race,140,m);
     original::translateOriginalMatrix(m,{0,lit(0x3db851ec),0});for(unsigned i:{15u,16u,17u})draw(Bank::timeAttack,i,m);
     original::translateOriginalMatrix(m,{0,lit(0xbd23d70a),0});for(unsigned i:{18u,19u})draw(Bank::timeAttack,i,m);
-    m=identity;original::translateOriginalMatrix(m,{0,0,lit(0xb8d1b717)});draw(Bank::race,58,m);
+    m=identity;original::translateOriginalMatrix(m,{s.livePanel?s.slide212:0.f,0,lit(0xb8d1b717)});draw(Bank::race,58,m);
     original::translateOriginalMatrix(m,{0,lit(0xbd75c28f),0});draw(Bank::race,139,m);draw(Bank::race,141,m);
     // 0CEEA0..0CF3EE: original1568A0 packed-clock digits and missing-record
     // dashes. MODEL availability is +60==1, not whether its time is nonzero.

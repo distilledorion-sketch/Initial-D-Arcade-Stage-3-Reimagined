@@ -1,4 +1,5 @@
 #include "original_battle_hud.h"
+#include "original_hud_entrance.h"
 #include "sh4_scalar_reference.h"
 #include <cmath>
 #include <iostream>
@@ -17,6 +18,23 @@ int main(int argc,char** argv)try{
     if(argc!=4)throw std::runtime_error("canonical-image native-root output-directory required");
     RefMemory memory(argv[1]);std::size_t cases=0,instructions=0,checks=0,draws=0,divisions=0;
     const auto equal=[&](unsigned actual,unsigned expected,const std::string& label){++checks;if(actual!=expected)throw std::runtime_error(label+" expected="+hex(expected)+" actual="+hex(actual));};
+    // Execute both original filter initializers/updates, not a second copy
+    // of the host recurrence. All float operations must match bit for bit.
+    memory.clear();memory.zeroRegion(hud,0x7000);memory.zeroRegion(stack,0x10000);
+    const auto filter=[&](unsigned entry,unsigned receiver,float target,float initial=3.f){
+        RefCpu cpu(memory);cpu.r[4]=receiver;cpu.r[5]=0;cpu.r[15]=stack+0xF000;cpu.pr=stop;
+        cpu.fr[4]=std::bit_cast<unsigned>(target);cpu.fr[5]=std::bit_cast<unsigned>(initial);cpu.fr[6]=std::bit_cast<unsigned>(3.f);
+        instructions+=cpu.run(entry,stop,10000);return cpu.fr[0];
+    };
+    filter(0x0C1AE520,hud+164,3.f);
+    filter(0x0C1AE640,hud+124,.8f,.5f);
+    for(unsigned age=1;age<=240;++age){
+        const auto backing=filter(0x0C1AE560,hud+164,age>1?0.f:3.f);
+        const auto labels=filter(0x0C1AE6A0,hud+124,age>7?0.f:3.f);
+        const auto actual=original::originalHudEntrance(age);
+        equal(std::bit_cast<unsigned>(actual.backings),backing,"entrance backing age="+std::to_string(age));
+        equal(std::bit_cast<unsigned>(actual.labels),labels,"entrance labels age="+std::to_string(age));
+    }
     const std::vector<float> advantages{-20000.f,-9999.901f,-9999.9f,-999.99f,-100.f,-10.f,-.10000001f,-.1f,-.09999999f,-0.f,0.f,.09999999f,.1f,.10000001f,1.f,9.9f,10.f,99.9f,100.f,999.9f,1000.f,9999.9f,20000.f};
     for(unsigned mode=0;mode<4;++mode)for(unsigned variant=0;variant<12;++variant)for(float advantage:advantages){
         memory.clear();memory.zeroRegion(hud,0x7000);memory.zeroRegion(stack,0x10000);memory.zeroRegion(0x0C98AD0C,12);memory.zeroRegion(0x0CE00000,32*64);

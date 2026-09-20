@@ -109,5 +109,33 @@ int main(int argc,char** argv)try{
         ++tachCases;
     }
     std::cout<<"PASS "<<tachCases<<" live HUD saved-profile/RPM pixel comparisons, including upgraded AE86 and invalid telemetry.\n";
+    // Exercise the real live compositor, including both sides, TA names and
+    // the portrait. Repainting a source age must not tick the entrance.
+    OriginalResultsState records;records.livePanel=true;records.edgeAnchored=true;
+    records.bestTimes6000={1082940,1082940,1057416};records.modelBestAvailable=true;
+    RaceClock introRace=race;introRace.phase=RacePhase::Countdown;introRace.elapsed6000=0;introRace.remaining6000=450000;introRace.sector=0;introRace.sectionTimes6000={};
+    for(const auto viewport:std::array<std::array<int,2>,3>{{{640,480},{1280,720},{800,1000}}}){
+        const int ww=viewport[0],hh=viewport[1];hud.resize(ww,hh);
+        for(unsigned mode=0;mode<3;++mode){
+            UiState intro=s;intro.frontend=nullptr;intro.race=&introRace;intro.paused=false;intro.results=&records;
+            intro.battle=mode==1;intro.battleEnemy=13;intro.battleProfileMode=0;intro.battleAdvantage=0;
+            intro.onlineBattleHud=peer;intro.onlineBattleHud.active=mode==2;
+            std::vector<std::uint32_t> previous,initial;
+            for(unsigned age=0;age<=60;++age){
+                intro.hudIntroFrame=age;intro.battleHudFrame=int(age);intro.onlineBattleHud.frame=int(age);
+                const auto p=hud.paint(intro);std::vector<std::uint32_t> current(p,p+std::size_t(ww)*hh);
+                require(std::equal(current.begin(),current.end(),hud.paint(intro)),"Entrance advances during repeated paint");
+                if(age==0)initial=current;
+                if(age==24)require(current!=initial,"Entrance panels did not move");
+                if(mode==2)require((hud.lastBattlePresentation().playerGlyphs>0)==(age>40),"Entrance name gate disagrees with source frame40");
+                if(ww==640||age==0||age==12||age==60)
+                    save(output/("entrance-"+std::to_string(mode)+"-"+std::to_string(ww)+"-"+std::to_string(hh)+"-"+std::to_string(age)+".bmp"),current,ww,hh);
+                previous=std::move(current);
+            }
+            intro.hudIntroFrame=0;intro.battleHudFrame=0;intro.onlineBattleHud.frame=0;
+            require(std::equal(initial.begin(),initial.end(),hud.paint(intro)),"Race restart did not reset the entrance");
+        }
+    }
+    std::cout<<"PASS live TIME/RECORD/portrait/online entrances at 3 aspect ratios, every source age0..60, repeat and restart.\n";
     std::cout<<"PASS 62 negative-advantage frames, 186 repeat-frame pixel comparisons, reset and original portrait composition.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

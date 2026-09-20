@@ -167,7 +167,15 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
         target=new RenderTexture(1280,720,24,RenderTextureFormat.ARGB32){name="Pre-race verification",antiAliasing=1};Check(target.Create(),"Capture target creation");host.GetComponent<Camera>().targetTexture=target;
         // Quick-start is setup only; use the same public return command as the
         // pause menu, then every battle choice uses its ordinary source owner.
-        yield return Key(116);yield return Until(()=>Read().phase==5,1800,"Quick-start did not finish its presentation/countdown");
+        yield return Key(116);
+        var timeAttackEntrance=new HashSet<ulong>();int quickWait=0;
+        while(Read().phase!=5&&quickWait++<1800){
+            var entry=Read();ulong age=entry.ownerTicks;
+            if(entry.phase==4&&(age==0||age==4||age==8||age==12||age==16||age==24||age==40||age==41)&&timeAttackEntrance.Add(age))
+                yield return Capture("ta-hud-entrance-"+age.ToString("000"));
+            yield return null;
+        }
+        Check(Read().phase==5&&timeAttackEntrance.Contains(4)&&timeAttackEntrance.Contains(41),"Quick-start did not expose the full Time Attack HUD entrance");
         Check(Idas3SceneSetPaused(1)==1&&Idas3SceneReturnToCourse()==1,"Return to source course menu");yield return Frames(30);
         Check(host.Status.frontendStage==6&&(host.Status.flags&1)!=0,"Course6 setup");
         for(int i=0;i<3;++i){yield return Key(37);yield return Frames(6);}Check(host.Status.course==0,"Myogi selection");
@@ -212,6 +220,10 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
                     if(s.phase==1&&s.presentationFrame>=90&&captured.Add("showcase-shot-0-vs-text"))yield return Capture("showcase-shot-0-vs-text");}
             }else if(s.phase==4){
                 Check(s.simulationTicks-frozenTicks==s.ownerTicks-frozenOwner,"Countdown solver and source owner diverged");
+                ulong introAge=s.ownerTicks-frozenOwner;
+                if((introAge==0||introAge==4||introAge==8||introAge==12||introAge==16||introAge==24||introAge==40||introAge==41)&&captured.Add("hud-entrance-"+introAge)){
+                    Observe("hud-entrance-"+introAge,s);yield return Capture("hud-entrance-"+introAge.ToString("000"));
+                }
                 if(s.countdownDigit>=1&&s.countdownDigit<=3&&s.countdownDigit!=priorDigit){
                     Check(priorDigit<0?s.countdownDigit==3:s.countdownDigit==priorDigit-1,"Original countdown digits out of order");
                     priorDigit=s.countdownDigit;digits.Add(priorDigit);yield return Capture("countdown-"+priorDigit);

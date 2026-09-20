@@ -90,7 +90,7 @@ std::vector<OriginalHudDraw> OriginalRaceHud::drawList(const OriginalHudState& s
         polygon(chunk,identity);
         return out;
     }
-    // The source normal-layout panel and its settled slide fields (+D0/+D4=0).
+    // The source normal-layout panel with its independent +D0/+D4 slides.
     // Alternate-layout's separate animated timers remain independently scoped.
     const bool panel=s.timePanel&&!s.alternateLayout;
     const auto timeDigits=[&](original::OriginalMatrix& m,std::uint32_t t){
@@ -104,11 +104,11 @@ std::vector<OriginalHudDraw> OriginalRaceHud::drawList(const OriginalHudState& s
     if(panel&&(s.flags&4)){
         // 8DB8..8EF8: original TIME/TOTAL TIME/SECTION TIME labels, colored
         // backing strips and authored row labels. Preserve submission order.
-        auto m=identity;original::translateOriginalMatrix(m,{-0.f,lit(0xbc23d70a),0});
+        auto m=identity;original::translateOriginalMatrix(m,{-s.slide208,lit(0xbc23d70a),0});
         polygon(136,m);polygon(123,m);polygon(101,m);
-        m=identity;original::translateOriginalMatrix(m,{-0.f,lit(0xbca3d70a),0});
+        m=identity;original::translateOriginalMatrix(m,{-s.slide208,lit(0xbca3d70a),0});
         for(unsigned i=0;i<s.sectionCapacity;i++)polygon(87+i,m);
-        m=identity;original::translateOriginalMatrix(m,{-0.f,lit(0x80000000),0});
+        m=identity;original::translateOriginalMatrix(m,{-s.slide212,lit(0x80000000),0});
         polygon(remaining<=5?135:134,m);polygon(137,m);polygon(92,m);
         // 8F10..9510: cumulative records are converted to section durations
         // by065DF0..065E32. Future rows keep the original -1 sentinel.

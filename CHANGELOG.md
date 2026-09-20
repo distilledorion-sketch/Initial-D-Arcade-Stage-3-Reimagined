@@ -1,5 +1,13 @@
 # Changelog
 
+
+## 0.3.95-community-replays.10 — September 20, 2026
+
+- Restored the arcade race-intro HUD entrance: TIME slides from the left and RECORD / DIFFERENCE / DRIVER slide from the right, with backing strips entering before their labels.
+- Restored the Legend of the Streets rival portrait entrance and the delayed player names. Online battle panels use the same entrance timing.
+- Uses the original game's slide filters on the race's 60 Hz clock, preserving numeric clocks and stable animation during pause or repeated renders.
+- Verified filter output against original instructions, rendered all three HUD modes at three aspect ratios, and checked the Unity pre-race sequence.
+
 ## 0.3.95-community-replays.9 — September 20, 2026
 
 - Improve Windows frame-cap pacing by waiting immediately before presentation with a high-resolution timer.

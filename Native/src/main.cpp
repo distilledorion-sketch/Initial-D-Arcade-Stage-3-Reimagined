@@ -2894,6 +2894,7 @@ struct App {
         }
         UiState state;state.menu=menu;state.paused=paused;state.wet=wet;state.night=night;state.automatic=automatic;state.debug=debug;state.gamepad=input.connected;state.carProfile=profile;state.course=&course;state.car=&vehicle;state.race=&race;state.rival=(battle||multiplayer.active)?&rivalVehicle:nullptr;state.bestTime=bestTime;state.progress=progress;state.fps=renderFps;state.message=message;
         state.suppressPauseOverlay=managedPauseOverlay;state.multiplayer=multiplayer.active;
+        state.hudIntroFrame=originalHandling&&!replayPlaybackActive?originalRaceOwnerFrame:240u;
         state.frontend=&frontend;state.originalHandling=originalHandling;state.originalWeatherScenery=!wet||sceneWet;state.snow=courseIndex==8;state.musicName=audio.musicName();hud.resize(renderer.width,renderer.height);
         state.extendedCountdown=bool(importedCourse);state.timeExtended=raceFeedback.extensionTicks!=0;state.useDisplayedRemaining=originalHandling;
         state.rearView=drawRearView&&!vsActive&&(battle||multiplayer.active)&&originalHandling&&originalCamera.ready()&&(multiplayer.active||drivingView==OriginalDrivingView::Bumper)&&race.phase!=RacePhase::Finished;

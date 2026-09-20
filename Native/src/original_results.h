@@ -50,6 +50,7 @@ struct OriginalResultsState {
     std::uint32_t recordFlags=0;
     bool edgeAnchored=false;
     bool livePanel=false;
+    float slide208=0,slide212=0; // Live +D0 labels / +D4 backing strips.
     // Post-finish record announcement owns the screen; ordinary race clocks
     // and record comparison panels must not remain behind its two captions.
     bool announcementOnly=false;

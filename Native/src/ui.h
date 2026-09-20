@@ -46,6 +46,7 @@ struct UiState {
     bool battle=false,battleWon=false;
     std::uint32_t battleEnemy=0,battleProfileMode=0,battleRivalCar=0;
     std::int32_t battleHudFrame=0;
+    unsigned hudIntroFrame=240; // Source race-owner age; replay/diagnostic default is settled.
     float battleAdvantage=0,battleRivalPositionFraction=0;
     int carProfile=0;
     const Course* course=nullptr;
