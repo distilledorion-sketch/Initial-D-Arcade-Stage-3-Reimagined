@@ -1,0 +1,28 @@
+"Action Manifest"
+{
+    "major_revision_affects_xinput" "0"
+    "major_revision_affects_mousekb" "0"
+
+    "major_revision" "2"
+    "minor_revision" "0"
+
+    "configurations"
+    {
+        "controller_xboxone" { "0" { "path" "controller_xboxone.vdf" } }
+        "controller_xbox360" { "0" { "path" "controller_xbox360.vdf" } }
+        "controller_ps4" { "0" { "path" "controller_ps4.vdf" } }
+        "controller_ps5" { "0" { "path" "controller_ps5.vdf" } }
+        "controller_switch_pro" { "0" { "path" "controller_switch_pro.vdf" } }
+        "controller_generic" { "0" { "path" "controller_generic.vdf" } }
+    }
+    "actions" {
+    "Default" {
+        "title" "#Set_Default"
+        "legacy_set" "0"
+        "StickPadGyro" {}
+        "AnalogTrigger" {}
+        "Button" { "GamepadMode" "#Action_GamepadMode" }
+    }
+}
+    "localization" { "english" { "Set_Default" "Driving and menus" "Action_GamepadMode" "Gamepad input" } }
+}

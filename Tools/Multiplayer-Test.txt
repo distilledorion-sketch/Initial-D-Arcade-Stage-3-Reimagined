@@ -1,0 +1,52 @@
+INITIAL D - F1 MULTIPLAYER TEST
+
+Open InitialDUnity.exe and press F1.
+
+QUICK MATCH
+Select STEAM ONLINE > QUICK MATCH for automatic opponent finding. The game
+joins a compatible open room, or hosts and waits if none is available.
+CANCEL SEARCH stops discovery and closes the room it created. If two players
+start searching together, their waiting rooms converge on one room.
+After connecting, select cars and READY as usual; the host starts the race.
+Quick Match uses exact build compatibility: update BOTH complete game folders.
+
+For Steam online races, each PC needs a different signed-in Steam account
+and the same complete Current folder. Keep steam_appid.txt (480) beside
+the executable. One driver selects STEAM ONLINE > HOST A BATTLE. The
+second refreshes the room list or enters the host's ID3- room code.
+Choose cars, select READY on both PCs, then the host selects START BATTLE.
+Close F1 to drive. The original countdown starts after both PCs load.
+
+LAN DIRECT uses the address and port displayed by the host. Both PCs
+must be reachable on the local network; default TCP port 27035.
+
+VERIFIED IN THIS BUILD
+- Two actual Unity game processes connected, agreed on AE86/BNR34 cars,
+  readied, started together, drove for over10 seconds and exchanged over
+  350 snapshots each. The remote car and rearview mirror were visible.
+- The actual Unity player initialized the real Steam App480 API, created
+  its own two-slot room, rendered the F1 menu and left cleanly.
+- Native tests cover the180-tick countdown, original physics, remote wheels
+  and lamps, malformed packets, timeout, and save preservation.
+- Protocol checks include600ms delay, incompatible builds, ready changes,
+  stale snapshots, disconnect cleanup and win/lose/draw/time-up outcomes.
+
+A full online race between two Steam accounts on separate PCs has not
+yet been tested here. Local two-client proof and Steam room creation are
+separate checks; they do not establish internet/relay performance.
+
+CURRENT LIMITS
+This is a noncolliding race test: cars pass through each other. Saved cars keep their upgrades, appearance and transmission through the original handling. Card progress and
+single-player records are preserved. Remote car engine sound and contact
+shadows are not yet added. A disconnect shows a neutral FINISH screen:
+CONNECTION LOST, no result recorded, and 0 points awarded. It records no win
+or loss. Enter/A, Escape/B or RETURN TO MENU leaves this screen. After a
+normal completed race, RETURN TO LOBBY (also Enter/A or Escape/B after
+releasing the control) returns both players to their existing room. Both
+drivers choose Ready again for the next race. A disconnected room needs
+reconnecting; host migration is not implemented.
+
+F1 captures controls while open, but an online race keeps running.
+Press C or controller Y to change between bumper and chase cameras.
+Use LEAVE ROOM before returning to the single-player menus.
+

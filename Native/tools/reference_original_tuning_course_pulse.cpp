@@ -1,0 +1,5 @@
+#include "sh4_scalar_reference.h"
+#include <iostream>
+#include <fstream>
+using namespace idas3::reference;
+int main(int argc,char**argv){try{RefMemory m(argv[1]);m.zeroRegion(0xd000000,0x20000);std::ofstream out(argv[2],std::ios::binary);unsigned long long total=0;for(unsigned frame=0;frame<4096;frame++){RefCpu c(m);c.r[4]=0xd000000;c.r[15]=0xd01f000;c.pr=0xff0000;m.write32(0xd000000,0x80035);m.write32(0xd000004,frame);unsigned q=0,calls=0;for(auto a:{0xc1baf40u,0xc1bb6e0u,0xc1f6610u,0xc1f65c0u})c.callHooks[a]=[](auto&v){v.r[0]=1;};c.callHooks[0xc05a8e0]=[](auto&v){v.r[0]=v.r[5];};c.callHooks[0xc1be600]=[&](auto&v){q=v.r[5];calls++;};total+=c.run(0xc1be520,0xff0000,30000);if(calls!=2)throw std::runtime_error("calls");out.write((const char*)&q,4);}std::ofstream angles(std::filesystem::path(argv[2]).parent_path()/"cursor_scale.bin",std::ios::binary);for(unsigned i=0;i<128;++i){RefCpu c(m);c.r[4]=(i+1)*512;c.r[15]=0xd01f000;c.pr=0xff0000;total+=c.run(0xc1f9fe0,0xff0000,1000);float value=c.getFloat(0);angles.write((const char*)&value,4);}std::cout<<total<<" instructions\n";}catch(std::exception&e){std::cerr<<e.what()<<"\n";return 1;}}

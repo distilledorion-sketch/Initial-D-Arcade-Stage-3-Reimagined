@@ -1,0 +1,34 @@
+name: Bug report
+description: Report gameplay, graphics, input or performance issues
+title: "[Bug] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+    validations:
+      required: true
+  - type: textarea
+    id: setup
+    attributes:
+      label: Race or menu setup
+      description: Track, direction, mode, day/night, wet/dry, car and input device.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: What happened and how to reproduce it
+      description: Include expected behavior and repeatable steps.
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: PC and graphics settings
+      description: For performance reports, include CPU, GPU, resolution, settings and FPS.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots, video or relevant log excerpt
+      description: Remove private information. Do not upload save folders or credentials.

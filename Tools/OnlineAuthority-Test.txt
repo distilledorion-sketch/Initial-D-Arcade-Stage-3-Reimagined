@@ -1,0 +1,35 @@
+INITIAL D UNITY - EXPERIMENTAL ONLINE AUTHORITY TEST
+Version 0.3.75-authority.1 / multiplayer protocol 7
+
+This is a separate test build. Desktop/Current is unchanged.
+Both players must run the same complete OnlineAuthorityTest folder.
+Keep authority_test.txt and steam_appid.txt beside InitialDUnity.exe.
+
+Launch InitialDUnity.exe, press F1, and select STEAM ONLINE.
+Each PC needs its own signed-in Steam account.
+Use QUICK MATCH, or HOST A BATTLE and share the ID3- room code.
+Pick a car and course, select READY on both PCs, then the host starts.
+Quick Match searches nearby first, widens after 15 seconds, and searches
+worldwide after 30 seconds. Manual room browsing remains worldwide.
+The game shows measured connection quality in the lobby.
+LAN DIRECT is also available using the host's IPv4 address and port.
+
+Car-to-car contact is ENABLED in this build. Both cars run on one canonical
+host-authorized input history with local prediction and rollback. Camera
+corrections are smoothed. Confirmed physics drives sounds and results;
+clients cannot submit authoritative car positions or finish claims.
+Connection loss/desync ends with no points or win/loss recorded.
+
+This build uses separate saves under:
+%USERPROFILE%/AppData/LocalLow/Chris/Initial D Unity Online Test/userdata-unity-scene
+It does not load or overwrite the ordinary game's profiles automatically.
+It cannot join the previous Desktop/Current build.
+
+Validated: two real Unity players over loopback TCP with added RTT of
+50/100/200/250 ms, both clean and with +/-20 ms jitter and 3% packet loss;
+shared contact physics, verified state hashes, saved cars, manual shifting,
+and disconnect/no-award behavior. Hidden-window menu pixels were excluded
+from the automated latency matrix. A separate initial run checked them.
+Steam lobby create/search/cancel was checked using an isolated test key.
+Two-account internet/Steam relay races and different-PC determinism still
+need verification before this replaces the normal build.

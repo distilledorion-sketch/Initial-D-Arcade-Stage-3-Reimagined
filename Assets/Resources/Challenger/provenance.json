@@ -1,0 +1,11 @@
+{
+  "source": "HOSTFS/model/interrupt/interrupt02_tex",
+  "transform": "Exact twiddled texel decode. Source V coordinate is flipped at draw time. Banner uses original component proportions.",
+  "sha256": {
+    "interrupt_0.png": "df703e3f78a08ea5adcfb07c2309584118333840ef6840b2047178ec6db697ac",
+    "interrupt_1.png": "9db15afebc930c0086436f22561a00cad7ae7d419b6aeef2bff23024c2da68a6",
+    "interrupt_2.png": "c857cad071b42a649eff9ce33131256b037b93b1bbd39da1531c7f17d09a927f",
+    "interrupt_3.png": "4f8a35cd9c44e078ac201c1475afb5a01fba9a6d1360416d48ad8ddad6bc60d1",
+    "interrupt_4.png": "2ad12eb8d6974ccfbf8c0bde8d593aca83d7e18bb837f02fc62121532e464bba"
+  }
+}

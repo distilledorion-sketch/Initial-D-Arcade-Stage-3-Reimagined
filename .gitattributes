@@ -1,0 +1,20 @@
+* text=auto eol=lf
+*.cs text eol=lf
+*.cpp text eol=lf
+*.h text eol=lf
+*.inl text eol=lf
+*.inc text eol=lf
+*.md text eol=lf
+*.mjs text eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.dll binary
+*.bin binary
+*.dat binary
+*.png binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.pcm binary
+Native/data/** -text
+RuntimeAssets/** -text

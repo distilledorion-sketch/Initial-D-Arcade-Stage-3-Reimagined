@@ -1,0 +1,46 @@
+# Local Unity state and generated players
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/UserSettings/
+/Builds/
+/Staging/
+/SaveSeeds/
+/Verification/
+/Archives/
+/RuntimeData/
+/BridgeBuild/
+/Native/build*/
+/Native/bin*/
+/Native/userdata/
+/Native/verification/
+*.csproj
+*.sln
+*.slnx
+*.pdb
+*.obj
+*.ilk
+*.log
+__pycache__/
+*.pyc
+
+# Personal data and service credentials never belong in this repository
+**/userdata-unity-scene/
+**/community-times/
+**/custom-music/
+**/replays/
+*.idreplay
+ADMIN-ACCESS.txt
+deploy.private.json
+identity.json
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+.wrangler/
+node_modules/
+leaderboard-backup*.sql
+
+# Native/data and RuntimeAssets are intentionally included.
+# Checked-in plugin DLLs let the Unity project import before a native rebuild.
