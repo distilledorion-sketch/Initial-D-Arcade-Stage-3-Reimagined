@@ -118,7 +118,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         options.BeginEdit();var draft=options.Draft;draft.masterVolume=.55f;draft.musicVolume=.35f;draft.engineVolume=.75f;draft.effectsVolume=.45f;
         draft.vSync=false;draft.frameRateLimit=90;draft.antiAliasing=2;draft.defaultCamera=1;draft.showFps=true;draft.muteWhenUnfocused=false;
         Check(options.ApplyDraft(),"Options Apply failed: "+options.LastError);yield return Frames(3);
-        Check(QualitySettings.antiAliasing==2&&QualitySettings.vSyncCount==0&&Application.targetFrameRate==90,"Actual Unity quality settings did not change");
+        Check(QualitySettings.antiAliasing==2&&QualitySettings.vSyncCount==0&&Application.targetFrameRate==-1&&Idas3FramePacing.ActiveLimit==90,"Actual Unity quality settings did not change");
         var native=new NativeOptions{size=(uint)Marshal.SizeOf<NativeOptions>()};Check(native.size==40&&Idas3SceneGetOptions(ref native)==1,"Options native ABI");
         Check(native.masterGain==draft.masterVolume&&native.musicGain==draft.musicVolume&&native.engineGain==draft.engineVolume&&native.effectsGain==draft.effectsVolume,"Native category gains differ from applied values");
         Check(native.cameraView==1,"Native chase default did not apply");Check(native.managedPauseOverlay==1,"Managed pause ownership missing");

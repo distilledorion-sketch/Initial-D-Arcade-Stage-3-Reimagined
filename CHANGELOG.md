@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.95-community-replays.9 — September 20, 2026
+
+- Improve Windows frame-cap pacing by waiting immediately before presentation with a high-resolution timer.
+- Keep existing FPS choices, VSync behavior, and uncapped rendering.
+- Reset pacing after focus changes and long stalls; avoid catch-up bursts and duplicate software limiters.
+
 ## 0.3.95-community-replays.8 — September 20, 2026
 
 - Restore snowfall and tire snow powder on Akina Snow using original effect textures.

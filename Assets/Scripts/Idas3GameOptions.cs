@@ -70,9 +70,7 @@ public sealed class Idas3GameOptions
         }
         public void Apply(Values previous,Values next,bool displayChanged){
             if(QualitySettings.antiAliasing!=next.antiAliasing)QualitySettings.antiAliasing=next.antiAliasing;
-            if(QualitySettings.vSyncCount!=(next.vSync?1:0))QualitySettings.vSyncCount=next.vSync?1:0;
-            int cap=next.frameRateLimit==0?-1:next.frameRateLimit;
-            if(Application.targetFrameRate!=cap)Application.targetFrameRate=cap;
+            Idas3FramePacing.Configure(next.vSync,next.frameRateLimit);
             if(displayChanged){
                 var mode=next.displayMode==0?FullScreenMode.Windowed:
                     next.displayMode==2?FullScreenMode.ExclusiveFullScreen:FullScreenMode.FullScreenWindow;

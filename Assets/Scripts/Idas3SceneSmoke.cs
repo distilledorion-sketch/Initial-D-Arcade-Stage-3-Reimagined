@@ -130,6 +130,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public ulong firstNativeFrame,lastNativeFrame,firstSimulationTick,lastSimulationTick;
         public int replayFramesBefore,replayFramesAfter,rivalReplayFramesBefore,rivalReplayFramesAfter;
         public bool replayCaptureEnabled;
+        public int requestedFrameCap;
+        public bool legacyFrameCap,highResolutionFrameTimer;
         public int[] gcCollections;
         public double measuredSeconds;
         public PerfMetric[] metrics;
@@ -1021,6 +1023,20 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         }
         if(captureScreens&&perfLegend)yield return Capture("legend-mirror-start",true);
         if(captureScreens&&manualRender&&!perfWet&&!perfLegend)yield return Capture("dry-race-start",true);
+        int frameCap=DiagnosticInt(Environment.GetCommandLineArgs(),"-idas3-perf-frame-cap",0,0,360);
+        bool legacyCap=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-legacy-cap")>=0;
+        if(frameCap>0){
+            Check(!manualRender&&!offscreen,"Frame pacing must measure normal automatic rendering.");
+            Idas3FramePacingChecks.Run();
+            // Exercise the real settings Apply path with only the cap changed.
+            host.GameOptions.BeginEdit();host.GameOptions.Draft.vSync=false;host.GameOptions.Draft.frameRateLimit=frameCap;
+            Check(host.GameOptions.ApplyDraft(),"Frame cap setting failed.");
+            if(legacyCap){Idas3FramePacing.Configure(false,0);Application.targetFrameRate=frameCap;}
+            report.requestedFrameCap=frameCap;report.legacyFrameCap=legacyCap;
+            report.highResolutionFrameTimer=Idas3FramePacing.HighResolutionTimer;
+            report.targetFrameRate=Application.targetFrameRate;
+            Check(legacyCap?Application.targetFrameRate==frameCap:Idas3FramePacing.ActiveLimit==frameCap,"Requested frame limiter was not active.");
+        }
         held=87;
         for(int i=0;i<perfWarmup;++i){if(timingEnabled)FrameTimingManager.CaptureFrameTimings();yield return null;if(manualRender)perfMainCamera.Render();}
         Check(host.Status.speedMetresPerSecond>1,"Performance warmup did not accelerate the original car.");
@@ -1094,6 +1110,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(!offscreen)Check(perfMainRenders>=perfFrames-2,"Unity skipped normal camera rendering during the benchmark; timing is not representative.");
         else Check(report.lastNativeFrame-report.firstNativeFrame==(ulong)perfFrames,"CPU benchmark skipped scene submissions");
         Check(report.audioAfter.consumedFrames>report.audioBefore.consumedFrames,"Unity audio did not run during performance measurement.");
+        if(frameCap>0)Idas3FramePacingChecks.RunPlatform(host.GameOptions);
         Finish(true,null);
     }
     // Course-selectable depth/sorting investigation. All capture machinery and
