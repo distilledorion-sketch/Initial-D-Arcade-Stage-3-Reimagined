@@ -1,0 +1,9 @@
+{
+  "name": "rival_nakazato",
+  "source_folder": "rival/r_nakazato",
+  "chunks": 10,
+  "textures": 10,
+  "polygon_sha256": "162d86848413618c0941797d0de37c91273fde878ecd720ee4c59ff5718f9462",
+  "texture_sha256": "4f74c7dd8677563fadfdbf95977835c8caf9f3809e8babc7f4cb85a6ca148026",
+  "material_words_preserved": true
+}

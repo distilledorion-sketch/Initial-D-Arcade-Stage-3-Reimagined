@@ -1,0 +1,54 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rainmark\\rainmark_tex.tbl",
+  "payload": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rainmark\\rainmark_tex.bin.nz",
+  "table_sha256": "cb0093f0815c83078af3cdf4dfc86005a2a3876a1a93a89eae500622edc4c4a7",
+  "payload_sha256": "66ccab0ac8ab833ab88f71c4c16e19c1f103f268639c5db3467eac8e4ef71492",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 64,
+      "height": 64,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "7f4c67e6a895bea6977a7dc403f58f8156186fb04ffa2b7dd6064ee20e83d03d",
+      "rgba_sha256": "36f787bbe38bfeb17beab33938947dc1beb7a593de108c564589ff68a2fe9ad2",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 64,
+      "height": 64,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 8192,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "00183e3cf5aee74ca9ba251ccb327c20b546f14ee7cc676b20736f237b1ea72a",
+      "rgba_sha256": "dbd6313a6aac8041086bfcb7eb5755be304624960f141a5708542d092be4a8e9",
+      "file": "texture_001.png"
+    },
+    {
+      "index": 2,
+      "width": 64,
+      "height": 64,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 16384,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "39cea5fa0c47608f713bb0b81493e018acfff11289651da489e6ef6b04baecf7",
+      "rgba_sha256": "6b3342432213f44c77399689afcad9f25767d851f78f326da168696567a8d144",
+      "file": "texture_002.png"
+    }
+  ]
+}

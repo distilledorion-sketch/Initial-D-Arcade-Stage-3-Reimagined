@@ -1,0 +1,9 @@
+{
+  "name": "rival_keisuke2",
+  "source_folder": "rival/r_keisuke2",
+  "chunks": 13,
+  "textures": 13,
+  "polygon_sha256": "e16e908b8ce2be96c393a303aeda6d51396eaee823ea4573133cccbc8529a051",
+  "texture_sha256": "30eb1fd677e5ae5e94274819040cd0de0da351effd90fa95564ba4721cae1dd2",
+  "material_words_preserved": true
+}

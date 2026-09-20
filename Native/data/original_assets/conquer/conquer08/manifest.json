@@ -1,0 +1,27 @@
+{
+  "schema": "idas3-original-loading-bank-v1",
+  "name": "conquer08",
+  "private_original_assets": true,
+  "source_directory": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\conquer",
+  "layout": "twiddled",
+  "source_files": {
+    "polygon": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\conquer\\conquer08_pol.bin.nz",
+      "bytes": 135096,
+      "sha256": "213b3cceb58f515ef85680b6f995e0f89770f6978c3f70172fa8efe9093814d4"
+    },
+    "table": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\conquer\\conquer08_pol.tbl",
+      "bytes": 36,
+      "sha256": "d0c87aa5fb8aac5397f23b3d27afff0825e1a18accd765bfff82a54caf6b1b41"
+    },
+    "texture_table": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\conquer\\conquer08_tex.tbl",
+      "bytes": 48,
+      "sha256": "342259bf4129cc40ea695e7cfc8ab02591c4e1481935d0157e7f1ff6d4d3a747"
+    }
+  },
+  "decoded_polygon_sha256": "213b3cceb58f515ef85680b6f995e0f89770f6978c3f70172fa8efe9093814d4",
+  "chunk_count": 9,
+  "texture_count": 3
+}

@@ -1,0 +1,9 @@
+{
+  "name": "rival_miki",
+  "source_folder": "rival/r_miki",
+  "chunks": 7,
+  "textures": 7,
+  "polygon_sha256": "1f8910eed5b23e7e6db4ed3e9a0b54e7027637b9711bac68a98c079c3f3a8cb8",
+  "texture_sha256": "38e4270b2c236d75225539c950cb254241ab761af7d75ff6fbdac24835e5edca",
+  "material_words_preserved": true
+}

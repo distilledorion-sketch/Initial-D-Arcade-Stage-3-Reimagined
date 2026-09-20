@@ -1,0 +1,68 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_akagi_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_akagi_tex.bin.nz",
+  "table_sha256": "bdba1908ecc7b7a2085d0feeaf73b3c6ae5df1b0396ec013ff056f3c4bca09b3",
+  "payload_sha256": "f1a744b1b84dc0e9f79c01ab0e0f1aecdbde94c73d6062487b68c2cbf8525e95",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 256,
+      "height": 256,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "e5319b2d283eaed0dfc7c3651567d4cb0dc5be6849ece036f3779abf3ca4a3c5",
+      "rgba_sha256": "af002708558c9f2b4f7778dea5e259b4c21d1c45bcbcf3b37b68244b004c95f6",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 256,
+      "height": 256,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 131072,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "bba0ad3a352b8d14b424d8acfa21d9c69a764baabba1fbaaa57a5082dc0b49f9",
+      "rgba_sha256": "7d23348439b27c8566201a1976b1ba46b5a60bd393f2f74fd1989f870a2219e1",
+      "file": "texture_001.png"
+    },
+    {
+      "index": 2,
+      "width": 256,
+      "height": 256,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 262144,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "98606e89bfa3b439d0180f5caf38ae10ba78d75116a780e2e7f09b27dd710239",
+      "rgba_sha256": "99dae6208806ad37bc2d398f125c234092b4d6ea52610a96bc10a9ed6fa75d81",
+      "file": "texture_002.png"
+    },
+    {
+      "index": 3,
+      "width": 256,
+      "height": 256,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 393216,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "11107e4c462f16f8d17636fbb958069443cbfa8d7f9fc2d14adf0daa1ba1a11a",
+      "rgba_sha256": "2140b1f5c37d605db9604cb9d8a94fbab86c64020504f5ae281fc3f08f92f04f",
+      "file": "texture_003.png"
+    }
+  ]
+}

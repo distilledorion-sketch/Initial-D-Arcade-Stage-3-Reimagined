@@ -1,0 +1,9 @@
+{
+  "name": "rival_singo",
+  "source_folder": "rival/r_singo",
+  "chunks": 9,
+  "textures": 9,
+  "polygon_sha256": "494344b629ad094668a8ce032a7e449593ec746a314f0542f445ecca95ee86b3",
+  "texture_sha256": "8421d36178fa67aceba366d87de5c01eac6d618eec6e44a15b7ea23f08f764cd",
+  "material_words_preserved": true
+}

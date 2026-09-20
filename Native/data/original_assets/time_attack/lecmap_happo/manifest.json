@@ -1,0 +1,263 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "lecmap_happo",
+  "mesh": "lecmap_happo.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.00010706076136557385,
+          0.00010717267286963761
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246d",
+            "10000000",
+            "9400246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "0afa8067cb4ea724674f177a9df837a2c2b25ff6fc89fd7051b405ec7581da7d"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.00010706076136557385,
+          0.00010717267286963761
+        ]
+      ],
+      "texture_indices": [
+        1
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246d",
+            "10000000",
+            "9400246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "0afa8067cb4ea724674f177a9df837a2c2b25ff6fc89fd7051b405ec7581da7d"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "source_offset": 576,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.00010706076136557385,
+          0.00010717267286963761
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246d",
+            "10000000",
+            "9400246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "0afa8067cb4ea724674f177a9df837a2c2b25ff6fc89fd7051b405ec7581da7d"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "source_offset": 864,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.00010706076136557385,
+          0.00010717267286963761
+        ]
+      ],
+      "texture_indices": [
+        3
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000003",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000003",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246d",
+            "10000000",
+            "9400246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "0afa8067cb4ea724674f177a9df837a2c2b25ff6fc89fd7051b405ec7581da7d"
+        }
+      ]
+    }
+  ],
+  "texture_count": 4,
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_happo_pol.bin.nz",
+      "bytes": 1152,
+      "sha256": "0afdf8817e9f96cdf1847f7bbfcafb80fbc2074f520e103b39464d54b7f66046"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_happo_pol.tbl",
+      "bytes": 16,
+      "sha256": "cd90c057eed5ad20fc94d64d643d098c883600e7fb0ae4f6b5dbc08da0962fde"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_happo_tex.tbl",
+      "bytes": 64,
+      "sha256": "bdba1908ecc7b7a2085d0feeaf73b3c6ae5df1b0396ec013ff056f3c4bca09b3"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_happo_tex.bin.nz",
+      "bytes": 524288,
+      "sha256": "1cf02fa8fbbaef647d54dc80d6381fbe62eec0aafbec8dbabfebaef9d5a3dc4c"
+    }
+  },
+  "decoded_polygon_sha256": "0afdf8817e9f96cdf1847f7bbfcafb80fbc2074f520e103b39464d54b7f66046",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

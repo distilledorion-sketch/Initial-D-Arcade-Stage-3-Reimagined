@@ -1,0 +1,47 @@
+{
+  "schema": "idas3-original-hud-index-v1",
+  "banks": [
+    {
+      "bank": "game2d",
+      "chunks": 212,
+      "textures": 76,
+      "manifest": "game2d/manifest.json"
+    },
+    {
+      "bank": "game2d_ta",
+      "chunks": 24,
+      "textures": 7,
+      "manifest": "game2d_ta/manifest.json"
+    },
+    {
+      "bank": "game2d_vs",
+      "chunks": 12,
+      "textures": 1,
+      "manifest": "game2d_vs/manifest.json"
+    },
+    {
+      "bank": "game2d_intr",
+      "chunks": 1,
+      "textures": 1,
+      "manifest": "game2d_intr/manifest.json"
+    },
+    {
+      "bank": "v3sG00game2d",
+      "chunks": 6,
+      "textures": 3,
+      "manifest": "v3sG00game2d/manifest.json"
+    },
+    {
+      "bank": "shift",
+      "chunks": 10,
+      "textures": 2,
+      "manifest": "shift/manifest.json"
+    },
+    {
+      "bank": "start2d",
+      "chunks": 121,
+      "textures": 38,
+      "manifest": "start2d/manifest.json"
+    }
+  ]
+}

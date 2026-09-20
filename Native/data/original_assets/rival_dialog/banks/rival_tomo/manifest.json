@@ -1,0 +1,9 @@
+{
+  "name": "rival_tomo",
+  "source_folder": "rival/r_tomo",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "1686d9914e5d01ed3e3797e66acacdd781486987ef0e18812714b0042d19b964",
+  "texture_sha256": "47a49554a4bfd69737244dd8d345b5041a45d5de198f346b21859d0636edd867",
+  "material_words_preserved": true
+}

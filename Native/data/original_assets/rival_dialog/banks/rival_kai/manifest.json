@@ -1,0 +1,9 @@
+{
+  "name": "rival_kai",
+  "source_folder": "rival/r_kai",
+  "chunks": 9,
+  "textures": 9,
+  "polygon_sha256": "c519ab7b26ed47d206fd13f91845ece65bac1f28376e40346a31c8d4837a43c9",
+  "texture_sha256": "028e2dea4dc6a614d34d81e6fdfeaa0f297925c9d5c280c7ded16b8be5b2e8b1",
+  "material_words_preserved": true
+}

@@ -1,0 +1,1204 @@
+{
+  "schema": "idas3-original-model-menu-v1",
+  "name": "v3sB01course",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sB01course",
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sB01course\\v3sB01course_pol.bin.nz",
+      "bytes": 2208,
+      "sha256": "914074c33cacb1b4914174f95c4f3f773755ed8aeb0799a4c5bd2c8f8ac71815"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sB01course\\v3sB01course_pol.tbl",
+      "bytes": 12,
+      "sha256": "ee771ed77f68012152cfe2c00a2853c58a960147d1e7fcd66733eb6bf50c0ce9"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sB01course\\v3sB01course_tex.tbl",
+      "bytes": 32,
+      "sha256": "2bab5fc97b5f5cb36fcd0842630590d20f2704ce2ff06634c9938d32859c935d"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sB01course\\v3sB01course_tex.bin.nz",
+      "bytes": 49152,
+      "sha256": "28057049d4d881e2bfe9a19ff6210c80f3b69374aee5a32f2193964c7211f627"
+    }
+  },
+  "decoded_polygon_sha256": "914074c33cacb1b4914174f95c4f3f773755ed8aeb0799a4c5bd2c8f8ac71815",
+  "mesh_pack": "v3sB01course.idasmesh",
+  "mesh_pack_sha256": "35a05a004cf62dd19c44cdc3c70abea27cffbc4fb1ca0f06ac34922334f7a981",
+  "texture_pack": "textures/textures.idastex",
+  "texture_manifest": "textures/manifest.json",
+  "texture_count": 2,
+  "chunk_count": 3,
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 736,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "3fe147ae",
+        "c0547ae1",
+        "358637bd",
+        "3fe4f92e",
+        "000002e0",
+        "00000000",
+        "0000000a",
+        "0000000e",
+        "00000002",
+        "00000002",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000020",
+        "00000280",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.0,
+          3.5199999809265137
+        ],
+        [
+          -3.6399998664855957,
+          -3.0
+        ],
+        [
+          9.999999974752427e-07,
+          9.999999974752427e-07
+        ]
+      ],
+      "vertex_count": 14,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 160,
+          "ich_words_hex": [
+            "8800071e",
+            "93800000",
+            "20082463",
+            "08000000",
+            "20082463",
+            "08000000",
+            "0000004a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00008888",
+            "00000022",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 0,
+          "vertex_layout_hex": "04a",
+          "source_vertex_sha256": "f79877f13ff253af6f7e765bac44fc4af5103ed60a88b8c4b7d27ba7290cf43c",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.9950008392333984,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.9950008392333984,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.0,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.0,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "source_offset": 384,
+          "ich_words_hex": [
+            "8800071e",
+            "93800000",
+            "2008246b",
+            "08000000",
+            "2008246b",
+            "08000000",
+            "0000004a",
+            "0000000a"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00008888",
+            "00000022",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 1,
+          "vertex_layout_hex": "04a",
+          "source_vertex_sha256": "9cf67634168577589b8dbe72d976ca133a5e8b18c04c75a5aa8e485033b0b970",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3,
+            2,
+            3,
+            4,
+            4,
+            3,
+            5,
+            4,
+            5,
+            6,
+            6,
+            5,
+            7,
+            6,
+            7,
+            8,
+            8,
+            7,
+            9
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.125,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.125,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                1.9199999570846558,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.375,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                1.9199999570846558,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.375,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                2.559999942779541,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.625,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                2.559999942779541,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.625,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.1999998092651367,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.875,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.1999998092651367,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.875,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.5199999809265137,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                3.5199999809265137,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        0.0,
+        300.0,
+        351.99999809265137,
+        363.99998664855957
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 736,
+      "source_size": 736,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "3fe147ae",
+        "c0547ae1",
+        "358637bd",
+        "3fe4f92e",
+        "000002e0",
+        "00000000",
+        "0000000a",
+        "0000000e",
+        "00000002",
+        "00000002",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000020",
+        "00000280",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.0,
+          3.5199999809265137
+        ],
+        [
+          -3.6399998664855957,
+          -3.0
+        ],
+        [
+          9.999999974752427e-07,
+          9.999999974752427e-07
+        ]
+      ],
+      "vertex_count": 14,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 896,
+          "ich_words_hex": [
+            "8800071e",
+            "93800000",
+            "20082463",
+            "08000000",
+            "20082463",
+            "08000000",
+            "0000004a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00008888",
+            "00000022",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 0,
+          "vertex_layout_hex": "04a",
+          "source_vertex_sha256": "f79877f13ff253af6f7e765bac44fc4af5103ed60a88b8c4b7d27ba7290cf43c",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.9950008392333984,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.9950008392333984,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.0,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.0,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "source_offset": 1120,
+          "ich_words_hex": [
+            "8800071e",
+            "93800000",
+            "2008246b",
+            "08000000",
+            "2008246b",
+            "08000000",
+            "0000004a",
+            "0000000a"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00008888",
+            "00000022",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 1,
+          "vertex_layout_hex": "04a",
+          "source_vertex_sha256": "8abffeb701cbe9c66ef4f6f8ce02886f2d5c6b78a5ee4bbe16d1af591e35e72c",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3,
+            2,
+            3,
+            4,
+            4,
+            3,
+            5,
+            4,
+            5,
+            6,
+            6,
+            5,
+            7,
+            6,
+            7,
+            8,
+            8,
+            7,
+            9
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.125,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.125,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                1.9199999570846558,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.375,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                1.9199999570846558,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.375,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                2.559999942779541,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.625,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                2.559999942779541,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.625,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.1999998092651367,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.875,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.1999998092651367,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.875,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.5199999809265137,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                3.5199999809265137,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        0.0,
+        300.0,
+        351.99999809265137,
+        363.99998664855957
+      ]
+    },
+    {
+      "index": 2,
+      "source_offset": 1472,
+      "source_size": 736,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "3fe147ae",
+        "c0547ae1",
+        "358637bd",
+        "3fe4f92e",
+        "000002e0",
+        "00000000",
+        "0000000a",
+        "0000000e",
+        "00000002",
+        "00000002",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000020",
+        "00000280",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.0,
+          3.5199999809265137
+        ],
+        [
+          -3.6399998664855957,
+          -3.0
+        ],
+        [
+          9.999999974752427e-07,
+          9.999999974752427e-07
+        ]
+      ],
+      "vertex_count": 14,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 1632,
+          "ich_words_hex": [
+            "8800071e",
+            "93800000",
+            "20082463",
+            "08000000",
+            "20082463",
+            "08000000",
+            "0000004a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00008888",
+            "00000022",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 0,
+          "vertex_layout_hex": "04a",
+          "source_vertex_sha256": "f79877f13ff253af6f7e765bac44fc4af5103ed60a88b8c4b7d27ba7290cf43c",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.9950008392333984,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.9950008392333984,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.0,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.0,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "source_offset": 1856,
+          "ich_words_hex": [
+            "8800071e",
+            "93800000",
+            "2008246b",
+            "08000000",
+            "2008246b",
+            "08000000",
+            "0000004a",
+            "0000000a"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00008888",
+            "00000022",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "00ffffff",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 1,
+          "vertex_layout_hex": "04a",
+          "source_vertex_sha256": "0f6aca005f444b2428958c523687c025957ddd18617eaf062715df38b7cbc201",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3,
+            2,
+            3,
+            4,
+            4,
+            3,
+            5,
+            4,
+            5,
+            6,
+            6,
+            5,
+            7,
+            6,
+            7,
+            8,
+            8,
+            7,
+            9
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.125,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                1.2799999713897705,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.125,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                1.9199999570846558,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.375,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                1.9199999570846558,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.375,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                2.559999942779541,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.625,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                2.559999942779541,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.625,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.1999998092651367,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.875,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.1999998092651367,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.875,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                3.5199999809265137,
+                -3.6399998664855957,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                3.5199999809265137,
+                -3.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ff4c4c4c",
+                "ff4c4c4c"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        0.0,
+        300.0,
+        351.99999809265137,
+        363.99998664855957
+      ]
+    }
+  ],
+  "layout": "twiddled",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "projection_evidence": "A 6.4 by 4.8 authored title quad numerically fits 640 by 480 at x*100,y*-100. Diagnostic bounds use that fit only; original draw-matrix proof remains required.",
+  "known_unresolved": [
+    "Per-state chunk selection and animation/translation",
+    "Original view/projection matrices and depth state",
+    "Effective material override, sampling and blend state"
+  ]
+}

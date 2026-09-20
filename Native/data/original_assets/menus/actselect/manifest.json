@@ -1,0 +1,140 @@
+{
+  "schema": "idas3-original-menus-v1",
+  "name": "actselect",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\actselect",
+  "source_rip_table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\actselect\\actselect_rip.tbl",
+  "source_rip_payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\actselect\\actselect_rip.bin",
+  "source_rip_table_sha256": "6cf1da47c99da9dde2d4d5ae5ab2cce927bfaa86ebe5d00cb72cd06cb2142ae8",
+  "source_rip_payload_sha256": "a4fb4b53df82e7a860279ba8e9c90a141edb214b1b14ab175da1817602d9a618",
+  "texture_manifest": "textures/manifest.json",
+  "texture_pack": "textures/textures.idastex",
+  "texture_count": 1,
+  "sprite_count": 1,
+  "ui_pack": "sprites.idasui",
+  "ui_pack_sha256": "86c35112276091f440584c5b346144b7a44d06953880bb95acce7cac7d4383e4",
+  "layout": "twiddled",
+  "layout_evidence": "Explicit decoder argument; twiddled yields coherent original art in inspected banks. PVR submission-state identity is a separate gate.",
+  "rip_evidence": "16-byte records and cumulative 28-byte vertices consume exact payload; packed texture/tag descriptor independently matches every vertex.",
+  "coordinate_contract": "Authored xyzuv retained without translation, scaling or Y inversion. Screen projection, tag-controlled visibility and animation require original draw-state binding.",
+  "known_unresolved": [
+    "Meaning of tag_a/tag_b beyond exact packed representation",
+    "Original per-state sprite selection, animation and depth/blending",
+    "Complete original screen projection and surrounding background/model layers"
+  ],
+  "sprites": [
+    {
+      "index": 0,
+      "texture_index": 0,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000000",
+      "payload_offset": 0,
+      "payload_bytes": 112,
+      "payload_sha256": "a4fb4b53df82e7a860279ba8e9c90a141edb214b1b14ab175da1817602d9a618",
+      "authored_bounds_xy": [
+        145.0,
+        390.0,
+        495.0,
+        422.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0,
+        0.6835939884185791,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        0.0,
+        350.0001220703125,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        0,
+        350,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 145.0,
+          "y": 422.0,
+          "z": -0.029999999329447746,
+          "u": 0.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "43110000",
+            "43d30000",
+            "bcf5c28f",
+            "00000000",
+            "00000000",
+            "ffffffff",
+            "00000000"
+          ]
+        },
+        {
+          "x": 145.0,
+          "y": 390.0,
+          "z": -0.029999999329447746,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "43110000",
+            "43c30000",
+            "bcf5c28f",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000000"
+          ]
+        },
+        {
+          "x": 495.0,
+          "y": 422.0,
+          "z": -0.029999999329447746,
+          "u": 0.6835939884185791,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "43f78000",
+            "43d30000",
+            "bcf5c28f",
+            "3f2f0004",
+            "00000000",
+            "ffffffff",
+            "00000000"
+          ]
+        },
+        {
+          "x": 495.0,
+          "y": 390.0,
+          "z": -0.029999999329447746,
+          "u": 0.6835939884185791,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "43f78000",
+            "43c30000",
+            "bcf5c28f",
+            "3f2f0004",
+            "3f800000",
+            "ffffffff",
+            "00000000"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_000_texture_000.png",
+      "crop_rgba_sha256": "05f57f31abb0f436ab16c75e347754831f707da26e9a5e679193b04b00102da1"
+    }
+  ]
+}

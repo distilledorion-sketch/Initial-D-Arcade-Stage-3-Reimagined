@@ -1,0 +1,330 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "v3sG00game2d",
+  "mesh": "v3sG00game2d.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.0,
+          3.559999942779541
+        ],
+        [
+          -1.3199999332427979,
+          -1.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffcccccc",
+            "00000000",
+            "ffcccccc",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246a",
+            "10000000",
+            "9400246a",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "41158fec7c78d957c297a724874550203aa6f4bc665db2fcfc46b525b7e3c847"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 8,
+      "bounds_xyz": [],
+      "texture_indices": [],
+      "vertices": 0,
+      "triangles": 0,
+      "batches": []
+    },
+    {
+      "index": 2,
+      "source_offset": 296,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          0.6049999594688416,
+          1.4049999713897705
+        ],
+        [
+          -1.084999918937683,
+          -0.9249999523162842
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        1
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246a",
+            "10000000",
+            "9400246a",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "6b6cf1b435a5586fc827730e5cb525f9554dabec6c3ab4cb30e857dd79eb36a5"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "source_offset": 584,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          0.0,
+          1.2006399631500244
+        ],
+        [
+          -0.15007999539375305,
+          0.0
+        ],
+        [
+          0.0004978479701094329,
+          0.0004978479701094329
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246c",
+            "10000000",
+            "9400246c",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "e43b4c894a3dc47e108ef5f864192ff816bd344f4bfff6074b1bc16aff498ca1"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "source_offset": 872,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          0.0,
+          1.2006399631500244
+        ],
+        [
+          -0.15007999539375305,
+          0.0
+        ],
+        [
+          0.0004978479701094329,
+          0.0004978479701094329
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246c",
+            "10000000",
+            "9400246c",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "623d26faea6b895d35ae03140d5de70fe7fb3dbd6f3a78a3db5a61cf777e5a50"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "source_offset": 1160,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          0.0,
+          1.2006399631500244
+        ],
+        [
+          -0.15007999539375305,
+          0.0
+        ],
+        [
+          0.0004978479701094329,
+          0.0004978479701094329
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246c",
+            "10000000",
+            "9400246c",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "8d1de3f0404386c999cbf6ad4ba9f1b7d4edc2c191e1568c022d42d75831e2ce"
+        }
+      ]
+    }
+  ],
+  "texture_count": 3,
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sG00game2d\\v3sG00game2d_pol.bin.nz",
+      "bytes": 1448,
+      "sha256": "38c4497fa05dbac2d47d790dbbc290fce5aac291bf2f677ec7744cf356425cd7"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sG00game2d\\v3sG00game2d_pol.tbl",
+      "bytes": 24,
+      "sha256": "94b3c58a9a8344a452ae6b327fc8d8fe143dfca17a91417ece0abff540f57b34"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sG00game2d\\v3sG00game2d_tex.tbl",
+      "bytes": 48,
+      "sha256": "7a01bcddb832c12c371d1bf616784e1d1f3357b9d39cee4685d2e86c3205ecef"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sG00game2d\\v3sG00game2d_tex.bin.nz",
+      "bytes": 98304,
+      "sha256": "f3607cae0e888a6017d844b741370c077fabb2a6ea1b443ee900e5f9c182abf6"
+    }
+  },
+  "decoded_polygon_sha256": "38c4497fa05dbac2d47d790dbbc290fce5aac291bf2f677ec7744cf356425cd7",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

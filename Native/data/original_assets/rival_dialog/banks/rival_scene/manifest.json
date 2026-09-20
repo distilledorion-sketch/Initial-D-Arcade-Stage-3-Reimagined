@@ -1,0 +1,9 @@
+{
+  "name": "rival_scene",
+  "source_folder": "rival_scene",
+  "chunks": 21,
+  "textures": 15,
+  "polygon_sha256": "15f8740450e4ae608365dec5040f0b7cea6b52ca138a093041928a4ce3436693",
+  "texture_sha256": "30595a2bb6a21030807aafe077fbccd2c213c428d8d4b651a58960695cb142e6",
+  "material_words_preserved": true
+}

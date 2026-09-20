@@ -1,0 +1,9 @@
+{
+  "name": "rival_sakamoto",
+  "source_folder": "rival/r_sakamoto",
+  "chunks": 9,
+  "textures": 9,
+  "polygon_sha256": "e7b546affbe1141495e20efd530ba264bf9bbcbe4fd6203e131cb960087a7d88",
+  "texture_sha256": "4944c2144b16acb7df1fe3d3a4c80f69642e4c01538de4ca1e0f2cbfc72edadc",
+  "material_words_preserved": true
+}

@@ -1,0 +1,9 @@
+{
+  "name": "rival_tokyo",
+  "source_folder": "rival/r_tokyo",
+  "chunks": 9,
+  "textures": 9,
+  "polygon_sha256": "bfb3f533db4943d0bd6c30c1c68e56a0180853d3bcbbd7299dd3e5cad2a5043c",
+  "texture_sha256": "3ac547cd67f0d1c30267678e9141507163f8ff386e63aa8b960a43daf979786e",
+  "material_words_preserved": true
+}

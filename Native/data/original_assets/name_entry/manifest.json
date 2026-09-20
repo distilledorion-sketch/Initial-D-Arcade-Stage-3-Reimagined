@@ -1,0 +1,35 @@
+{
+  "schema": "original-name-entry-presentation-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "owner": "0C1263E0",
+  "draw": "0C128500",
+  "v3_children": [
+    "0C1B1300",
+    "0C1B1CA0"
+  ],
+  "banks": [
+    {
+      "bank": 16,
+      "name": "v3sS08name",
+      "chunks": 7,
+      "textures": 6
+    },
+    {
+      "bank": 32,
+      "name": "select0302",
+      "chunks": 13,
+      "textures": 25
+    },
+    {
+      "bank": "legacy wrapper1",
+      "name": "select",
+      "chunks": 46,
+      "textures": 24
+    }
+  ],
+  "cursor_address": "0C33FCE0",
+  "cursor_bytes": 756,
+  "cursor_sha256": "f924ce406ed614982dc55031880521a7c5a182ac28b368f255410298c127fe42",
+  "projection": "Source V3 authored menu plane; shared native 640x480 compositor",
+  "private_original_assets": true
+}

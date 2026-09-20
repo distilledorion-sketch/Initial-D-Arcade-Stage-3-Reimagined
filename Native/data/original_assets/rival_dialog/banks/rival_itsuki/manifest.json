@@ -1,0 +1,9 @@
+{
+  "name": "rival_itsuki",
+  "source_folder": "rival/r_itsuki",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "d94f0c97f16c3427ce28c1cb2a38af9966f29b7518f0f71a756391289dd70ce7",
+  "texture_sha256": "108c6dfaea4c4874de576b5bb2a7bb35c3c110bf4b98181376ff8978b8b63923",
+  "material_words_preserved": true
+}

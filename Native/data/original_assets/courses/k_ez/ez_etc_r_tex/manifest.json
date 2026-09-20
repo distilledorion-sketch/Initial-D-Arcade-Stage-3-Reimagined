@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-original-course-pal8-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_ez\\ez_etc_r_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_ez\\ez_etc_r_tex.bin.nz",
+  "table_sha256": "69fdafece2bae33614d79cf4891332dc74a3121e4f9e2bda5aef6f5d1bcad4af",
+  "payload_sha256": "dc324c8bc91d29f2f3267284387faaa80cd38e918d4873c6d6b699f1c46147af",
+  "palette_id": 20,
+  "palette_address": "0C29D1A8",
+  "palette_sha256": "8cb158660d4fded11f71bbd81964c8d11a0d5b007124a56a3147977812bcca34",
+  "palette_format": "ARGB8888",
+  "loader_evidence": "2136A0 source0707 produces PAL8 format30000000,size131072; 1F7420 produces TSP53/TCW30000000 (twiddled).",
+  "palette_evidence": "Course night constructor calls191A40(id,0); it selects33B898[id], sets ARGB8888, and uploads256 words to palette bank0 through1F618C.",
+  "validation": "All output pixels map their unchanged source8-bit index through the exact original32-bit palette; channel roundtrip checked. Original indices and palette retained.",
+  "textures": [
+    {
+      "index": 0,
+      "width": 512,
+      "height": 256,
+      "format": 7,
+      "flags": 7,
+      "file": "texture_000.png",
+      "rgba_sha256": "ffd8e7f9af2e2ee46a7c6f0cea28977d7014faeb6e4683d8799b515d9ffef64b"
+    }
+  ]
+}

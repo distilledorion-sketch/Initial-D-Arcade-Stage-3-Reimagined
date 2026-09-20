@@ -1,0 +1,116 @@
+{
+  "schema": "idas3-original-attract-cards-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "banks": [
+    {
+      "name": "segalogo",
+      "chunk_count": 1,
+      "texture_count": 1,
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segalogo\\segalogo_pol.bin.nz",
+          "bytes": 624,
+          "sha256": "96d9f10d704df389c28b0e9c307c3c180a04408e57a7b27f048c7827215f1a0a"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segalogo\\segalogo_pol.tbl",
+          "bytes": 4,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segalogo\\segalogo_tex.tbl",
+          "bytes": 16,
+          "sha256": "3bed619ceb0c484eb364b3c6e1f1cf6ea52fcf122e109569606a118e9184e5fb"
+        },
+        "texture_payload": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segalogo\\segalogo_tex.bin.nz",
+          "bytes": 262144,
+          "sha256": "f01dd75a8b6d1d61fed057507e9a6d13d19007ba02245e041b14505c943d8bdc"
+        }
+      },
+      "mesh_pack_sha256": "ab80d0a55310c27ff2d6333b8a99961e28a3cc4a3a0591cb039d1e3cfc9dcc51"
+    },
+    {
+      "name": "segarosso2d",
+      "chunk_count": 1,
+      "texture_count": 1,
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso2d\\segarosso2d_pol.bin.nz",
+          "bytes": 288,
+          "sha256": "4423e8ec10bcb613815a63ccad73a79fe10988ee7e7af608a0d1440e537d8c05"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso2d\\segarosso2d_pol.tbl",
+          "bytes": 4,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso2d\\segarosso2d_tex.tbl",
+          "bytes": 16,
+          "sha256": "2c7340601478aaa6090f82d525f5e145e28bbaf007d804cccdb0225e6e6ff229"
+        },
+        "texture_payload": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso2d\\segarosso2d_tex.bin.nz",
+          "bytes": 524288,
+          "sha256": "cbe1da35cb9310d539d4b0c5b65ae36f70b5bdba8d68c7b3604cd379119c4dc5"
+        }
+      },
+      "mesh_pack_sha256": "89d663b85e87f561d640275f0a13b5f6654a1a5ff6106cfb36538f67d5ed6efa"
+    },
+    {
+      "name": "adv_caution",
+      "chunk_count": 1,
+      "texture_count": 1,
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_caution\\adv_caution_pol.bin.nz",
+          "bytes": 288,
+          "sha256": "37429a1ea92c67c60ffd6629fe4d288bb8abdc0bbfaf91042a91cdba92760c1c"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_caution\\adv_caution_pol.tbl",
+          "bytes": 4,
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_caution\\adv_caution_tex.tbl",
+          "bytes": 16,
+          "sha256": "09269d8d6e2705740e43bb7a622aea761af3925b2755745c99d54b822abc4616"
+        },
+        "texture_payload": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_caution\\adv_caution_tex.bin.nz",
+          "bytes": 131072,
+          "sha256": "d46f276e8a0de209f707c577734dc168c86bd2292bd7ae4b9e5209862fc4069b"
+        }
+      },
+      "mesh_pack_sha256": "0620305b8c786956ba026322d34cf5b9e3adf40d96e1f881959d44d3290e4e79"
+    },
+    {
+      "name": "segarosso",
+      "chunk_count": 211,
+      "texture_count": 0,
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso\\segarosso_pol.bin.nz",
+          "sha256": "36bed9c3f9c4e0fe8f3ceec9c57b4697c7b0c6640d41a2be92fd13009198efba"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso\\segarosso_pol.tbl",
+          "sha256": "16c010d9358ac9f3e60048db7db90f7c1ff9e356babac78af81744807ae223be"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\segarosso\\segarosso_tex.tbl",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "mesh_pack_sha256": "2e7b820db7acc00f638be92624d88cb08566ab8a80eafe8579a0f12f1b2125ab"
+    }
+  ],
+  "source_owners": {
+    "3": "0743A0/0746E0",
+    "4": "073660/073960",
+    "5": "0398E0/039BC0"
+  },
+  "transformation": "Original polygon positions/materials/UVs preserved; textured banks decode/repack every source texel; no replacement artwork."
+}

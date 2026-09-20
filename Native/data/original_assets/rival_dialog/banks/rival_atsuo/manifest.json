@@ -1,0 +1,9 @@
+{
+  "name": "rival_atsuo",
+  "source_folder": "rival/r_atsuo",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "0e0f3357370ad957bd71be31d37dd9ce8514e3e5daa01ab5cf6eea05f9e248d9",
+  "texture_sha256": "9de3bfe64c56a55ebcfacd6c704414adcc0eb27cce3980837b08e1166026bbf7",
+  "material_words_preserved": true
+}

@@ -1,0 +1,9 @@
+{
+  "name": "rival_kenta",
+  "source_folder": "rival/r_kenta",
+  "chunks": 10,
+  "textures": 10,
+  "polygon_sha256": "83840038687799494e062a7b8c34f8613720fcf36ce2499dd86ba19a556bd3a0",
+  "texture_sha256": "2ec96ff18f49c2b4b1dfe3deb1ed2fd68bfb91ab9f7ce3b4d57d01e9ac342b2c",
+  "material_words_preserved": true
+}

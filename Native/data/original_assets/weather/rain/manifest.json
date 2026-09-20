@@ -1,0 +1,662 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "rain",
+  "mesh": "rain.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.7049999833106995
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "94002452",
+            "10000000",
+            "94002452",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "a2c84816107070c6ff3da08a0d194e740a21b63e7c6f149a701ee0e57be4215b"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.7049999833106995
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        1
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "94002452",
+            "10000000",
+            "94002452",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "a2c84816107070c6ff3da08a0d194e740a21b63e7c6f149a701ee0e57be4215b"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "source_offset": 576,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          -4.371138828673793e-08,
+          4.371138828673793e-08
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "texture_indices": [
+        3
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000003",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000003",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245b",
+            "10000000",
+            "9400245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "b0183551e65640e702b0424c21325a0ea2fd030ca8759d8f06a878fe3a1b85a4"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "source_offset": 864,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          -4.9673829494167876e-08,
+          4.9673829494167876e-08
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245b",
+            "10000000",
+            "9400245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "c3fcdbaba15c7a683dfdc9bd7168dff20ce76788b197a14a6fc353f8e8d54017"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "source_offset": 1152,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.7051029205322266
+        ],
+        [
+          -4.9673829494167876e-08,
+          4.9673829494167876e-08
+        ]
+      ],
+      "texture_indices": [
+        4
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000004",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000004",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245a",
+            "10000000",
+            "9400245a",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "023bedad0c8f871e78eb681de9688e19a821f0f6a0fd83121c3d952ceefd835c"
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "source_offset": 1440,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          1.0171594619750977
+        ],
+        [
+          -4.9673829494167876e-08,
+          4.9673829494167876e-08
+        ]
+      ],
+      "texture_indices": [
+        5
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000005",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000005",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245b",
+            "10000000",
+            "9400245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "28842438de1de79762011ae095c14b14037ec6555e30136214f1858ffe91b080"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "source_offset": 1728,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          -2.1855694143368964e-08,
+          2.1855694143368964e-08
+        ]
+      ],
+      "texture_indices": [
+        7
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000007",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000007",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245b",
+            "10000000",
+            "9400245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "9375c51b567d8ae06f5d6a557ca420795d903e254124522856117434163376ca"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "source_offset": 2016,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          -2.0,
+          0.0
+        ],
+        [
+          -4.371138828673793e-08,
+          4.371138828673793e-08
+        ]
+      ],
+      "texture_indices": [
+        8
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000008",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000008",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "94002453",
+            "10000000",
+            "94002453",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "00c9f0a7d58d79a4647ff75f3fb31ff720ed24a9ee7227016091d04fa2a2fee4"
+        }
+      ]
+    },
+    {
+      "index": 8,
+      "source_offset": 2304,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          -2.0,
+          0.0
+        ],
+        [
+          -4.371138828673793e-08,
+          4.371138828673793e-08
+        ]
+      ],
+      "texture_indices": [
+        9
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000009",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000009",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "94002453",
+            "10000000",
+            "94002453",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "00c9f0a7d58d79a4647ff75f3fb31ff720ed24a9ee7227016091d04fa2a2fee4"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "source_offset": 2592,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          -2.0,
+          0.0
+        ],
+        [
+          -4.371138828673793e-08,
+          4.371138828673793e-08
+        ]
+      ],
+      "texture_indices": [
+        10
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "0000000a",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "0000000a",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "94002453",
+            "10000000",
+            "94002453",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "00c9f0a7d58d79a4647ff75f3fb31ff720ed24a9ee7227016091d04fa2a2fee4"
+        }
+      ]
+    },
+    {
+      "index": 10,
+      "source_offset": 2880,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "texture_indices": [
+        6
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000006",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000006",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400244b",
+            "10000000",
+            "9400244b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "1d080fe49853c1b20ff9b00f41865f02251fe78742d02baf0ca7c83dd14bb0ce"
+        }
+      ]
+    }
+  ],
+  "texture_count": 11,
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rain\\rain_pol.bin.nz",
+      "bytes": 3168,
+      "sha256": "48ce33f8e22b4451d27a52ea9db2b2117c65fa823b0d74863b111517e6646ee9"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rain\\rain_pol.tbl",
+      "bytes": 44,
+      "sha256": "ea26bc895a4ea0117bb5dcf7f9ba1e084be897c511d04f9b7a60100528dec56b"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rain\\rain_tex.tbl",
+      "bytes": 176,
+      "sha256": "767e8f77f4c4a5891aeadf0c20824bdf152b2e43a3fa74abde19b2eea3a5423a"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rain\\rain_tex.bin.nz",
+      "bytes": 55296,
+      "sha256": "2548d5055ddda1042f4f1706cbc7d60d828acde7b6c610be840b512e2c595468"
+    }
+  },
+  "decoded_polygon_sha256": "48ce33f8e22b4451d27a52ea9db2b2117c65fa823b0d74863b111517e6646ee9",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

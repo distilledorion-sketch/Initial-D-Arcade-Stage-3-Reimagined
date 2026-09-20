@@ -1,0 +1,9 @@
+{
+  "name": "rival_kenji",
+  "source_folder": "rival/r_kenji",
+  "chunks": 14,
+  "textures": 15,
+  "polygon_sha256": "6779d38a13d45061c0bfd9622f26a4705e0a1b3532b0092af4826ba6317740fa",
+  "texture_sha256": "39779a73f132bd2334da0258d16344f346db9a751a65561067891f6c0334dd59",
+  "material_words_preserved": true
+}

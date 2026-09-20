@@ -1,0 +1,82 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\rival_bg\\bg01\\rival_bg01dr_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Claude_Handoffs\\IDAS3_Native_Remake_Handoff_2026-09-06\\in-progress\\data\\original_assets\\rival_dialog\\banks\\rival_bg01dr\\original_texture_decoded.bin",
+  "table_sha256": "cd8b8e7887a80471bd60f13d78682c7302fd5ec978b612fb76845628364ff98e",
+  "payload_sha256": "0f90642d5d60e180e61f54378bf8ad7b2d7cef7f1498837deae8c9fcbb7b7fc9",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 256,
+      "height": 256,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "124cf560f4a6d0966eeb42592f6316b0df4b023408015ec68b0eb3e7434766a7",
+      "rgba_sha256": "85aeefa61ad7ebdaa9425c204fab56834d5f3ac9569d09994d11afd11e137ef8",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 256,
+      "height": 256,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 131072,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "f3afa3b64ba43727f7fbe03d864c32759885e678fc1073ec12c1337fb64c11d4",
+      "rgba_sha256": "e5a4dc1b02d72f27f38a3712b13605bb119f2acc7099c4fccb9ada15b89a2eb5",
+      "file": "texture_001.png"
+    },
+    {
+      "index": 2,
+      "width": 256,
+      "height": 256,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 262144,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "e9f708ea460c095e2abdc66a62110652f577907027c4c6e65e18f241babca849",
+      "rgba_sha256": "c2280c8d6c7c850a0cecc762ace63d1e78a5b7a33f1df862f5a7c17499b13b76",
+      "file": "texture_002.png"
+    },
+    {
+      "index": 3,
+      "width": 256,
+      "height": 256,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 393216,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "936183d5d980a637afaf0cea4330a8f78819c324cc8a433cc720e55b96ff136c",
+      "rgba_sha256": "a105540bd8a9fd4471fc5946088c200c2e9f467e8abd4a45fbd8f819d408268a",
+      "file": "texture_003.png"
+    },
+    {
+      "index": 4,
+      "width": 256,
+      "height": 256,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 524288,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "b2ef4d219d90a02c7aa9fb824c3db48782c837780811b8f348c108d8cf29df58",
+      "rgba_sha256": "d9c5b30dde516807208d17bce0ea0953350a5d7e3c5b5acafa7b5812cb91e7cc",
+      "file": "texture_004.png"
+    }
+  ]
+}

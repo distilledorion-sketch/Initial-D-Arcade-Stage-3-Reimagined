@@ -1,0 +1,66 @@
+{
+  "schema": "original-tuning-course-presentation-v1",
+  "owner": "0C129240",
+  "draw": "0C12BA00",
+  "children": [
+    "0C1AF680",
+    "0C1B0760"
+  ],
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "banks": [
+    {
+      "bank": 3,
+      "name": "v3sK00rivalface",
+      "chunks": 62,
+      "textures": 35
+    },
+    {
+      "bank": 15,
+      "name": "v3sS07tune",
+      "chunks": 73,
+      "textures": 28
+    }
+  ],
+  "tables": [
+    {
+      "address": "0C33FC7C",
+      "words": 25
+    },
+    {
+      "address": "0C2A6E14",
+      "words": 42
+    },
+    {
+      "address": "0C2A6EBC",
+      "words": 31
+    },
+    {
+      "address": "0C2A6F38",
+      "words": 31
+    },
+    {
+      "address": "0C26B790",
+      "words": 35
+    },
+    {
+      "address": "0C2A6FB4",
+      "words": 25
+    }
+  ],
+  "tables_sha256": "0f3421926541c156d2188690521ea8e948447f82f2309e0df6382b4b231f1561",
+  "private_original_assets": true,
+  "derived_assets": {
+    "packages.bin": {
+      "bytes": 4228,
+      "sha256": "14ef9f17dc9f061e799263b20d1b53d5d07ac48940c85d092a2b1c789417da71"
+    },
+    "pulse.bin": {
+      "bytes": 16384,
+      "sha256": "daf532367e86bbada859da8819ebee62b31518d7a3d26c83493dc5cf2680053f"
+    },
+    "cursor_scale.bin": {
+      "bytes": 512,
+      "sha256": "50b987c08732aaab8a35aeb12e11679f6fb47feaba18fc7dc249bd37915c1a90"
+    }
+  }
+}

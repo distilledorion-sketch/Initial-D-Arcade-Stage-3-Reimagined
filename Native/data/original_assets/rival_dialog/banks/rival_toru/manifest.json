@@ -1,0 +1,9 @@
+{
+  "name": "rival_toru",
+  "source_folder": "rival/r_toru",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "24049660b16f2a07631daf011dcde934dc6ad4c08899be31c156010413ec6781",
+  "texture_sha256": "09cae9e8439cebf9cda4d611b347ce1d4faa9a273527bebfb87e673e4504c84d",
+  "material_words_preserved": true
+}

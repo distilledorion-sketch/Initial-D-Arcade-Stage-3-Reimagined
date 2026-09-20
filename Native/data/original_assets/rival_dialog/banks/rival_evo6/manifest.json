@@ -1,0 +1,9 @@
+{
+  "name": "rival_evo6",
+  "source_folder": "rival/r_evo6",
+  "chunks": 8,
+  "textures": 8,
+  "polygon_sha256": "296056b2cff2a1dae7b7e8b333e624c7e7bc7e300dc59e6f13b01681a2e2175d",
+  "texture_sha256": "468b517d765b23f1c0cc08291f932ecc4483fc0cdf2cdae58d910dff32aa19bb",
+  "material_words_preserved": true
+}

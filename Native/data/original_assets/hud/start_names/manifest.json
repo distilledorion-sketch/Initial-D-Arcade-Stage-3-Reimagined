@@ -1,0 +1,958 @@
+{
+  "schema": "idas3-original-start-names-v1",
+  "private_original_assets": true,
+  "sources": [
+    {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\idas3_main_0C020000.bin",
+      "sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
+    },
+    {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\font\\namekana\\namekana_font.bin.nz",
+      "sha256": "20a5dea3e26011ba58e7c11ef6064ca8b0d671aa955c4fecb52f286afbb18dd3"
+    },
+    {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\font\\namekana\\namekana_spr.tbl",
+      "sha256": "9896df02cd7b38b892959277389a98bb9be2fad63bca1c2ec3ee1dc133486331"
+    },
+    {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\font\\namekana\\namekana_spr.bin.nz",
+      "sha256": "97b6dd92375eb3781a00c4f5f5c08042876b7f796c2a5466951b93d974e6dd14"
+    },
+    {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\2026-09-05\\as\\outputs\\InitialDUnity\\Native\\data\\original_frontend\\name_entry.bin",
+      "sha256": "da9259c2b139c795deb6f6f73aa33d08155bacacf1377cbf972488d2a4a21ac0"
+    }
+  ],
+  "output": "C:\\Users\\Developer\\Documents\\Codex\\2026-09-05\\as\\outputs\\InitialDUnity\\Native\\data\\original_assets\\hud\\start_names\\start_names.bin",
+  "output_sha256": "b2070b1d8af1b4481f3c8c562e8d8a5c9e09d5c9ed3e3a795490523c93e9d3bc",
+  "font_count": 341,
+  "source_rules": "14BEC0 namekana 64px; 191940 table33B780[enemy][line]; 14C1E0 names at (224-32*n,104) and (416-32*n,312), two opponent lines y280/344; 14B700 animation31EE90 with 80 x/y/alpha triplets; VS41..70 after 100 phase ticks.",
+  "localization": "Japanese EUC-JP values are texture lookup keys; localized namekana rival textures themselves paint English. rendered_english is a visual transcription. General profile glyphs retain their normal text.",
+  "default_player_glyph_ids": [
+    177,
+    173,
+    162,
+    186,
+    166,
+    179
+  ],
+  "default_player_bytes": "a3d0a3cca3c1a3d9a3c5a3d200000000",
+  "motion_address": "0C31EE90",
+  "motion_sha256": "c677a9643a485fb42cbcd46ede13bb4f4290c7a5babf23b062332a5977238cea",
+  "names": [
+    {
+      "enemy": 0,
+      "lines": [
+        {
+          "address": "0C298858",
+          "bytes": "c9f0c6e2bcf9",
+          "unicode": "\u6b66\u5185\u6a39"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "IGGY"
+    },
+    {
+      "enemy": 1,
+      "lines": [
+        {
+          "address": "0C29872C",
+          "bytes": "b7f2bbfec0e8c7da",
+          "unicode": "\u5065\u6642\u5148\u8f29"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "KENJI"
+    },
+    {
+      "enemy": 2,
+      "lines": [
+        {
+          "address": "0C298860",
+          "bytes": "beb1bbcabfb5b8e3b8de",
+          "unicode": "\u5e84\u53f8\u614e\u543e\u4e94"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "SHINGO"
+    },
+    {
+      "enemy": 3,
+      "lines": [
+        {
+          "address": "0C29886C",
+          "bytes": "cbf6b7d1bdbd",
+          "unicode": "\u672b\u7d99\u5341"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "TORU"
+    },
+    {
+      "enemy": 4,
+      "lines": [
+        {
+          "address": "0C298750",
+          "bytes": "c0eeb0e6bddfc8f8",
+          "unicode": "\u5ddd\u4e95\u6df3\u5c3e"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "KAWAI"
+    },
+    {
+      "enemy": 5,
+      "lines": [
+        {
+          "address": "0C2988E0",
+          "bytes": "bab4c5f9bfbf",
+          "unicode": "\u4f50\u7b49\u771f"
+        },
+        {
+          "address": "0C2988E8",
+          "bytes": "a1f5bab9c0e3b9d4b1fd",
+          "unicode": "\uff06\u5dee\u96ea\u884c\u5f80"
+        }
+      ],
+      "rendered_english": "MAYA & SIMONE"
+    },
+    {
+      "enemy": 6,
+      "lines": [
+        {
+          "address": "0C298768",
+          "bytes": "c5e3b6b8b2bdcde5",
+          "unicode": "\u5854\u72c2\u5316\u7f85"
+        },
+        {
+          "address": "0C2988F4",
+          "bytes": "cde8c5c4bbf7bfcdb3b8cdfd",
+          "unicode": "\u6765\u7530\u4f3c\u4eba\u84cb\u7406"
+        }
+      ],
+      "rendered_english": "TWO GUYS FROM TOKYO"
+    },
+    {
+      "enemy": 7,
+      "lines": [
+        {
+          "address": "0C298774",
+          "bytes": "c3e7c2bcb8adc2bf",
+          "unicode": "\u4ef2\u6751\u8ce2\u591a"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "DANNY"
+    },
+    {
+      "enemy": 8,
+      "lines": [
+        {
+          "address": "0C2988A0",
+          "bytes": "b9e2c4ef",
+          "unicode": "\u9ad8\u5f1f"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "K.T."
+    },
+    {
+      "enemy": 9,
+      "lines": [
+        {
+          "address": "0C2988A8",
+          "bytes": "c3d3c3abb9c0",
+          "unicode": "\u6c60\u8c37\u6d69"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "COLE"
+    },
+    {
+      "enemy": 10,
+      "lines": [
+        {
+          "address": "0C298798",
+          "bytes": "c3e6cea4b5a3bbe1",
+          "unicode": "\u4e2d\u91cc\u6bc5\u6c0f"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "ZACK"
+    },
+    {
+      "enemy": 11,
+      "lines": [
+        {
+          "address": "0C2987A4",
+          "bytes": "bfdcc5ecb5febbd4",
+          "unicode": "\u9808\u6771\u4eac\u5e02"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "KYLE"
+    },
+    {
+      "enemy": 12,
+      "lines": [
+        {
+          "address": "0C2988B0",
+          "bytes": "c2ebb7bb",
+          "unicode": "\u9df9\u5144"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "RY"
+    },
+    {
+      "enemy": 13,
+      "lines": [
+        {
+          "address": "0C2988B8",
+          "bytes": "c6a3b8b6c2f3",
+          "unicode": "\u85e4\u539f\u62d3"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "TAK"
+    },
+    {
+      "enemy": 14,
+      "lines": [
+        {
+          "address": "0C2987C8",
+          "bytes": "b4e4beebc0b6bca1",
+          "unicode": "\u5ca9\u57ce\u6e05\u6b21"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "HAWK"
+    },
+    {
+      "enemy": 15,
+      "lines": [
+        {
+          "address": "0C2987A4",
+          "bytes": "bfdcc5ecb5febbd4",
+          "unicode": "\u9808\u6771\u4eac\u5e02"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "KYLIE"
+    },
+    {
+      "enemy": 16,
+      "lines": [
+        {
+          "address": "0C2987D4",
+          "bytes": "beaec7f0b2c4b0df",
+          "unicode": "\u5c0f\u67cf\u53ef\u80c3"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "CAINE"
+    },
+    {
+      "enemy": 17,
+      "lines": [
+        {
+          "address": "0C2987E0",
+          "bytes": "c8feb4f7c0ef",
+          "unicode": "\u7f8e\u5fcc\u6226"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "MIKI"
+    },
+    {
+      "enemy": 18,
+      "lines": [
+        {
+          "address": "0C2988C0",
+          "bytes": "c6f3b5dcc2e7",
+          "unicode": "\u4e8c\u5bae\u5927"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "DICE"
+    },
+    {
+      "enemy": 19,
+      "lines": [
+        {
+          "address": "0C2988C8",
+          "bytes": "c1e3b4d6b0cccdf8b0db",
+          "unicode": "\u5de3\u9593\u4f4d\u5229\u7570"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "SMILEY"
+    },
+    {
+      "enemy": 20,
+      "lines": [
+        {
+          "address": "0C298800",
+          "bytes": "b4dbc3d2b9acc0c2",
+          "unicode": "\u9928\u667a\u5e78\u901d"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "TOUCH"
+    },
+    {
+      "enemy": 21,
+      "lines": [
+        {
+          "address": "0C2988D4",
+          "bytes": "cbb0d6b3b1e4",
+          "unicode": "\u98fd\u5cbe\u5ef6"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "NOBU"
+    },
+    {
+      "enemy": 22,
+      "lines": [
+        {
+          "address": "0C298818",
+          "bytes": "bae4cbdcb4f0",
+          "unicode": "\u5742\u672c\u57fa"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "SID"
+    },
+    {
+      "enemy": 23,
+      "lines": [
+        {
+          "address": "0C298820",
+          "bytes": "bda9bbb3bec4",
+          "unicode": "\u79cb\u5c71\u6e09"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "AKI"
+    },
+    {
+      "enemy": 24,
+      "lines": [
+        {
+          "address": "0C298828",
+          "bytes": "c8d8c0a5b6b3bbf9",
+          "unicode": "\u78d0\u702c\u606d\u5150"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "KYLIE"
+    },
+    {
+      "enemy": 25,
+      "lines": [
+        {
+          "address": "0C2988B0",
+          "bytes": "c2ebb7bb",
+          "unicode": "\u9df9\u5144"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "RY"
+    },
+    {
+      "enemy": 26,
+      "lines": [
+        {
+          "address": "0C298834",
+          "bytes": "bbdecaecb8ebc7b8b4c1",
+          "unicode": "\u679d\u6bcd\u7881\u57dc\u6f22"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "MAN IN EVO.V"
+    },
+    {
+      "enemy": 27,
+      "lines": [
+        {
+          "address": "0C298840",
+          "bytes": "cac1caeacfbfc7b7b2bb",
+          "unicode": "\u67c4\u620a\u9332\u4e4b\u97f3"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "MAN IN EVO.VI"
+    },
+    {
+      "enemy": 28,
+      "lines": [
+        {
+          "address": "0C2988A0",
+          "bytes": "b9e2c4ef",
+          "unicode": "\u9ad8\u5f1f"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "K.T."
+    },
+    {
+      "enemy": 29,
+      "lines": [
+        {
+          "address": "0C2988B8",
+          "bytes": "c6a3b8b6c2f3",
+          "unicode": "\u85e4\u539f\u62d3"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "TAK"
+    },
+    {
+      "enemy": 30,
+      "lines": [
+        {
+          "address": "0C29884C",
+          "bytes": "bfc6c9e3cab8c2c0",
+          "unicode": "\u89aa\u7236\u6587\u592a"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "BUNTA"
+    },
+    {
+      "enemy": 31,
+      "lines": [
+        {
+          "address": "0C29884C",
+          "bytes": "bfc6c9e3cab8c2c0",
+          "unicode": "\u89aa\u7236\u6587\u592a"
+        },
+        {
+          "address": "0C2988DC",
+          "bytes": "",
+          "unicode": ""
+        }
+      ],
+      "rendered_english": "BUNTA"
+    }
+  ],
+  "motion_samples": [
+    [
+      600.0,
+      0.0,
+      0.0625
+    ],
+    [
+      600.0,
+      0.0,
+      0.06250009685754776
+    ],
+    [
+      599.9990234375,
+      0.0,
+      0.06250189989805222
+    ],
+    [
+      599.9940185546875,
+      0.0,
+      0.06250949949026108
+    ],
+    [
+      599.9810180664062,
+      0.0,
+      0.06253010034561157
+    ],
+    [
+      599.9530029296875,
+      0.0,
+      0.06257329881191254
+    ],
+    [
+      599.9030151367188,
+      0.0,
+      0.06265190243721008
+    ],
+    [
+      599.8200073242188,
+      0.0,
+      0.0627811998128891
+    ],
+    [
+      599.6939697265625,
+      0.0,
+      0.0629786029458046
+    ],
+    [
+      599.510009765625,
+      0.0,
+      0.06326519697904587
+    ],
+    [
+      599.2550048828125,
+      0.0,
+      0.06366380304098129
+    ],
+    [
+      598.9119873046875,
+      0.0,
+      0.06419949978590012
+    ],
+    [
+      598.4639892578125,
+      0.0,
+      0.06490059942007065
+    ],
+    [
+      597.8900146484375,
+      0.0,
+      0.06579670310020447
+    ],
+    [
+      597.1710205078125,
+      0.0,
+      0.06692010164260864
+    ],
+    [
+      596.2849731445312,
+      0.0,
+      0.06830479949712753
+    ],
+    [
+      595.2080078125,
+      0.0,
+      0.06998699903488159
+    ],
+    [
+      593.9169921875,
+      0.0,
+      0.07200440019369125
+    ],
+    [
+      592.385986328125,
+      0.0,
+      0.07439640164375305
+    ],
+    [
+      590.5889892578125,
+      0.0,
+      0.07720399647951126
+    ],
+    [
+      588.5,
+      0.0,
+      0.08046930283308029
+    ],
+    [
+      586.0889892578125,
+      0.0,
+      0.08423569798469543
+    ],
+    [
+      583.3289794921875,
+      0.0,
+      0.08854769915342331
+    ],
+    [
+      580.1920166015625,
+      0.0,
+      0.09345050156116486
+    ],
+    [
+      576.64599609375,
+      0.0,
+      0.09899000078439713
+    ],
+    [
+      572.6640014648438,
+      0.0,
+      0.10521300137042999
+    ],
+    [
+      568.2139892578125,
+      0.0,
+      0.11216499656438828
+    ],
+    [
+      563.2670288085938,
+      0.0,
+      0.11989499628543854
+    ],
+    [
+      557.7930297851562,
+      0.0,
+      0.1284479945898056
+    ],
+    [
+      551.7620239257812,
+      0.0,
+      0.13787199556827545
+    ],
+    [
+      545.1439819335938,
+      0.0,
+      0.1482120007276535
+    ],
+    [
+      537.9099731445312,
+      0.0,
+      0.15951600670814514
+    ],
+    [
+      530.031005859375,
+      0.0,
+      0.17182600498199463
+    ],
+    [
+      521.47998046875,
+      0.0,
+      0.18518799543380737
+    ],
+    [
+      512.22802734375,
+      0.0,
+      0.19964399933815002
+    ],
+    [
+      502.24798583984375,
+      0.0,
+      0.21523700654506683
+    ],
+    [
+      491.5169982910156,
+      0.0,
+      0.23200500011444092
+    ],
+    [
+      480.0069885253906,
+      0.0,
+      0.24998900294303894
+    ],
+    [
+      467.6969909667969,
+      0.0,
+      0.26922300457954407
+    ],
+    [
+      454.5639953613281,
+      0.0,
+      0.28974300622940063
+    ],
+    [
+      440.5870056152344,
+      0.0,
+      0.3115819990634918
+    ],
+    [
+      425.74700927734375,
+      0.0,
+      0.33476999402046204
+    ],
+    [
+      410.0260009765625,
+      0.0,
+      0.35933399200439453
+    ],
+    [
+      393.4079895019531,
+      0.0,
+      0.38530001044273376
+    ],
+    [
+      375.87799072265625,
+      0.0,
+      0.41269001364707947
+    ],
+    [
+      357.42498779296875,
+      0.0,
+      0.4415239989757538
+    ],
+    [
+      338.0369873046875,
+      0.0,
+      0.4718169867992401
+    ],
+    [
+      317.70599365234375,
+      0.0,
+      0.5035849809646606
+    ],
+    [
+      296.42401123046875,
+      0.0,
+      0.5368369817733765
+    ],
+    [
+      274.1889953613281,
+      0.0,
+      0.5715789794921875
+    ],
+    [
+      250.9980010986328,
+      0.0,
+      0.6078159809112549
+    ],
+    [
+      226.85000610351562,
+      0.0,
+      0.6455479860305786
+    ],
+    [
+      201.7469940185547,
+      0.0,
+      0.6847699880599976
+    ],
+    [
+      175.69500732421875,
+      0.0,
+      0.7254760265350342
+    ],
+    [
+      148.7010040283203,
+      0.0,
+      0.7676550149917603
+    ],
+    [
+      120.77300262451172,
+      0.0,
+      0.8112919926643372
+    ],
+    [
+      91.92369842529297,
+      0.0,
+      0.8563690185546875
+    ],
+    [
+      62.16699981689453,
+      0.0,
+      0.9028639793395996
+    ],
+    [
+      31.519399642944336,
+      0.0,
+      0.950751006603241
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ]
+}

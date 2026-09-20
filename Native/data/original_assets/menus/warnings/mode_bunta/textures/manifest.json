@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\mode_bunta\\mode_bunta_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\mode_bunta\\mode_bunta_tex.bin.nz",
+  "table_sha256": "e055108e5c816d3671217b4287f3a2902048ae1e92ab10cd5633d6f32ed78bd9",
+  "payload_sha256": "037b408282750c7e46b34e8b56aae4389e7e08d32f7b5f89ef379478fb170004",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 512,
+      "height": 128,
+      "format": 2,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "037b408282750c7e46b34e8b56aae4389e7e08d32f7b5f89ef379478fb170004",
+      "rgba_sha256": "257808018d98887cafe0be72f58c92d9616c85543f8f31a57baf2f5edec90695",
+      "file": "texture_000.png"
+    }
+  ]
+}

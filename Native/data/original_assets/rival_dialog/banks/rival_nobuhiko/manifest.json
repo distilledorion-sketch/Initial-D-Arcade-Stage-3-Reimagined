@@ -1,0 +1,9 @@
+{
+  "name": "rival_nobuhiko",
+  "source_folder": "rival/r_nobuhiko",
+  "chunks": 8,
+  "textures": 8,
+  "polygon_sha256": "1f6527bff1bc9c6cc3b363d28f3bb83f35968d652c30c5ba24ad68d6b414ab76",
+  "texture_sha256": "6f4480244224df2166ec4cd03bbfc8a2894c7391e53e2483130e8db42888c4d2",
+  "material_words_preserved": true
+}

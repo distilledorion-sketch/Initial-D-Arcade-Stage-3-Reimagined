@@ -1,0 +1,40 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_myogi_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_myogi_tex.bin.nz",
+  "table_sha256": "ca6e1b4b6b8576ad6bb917d9fd579961a6aaab0d2d4f8b9d14dc1a4613f7164a",
+  "payload_sha256": "3d7b02e8f9ed12bd69dc523eb24d8d4ae1cf5d64d32aceb0443b471d54b2932b",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 256,
+      "height": 256,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "372c9bfec4e30d0a9d42dd4f46762b260230588bfb28fe7a8db030d15a832866",
+      "rgba_sha256": "472e82f9eb2f42ce31596ac6f9c769ef6704efb01c1257b591cd7290d32d8326",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 256,
+      "height": 256,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 131072,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "e76004901fb15a995486dcdc3da2b565b14e0c90d630eb84cf69f4cef672af8b",
+      "rgba_sha256": "f93d8d3f43a16a44a7c716e1cbac58d3f3fb20853d4b90d20bb80239c643cda4",
+      "file": "texture_001.png"
+    }
+  ]
+}

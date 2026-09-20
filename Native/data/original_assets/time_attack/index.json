@@ -1,0 +1,62 @@
+{
+  "schema": "idas3-original-hud-index-v1",
+  "banks": [
+    {
+      "bank": "lecture",
+      "chunks": 47,
+      "textures": 9,
+      "manifest": "lecture/manifest.json"
+    },
+    {
+      "bank": "lecmap_myogi",
+      "chunks": 2,
+      "textures": 2,
+      "manifest": "lecmap_myogi/manifest.json"
+    },
+    {
+      "bank": "lecmap_usui",
+      "chunks": 4,
+      "textures": 4,
+      "manifest": "lecmap_usui/manifest.json"
+    },
+    {
+      "bank": "lecmap_akagi",
+      "chunks": 4,
+      "textures": 4,
+      "manifest": "lecmap_akagi/manifest.json"
+    },
+    {
+      "bank": "lecmap_akina",
+      "chunks": 4,
+      "textures": 4,
+      "manifest": "lecmap_akina/manifest.json"
+    },
+    {
+      "bank": "lecmap_happo",
+      "chunks": 4,
+      "textures": 4,
+      "manifest": "lecmap_happo/manifest.json"
+    },
+    {
+      "bank": "lecmap_iroha",
+      "chunks": 4,
+      "textures": 4,
+      "manifest": "lecmap_iroha/manifest.json"
+    },
+    {
+      "bank": "lecmap_syomaru",
+      "chunks": 5,
+      "textures": 5,
+      "manifest": "lecmap_syomaru/manifest.json"
+    },
+    {
+      "bank": "lecmap_tuchizaka",
+      "chunks": 5,
+      "textures": 5,
+      "manifest": "lecmap_tuchizaka/manifest.json"
+    }
+  ],
+  "source_owner": "HLecture 18AAC0 / Init18ACE0 / Main18D880",
+  "source_paths": "2903D8,2903FC,290420..2904BC",
+  "scope": "Original assets only; no claim that all original telemetry analysis is implemented."
+}

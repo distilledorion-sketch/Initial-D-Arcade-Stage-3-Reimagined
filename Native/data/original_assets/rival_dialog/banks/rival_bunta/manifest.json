@@ -1,0 +1,9 @@
+{
+  "name": "rival_bunta",
+  "source_folder": "rival/r_bunta",
+  "chunks": 10,
+  "textures": 10,
+  "polygon_sha256": "6e21daf8bd91f1b00e43a471f713c4e02deeeb6022f7e41accee3591fb483dd4",
+  "texture_sha256": "4663b00668e4fb5fa40a0cbf22726799d9e831f9fd681fdb242227a76478692e",
+  "material_words_preserved": true
+}

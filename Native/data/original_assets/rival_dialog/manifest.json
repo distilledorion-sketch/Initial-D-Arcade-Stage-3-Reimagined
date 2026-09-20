@@ -1,0 +1,724 @@
+{
+  "schema": "original-rival-dialog-recovery-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_owner": "0F8340/0F8780/0F8B00",
+  "source_script_owner": "0F5F40/0F69E0/0F6D40",
+  "private_original_assets": true,
+  "dialog_data_sha256": "5856938fff5d2ea5ae85dd10281f775a6dfd667c126b9166cc9e365b8cdcdab2",
+  "row_count": 744,
+  "token_count": 31051,
+  "command_initials": {
+    "P": 1606,
+    "C": 3446,
+    "*": 7763,
+    "W": 4860,
+    "N": 4630,
+    "K": 3446,
+    "R": 123,
+    "X": 373,
+    "B": 1053,
+    "M": 225,
+    "b": 238,
+    "V": 576,
+    "v": 288,
+    "E": 744,
+    "Y": 516,
+    "y": 258,
+    "T": 35,
+    "t": 11,
+    "O": 12,
+    "o": 6,
+    "D": 62,
+    "[": 13,
+    "]": 4,
+    "S": 70,
+    "s": 35,
+    "Z": 133,
+    "z": 19,
+    "<": 18,
+    ">": 9,
+    "I": 48,
+    "i": 16,
+    "F": 56,
+    "f": 28,
+    "L": 40,
+    "l": 20,
+    "H": 14,
+    "h": 7,
+    "J": 8,
+    "j": 8,
+    "Q": 16,
+    "q": 8,
+    "A": 6,
+    "a": 3,
+    "{": 20,
+    "}": 10,
+    "@": 26,
+    "!": 12,
+    "(": 16,
+    ")": 4,
+    "$": 16,
+    "#": 8,
+    "G": 56,
+    "g": 28,
+    "U": 5
+  },
+  "banks": [
+    {
+      "name": "continue",
+      "source_folder": "continue",
+      "chunks": 26,
+      "textures": 15,
+      "polygon_sha256": "893a335e27e69cf17aeb74917cbf305e24a6b9995409f167af78e358a6a160a1",
+      "texture_sha256": "a4e6d10485f18f0e04893a42907f8d8d28ec648778c7ab71fc591b692b8e57d2",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_atsuo",
+      "source_folder": "rival/r_atsuo",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "0e0f3357370ad957bd71be31d37dd9ce8514e3e5daa01ab5cf6eea05f9e248d9",
+      "texture_sha256": "9de3bfe64c56a55ebcfacd6c704414adcc0eb27cce3980837b08e1166026bbf7",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bunta",
+      "source_folder": "rival/r_bunta",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "6e21daf8bd91f1b00e43a471f713c4e02deeeb6022f7e41accee3591fb483dd4",
+      "texture_sha256": "4663b00668e4fb5fa40a0cbf22726799d9e831f9fd681fdb242227a76478692e",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_daiki",
+      "source_folder": "rival/r_daiki",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "7eeda05105dfd5ffce92d28b42a0ff3c6237a3b4fd3582116e3c6a7f0865b900",
+      "texture_sha256": "f2e15e888885d3ca87fc6ed72cf932d2914279bf252efc78fdd2129922d505bd",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_evo5",
+      "source_folder": "rival/r_evo5",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "f9b833b385f29c45560e91a556aa2cd1ea2b26b5507f0bc988c854b361d73ae4",
+      "texture_sha256": "58bde1b4b2f6dcccc802386d2db4755f1ee0bfa095277ba96668a11a07f47f6f",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_evo6",
+      "source_folder": "rival/r_evo6",
+      "chunks": 8,
+      "textures": 8,
+      "polygon_sha256": "296056b2cff2a1dae7b7e8b333e624c7e7bc7e300dc59e6f13b01681a2e2175d",
+      "texture_sha256": "468b517d765b23f1c0cc08291f932ecc4483fc0cdf2cdae58d910dff32aa19bb",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_iketani",
+      "source_folder": "rival/r_iketani",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "556777c75086efd0f5b20f458794400e94ed0d393efcb8af471d0a3195dc1361",
+      "texture_sha256": "ab2ef8792e1c86bd45051866ccae80854a6f9b72f4e615e3a06944dee663558b",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_itsuki",
+      "source_folder": "rival/r_itsuki",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "d94f0c97f16c3427ce28c1cb2a38af9966f29b7518f0f71a756391289dd70ce7",
+      "texture_sha256": "108c6dfaea4c4874de576b5bb2a7bb35c3c110bf4b98181376ff8978b8b63923",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_kai",
+      "source_folder": "rival/r_kai",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "c519ab7b26ed47d206fd13f91845ece65bac1f28376e40346a31c8d4837a43c9",
+      "texture_sha256": "028e2dea4dc6a614d34d81e6fdfeaa0f297925c9d5c280c7ded16b8be5b2e8b1",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_keisuke",
+      "source_folder": "rival/r_keisuke",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "c3579c017d1c2a355b83a441e5c2ecb11d4285790f76faac59224962816b5f1f",
+      "texture_sha256": "3268c0917c514c49d9ad001544b08a552684fce1ae4fd09790f0cac0f707058b",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_keisuke2",
+      "source_folder": "rival/r_keisuke2",
+      "chunks": 13,
+      "textures": 13,
+      "polygon_sha256": "e16e908b8ce2be96c393a303aeda6d51396eaee823ea4573133cccbc8529a051",
+      "texture_sha256": "30eb1fd677e5ae5e94274819040cd0de0da351effd90fa95564ba4721cae1dd2",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_kenji",
+      "source_folder": "rival/r_kenji",
+      "chunks": 14,
+      "textures": 15,
+      "polygon_sha256": "6779d38a13d45061c0bfd9622f26a4705e0a1b3532b0092af4826ba6317740fa",
+      "texture_sha256": "39779a73f132bd2334da0258d16344f346db9a751a65561067891f6c0334dd59",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_kenta",
+      "source_folder": "rival/r_kenta",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "83840038687799494e062a7b8c34f8613720fcf36ce2499dd86ba19a556bd3a0",
+      "texture_sha256": "2ec96ff18f49c2b4b1dfe3deb1ed2fd68bfb91ab9f7ce3b4d57d01e9ac342b2c",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_kyoko",
+      "source_folder": "rival/r_kyoko",
+      "chunks": 11,
+      "textures": 11,
+      "polygon_sha256": "68bb9bfa90bc01d1b914242c633e9b7048088ddf96adccffa229bf4db472a123",
+      "texture_sha256": "e6ea2c876dfe8166629294ec013ebed52d32667e06ef69aea1fd2b9f0fac6a61",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_mako",
+      "source_folder": "rival/r_mako",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "fed55a329b681734c0e83411f52f8ad2768875b4548c9ed8d93f574977aca99d",
+      "texture_sha256": "6a528e7b109331e569b1405116e09b33dbfafab2f4e3c20432e1aaa61217b89d",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_miki",
+      "source_folder": "rival/r_miki",
+      "chunks": 7,
+      "textures": 7,
+      "polygon_sha256": "1f8910eed5b23e7e6db4ed3e9a0b54e7027637b9711bac68a98c079c3f3a8cb8",
+      "texture_sha256": "38e4270b2c236d75225539c950cb254241ab761af7d75ff6fbdac24835e5edca",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_nakazato",
+      "source_folder": "rival/r_nakazato",
+      "chunks": 10,
+      "textures": 10,
+      "polygon_sha256": "162d86848413618c0941797d0de37c91273fde878ecd720ee4c59ff5718f9462",
+      "texture_sha256": "4f74c7dd8677563fadfdbf95977835c8caf9f3809e8babc7f4cb85a6ca148026",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_nobuhiko",
+      "source_folder": "rival/r_nobuhiko",
+      "chunks": 8,
+      "textures": 8,
+      "polygon_sha256": "1f6527bff1bc9c6cc3b363d28f3bb83f35968d652c30c5ba24ad68d6b414ab76",
+      "texture_sha256": "6f4480244224df2166ec4cd03bbfc8a2894c7391e53e2483130e8db42888c4d2",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_ryosuke",
+      "source_folder": "rival/r_ryosuke",
+      "chunks": 7,
+      "textures": 7,
+      "polygon_sha256": "26a8aead0a7a7d8555827f7bfa4374f265c96241b9db1db4f0127dcd28d49077",
+      "texture_sha256": "ad094643e2c55ae26089dfde3af39c5beba3d460cb51357669c8e8703c2f808f",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_ryosuke2",
+      "source_folder": "rival/r_ryosuke2",
+      "chunks": 11,
+      "textures": 11,
+      "polygon_sha256": "92800ea37183762a6493ed596d067f9f5f837e825f811eae87c1ab15baff64d3",
+      "texture_sha256": "f98564f09d5e9b411abdcf5567f6de7aed84109724a7aea3bb33c0df570190a5",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_sakamoto",
+      "source_folder": "rival/r_sakamoto",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "e7b546affbe1141495e20efd530ba264bf9bbcbe4fd6203e131cb960087a7d88",
+      "texture_sha256": "4944c2144b16acb7df1fe3d3a4c80f69642e4c01538de4ca1e0f2cbfc72edadc",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_seiji",
+      "source_folder": "rival/r_seiji",
+      "chunks": 13,
+      "textures": 13,
+      "polygon_sha256": "3990a4b2cb6be455b63af88a7e58fc23b99d7fb40a7ca80c0e687cd014820f3c",
+      "texture_sha256": "2d2b9631ca1c92935ef124c78167e05b9b8097b5dad706a5017a98fcd306a651",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_singo",
+      "source_folder": "rival/r_singo",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "494344b629ad094668a8ce032a7e449593ec746a314f0542f445ecca95ee86b3",
+      "texture_sha256": "8421d36178fa67aceba366d87de5c01eac6d618eec6e44a15b7ea23f08f764cd",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_smily",
+      "source_folder": "rival/r_smily",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "f4b74869aafa6ea02dab3f72538a3121084d975c371ba00ef7a80bb575007951",
+      "texture_sha256": "c12052a16b319c1bb11d12d37a925be8d3334ce634bc09e1c8ce6d8a27697c45",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_sudo",
+      "source_folder": "rival/r_sudo",
+      "chunks": 11,
+      "textures": 11,
+      "polygon_sha256": "8f352a86935c5b1ccc72ab19fdabdaa4c8951968eb6076e17d266d9cbf88415c",
+      "texture_sha256": "4390ff80d85f0b59f3f92fa3d3d45365e4ddfa4c2edbbf723faddc80f662ec62",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_sudo2",
+      "source_folder": "rival/r_sudo2",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "3368cc77f6b305e4ff2cf68ff8ecd9569165d9930cfe2becbeea74e4a50cdc3d",
+      "texture_sha256": "dd88457a9f8c8a1c770905fc76d0d0009d3ef36f8a91bc4d3731924de5f02390",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_takumi",
+      "source_folder": "rival/r_takumi",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "3fbf0dffbb2774962bb2c8bb07843c84811c2f6fa415d6f09004a37920959b27",
+      "texture_sha256": "187c28a87da835db8f41d0d50b9ff8537c81f7b9ca9334c7ec982f39d2afb782",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_takumi2",
+      "source_folder": "rival/r_takumi2",
+      "chunks": 13,
+      "textures": 13,
+      "polygon_sha256": "ecff04e498acef24af0d94cd74768bc56791d61fc6c00ae6f8f28b55c149ef96",
+      "texture_sha256": "64798056470cb30dd8e2692a6ec3dd5f1c8355b39d250234d860ce33d36f847a",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_tokyo",
+      "source_folder": "rival/r_tokyo",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "bfb3f533db4943d0bd6c30c1c68e56a0180853d3bcbbd7299dd3e5cad2a5043c",
+      "texture_sha256": "3ac547cd67f0d1c30267678e9141507163f8ff386e63aa8b960a43daf979786e",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_tomo",
+      "source_folder": "rival/r_tomo",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "1686d9914e5d01ed3e3797e66acacdd781486987ef0e18812714b0042d19b964",
+      "texture_sha256": "47a49554a4bfd69737244dd8d345b5041a45d5de198f346b21859d0636edd867",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_toru",
+      "source_folder": "rival/r_toru",
+      "chunks": 12,
+      "textures": 12,
+      "polygon_sha256": "24049660b16f2a07631daf011dcde934dc6ad4c08899be31c156010413ec6781",
+      "texture_sha256": "09cae9e8439cebf9cda4d611b347ce1d4faa9a273527bebfb87e673e4504c84d",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_wataru",
+      "source_folder": "rival/r_wataru",
+      "chunks": 11,
+      "textures": 11,
+      "polygon_sha256": "ab879f34927b7be39f67496a9d431aca06adc95ce2eb8f73d282b00ea0326ded",
+      "texture_sha256": "6b7e3aab250dad511bafc8370bdf4f129fb0836f9cb6d812ee0cc2dacc6517b2",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_f00",
+      "source_folder": "rival/rf00",
+      "chunks": 2,
+      "textures": 2,
+      "polygon_sha256": "578f7491b20cd2c39903ffd02ed6b40ff9cdf139d3185e77ad39d2a675a9e99c",
+      "texture_sha256": "269f40ce213be9c040f3a5abacbe321a917a47f23fd9bf5a89f573dc06c440f2",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_f01",
+      "source_folder": "rival/rf01",
+      "chunks": 1,
+      "textures": 1,
+      "polygon_sha256": "0e67fb68993d036ac0a29ae240e28c11abb63789063b346c1580f391e6568190",
+      "texture_sha256": "b666a28a2cccd11764e454e3042f5b721f186bbe514a4d091d7890a02f312a82",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_f02",
+      "source_folder": "rival/rf02",
+      "chunks": 2,
+      "textures": 2,
+      "polygon_sha256": "73339385dc457c086fb88c276fec7df8a84ac09eff08e7873f6feadcc73ae225",
+      "texture_sha256": "84f90bcc5e8f8bf32686ea49793ec7911467aefa47f51859763f34a0f1ae9db9",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_f03",
+      "source_folder": "rival/rf03",
+      "chunks": 2,
+      "textures": 2,
+      "polygon_sha256": "fdd08b728d15989aa2e1249715305e38a74cde9b1a2c48d55698c6cc10de8c35",
+      "texture_sha256": "e21227b461b85a7dd34ddbebf73e9a4d01a13a435e605c7d3298f048ccbd20eb",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_f04",
+      "source_folder": "rival/rf04",
+      "chunks": 1,
+      "textures": 1,
+      "polygon_sha256": "0e67fb68993d036ac0a29ae240e28c11abb63789063b346c1580f391e6568190",
+      "texture_sha256": "b5c294a16eac259be5eab95a43e0c325e495e02819e5730a3393e51be5c71698",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_f05",
+      "source_folder": "rival/rf05",
+      "chunks": 2,
+      "textures": 2,
+      "polygon_sha256": "73339385dc457c086fb88c276fec7df8a84ac09eff08e7873f6feadcc73ae225",
+      "texture_sha256": "84f90bcc5e8f8bf32686ea49793ec7911467aefa47f51859763f34a0f1ae9db9",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg00df",
+      "source_folder": "rival_bg/bg00",
+      "chunks": 4,
+      "textures": 4,
+      "polygon_sha256": "a71b330f8f559ad9d3495ddd8324d456147973c520cce59447894d3e20e0e01f",
+      "texture_sha256": "3f4bec44a7fa539c712f11b5f6f63922a87edca92faea5bd6ec802305f08712b",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg00dr",
+      "source_folder": "rival_bg/bg00",
+      "chunks": 4,
+      "textures": 4,
+      "polygon_sha256": "a71b330f8f559ad9d3495ddd8324d456147973c520cce59447894d3e20e0e01f",
+      "texture_sha256": "3d74389384e87804ec863ce746688e90eb1fcf3f19b5e85608ddc69860d0de99",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg00nf",
+      "source_folder": "rival_bg/bg00",
+      "chunks": 6,
+      "textures": 6,
+      "polygon_sha256": "d27bd39500697cbb89febceb25aed3b2cf7eaed06c076a1ae8fc2ac202028d09",
+      "texture_sha256": "97f537e06d1245c05e6e9e3c3b19a91c8d0376d061b2453e48992934c83519ef",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg00nr",
+      "source_folder": "rival_bg/bg00",
+      "chunks": 6,
+      "textures": 6,
+      "polygon_sha256": "d0476aaeea9960b23b3951cf82b55ec7b2b9a8ffd81a3f242755d3cae696ebfd",
+      "texture_sha256": "69250e9a10903d6ac8e77b9d71bc21fc20d9c244a2a76a2a0270013080e9ba17",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg01df",
+      "source_folder": "rival_bg/bg01",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "9e7d21c7269b2b532de8c1bdf314bd5208c7cbbb4bbb1fd3e2fa510099f0be33",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg01dr",
+      "source_folder": "rival_bg/bg01",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "0f90642d5d60e180e61f54378bf8ad7b2d7cef7f1498837deae8c9fcbb7b7fc9",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg01nf",
+      "source_folder": "rival_bg/bg01",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "1f11b6fe774e14f36c45a2e972abda99eb49a6a112ca6af2ae7c03193ca6ebc4",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg01nr",
+      "source_folder": "rival_bg/bg01",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "9c4b6e09754981bc14279490a9012ebf74d8c84865ea3d1c8b88316fb23a1b18",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg02df",
+      "source_folder": "rival_bg/bg02",
+      "chunks": 8,
+      "textures": 8,
+      "polygon_sha256": "109852b0d2efd768c06c2decbf6afb9979323f33e2be8284bb18cd3709cb6e54",
+      "texture_sha256": "3d16eb32ca774a42a8ebdc9fb59063f0db5da8aec7b1c901fd5f3bbe116ceb9e",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg02dr",
+      "source_folder": "rival_bg/bg02",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "3e2dedd1ceed1877b50674432ae9bf247187a9abf54ea80e1f90d3756aa2d4a4",
+      "texture_sha256": "c7ac3d4df015527ea426c6db1f0417be2feb0e72acf1f0142d831d10162bc63d",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg02nf",
+      "source_folder": "rival_bg/bg02",
+      "chunks": 6,
+      "textures": 6,
+      "polygon_sha256": "a6b151a5a31c9d8c0b2f76ca4f35cc220267792084cc3136d08930b7a6b07887",
+      "texture_sha256": "3336789b5f74fb9700defac1bb3a9ac0f8f98fa365ba21277a2cc921d969635c",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg02nr",
+      "source_folder": "rival_bg/bg02",
+      "chunks": 6,
+      "textures": 6,
+      "polygon_sha256": "a6b151a5a31c9d8c0b2f76ca4f35cc220267792084cc3136d08930b7a6b07887",
+      "texture_sha256": "bd25115c1a4928f482f3fe845cc4f173b62e65676246ad131bded6a8e040b82a",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg03df",
+      "source_folder": "rival_bg/bg03",
+      "chunks": 4,
+      "textures": 4,
+      "polygon_sha256": "0f3fc938d6d709aae1b77ffd4996a10b4f17cddbc933d4c94abeb319f711eccb",
+      "texture_sha256": "c2d5362d347137143c8edc7cbd77a4fdcfe20f0f015df20e241e194032de4a63",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg03dr",
+      "source_folder": "rival_bg/bg03",
+      "chunks": 4,
+      "textures": 4,
+      "polygon_sha256": "0f3fc938d6d709aae1b77ffd4996a10b4f17cddbc933d4c94abeb319f711eccb",
+      "texture_sha256": "4d42a9be6bb314b24cef65094b4c8df784f8bce76976d1ca0808371487fa1592",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg03nf",
+      "source_folder": "rival_bg/bg03",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "0d7f6875f0d7ff0dc15079f52d18214d295f5e699576550f61958ef53876a598",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg03nr",
+      "source_folder": "rival_bg/bg03",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "e93ddef3f77c28df68db5c1f7172f3ba42f8f28c7158c8abf1117287c637dfc7",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg04nf",
+      "source_folder": "rival_bg/bg04",
+      "chunks": 7,
+      "textures": 7,
+      "polygon_sha256": "ef86528628b66ba39066a837b591e4e7b2cd24f1d5d1edd18cf01bf8a83d4d24",
+      "texture_sha256": "e14ab14ddd6bfaf891f96e46a2e69d3e6a9bf0732ee2bf80664e9f4533735c29",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg04nr",
+      "source_folder": "rival_bg/bg04",
+      "chunks": 7,
+      "textures": 7,
+      "polygon_sha256": "ef86528628b66ba39066a837b591e4e7b2cd24f1d5d1edd18cf01bf8a83d4d24",
+      "texture_sha256": "d7ef1d0e781d34971488c15d3b0739c98a1af2d775ec1f195a51b28f7dbdcf94",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg05df",
+      "source_folder": "rival_bg/bg05",
+      "chunks": 8,
+      "textures": 8,
+      "polygon_sha256": "395841ad5461f376298f1a9f70a08f4abbf043f3c47e62f29cf081a37894740d",
+      "texture_sha256": "6f71598d42ef42915acaf016ea8a4c12e51b2c02db7650ea457946947c237176",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg05dr",
+      "source_folder": "rival_bg/bg05",
+      "chunks": 8,
+      "textures": 8,
+      "polygon_sha256": "395841ad5461f376298f1a9f70a08f4abbf043f3c47e62f29cf081a37894740d",
+      "texture_sha256": "be9b58910cac621740b0010c58c37dc21b09acb1f0fee1cdf4db177a6e22ea5b",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg05nf",
+      "source_folder": "rival_bg/bg05",
+      "chunks": 8,
+      "textures": 8,
+      "polygon_sha256": "395841ad5461f376298f1a9f70a08f4abbf043f3c47e62f29cf081a37894740d",
+      "texture_sha256": "5dfb903bdb76b1ac22d2fc6e067645c18ff53b6abeaf9d10655399a775adffd6",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg05nr",
+      "source_folder": "rival_bg/bg05",
+      "chunks": 9,
+      "textures": 9,
+      "polygon_sha256": "1f1fcdc1ded856a20ca388d1b7779afa81873e67894803eca105d396f755da4f",
+      "texture_sha256": "70307cdf030a6d15f24f49ec52c9441eeb89d27222f20e31e87feaf56b8b529e",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg06df",
+      "source_folder": "rival_bg/bg06",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "45f7cb3d7c9bc8c5320de37f8ad6a4aa90f9ced830bd0915f4be954e884fe583",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg06dr",
+      "source_folder": "rival_bg/bg06",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "07619679da7bf9ab55d0febb0132e4a63e5393f5d9d6111ee506a0bb0b096ccb",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg06nf",
+      "source_folder": "rival_bg/bg06",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "9eac0b65d999e6b46552c8d956c2c985dc06c744a882aed4d99952ed00bb1b59",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg06nr",
+      "source_folder": "rival_bg/bg06",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "e3d47a5532f17a251b9e5d6aaf6e6a011995d50e61163edc4630ef430e931c4d",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg07df",
+      "source_folder": "rival_bg/bg07",
+      "chunks": 7,
+      "textures": 7,
+      "polygon_sha256": "ef86528628b66ba39066a837b591e4e7b2cd24f1d5d1edd18cf01bf8a83d4d24",
+      "texture_sha256": "9b4c5889a7504d13060c6d7b4f7c34d10662c9e29294bb0591f1602b95d6faf2",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg07dr",
+      "source_folder": "rival_bg/bg07",
+      "chunks": 7,
+      "textures": 7,
+      "polygon_sha256": "ef86528628b66ba39066a837b591e4e7b2cd24f1d5d1edd18cf01bf8a83d4d24",
+      "texture_sha256": "9f3c21509aa6c1febdf9487b0af3a7d34529af47bcaa2644f97ee63d1643cd37",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg07nf",
+      "source_folder": "rival_bg/bg07",
+      "chunks": 8,
+      "textures": 7,
+      "polygon_sha256": "bd5572c4bd7ef6d3df64ad250bc3c29bcebce75722b03f73805b51db598734da",
+      "texture_sha256": "a183289a5c9272069dd8184e917943dc5e8b931760a4f232b99066460fa49228",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg07nr",
+      "source_folder": "rival_bg/bg07",
+      "chunks": 8,
+      "textures": 7,
+      "polygon_sha256": "bd5572c4bd7ef6d3df64ad250bc3c29bcebce75722b03f73805b51db598734da",
+      "texture_sha256": "bfbcfd69b16501876b842509f0ed4aab8e47ffefbded19671f56db85cd0ab4c5",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_bg08",
+      "source_folder": "rival_bg/bg08",
+      "chunks": 5,
+      "textures": 5,
+      "polygon_sha256": "c3ee44da8868710812c76fc236cb5be33214135698b30fdfb432f60028541bf2",
+      "texture_sha256": "be2a191055e1368ea8416ea65bbe91d22af03e2fc66ee8c62891339586aa4833",
+      "material_words_preserved": true
+    },
+    {
+      "name": "rival_scene",
+      "source_folder": "rival_scene",
+      "chunks": 21,
+      "textures": 15,
+      "polygon_sha256": "15f8740450e4ae608365dec5040f0b7cea6b52ca138a093041928a4ce3436693",
+      "texture_sha256": "30595a2bb6a21030807aafe077fbccd2c213c428d8d4b651a58960695cb142e6",
+      "material_words_preserved": true
+    },
+    {
+      "name": "v3sK17continue",
+      "source_folder": "v3sK17continue",
+      "chunks": 18,
+      "textures": 14,
+      "polygon_sha256": "0afb931eb762b395ee5175fab835d08339f593c94a130c4d3a34b2b34137f642",
+      "texture_sha256": "b95385336c7dec53435262092839f4c5fda760a19216fd01aab550b09673b5e9",
+      "material_words_preserved": true
+    },
+    {
+      "name": "alphabet",
+      "font": true,
+      "textures": 62
+    },
+    {
+      "name": "namekana",
+      "font": true,
+      "textures": 341
+    }
+  ],
+  "ready_for_game": false,
+  "remaining": [
+    "Native script command interpreter and conditional profile branches",
+    "Original text reveal, portrait movement and background draw transforms",
+    "Shared RNG consumption and optional spectator6 resource branch",
+    "Full source choice draw and fade integration"
+  ]
+}

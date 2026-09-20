@@ -1,0 +1,54 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT14password\\v3sT14password_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT14password\\v3sT14password_tex.bin.nz",
+  "table_sha256": "0f275d77ed00d3d979056aafe7bb99f36a214aa917b3c61a0f3d3189b0107883",
+  "payload_sha256": "12446b839fbdd810c0623a998a17ca4e1e37bc00e835142c1ddbfdba0c202b46",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 256,
+      "height": 128,
+      "format": 1,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "e1a84680d848253e55c6589e5cf5c9ef20c63fb8aa4a91eafea8d1f870fd9219",
+      "rgba_sha256": "fa3eadc0629628adac0cae8f55485deb2eb5fe5ce522299d2271d660964b5dc6",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 512,
+      "height": 64,
+      "format": 2,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 65536,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "3f9803bcbc8a37f352f1e6b65af4db99c5fa53b08329e32df5fa6cfe49e98847",
+      "rgba_sha256": "8af597cf1a952ff55e3dac37f3e9f59c97e04d4be7dfa414dfab2604b2d14d4e",
+      "file": "texture_001.png"
+    },
+    {
+      "index": 2,
+      "width": 256,
+      "height": 32,
+      "format": 1,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 131072,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "991478ca9c29707074f40b15b8723ff169154175421996f4eedc9a9651d44b5a",
+      "rgba_sha256": "099ff1073434a50fd902bc56c5cb5b62f80befd7831505bad1a5f0cedb81faa0",
+      "file": "texture_002.png"
+    }
+  ]
+}

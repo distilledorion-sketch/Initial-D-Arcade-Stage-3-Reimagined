@@ -1,0 +1,9 @@
+{
+  "name": "rival_wataru",
+  "source_folder": "rival/r_wataru",
+  "chunks": 11,
+  "textures": 11,
+  "polygon_sha256": "ab879f34927b7be39f67496a9d431aca06adc95ce2eb8f73d282b00ea0326ded",
+  "texture_sha256": "6b7e3aab250dad511bafc8370bdf4f129fb0836f9cb6d812ee0cc2dacc6517b2",
+  "material_words_preserved": true
+}

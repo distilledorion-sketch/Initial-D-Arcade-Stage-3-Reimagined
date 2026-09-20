@@ -1,0 +1,9 @@
+{
+  "name": "continue",
+  "source_folder": "continue",
+  "chunks": 26,
+  "textures": 15,
+  "polygon_sha256": "893a335e27e69cf17aeb74917cbf305e24a6b9995409f167af78e358a6a160a1",
+  "texture_sha256": "a4e6d10485f18f0e04893a42907f8d8d28ec648778c7ab71fc591b692b8e57d2",
+  "material_words_preserved": true
+}

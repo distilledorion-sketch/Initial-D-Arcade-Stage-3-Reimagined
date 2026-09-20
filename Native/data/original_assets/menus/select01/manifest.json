@@ -1,0 +1,4208 @@
+{
+  "schema": "idas3-original-menus-v1",
+  "name": "select01",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\select01",
+  "source_rip_table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\select01\\select01_rip.tbl",
+  "source_rip_payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\select01\\select01_rip.bin",
+  "source_rip_table_sha256": "9aa731c25b1f66335dd09c7627995af8ce72cf5d87971e3c1c84665efb47fa1d",
+  "source_rip_payload_sha256": "b1634a7a34434e7d8eabc00511adc004002ee45ccfa9d0db812d994e52c312c0",
+  "texture_manifest": "textures/manifest.json",
+  "texture_pack": "textures/textures.idastex",
+  "texture_count": 9,
+  "sprite_count": 37,
+  "ui_pack": "sprites.idasui",
+  "ui_pack_sha256": "2cb1d3fa9ec0f815d1b70288cbabd49c2f4138d92e8d8d3e8b5e7a082a1226ef",
+  "layout": "twiddled",
+  "layout_evidence": "Explicit decoder argument; twiddled yields coherent original art in inspected banks. PVR submission-state identity is a separate gate.",
+  "rip_evidence": "16-byte records and cumulative 28-byte vertices consume exact payload; packed texture/tag descriptor independently matches every vertex.",
+  "coordinate_contract": "Authored xyzuv retained without translation, scaling or Y inversion. Screen projection, tag-controlled visibility and animation require original draw-state binding.",
+  "known_unresolved": [
+    "Meaning of tag_a/tag_b beyond exact packed representation",
+    "Original per-state sprite selection, animation and depth/blending",
+    "Complete original screen projection and surrounding background/model layers"
+  ],
+  "sprites": [
+    {
+      "index": 0,
+      "texture_index": 0,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000000",
+      "payload_offset": 0,
+      "payload_bytes": 112,
+      "payload_sha256": "c4c1eda5bee38a210d5b3f233b2e45d5819071e3db9be199d2c18a58eba51d08",
+      "authored_bounds_xy": [
+        110.0,
+        150.0,
+        530.0,
+        278.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0,
+        0.8203129768371582,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        0.0,
+        420.000244140625,
+        128.0
+      ],
+      "exact_texel_crop": [
+        0,
+        0,
+        420,
+        128
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 110.0,
+          "y": 278.0,
+          "z": -0.029999999329447746,
+          "u": 0.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "42dc0000",
+            "438b0000",
+            "bcf5c28f",
+            "00000000",
+            "00000000",
+            "ffffffff",
+            "00000000"
+          ]
+        },
+        {
+          "x": 110.0,
+          "y": 150.0,
+          "z": -0.029999999329447746,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "42dc0000",
+            "43160000",
+            "bcf5c28f",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000000"
+          ]
+        },
+        {
+          "x": 530.0,
+          "y": 278.0,
+          "z": -0.029999999329447746,
+          "u": 0.8203129768371582,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "44048000",
+            "438b0000",
+            "bcf5c28f",
+            "3f520008",
+            "00000000",
+            "ffffffff",
+            "00000000"
+          ]
+        },
+        {
+          "x": 530.0,
+          "y": 150.0,
+          "z": -0.029999999329447746,
+          "u": 0.8203129768371582,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 0,
+          "raw_words_hex": [
+            "44048000",
+            "43160000",
+            "bcf5c28f",
+            "3f520008",
+            "3f800000",
+            "ffffffff",
+            "00000000"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_000_texture_000.png",
+      "crop_rgba_sha256": "5601f5e4f0148a67b995e31961729eda9f593e11caafd570640eab6528d4112e"
+    },
+    {
+      "index": 1,
+      "texture_index": 1,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000001",
+      "payload_offset": 112,
+      "payload_bytes": 112,
+      "payload_sha256": "6f35811128fc16fe61b309d1553b4c484bf2984d4d0a69c2b8a94896595931eb",
+      "authored_bounds_xy": [
+        110.0,
+        278.0,
+        530.0,
+        310.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0,
+        0.8203129768371582,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        0.0,
+        420.000244140625,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        0,
+        420,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 110.0,
+          "y": 310.0,
+          "z": -0.029999999329447746,
+          "u": 0.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "42dc0000",
+            "439b0000",
+            "bcf5c28f",
+            "00000000",
+            "00000000",
+            "ffffffff",
+            "00000001"
+          ]
+        },
+        {
+          "x": 110.0,
+          "y": 278.0,
+          "z": -0.029999999329447746,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "42dc0000",
+            "438b0000",
+            "bcf5c28f",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000001"
+          ]
+        },
+        {
+          "x": 530.0,
+          "y": 310.0,
+          "z": -0.029999999329447746,
+          "u": 0.8203129768371582,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "44048000",
+            "439b0000",
+            "bcf5c28f",
+            "3f520008",
+            "00000000",
+            "ffffffff",
+            "00000001"
+          ]
+        },
+        {
+          "x": 530.0,
+          "y": 278.0,
+          "z": -0.029999999329447746,
+          "u": 0.8203129768371582,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "44048000",
+            "438b0000",
+            "bcf5c28f",
+            "3f520008",
+            "3f800000",
+            "ffffffff",
+            "00000001"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_001_texture_001.png",
+      "crop_rgba_sha256": "2e83226a327d598ea7bfc4bc5ab43989cc45c04bb5caf9212b91f4fc59cd79ff"
+    },
+    {
+      "index": 2,
+      "texture_index": 2,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 1,
+      "packed_descriptor_hex": "01010002",
+      "payload_offset": 224,
+      "payload_bytes": 112,
+      "payload_sha256": "e5a1724ba7a050965c508224f83a9b457c9291f5925282c52ab27bea12b6eeb9",
+      "authored_bounds_xy": [
+        90.0,
+        168.0,
+        218.0,
+        198.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 90.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842754,
+          "raw_words_hex": [
+            "42b40000",
+            "43460000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01010002"
+          ]
+        },
+        {
+          "x": 90.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842754,
+          "raw_words_hex": [
+            "42b40000",
+            "43280000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01010002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842754,
+          "raw_words_hex": [
+            "435a0000",
+            "43460000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01010002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842754,
+          "raw_words_hex": [
+            "435a0000",
+            "43280000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01010002"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_002_texture_002.png",
+      "crop_rgba_sha256": "ccb77cb331ed6ddd73ca991453951c54e067d1b71807a9391035406f952520b6"
+    },
+    {
+      "index": 3,
+      "texture_index": 2,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 2,
+      "packed_descriptor_hex": "01020002",
+      "payload_offset": 336,
+      "payload_bytes": 112,
+      "payload_sha256": "5609614ab1a7cf1e7d475b79a8e942844efff612db2eb87a77be84bf8b74d4b6",
+      "authored_bounds_xy": [
+        90.0,
+        205.0,
+        218.0,
+        235.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 90.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908290,
+          "raw_words_hex": [
+            "42b40000",
+            "436b0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01020002"
+          ]
+        },
+        {
+          "x": 90.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908290,
+          "raw_words_hex": [
+            "42b40000",
+            "434d0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01020002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908290,
+          "raw_words_hex": [
+            "435a0000",
+            "436b0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01020002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908290,
+          "raw_words_hex": [
+            "435a0000",
+            "434d0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01020002"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_003_texture_002.png",
+      "crop_rgba_sha256": "ccb77cb331ed6ddd73ca991453951c54e067d1b71807a9391035406f952520b6"
+    },
+    {
+      "index": 4,
+      "texture_index": 2,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 3,
+      "packed_descriptor_hex": "01030002",
+      "payload_offset": 448,
+      "payload_bytes": 112,
+      "payload_sha256": "3731da688c73c5aefdad1d3a247cf03e2a45a05a28d22b6ed7227402c0036855",
+      "authored_bounds_xy": [
+        90.0,
+        279.0,
+        218.0,
+        309.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 90.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973826,
+          "raw_words_hex": [
+            "42b40000",
+            "439a8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01030002"
+          ]
+        },
+        {
+          "x": 90.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973826,
+          "raw_words_hex": [
+            "42b40000",
+            "438b8000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01030002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973826,
+          "raw_words_hex": [
+            "435a0000",
+            "439a8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01030002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973826,
+          "raw_words_hex": [
+            "435a0000",
+            "438b8000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01030002"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_004_texture_002.png",
+      "crop_rgba_sha256": "ccb77cb331ed6ddd73ca991453951c54e067d1b71807a9391035406f952520b6"
+    },
+    {
+      "index": 5,
+      "texture_index": 2,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 4,
+      "packed_descriptor_hex": "01040002",
+      "payload_offset": 560,
+      "payload_bytes": 112,
+      "payload_sha256": "8f644e467d21a02917bcb92d2468c4eff61c6547602c436eff156d8668cb27f6",
+      "authored_bounds_xy": [
+        90.0,
+        353.0,
+        218.0,
+        383.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 90.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17039362,
+          "raw_words_hex": [
+            "42b40000",
+            "43bf8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01040002"
+          ]
+        },
+        {
+          "x": 90.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17039362,
+          "raw_words_hex": [
+            "42b40000",
+            "43b08000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01040002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17039362,
+          "raw_words_hex": [
+            "435a0000",
+            "43bf8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01040002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17039362,
+          "raw_words_hex": [
+            "435a0000",
+            "43b08000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01040002"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_005_texture_002.png",
+      "crop_rgba_sha256": "ccb77cb331ed6ddd73ca991453951c54e067d1b71807a9391035406f952520b6"
+    },
+    {
+      "index": 6,
+      "texture_index": 2,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 5,
+      "packed_descriptor_hex": "01050002",
+      "payload_offset": 672,
+      "payload_bytes": 112,
+      "payload_sha256": "a516f61d56961196a38af1b28e9cc1b6d07cb173a78b897036cf0c988d1f52bb",
+      "authored_bounds_xy": [
+        90.0,
+        390.0,
+        218.0,
+        420.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 90.0,
+          "y": 420.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17104898,
+          "raw_words_hex": [
+            "42b40000",
+            "43d20000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01050002"
+          ]
+        },
+        {
+          "x": 90.0,
+          "y": 390.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17104898,
+          "raw_words_hex": [
+            "42b40000",
+            "43c30000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01050002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 420.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17104898,
+          "raw_words_hex": [
+            "435a0000",
+            "43d20000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01050002"
+          ]
+        },
+        {
+          "x": 218.0,
+          "y": 390.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17104898,
+          "raw_words_hex": [
+            "435a0000",
+            "43c30000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01050002"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_006_texture_002.png",
+      "crop_rgba_sha256": "ccb77cb331ed6ddd73ca991453951c54e067d1b71807a9391035406f952520b6"
+    },
+    {
+      "index": 7,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 1,
+      "packed_descriptor_hex": "01010003",
+      "payload_offset": 784,
+      "payload_bytes": 112,
+      "payload_sha256": "dd51c4cd29f121329133b0ba6cbe7480f404988c1c4aa0e135a20903cf04fb95",
+      "authored_bounds_xy": [
+        222.0,
+        131.0,
+        350.0,
+        161.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842755,
+          "raw_words_hex": [
+            "435e0000",
+            "43210000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01010003"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842755,
+          "raw_words_hex": [
+            "435e0000",
+            "43030000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01010003"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842755,
+          "raw_words_hex": [
+            "43af0000",
+            "43210000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01010003"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842755,
+          "raw_words_hex": [
+            "43af0000",
+            "43030000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01010003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_007_texture_003.png",
+      "crop_rgba_sha256": "11ab3fc898359ee2770b23b0fdb6d63f4b71710e4d539c3fdb0a858e5cd7b3f4"
+    },
+    {
+      "index": 8,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 2,
+      "packed_descriptor_hex": "01020003",
+      "payload_offset": 896,
+      "payload_bytes": 112,
+      "payload_sha256": "9ed8e53cfc023f1822136a9c9da49532a5c81e7f2dfc64be4da5a91e06fd3050",
+      "authored_bounds_xy": [
+        222.0,
+        242.0,
+        350.0,
+        272.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908291,
+          "raw_words_hex": [
+            "435e0000",
+            "43880000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01020003"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908291,
+          "raw_words_hex": [
+            "435e0000",
+            "43720000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01020003"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908291,
+          "raw_words_hex": [
+            "43af0000",
+            "43880000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01020003"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908291,
+          "raw_words_hex": [
+            "43af0000",
+            "43720000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01020003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_008_texture_003.png",
+      "crop_rgba_sha256": "11ab3fc898359ee2770b23b0fdb6d63f4b71710e4d539c3fdb0a858e5cd7b3f4"
+    },
+    {
+      "index": 9,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 3,
+      "packed_descriptor_hex": "01030003",
+      "payload_offset": 1008,
+      "payload_bytes": 112,
+      "payload_sha256": "4539dc439089664dab4909f73779bab5864c230958cbdbdfcf288d8ddd3e73ec",
+      "authored_bounds_xy": [
+        222.0,
+        316.0,
+        350.0,
+        346.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973827,
+          "raw_words_hex": [
+            "435e0000",
+            "43ad0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01030003"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973827,
+          "raw_words_hex": [
+            "435e0000",
+            "439e0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01030003"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973827,
+          "raw_words_hex": [
+            "43af0000",
+            "43ad0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01030003"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973827,
+          "raw_words_hex": [
+            "43af0000",
+            "439e0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01030003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_009_texture_003.png",
+      "crop_rgba_sha256": "11ab3fc898359ee2770b23b0fdb6d63f4b71710e4d539c3fdb0a858e5cd7b3f4"
+    },
+    {
+      "index": 10,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 1,
+      "packed_descriptor_hex": "02010003",
+      "payload_offset": 1120,
+      "payload_bytes": 112,
+      "payload_sha256": "016372069e48698b0b76b47a535f751d37463767e535f66ce331e0370a29b355",
+      "authored_bounds_xy": [
+        389.0,
+        131.0,
+        517.0,
+        161.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619971,
+          "raw_words_hex": [
+            "43c28000",
+            "43210000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02010003"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619971,
+          "raw_words_hex": [
+            "43c28000",
+            "43030000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02010003"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619971,
+          "raw_words_hex": [
+            "44014000",
+            "43210000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02010003"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619971,
+          "raw_words_hex": [
+            "44014000",
+            "43030000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02010003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_010_texture_003.png",
+      "crop_rgba_sha256": "11ab3fc898359ee2770b23b0fdb6d63f4b71710e4d539c3fdb0a858e5cd7b3f4"
+    },
+    {
+      "index": 11,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 2,
+      "packed_descriptor_hex": "02020003",
+      "payload_offset": 1232,
+      "payload_bytes": 112,
+      "payload_sha256": "1f16a36d8936dfa7005f548b6c9b7877fd47222bd53e179effa3d9a4dc39f4fe",
+      "authored_bounds_xy": [
+        389.0,
+        242.0,
+        517.0,
+        272.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685507,
+          "raw_words_hex": [
+            "43c28000",
+            "43880000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02020003"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685507,
+          "raw_words_hex": [
+            "43c28000",
+            "43720000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02020003"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685507,
+          "raw_words_hex": [
+            "44014000",
+            "43880000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02020003"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685507,
+          "raw_words_hex": [
+            "44014000",
+            "43720000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02020003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_011_texture_003.png",
+      "crop_rgba_sha256": "11ab3fc898359ee2770b23b0fdb6d63f4b71710e4d539c3fdb0a858e5cd7b3f4"
+    },
+    {
+      "index": 12,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 3,
+      "packed_descriptor_hex": "02030003",
+      "payload_offset": 1344,
+      "payload_bytes": 112,
+      "payload_sha256": "b3a16e58183d3a94eca41d9e7e689628231aeb7dc6e3c5ae2543593b1c3720ad",
+      "authored_bounds_xy": [
+        389.0,
+        316.0,
+        517.0,
+        346.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751043,
+          "raw_words_hex": [
+            "43c28000",
+            "43ad0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02030003"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751043,
+          "raw_words_hex": [
+            "43c28000",
+            "439e0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02030003"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751043,
+          "raw_words_hex": [
+            "44014000",
+            "43ad0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02030003"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751043,
+          "raw_words_hex": [
+            "44014000",
+            "439e0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02030003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_012_texture_003.png",
+      "crop_rgba_sha256": "11ab3fc898359ee2770b23b0fdb6d63f4b71710e4d539c3fdb0a858e5cd7b3f4"
+    },
+    {
+      "index": 13,
+      "texture_index": 4,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 1,
+      "packed_descriptor_hex": "01010004",
+      "payload_offset": 1456,
+      "payload_bytes": 112,
+      "payload_sha256": "301e7c54720cae569c21393cd83dc67fbac7082c533f8e710c1528f0834e0d97",
+      "authored_bounds_xy": [
+        350.0,
+        131.0,
+        382.0,
+        161.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842756,
+          "raw_words_hex": [
+            "43af0000",
+            "43210000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01010004"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842756,
+          "raw_words_hex": [
+            "43af0000",
+            "43030000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01010004"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842756,
+          "raw_words_hex": [
+            "43bf0000",
+            "43210000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01010004"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842756,
+          "raw_words_hex": [
+            "43bf0000",
+            "43030000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01010004"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_013_texture_004.png",
+      "crop_rgba_sha256": "8be7e9916568fb69ad4e368433d911093ab9e67e9a1da1174353f5a5cd22f2c4"
+    },
+    {
+      "index": 14,
+      "texture_index": 4,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 2,
+      "packed_descriptor_hex": "01020004",
+      "payload_offset": 1568,
+      "payload_bytes": 112,
+      "payload_sha256": "af8e6bafaeb100760198ccef5f940a2634161f561900dda7f588740f64b96f5b",
+      "authored_bounds_xy": [
+        350.0,
+        242.0,
+        382.0,
+        272.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908292,
+          "raw_words_hex": [
+            "43af0000",
+            "43880000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01020004"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908292,
+          "raw_words_hex": [
+            "43af0000",
+            "43720000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01020004"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908292,
+          "raw_words_hex": [
+            "43bf0000",
+            "43880000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01020004"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908292,
+          "raw_words_hex": [
+            "43bf0000",
+            "43720000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01020004"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_014_texture_004.png",
+      "crop_rgba_sha256": "8be7e9916568fb69ad4e368433d911093ab9e67e9a1da1174353f5a5cd22f2c4"
+    },
+    {
+      "index": 15,
+      "texture_index": 4,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 3,
+      "packed_descriptor_hex": "01030004",
+      "payload_offset": 1680,
+      "payload_bytes": 112,
+      "payload_sha256": "b467b881ff18b2bf430fa3fb66f1f034a4a42907837b60b5a64efd2f1922727b",
+      "authored_bounds_xy": [
+        350.0,
+        316.0,
+        382.0,
+        346.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973828,
+          "raw_words_hex": [
+            "43af0000",
+            "43ad0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01030004"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973828,
+          "raw_words_hex": [
+            "43af0000",
+            "439e0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01030004"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973828,
+          "raw_words_hex": [
+            "43bf0000",
+            "43ad0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01030004"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973828,
+          "raw_words_hex": [
+            "43bf0000",
+            "439e0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01030004"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_015_texture_004.png",
+      "crop_rgba_sha256": "8be7e9916568fb69ad4e368433d911093ab9e67e9a1da1174353f5a5cd22f2c4"
+    },
+    {
+      "index": 16,
+      "texture_index": 4,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 1,
+      "packed_descriptor_hex": "02010004",
+      "payload_offset": 1792,
+      "payload_bytes": 112,
+      "payload_sha256": "4eb199e24bdcb18938f53cdeaeb8609d0c1c7352429c6c2a624035f600051731",
+      "authored_bounds_xy": [
+        517.0,
+        131.0,
+        549.0,
+        161.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619972,
+          "raw_words_hex": [
+            "44014000",
+            "43210000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02010004"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619972,
+          "raw_words_hex": [
+            "44014000",
+            "43030000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02010004"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 161.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619972,
+          "raw_words_hex": [
+            "44094000",
+            "43210000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02010004"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 131.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619972,
+          "raw_words_hex": [
+            "44094000",
+            "43030000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02010004"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_016_texture_004.png",
+      "crop_rgba_sha256": "8be7e9916568fb69ad4e368433d911093ab9e67e9a1da1174353f5a5cd22f2c4"
+    },
+    {
+      "index": 17,
+      "texture_index": 4,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 2,
+      "packed_descriptor_hex": "02020004",
+      "payload_offset": 1904,
+      "payload_bytes": 112,
+      "payload_sha256": "c282527b081d2f46a1034ed9d3a272e890739822629728b9594cf8842a29bb29",
+      "authored_bounds_xy": [
+        517.0,
+        242.0,
+        549.0,
+        272.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685508,
+          "raw_words_hex": [
+            "44014000",
+            "43880000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02020004"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685508,
+          "raw_words_hex": [
+            "44014000",
+            "43720000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02020004"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 272.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685508,
+          "raw_words_hex": [
+            "44094000",
+            "43880000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02020004"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 242.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685508,
+          "raw_words_hex": [
+            "44094000",
+            "43720000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02020004"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_017_texture_004.png",
+      "crop_rgba_sha256": "8be7e9916568fb69ad4e368433d911093ab9e67e9a1da1174353f5a5cd22f2c4"
+    },
+    {
+      "index": 18,
+      "texture_index": 4,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 3,
+      "packed_descriptor_hex": "02030004",
+      "payload_offset": 2016,
+      "payload_bytes": 112,
+      "payload_sha256": "0b273751dea53238a8f5e017502e8bfb5634411b7ea0bd1ebc4d64ae42d6e2b5",
+      "authored_bounds_xy": [
+        517.0,
+        316.0,
+        549.0,
+        346.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751044,
+          "raw_words_hex": [
+            "44014000",
+            "43ad0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02030004"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751044,
+          "raw_words_hex": [
+            "44014000",
+            "439e0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02030004"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 346.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751044,
+          "raw_words_hex": [
+            "44094000",
+            "43ad0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02030004"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 316.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751044,
+          "raw_words_hex": [
+            "44094000",
+            "439e0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02030004"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_018_texture_004.png",
+      "crop_rgba_sha256": "8be7e9916568fb69ad4e368433d911093ab9e67e9a1da1174353f5a5cd22f2c4"
+    },
+    {
+      "index": 19,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 1,
+      "packed_descriptor_hex": "01010005",
+      "payload_offset": 2128,
+      "payload_bytes": 112,
+      "payload_sha256": "ed5fdf47db2f0c30f54ceae34044f9049a2196094deadb988530c9a824dcb66c",
+      "authored_bounds_xy": [
+        222.0,
+        168.0,
+        350.0,
+        198.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842757,
+          "raw_words_hex": [
+            "435e0000",
+            "43460000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01010005"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842757,
+          "raw_words_hex": [
+            "435e0000",
+            "43280000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01010005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842757,
+          "raw_words_hex": [
+            "43af0000",
+            "43460000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01010005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842757,
+          "raw_words_hex": [
+            "43af0000",
+            "43280000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01010005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_019_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 20,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 2,
+      "packed_descriptor_hex": "01020005",
+      "payload_offset": 2240,
+      "payload_bytes": 112,
+      "payload_sha256": "ef583fb7f250f959e4ab08fb82217b47c162bd0c3a08a1d6d90d1b82313654b4",
+      "authored_bounds_xy": [
+        222.0,
+        205.0,
+        350.0,
+        235.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908293,
+          "raw_words_hex": [
+            "435e0000",
+            "436b0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01020005"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908293,
+          "raw_words_hex": [
+            "435e0000",
+            "434d0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01020005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908293,
+          "raw_words_hex": [
+            "43af0000",
+            "436b0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01020005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908293,
+          "raw_words_hex": [
+            "43af0000",
+            "434d0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01020005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_020_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 21,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 3,
+      "packed_descriptor_hex": "01030005",
+      "payload_offset": 2352,
+      "payload_bytes": 112,
+      "payload_sha256": "6dbce4bd7cddf2348d7cd54baf81453b91ef3680f0c1701e4b948cc8ad5023a6",
+      "authored_bounds_xy": [
+        222.0,
+        279.0,
+        350.0,
+        309.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973829,
+          "raw_words_hex": [
+            "435e0000",
+            "439a8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01030005"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973829,
+          "raw_words_hex": [
+            "435e0000",
+            "438b8000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01030005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973829,
+          "raw_words_hex": [
+            "43af0000",
+            "439a8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01030005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973829,
+          "raw_words_hex": [
+            "43af0000",
+            "438b8000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01030005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_021_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 22,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 4,
+      "packed_descriptor_hex": "01040005",
+      "payload_offset": 2464,
+      "payload_bytes": 112,
+      "payload_sha256": "c482d194deead59075697137c0d6fa99d2f384e760c9a90de98cb3e63d17416f",
+      "authored_bounds_xy": [
+        222.0,
+        353.0,
+        350.0,
+        383.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17039365,
+          "raw_words_hex": [
+            "435e0000",
+            "43bf8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01040005"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17039365,
+          "raw_words_hex": [
+            "435e0000",
+            "43b08000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01040005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17039365,
+          "raw_words_hex": [
+            "43af0000",
+            "43bf8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01040005"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17039365,
+          "raw_words_hex": [
+            "43af0000",
+            "43b08000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01040005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_022_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 23,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 1,
+      "packed_descriptor_hex": "02010005",
+      "payload_offset": 2576,
+      "payload_bytes": 112,
+      "payload_sha256": "726c0e7a14f2916c6b20c1a1f587531c89087ae4833e7db3af9c82b534dd84d0",
+      "authored_bounds_xy": [
+        389.0,
+        168.0,
+        517.0,
+        198.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619973,
+          "raw_words_hex": [
+            "43c28000",
+            "43460000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02010005"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619973,
+          "raw_words_hex": [
+            "43c28000",
+            "43280000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02010005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619973,
+          "raw_words_hex": [
+            "44014000",
+            "43460000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02010005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619973,
+          "raw_words_hex": [
+            "44014000",
+            "43280000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02010005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_023_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 24,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 2,
+      "packed_descriptor_hex": "02020005",
+      "payload_offset": 2688,
+      "payload_bytes": 112,
+      "payload_sha256": "5b76e460c40f08988a9d7fafc65e3ace8a29ac492e505e2345fd85a361acc4fe",
+      "authored_bounds_xy": [
+        389.0,
+        205.0,
+        517.0,
+        235.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685509,
+          "raw_words_hex": [
+            "43c28000",
+            "436b0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02020005"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685509,
+          "raw_words_hex": [
+            "43c28000",
+            "434d0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02020005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685509,
+          "raw_words_hex": [
+            "44014000",
+            "436b0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02020005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685509,
+          "raw_words_hex": [
+            "44014000",
+            "434d0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02020005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_024_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 25,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 3,
+      "packed_descriptor_hex": "02030005",
+      "payload_offset": 2800,
+      "payload_bytes": 112,
+      "payload_sha256": "bde6e3c77707a0a91f14e6e71572fbbcdff8247ad2fa73cb094d1d799e968ff4",
+      "authored_bounds_xy": [
+        389.0,
+        279.0,
+        517.0,
+        309.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751045,
+          "raw_words_hex": [
+            "43c28000",
+            "439a8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02030005"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751045,
+          "raw_words_hex": [
+            "43c28000",
+            "438b8000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02030005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751045,
+          "raw_words_hex": [
+            "44014000",
+            "439a8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02030005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751045,
+          "raw_words_hex": [
+            "44014000",
+            "438b8000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02030005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_025_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 26,
+      "texture_index": 5,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 4,
+      "packed_descriptor_hex": "02040005",
+      "payload_offset": 2912,
+      "payload_bytes": 112,
+      "payload_sha256": "5b0c84b9ebf0dac4d03e1a61475a60550764aa63289dd0c194e7f4aaa77cf67b",
+      "authored_bounds_xy": [
+        389.0,
+        353.0,
+        517.0,
+        383.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        128.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        128,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 389.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33816581,
+          "raw_words_hex": [
+            "43c28000",
+            "43bf8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02040005"
+          ]
+        },
+        {
+          "x": 389.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33816581,
+          "raw_words_hex": [
+            "43c28000",
+            "43b08000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02040005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33816581,
+          "raw_words_hex": [
+            "44014000",
+            "43bf8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02040005"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33816581,
+          "raw_words_hex": [
+            "44014000",
+            "43b08000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02040005"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_026_texture_005.png",
+      "crop_rgba_sha256": "e628fb0a8a32f1dfc3f7068eff0a658d7cc035b2f8f15d8f69d3856d554d1a66"
+    },
+    {
+      "index": 27,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 1,
+      "packed_descriptor_hex": "01010006",
+      "payload_offset": 3024,
+      "payload_bytes": 112,
+      "payload_sha256": "43b85cd6eb0a32cd701299d4f8d726ce4a59000359e050f2e02f5a954a470bb2",
+      "authored_bounds_xy": [
+        350.0,
+        168.0,
+        382.0,
+        198.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842758,
+          "raw_words_hex": [
+            "43af0000",
+            "43460000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01010006"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842758,
+          "raw_words_hex": [
+            "43af0000",
+            "43280000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01010006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16842758,
+          "raw_words_hex": [
+            "43bf0000",
+            "43460000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01010006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16842758,
+          "raw_words_hex": [
+            "43bf0000",
+            "43280000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01010006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_027_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 28,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 2,
+      "packed_descriptor_hex": "01020006",
+      "payload_offset": 3136,
+      "payload_bytes": 112,
+      "payload_sha256": "41acfaceeeef9219c44dd8c56fc8f37ae5000aff28b7a351fd87d121fb0aa5fb",
+      "authored_bounds_xy": [
+        350.0,
+        205.0,
+        382.0,
+        235.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908294,
+          "raw_words_hex": [
+            "43af0000",
+            "436b0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01020006"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908294,
+          "raw_words_hex": [
+            "43af0000",
+            "434d0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01020006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16908294,
+          "raw_words_hex": [
+            "43bf0000",
+            "436b0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01020006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16908294,
+          "raw_words_hex": [
+            "43bf0000",
+            "434d0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01020006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_028_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 29,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 3,
+      "packed_descriptor_hex": "01030006",
+      "payload_offset": 3248,
+      "payload_bytes": 112,
+      "payload_sha256": "13c6bf3fa8c95acf9a423da682f6ce4357f48d646db61c035b17bb8043da6e89",
+      "authored_bounds_xy": [
+        350.0,
+        279.0,
+        382.0,
+        309.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973830,
+          "raw_words_hex": [
+            "43af0000",
+            "439a8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01030006"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973830,
+          "raw_words_hex": [
+            "43af0000",
+            "438b8000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01030006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 16973830,
+          "raw_words_hex": [
+            "43bf0000",
+            "439a8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01030006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 16973830,
+          "raw_words_hex": [
+            "43bf0000",
+            "438b8000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01030006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_029_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 30,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 1,
+      "tag_b": 4,
+      "packed_descriptor_hex": "01040006",
+      "payload_offset": 3360,
+      "payload_bytes": 112,
+      "payload_sha256": "be905014b47f90314c1b3b389d92eb3f28ac1fce3cb916fbb1d7f94c3107ef14",
+      "authored_bounds_xy": [
+        350.0,
+        353.0,
+        382.0,
+        383.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 350.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17039366,
+          "raw_words_hex": [
+            "43af0000",
+            "43bf8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "01040006"
+          ]
+        },
+        {
+          "x": 350.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17039366,
+          "raw_words_hex": [
+            "43af0000",
+            "43b08000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "01040006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 17039366,
+          "raw_words_hex": [
+            "43bf0000",
+            "43bf8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "01040006"
+          ]
+        },
+        {
+          "x": 382.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 17039366,
+          "raw_words_hex": [
+            "43bf0000",
+            "43b08000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "01040006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_030_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 31,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 1,
+      "packed_descriptor_hex": "02010006",
+      "payload_offset": 3472,
+      "payload_bytes": 112,
+      "payload_sha256": "3f6b49aa6fe7c86e84a3f73110e018d1be680537803d810bd076f9f41b236394",
+      "authored_bounds_xy": [
+        517.0,
+        168.0,
+        549.0,
+        198.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619974,
+          "raw_words_hex": [
+            "44014000",
+            "43460000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02010006"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619974,
+          "raw_words_hex": [
+            "44014000",
+            "43280000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02010006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 198.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33619974,
+          "raw_words_hex": [
+            "44094000",
+            "43460000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02010006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 168.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33619974,
+          "raw_words_hex": [
+            "44094000",
+            "43280000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02010006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_031_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 32,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 2,
+      "packed_descriptor_hex": "02020006",
+      "payload_offset": 3584,
+      "payload_bytes": 112,
+      "payload_sha256": "b5f70ec3fae0f3362ebd413707fa910656bec056bd05d44cfd9c8b18e50c8a6c",
+      "authored_bounds_xy": [
+        517.0,
+        205.0,
+        549.0,
+        235.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685510,
+          "raw_words_hex": [
+            "44014000",
+            "436b0000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02020006"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685510,
+          "raw_words_hex": [
+            "44014000",
+            "434d0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02020006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 235.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33685510,
+          "raw_words_hex": [
+            "44094000",
+            "436b0000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02020006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 205.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33685510,
+          "raw_words_hex": [
+            "44094000",
+            "434d0000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02020006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_032_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 33,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 3,
+      "packed_descriptor_hex": "02030006",
+      "payload_offset": 3696,
+      "payload_bytes": 112,
+      "payload_sha256": "47acac224eda4dab5be7cab3736823ad7b0357c31179a467c14f65ab85be1b91",
+      "authored_bounds_xy": [
+        517.0,
+        279.0,
+        549.0,
+        309.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751046,
+          "raw_words_hex": [
+            "44014000",
+            "439a8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02030006"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751046,
+          "raw_words_hex": [
+            "44014000",
+            "438b8000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02030006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 309.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33751046,
+          "raw_words_hex": [
+            "44094000",
+            "439a8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02030006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 279.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33751046,
+          "raw_words_hex": [
+            "44094000",
+            "438b8000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02030006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_033_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 34,
+      "texture_index": 6,
+      "vertex_count": 4,
+      "tag_a": 2,
+      "tag_b": 4,
+      "packed_descriptor_hex": "02040006",
+      "payload_offset": 3808,
+      "payload_bytes": 112,
+      "payload_sha256": "8aa39c9fbdc2416f00feb1dceebb62ffd949603a8541a499671444d85ffb2588",
+      "authored_bounds_xy": [
+        517.0,
+        353.0,
+        549.0,
+        383.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 517.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33816582,
+          "raw_words_hex": [
+            "44014000",
+            "43bf8000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "02040006"
+          ]
+        },
+        {
+          "x": 517.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33816582,
+          "raw_words_hex": [
+            "44014000",
+            "43b08000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "02040006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 383.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 33816582,
+          "raw_words_hex": [
+            "44094000",
+            "43bf8000",
+            "bd4ccccd",
+            "3f800000",
+            "3d800000",
+            "ffffffff",
+            "02040006"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 353.0,
+          "z": -0.05000000074505806,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 33816582,
+          "raw_words_hex": [
+            "44094000",
+            "43b08000",
+            "bd4ccccd",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "02040006"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_034_texture_006.png",
+      "crop_rgba_sha256": "5d2f4bda93b2c65c003415f4048ce77023ed2d9048dfbdae468d7fd89a74a8e8"
+    },
+    {
+      "index": 35,
+      "texture_index": 7,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000007",
+      "payload_offset": 3920,
+      "payload_bytes": 112,
+      "payload_sha256": "571237dca61651e7055e8dfe77fce8cbe167f6d32971a853cd035c9bb87959d1",
+      "authored_bounds_xy": [
+        90.0,
+        94.0,
+        549.0,
+        124.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        0.8964840173721313,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        458.99981689453125,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        459,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 90.0,
+          "y": 124.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 7,
+          "raw_words_hex": [
+            "42b40000",
+            "42f80000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "00000007"
+          ]
+        },
+        {
+          "x": 90.0,
+          "y": 94.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 7,
+          "raw_words_hex": [
+            "42b40000",
+            "42bc0000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000007"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 124.0,
+          "z": -0.05000000074505806,
+          "u": 0.8964840173721313,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 7,
+          "raw_words_hex": [
+            "44094000",
+            "42f80000",
+            "bd4ccccd",
+            "3f657ffa",
+            "3d800000",
+            "ffffffff",
+            "00000007"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 94.0,
+          "z": -0.05000000074505806,
+          "u": 0.8964840173721313,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 7,
+          "raw_words_hex": [
+            "44094000",
+            "42bc0000",
+            "bd4ccccd",
+            "3f657ffa",
+            "3f800000",
+            "ffffffff",
+            "00000007"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_035_texture_007.png",
+      "crop_rgba_sha256": "192105cecdcff4e2b5e06163d6567529d03a5f08cc23467afd4df1a804d78896"
+    },
+    {
+      "index": 36,
+      "texture_index": 8,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000008",
+      "payload_offset": 4032,
+      "payload_bytes": 112,
+      "payload_sha256": "bba4ee71ae0f6c6dad2de3a3cc311d024e50e2d8086e4aee8ca7970512215cd4",
+      "authored_bounds_xy": [
+        222.0,
+        390.0,
+        549.0,
+        420.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0625,
+        0.6386719942092896,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        2.0,
+        327.00006103515625,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        2,
+        327,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 222.0,
+          "y": 420.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 8,
+          "raw_words_hex": [
+            "435e0000",
+            "43d20000",
+            "bd4ccccd",
+            "00000000",
+            "3d800000",
+            "ffffffff",
+            "00000008"
+          ]
+        },
+        {
+          "x": 222.0,
+          "y": 390.0,
+          "z": -0.05000000074505806,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 8,
+          "raw_words_hex": [
+            "435e0000",
+            "43c30000",
+            "bd4ccccd",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000008"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 420.0,
+          "z": -0.05000000074505806,
+          "u": 0.6386719942092896,
+          "v": 0.0625,
+          "argb": 4294967295,
+          "descriptor": 8,
+          "raw_words_hex": [
+            "44094000",
+            "43d20000",
+            "bd4ccccd",
+            "3f238002",
+            "3d800000",
+            "ffffffff",
+            "00000008"
+          ]
+        },
+        {
+          "x": 549.0,
+          "y": 390.0,
+          "z": -0.05000000074505806,
+          "u": 0.6386719942092896,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 8,
+          "raw_words_hex": [
+            "44094000",
+            "43c30000",
+            "bd4ccccd",
+            "3f238002",
+            "3f800000",
+            "ffffffff",
+            "00000008"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_036_texture_008.png",
+      "crop_rgba_sha256": "b3332922e8ba92dd0b8fc625cf987bba50e09cc59097525a59741ddedb3e0269"
+    }
+  ]
+}

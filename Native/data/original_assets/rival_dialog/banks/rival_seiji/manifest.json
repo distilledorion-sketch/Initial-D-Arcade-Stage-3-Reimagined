@@ -1,0 +1,9 @@
+{
+  "name": "rival_seiji",
+  "source_folder": "rival/r_seiji",
+  "chunks": 13,
+  "textures": 13,
+  "polygon_sha256": "3990a4b2cb6be455b63af88a7e58fc23b99d7fb40a7ca80c0e687cd014820f3c",
+  "texture_sha256": "2d2b9631ca1c92935ef124c78167e05b9b8097b5dad706a5017a98fcd306a651",
+  "material_words_preserved": true
+}

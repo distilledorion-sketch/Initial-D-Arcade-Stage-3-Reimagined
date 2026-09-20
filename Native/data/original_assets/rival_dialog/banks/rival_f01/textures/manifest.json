@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\rival\\rf01\\rival_f01_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Claude_Handoffs\\IDAS3_Native_Remake_Handoff_2026-09-06\\in-progress\\data\\original_assets\\rival_dialog\\banks\\rival_f01\\original_texture_decoded.bin",
+  "table_sha256": "2c7340601478aaa6090f82d525f5e145e28bbaf007d804cccdb0225e6e6ff229",
+  "payload_sha256": "b666a28a2cccd11764e454e3042f5b721f186bbe514a4d091d7890a02f312a82",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 512,
+      "height": 512,
+      "format": 2,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "b666a28a2cccd11764e454e3042f5b721f186bbe514a4d091d7890a02f312a82",
+      "rgba_sha256": "66c22b77635af8ceb11b95a96f15ed5025fc1f1e6428ecaee7feab0ea0e65764",
+      "file": "texture_000.png"
+    }
+  ]
+}

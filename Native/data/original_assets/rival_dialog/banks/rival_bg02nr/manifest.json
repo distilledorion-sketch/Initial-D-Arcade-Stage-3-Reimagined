@@ -1,0 +1,9 @@
+{
+  "name": "rival_bg02nr",
+  "source_folder": "rival_bg/bg02",
+  "chunks": 6,
+  "textures": 6,
+  "polygon_sha256": "a6b151a5a31c9d8c0b2f76ca4f35cc220267792084cc3136d08930b7a6b07887",
+  "texture_sha256": "bd25115c1a4928f482f3fe845cc4f173b62e65676246ad131bded6a8e040b82a",
+  "material_words_preserved": true
+}

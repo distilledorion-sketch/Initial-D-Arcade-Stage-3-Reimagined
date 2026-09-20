@@ -1,0 +1,107 @@
+{
+  "schema": "idas3-original-loading-index-v1",
+  "private_original_assets": true,
+  "source": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\loading",
+  "layout": "twiddled",
+  "artwork_banks_pending_palette": [],
+  "artwork_banks_decoded": [
+    "load00",
+    "load01",
+    "load02",
+    "load03",
+    "load04",
+    "load05",
+    "load06",
+    "load07",
+    "load08",
+    "load09",
+    "load10",
+    "load11",
+    "load12"
+  ],
+  "overlay_bank": "loadcmn",
+  "wait_bank": "loadwait",
+  "versus_bank": "loadvs",
+  "banks": [
+    {
+      "name": "load00",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load01",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load02",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load03",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load04",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load05",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load06",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load07",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load08",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load09",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load10",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load11",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "load12",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "loadcmn",
+      "chunks": 13,
+      "textures": 1
+    },
+    {
+      "name": "loadwait",
+      "chunks": 1,
+      "textures": 1
+    },
+    {
+      "name": "loadvs",
+      "chunks": 1,
+      "textures": 1
+    }
+  ]
+}

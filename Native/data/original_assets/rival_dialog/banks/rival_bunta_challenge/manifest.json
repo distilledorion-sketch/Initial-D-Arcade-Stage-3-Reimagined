@@ -1,0 +1,8 @@
+{
+  "name": "rival_bunta_challenge",
+  "source_folder": "rival/r_bunta_challenge",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "74ffa02544d4ed5bbbb9695a25f18ef5a1279dcdfbae81cc0591426c1f5a4f79",
+  "texture_sha256": "bb9c31bf6e960458a98cdaa0024578e7e5a41dac42c9bf96a8b3b4b08ef69d14"
+}

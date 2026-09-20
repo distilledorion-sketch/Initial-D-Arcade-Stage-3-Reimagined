@@ -1,0 +1,619 @@
+{
+  "schema": "idas3-original-gasstand-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "script_table": "0C2FBF58",
+  "private_original_assets": true,
+  "source_draw": "0C0D0F60",
+  "scripts": [
+    [
+      {
+        "speaker": 0,
+        "lines": [
+          "HEY, COLE.",
+          "",
+          ""
+        ],
+        "address": "0C2FBBA4"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "I'VE HEARD THAT I CAN CUSTOMIZE MY CAR",
+          "IF I HAVE AN INITIAL D CARD.",
+          ""
+        ],
+        "address": "0C2FBBB4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "THAT'S RIGHT.",
+          "",
+          ""
+        ],
+        "address": "0C2FBBC4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "RACING AGAINST RIVALS",
+          "EARNS YOU POINTS, RIGHT?",
+          ""
+        ],
+        "address": "0C2FBBD4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "IF YOU COLLECT ENOUGH POINTS,",
+          "YOU CAN CUSTOMIZE YOUR CAR.",
+          ""
+        ],
+        "address": "0C2FBBE4"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "COOL!",
+          "",
+          ""
+        ],
+        "address": "0C2FBBF4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU CAN CHOOSE CUSTOM",
+          "PARTS FROM 41 DIFFERENT",
+          "MANUFACTURERS."
+        ],
+        "address": "0C2FBC04"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "WHEW! I CAN'T MAKE UP MY MIND",
+          "WITH SO MANY CHOICES!",
+          ""
+        ],
+        "address": "0C2FBC14"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "BUT WHICH ONES SHOULD I PICK?",
+          "",
+          ""
+        ],
+        "address": "0C2FBC24"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "I DON'T KNOW MUCH ABOUT",
+          "CUSTOMIZING, YOU KNOW.",
+          ""
+        ],
+        "address": "0C2FBC34"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU CAN SELECT A,",
+          "CUSTOMIZATION OPTION",
+          "WHEN YOU BUY A CARD."
+        ],
+        "address": "0C2FBC44"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "THAT WAY YOUR CAR WILL GET",
+          "CUSTOMIZED AUTOMATICALLY",
+          "AS YOU SAVE UP POINTS."
+        ],
+        "address": "0C2FBC54"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "IT'LL BE NO PROBLEM EVEN IF YOU",
+          "DON'T KNOW MUCH ABOUT MECHA-",
+          "NICAL STUFF AS WELL AS TAK."
+        ],
+        "address": "0C2FBC64"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU CAN ALSO SAVE YOUR",
+          "GAME STATUS AND TIMES.",
+          ""
+        ],
+        "address": "0C2FBC74"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "AND CONTINUE YOUR GAME",
+          "WHENEVER YOU WANT.",
+          ""
+        ],
+        "address": "0C2FBC84"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "TAK, YOU SHOULD",
+          "DEFINITELY GET ONE.",
+          ""
+        ],
+        "address": "0C2FBC94"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "OKAY!",
+          "",
+          ""
+        ],
+        "address": "0C2FBCA4"
+      }
+    ],
+    [
+      {
+        "speaker": 0,
+        "lines": [
+          "HEY, COLE.",
+          "",
+          ""
+        ],
+        "address": "0C2FBCB4"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "I'VE HEARD 'BATTLE RACE'",
+          "IS AVAILABLE IN THIS GAME.",
+          ""
+        ],
+        "address": "0C2FBCC4"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "WHAT IS THAT?",
+          "",
+          ""
+        ],
+        "address": "0C2FBCD4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "BATTLE RACE, HUH?",
+          "",
+          ""
+        ],
+        "address": "0C2FBCE4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "WELL, LET'S SAY",
+          "SOMEONE'S PLAYING",
+          "THE GAME ALONE"
+        ],
+        "address": "0C2FBCF4"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "YEAH.",
+          "",
+          ""
+        ],
+        "address": "0C2FBD04"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "AND HE HAS THE AWESOME",
+          "TECHNIQUE, DON'T YOU WANNA",
+          "BATTLE AGAINST HIM?"
+        ],
+        "address": "0C2FBD14"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "OF COURSE. THAT'S WHAT BEING",
+          "A SPEED MERCHANT'S ALL ABOUT.",
+          ""
+        ],
+        "address": "0C2FBD24"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "WELL, WITH BATTLE RACE YOU CAN",
+          "SIT DOWN AT THE NEXT UNIT",
+          "AND CHALLENGE THAT RACER."
+        ],
+        "address": "0C2FBD34"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "YEAH? PRETTY COOL!",
+          "",
+          ""
+        ],
+        "address": "0C2FBD44"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "BUT WHAT IF YOU JUST WANT TO RACE",
+          "BY YOURSELF, WITH NO CHALLENGERS?",
+          ""
+        ],
+        "address": "0C2FBD54"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "IN THAT CASE ALL YOU NEED TO DO",
+          "IS SELECT REFUSE CHALLENGERS",
+          "AT THE BEGINNING OF THE GAME."
+        ],
+        "address": "0C2FBD64"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "OH, OKAY.",
+          "",
+          ""
+        ],
+        "address": "0C2FBD74"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "NOT ONLY THAT, YOU CAN SWITCH",
+          "BETWEEN REFUSE CHALLENGERS AND",
+          "ACCEPT CHALLENGERS AT ANY TIME"
+        ],
+        "address": "0C2FBD84"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "IN THE MIDDLE OF A GAME JUST",
+          "BY HITTING THE START BUTTON.",
+          ""
+        ],
+        "address": "0C2FBD94"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "NOT BAD.",
+          "",
+          ""
+        ],
+        "address": "0C2FBDA4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "SO, YOU GOT ALL THAT, TAK?",
+          "",
+          ""
+        ],
+        "address": "0C2FBDB4"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "SURE THING, BOSS.",
+          "",
+          ""
+        ],
+        "address": "0C2FBDC4"
+      }
+    ],
+    [
+      {
+        "speaker": 0,
+        "lines": [
+          "HEY, COLE.",
+          "",
+          ""
+        ],
+        "address": "0C2FBDD4"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "HOW DO YOU USE",
+          "NET-RANKINGS?",
+          ""
+        ],
+        "address": "0C2FBDE4"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "WHAT'S THAT?",
+          "",
+          ""
+        ],
+        "address": "0C2FBDF4"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "WELL. FOR EXAMPLE,",
+          "IF YOU GET A REALLY",
+          "GOOD TIME ON TIME ATTACK,"
+        ],
+        "address": "0C2FBE04"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU WANT TO KNOW",
+          "HOW YOUR TIME STACKS",
+          "UP NATIONALLY, RIGHT?"
+        ],
+        "address": "0C2FBE14"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "YEAH.",
+          "",
+          ""
+        ],
+        "address": "0C2FBE24"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU WRITE DOWN THE PASSWORD",
+          "THAT APPEARS ON THE SCREEN",
+          "AFTER A TIME ATTACK RACE."
+        ],
+        "address": "0C2FBE34"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "THEN VISIT THE INITIAL D",
+          "ARCADE STAGE VER.3",
+          "OFFICIAL WEB SITE AND"
+        ],
+        "address": "0C2FBE44"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "KEY IN YOUR PASSWORD.",
+          "",
+          ""
+        ],
+        "address": "0C2FBE54"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU'LL BE ABLE TO SEE",
+          "WHERE YOU RANK NATIONALLY.",
+          ""
+        ],
+        "address": "0C2FBE64"
+      },
+      {
+        "speaker": 2,
+        "lines": [
+          "EXCELLENT!",
+          "",
+          ""
+        ],
+        "address": "0C2FBE74"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "YOU CAN ALSO SEE",
+          "YOUR PASSWORD ON THE VIEW",
+          "RECORDED DATA WINDOW,"
+        ],
+        "address": "0C2FBE84"
+      },
+      {
+        "speaker": 1,
+        "lines": [
+          "SO DON'T WORRY IF YOU",
+          "FORGET TO WRITE IT DOWN!",
+          ""
+        ],
+        "address": "0C2FBE94"
+      },
+      {
+        "speaker": 0,
+        "lines": [
+          "OKAY!",
+          "I'M GOING TO PUT UP A REAL FAST TIME!",
+          ""
+        ],
+        "address": "0C2FBEA4"
+      }
+    ]
+  ],
+  "font_characters": [
+    " ",
+    ",",
+    ".",
+    "a",
+    ":",
+    ";",
+    "?",
+    "!",
+    "'",
+    "(",
+    ")",
+    "+",
+    "-",
+    "=",
+    "<",
+    ">",
+    "$",
+    "%",
+    "&",
+    "*",
+    "@",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "A",
+    "B",
+    "C",
+    "D",
+    "E",
+    "F",
+    "G",
+    "H",
+    "I",
+    "J",
+    "K",
+    "L",
+    "M",
+    "N",
+    "O",
+    "P",
+    "Q",
+    "R",
+    "S",
+    "T",
+    "U",
+    "V",
+    "W",
+    "X",
+    "Y",
+    "Z",
+    "b",
+    "c",
+    "d",
+    "e",
+    "f"
+  ],
+  "font_width_words": [
+    1092616192,
+    1086324736,
+    1086324736,
+    1084227584,
+    1084227584,
+    1086324736,
+    1091567616,
+    1082130432,
+    1082130432,
+    1086324736,
+    1086324736,
+    1093664768,
+    1086324736,
+    1093664768,
+    1091567616,
+    1091567616,
+    1093664768,
+    1095761920,
+    1095761920,
+    1092616192,
+    1098907648,
+    1096810496,
+    1086324736,
+    1094713344,
+    1096810496,
+    1096810496,
+    1095761920,
+    1096810496,
+    1092616192,
+    1096810496,
+    1096810496,
+    1095761920,
+    1095761920,
+    1094713344,
+    1094713344,
+    1094713344,
+    1093664768,
+    1098907648,
+    1094713344,
+    1086324736,
+    1093664768,
+    1094713344,
+    1091567616,
+    1096810496,
+    1094713344,
+    1095761920,
+    1095761920,
+    1094713344,
+    1094713344,
+    1095761920,
+    1094713344,
+    1093664768,
+    1094713344,
+    1097859072,
+    1093664768,
+    1096810496,
+    1094713344,
+    1095761920,
+    1099431936,
+    1101004800,
+    1092616192,
+    1097859072
+  ],
+  "literal_words": {
+    "0C0D0F30": 1008981770,
+    "0C0D0F34": 1025758986,
+    "0C0D0F38": 1041194025,
+    "0C0D095C": 1087163597,
+    "0C0D1130": 3164854026,
+    "0C0D1134": 3240099840,
+    "0C0D1138": 3255828480,
+    "0C0D113C": 1098907648,
+    "0C0D114C": 1048911544,
+    "0C0D1208": 1061158912,
+    "0C0D1210": 1049247089,
+    "0C0D1214": 1005961871,
+    "0C0D13B0": 1049247088,
+    "0C0D13B4": 1050924810,
+    "0C0D13B8": 1056293519,
+    "0C0D13BC": 3208642560,
+    "0C0D13C0": 1061158912,
+    "0C0D13C4": 1031127695,
+    "0C0D13CC": 1023410176,
+    "0C0D13D0": 1008981770,
+    "0C0D13D4": 1065520988,
+    "0C0D13D8": 3206797066,
+    "0C0D14F0": 1022604869,
+    "0C0D14F8": 1067660083,
+    "0C0D14FC": 1051260355,
+    "0C0D1500": 1061997773,
+    "0C112E28": 1006766113,
+    "0C112F88": 1076006748
+  },
+  "gasstand_chunks": 58,
+  "gasstand_textures": 15,
+  "alphabet_textures": 62,
+  "existing_shared_bank": "data/original_assets/menus/v3/v3sA00etc",
+  "asset_identity": "Original58-chunk layered2D dialogue art, not a3D gas station model."
+}

@@ -1,0 +1,149 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "lecmap_myogi",
+  "mesh": "lecmap_myogi.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.00010706076136557385,
+          0.00010717267286963761
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246d",
+            "10000000",
+            "9400246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "0afa8067cb4ea724674f177a9df837a2c2b25ff6fc89fd7051b405ec7581da7d"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.00010706076136557385,
+          0.00010717267286963761
+        ]
+      ],
+      "texture_indices": [
+        1
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400246d",
+            "10000000",
+            "9400246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "0afa8067cb4ea724674f177a9df837a2c2b25ff6fc89fd7051b405ec7581da7d"
+        }
+      ]
+    }
+  ],
+  "texture_count": 2,
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_myogi_pol.bin.nz",
+      "bytes": 576,
+      "sha256": "b99f0a083a4e85be7d2d950f771d84ca5bc8070aadd764d73dc7c56741a77c18"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_myogi_pol.tbl",
+      "bytes": 8,
+      "sha256": "2b6d910bd88dc43d68e3283b89b4134e6423e67f9a459c8b85457254cb69aef4"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_myogi_tex.tbl",
+      "bytes": 32,
+      "sha256": "ca6e1b4b6b8576ad6bb917d9fd579961a6aaab0d2d4f8b9d14dc1a4613f7164a"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_myogi_tex.bin.nz",
+      "bytes": 262144,
+      "sha256": "3d7b02e8f9ed12bd69dc523eb24d8d4ae1cf5d64d32aceb0443b471d54b2932b"
+    }
+  },
+  "decoded_polygon_sha256": "b99f0a083a4e85be7d2d950f771d84ca5bc8070aadd764d73dc7c56741a77c18",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

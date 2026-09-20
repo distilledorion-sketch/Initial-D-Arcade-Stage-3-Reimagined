@@ -1,0 +1,9 @@
+{
+  "name": "rival_ryosuke2",
+  "source_folder": "rival/r_ryosuke2",
+  "chunks": 11,
+  "textures": 11,
+  "polygon_sha256": "92800ea37183762a6493ed596d067f9f5f837e825f811eae87c1ab15baff64d3",
+  "texture_sha256": "f98564f09d5e9b411abdcf5567f6de7aed84109724a7aea3bb33c0df570190a5",
+  "material_words_preserved": true
+}

@@ -1,0 +1,360 @@
+{
+  "schema": "idas3-original-battle-names-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "font_table_sha256": "25800cfa420ff1cc70dc0ace4eb6306ea8b5d19763dfeb27fcc9a9358947241f",
+  "source_rules": "191900 table33B684[enemy]; default player1918C0 pointer33B88C; profile2 forcesenemy30. 68E0 maps source double-byte codes using96-column table.",
+  "private_original_assets": true,
+  "names": [
+    {
+      "enemy": 0,
+      "source_address": "0C298720",
+      "name_bytes": "c9f0c6e2bcf9ccda",
+      "glyphs": [
+        317,
+        304,
+        267,
+        325
+      ]
+    },
+    {
+      "enemy": 1,
+      "source_address": "0C29872C",
+      "name_bytes": "b7f2bbfec0e8c7da",
+      "glyphs": [
+        246,
+        264,
+        283,
+        309
+      ]
+    },
+    {
+      "enemy": 2,
+      "source_address": "0C298738",
+      "name_bytes": "beb1bbcabfb5b8e3",
+      "glyphs": [
+        273,
+        258,
+        276,
+        249
+      ]
+    },
+    {
+      "enemy": 3,
+      "source_address": "0C298744",
+      "name_bytes": "cbf6b7d1bdbdb8e6",
+      "glyphs": [
+        324,
+        245,
+        269,
+        250
+      ]
+    },
+    {
+      "enemy": 4,
+      "source_address": "0C298750",
+      "name_bytes": "c0eeb0e6bddfc8f8",
+      "glyphs": [
+        284,
+        222,
+        270,
+        312
+      ]
+    },
+    {
+      "enemy": 5,
+      "source_address": "0C29875C",
+      "name_bytes": "bab4c5f9bfbfbbd2",
+      "glyphs": [
+        255,
+        302,
+        277,
+        259
+      ]
+    },
+    {
+      "enemy": 6,
+      "source_address": "0C298768",
+      "name_bytes": "c5e3b6b8b2bdcde5",
+      "glyphs": [
+        300,
+        242,
+        227,
+        328
+      ]
+    },
+    {
+      "enemy": 7,
+      "source_address": "0C298774",
+      "name_bytes": "c3e7c2bcb8adc2bf",
+      "glyphs": [
+        297,
+        287,
+        247,
+        288
+      ]
+    },
+    {
+      "enemy": 8,
+      "source_address": "0C298780",
+      "name_bytes": "b9e2c4efb7bcb2f0",
+      "glyphs": [
+        254,
+        298,
+        244,
+        229
+      ]
+    },
+    {
+      "enemy": 9,
+      "source_address": "0C29878C",
+      "name_bytes": "c3d3c3abb9c0b0ec",
+      "glyphs": [
+        295,
+        293,
+        253,
+        223
+      ]
+    },
+    {
+      "enemy": 10,
+      "source_address": "0C298798",
+      "name_bytes": "c3e6cea4b5a3bbe1",
+      "glyphs": [
+        296,
+        330,
+        236,
+        262
+      ]
+    },
+    {
+      "enemy": 11,
+      "source_address": "0C2987A4",
+      "name_bytes": "bfdcc5ecb5febbd4",
+      "glyphs": [
+        279,
+        301,
+        240,
+        260
+      ]
+    },
+    {
+      "enemy": 12,
+      "source_address": "0C2987B0",
+      "name_bytes": "c2ebb7bbcec3bdf5",
+      "glyphs": [
+        291,
+        243,
+        331,
+        271
+      ]
+    },
+    {
+      "enemy": 13,
+      "source_address": "0C2987BC",
+      "name_bytes": "c6a3b8b6c2f3b3a4",
+      "glyphs": [
+        303,
+        248,
+        292,
+        230
+      ]
+    },
+    {
+      "enemy": 14,
+      "source_address": "0C2987C8",
+      "name_bytes": "b4e4beebc0b6bca1",
+      "glyphs": [
+        233,
+        275,
+        281,
+        265
+      ]
+    },
+    {
+      "enemy": 15,
+      "source_address": "0C2987A4",
+      "name_bytes": "bfdcc5ecb5febbd4",
+      "glyphs": [
+        279,
+        301,
+        240,
+        260
+      ]
+    },
+    {
+      "enemy": 16,
+      "source_address": "0C2987D4",
+      "name_bytes": "beaec7f0b2c4b0df",
+      "glyphs": [
+        272,
+        310,
+        228,
+        221
+      ]
+    },
+    {
+      "enemy": 17,
+      "source_address": "0C2987E0",
+      "name_bytes": "c8feb4f7c0ef",
+      "glyphs": [
+        314,
+        235,
+        285
+      ]
+    },
+    {
+      "enemy": 18,
+      "source_address": "0C2987E8",
+      "name_bytes": "c6f3b5dcc2e7b5b1",
+      "glyphs": [
+        305,
+        239,
+        290,
+        237
+      ]
+    },
+    {
+      "enemy": 19,
+      "source_address": "0C2987F4",
+      "name_bytes": "c1e3b4d6b0cccdf8",
+      "glyphs": [
+        286,
+        231,
+        219,
+        329
+      ]
+    },
+    {
+      "enemy": 20,
+      "source_address": "0C298800",
+      "name_bytes": "b4dbc3d2b9acc0c2",
+      "glyphs": [
+        232,
+        294,
+        252,
+        282
+      ]
+    },
+    {
+      "enemy": 21,
+      "source_address": "0C29880C",
+      "name_bytes": "cbb0d6b3b1e4c9a7",
+      "glyphs": [
+        322,
+        335,
+        226,
+        315
+      ]
+    },
+    {
+      "enemy": 22,
+      "source_address": "0C298818",
+      "name_bytes": "bae4cbdcb4f0",
+      "glyphs": [
+        256,
+        323,
+        234
+      ]
+    },
+    {
+      "enemy": 23,
+      "source_address": "0C298820",
+      "name_bytes": "bda9bbb3bec4",
+      "glyphs": [
+        268,
+        257,
+        274
+      ]
+    },
+    {
+      "enemy": 24,
+      "source_address": "0C298828",
+      "name_bytes": "c8d8c0a5b6b3bbf9",
+      "glyphs": [
+        311,
+        280,
+        241,
+        263
+      ]
+    },
+    {
+      "enemy": 25,
+      "source_address": "0C2987B0",
+      "name_bytes": "c2ebb7bbcec3bdf5",
+      "glyphs": [
+        291,
+        243,
+        331,
+        271
+      ]
+    },
+    {
+      "enemy": 26,
+      "source_address": "0C298834",
+      "name_bytes": "bbdecaecb8ebc7b8b4c1",
+      "glyphs": [
+        261,
+        321,
+        251,
+        308,
+        65535
+      ]
+    },
+    {
+      "enemy": 27,
+      "source_address": "0C298840",
+      "name_bytes": "cac1caeacfbfc7b7b2bb",
+      "glyphs": [
+        319,
+        320,
+        334,
+        307,
+        65535
+      ]
+    },
+    {
+      "enemy": 28,
+      "source_address": "0C298780",
+      "name_bytes": "b9e2c4efb7bcb2f0",
+      "glyphs": [
+        254,
+        298,
+        244,
+        229
+      ]
+    },
+    {
+      "enemy": 29,
+      "source_address": "0C2987BC",
+      "name_bytes": "c6a3b8b6c2f3b3a4",
+      "glyphs": [
+        303,
+        248,
+        292,
+        230
+      ]
+    },
+    {
+      "enemy": 30,
+      "source_address": "0C29884C",
+      "name_bytes": "bfc6c9e3cab8c2c0",
+      "glyphs": [
+        278,
+        316,
+        318,
+        289
+      ]
+    },
+    {
+      "enemy": null,
+      "source_address": "0C298934",
+      "name_bytes": "cdb7b5bab0d9bcd4",
+      "glyphs": [
+        327,
+        238,
+        220,
+        266
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-original-model-menu-index-v1",
+  "private_original_assets": true,
+  "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model",
+  "layout": "twiddled",
+  "banks": [
+    {
+      "name": "mode_bunta",
+      "manifest": "mode_bunta/manifest.json",
+      "mesh_pack": "mode_bunta/mode_bunta.idasmesh",
+      "texture_pack": "mode_bunta/textures/textures.idastex",
+      "textures": 1,
+      "chunks": 1
+    },
+    {
+      "name": "select0402",
+      "manifest": "select0402/manifest.json",
+      "mesh_pack": "select0402/select0402.idasmesh",
+      "texture_pack": "select0402/textures/textures.idastex",
+      "textures": 2,
+      "chunks": 2
+    }
+  ],
+  "total_textures": 3,
+  "total_chunks": 3
+}

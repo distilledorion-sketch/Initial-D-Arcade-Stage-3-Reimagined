@@ -1,0 +1,27 @@
+{
+  "schema": "idas3-original-loading-bank-v1",
+  "name": "loadwait",
+  "private_original_assets": true,
+  "source_directory": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\loading",
+  "layout": "twiddled",
+  "source_files": {
+    "polygon": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\loading\\loadwait_pol.bin.nz",
+      "bytes": 336,
+      "sha256": "6694dc07eda08bac6367d5a7ad7566914daaf2d22d374e3c87d2e506b39e962d"
+    },
+    "table": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\loading\\loadwait_pol.tbl",
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "texture_table": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\loading\\loadwait_tex.tbl",
+      "bytes": 16,
+      "sha256": "d14d904ab04e2a319c565dae817dff319a6f6f4a1a06d873e7e01b8e6dbe8034"
+    }
+  },
+  "decoded_polygon_sha256": "6694dc07eda08bac6367d5a7ad7566914daaf2d22d374e3c87d2e506b39e962d",
+  "chunk_count": 1,
+  "texture_count": 1
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "idas3-original-hud-index-v1",
+  "banks": [
+    {
+      "bank": "rain",
+      "chunks": 11,
+      "textures": 11,
+      "manifest": "rain/manifest.json"
+    },
+    {
+      "bank": "rainmark",
+      "chunks": 3,
+      "textures": 3,
+      "manifest": "rainmark/manifest.json"
+    }
+  ]
+}

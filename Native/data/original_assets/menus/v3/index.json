@@ -1,0 +1,178 @@
+{
+  "schema": "idas3-original-model-menu-index-v1",
+  "private_original_assets": true,
+  "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model",
+  "layout": "twiddled",
+  "banks": [
+    {
+      "name": "adv_newtitle",
+      "manifest": "adv_newtitle/manifest.json",
+      "mesh_pack": "adv_newtitle/adv_newtitle.idasmesh",
+      "texture_pack": "adv_newtitle/textures/textures.idastex",
+      "textures": 2,
+      "chunks": 2
+    },
+    {
+      "name": "adv_title",
+      "manifest": "adv_title/manifest.json",
+      "mesh_pack": "adv_title/adv_title.idasmesh",
+      "texture_pack": "adv_title/textures/textures.idastex",
+      "textures": 2,
+      "chunks": 2
+    },
+    {
+      "name": "v3sA00etc",
+      "manifest": "v3sA00etc/manifest.json",
+      "mesh_pack": "v3sA00etc/v3sA00etc.idasmesh",
+      "texture_pack": "v3sA00etc/textures/textures.idastex",
+      "textures": 9,
+      "chunks": 8
+    },
+    {
+      "name": "v3sS04maker",
+      "manifest": "v3sS04maker/manifest.json",
+      "mesh_pack": "v3sS04maker/v3sS04maker.idasmesh",
+      "texture_pack": "v3sS04maker/textures/textures.idastex",
+      "textures": 11,
+      "chunks": 18
+    },
+    {
+      "name": "v3sS05cars",
+      "manifest": "v3sS05cars/manifest.json",
+      "mesh_pack": "v3sS05cars/v3sS05cars.idasmesh",
+      "texture_pack": "v3sS05cars/textures/textures.idastex",
+      "textures": 13,
+      "chunks": 44
+    },
+    {
+      "name": "v3sS06mission",
+      "manifest": "v3sS06mission/manifest.json",
+      "mesh_pack": "v3sS06mission/v3sS06mission.idasmesh",
+      "texture_pack": "v3sS06mission/textures/textures.idastex",
+      "textures": 5,
+      "chunks": 6
+    },
+    {
+      "name": "v3sS07tune",
+      "manifest": "v3sS07tune/manifest.json",
+      "mesh_pack": "v3sS07tune/v3sS07tune.idasmesh",
+      "texture_pack": "v3sS07tune/textures/textures.idastex",
+      "textures": 28,
+      "chunks": 73
+    },
+    {
+      "name": "v3sS11mode",
+      "manifest": "v3sS11mode/manifest.json",
+      "mesh_pack": "v3sS11mode/v3sS11mode.idasmesh",
+      "texture_pack": "v3sS11mode/textures/textures.idastex",
+      "textures": 20,
+      "chunks": 19
+    },
+    {
+      "name": "v3sT01course",
+      "manifest": "v3sT01course/manifest.json",
+      "mesh_pack": "v3sT01course/v3sT01course.idasmesh",
+      "texture_pack": "v3sT01course/textures/textures.idastex",
+      "textures": 2,
+      "chunks": 1
+    },
+    {
+      "name": "v3sT02route",
+      "manifest": "v3sT02route/manifest.json",
+      "mesh_pack": "v3sT02route/v3sT02route.idasmesh",
+      "texture_pack": "v3sT02route/textures/textures.idastex",
+      "textures": 15,
+      "chunks": 32
+    },
+    {
+      "name": "v3sT03weather",
+      "manifest": "v3sT03weather/manifest.json",
+      "mesh_pack": "v3sT03weather/v3sT03weather.idasmesh",
+      "texture_pack": "v3sT03weather/textures/textures.idastex",
+      "textures": 5,
+      "chunks": 6
+    },
+    {
+      "name": "v3sT04time",
+      "manifest": "v3sT04time/manifest.json",
+      "mesh_pack": "v3sT04time/v3sT04time.idasmesh",
+      "texture_pack": "v3sT04time/textures/textures.idastex",
+      "textures": 5,
+      "chunks": 6
+    },
+    {
+      "name": "adv2d",
+      "manifest": "adv2d/manifest.json",
+      "mesh_pack": "adv2d/adv2d_v3.idasmesh",
+      "texture_pack": "adv2d/textures/textures.idastex",
+      "textures": 23,
+      "chunks": 46
+    },
+    {
+      "name": "v3sS00common",
+      "manifest": "v3sS00common/manifest.json",
+      "mesh_pack": "v3sS00common/v3sS00common.idasmesh",
+      "texture_pack": "v3sS00common/textures/textures.idastex",
+      "textures": 13,
+      "chunks": 55
+    },
+    {
+      "name": "v3sS00emblem",
+      "manifest": "v3sS00emblem/manifest.json",
+      "mesh_pack": "v3sS00emblem/v3sS00emblem.idasmesh",
+      "texture_pack": "v3sS00emblem/textures/textures.idastex",
+      "textures": 14,
+      "chunks": 14
+    },
+    {
+      "name": "v3sS00minicar",
+      "manifest": "v3sS00minicar/manifest.json",
+      "mesh_pack": "v3sS00minicar/v3sS00minicar.idasmesh",
+      "texture_pack": "v3sS00minicar/textures/textures.idastex",
+      "textures": 35,
+      "chunks": 43
+    },
+    {
+      "name": "v3sT00common",
+      "manifest": "v3sT00common/manifest.json",
+      "mesh_pack": "v3sT00common/v3sT00common.idasmesh",
+      "texture_pack": "v3sT00common/textures/textures.idastex",
+      "textures": 2,
+      "chunks": 35
+    },
+    {
+      "name": "v3sB01course",
+      "manifest": "v3sB01course/manifest.json",
+      "mesh_pack": "v3sB01course/v3sB01course.idasmesh",
+      "texture_pack": "v3sB01course/textures/textures.idastex",
+      "textures": 2,
+      "chunks": 3
+    },
+    {
+      "name": "v3sK00common",
+      "manifest": "v3sK00common/manifest.json",
+      "mesh_pack": "v3sK00common/v3sK00common.idasmesh",
+      "texture_pack": "v3sK00common/textures/textures.idastex",
+      "textures": 25,
+      "chunks": 84
+    },
+    {
+      "name": "v3sK01course",
+      "manifest": "v3sK01course/manifest.json",
+      "mesh_pack": "v3sK01course/v3sK01course.idasmesh",
+      "texture_pack": "v3sK01course/textures/textures.idastex",
+      "textures": 17,
+      "chunks": 28
+    },
+    {
+      "name": "v3sK02rival",
+      "manifest": "v3sK02rival/manifest.json",
+      "mesh_pack": "v3sK02rival/v3sK02rival.idasmesh",
+      "texture_pack": "v3sK02rival/textures/textures.idastex",
+      "textures": 21,
+      "chunks": 114
+    }
+  ],
+  "total_textures": 269,
+  "total_chunks": 639
+}

@@ -1,0 +1,366 @@
+{
+  "schema": "idas3-original-menus-v1",
+  "name": "test",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\test",
+  "source_rip_table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\test\\test_rip.tbl",
+  "source_rip_payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\test\\test_rip.bin",
+  "source_rip_table_sha256": "2c8e7ebb72f3f8da010b3a27bbb7c31547e612c12d3678e4964fb874d52c5f3d",
+  "source_rip_payload_sha256": "a55865f1262e105ed3e49e3f9d7109c7d74209f11597d58f9bd88a766da8df1a",
+  "texture_manifest": "textures/manifest.json",
+  "texture_pack": "textures/textures.idastex",
+  "texture_count": 4,
+  "sprite_count": 3,
+  "ui_pack": "sprites.idasui",
+  "ui_pack_sha256": "b76bc24fd84c07dd3988832fe3e6d83cf9928114623366db10bd5df50fb87371",
+  "layout": "twiddled",
+  "layout_evidence": "Explicit decoder argument; twiddled yields coherent original art in inspected banks. PVR submission-state identity is a separate gate.",
+  "rip_evidence": "16-byte records and cumulative 28-byte vertices consume exact payload; packed texture/tag descriptor independently matches every vertex.",
+  "coordinate_contract": "Authored xyzuv retained without translation, scaling or Y inversion. Screen projection, tag-controlled visibility and animation require original draw-state binding.",
+  "known_unresolved": [
+    "Meaning of tag_a/tag_b beyond exact packed representation",
+    "Original per-state sprite selection, animation and depth/blending",
+    "Complete original screen projection and surrounding background/model layers"
+  ],
+  "sprites": [
+    {
+      "index": 0,
+      "texture_index": 1,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000001",
+      "payload_offset": 0,
+      "payload_bytes": 112,
+      "payload_sha256": "817e4f5bb61d0b1b1e30118832cab2f65f728d90a46d88bd884df3ac1bcd7552",
+      "authored_bounds_xy": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        0.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.0,
+          "u": 0.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "00000000",
+            "00000000",
+            "80000000",
+            "00000000",
+            "00000000",
+            "ffffffff",
+            "00000001"
+          ]
+        },
+        {
+          "x": 1.0,
+          "y": 0.0,
+          "z": -0.0,
+          "u": 1.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "3f800000",
+            "00000000",
+            "80000000",
+            "3f800000",
+            "00000000",
+            "ffffffff",
+            "00000001"
+          ]
+        },
+        {
+          "x": 0.0,
+          "y": 1.0,
+          "z": -0.0,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "00000000",
+            "3f800000",
+            "80000000",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000001"
+          ]
+        },
+        {
+          "x": 1.0,
+          "y": 1.0,
+          "z": -0.0,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 1,
+          "raw_words_hex": [
+            "3f800000",
+            "3f800000",
+            "80000000",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "00000001"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_000_texture_001.png",
+      "crop_rgba_sha256": "a707fb515b9470bac5c973a830280cb5189b2979ffa65a73f0b497f0c1328778"
+    },
+    {
+      "index": 1,
+      "texture_index": 2,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000002",
+      "payload_offset": 112,
+      "payload_bytes": 112,
+      "payload_sha256": "2b6e7bd1a56306631211f3d9dd3aa208ecfabcc1d4b18fd88801293b2d419f2f",
+      "authored_bounds_xy": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        0.0,
+        256.0,
+        256.0
+      ],
+      "exact_texel_crop": [
+        0,
+        0,
+        256,
+        256
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.0,
+          "u": 0.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 2,
+          "raw_words_hex": [
+            "00000000",
+            "00000000",
+            "80000000",
+            "00000000",
+            "00000000",
+            "ffffffff",
+            "00000002"
+          ]
+        },
+        {
+          "x": 1.0,
+          "y": 0.0,
+          "z": -0.0,
+          "u": 1.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 2,
+          "raw_words_hex": [
+            "3f800000",
+            "00000000",
+            "80000000",
+            "3f800000",
+            "00000000",
+            "ffffffff",
+            "00000002"
+          ]
+        },
+        {
+          "x": 0.0,
+          "y": 1.0,
+          "z": -0.0,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 2,
+          "raw_words_hex": [
+            "00000000",
+            "3f800000",
+            "80000000",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000002"
+          ]
+        },
+        {
+          "x": 1.0,
+          "y": 1.0,
+          "z": -0.0,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 2,
+          "raw_words_hex": [
+            "3f800000",
+            "3f800000",
+            "80000000",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "00000002"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_001_texture_002.png",
+      "crop_rgba_sha256": "870ce54fddb4a4d663696bff118fc5584d9496bdd3c64e796a8f326ce287de3d"
+    },
+    {
+      "index": 2,
+      "texture_index": 3,
+      "vertex_count": 4,
+      "tag_a": 0,
+      "tag_b": 0,
+      "packed_descriptor_hex": "00000003",
+      "payload_offset": 224,
+      "payload_bytes": 112,
+      "payload_sha256": "f699d751a268603d81e977f6002ea94284f1532a32e0aa332881dbf2ef27934d",
+      "authored_bounds_xy": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "uv_bounds": [
+        0.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "source_texel_bounds_float": [
+        0.0,
+        0.0,
+        32.0,
+        32.0
+      ],
+      "exact_texel_crop": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "axis_aligned_position_and_uv_quad": true,
+      "vertices": [
+        {
+          "x": 0.0,
+          "y": 0.0,
+          "z": -0.0,
+          "u": 0.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 3,
+          "raw_words_hex": [
+            "00000000",
+            "00000000",
+            "80000000",
+            "00000000",
+            "00000000",
+            "ffffffff",
+            "00000003"
+          ]
+        },
+        {
+          "x": 1.0,
+          "y": 0.0,
+          "z": -0.0,
+          "u": 1.0,
+          "v": 0.0,
+          "argb": 4294967295,
+          "descriptor": 3,
+          "raw_words_hex": [
+            "3f800000",
+            "00000000",
+            "80000000",
+            "3f800000",
+            "00000000",
+            "ffffffff",
+            "00000003"
+          ]
+        },
+        {
+          "x": 0.0,
+          "y": 1.0,
+          "z": -0.0,
+          "u": 0.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 3,
+          "raw_words_hex": [
+            "00000000",
+            "3f800000",
+            "80000000",
+            "00000000",
+            "3f800000",
+            "ffffffff",
+            "00000003"
+          ]
+        },
+        {
+          "x": 1.0,
+          "y": 1.0,
+          "z": -0.0,
+          "u": 1.0,
+          "v": 1.0,
+          "argb": 4294967295,
+          "descriptor": 3,
+          "raw_words_hex": [
+            "3f800000",
+            "3f800000",
+            "80000000",
+            "3f800000",
+            "3f800000",
+            "ffffffff",
+            "00000003"
+          ]
+        }
+      ],
+      "identity": "Unassigned original sprite; filename/index retained",
+      "crop_file": "crops/sprite_002_texture_003.png",
+      "crop_rgba_sha256": "6b3dd14c84e95e83abdc372568fad636ab3019e3704f75884b28e16ea7913e10"
+    }
+  ]
+}

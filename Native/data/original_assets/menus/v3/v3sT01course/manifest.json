@@ -1,0 +1,318 @@
+{
+  "schema": "idas3-original-model-menu-v1",
+  "name": "v3sT01course",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT01course",
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT01course\\v3sT01course_pol.bin.nz",
+      "bytes": 480,
+      "sha256": "87d08b865c2fd7c7e5be86e3a4695e9588c6f0259c84e745b6f8aa16c253bd16"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT01course\\v3sT01course_pol.tbl",
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT01course\\v3sT01course_tex.tbl",
+      "bytes": 32,
+      "sha256": "cdb2f8e031548eaa758454830bf01327e2b81cd991540f029f9b2e02bce40cba"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\v3sT01course\\v3sT01course_tex.bin.nz",
+      "bytes": 98304,
+      "sha256": "552256f4d84eb631584ba0a31a3ebe6275cf4be093c80978737d760d74bc18ba"
+    }
+  },
+  "decoded_polygon_sha256": "87d08b865c2fd7c7e5be86e3a4695e9588c6f0259c84e745b6f8aa16c253bd16",
+  "mesh_pack": "v3sT01course.idasmesh",
+  "mesh_pack_sha256": "afc75f31ec98446077889527a29d5803f64c2e3e26565da5a63876e0a3335ce1",
+  "texture_pack": "textures/textures.idastex",
+  "texture_manifest": "textures/manifest.json",
+  "texture_count": 2,
+  "chunk_count": 1,
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 480,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "4023d70a",
+        "bee147ae",
+        "358637bd",
+        "40263e0d",
+        "000001e0",
+        "00000000",
+        "00000004",
+        "00000008",
+        "00000002",
+        "00000002",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000018",
+        "00000180",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.0,
+          5.119999885559082
+        ],
+        [
+          -0.8799999952316284,
+          0.0
+        ],
+        [
+          9.999999974752427e-07,
+          9.999999974752427e-07
+        ]
+      ],
+      "vertex_count": 8,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 160,
+          "ich_words_hex": [
+            "8a00072c",
+            "93000000",
+            "94002472",
+            "10000000",
+            "94002472",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 1,
+          "vertex_layout_hex": "00a",
+          "source_vertex_sha256": "484a8941300a1f1de16fa08f8ce27a454f5960ce99a60722a45a329041543fc7",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.119999885559082,
+                -0.5600000023841858,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.119999885559082,
+                -0.8799999952316284,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.0,
+                -0.5600000023841858,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.0,
+                -0.8799999952316284,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "source_offset": 352,
+          "ich_words_hex": [
+            "8a00073c",
+            "93000000",
+            "94002473",
+            "10000000",
+            "94002473",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 0,
+          "vertex_layout_hex": "00a",
+          "source_vertex_sha256": "db441cf65ed6ecb862ad82077158f1487a3e15bb3cd43239d2e9bce55b44fef3",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.119999885559082,
+                0.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.119999885559082,
+                -0.6399999856948853,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.0,
+                0.0,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.0,
+                -0.6399999856948853,
+                9.999999974752427e-07
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        0.0,
+        -0.0,
+        511.9999885559082,
+        87.99999952316284
+      ]
+    }
+  ],
+  "layout": "twiddled",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "projection_evidence": "A 6.4 by 4.8 authored title quad numerically fits 640 by 480 at x*100,y*-100. Diagnostic bounds use that fit only; original draw-matrix proof remains required.",
+  "known_unresolved": [
+    "Per-state chunk selection and animation/translation",
+    "Original view/projection matrices and depth state",
+    "Effective material override, sampling and blend state"
+  ]
+}

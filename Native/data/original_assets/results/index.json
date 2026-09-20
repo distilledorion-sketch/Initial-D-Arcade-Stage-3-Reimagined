@@ -1,0 +1,11 @@
+{
+  "schema": "idas3-original-hud-index-v1",
+  "banks": [
+    {
+      "bank": "result",
+      "chunks": 43,
+      "textures": 10,
+      "manifest": "result/manifest.json"
+    }
+  ]
+}

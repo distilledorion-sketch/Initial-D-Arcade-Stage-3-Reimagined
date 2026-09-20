@@ -1,0 +1,9 @@
+{
+  "name": "rival_mako",
+  "source_folder": "rival/r_mako",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "fed55a329b681734c0e83411f52f8ad2768875b4548c9ed8d93f574977aca99d",
+  "texture_sha256": "6a528e7b109331e569b1405116e09b33dbfafab2f4e3c20432e1aaa61217b89d",
+  "material_words_preserved": true
+}

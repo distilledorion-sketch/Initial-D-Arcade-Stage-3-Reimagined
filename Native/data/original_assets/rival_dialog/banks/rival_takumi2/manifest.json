@@ -1,0 +1,9 @@
+{
+  "name": "rival_takumi2",
+  "source_folder": "rival/r_takumi2",
+  "chunks": 13,
+  "textures": 13,
+  "polygon_sha256": "ecff04e498acef24af0d94cd74768bc56791d61fc6c00ae6f8f28b55c149ef96",
+  "texture_sha256": "64798056470cb30dd8e2692a6ec3dd5f1c8355b39d250234d860ce33d36f847a",
+  "material_words_preserved": true
+}

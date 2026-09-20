@@ -1,0 +1,448 @@
+{
+  "schema": "idas3-original-model-menu-v1",
+  "name": "adv_newtitle",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_newtitle",
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_newtitle\\adv_newtitle_pol.bin.nz",
+      "bytes": 672,
+      "sha256": "b1bef547c57b6039b4ade58b81d77fed1a077f3c0439c95ee068b0ba384e9bcb"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_newtitle\\adv_newtitle_pol.tbl",
+      "bytes": 8,
+      "sha256": "2b6d910bd88dc43d68e3283b89b4134e6423e67f9a459c8b85457254cb69aef4"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_newtitle\\adv_newtitle_tex.tbl",
+      "bytes": 32,
+      "sha256": "726fda272698a32f45ff68b887627bb1a732c2044f253968d574764311cc90ac"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\adv_newtitle\\adv_newtitle_tex.bin.nz",
+      "bytes": 557056,
+      "sha256": "2e2ba7a6edb13f708942a087e589c22e12fece15031d4cfa44512a0f0908e9c4"
+    }
+  },
+  "decoded_polygon_sha256": "b1bef547c57b6039b4ade58b81d77fed1a077f3c0439c95ee068b0ba384e9bcb",
+  "mesh_pack": "adv_newtitle.idasmesh",
+  "mesh_pack_sha256": "1e665a1c6214d4003411312aacaf46b8e7fd6e3c0ec9945be9c7f10a8cae3bd1",
+  "texture_pack": "textures/textures.idastex",
+  "texture_manifest": "textures/manifest.json",
+  "texture_count": 2,
+  "chunk_count": 2,
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "404ccccc",
+        "c0199999",
+        "00000000",
+        "40800000",
+        "00000120",
+        "00000000",
+        "00000002",
+        "00000004",
+        "00000001",
+        "00000001",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000020",
+        "000000c0",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.0,
+          6.399999618530273
+        ],
+        [
+          -4.799999713897705,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "vertex_count": 4,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 160,
+          "ich_words_hex": [
+            "8800072e",
+            "93800000",
+            "20082476",
+            "08000000",
+            "20082476",
+            "08000000",
+            "0000000a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 0,
+          "vertex_layout_hex": "00a",
+          "source_vertex_sha256": "63ceaa4322724d53ecbf5ce27e119f143d0d0bfc285d51cf285b911f5732b86e",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                6.399999618530273,
+                0.0,
+                0.0
+              ],
+              "uv": [
+                1.0,
+                -0.0625
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                6.399999618530273,
+                -4.799999713897705,
+                0.0
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.0,
+                0.0,
+                0.0
+              ],
+              "uv": [
+                0.0,
+                -0.0625
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.0,
+                -4.799999713897705,
+                0.0
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        0.0,
+        -0.0,
+        639.9999618530273,
+        479.9999713897705
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 384,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "40b11687",
+        "c08fdf3b",
+        "3a6bedfb",
+        "3f85f4d0",
+        "00000180",
+        "00000000",
+        "00000006",
+        "00000008",
+        "00000001",
+        "00000001",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000018",
+        "00000120",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          4.509999752044678,
+          6.557999610900879
+        ],
+        [
+          -4.711999893188477,
+          -4.279999732971191
+        ],
+        [
+          0.0009000000427477062,
+          0.0009000000427477062
+        ]
+      ],
+      "vertex_count": 8,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 448,
+          "ich_words_hex": [
+            "8a00072e",
+            "93800000",
+            "9400246b",
+            "10000000",
+            "9400246b",
+            "10000000",
+            "0000000a",
+            "00000008"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 1,
+          "vertex_layout_hex": "00a",
+          "source_vertex_sha256": "910cbc49cd3fc04636392127ce8927ec00611c8c3d013e3af1473e93aabb5350",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3,
+            2,
+            3,
+            4,
+            4,
+            3,
+            5,
+            4,
+            5,
+            6,
+            6,
+            5,
+            7
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                4.509999752044678,
+                -4.279999732971191,
+                0.0009000000427477062
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                6.557999610900879,
+                -4.279999732971191,
+                0.0009000000427477062
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                4.509999752044678,
+                -4.424000263214111,
+                0.0009000000427477062
+              ],
+              "uv": [
+                0.0,
+                -0.28125
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                6.557999610900879,
+                -4.423999786376953,
+                0.0009000000427477062
+              ],
+              "uv": [
+                1.0,
+                -0.28125
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                4.509999752044678,
+                -4.568000316619873,
+                0.0009000000427477062
+              ],
+              "uv": [
+                0.0,
+                -0.5625
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                6.557999610900879,
+                -4.567999839782715,
+                0.0009000000427477062
+              ],
+              "uv": [
+                1.0,
+                -0.5625
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "207f0000",
+              "xyz": [
+                4.509999752044678,
+                -4.711999893188477,
+                0.0009000000427477062
+              ],
+              "uv": [
+                0.0,
+                -0.84375
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                6.557999610900879,
+                -4.711999893188477,
+                0.0009000000427477062
+              ],
+              "uv": [
+                1.0,
+                -0.84375
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        450.9999752044678,
+        427.99997329711914,
+        655.7999610900879,
+        471.19998931884766
+      ]
+    }
+  ],
+  "layout": "twiddled",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "projection_evidence": "A 6.4 by 4.8 authored title quad numerically fits 640 by 480 at x*100,y*-100. Diagnostic bounds use that fit only; original draw-matrix proof remains required.",
+  "known_unresolved": [
+    "Per-state chunk selection and animation/translation",
+    "Original view/projection matrices and depth state",
+    "Effective material override, sampling and blend state"
+  ]
+}

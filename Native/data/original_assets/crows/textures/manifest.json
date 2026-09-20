@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\crow\\crow_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\crow\\crow_tex.bin.nz",
+  "table_sha256": "5a816a433b64bdbe53eb68cb3f811bc92a2da3e7d8e7c78bd8bd3e3c372e16e6",
+  "payload_sha256": "c6f293e74842a618a4f0bf098a35a0925c6189244cb69cd41fe5ca3617bde7dc",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 64,
+      "height": 32,
+      "format": 1,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "c6f293e74842a618a4f0bf098a35a0925c6189244cb69cd41fe5ca3617bde7dc",
+      "rgba_sha256": "fa291748e101e1c33cd83d882e8b540cec8355e86a5e4afd65147a7b8940a4d7",
+      "file": "texture_000.png"
+    }
+  ]
+}

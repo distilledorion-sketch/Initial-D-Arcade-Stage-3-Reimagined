@@ -1,0 +1,54 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\conquer\\conquer02_tex.tbl",
+  "payload": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\conquer\\conquer02_tex.bin.nz",
+  "table_sha256": "342259bf4129cc40ea695e7cfc8ab02591c4e1481935d0157e7f1ff6d4d3a747",
+  "payload_sha256": "d0267a6e1d86655c52c6a2f511a58d230f0587a4b93756d468dd41562959abb5",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 512,
+      "height": 512,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "c1e78d072d94920edd03d2cd1b663f5cc2648c371688c2fc40e24f95decc41aa",
+      "rgba_sha256": "0cd27d657105e26608dda5b192a10fbafbd9491e82e25eaf0b3d8fe422d61c8e",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 128,
+      "height": 128,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 524288,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "90fc6869e46248775a85f745e73b08c18e93690e34545c2b0eec26ac2547a53f",
+      "rgba_sha256": "5d0d49705af6f5ee947966f84f7d86e76930af94dd8105fda1654b2f66402f12",
+      "file": "texture_001.png"
+    },
+    {
+      "index": 2,
+      "width": 128,
+      "height": 128,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 557056,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "18ea87b7f549aa467aef85f98e49cefd70b6a5ec95da252a60965ef84a20ae0c",
+      "rgba_sha256": "d7210b450af53c9da697aa54f679e66358d97895b808c3a6ba85b3eaf624be98",
+      "file": "texture_002.png"
+    }
+  ]
+}

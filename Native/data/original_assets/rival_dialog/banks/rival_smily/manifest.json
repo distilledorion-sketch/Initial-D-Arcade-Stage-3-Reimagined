@@ -1,0 +1,9 @@
+{
+  "name": "rival_smily",
+  "source_folder": "rival/r_smily",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "f4b74869aafa6ea02dab3f72538a3121084d975c371ba00ef7a80bb575007951",
+  "texture_sha256": "c12052a16b319c1bb11d12d37a925be8d3334ce634bc09e1c8ce6d8a27697c45",
+  "material_words_preserved": true
+}

@@ -1,0 +1,92 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "game2d_intr",
+  "mesh": "game2d_intr.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          0.0,
+          0.950911819934845
+        ],
+        [
+          -0.23772798478603363,
+          0.0
+        ],
+        [
+          0.0004999929806217551,
+          0.0005000070086680353
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "94002462",
+            "10000000",
+            "94002462",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "cc67a5fd444f0bae7dc3d5d3da624b7f168f744222022c7752740a96e3f2b215"
+        }
+      ]
+    }
+  ],
+  "texture_count": 1,
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\game2d\\game2d_intr_pol.bin.nz",
+      "bytes": 288,
+      "sha256": "7ece160d3ea8de36b41ee8ee6983b053aca7131b74c96c9fb8b7e5dafa007eda"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\game2d\\game2d_intr_pol.tbl",
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\game2d\\game2d_intr_tex.tbl",
+      "bytes": 16,
+      "sha256": "c7400534e134f2b330623a4a618c91f7f1f03f491327885939c7b87930b307fa"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\game2d\\game2d_intr_tex.bin.nz",
+      "bytes": 8192,
+      "sha256": "fc5eb830c3c262b039f76fa34b1b5746bde6cdf9880621580c4a8356ef4dc581"
+    }
+  },
+  "decoded_polygon_sha256": "7ece160d3ea8de36b41ee8ee6983b053aca7131b74c96c9fb8b7e5dafa007eda",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

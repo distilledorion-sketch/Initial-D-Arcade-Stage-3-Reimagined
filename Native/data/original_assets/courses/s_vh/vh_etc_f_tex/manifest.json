@@ -1,0 +1,40 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_vh\\vh_etc_f_tex.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_vh\\vh_etc_f_tex.bin.nz",
+  "table_sha256": "f4b39e091d5bd8d9429b018564988ef17d7d17d743b912a2f270d5e1fcde61cc",
+  "payload_sha256": "9a705c1e73ac83ee43b364c94d10d8da64cdbf7a40bcc5a7aa431024f38457b9",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 128,
+      "height": 128,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "9da75b9f07fb338824e1093f6a4d1e52c1dac4cdb5229cfb07ba13b0e1ac18c3",
+      "rgba_sha256": "e02ad2fa18e04af825e287f92c93ee77d872174aeb3b8891d89e0f1909a0ab23",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 16,
+      "height": 16,
+      "format": 1,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 32768,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "7aabf1e8388eeb26ec23d0c1d2296bbfd99c8759f71c5287d0fdf833ad80cadf",
+      "rgba_sha256": "ff7899bab9bece1764f530be6a2f38db58426a696cac2d0f9974a59802b869fb",
+      "file": "texture_001.png"
+    }
+  ]
+}

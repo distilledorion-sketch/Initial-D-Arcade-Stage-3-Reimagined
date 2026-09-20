@@ -1,0 +1,15 @@
+{
+  "textures": [
+    {
+      "index": 0,
+      "width": 512,
+      "height": 512,
+      "rgba_sha256": "aac13d5d96d4cb97d6c3d380188d4fb313b79199c4fc3137bacbbf778ca4bbad"
+    }
+  ],
+  "palette_id": 10,
+  "palette_address": "0xc29a9a8",
+  "palette_sha256": "71ab1faba861d640a8d5b80611e45a114ec75af6776729effc3ee8c7d6e38294",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "evidence": "16CEB8..16CEC6 selects28B8F8[Load BG Number];191A40 uploads original ARGB8888 palette."
+}

@@ -1,0 +1,9 @@
+{
+  "name": "rival_f04",
+  "source_folder": "rival/rf04",
+  "chunks": 1,
+  "textures": 1,
+  "polygon_sha256": "0e67fb68993d036ac0a29ae240e28c11abb63789063b346c1580f391e6568190",
+  "texture_sha256": "b5c294a16eac259be5eab95a43e0c325e495e02819e5730a3393e51be5c71698",
+  "material_words_preserved": true
+}

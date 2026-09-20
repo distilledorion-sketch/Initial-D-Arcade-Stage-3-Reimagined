@@ -1,0 +1,178 @@
+{
+  "schema": "idas3-original-menu-index-v1",
+  "private_original_assets": true,
+  "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite",
+  "layout": "twiddled",
+  "banks": [
+    {
+      "name": "actselect",
+      "manifest": "actselect/manifest.json",
+      "ui_pack": "actselect/sprites.idasui",
+      "texture_pack": "actselect/textures/textures.idastex",
+      "textures": 1,
+      "sprites": 1
+    },
+    {
+      "name": "continue",
+      "manifest": "continue/manifest.json",
+      "ui_pack": "continue/sprites.idasui",
+      "texture_pack": "continue/textures/textures.idastex",
+      "textures": 6,
+      "sprites": 6
+    },
+    {
+      "name": "continue_coin",
+      "manifest": "continue_coin/manifest.json",
+      "ui_pack": "continue_coin/sprites.idasui",
+      "texture_pack": "continue_coin/textures/textures.idastex",
+      "textures": 4,
+      "sprites": 4
+    },
+    {
+      "name": "credit",
+      "manifest": "credit/manifest.json",
+      "ui_pack": "credit/sprites.idasui",
+      "texture_pack": "credit/textures/textures.idastex",
+      "textures": 22,
+      "sprites": 25
+    },
+    {
+      "name": "ejectcard",
+      "manifest": "ejectcard/manifest.json",
+      "ui_pack": "ejectcard/sprites.idasui",
+      "texture_pack": "ejectcard/textures/textures.idastex",
+      "textures": 2,
+      "sprites": 2
+    },
+    {
+      "name": "finish",
+      "manifest": "finish/manifest.json",
+      "ui_pack": "finish/sprites.idasui",
+      "texture_pack": "finish/textures/textures.idastex",
+      "textures": 4,
+      "sprites": 4
+    },
+    {
+      "name": "game2d",
+      "manifest": "game2d/manifest.json",
+      "ui_pack": "game2d/sprites.idasui",
+      "texture_pack": "game2d/textures/textures.idastex",
+      "textures": 41,
+      "sprites": 15
+    },
+    {
+      "name": "password",
+      "manifest": "password/manifest.json",
+      "ui_pack": "password/sprites.idasui",
+      "texture_pack": "password/textures/textures.idastex",
+      "textures": 4,
+      "sprites": 4
+    },
+    {
+      "name": "select",
+      "manifest": "select/manifest.json",
+      "ui_pack": "select/sprites.idasui",
+      "texture_pack": "select/textures/textures.idastex",
+      "textures": 10,
+      "sprites": 45
+    },
+    {
+      "name": "select01",
+      "manifest": "select01/manifest.json",
+      "ui_pack": "select01/sprites.idasui",
+      "texture_pack": "select01/textures/textures.idastex",
+      "textures": 9,
+      "sprites": 37
+    },
+    {
+      "name": "select02",
+      "manifest": "select02/manifest.json",
+      "ui_pack": "select02/sprites.idasui",
+      "texture_pack": "select02/textures/textures.idastex",
+      "textures": 2,
+      "sprites": 2
+    },
+    {
+      "name": "select03",
+      "manifest": "select03/manifest.json",
+      "ui_pack": "select03/sprites.idasui",
+      "texture_pack": "select03/textures/textures.idastex",
+      "textures": 10,
+      "sprites": 10
+    },
+    {
+      "name": "select04",
+      "manifest": "select04/manifest.json",
+      "ui_pack": "select04/sprites.idasui",
+      "texture_pack": "select04/textures/textures.idastex",
+      "textures": 4,
+      "sprites": 4
+    },
+    {
+      "name": "select0402",
+      "manifest": "select0402/manifest.json",
+      "ui_pack": "select0402/sprites.idasui",
+      "texture_pack": "select0402/textures/textures.idastex",
+      "textures": 2,
+      "sprites": 2
+    },
+    {
+      "name": "select05",
+      "manifest": "select05/manifest.json",
+      "ui_pack": "select05/sprites.idasui",
+      "texture_pack": "select05/textures/textures.idastex",
+      "textures": 13,
+      "sprites": 10
+    },
+    {
+      "name": "select06",
+      "manifest": "select06/manifest.json",
+      "ui_pack": "select06/sprites.idasui",
+      "texture_pack": "select06/textures/textures.idastex",
+      "textures": 3,
+      "sprites": 3
+    },
+    {
+      "name": "select07",
+      "manifest": "select07/manifest.json",
+      "ui_pack": "select07/sprites.idasui",
+      "texture_pack": "select07/textures/textures.idastex",
+      "textures": 1,
+      "sprites": 1
+    },
+    {
+      "name": "selta",
+      "manifest": "selta/manifest.json",
+      "ui_pack": "selta/sprites.idasui",
+      "texture_pack": "selta/textures/textures.idastex",
+      "textures": 14,
+      "sprites": 14
+    },
+    {
+      "name": "selvs",
+      "manifest": "selvs/manifest.json",
+      "ui_pack": "selvs/sprites.idasui",
+      "texture_pack": "selvs/textures/textures.idastex",
+      "textures": 13,
+      "sprites": 18
+    },
+    {
+      "name": "selvswait",
+      "manifest": "selvswait/manifest.json",
+      "ui_pack": "selvswait/sprites.idasui",
+      "texture_pack": "selvswait/textures/textures.idastex",
+      "textures": 1,
+      "sprites": 1
+    },
+    {
+      "name": "test",
+      "manifest": "test/manifest.json",
+      "ui_pack": "test/sprites.idasui",
+      "texture_pack": "test/textures/textures.idastex",
+      "textures": 4,
+      "sprites": 3
+    }
+  ],
+  "total_textures": 170,
+  "total_sprites": 211
+}

@@ -1,0 +1,34 @@
+{
+  "schema": "idas3-original-ranking-attract-v1",
+  "image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "registered_child": 12,
+  "constructor": "0C02E8A0",
+  "init": "0C02EA60",
+  "main": "0C02F1C0",
+  "scene_draw": "0C02F8E0",
+  "background_draw": "0C02FA60",
+  "strings": {
+    "0C23BBBC": "[ADV RANKING INIT: sys(%x) app(%x)]\n",
+    "0C23BBE4": "/driveA/model/s_ground/s_ground_pol",
+    "0C23BC08": "/driveA/model/s_ground/s_ground_tex",
+    "0C2AAF88": "/driveA/model/v3sT13rankin/v3sT13rankin_pol",
+    "0C2AAFB4": "/driveA/model/v3sT13rankin/v3sT13rankin_tex",
+    "0C2AAFE0": "/driveA/model/v3sT00common/v3sT00common_pol",
+    "0C2AB00C": "/driveA/model/v3sT00common/v3sT00common_tex"
+  },
+  "banks": {
+    "s_ground": {
+      "chunks": 5,
+      "textures": 1
+    },
+    "v3sT13rankin": {
+      "chunks": 51,
+      "textures": 19
+    },
+    "v3sT00common": {
+      "chunks": 35,
+      "textures": 2
+    }
+  },
+  "remaining_boundary": "Total leaderboard/native fresh records are implemented. Detail views1BDC00/1BE200, early car loading/slide phases, enclosing scene projection and reflection material override still gate complete owner integration."
+}

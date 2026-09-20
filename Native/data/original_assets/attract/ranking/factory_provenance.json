@@ -1,0 +1,14 @@
+{
+  "schema": "idas3-original-ranking-factory-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "start": "0C031860",
+  "stop": "0C031D96",
+  "original_instructions": 80343325,
+  "original_initial_rng_seed": 1,
+  "bytes": 53288,
+  "output_sha256": "728c46f271d205163e00886802fda712e4fa7a0276b3af3a205f1fef2dcbe23f",
+  "hooks": [
+    "226B40 libc byte comparison only"
+  ],
+  "meaning": "Fresh original cabinet defaults, before checksum/device writes. No saved user ranking records imported."
+}

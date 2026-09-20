@@ -1,0 +1,190 @@
+{
+  "schema": "idas3-original-aura-v1",
+  "sourceImage": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\idas3_main_0C020000.bin",
+  "sourceImageSha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "sourceFiles": {
+    "aura_pol.bin.nz": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\aura\\aura_pol.bin.nz",
+      "bytes": 111360,
+      "sha256": "eb5653964d87695d4599d6f0c34f3ae1683a68cfeff72e1d297ff5263bf6ac01"
+    },
+    "aura_pol.tbl": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\aura\\aura_pol.tbl",
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "aura_tex.bin.nz": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\aura\\aura_tex.bin.nz",
+      "bytes": 512,
+      "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560"
+    },
+    "aura_tex.tbl": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\aura\\aura_tex.tbl",
+      "bytes": 16,
+      "sha256": "52e5c9344ceb5770746c265c2aa51600c38d0c799a59176519110cf58e96bf7b"
+    },
+    "blue_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\blue_vtx.bin",
+      "bytes": 214560,
+      "sha256": "98b4eafe7075d4524e43ff4de46572d32922b8f9f2dbb6292f2c7b6b4564700b"
+    },
+    "green_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\green_vtx.bin",
+      "bytes": 214560,
+      "sha256": "89e1bafdcd11724898a4f930e61dda772731775f60a8f27d8c8e81c2456b48d5"
+    },
+    "crimson_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\crimson_vtx.bin",
+      "bytes": 214560,
+      "sha256": "a15aa0f4bded78471ec1857238481a982b4bb224dfa6e92a8bda7140e7402c2e"
+    },
+    "orange_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\orange_vtx.bin",
+      "bytes": 214560,
+      "sha256": "47d810beb7c0c56e81b520ab0388c3041cd3cdf7894f157deb8e2d2f25fc5f95"
+    },
+    "red_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\red_vtx.bin",
+      "bytes": 214560,
+      "sha256": "02ec9e8f2f714f14a240cfa2ea8ae9d5f99a81f70ba877671786785e2dc9e7ba"
+    },
+    "yellow_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\yellow_vtx.bin",
+      "bytes": 214560,
+      "sha256": "6443ad66b2140fe5130be2df804646585e8fd72937f99ff0c95b24f304aac1d7"
+    },
+    "purple_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\purple_vtx.bin",
+      "bytes": 214560,
+      "sha256": "119d3c753bdb336278b10aaaabffd3d06245536326a891bc063862c7af504bc5"
+    },
+    "cyan_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\cyan_vtx.bin",
+      "bytes": 214560,
+      "sha256": "181a1b2feab288ee41f31c34d9e6357d77447e520cc77f4ba20e7d4b195e676c"
+    },
+    "white_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\white_vtx.bin",
+      "bytes": 214560,
+      "sha256": "924cba74c2d5743e873edf66c2e87cd235f2e388eebe09475f4b90e83e582687"
+    },
+    "spa_vtx.bin": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\vtxcolor\\spa_vtx.bin",
+      "bytes": 214560,
+      "sha256": "b507ef349fb8a699a402d2c282ce9233670be6d9a52a3bd8d5c0302a1634e688"
+    }
+  },
+  "vertices": 3474,
+  "triangles": 3378,
+  "colorFrames": 30,
+  "colorsPerFrame": 1788,
+  "colorByteOrder": "big-endian ARGB",
+  "paletteOrder": [
+    "blue",
+    "green",
+    "crimson",
+    "orange",
+    "red",
+    "yellow",
+    "purple",
+    "cyan",
+    "white",
+    "spa"
+  ],
+  "imageTables": {
+    "vertex_color_indices.bin": {
+      "address": "0C320040",
+      "bytes": 13896
+    },
+    "car_dimensions.bin": {
+      "address": "0C28D890",
+      "rows": 35,
+      "rowBytes": 44
+    }
+  },
+  "runtimeMaterial": {
+    "pcw": "8a00072f",
+    "isp": "91c00000",
+    "tsp": "849804c0",
+    "gmp": "000006aa"
+  },
+  "sourceOwners": [
+    "0C17B0A0",
+    "0C17B7E0",
+    "0C17B900"
+  ],
+  "files": {
+    "aura.idasmesh": {
+      "bytes": 304800,
+      "sha256": "f1d389f33b0ef3780f132099993011cbbaf9adc558195fc84489589ed84e7b28"
+    },
+    "car_dimensions.bin": {
+      "bytes": 1540,
+      "sha256": "9f5d55c187b7dbfc1001a7eb80f4d6c056c04ee2f17e3a11fb8993c0a1ed918a"
+    },
+    "colors/blue_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "98b4eafe7075d4524e43ff4de46572d32922b8f9f2dbb6292f2c7b6b4564700b"
+    },
+    "colors/crimson_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "a15aa0f4bded78471ec1857238481a982b4bb224dfa6e92a8bda7140e7402c2e"
+    },
+    "colors/cyan_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "181a1b2feab288ee41f31c34d9e6357d77447e520cc77f4ba20e7d4b195e676c"
+    },
+    "colors/green_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "89e1bafdcd11724898a4f930e61dda772731775f60a8f27d8c8e81c2456b48d5"
+    },
+    "colors/orange_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "47d810beb7c0c56e81b520ab0388c3041cd3cdf7894f157deb8e2d2f25fc5f95"
+    },
+    "colors/purple_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "119d3c753bdb336278b10aaaabffd3d06245536326a891bc063862c7af504bc5"
+    },
+    "colors/red_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "02ec9e8f2f714f14a240cfa2ea8ae9d5f99a81f70ba877671786785e2dc9e7ba"
+    },
+    "colors/spa_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "b507ef349fb8a699a402d2c282ce9233670be6d9a52a3bd8d5c0302a1634e688"
+    },
+    "colors/white_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "924cba74c2d5743e873edf66c2e87cd235f2e388eebe09475f4b90e83e582687"
+    },
+    "colors/yellow_vtx.bin": {
+      "bytes": 214560,
+      "sha256": "6443ad66b2140fe5130be2df804646585e8fd72937f99ff0c95b24f304aac1d7"
+    },
+    "source/aura_pol.bin.nz": {
+      "bytes": 111360,
+      "sha256": "eb5653964d87695d4599d6f0c34f3ae1683a68cfeff72e1d297ff5263bf6ac01"
+    },
+    "source/aura_pol.tbl": {
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "source/aura_tex.bin.nz": {
+      "bytes": 512,
+      "sha256": "076a27c79e5ace2a3d47f9dd2e83e4ff6ea8872b3c2218f66c92b89b55f36560"
+    },
+    "source/aura_tex.tbl": {
+      "bytes": 16,
+      "sha256": "52e5c9344ceb5770746c265c2aa51600c38d0c799a59176519110cf58e96bf7b"
+    },
+    "textures.idastex": {
+      "bytes": 1056,
+      "sha256": "291a56f86888d8a2b07f6e187a02e17bb879c92b501b284c847a2c6089a0d266"
+    },
+    "vertex_color_indices.bin": {
+      "bytes": 13896,
+      "sha256": "a0935168dc764f9b8fcbd8f82a48f4b2819e67ec57df842e3e48a830c46f92f8"
+    }
+  }
+}

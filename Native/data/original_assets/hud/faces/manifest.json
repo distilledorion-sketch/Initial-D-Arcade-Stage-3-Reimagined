@@ -1,0 +1,822 @@
+{
+  "schema": "idas3-original-battle-portraits-v1",
+  "canonical_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "selector": "0C0C9F20 reads2FBB24[enemy]; profile2 forces2FBB9C=face_bunt",
+  "private_original_assets": true,
+  "enemy_to_bank": [
+    "face_ituk",
+    "face_kenj",
+    "face_sing",
+    "face_toru",
+    "face_atuo",
+    "face_mako",
+    "face_toky",
+    "face_kent",
+    "face_kei1",
+    "face_iktn",
+    "face_naka",
+    "face_sudo",
+    "face_ryo1",
+    "face_tak1",
+    "face_seij",
+    "face_sudo",
+    "face_kai",
+    "face_miki",
+    "face_daik",
+    "face_skai",
+    "face_tomo",
+    "face_nobu",
+    "face_skmt",
+    "face_wata",
+    "face_kyko",
+    "face_ryo2",
+    "face_evo5",
+    "face_evo6",
+    "face_kei2",
+    "face_tak2",
+    "face_bunt"
+  ],
+  "banks": [
+    {
+      "bank": "face_ituk",
+      "enemy_ids": [
+        0
+      ],
+      "mesh": "face_ituk\\face_ituk.idasmesh",
+      "texture_pack": "face_ituk\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ituk_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ituk_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ituk_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_kenj",
+      "enemy_ids": [
+        1
+      ],
+      "mesh": "face_kenj\\face_kenj.idasmesh",
+      "texture_pack": "face_kenj\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kenj_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kenj_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kenj_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_sing",
+      "enemy_ids": [
+        2
+      ],
+      "mesh": "face_sing\\face_sing.idasmesh",
+      "texture_pack": "face_sing\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_sing_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_sing_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_sing_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_toru",
+      "enemy_ids": [
+        3
+      ],
+      "mesh": "face_toru\\face_toru.idasmesh",
+      "texture_pack": "face_toru\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_toru_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_toru_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_toru_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_atuo",
+      "enemy_ids": [
+        4
+      ],
+      "mesh": "face_atuo\\face_atuo.idasmesh",
+      "texture_pack": "face_atuo\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_atuo_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_atuo_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_atuo_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_mako",
+      "enemy_ids": [
+        5
+      ],
+      "mesh": "face_mako\\face_mako.idasmesh",
+      "texture_pack": "face_mako\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_mako_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_mako_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_mako_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_toky",
+      "enemy_ids": [
+        6
+      ],
+      "mesh": "face_toky\\face_toky.idasmesh",
+      "texture_pack": "face_toky\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_toky_pol.bin",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_toky_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_toky_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_kent",
+      "enemy_ids": [
+        7
+      ],
+      "mesh": "face_kent\\face_kent.idasmesh",
+      "texture_pack": "face_kent\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kent_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kent_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kent_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_kei1",
+      "enemy_ids": [
+        8
+      ],
+      "mesh": "face_kei1\\face_kei1.idasmesh",
+      "texture_pack": "face_kei1\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kei1_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kei1_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kei1_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_iktn",
+      "enemy_ids": [
+        9
+      ],
+      "mesh": "face_iktn\\face_iktn.idasmesh",
+      "texture_pack": "face_iktn\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_iktn_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_iktn_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_iktn_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_naka",
+      "enemy_ids": [
+        10
+      ],
+      "mesh": "face_naka\\face_naka.idasmesh",
+      "texture_pack": "face_naka\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_naka_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_naka_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_naka_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_sudo",
+      "enemy_ids": [
+        11,
+        15
+      ],
+      "mesh": "face_sudo\\face_sudo.idasmesh",
+      "texture_pack": "face_sudo\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_sudo_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_sudo_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_sudo_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_ryo1",
+      "enemy_ids": [
+        12
+      ],
+      "mesh": "face_ryo1\\face_ryo1.idasmesh",
+      "texture_pack": "face_ryo1\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ryo1_pol.bin",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ryo1_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ryo1_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_tak1",
+      "enemy_ids": [
+        13
+      ],
+      "mesh": "face_tak1\\face_tak1.idasmesh",
+      "texture_pack": "face_tak1\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tak1_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tak1_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tak1_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_seij",
+      "enemy_ids": [
+        14
+      ],
+      "mesh": "face_seij\\face_seij.idasmesh",
+      "texture_pack": "face_seij\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_seij_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_seij_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_seij_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_kai",
+      "enemy_ids": [
+        16
+      ],
+      "mesh": "face_kai\\face_kai.idasmesh",
+      "texture_pack": "face_kai\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kai_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kai_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kai_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_miki",
+      "enemy_ids": [
+        17
+      ],
+      "mesh": "face_miki\\face_miki.idasmesh",
+      "texture_pack": "face_miki\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_miki_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_miki_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_miki_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_daik",
+      "enemy_ids": [
+        18
+      ],
+      "mesh": "face_daik\\face_daik.idasmesh",
+      "texture_pack": "face_daik\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_daik_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_daik_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_daik_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_skai",
+      "enemy_ids": [
+        19
+      ],
+      "mesh": "face_skai\\face_skai.idasmesh",
+      "texture_pack": "face_skai\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_skai_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_skai_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_skai_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_tomo",
+      "enemy_ids": [
+        20
+      ],
+      "mesh": "face_tomo\\face_tomo.idasmesh",
+      "texture_pack": "face_tomo\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tomo_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tomo_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tomo_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_nobu",
+      "enemy_ids": [
+        21
+      ],
+      "mesh": "face_nobu\\face_nobu.idasmesh",
+      "texture_pack": "face_nobu\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_nobu_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_nobu_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_nobu_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_skmt",
+      "enemy_ids": [
+        22
+      ],
+      "mesh": "face_skmt\\face_skmt.idasmesh",
+      "texture_pack": "face_skmt\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_skmt_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_skmt_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_skmt_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_wata",
+      "enemy_ids": [
+        23
+      ],
+      "mesh": "face_wata\\face_wata.idasmesh",
+      "texture_pack": "face_wata\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_wata_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_wata_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_wata_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_kyko",
+      "enemy_ids": [
+        24
+      ],
+      "mesh": "face_kyko\\face_kyko.idasmesh",
+      "texture_pack": "face_kyko\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kyko_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kyko_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kyko_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_ryo2",
+      "enemy_ids": [
+        25
+      ],
+      "mesh": "face_ryo2\\face_ryo2.idasmesh",
+      "texture_pack": "face_ryo2\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ryo2_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ryo2_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_ryo2_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_evo5",
+      "enemy_ids": [
+        26
+      ],
+      "mesh": "face_evo5\\face_evo5.idasmesh",
+      "texture_pack": "face_evo5\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_evo5_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_evo5_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_evo5_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_evo6",
+      "enemy_ids": [
+        27
+      ],
+      "mesh": "face_evo6\\face_evo6.idasmesh",
+      "texture_pack": "face_evo6\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_evo6_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_evo6_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_evo6_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_kei2",
+      "enemy_ids": [
+        28
+      ],
+      "mesh": "face_kei2\\face_kei2.idasmesh",
+      "texture_pack": "face_kei2\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kei2_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kei2_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_kei2_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_tak2",
+      "enemy_ids": [
+        29
+      ],
+      "mesh": "face_tak2\\face_tak2.idasmesh",
+      "texture_pack": "face_tak2\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tak2_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tak2_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_tak2_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    },
+    {
+      "bank": "face_bunt",
+      "enemy_ids": [
+        30
+      ],
+      "mesh": "face_bunt\\face_bunt.idasmesh",
+      "texture_pack": "face_bunt\\textures\\textures.idastex",
+      "source_polygon_sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30",
+      "source_files": {
+        "polygon": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_bunt_pol.bin.nz",
+          "sha256": "4cbd315b4617228869438978aba27ad81f5bf79f0f8756d2f7f613c0a5152e30"
+        },
+        "table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_bunt_pol.tbl",
+          "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+        },
+        "texture_table": {
+          "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\face\\face_bunt_tex.tbl",
+          "sha256": "f432d109ef9a6c821e03b704331353de9f389df16106eccf3e8c6f6a8f362023"
+        }
+      },
+      "chunk_count": 1,
+      "coordinate_transform": "none",
+      "uv_transform": "none"
+    }
+  ]
+}

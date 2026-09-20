@@ -1,0 +1,9 @@
+{
+  "name": "rival_iketani",
+  "source_folder": "rival/r_iketani",
+  "chunks": 10,
+  "textures": 10,
+  "polygon_sha256": "556777c75086efd0f5b20f458794400e94ed0d393efcb8af471d0a3195dc1361",
+  "texture_sha256": "ab2ef8792e1c86bd45051866ccae80854a6f9b72f4e615e3a06944dee663558b",
+  "material_words_preserved": true
+}

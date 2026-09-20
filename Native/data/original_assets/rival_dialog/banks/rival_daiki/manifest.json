@@ -1,0 +1,9 @@
+{
+  "name": "rival_daiki",
+  "source_folder": "rival/r_daiki",
+  "chunks": 10,
+  "textures": 10,
+  "polygon_sha256": "7eeda05105dfd5ffce92d28b42a0ff3c6237a3b4fd3582116e3c6a7f0865b900",
+  "texture_sha256": "f2e15e888885d3ca87fc6ed72cf932d2914279bf252efc78fdd2129922d505bd",
+  "material_words_preserved": true
+}

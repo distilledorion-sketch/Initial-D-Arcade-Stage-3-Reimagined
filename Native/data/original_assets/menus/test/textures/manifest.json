@@ -1,0 +1,68 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\test\\test_spr.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\test\\test_spr.bin.nz",
+  "table_sha256": "91593a8abc1e2a808f0ae5482070e501f7186cff5ba5a13abe9910d52b7b8237",
+  "payload_sha256": "fcc2e626e9ce0841676f2326250cdea0b2c8cbededdfbde579b6ce1c703bd1b4",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 256,
+      "height": 256,
+      "format": 0,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "b3c1cc394abcd91ad9d071012809369f214b5e56b024741467ade61b5f407921",
+      "rgba_sha256": "11cc58baf80a0fb497fb7a6e67f871efa3a9f682a836a41ecad301b8c73280b6",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 32,
+      "height": 32,
+      "format": 0,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 131072,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "513ba9b9f0b822485cb5a8aae46e0b30101b3b5629d092d6bf375213330a0801",
+      "rgba_sha256": "a707fb515b9470bac5c973a830280cb5189b2979ffa65a73f0b497f0c1328778",
+      "file": "texture_001.png"
+    },
+    {
+      "index": 2,
+      "width": 256,
+      "height": 256,
+      "format": 0,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 133120,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "71a93e962371707d848bd8af727136459b059aa23febcb3429efcfa8f516ec15",
+      "rgba_sha256": "870ce54fddb4a4d663696bff118fc5584d9496bdd3c64e796a8f326ce287de3d",
+      "file": "texture_002.png"
+    },
+    {
+      "index": 3,
+      "width": 32,
+      "height": 32,
+      "format": 0,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 264192,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "b34fbcf62e45b5110ee15a7a881a802be421f76792d468cd84b114e87f077852",
+      "rgba_sha256": "6b3dd14c84e95e83abdc372568fad636ab3019e3704f75884b28e16ea7913e10",
+      "file": "texture_003.png"
+    }
+  ]
+}

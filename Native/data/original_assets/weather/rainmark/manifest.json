@@ -1,0 +1,206 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "rainmark",
+  "mesh": "rainmark.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          1.0
+        ],
+        [
+          -4.9673829494167876e-08,
+          4.9673829494167876e-08
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8800072c",
+            "93000000",
+            "2008245b",
+            "10000000",
+            "2008245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "c3fcdbaba15c7a683dfdc9bd7168dff20ce76788b197a14a6fc353f8e8d54017"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "texture_indices": [
+        1
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245b",
+            "10000000",
+            "9400245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "1d080fe49853c1b20ff9b00f41865f02251fe78742d02baf0ca7c83dd14bb0ce"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "source_offset": 576,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          -0.5,
+          0.5
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          -0.5,
+          0.5
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00006868",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9400245b",
+            "10000000",
+            "9400245b",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "1d080fe49853c1b20ff9b00f41865f02251fe78742d02baf0ca7c83dd14bb0ce"
+        }
+      ]
+    }
+  ],
+  "texture_count": 3,
+  "source_files": {
+    "polygon": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rainmark\\rainmark_pol.bin.nz",
+      "bytes": 864,
+      "sha256": "03ebf91f560a8f453fcec0126d063621a51ed7ab58cbb091cc2b2c13f78e5b2f"
+    },
+    "table": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rainmark\\rainmark_pol.tbl",
+      "bytes": 12,
+      "sha256": "326108c09224d277028d6b5a5bcad8e4a2f71e86f21dcd2824340e7d5a218a8e"
+    },
+    "texture_table": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rainmark\\rainmark_tex.tbl",
+      "bytes": 48,
+      "sha256": "cb0093f0815c83078af3cdf4dfc86005a2a3876a1a93a89eae500622edc4c4a7"
+    },
+    "texture_payload": {
+      "path": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\rainmark\\rainmark_tex.bin.nz",
+      "bytes": 24576,
+      "sha256": "66ccab0ac8ab833ab88f71c4c16e19c1f103f268639c5db3467eac8e4ef71492"
+    }
+  },
+  "decoded_polygon_sha256": "03ebf91f560a8f453fcec0126d063621a51ed7ab58cbb091cc2b2c13f78e5b2f",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

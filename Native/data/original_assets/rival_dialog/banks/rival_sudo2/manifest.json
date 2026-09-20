@@ -1,0 +1,9 @@
+{
+  "name": "rival_sudo2",
+  "source_folder": "rival/r_sudo2",
+  "chunks": 12,
+  "textures": 12,
+  "polygon_sha256": "3368cc77f6b305e4ff2cf68ff8ecd9569165d9930cfe2becbeea74e4a50cdc3d",
+  "texture_sha256": "dd88457a9f8c8a1c770905fc76d0d0009d3ef36f8a91bc4d3731924de5f02390",
+  "material_words_preserved": true
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\selvswait\\selvswait_spr.tbl",
+  "payload": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sprite\\selvswait\\selvswait_spr.bin.nz",
+  "table_sha256": "66bc5df7d7718e531ceeb159481ecaadd822db6b36d9616295d25f078353c331",
+  "payload_sha256": "49a6cf19446302ab863218684e3849f56d9b5e5e1c4badb4d52cd135d2bcbe63",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 64,
+      "height": 64,
+      "format": 0,
+      "flags": 1,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "49a6cf19446302ab863218684e3849f56d9b5e5e1c4badb4d52cd135d2bcbe63",
+      "rgba_sha256": "86530bf7c6b595c2744071c6849fbff248471b3f2c0f155419120023b0c82d81",
+      "file": "texture_000.png"
+    }
+  ]
+}

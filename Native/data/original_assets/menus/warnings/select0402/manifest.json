@@ -1,0 +1,372 @@
+{
+  "schema": "idas3-original-model-menu-v1",
+  "name": "select0402",
+  "private_original_assets": true,
+  "source_directory": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\select0402",
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\select0402\\select0402_pol.bin.nz",
+      "bytes": 576,
+      "sha256": "a7e99a7ea7c176a7b1f6fe8ee0c8496cbe4fc0955b506da78ed29124acdc8f15"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\select0402\\select0402_pol.tbl",
+      "bytes": 8,
+      "sha256": "2b6d910bd88dc43d68e3283b89b4134e6423e67f9a459c8b85457254cb69aef4"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\select0402\\select0402_tex.tbl",
+      "bytes": 32,
+      "sha256": "cc1444800fcabb8b387b42d59bcce2581fae1426da3158f56eaf8263436a6455"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\select0402\\select0402_tex.bin.nz",
+      "bytes": 262144,
+      "sha256": "2ba248551b203668575506cc21c80838875f395b1b230590595c3628964fed62"
+    }
+  },
+  "decoded_polygon_sha256": "a7e99a7ea7c176a7b1f6fe8ee0c8496cbe4fc0955b506da78ed29124acdc8f15",
+  "mesh_pack": "select0402.idasmesh",
+  "mesh_pack_sha256": "c7a85bc463647f7814a457632551d4f0b7e835f998bd0893c986153960f91827",
+  "texture_pack": "textures/textures.idastex",
+  "texture_manifest": "textures/manifest.json",
+  "texture_count": 2,
+  "chunk_count": 2,
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "404ccccc",
+        "c015c28f",
+        "3a83211c",
+        "4028e1e5",
+        "00000120",
+        "00000000",
+        "00000002",
+        "00000004",
+        "00000001",
+        "00000001",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000018",
+        "000000c0",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.6399999856948853,
+          5.759999752044678
+        ],
+        [
+          -2.9800000190734863,
+          -1.6999999284744263
+        ],
+        [
+          0.001000437419861555,
+          0.001000437419861555
+        ]
+      ],
+      "vertex_count": 4,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 160,
+          "ich_words_hex": [
+            "8a00072c",
+            "93000000",
+            "94002474",
+            "00000000",
+            "94002474",
+            "00000000",
+            "0000000a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 0,
+          "vertex_layout_hex": "00a",
+          "source_vertex_sha256": "6d537059f4959a2d6ea1ff91df13529b9bf57671405a2a642093a636776ee4ad",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.759999752044678,
+                -1.6999999284744263,
+                0.001000437419861555
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.759999752044678,
+                -2.9800000190734863,
+                0.001000437419861555
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.6399999856948853,
+                -1.6999999284744263,
+                0.001000437419861555
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.6399999856948853,
+                -2.9800000190734863,
+                0.001000437419861555
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        63.999998569488525,
+        169.99999284744263,
+        575.9999752044678,
+        298.00000190734863
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 288,
+      "header_words_hex": [
+        "00000100",
+        "00000003",
+        "404ccccc",
+        "c015c28f",
+        "3a83211c",
+        "4028e1e5",
+        "00000120",
+        "00000000",
+        "00000002",
+        "00000004",
+        "00000001",
+        "00000001",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000018",
+        "000000c0",
+        "00000000",
+        "00000000",
+        "00000000",
+        "00000000"
+      ],
+      "bounds_xyz": [
+        [
+          0.6399999856948853,
+          5.759999752044678
+        ],
+        [
+          -2.9800000190734863,
+          -1.6999999284744263
+        ],
+        [
+          0.001000437419861555,
+          0.001000437419861555
+        ]
+      ],
+      "vertex_count": 4,
+      "batches": [
+        {
+          "index": 0,
+          "source_offset": 448,
+          "ich_words_hex": [
+            "8a00072c",
+            "93000000",
+            "94002474",
+            "00000000",
+            "94002474",
+            "00000000",
+            "0000000a",
+            "00000004"
+          ],
+          "material_words_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "primary_texture_index": 1,
+          "vertex_layout_hex": "00a",
+          "source_vertex_sha256": "6d537059f4959a2d6ea1ff91df13529b9bf57671405a2a642093a636776ee4ad",
+          "indices": [
+            0,
+            1,
+            2,
+            2,
+            1,
+            3
+          ],
+          "vertices": [
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.759999752044678,
+                -1.6999999284744263,
+                0.001000437419861555
+              ],
+              "uv": [
+                1.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "007f0000",
+              "xyz": [
+                5.759999752044678,
+                -2.9800000190734863,
+                0.001000437419861555
+              ],
+              "uv": [
+                1.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "607f0000",
+              "xyz": [
+                0.6399999856948853,
+                -1.6999999284744263,
+                0.001000437419861555
+              ],
+              "uv": [
+                0.0,
+                -0.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            },
+            {
+              "header_hex": "a07f0000",
+              "xyz": [
+                0.6399999856948853,
+                -2.9800000190734863,
+                0.001000437419861555
+              ],
+              "uv": [
+                0.0,
+                -1.0
+              ],
+              "colors_argb_hex": [
+                "ffffffff",
+                "ffffffff"
+              ]
+            }
+          ]
+        }
+      ],
+      "diagnostic_screen_bounds_at_100x_negative_y": [
+        63.999998569488525,
+        169.99999284744263,
+        575.9999752044678,
+        298.00000190734863
+      ]
+    }
+  ],
+  "layout": "twiddled",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "projection_evidence": "A 6.4 by 4.8 authored title quad numerically fits 640 by 480 at x*100,y*-100. Diagnostic bounds use that fit only; original draw-matrix proof remains required.",
+  "known_unresolved": [
+    "Per-state chunk selection and animation/translation",
+    "Original view/projection matrices and depth state",
+    "Effective material override, sampling and blend state"
+  ]
+}

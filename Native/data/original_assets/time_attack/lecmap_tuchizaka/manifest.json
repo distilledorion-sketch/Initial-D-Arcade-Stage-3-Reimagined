@@ -1,0 +1,320 @@
+{
+  "schema": "idas3-original-hud-bank-v1",
+  "bank": "lecmap_tuchizaka",
+  "mesh": "lecmap_tuchizaka.idasmesh",
+  "texture_pack": "textures/textures.idastex",
+  "chunks": [
+    {
+      "index": 0,
+      "source_offset": 0,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        0
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000000",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9480246d",
+            "10000000",
+            "9480246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "d1d2f3e4f6c30f74b258dcf4467b0f19f8724affdf9eeddcb464537d59f2e1e1"
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "source_offset": 288,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        1
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000001",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9480246d",
+            "10000000",
+            "9480246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "d1d2f3e4f6c30f74b258dcf4467b0f19f8724affdf9eeddcb464537d59f2e1e1"
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "source_offset": 576,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        2
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000002",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9480246d",
+            "10000000",
+            "9480246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "d1d2f3e4f6c30f74b258dcf4467b0f19f8724affdf9eeddcb464537d59f2e1e1"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "source_offset": 864,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        3
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000003",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000003",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9480246d",
+            "10000000",
+            "9480246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "d1d2f3e4f6c30f74b258dcf4467b0f19f8724affdf9eeddcb464537d59f2e1e1"
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "source_offset": 1152,
+      "source_size": 288,
+      "bounds_xyz": [
+        [
+          1.8700000047683716,
+          4.429999828338623
+        ],
+        [
+          -4.190000057220459,
+          -1.6299999952316284
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ],
+      "texture_indices": [
+        4
+      ],
+      "vertices": 4,
+      "triangles": 2,
+      "batches": [
+        {
+          "gmp_hex": [
+            "08000500",
+            "00004040",
+            "000006ff",
+            "ffffffff",
+            "00000000",
+            "ffffffff",
+            "00000000",
+            "00000000",
+            "08000000",
+            "00000004",
+            "08000000",
+            "ffffffff",
+            "08000000",
+            "00000004",
+            "08000000",
+            "ffffffff"
+          ],
+          "ich_hex": [
+            "8a00072c",
+            "93000000",
+            "9480246d",
+            "10000000",
+            "9480246d",
+            "10000000",
+            "0000000a",
+            "00000004"
+          ],
+          "vertex_source_sha256": "d1d2f3e4f6c30f74b258dcf4467b0f19f8724affdf9eeddcb464537d59f2e1e1"
+        }
+      ]
+    }
+  ],
+  "texture_count": 5,
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_tuchizaka_pol.bin.nz",
+      "bytes": 1440,
+      "sha256": "4228bfdc6a9318c344f1300990d6b7a9779a30c2665efb0b81f8f1bcbcaaed84"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_tuchizaka_pol.tbl",
+      "bytes": 20,
+      "sha256": "ee3b0529baf2f4b88fe2c77c3289b40401f18d092e2f2f0d6b3544308215f597"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_tuchizaka_tex.tbl",
+      "bytes": 80,
+      "sha256": "e54ca526a93a5a233b85ab56e2da53082c9eaab0128762ec0a5561bb1ed43b69"
+    },
+    "texture_payload": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\lecmap\\lecmap_tuchizaka_tex.bin.nz",
+      "bytes": 655360,
+      "sha256": "84472038567f9827f8caf706a8ec2bc5277d055cad8c2ebbabb3effe3417cd7b"
+    }
+  },
+  "decoded_polygon_sha256": "4228bfdc6a9318c344f1300990d6b7a9779a30c2665efb0b81f8f1bcbcaaed84",
+  "coordinate_transform": "none",
+  "uv_transform": "none",
+  "scope": "Original authored geometry and textures only. Draw selection/layout is recovered separately; this file does not assign inferred meanings."
+}

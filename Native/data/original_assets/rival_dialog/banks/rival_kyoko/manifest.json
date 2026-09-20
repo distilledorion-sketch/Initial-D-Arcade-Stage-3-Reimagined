@@ -1,0 +1,9 @@
+{
+  "name": "rival_kyoko",
+  "source_folder": "rival/r_kyoko",
+  "chunks": 11,
+  "textures": 11,
+  "polygon_sha256": "68bb9bfa90bc01d1b914242c633e9b7048088ddf96adccffa229bf4db472a123",
+  "texture_sha256": "e6ea2c876dfe8166629294ec013ebed52d32667e06ef69aea1fd2b9f0fac6a61",
+  "material_words_preserved": true
+}
