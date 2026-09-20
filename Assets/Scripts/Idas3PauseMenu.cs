@@ -14,6 +14,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private static readonly string[] Tabs={"AUDIO","GRAPHICS","GAMEPLAY","CONTROLS","WHEEL","RECORDS","REPLAYS"};
     public string ReplayStatus {get;set;}="Finished recordings are saved on this computer.";
     public string CommunityStatus {get;set;}="Community times ready.";
+    public Idas3Updates Updates {get;set;}
     private static readonly string[] DisplayModes={"WINDOWED","BORDERLESS","FULLSCREEN"};
     private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS","FLYCAST WHEEL"};
     private static readonly int[] FrameCaps={0,30,60,90,120,144,165,240,360},AaValues={0,2,4,8};
@@ -131,6 +132,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(!showOptions){MainAction(selection);return;}
         if(selection==0){selection=1;return;}
         if(tab==2&&selection==7){if(FullTuneAvailable)queued=Command.FullTune;return;}
+        if(tab==2&&selection==8){if(AttractOptions)Updates?.Activate();return;}
         if(tab==5&&selection==2){Application.OpenURL(Idas3CommunityTimes.ServiceUrl);return;}
         if(tab==6&&selection==1){queued=Command.Replays;return;}
         if(wheelNavigation&&selection<=Rows){
@@ -163,7 +165,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>tab==6?4:tab==5?2:tab==0||tab==4?4:tab==1?8:tab==2?7:bindings!=null?9+BindingFirstSelection-1:0;
+    private int Rows=>tab==6?4:tab==5?2:tab==0||tab==4?4:tab==1||tab==2?8:bindings!=null?9+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -307,6 +309,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void OnGUI(){
         if(options==null)return;
+        if(Updates!=null&&Updates.WindowVisible)return;
         if(!IsOpen&&(!AttractPromptVisible&&!options.Current.showFps||Event.current.type!=EventType.Repaint))return;
         // The host polls keyboard/gamepad input and forwards one menu action.
         // Consume IMGUI keys before focused buttons or sliders can handle the
@@ -338,6 +341,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(AttractOptions)Text(new Rect(750,33,238,27),"BACK TO ATTRACT",small);
             else if(online){Fill(new Rect(728,37,9,9),Red);Text(new Rect(750,29,238,26),"LIVE RACE CONTINUES",button);}
             else Text(new Rect(782,33,198,27),"TAKE A BREATHER",small);
+            Text(new Rect(710,77,295,23),Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?"UPDATE AVAILABLE — GAMEPLAY":"v"+Application.version,small,Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?PromptYellow:Muted);
             if(Button(new Rect(984,22,34,35),"×")){Back();if(!IsOpen)return;}
             bool enabled=GUI.enabled;GUI.enabled=enabled&&!Modal&&!BindingInputBlocked;
             if(showOptions)OptionsView();else MainView();
@@ -377,6 +381,11 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         GUI.matrix=Matrix4x4.identity;
         Fill(rect,new Color(0,0,0,.58f));
         Text(new Rect(rect.x+padding-2,rect.y+2,rect.width-2*padding+4,rect.height-4),text,attractPromptStyle,PromptYellow);
+        if(Updates!=null&&Updates.State==Idas3Updates.CheckState.Available){
+            var updateRect=new Rect(rect.x,rect.y-height-4,rect.width,height);
+            Fill(updateRect,new Color(0,0,0,.75f));
+            Text(new Rect(updateRect.x+padding-2,updateRect.y+2,updateRect.width-2*padding+4,updateRect.height-4),"UPDATE AVAILABLE — OPTIONS > GAMEPLAY",attractPromptStyle,PromptYellow);
+        }
         if(AttractHoldProgress>0){
             Fill(new Rect(rect.x,rect.yMax-2,rect.width,2),Edge);
             Fill(new Rect(rect.x,rect.yMax-2,Mathf.Round(rect.width*AttractHoldProgress),2),PromptYellow);
@@ -436,9 +445,13 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(3,"CONTROLLER RESPONSE",ControllerResponses[v.controllerResponse]);
             SliderRow(4,"STEERING DEADZONE",v.SteeringDeadzone,.3f,value=>v.SteeringDeadzone=value);
             SliderRow(5,"STEERING SMOOTHING",v.steeringSmoothing,1,value=>v.steeringSmoothing=value);
-            Text(new Rect(290,495,294,31),"FULL TUNE",label);
-            if(Button(new Rect(595,487,387,35),"999999 POINTS + UPGRADES",selection==7,FullTuneAvailable))queued=Command.FullTune;
-            Text(new Rect(288,528,700,20),FullTuneAvailable?"Choose a save, then a make and car. New cars use normal setup first.":"Leave online play and finish the current screen to use Full Tune.",small);
+            Text(new Rect(290,429,294,27),"FULL TUNE",label);
+            if(Button(new Rect(595,426,387,29),"999999 POINTS + UPGRADES",selection==7,FullTuneAvailable)){selection=7;queued=Command.FullTune;}
+            Text(new Rect(290,467,294,27),"GAME UPDATES",label);
+            if(Button(new Rect(595,464,387,29),Updates?.ButtonLabel??"CHECK FOR UPDATES",selection==8,AttractOptions&&Updates!=null&&Updates.CanActivate)){selection=8;Updates.Activate();}
+            string help=selection==7?(FullTuneAvailable?"Choose a save, then a make and car. New cars use normal setup first.":"Leave online play and finish the current screen to use Full Tune."):
+                selection==8?(!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable."):"Deadzone is saved per controller response. Updates are checked on startup; choose GAME UPDATES to check again.";
+            Text(new Rect(288,504,687,40),help,wrapped);
         }else if(tab==5){
             ChoiceRow(0,"COMMUNITY TIMES",v.communityTimes?"ON":"OFF");
             if(Button(new Rect(595,257,387,35),"VIEW SHARED RANKINGS",selection==2))Application.OpenURL(Idas3CommunityTimes.ServiceUrl);
@@ -482,6 +495,13 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
+        if(tab==2){
+            float compactY=194+row*38;if(selection==row+1)Frame(new Rect(278,compactY,714,37),Red);
+            Text(new Rect(290,compactY+7,294,27),name,label);
+            float compactValue=GUI.HorizontalSlider(new Rect(595,compactY+13,279,20),value,0,maximum);
+            if(!Mathf.Approximately(compactValue,value)){selection=row+1;set(Mathf.Round(compactValue*100)/100f);notice="";}
+            Text(new Rect(899,compactY+5,79,27),Mathf.RoundToInt(compactValue*100)+"%",button);return;
+        }
         float y=194+row*(tab==2?48:59);if(selection==row+1)Frame(new Rect(278,y,714,tab==2?46:49),Red);
         Text(new Rect(290,y+13,294,31),name,label);
         float next=GUI.HorizontalSlider(new Rect(595,y+18,279,20),value,0,maximum);
@@ -489,7 +509,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         Text(new Rect(899,y+8,79,33),Mathf.RoundToInt(next*100)+"%",button);
     }
     private void ChoiceRow(int row,string name,string value){
-        if(tab==1){
+        if(tab==1||tab==2){
             float compactY=194+row*38;
             if(selection==row+1)Frame(new Rect(278,compactY,714,37),Red);
             Text(new Rect(290,compactY+7,294,27),name,label);

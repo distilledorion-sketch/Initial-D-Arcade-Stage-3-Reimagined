@@ -23,6 +23,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private byte throttle;
     private short steeringAxis;
     private static bool OptionsExitCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-options-exit-check")>=0;
+    private static bool UpdatesCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-check")>=0;
     private int pulse,checks;
     private double began;
     private readonly List<string> captures=new List<string>();
@@ -224,11 +225,74 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         Check(!menu.AttractPromptVisible,"Attract prompt remained visible under options");
         CheckTitle("Opening attract options changed Title or paused native state");observations.Add(input+"-opened-audio");
     }
+    private IEnumerator UpdatesRegression(){
+        Idas3UpdateChecks.Run(Check);
+        var updates=menu.Updates;Check(updates!=null,"Update service attached");
+        if(updates.State==Idas3Updates.CheckState.Idle){
+            updates.CheckNow();Check(updates.State==Idas3Updates.CheckState.Checking,"Live anonymous GitHub request began");
+            updates.CheckNow();Check(!updates.CanCheck,"Duplicate requests blocked");
+        }else Check(Idas3Updates.StartupFinished&&!updates.WindowVisible,"Startup gate finished before native game initialized");
+        yield return Until(()=>updates.State!=Idas3Updates.CheckState.Checking,12,"Update request did not time out or finish");
+        Check(updates.State==Idas3Updates.CheckState.Current,"Live GitHub Windows release parsed: "+updates.Message);
+        observations.Add("Live anonymous GitHub latest release: "+updates.AvailableVersion);
+        Check(!updates.CanCheck,"Manual recheck cooldown enforced");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-download-check")>=0){
+            // Exercise the real download/hash/helper failure path using the
+            // public 128-byte checksum file as an intentionally invalid ZIP.
+            // This cannot pass the helper's archive preflight or replace files.
+            string executable=Path.Combine(Path.GetDirectoryName(Application.dataPath),"InitialDUnity.exe");
+            byte[] before=File.ReadAllBytes(executable);
+            var fixture=JsonUtility.FromJson<Idas3Updates.Release>(Idas3UpdateChecks.Fixture("v0.3.95-community-replays.7"));
+            fixture.assets[0].size=128;fixture.assets[0].digest="sha256:dbbbb3dfe4dfa8819bed4ec6cb8a3baf0e1af53963d9c077b39b2a56cdfea9da";
+            updates.ApplyResponse(200,JsonUtility.ToJson(fixture));
+            typeof(Idas3Updates).GetField("downloadUrl",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(updates,
+                Idas3Updates.RepositoryUrl+"/releases/download/v0.3.95-community-replays.5/SHA256SUMS.txt");
+            updates.Activate();updates.AcceptUpdate();
+            Check(updates.State==Idas3Updates.CheckState.Downloading,"Confirmed update starts file download");
+            yield return Until(()=>updates.State==Idas3Updates.CheckState.Unavailable,40,"Invalid update did not report an error");
+            Check(updates.Message.Contains("archive")||updates.Message.Contains("Central Directory"),"Downloaded/checksummed data reached ZIP validation: "+updates.Message);
+            Check(Convert.ToBase64String(before)==Convert.ToBase64String(File.ReadAllBytes(executable)),"Invalid archive leaves installed executable intact");
+            updates.ContinueToGame();Check(host.Ready&&!updates.WindowVisible,"Continue after rejected update");
+            observations.Add("Real GitHub file download, background SHA-256 verification and external helper rejection of invalid ZIP; no installed files changed.");
+            Finish(true,null);yield break;
+        }
+        updates.ApplyResponse(0,"",true);
+        Check(updates.State==Idas3Updates.CheckState.Unavailable&&host.Ready,"Offline failure leaves game ready");
+        physicalKey=KeyCode.C;yield return ExpectOpen("updates-keyboard-C");yield return Release();
+        menu.SelectTab(2);for(int i=0;i<7;i++)menu.Navigate(1);
+        Check(menu.DiagnosticSelection==8,"Game Updates accessible by navigation");
+        observations.Add("Before menu capture: updateWindow="+updates.WindowVisible+" menuOpen="+menu.IsOpen+" menuRepaints="+menu.DiagnosticRepaints);
+        Check(!updates.WindowVisible,"Update modal remained open after live check");
+        yield return Capture("updates-offline");
+        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v0.3.95-community-replays.7"));
+        Check(updates.State==Idas3Updates.CheckState.Available&&updates.CanActivate,"New version enables download action");
+        int installs=0;updates.InstallOverride=()=>installs++;
+        pulse=13;yield return Frames(5);Check(updates.WindowVisible&&installs==0,"Keyboard confirm opens Yes/No prompt without installing");
+        yield return new WaitForEndOfFrame();
+        var dialogImage=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(root,"update-yes-no.png"),dialogImage.EncodeToPNG());Destroy(dialogImage);
+        updates.HandleWindowInput(false,false,true,false);Check(!updates.WindowVisible&&installs==0,"Default No continues without downloading");yield return Release();
+        pulse=13;yield return Frames(5);Check(updates.WindowVisible,"Can reopen update prompt");
+        updates.HandleWindowInput(true,false,true,false);Check(installs==1,"Yes requests installation once");updates.ContinueToGame();
+        yield return Release();padConnected=true;buttons=0x1000;yield return Frames(5);
+        Check(updates.WindowVisible,"Controller confirm opens update prompt");updates.ContinueToGame();yield return Release();
+        menu.SetWheelNavigation(true);menu.Activate();Check(updates.WindowVisible&&!menu.WheelEditing,"Wheel confirm invokes update prompt");updates.ContinueToGame();menu.SetWheelNavigation(false);
+        Check(!options.HasUnsavedChanges,"Update action does not change game settings");
+        foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720),new Vector2Int(1920,800)}){
+            yield return Resize(size.x,size.y,false);yield return Capture("updates-available-"+size.x+"x"+size.y,size.x,size.y);
+        }
+        menu.Navigate(-1);Check(menu.DiagnosticSelection==7,"Full Tune remains next to updates");
+        menu.Back();Check(menu.CategoryFocused,"Back returns to categories");menu.Back();yield return Release();
+        yield return Until(()=>menu.AttractPromptVisible,3,"Returned to title prompt");yield return Capture("updates-title-notice");
+        pulse=13;yield return Until(()=>host.Status.frontendStage!=0,8,"Game can start after update check");
+        Check(!menu.IsOpen&&!menu.AttractPromptVisible,"Update notice stays out of gameplay");
+        Finish(true,null);
+    }
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate physical-input injection");yield return Release();
         if(OptionsExitCheck){yield return OptionsExitRegression();yield break;}
         if(ReportsCheck){yield return ReportsRegression();yield break;}
+        if(UpdatesCheck){yield return UpdatesRegression();yield break;}
         CheckTitle("Diagnostic did not begin in original attract mode");
         Check(!options.Current.wheelForceFeedback,"Diagnostic must leave force feedback disabled");
         yield return Until(()=>menu.AttractPromptVisible,2,"Attract options prompt missing");yield return Capture("attract-prompt");
@@ -332,6 +396,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,finalFrontendStage=finalStage,options=options.Current,
             captures=captures.ToArray(),captureDimensions=captureDimensions.ToArray(),observations=observations.ToArray(),scope=ReportsCheck?"Private-save native/Unity regression: repeated synthetic controller Start, race pause/resume with continuously held keyboard/trigger/rebound A acceleration and steering, original live TA HUD capture, controlled-position finish gates and natural timeout; physical controllers not tested.":"Actual original attract frontend and managed options with private saves. Prompt captures request 640x480, 1024x768, 1280x720 and 1920x800 and report actual dimensions before restoring 1200x720. Synthetic physical keyboard/controller input traverses normal bindings and hold routing, including remapped confirm-button conflict and focus interruption. Apply, Back and persistence use normal options owners. Captures use actual OnGUI Repaint; no guest runtime, race fixture, native pause, or hardware force output."};
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
+        if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Yes/No prompt, explicit Yes and No semantics, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));Debug.Log((report.passed?"PASS":"FAIL")+" attract options "+error);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying=false;

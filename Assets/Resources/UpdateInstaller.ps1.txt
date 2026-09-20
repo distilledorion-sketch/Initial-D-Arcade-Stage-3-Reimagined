@@ -1,0 +1,169 @@
+param([Parameter(Mandatory=$true)][string]$ManifestPath,[switch]$TestMode)
+$ErrorActionPreference='Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$session=[IO.Path]::GetFullPath((Split-Path -Parent $ManifestPath))
+$ready=$false
+$committed=$false
+$changed=[Collections.Generic.List[object]]::new()
+$applied=[Collections.Generic.List[object]]::new()
+$dialog=$null
+function Inside([string]$root,[string]$path) {
+    $full=[IO.Path]::GetFullPath($path)
+    if(!$full.StartsWith($root.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'An update path escaped its folder.'}
+    return $full
+}
+function NoLinks([string]$path) {
+    $current=$path
+    while($current){
+        if(Test-Path -LiteralPath $current){
+            $item=Get-Item -LiteralPath $current -Force
+            if(($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'Update folders must not contain junctions or symbolic links.'}
+        }
+        $parent=Split-Path -Parent $current
+        if($parent -eq $current){break}
+        $current=$parent
+    }
+}
+function SetProgress([string]$text){
+    if($dialog){$label.Text=$text;[Windows.Forms.Application]::DoEvents()}
+}
+try {
+    $plan=Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    $install=[IO.Path]::GetFullPath($plan.installRoot).TrimEnd('\')
+    $archive=Inside $session $plan.archive
+    $stage=Inside $session (Join-Path $session 'stage')
+    $backup=Inside $session (Join-Path $session 'backup')
+    NoLinks $install;NoLinks $session
+    if(!(Test-Path -LiteralPath (Join-Path $install 'InitialDUnity.exe'))){throw 'The existing game executable was not found.'}
+    if($TestMode -and !(Test-Path -LiteralPath (Join-Path (Split-Path -Parent $install) 'ISOLATED_UPDATE_TEST.txt'))){throw 'Updater tests require an isolated fixture.'}
+    if((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $backup)){throw 'This update session was already used.'}
+    if($plan.sha256 -notmatch '\A[0-9a-f]{64}\z' -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $plan.sha256){throw 'The update download failed verification.'}
+    $zip=[IO.Compression.ZipFile]::OpenRead($archive)
+    try {
+        $paths=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        $entries=[Collections.Generic.List[object]]::new()
+        $expanded=0L;$existing=0L
+        foreach($entry in $zip.Entries){
+            $name=$entry.FullName.Replace('/','\')
+            $parts=$name.Split('\')
+            if($name.Length -gt 220 -or $name.StartsWith('\') -or $name.Contains(':') -or $name.Contains([char]0)){throw 'Invalid update archive path.'}
+            foreach($part in $parts){
+                if($part -in @('.','..') -or $part -match '[<>:"|?*]' -or $part.EndsWith(' ') -or $part.EndsWith('.') -or $part -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)'){throw 'Unsafe update archive path.'}
+            }
+            if(($entry.ExternalAttributes -band 0x400) -ne 0 -or (($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000){throw 'Links are not allowed in update archives.'}
+            $top=$parts[0]
+            if($parts.Length -gt 1){
+                if($top -notin @('InitialDUnity_Data','MonoBleedingEdge','D3D12')){throw 'Unexpected folder in game update.'}
+            }elseif($top -notin @('InitialDUnity.exe','UnityPlayer.dll','UnityCrashHandler64.exe','dstorage.dll','dstoragecore.dll','steam_appid.txt','READ ME.txt','Replay Viewer.cmd','MULTIPLAYER TEST.txt')){throw 'Unexpected file in game update.'}
+            foreach($part in $parts){if($part -in @('userdata','userdata-unity-scene','community-times','replays','custom-music','ADMIN-ACCESS.txt','identity.json','game-options.json','deploy.private.json')){throw 'Personal files cannot be included in a game update.'}}
+            $destination=Inside $install (Join-Path $install $name)
+            $extracted=Inside $stage (Join-Path $stage $name)
+            NoLinks $destination
+            if(!$entry.Name){continue}
+            if(!$paths.Add($name)){throw 'Duplicate path in update archive.'}
+            $expanded+=$entry.Length
+            if($expanded -gt 24GB){throw 'Update archive exceeds the supported size.'}
+            if(Test-Path -LiteralPath $destination){
+                if((Get-Item -LiteralPath $destination).PSIsContainer){throw 'A game file path is occupied by a folder.'}
+                $existing+=(Get-Item -LiteralPath $destination).Length
+            }
+            $entries.Add(@{entry=$entry;relative=$name;destination=$destination;extracted=$extracted})
+        }
+        foreach($required in @('InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data\globalgamemanagers','InitialDUnity_Data\Managed\Assembly-CSharp.dll')){
+            if(!$paths.Contains($required)){throw 'The download is not a complete Windows game package.'}
+        }
+        $tempDrive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($session))
+        $targetDrive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($install))
+        $needed=$expanded+$existing+64MB
+        if($tempDrive.Name -eq $targetDrive.Name){$needed+=$expanded}
+        if($tempDrive.AvailableFreeSpace -lt $needed -or $targetDrive.AvailableFreeSpace -lt $expanded+64MB){throw 'Not enough free disk space to prepare and back up the update.'}
+        [IO.Directory]::CreateDirectory($stage)|Out-Null
+        [IO.Directory]::CreateDirectory($backup)|Out-Null
+        foreach($item in $entries){
+            [IO.Directory]::CreateDirectory((Split-Path -Parent $item.extracted))|Out-Null
+            $entryInput=$item.entry.Open();$entryOutput=[IO.File]::Open($item.extracted,[IO.FileMode]::CreateNew)
+            try{$entryInput.CopyTo($entryOutput)}finally{$entryOutput.Dispose();$entryInput.Dispose()}
+            if((Get-Item -LiteralPath $item.extracted).Length -ne $item.entry.Length){throw 'Extracted game data failed verification.'}
+            $newHash=(Get-FileHash -LiteralPath $item.extracted -Algorithm SHA256).Hash
+            $oldHash=$null
+            if(Test-Path -LiteralPath $item.destination){$oldHash=(Get-FileHash -LiteralPath $item.destination -Algorithm SHA256).Hash}
+            if($oldHash -eq $newHash){continue}
+            $saved=Inside $backup (Join-Path $backup $item.relative)
+            if($oldHash){[IO.Directory]::CreateDirectory((Split-Path -Parent $saved))|Out-Null;[IO.File]::Copy($item.destination,$saved,$false)}
+            $changed.Add(@{destination=$item.destination;source=$item.extracted;backup=$saved;oldHash=$oldHash;newHash=$newHash})
+        }
+    }finally{$zip.Dispose()}
+    # Nothing in the installation has changed yet. Signal the game to flush its
+    # own saves/replays and exit normally; never force-kill a player's process.
+    [IO.File]::WriteAllText((Join-Path $session 'ready'),'Prepared')
+    $ready=$true
+    if($plan.parentId -gt 0){
+        $deadline=[DateTime]::UtcNow.AddMinutes(5)
+        while($true){
+            $parent=Get-Process -Id $plan.parentId -ErrorAction SilentlyContinue
+            if(!$parent -or $parent.StartTime.ToUniversalTime().Ticks.ToString() -ne $plan.parentStartTicks){break}
+            if([DateTime]::UtcNow -gt $deadline){throw 'The game did not close; no files were replaced.'}
+            Start-Sleep -Milliseconds 250
+        }
+    }elseif(!$TestMode){throw 'The game process was not specified.'}
+    if(!$TestMode){
+        foreach($running in @(Get-CimInstance Win32_Process -Filter "Name='InitialDUnity.exe'")){
+            if($running.ExecutablePath -eq (Join-Path $install 'InitialDUnity.exe')){throw 'Another copy of this game is running. No files were replaced.'}
+        }
+        Add-Type -AssemblyName System.Windows.Forms
+        $dialog=New-Object Windows.Forms.Form
+        $dialog.Text='Initial D - Applying update';$dialog.Width=520;$dialog.Height=160
+        $dialog.StartPosition='CenterScreen';$dialog.FormBorderStyle='FixedDialog';$dialog.ControlBox=$false
+        $label=New-Object Windows.Forms.Label;$label.Dock='Fill';$label.TextAlign='MiddleCenter'
+        $dialog.Controls.Add($label);$dialog.Show();SetProgress 'Applying update. Please wait...'
+    }
+    # Detect concurrent modifications after preparation and before the first write.
+    foreach($item in $changed){
+        NoLinks $item.destination
+        $now=$null;if(Test-Path -LiteralPath $item.destination){$now=(Get-FileHash -LiteralPath $item.destination -Algorithm SHA256).Hash}
+        if($now -ne $item.oldHash){throw 'The installation changed while the update was being prepared.'}
+    }
+    foreach($item in $changed){
+        [IO.Directory]::CreateDirectory((Split-Path -Parent $item.destination))|Out-Null
+        $applied.Add($item)
+        [IO.File]::Copy($item.source,$item.destination,$true)
+        if((Get-FileHash -LiteralPath $item.destination -Algorithm SHA256).Hash -ne $item.newHash){throw 'An installed file failed verification.'}
+        SetProgress ('Applying update: '+$applied.Count+' / '+$changed.Count+' files')
+    }
+    $committed=$true
+    @{passed=$true;changedFiles=$changed.Count;installedUtc=[DateTimeOffset]::UtcNow.ToString('o')}|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $session 'result.json')
+    if($dialog){$dialog.Close()}
+    if(!$TestMode){Start-Process -FilePath (Join-Path $install 'InitialDUnity.exe') -WorkingDirectory $install -ArgumentList '-idas3-skip-update-once'}
+    # These are uniquely-created updater-owned paths. Resolve and check each
+    # absolute target before recursively removing only temporary update data.
+    foreach($temporary in @($stage,$backup)){
+        $safe=Inside $session $temporary;NoLinks $safe
+        Remove-Item -LiteralPath $safe -Recurse -Force
+    }
+    Remove-Item -LiteralPath (Inside $session $archive) -Force
+    exit 0
+}catch{
+    $failure=$_.Exception.Message
+    if(!$committed){
+        for($i=$applied.Count-1;$i -ge 0;$i--){
+            $item=$applied[$i]
+            try{
+                $target=Inside $install $item.destination;NoLinks $target
+                if($item.oldHash){
+                    $restored=$null;if(Test-Path -LiteralPath $target){$restored=(Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash}
+                    if($restored -ne $item.oldHash){[IO.File]::Copy($item.backup,$target,$true)}
+                    if((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $item.oldHash){throw 'A rollback copy failed verification.'}
+                }
+                elseif(Test-Path -LiteralPath $target){Remove-Item -LiteralPath $target -Force}
+            }catch{$failure+=' Rollback needs attention: '+$_.Exception.Message}
+        }
+    }
+    [IO.File]::WriteAllText((Join-Path $session 'error.txt'),$failure)
+    if($dialog){$dialog.Close()}
+    if($ready -and !$TestMode){
+        Add-Type -AssemblyName System.Windows.Forms
+        [Windows.Forms.MessageBox]::Show('Update could not finish. '+$failure+"`r`nDetails: "+$session,'Initial D update')|Out-Null
+        if(!$committed){Start-Process -FilePath (Join-Path $install 'InitialDUnity.exe') -WorkingDirectory $install -ArgumentList '-idas3-skip-update-once'}
+    }
+    exit 1
+}

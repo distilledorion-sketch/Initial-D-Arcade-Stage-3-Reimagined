@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.95-community-replays.6 — September 20, 2026
+
+- Check GitHub before entering the game; show a Yes/No prompt for newer Windows releases.
+- Download and verify accepted updates, install after the game closes, then restart automatically.
+- Keep saves, settings, custom music and replays; restore replaced files if installation fails.
+- Continue into the game when up to date, declined, or offline.
+- Add a manual update check under Gameplay on the title screen.
+
 ## 0.3.95-community-replays.5 — September 20, 2026
 
 - Combine personal Time Attack bests with current online leaderboard times while connected.

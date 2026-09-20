@@ -1,10 +1,13 @@
-0.3.95-community-replays.5
+0.3.95-community-replays.6
+
+GITHUB GAME UPDATES
+At startup the game checks the latest public GitHub Windows release. If an update is available, choose YES to download, verify, apply it and restart, or NO to continue playing. Up-to-date builds proceed directly to the game. Offline checks time out and allow play. Saves, settings, custom music and replays are preserved. You can also check from the title screen through Options > Gameplay > Game Updates.
 
 REPLAY RECORDING PERFORMANCE
 Replay buffers are allocated during race loading and reused, avoiding buffer-growth copies during driving. Local replay compression, validation and file saving run in the background; community replay compression and upload preparation also run off the game thread. Exact 60 Hz samples, both cars, RPM, speed, movement and recorded audio controls are preserved. Pending background saves finish before a normal game exit.
 
 PERSONAL RECORDS WHEN OFFLINE
-Offline course/model records and rankings now use only personal times from the selected save, including its saved cars and Hakone/Sadamine times. Old combined cabinet records and downloaded leaderboard caches are excluded. Existing personal saves are preserved. Online rankings combine personal bests with the current leaderboard after a successful connection. An empty online board still shows personal times; a fresh save with no records shows no record instead of arcade defaults.
+Offline course/model records and rankings now use only personal times from the selected save, including its saved cars and Hakone/Sadamine times. Old combined cabinet records and downloaded leaderboard caches are excluded. Existing personal saves are preserved. While connected, rankings combine personal bests with the current leaderboard; matching published rows appear once. Empty online boards still show your personal records.
 
 CUSTOM RACE MUSIC
 In Select BGM, choose CUSTOM > ADD MUSIC to import an MP3, OGG or WAV from your PC. Then select the imported song for your next race. Songs and the selected preference are saved locally under userdata-unity-scene/custom-music; music is never uploaded or sent to opponents. The existing music volume, pause, looping and race/result transitions apply. Import limits: 64 songs, 100 MB source files, mono/stereo up to 48 kHz, 10 minutes and 64 MB decoded PCM per song.
@@ -34,7 +37,7 @@ Settings > Graphics contains the quality preset, rain/spray and imported scenery
 Rain/spray and Hakone/Sadamine scenery detail can also be changed separately. Graphics now includes 640x360 and 960x540. Original restores full effects while retaining your chosen resolution. Existing settings retain their appearance until changed. Wet grip, handling, race timing and records are unaffected. Gains depend on the PC and track; no minimum FPS is guaranteed.
 
 COMMUNITY TIME ATTACK RECORDS
-Personal bests and current shared course/model times are combined in the existing ranking screens while online. Matching published personal times appear once. New completed Time Attacks upload in the background, with offline upload queueing. Downloaded rankings display only after a successful current connection; offline records come from the selected save. Personal records remain with your save.
+Shared course/model times and rankings use the existing screens. New completed Time Attacks upload in the background, with offline upload queueing. Downloaded rankings display only after a successful current connection; offline records come from the selected save. Personal records remain with your save.
 No Steam linking or player account: a random installation ID identifies your submissions. Driver name, car, points, conditions, checkpoint splits, finish time and game version are shared. Historical saves are not uploaded.
 Settings > Records > Community Times controls sharing and shared record display. OFF stops new uploads and uses the selected save's personal records; previously shared runs remain until moderated.
 Public rankings: https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev

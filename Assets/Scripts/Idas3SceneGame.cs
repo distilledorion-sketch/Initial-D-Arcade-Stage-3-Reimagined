@@ -102,7 +102,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
         new GameObject("Initial D — Unity scene").AddComponent<Idas3SceneGame>();
     }
 
-    private void Awake()
+    private void Awake(){if(Idas3Updates.StartupFinished)InitializeGame();}
+    private void InitializeGame()
     {
         if (Idas3ReplayViewer.Requested) { enabled = false; return; }
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-legacy-host") >= 0) { enabled = false; return; }
@@ -193,6 +194,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             multiplayerMenu.ManagedControlInput = true;
             pauseMenu = gameObject.AddComponent<Idas3PauseMenu>();
             pauseMenu.Initialize(gameOptions);
+            pauseMenu.Updates=Idas3Updates.Instance;
+            if(pauseMenu.Updates==null){pauseMenu.Updates=gameObject.AddComponent<Idas3Updates>();pauseMenu.Updates.Initialize(false);}
             replayLibrary=gameObject.AddComponent<Idas3ReplayLibrary>();replayLibrary.Initialize(this,pauseMenu,saves);
             if(!diagnosticMode)gameObject.AddComponent<Idas3CommunityTimes>().Initialize(this,gameOptions,pauseMenu);
             pauseMenu.InitializeBindings(controlBindings);
@@ -280,7 +283,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private void Update()
     {
+        if(!ready&&!stopping&&failure==null){if(Idas3Updates.StartupFinished)InitializeGame();return;}
         if (!ready || stopping || failure != null) return;
+        if(pauseMenu!=null&&pauseMenu.Updates!=null&&pauseMenu.Updates.WindowVisible)return;
         try
         {
             gameOptions.Tick(Time.realtimeSinceStartupAsDouble);

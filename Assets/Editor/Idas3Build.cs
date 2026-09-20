@@ -33,7 +33,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.5";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.6";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -117,6 +117,14 @@ public static class Idas3Build
         // Preserve existing build-script callers without replacing the frozen
         // framebuffer-host reference player in Builds/Windows.
         BuildUnityScene();
+    }
+
+    public static void RebuildWindowsScripts(){
+        const string output="Builds/Current/InitialDUnity.exe";
+        if(!File.Exists(output))throw new FileNotFoundException("Build the complete Windows package first.",output);
+        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
+            target=BuildTarget.StandaloneWindows64,options=BuildOptions.BuildScriptsOnly});
+        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Windows script build failed: "+report.summary.result);
     }
 
     public static void BuildSadamineStaging(){Configure();BuildPlayer("Builds/Staging/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");}
@@ -267,5 +275,4 @@ public static class Idas3Build
         Debug.Log("Initial D Unity player and all game assets: " + output);
     }
 }
-
 
