@@ -1,0 +1,199 @@
+{
+  "schema": "idas3-original-akina-background-v1",
+  "condition": "Original course-direction6, condition0; primary forward Akina background",
+  "original_image": {
+    "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\idas3_main_0C020000.bin",
+    "bytes": 4194304,
+    "sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
+  },
+  "source_path_record_address": "0C2F1740",
+  "source_path_record": [
+    "/driveA/model/course/k_df/df_pol",
+    "/driveA/model/course/k_df/df_tex",
+    "/driveA/model/course/k_df/df_etc_f_pol",
+    "/driveA/model/course/k_df/df_etc_f_tex",
+    "/driveA/path/k_df_path",
+    "/driveA/binary/k_df_colli_0",
+    "/driveA/binary/k_df_colli_1",
+    "/driveA/binary/PATH_df"
+  ],
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df\\df_etc_f_pol.bin.nz",
+      "bytes": 8336,
+      "sha256": "5ee58f92882214ff1033d9624989969259f65d0252419a9fe28642c4e7aa57a9"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df\\df_etc_f_pol.tbl",
+      "bytes": 4,
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df\\df_etc_f_tex.tbl",
+      "bytes": 32,
+      "sha256": "5caf8bb2bb5c203e96eb8f99777fa6a812ab03f9b75f0f9363600b1288dee409"
+    }
+  },
+  "texture_payload": {
+    "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df\\df_etc_f_tex.bin.nz",
+    "bytes": 294912,
+    "sha256": "a7e6cf98c69f2fd29a22930d6089e4d878f4ff43010c5c5e70c7f0366908bf10"
+  },
+  "decoded_polygon_sha256": "5ee58f92882214ff1033d9624989969259f65d0252419a9fe28642c4e7aa57a9",
+  "output_mesh_sha256": "d61f0c3ab0250a5ac6e3e2e17061ef08fd63e1848cbf8dac4ead3baa5cc082b1",
+  "chunk_count": 1,
+  "vertex_count": 334,
+  "triangle_count": 264,
+  "batch_count": 3,
+  "texture_count": 2,
+  "bounds": [
+    [
+      -1974.3699951171875,
+      1974.3699951171875
+    ],
+    [
+      100.0,
+      1738.9822998046875
+    ],
+    [
+      -1974.3699951171875,
+      1974.3699951171875
+    ]
+  ],
+  "batches": [
+    {
+      "index": 0,
+      "ich_words": [
+        2281703214,
+        2474639360,
+        545793141,
+        134217728,
+        545793141,
+        134217728,
+        10,
+        288
+      ],
+      "gmp_words": [
+        134219008,
+        16448,
+        1791,
+        4294967295,
+        0,
+        4294967295,
+        0,
+        0,
+        134217728,
+        0,
+        134217728,
+        4294967295,
+        134217728,
+        0,
+        134217728,
+        4294967295
+      ],
+      "texture_index": 0,
+      "vertex_count": 288
+    },
+    {
+      "index": 1,
+      "ich_words": [
+        2281703214,
+        2608857088,
+        545793141,
+        134217728,
+        545793141,
+        134217728,
+        10,
+        42
+      ],
+      "gmp_words": [
+        134219008,
+        16448,
+        1791,
+        4294967295,
+        0,
+        4294967295,
+        0,
+        0,
+        134217728,
+        0,
+        134217728,
+        4294967295,
+        134217728,
+        0,
+        134217728,
+        4294967295
+      ],
+      "texture_index": 0,
+      "vertex_count": 42
+    },
+    {
+      "index": 2,
+      "ich_words": [
+        2315257646,
+        2474639360,
+        2483037284,
+        268435456,
+        2483037284,
+        268435456,
+        10,
+        4
+      ],
+      "gmp_words": [
+        134219008,
+        16448,
+        1791,
+        4294967295,
+        0,
+        4294967295,
+        0,
+        0,
+        134217728,
+        1,
+        134217728,
+        4294967295,
+        134217728,
+        1,
+        134217728,
+        4294967295
+      ],
+      "texture_index": 1,
+      "vertex_count": 4
+    }
+  ],
+  "model": "data/original_models/courses/k_df/background/df_etc_f.idasmesh",
+  "textures": "data/original_assets/courses/k_df/background/textures/textures.idastex",
+  "draw_selection": "0C19DA9A..0C19DAAA selects bank at course object+0x158, chunk0, then submits to1D7120",
+  "placement": "Original code computes inverse(view), writeszero to column-major elements12 and14, inverts again. For rigid camera views, equivalent to world translation(camera.x,0,camera.z).",
+  "coordinate_conversion": "None; original authored XYZ, UV and raw vertex bytes preserved",
+  "helper": "src/akina_background.h originalAkinaBackgroundInstance(cameraWorld)",
+  "capture": {
+    "cases": 72,
+    "original_instructions": 466568,
+    "max_matrix_abs_error": 0.000244140625,
+    "hooks": [
+      "1FBD60 read current view",
+      "1FC5A0 capture final matrix",
+      "05A8E0 capture bank/chunk lookup",
+      "1D7120 capture selected draw"
+    ]
+  },
+  "integration_constraints": [
+    "Append this independent two-texture bank after existing banks and pass its actual texture-base offset.",
+    "The earlier650-unit far plane excluded this authored dome; current work renderer uses5000 without rescaling.",
+    "The origin .idasasm is for inspection only. Use the camera-dependent helper transform for gameplay.",
+    "Keep background GMPb0 constant color and authored TSP fog/blend behavior; do not apply generic atmospheric fog over its original panorama."
+  ],
+  "limitations": [
+    "Capture uses explicit current-view-read/final-matrix-load/model-lookup/draw hooks; both general matrix inversions and original selector execute unhooked.",
+    "Helper is rigid-view mathematical equivalence with measured original F32 inversion error, not bit-for-bit matrix parity.",
+    "Twiddled spatial texture layout remains explicit pending full loader TCW binding proof.",
+    "This export does not establish reverse/night/snow background condition selection."
+  ],
+  "native_integration": {
+    "texture_base": 211,
+    "car_texture_base_on_akina": 213,
+    "far_plane": 5000,
+    "verification": "verification/original-akina-sky/verification.json"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-authored-background-extension-v1",
+  "provenance": "Generated with built-in image_gen; newly authored side extension, not original game art",
+  "image": "title_widescreen_v1.png",
+  "native_texture_pack": "title_widescreen_v1.idastex",
+  "prompt_file": "title_widescreen_v1.prompt.txt",
+  "width": 1672,
+  "height": 941,
+  "requested_dimensions": [
+    1920,
+    1080
+  ],
+  "actual_dimensions_match_requested": false,
+  "rgba_sha256": "84a2a28d0c3a6cd509c63467a13a639af07861f32d230d2710dad7c805285fa2",
+  "png_sha256": "d54b42af4e1a407160630bc733fd754e993ac6207226ee37b87e7277225723c0",
+  "original_center_overlay_required": true,
+  "composition": "Draw generated background as outer backdrop. Overlay original title native mesh centered at exact 4:3 aspect. Do not use generated central logo, car, character, or copyright instead of originals.",
+  "original_center_expected_bounds_at_generated_height": [
+    208.66666666666663,
+    0,
+    1463.3333333333335,
+    941
+  ],
+  "pixel_transform": "none; RGBA conversion only, original generated image copied byte-for-byte",
+  "review": "Wings contain dark blue sky, blurred mountains/greenery/road. Generated center differs and must be overwritten. Seam continuity with the original center remains a separate native composition review."
+}

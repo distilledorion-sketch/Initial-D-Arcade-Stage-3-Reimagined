@@ -1,0 +1,3112 @@
+{
+  "schema": "idas3-original-car-appearances-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source": "Fresh profile134A60; constructor228DC0/026436..0264BC; player0630B4..06316E versus rival035F00(enemy); semantic visibility029040..02988E; draw026D80.",
+  "boundaries": "Unsigned division2223B8 is a bounded arithmetic hook. Graphics/matrix call arguments captured, matrices reconstructed.02988E onward material alpha/paint and dynamic popup-headlight interpolation remain separate; no hardware rendering parity claimed.",
+  "players": [
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 38,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 38,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 38,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 38,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "20837e6f6a137257dce0ac714a8af976e9342a74cd36e07c8e3d9de6ac55982c",
+      "parts_sha256": "f44503824e4e54566867e9f8c009db64ebb10d17be2bba4f1c439e40328f9456"
+    },
+    {
+      "car": 1,
+      "folder": "toyota_ae86l",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "1db97a708ac2655a597249c52f31f723800265b9bb28b489efdf3264ea5808a3",
+      "parts_sha256": "6210db1219e30856d559212ddb2e20cb0a1e31df037bbac84dcc4a751b581152"
+    },
+    {
+      "car": 2,
+      "folder": "toyota_ae85l",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "b94f3c321ce333d50fd8896e8e63f28d18a434a874af36a40e5586188d2c5220",
+      "parts_sha256": "9401c299ec92c8e32161b8d9f0068d1fdbb035963512751dcf81d584ed48ac3f"
+    },
+    {
+      "car": 3,
+      "folder": "toyota_sw20",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "51bc730f26a1f81b7e28667a68da599a2ceb658b535b31aa31c69d76a7aec4ea",
+      "parts_sha256": "8f7785efefadfb06041da70a3074ad01211a3f7b6c8ed208ad7350b8bab60a70"
+    },
+    {
+      "car": 4,
+      "folder": "toyota_zzw30",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 46,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 46,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 46,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 46,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "6d7c53e56ef940acc0e1616a6e190e3df207aa1639dbc34dfdbb2c61e494b3d9",
+      "parts_sha256": "8d31d1d663ff45ab24d7a857512faba6411c3943ef5e9e6dfdbe12010ba55cf5"
+    },
+    {
+      "car": 5,
+      "folder": "toyota_sxe10",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "6e9ff54af5735180bb59ab5ac4ac047cb3bafeaf3af812047229493a9557a097",
+      "parts_sha256": "be9469b048955bba9317a78b1b836ea0d1b61023b0db658eda51ecaff8b4efc9"
+    },
+    {
+      "car": 6,
+      "folder": "toyota_st205",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "d1937ac966bb978c85f8b2af5998e42aeb78ed1d156105b40a2c0b12f37e1bd8",
+      "parts_sha256": "dd2555be41fcd135db8c1005684925eec838e7cfccd809c115a1cf703b90985e"
+    },
+    {
+      "car": 7,
+      "folder": "nissan_bnr32",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "3d8387d9f459fd4deb5af4f74ee35a321d94111841afd44fa6ece620fe29d921",
+      "parts_sha256": "fcb571a4010bedcab4b36c98cba184849ed81913a6c671909f0fd3fb57af9ac3"
+    },
+    {
+      "car": 8,
+      "folder": "nissan_bnr34",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 55,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 55,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 55,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 55,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "7f1ce667e695ef71a282692272f6ec47cbdfa2d4d4ffc0689bc3a5baaf115a6b",
+      "parts_sha256": "a3e223938dee19510d63dc0ac3bbd6590ece672b25421a133ad65ffe5a201936"
+    },
+    {
+      "car": 9,
+      "folder": "nissan_s13k",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 70,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 70,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 70,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 70,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "15a738b69b950c5dc228730d172d06f025bde82d7edc01ec317848c2f61aa786",
+      "parts_sha256": "0a53b0f97eaada4e0cace30301030a06f2141af8ed17a0b959a59be35971d14c"
+    },
+    {
+      "car": 10,
+      "folder": "nissan_s14q",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 64,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 64,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 64,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 64,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "02bb46952e8525173a243da0206aaf38b3b929f3bc3c4bc7a7f93016b7c91886",
+      "parts_sha256": "6591988af6f4738337f8f5371d0d2bd491b7aa58c36032e2c1ffb40cd59c150f"
+    },
+    {
+      "car": 11,
+      "folder": "nissan_s14",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "b7b34971d8705a98d8d2bc1cc2c84eaff089928431c1309d0d842b2907d342d2",
+      "parts_sha256": "dca63827f82c2740039b687cce4b43646cedced3fea1d897e3feb49ad5e93e2a"
+    },
+    {
+      "car": 12,
+      "folder": "nissan_s15",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "5b3840502f1ca43efc4be91ddb2203033dfbf77fcc3f1b787283d5537f4956c9",
+      "parts_sha256": "e179fbc4cb24030a118464c1330c9f56fc1432783dfff077d1403c18b6f6fda3"
+    },
+    {
+      "car": 13,
+      "folder": "nissan_rps13",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "0298ef3a2cfae920a05150d2691715cfd084c33af070e979d6bbb8ff22c8fb02",
+      "parts_sha256": "08fafd749640fb07175b738a5db0159335c73ba871e3df6f97cdf14b67ef300e"
+    },
+    {
+      "car": 14,
+      "folder": "nissan_rps13k",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "69dff38a283ccd02004ed24fbb32cbceb07c8a8ec78f54bd38b6e3f7282fafa2",
+      "parts_sha256": "f7fdf0d0b45fa5ffceb5568aaf2ab797316a248aec02ff6f90de7924e02afd1b"
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 62,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 62,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 62,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 62,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "179610d442de76da2b0bf1f3396b63e85061b8345c7792595e3b0295a2231362",
+      "parts_sha256": "3080575c1339c2e1efed85d626bd0621d80e094f73b0eadcd1f982a02ff12646"
+    },
+    {
+      "car": 16,
+      "folder": "honda_eg6",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "220a3b467385a95499ae3dd758d50c262c98e1409ffca56f4733fd707c7b152d",
+      "parts_sha256": "66535dd865776603a34de00cdada3cb4fbdf9f1690a5c2f1ffefba6c562511cc"
+    },
+    {
+      "car": 17,
+      "folder": "honda_dc2",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "eb5b0a485c1fa393d6b08418d4365d93824197e4819fc4d6c871615ee7624789",
+      "parts_sha256": "724487f9a338da91e55ef72fca09603d1ede024b3095c52ce5b0d7f174e0555e"
+    },
+    {
+      "car": 18,
+      "folder": "honda_ap1",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "b92a70f8d961ee2afd0ddd1dbdc4a207158420302e8d75e73e0d1e193cf16532",
+      "parts_sha256": "4d3eba3c46172b07326c5133c8b5dfefbae471aeafc1ee6bcbfcd2b1aee07c73"
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 42,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 42,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 42,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 42,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "6097e5cbcaa096ba666b76bc4099736e780c00df6f46d96bd9c874daf3cf71f7",
+      "parts_sha256": "32f734fd898db6a5a80f9c4465bdee435b51b26ca2353fd310019c6240224c52"
+    },
+    {
+      "car": 20,
+      "folder": "mitsu_cn9a",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "97eb7e2df6d33ff76189e29b19a5e224b0cd6aa3287326f87f9253f0520796a6",
+      "parts_sha256": "40610516c9caecf9cb4b8a1e02b319f694a5bdcff180710d76788bfec14fb517"
+    },
+    {
+      "car": 21,
+      "folder": "mitsu_ct9a",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "a94b7536d722501e4dadaeb6b5128d11f5a73f40ecc60c8374709d4664d80844",
+      "parts_sha256": "de0ff7e853487a3b616c8184862e6a364a076131e5c44dd572ab212f67dbcd7f"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 69,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 69,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 69,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 69,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "9638daaec44c0e27285a1a73fe888984419760c026820511db3469a286bdc54c",
+      "parts_sha256": "dfd76c49245a4ec29d6bc75bed1829ca8b506fba0955e76aa3254eb9776be1cb"
+    },
+    {
+      "car": 23,
+      "folder": "mazda_fd3sa",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 56,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "014477d8f5be3af9e8a712b3201e4a11ed163e9d7b9e1ba669238b7eb311b173",
+      "parts_sha256": "d892abd126588b7e4ce3bc8e1ba07350eb34ea4e26b7e944b295db7e7910fb31"
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "c6d4251dae55bc5ea3768007d85d16110f28739b357d6f17aac2ce9670fa819d",
+      "parts_sha256": "492e0ce663596a9cc37e33d2c7a697a8d617870a61dd181e9579b2800c363d11"
+    },
+    {
+      "car": 25,
+      "folder": "mazda_na6c",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 63,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 63,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 63,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 63,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "d152c317bb8a0bd54a0e1579b586240c8aab2a9273810f800e2e5717f116c70a",
+      "parts_sha256": "49270c5e1879011f7534dde2937b3f14d7531528a9259f981b5fb0e209813660"
+    },
+    {
+      "car": 26,
+      "folder": "mazda_nb8c",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "56417c44846bb5dde3997e58bc538c78110cd1db6cb14eabe8d0f1ce709a3b82",
+      "parts_sha256": "5b6396cd8f174c6aff1aeda76c194843a8ae16e2495f30fc8b8b83b9d523925b"
+    },
+    {
+      "car": 27,
+      "folder": "subaru_gc8s6",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "8f7b81a0cdf38908676bd6be56724ad0712bbafc45f1f0e0276353797522833d",
+      "parts_sha256": "243b16f15689b5bbad9eb6ff750e38c863172f1e7b7adeefe1e1de7bfb2f398f"
+    },
+    {
+      "car": 28,
+      "folder": "subaru_gdb",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 53,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 53,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 53,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 53,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "9462839b8520242bc4eef729fd4edfb896421e2adccf75397e819bc49422920d",
+      "parts_sha256": "954194648628b39f624277e19cb4de257af40f2f03df199dca3d2dc8d832fa0a"
+    },
+    {
+      "car": 29,
+      "folder": "subaru_gc8s5",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "c7ef5978a9ee45b909af503235c7443a69ae1f07664fa176d4596303cdbc03e8",
+      "parts_sha256": "8632624d3eac1cfa2a3f81fc174826c89e4343123e99e2127dc632dc0ed027af"
+    },
+    {
+      "car": 30,
+      "folder": "suzuki_ea11r",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "d60a94251745932631969c672df9feed9c63e39b8a2582c94d9581095623bdf3",
+      "parts_sha256": "32767b6c0c21962dcf7cf2b2867b8169b38b1af07a3248103fa8739005056e01"
+    },
+    {
+      "car": 31,
+      "folder": "nissan_er34",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "31205ac4a31e2d230e12b7fac1adcbab01063a06260f5b8b6ea6eedf64ce7ec9",
+      "parts_sha256": "65e6234df9fd40d49ca19a3c7024a6b268bb9943c3724f23a58b8edf4b02ef1a"
+    },
+    {
+      "car": 32,
+      "folder": "mitsu_cp9a",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "40bf24d4ef1e217dc828d98a17811e1dd00afb3fecc719169067841b4128b831",
+      "parts_sha256": "6866e6b1b2bd14853d704630d3e8cc05b89918f3ef1d41a962f100e7d5683908"
+    },
+    {
+      "car": 33,
+      "folder": "mitsu_cp9at",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "cf2b2ea45ae6916e896f2f1b9832d9799886e53f740bde9a0ee65303741da221",
+      "parts_sha256": "fe301374e70bedfa55a131bb26ed4388f7a6c0c9ecc7179e3a7eb55b9b4f304a"
+    },
+    {
+      "car": 34,
+      "folder": "mazda_se3p",
+      "enemy": -1,
+      "config": 0,
+      "plate_digits": [
+        2,
+        2,
+        9,
+        3,
+        6
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "af92d1f49f8338d19042319fbb49ee209811fbd065eae5bb1636bd77b90e9b69",
+      "parts_sha256": "b45f68ba02472abfe44aa8fbbbf2971ad9faee34bfc8ea17bf9056b05370d1f3"
+    }
+  ],
+  "rivals": [
+    {
+      "car": 2,
+      "folder": "toyota_ae85l",
+      "enemy": 0,
+      "config": 4718592,
+      "plate_digits": [
+        1,
+        1,
+        0,
+        0,
+        9
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "f7f46bf047476d0d7fdfa82d3e778237dcc59188ac42fe71ac1351e3f57f8e36",
+      "parts_sha256": "9401c299ec92c8e32161b8d9f0068d1fdbb035963512751dcf81d584ed48ac3f"
+    },
+    {
+      "car": 13,
+      "folder": "nissan_rps13",
+      "enemy": 1,
+      "config": 4718593,
+      "plate_digits": [
+        0,
+        8,
+        7,
+        7,
+        6
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "5c6f7f6eb58926793de725def63e7a2c24c2ed0b8ff197f3566a6e6c13b46b78",
+      "parts_sha256": "08fafd749640fb07175b738a5db0159335c73ba871e3df6f97cdf14b67ef300e"
+    },
+    {
+      "car": 16,
+      "folder": "honda_eg6",
+      "enemy": 2,
+      "config": 4718593,
+      "plate_digits": [
+        4,
+        6,
+        0,
+        3,
+        7
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "f7762cff27b99f7518ea7c5231fe50799a9144832e09c4875ddb8018cbf12490",
+      "parts_sha256": "66535dd865776603a34de00cdada3cb4fbdf9f1690a5c2f1ffefba6c562511cc"
+    },
+    {
+      "car": 25,
+      "folder": "mazda_na6c",
+      "enemy": 3,
+      "config": 4726921,
+      "plate_digits": [
+        8,
+        6,
+        5,
+        9,
+        6
+      ],
+      "plate_part_offsets": [
+        36,
+        252
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "bbe910e9b0bb25089940c9f44fcc7367b356db3fd037014091cc00022a9efb3e",
+      "parts_sha256": "49270c5e1879011f7534dde2937b3f14d7531528a9259f981b5fb0e209813660"
+    },
+    {
+      "car": 31,
+      "folder": "nissan_er34",
+      "enemy": 4,
+      "config": 4718593,
+      "plate_digits": [
+        9,
+        5,
+        0,
+        8,
+        5
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "df34662bd31751ff95c6b1471580cbbdf4b7e4b3c9ee51c2fb12c83778a6a74d",
+      "parts_sha256": "65e6234df9fd40d49ca19a3c7024a6b268bb9943c3724f23a58b8edf4b02ef1a"
+    },
+    {
+      "car": 14,
+      "folder": "nissan_rps13k",
+      "enemy": 5,
+      "config": 4785152,
+      "plate_digits": [
+        7,
+        8,
+        5,
+        4,
+        7
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "dd3d124f46049b82248bbbfa18f359ecb9e29d079e25fa5d667554d4a04bf995",
+      "parts_sha256": "f7fdf0d0b45fa5ffceb5568aaf2ab797316a248aec02ff6f90de7924e02afd1b"
+    },
+    {
+      "car": 12,
+      "folder": "nissan_s15",
+      "enemy": 6,
+      "config": 25165824,
+      "plate_digits": [
+        3,
+        4,
+        6,
+        2,
+        8
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 71,
+          "semantic": 58,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 71,
+          "semantic": 58,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 71,
+          "semantic": 58,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 71,
+          "semantic": 58,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "cb380371e5d0c5b91c422d96916c748aa773fe5a32057e7d9adaa18eed4b9ef5",
+      "parts_sha256": "e179fbc4cb24030a118464c1330c9f56fc1432783dfff077d1403c18b6f6fda3"
+    },
+    {
+      "car": 10,
+      "folder": "nissan_s14q",
+      "enemy": 7,
+      "config": 4793345,
+      "plate_digits": [
+        7,
+        7,
+        1,
+        4,
+        8
+      ],
+      "plate_part_offsets": [
+        36,
+        252
+      ],
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 19,
+      "animated_instances": 8,
+      "capture_sha256": "a51403622f0aa87ed31c9f80b4431064547dc54f4556df8b3a1ce14ed1481c47",
+      "parts_sha256": "6591988af6f4738337f8f5371d0d2bd491b7aa58c36032e2c1ffb40cd59c150f"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "enemy": 8,
+      "config": 4784128,
+      "plate_digits": [
+        6,
+        3,
+        8,
+        8,
+        7
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "a6d9d15688a6242811ad7e27cda6f0983d76703f4962a48d9f74e2f20f63eee2",
+      "parts_sha256": "dfd76c49245a4ec29d6bc75bed1829ca8b506fba0955e76aa3254eb9776be1cb"
+    },
+    {
+      "car": 9,
+      "folder": "nissan_s13k",
+      "enemy": 9,
+      "config": 4719617,
+      "plate_digits": [
+        5,
+        1,
+        7,
+        4,
+        5
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "d12d07f68f85feeb4f73559111710c1b10613a0db7826cae350cb25d87810064",
+      "parts_sha256": "0a53b0f97eaada4e0cace30301030a06f2141af8ed17a0b959a59be35971d14c"
+    },
+    {
+      "car": 7,
+      "folder": "nissan_bnr32",
+      "enemy": 10,
+      "config": 4718593,
+      "plate_digits": [
+        2,
+        6,
+        0,
+        3,
+        7
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "c801b9cb8032e76044efeab9ff215e264cc46fe5ce4a221099031612d4e45519",
+      "parts_sha256": "fcb571a4010bedcab4b36c98cba184849ed81913a6c671909f0fd3fb57af9ac3"
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "enemy": 11,
+      "config": 1078460416,
+      "plate_digits": [
+        3,
+        0,
+        3,
+        9,
+        5
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "12cb91f4ea796108862f21c470a58f3853ef9140c11576b0bf236873cac1a671",
+      "parts_sha256": "32f734fd898db6a5a80f9c4465bdee435b51b26ca2353fd310019c6240224c52"
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "enemy": 12,
+      "config": 4718601,
+      "plate_digits": [
+        1,
+        3,
+        1,
+        3,
+        7
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 16,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 21,
+      "animated_instances": 8,
+      "capture_sha256": "3bc7d68c617505457fd66c99de4ccc927a6f5bfdd7c23eb9a2ab61bf41b69782",
+      "parts_sha256": "492e0ce663596a9cc37e33d2c7a697a8d617870a61dd181e9579b2800c363d11"
+    },
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "enemy": 13,
+      "config": 4718593,
+      "plate_digits": [
+        1,
+        3,
+        9,
+        5,
+        4
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 13,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 14,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 15,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 16,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 21,
+      "animated_instances": 8,
+      "capture_sha256": "de4cd03ef77fc20627ffffe028a2e7e4726d02a3c5dff9b6883d38cff284f87e",
+      "parts_sha256": "f44503824e4e54566867e9f8c009db64ebb10d17be2bba4f1c439e40328f9456"
+    },
+    {
+      "car": 20,
+      "folder": "mitsu_cn9a",
+      "enemy": 14,
+      "config": 4784128,
+      "plate_digits": [
+        4,
+        6,
+        6,
+        3,
+        7
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "12ac744dc2e231d3df8a190acaf27febd3bf92650eca565438e515d4b10bf9fd",
+      "parts_sha256": "40610516c9caecf9cb4b8a1e02b319f694a5bdcff180710d76788bfec14fb517"
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "enemy": 15,
+      "config": 1078460416,
+      "plate_digits": [
+        3,
+        0,
+        3,
+        9,
+        5
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "1fc79db5b792946d1a23db4712ce9aca6cb47c2ea9cc10847e71c09911d628d7",
+      "parts_sha256": "32f734fd898db6a5a80f9c4465bdee435b51b26ca2353fd310019c6240224c52"
+    },
+    {
+      "car": 3,
+      "folder": "toyota_sw20",
+      "enemy": 16,
+      "config": 4718592,
+      "plate_digits": [
+        3,
+        7,
+        5,
+        9,
+        7
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "078e82d3165a8997410ca457ab50a136836ada6180193bd5cf43a121dd95093d",
+      "parts_sha256": "8f7785efefadfb06041da70a3074ad01211a3f7b6c8ed208ad7350b8bab60a70"
+    },
+    {
+      "car": 6,
+      "folder": "toyota_st205",
+      "enemy": 17,
+      "config": 65664,
+      "plate_digits": [
+        2,
+        7,
+        4,
+        3,
+        1
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "d0d793d169d40ffacba3b14af7e75cbf29ec38e14ec4e24eb142021478704619",
+      "parts_sha256": "dd2555be41fcd135db8c1005684925eec838e7cfccd809c115a1cf703b90985e"
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "enemy": 18,
+      "config": 4784136,
+      "plate_digits": [
+        5,
+        6,
+        8,
+        3,
+        8
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "ae4ad650ceb59b4d8fa915a1abfa8f6f6e462cae9157cee6df8cedf9c0d8ae91",
+      "parts_sha256": "3080575c1339c2e1efed85d626bd0621d80e094f73b0eadcd1f982a02ff12646"
+    },
+    {
+      "car": 17,
+      "folder": "honda_dc2",
+      "enemy": 19,
+      "config": 4718720,
+      "plate_digits": [
+        3,
+        2,
+        0,
+        9,
+        4
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 55,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 55,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 55,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 55,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "e10cbc1faafcdc0b86b56bc29fc771714b94f07d20f2e3def29605bd7a1113f0",
+      "parts_sha256": "724487f9a338da91e55ef72fca09603d1ede024b3095c52ce5b0d7f174e0555e"
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "enemy": 20,
+      "config": 9437456,
+      "plate_digits": [
+        1,
+        0,
+        4,
+        5,
+        7
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 64,
+          "semantic": 54,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 64,
+          "semantic": 54,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 64,
+          "semantic": 54,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 64,
+          "semantic": 54,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "5f82c9bb24d7eb614d9de40f0b345fb80a732935e8ac412238752ab722034153",
+      "parts_sha256": "3080575c1339c2e1efed85d626bd0621d80e094f73b0eadcd1f982a02ff12646"
+    },
+    {
+      "car": 5,
+      "folder": "toyota_sxe10",
+      "enemy": 21,
+      "config": 4785153,
+      "plate_digits": [
+        1,
+        7,
+        9,
+        1,
+        9
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 19,
+      "animated_instances": 8,
+      "capture_sha256": "d7d0ab6a06a8107f1a44437054bcb8b02103a4fce077ad7bca93c221d5f18a32",
+      "parts_sha256": "be9469b048955bba9317a78b1b836ea0d1b61023b0db658eda51ecaff8b4efc9"
+    },
+    {
+      "car": 30,
+      "folder": "suzuki_ea11r",
+      "enemy": 22,
+      "config": 4784129,
+      "plate_digits": [
+        3,
+        5,
+        2,
+        1,
+        8
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "ad72499e62e37192406de68652f66d13d27fb9e2143c29f8ac12f6a8252e263e",
+      "parts_sha256": "32767b6c0c21962dcf7cf2b2867b8169b38b1af07a3248103fa8739005056e01"
+    },
+    {
+      "car": 1,
+      "folder": "toyota_ae86l",
+      "enemy": 23,
+      "config": 1078526977,
+      "plate_digits": [
+        7,
+        3,
+        2,
+        1,
+        2
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "3f58f6a4e0753097ec81890583b42446eed8959cd3f7bbc0bb87e39a08d85d73",
+      "parts_sha256": "6210db1219e30856d559212ddb2e20cb0a1e31df037bbac84dcc4a751b581152"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "enemy": 24,
+      "config": 119804452,
+      "plate_digits": [
+        0,
+        4,
+        8,
+        4,
+        2
+      ],
+      "plate_part_offsets": [
+        144,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "dbdcc9bbb60177f531cb88af3eba34f35336121ec22a92caf46ae8c07fa7b4ff",
+      "parts_sha256": "dfd76c49245a4ec29d6bc75bed1829ca8b506fba0955e76aa3254eb9776be1cb"
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "enemy": 25,
+      "config": 4718601,
+      "plate_digits": [
+        1,
+        3,
+        1,
+        3,
+        7
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "37c313703a6be9bede0d728a7a2375b741e4c7f003f6bf4b237552e779cb0927",
+      "parts_sha256": "492e0ce663596a9cc37e33d2c7a697a8d617870a61dd181e9579b2800c363d11"
+    },
+    {
+      "car": 32,
+      "folder": "mitsu_cp9a",
+      "enemy": 26,
+      "config": 4718592,
+      "plate_digits": [
+        0,
+        5,
+        8,
+        5,
+        1
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "03036c671b8c74d226239ee2e30081b5dd91c0fb1546165667f2bedc312ec371",
+      "parts_sha256": "6866e6b1b2bd14853d704630d3e8cc05b89918f3ef1d41a962f100e7d5683908"
+    },
+    {
+      "car": 33,
+      "folder": "mitsu_cp9at",
+      "enemy": 27,
+      "config": 589824,
+      "plate_digits": [
+        8,
+        9,
+        2,
+        7,
+        8
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "4f21b620ba6b5e3c5ca480d84f4e87e88b97bd802e8e8c4343f5d88691e83017",
+      "parts_sha256": "fe301374e70bedfa55a131bb26ed4388f7a6c0c9ecc7179e3a7eb55b9b4f304a"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "enemy": 28,
+      "config": 119804452,
+      "plate_digits": [
+        6,
+        3,
+        8,
+        8,
+        7
+      ],
+      "plate_part_offsets": [
+        144,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 73,
+          "semantic": 56,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "ea6f485426f508ebe1ec8bea2e2ce8625fcac81ed41427b18598fcc421cbf2cf",
+      "parts_sha256": "dfd76c49245a4ec29d6bc75bed1829ca8b506fba0955e76aa3254eb9776be1cb"
+    },
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "enemy": 29,
+      "config": 4718721,
+      "plate_digits": [
+        1,
+        3,
+        9,
+        5,
+        4
+      ],
+      "plate_part_offsets": [
+        36,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "5172c948991626e89f2877d82f667156a305c34dba3feaaaf61aa7f7e6319da2",
+      "parts_sha256": "f44503824e4e54566867e9f8c009db64ebb10d17be2bba4f1c439e40328f9456"
+    },
+    {
+      "car": 29,
+      "folder": "subaru_gc8s5",
+      "enemy": 30,
+      "config": 0,
+      "plate_digits": [
+        1,
+        3,
+        6,
+        0,
+        0
+      ],
+      "plate_part_offsets": [
+        0,
+        216
+      ],
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "draws": 20,
+      "animated_instances": 8,
+      "capture_sha256": "441b73218ae80c39775d5cec385fdc6e894ac637d8f932e6ecca322ecacd1142",
+      "parts_sha256": "8632624d3eac1cfa2a3f81fc174826c89e4343123e99e2127dc632dc0ed027af"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "format": "original raw little-endian float32",
+  "source_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_reader": "0C03D100",
+  "records": [
+    {
+      "file": "k_ez_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\k_ez_sdw.bin",
+      "bytes": 4276,
+      "count": 1069,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "sha256": "6d2d49c33765ca2a7218b4dde38eefddbef98d306cb52230c22bb1eb25de6303"
+    },
+    {
+      "file": "s_nm_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\s_nm_sdw.bin",
+      "bytes": 5604,
+      "count": 1401,
+      "minimum": 0.4000000059604645,
+      "maximum": 1.0,
+      "sha256": "bd16ea9172e10e886481c74d9ef5a89cfe8f714eeaef9a6de60498fbf394e2b1"
+    },
+    {
+      "file": "h_hd_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\h_hd_sdw.bin",
+      "bytes": 13204,
+      "count": 3301,
+      "minimum": 0.30000001192092896,
+      "maximum": 1.0,
+      "sha256": "fc2fe3994d04c74320e664c601b035dbf1e476cb7173d83582ed66712d1ec009"
+    },
+    {
+      "file": "k_df_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\k_df_sdw.bin",
+      "bytes": 16356,
+      "count": 4089,
+      "minimum": 0.5,
+      "maximum": 1.0,
+      "sha256": "6a621d64a07a4643a9f87e00b089643ac305a57fec35762df126ab577b059d15"
+    },
+    {
+      "file": "s_uh_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\s_uh_sdw.bin",
+      "bytes": 11804,
+      "count": 2951,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "sha256": "c8ed615791b9c7ba073790c28269537ad358e459b514e649167c6cf9f7975d12"
+    },
+    {
+      "file": "n_sy_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\n_sy_sdw.bin",
+      "bytes": 13204,
+      "count": 3301,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "sha256": "26918dd6e08f823fe71ebdfb1a78f5256c28799e937bbd0194b442aa2ace599b"
+    },
+    {
+      "file": "k_tu_sdw.bin",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\k_tu_sdw.bin",
+      "bytes": 14916,
+      "count": 3729,
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "sha256": "1d867bb6223349e59289eac7d87433b60226bb71e1d127195636d2f92fa97876"
+    }
+  ]
+}

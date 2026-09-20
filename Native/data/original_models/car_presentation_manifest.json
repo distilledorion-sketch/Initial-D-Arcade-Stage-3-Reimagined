@@ -1,0 +1,1164 @@
+{
+  "schema": "idas3-car-presentation-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "wheel_selection": "Four absent display-preset variants replaced by original 0285C0 stock input0; actual player invokes this setter from tuning byte7 at06311E.",
+  "actor_binding": "034840 copies actor40..4C suspension,60..6C spin,3C steering into ACar2F4..314. 026D80 applies captured operations; left spins negated at027636/0277E0.",
+  "scope": "Existing body/display configuration preserved. Wheel blur and other tuning choices remain outside this addition.",
+  "cars": [
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 39,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "f73fe465c72c8fe659c01c078562f1150e7ae0adfb5d32a658b5d572c412e6c2"
+    },
+    {
+      "car": 1,
+      "folder": "toyota_ae86l",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 60,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "426efd7d67652e7d8708622c0139bfb47b3b8dce64ca48fdd2e07d60e3841a58"
+    },
+    {
+      "car": 2,
+      "folder": "toyota_ae85l",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 50,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "2c8e705e43f34a14d99736a9c193fa101ed0564cc3f173fcdd8f3fa8da26fe4b"
+    },
+    {
+      "car": 3,
+      "folder": "toyota_sw20",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 8,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 9,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 10,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 11,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "cc83d4cf57289405b85cb8cc5ca182cae7942b93df47b8e3b5f7d2f51188295d"
+    },
+    {
+      "car": 4,
+      "folder": "toyota_zzw30",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 47,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 47,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 47,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 47,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "b604242875e8b4496480689535ed8f91a44c728335de32d4a7c51581f2a115d8"
+    },
+    {
+      "car": 5,
+      "folder": "toyota_sxe10",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "15e051e9b980916781703e09af141167528da5c271d75b853484f54aef36b3f4"
+    },
+    {
+      "car": 6,
+      "folder": "toyota_st205",
+      "stock_wheel_repair": true,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 48,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "b29b926093c51bd8cdbc0c66cd54b13bfe651a9c001d5f26b045a778340fa671"
+    },
+    {
+      "car": 7,
+      "folder": "nissan_bnr32",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 9,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 10,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 11,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "246da284ed4b0899e92f8f4e479920b65c5bc2102499fb9bbdec90ea79cd2aab"
+    },
+    {
+      "car": 8,
+      "folder": "nissan_bnr34",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 56,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 56,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 56,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 56,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "a20e22a364aaf65945952935772919edf6596d022ec5fcf977ed2be9e8a20217"
+    },
+    {
+      "car": 9,
+      "folder": "nissan_s13k",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 71,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "eef9ee66b06ea0d0ed772bf827393c03759339247d9754e7e0bd29348ca83508"
+    },
+    {
+      "car": 10,
+      "folder": "nissan_s14q",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 65,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "68d69efd8b438f60456c00e6882dc8497b953b27b071715c01c270a0c88c6b7b"
+    },
+    {
+      "car": 11,
+      "folder": "nissan_s14",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 61,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "7a1533682c657ce03d6bd6bddb51a616704025ce3ab821807aefb844ea6732a4"
+    },
+    {
+      "car": 12,
+      "folder": "nissan_s15",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "195290bef9f2f7d482ea2fa617308b70156b35760004320848ad2dd97a8de94f"
+    },
+    {
+      "car": 13,
+      "folder": "nissan_rps13",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 66,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "75977612cb8d8b60ae5af7489872242670486e05a3cb6e3a9a5ed5239d5c8f57"
+    },
+    {
+      "car": 14,
+      "folder": "nissan_rps13k",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "5a795743afcc1bf61ff97c995e805aab5fc7d4a3bfd6385df5d6dd1d3aec6fac"
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 63,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "9578bcd4bf25f64a181f4d94e145a26f35c6b2c16c1bd85a8bd8d8594d8f2f88"
+    },
+    {
+      "car": 16,
+      "folder": "honda_eg6",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "5304819f8836df550e6419ddf289782010a0ee96f62dc5cd33bdb4a140d5ec76"
+    },
+    {
+      "car": 17,
+      "folder": "honda_dc2",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 54,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "ec03b2b99a79a908db5dd5ebd16eb42a22c0cc18efd40bde3642dccedd7c1383"
+    },
+    {
+      "car": 18,
+      "folder": "honda_ap1",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "0331488707fe5ed19ae5c6e9e2d4c3a353c7628b21337ddb33f32de5218baf82"
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 43,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "a2e64913c951ced1d46992600425f63bda616b1e781210d4d9bfa53af63d3d51"
+    },
+    {
+      "car": 20,
+      "folder": "mitsu_cn9a",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 10,
+          "chunk": 60,
+          "semantic": 54,
+          "wheel": 0
+        },
+        {
+          "instance": 11,
+          "chunk": 60,
+          "semantic": 54,
+          "wheel": 1
+        },
+        {
+          "instance": 12,
+          "chunk": 60,
+          "semantic": 54,
+          "wheel": 2
+        },
+        {
+          "instance": 13,
+          "chunk": 60,
+          "semantic": 54,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "d16b57af0528cd2fbde64e375e85cf2dee562d665e35567534822c8376715358"
+    },
+    {
+      "car": 21,
+      "folder": "mitsu_ct9a",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 52,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "3d5f6c7d5ce7107c3df6b1b67adaaeb063dbe54169b7a509e92b08642b82c8a6"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 70,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "75dae2ba4055c884b6cba5de5b140108a35833c1aa4b4ec220e0344d91e45aa0"
+    },
+    {
+      "car": 23,
+      "folder": "mazda_fd3sa",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 57,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "88a1cc15d475fab6d39ccaf706e002db672846fa641e2f0ba767208d5c711ef7"
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 10,
+          "chunk": 61,
+          "semantic": 54,
+          "wheel": 0
+        },
+        {
+          "instance": 11,
+          "chunk": 61,
+          "semantic": 54,
+          "wheel": 1
+        },
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 54,
+          "wheel": 2
+        },
+        {
+          "instance": 13,
+          "chunk": 61,
+          "semantic": 54,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "9c7b91660d953ce5205ba34ce1ca137a9dba3950bf87433cdecaa52ff639d7dc"
+    },
+    {
+      "car": 25,
+      "folder": "mazda_na6c",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 64,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "e41bb2e43fb68102c2f1781345fb57a5e1ca8ce968815f7de5b264d8b22c3705"
+    },
+    {
+      "car": 26,
+      "folder": "mazda_nb8c",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 58,
+          "semantic": 53,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "f1b98783c4beb0b4f46191932554f2ac62b799fa21d2ed9aed6aaed267876434"
+    },
+    {
+      "car": 27,
+      "folder": "subaru_gc8s6",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 61,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "1788a0a75cc7af390c80c2eaaaf47e729671bede778d473a43935a143f8def1f"
+    },
+    {
+      "car": 28,
+      "folder": "subaru_gdb",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 10,
+          "chunk": 55,
+          "semantic": 54,
+          "wheel": 0
+        },
+        {
+          "instance": 11,
+          "chunk": 55,
+          "semantic": 54,
+          "wheel": 1
+        },
+        {
+          "instance": 12,
+          "chunk": 55,
+          "semantic": 54,
+          "wheel": 2
+        },
+        {
+          "instance": 13,
+          "chunk": 55,
+          "semantic": 54,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "904f574764617e8e3aede535b21b9233089ea317c1aeb75b24eee933b435c5b5"
+    },
+    {
+      "car": 29,
+      "folder": "subaru_gc8s5",
+      "stock_wheel_repair": true,
+      "wheels": [
+        {
+          "instance": 9,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 10,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 11,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 12,
+          "chunk": 13,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "5d01748a6ef458e77a57eb99a7ab88867aab6d95ab7f0091a7b60d4dc7e336a4"
+    },
+    {
+      "car": 30,
+      "folder": "suzuki_ea11r",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 51,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "797ce8dfb91545330bcafb6856f0fb91d2adfad8d94721aae31d81212772b985"
+    },
+    {
+      "car": 31,
+      "folder": "nissan_er34",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 49,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "2593807ee7c0a3f867ab85a9d85bedc0d8581c89d34e386b192c1ee8d16ef556"
+    },
+    {
+      "car": 32,
+      "folder": "mitsu_cp9a",
+      "stock_wheel_repair": false,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 59,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "00f50309c30febcef6a934eddee323ba91a03e1cd40d2471a2dba56a3012b864"
+    },
+    {
+      "car": 33,
+      "folder": "mitsu_cp9at",
+      "stock_wheel_repair": true,
+      "wheels": [
+        {
+          "instance": 12,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 13,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 14,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 15,
+          "chunk": 72,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "3481e5a06f3d7e8aa521b520d2d7344fcdeb75334771c0eb235ce0f7d9d33811"
+    },
+    {
+      "car": 34,
+      "folder": "mazda_se3p",
+      "stock_wheel_repair": true,
+      "wheels": [
+        {
+          "instance": 11,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 0
+        },
+        {
+          "instance": 12,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 1
+        },
+        {
+          "instance": 13,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 2
+        },
+        {
+          "instance": 14,
+          "chunk": 88,
+          "semantic": 52,
+          "wheel": 3
+        }
+      ],
+      "animated_instances": 8,
+      "capture_sha256": "f968922ecd9c98872d0064d0372b661f1d0f175cb72d26b39c98538537e78db5"
+    }
+  ]
+}

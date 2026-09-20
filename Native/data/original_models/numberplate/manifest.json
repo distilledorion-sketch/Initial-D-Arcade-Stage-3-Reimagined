@@ -1,0 +1,1256 @@
+{
+  "schema": "idas3-number-plate-v1",
+  "program_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "banks": [
+    {
+      "name": "numberplate",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\numberplate\\numberplate_pol.bin.nz",
+      "source_sha256": "ec0867f5f2cda6b7c1f6a045c5c5b82be656654d65e46e9ffc1bab87e2236cce",
+      "chunks": 11,
+      "textures": 2
+    },
+    {
+      "name": "numberplate_y",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\numberplate\\numberplate_y_pol.bin.nz",
+      "source_sha256": "ec0867f5f2cda6b7c1f6a045c5c5b82be656654d65e46e9ffc1bab87e2236cce",
+      "chunks": 11,
+      "textures": 2
+    }
+  ],
+  "cars": [
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "config_word": 4718592,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_ae86t.bin",
+      "parts_sha256": "f44503824e4e54566867e9f8c009db64ebb10d17be2bba4f1c439e40328f9456",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          0.0,
+          0.0,
+          0.0,
+          0.05000000074505806,
+          2.0910000801086426
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -6.0,
+          180.0,
+          0.0,
+          0.0,
+          0.3499999940395355,
+          -1.9889999628067017
+        ]
+      ]
+    },
+    {
+      "car": 1,
+      "folder": "toyota_ae86l",
+      "config_word": 4718593,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_ae86l.bin",
+      "parts_sha256": "6210db1219e30856d559212ddb2e20cb0a1e31df037bbac84dcc4a751b581152",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          10.0,
+          0.0,
+          0.0,
+          0.0,
+          0.019999999552965164,
+          2.0910000801086426
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -6.0,
+          180.0,
+          0.0,
+          0.0,
+          0.3499999940395355,
+          -1.9889999628067017
+        ]
+      ]
+    },
+    {
+      "car": 2,
+      "folder": "toyota_ae85l",
+      "config_word": 4718593,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_ae85l.bin",
+      "parts_sha256": "9401c299ec92c8e32161b8d9f0068d1fdbb035963512751dcf81d584ed48ac3f",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -6.0,
+          180.0,
+          0.0,
+          0.0,
+          0.3499999940395355,
+          -1.9889999628067017
+        ]
+      ]
+    },
+    {
+      "car": 3,
+      "folder": "toyota_sw20",
+      "config_word": 4726921,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_sw20.bin",
+      "parts_sha256": "8f7785efefadfb06041da70a3074ad01211a3f7b6c8ed208ad7350b8bab60a70",
+      "offsets": [
+        36,
+        252
+      ],
+      "transforms": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "car": 4,
+      "folder": "toyota_zzw30",
+      "config_word": 4718593,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_zzw30.bin",
+      "parts_sha256": "8d31d1d663ff45ab24d7a857512faba6411c3943ef5e9e6dfdbe12010ba55cf5",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.09200000017881393,
+          2.003499984741211
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.20999999344348907,
+          -1.8530000448226929
+        ]
+      ]
+    },
+    {
+      "car": 5,
+      "folder": "toyota_sxe10",
+      "config_word": 4785152,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_sxe10.bin",
+      "parts_sha256": "be9469b048955bba9317a78b1b836ea0d1b61023b0db658eda51ecaff8b4efc9",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          2.291800022125244,
+          0.0,
+          0.0,
+          0.0,
+          0.0625,
+          2.1205999851226807
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -4.583700180053711,
+          180.0,
+          0.0,
+          0.0,
+          0.4544999897480011,
+          -2.1686999797821045
+        ]
+      ]
+    },
+    {
+      "car": 6,
+      "folder": "toyota_st205",
+      "config_word": 25165824,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\toyota_st205.bin",
+      "parts_sha256": "dd2555be41fcd135db8c1005684925eec838e7cfccd809c115a1cf703b90985e",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.03999999910593033,
+          2.2269999980926514
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.39410001039505005,
+          -2.0596001148223877
+        ]
+      ]
+    },
+    {
+      "car": 7,
+      "folder": "nissan_bnr32",
+      "config_word": 4793345,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_bnr32.bin",
+      "parts_sha256": "fcb571a4010bedcab4b36c98cba184849ed81913a6c671909f0fd3fb57af9ac3",
+      "offsets": [
+        36,
+        252
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.10000000149011612,
+          2.246999979019165
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -8.0,
+          180.0,
+          0.0,
+          0.0,
+          0.12999999523162842,
+          -2.2790000438690186
+        ]
+      ]
+    },
+    {
+      "car": 8,
+      "folder": "nissan_bnr34",
+      "config_word": 4784128,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_bnr34.bin",
+      "parts_sha256": "a3e223938dee19510d63dc0ac3bbd6590ece672b25421a133ad65ffe5a201936",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.10970000177621841,
+          2.2890000343322754
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -4.583700180053711,
+          180.0,
+          0.0,
+          0.0,
+          0.18019999563694,
+          -2.2565999031066895
+        ]
+      ]
+    },
+    {
+      "car": 9,
+      "folder": "nissan_s13k",
+      "config_word": 4719617,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_s13k.bin",
+      "parts_sha256": "0a53b0f97eaada4e0cace30301030a06f2141af8ed17a0b959a59be35971d14c",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.07000000029802322,
+          2.2799999713897705
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.07000000029802322,
+          -2.1600000858306885
+        ]
+      ]
+    },
+    {
+      "car": 10,
+      "folder": "nissan_s14q",
+      "config_word": 4718593,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_s14q.bin",
+      "parts_sha256": "6591988af6f4738337f8f5371d0d2bd491b7aa58c36032e2c1ffb40cd59c150f",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.12780000269412994,
+          2.243000030517578
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.16519999504089355,
+          -2.234600067138672
+        ]
+      ]
+    },
+    {
+      "car": 11,
+      "folder": "nissan_s14",
+      "config_word": 1078460416,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_s14.bin",
+      "parts_sha256": "dca63827f82c2740039b687cce4b43646cedced3fea1d897e3feb49ad5e93e2a",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0763000026345253,
+          2.2334001064300537
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.15839999914169312,
+          -2.168299913406372
+        ]
+      ]
+    },
+    {
+      "car": 12,
+      "folder": "nissan_s15",
+      "config_word": 4718601,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_s15.bin",
+      "parts_sha256": "e179fbc4cb24030a118464c1330c9f56fc1432783dfff077d1403c18b6f6fda3",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.12809999287128448,
+          2.2335000038146973
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -4.0,
+          180.0,
+          0.0,
+          0.0,
+          0.16769999265670776,
+          -2.1851000785827637
+        ]
+      ]
+    },
+    {
+      "car": 13,
+      "folder": "nissan_rps13",
+      "config_word": 4718593,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_rps13.bin",
+      "parts_sha256": "08fafd749640fb07175b738a5db0159335c73ba871e3df6f97cdf14b67ef300e",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.10400000214576721,
+          2.371000051498413
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.07999999821186066,
+          -2.0899999141693115
+        ]
+      ]
+    },
+    {
+      "car": 14,
+      "folder": "nissan_rps13k",
+      "config_word": 4784128,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_rps13k.bin",
+      "parts_sha256": "f7fdf0d0b45fa5ffceb5568aaf2ab797316a248aec02ff6f90de7924e02afd1b",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.07999999821186066,
+          2.316999912261963
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.07999999821186066,
+          -2.0899999141693115
+        ]
+      ]
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "config_word": 1078460416,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\honda_ek9.bin",
+      "parts_sha256": "3080575c1339c2e1efed85d626bd0621d80e094f73b0eadcd1f982a02ff12646",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1371999979019165,
+          2.1375999450683594
+        ],
+        [
+          1.100000023841858,
+          1.100000023841858,
+          1.0,
+          -5.199999809265137,
+          180.0,
+          0.0,
+          0.0,
+          0.4763999879360199,
+          -1.8866000175476074
+        ]
+      ]
+    },
+    {
+      "car": 16,
+      "folder": "honda_eg6",
+      "config_word": 4718592,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\honda_eg6.bin",
+      "parts_sha256": "66535dd865776603a34de00cdada3cb4fbdf9f1690a5c2f1ffefba6c562511cc",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.14000000059604645,
+          2.0299999713897705
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -10.0,
+          180.0,
+          0.0,
+          0.0,
+          0.47099998593330383,
+          -1.8200000524520874
+        ]
+      ]
+    },
+    {
+      "car": 17,
+      "folder": "honda_dc2",
+      "config_word": 65664,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\honda_dc2.bin",
+      "parts_sha256": "724487f9a338da91e55ef72fca09603d1ede024b3095c52ce5b0d7f174e0555e",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.13600000739097595,
+          2.2084500789642334
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.16359999775886536,
+          -2.11080002784729
+        ]
+      ]
+    },
+    {
+      "car": 18,
+      "folder": "honda_ap1",
+      "config_word": 4784136,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\honda_ap1.bin",
+      "parts_sha256": "4d3eba3c46172b07326c5133c8b5dfefbae471aeafc1ee6bcbfcd2b1aee07c73",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          3.437700033187866,
+          0.0,
+          0.0,
+          0.0,
+          0.13099999725818634,
+          2.0179998874664307
+        ],
+        [
+          0.949999988079071,
+          0.949999988079071,
+          1.0,
+          -15.0,
+          180.0,
+          0.0,
+          0.0,
+          0.1599999964237213,
+          -2.11299991607666
+        ]
+      ]
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "config_word": 4718720,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mitsu_ce9a.bin",
+      "parts_sha256": "32f734fd898db6a5a80f9c4465bdee435b51b26ca2353fd310019c6240224c52",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.09600000083446503,
+          2.1700000762939453
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.4740000069141388,
+          -2.0899999141693115
+        ]
+      ]
+    },
+    {
+      "car": 20,
+      "folder": "mitsu_cn9a",
+      "config_word": 9437456,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mitsu_cn9a.bin",
+      "parts_sha256": "40610516c9caecf9cb4b8a1e02b319f694a5bdcff180710d76788bfec14fb517",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.11999999731779099,
+          2.1619999408721924
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -5.0,
+          180.0,
+          0.0,
+          0.0,
+          0.48500001430511475,
+          -2.0929999351501465
+        ]
+      ]
+    },
+    {
+      "car": 21,
+      "folder": "mitsu_ct9a",
+      "config_word": 4785153,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mitsu_ct9a.bin",
+      "parts_sha256": "de0ff7e853487a3b616c8184862e6a364a076131e5c44dd572ab212f67dbcd7f",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.07599999755620956,
+          2.173099994659424
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.125,
+          -2.255000114440918
+        ]
+      ]
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "config_word": 4784129,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mazda_fd3s.bin",
+      "parts_sha256": "dfd76c49245a4ec29d6bc75bed1829ca8b506fba0955e76aa3254eb9776be1cb",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.04800000041723251,
+          2.2276999950408936
+        ],
+        [
+          1.100000023841858,
+          1.100000023841858,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.0989999994635582,
+          -2.092449903488159
+        ]
+      ]
+    },
+    {
+      "car": 23,
+      "folder": "mazda_fd3sa",
+      "config_word": 1078526977,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mazda_fd3sa.bin",
+      "parts_sha256": "d892abd126588b7e4ce3bc8e1ba07350eb34ea4e26b7e944b295db7e7910fb31",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          5.0,
+          0.0,
+          0.0,
+          0.0,
+          0.08399999886751175,
+          2.2100000381469727
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.0989999994635582,
+          -2.092449903488159
+        ]
+      ]
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "config_word": 110233874,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mazda_fc3s.bin",
+      "parts_sha256": "492e0ce663596a9cc37e33d2c7a697a8d617870a61dd181e9579b2800c363d11",
+      "offsets": [
+        72,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.07800000160932541,
+          2.1700000762939453
+        ],
+        [
+          1.100000023841858,
+          1.100000023841858,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.3050000071525574,
+          -2.065000057220459
+        ]
+      ]
+    },
+    {
+      "car": 25,
+      "folder": "mazda_na6c",
+      "config_word": 4718601,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mazda_na6c.bin",
+      "parts_sha256": "49270c5e1879011f7534dde2937b3f14d7531528a9259f981b5fb0e209813660",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.1517000049352646,
+          1.9889999628067017
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.33869999647140503,
+          -1.860700011253357
+        ]
+      ]
+    },
+    {
+      "car": 26,
+      "folder": "mazda_nb8c",
+      "config_word": 4718592,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mazda_nb8c.bin",
+      "parts_sha256": "5b6396cd8f174c6aff1aeda76c194843a8ae16e2495f30fc8b8b83b9d523925b",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.12200000137090683,
+          1.996999979019165
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -3.5999999046325684,
+          180.0,
+          0.0,
+          0.0,
+          0.32899999618530273,
+          -1.8830000162124634
+        ]
+      ]
+    },
+    {
+      "car": 27,
+      "folder": "subaru_gc8s6",
+      "config_word": 589824,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\subaru_gc8s6.bin",
+      "parts_sha256": "243b16f15689b5bbad9eb6ff750e38c863172f1e7b7adeefe1e1de7bfb2f398f",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.10000000149011612,
+          2.140000104904175
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.11999999731779099,
+          -2.1600000858306885
+        ]
+      ]
+    },
+    {
+      "car": 28,
+      "folder": "subaru_gdb",
+      "config_word": 110233874,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\subaru_gdb.bin",
+      "parts_sha256": "954194648628b39f624277e19cb4de257af40f2f03df199dca3d2dc8d832fa0a",
+      "offsets": [
+        72,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          13.178000450134277,
+          0.0,
+          0.0,
+          0.0,
+          0.07769999653100967,
+          2.2032999992370605
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.18000000715255737,
+          -2.1459999084472656
+        ]
+      ]
+    },
+    {
+      "car": 29,
+      "folder": "subaru_gc8s5",
+      "config_word": 4718721,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\subaru_gc8s5.bin",
+      "parts_sha256": "8632624d3eac1cfa2a3f81fc174826c89e4343123e99e2127dc632dc0ed027af",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          180.0,
+          0.0,
+          0.0,
+          0.11999999731779099,
+          -2.1500000953674316
+        ]
+      ]
+    },
+    {
+      "car": 30,
+      "folder": "suzuki_ea11r",
+      "config_word": 0,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\suzuki_ea11r.bin",
+      "parts_sha256": "32767b6c0c21962dcf7cf2b2867b8169b38b1af07a3248103fa8739005056e01",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          2.5,
+          0.0,
+          0.0,
+          0.0,
+          0.06430000066757202,
+          1.6491999626159668
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -4.0,
+          180.0,
+          0.0,
+          0.0,
+          0.09889999777078629,
+          -1.6225999593734741
+        ]
+      ]
+    },
+    {
+      "car": 31,
+      "folder": "nissan_er34",
+      "config_word": 1025,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\nissan_er34.bin",
+      "parts_sha256": "65e6234df9fd40d49ca19a3c7024a6b268bb9943c3724f23a58b8edf4b02ef1a",
+      "offsets": [
+        36,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.07240000367164612,
+          2.2135000228881836
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -6.800000190734863,
+          180.0,
+          0.0,
+          0.0,
+          0.15479999780654907,
+          -2.216900110244751
+        ]
+      ]
+    },
+    {
+      "car": 32,
+      "folder": "mitsu_cp9a",
+      "config_word": 1024,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mitsu_cp9a.bin",
+      "parts_sha256": "6866e6b1b2bd14853d704630d3e8cc05b89918f3ef1d41a962f100e7d5683908",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.12300000339746475,
+          2.180000066757202
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -11.460000038146973,
+          180.0,
+          0.0,
+          0.0,
+          0.5117999911308289,
+          -2.089099884033203
+        ]
+      ]
+    },
+    {
+      "car": 33,
+      "folder": "mitsu_cp9at",
+      "config_word": 29367296,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mitsu_cp9at.bin",
+      "parts_sha256": "fe301374e70bedfa55a131bb26ed4388f7a6c0c9ecc7179e3a7eb55b9b4f304a",
+      "offsets": [
+        0,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          3.0,
+          11.699999809265137,
+          0.0,
+          0.4350000023841858,
+          0.050999999046325684,
+          2.1449999809265137
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -11.460000038146973,
+          180.0,
+          0.0,
+          0.0,
+          0.5117999911308289,
+          -2.089099884033203
+        ]
+      ]
+    },
+    {
+      "car": 34,
+      "folder": "mazda_se3p",
+      "config_word": 25169926,
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mazda_se3p.bin",
+      "parts_sha256": "b45f68ba02472abfe44aa8fbbbf2971ad9faee34bfc8ea17bf9056b05370d1f3",
+      "offsets": [
+        216,
+        216
+      ],
+      "transforms": [
+        [
+          1.0,
+          1.0,
+          1.0,
+          -9.100000381469727,
+          180.0,
+          0.0,
+          0.0,
+          0.2345000058412552,
+          -2.2230000495910645
+        ],
+        [
+          1.0,
+          1.0,
+          1.0,
+          -9.100000381469727,
+          180.0,
+          0.0,
+          0.0,
+          0.2345000058412552,
+          -2.2230000495910645
+        ]
+      ]
+    }
+  ],
+  "source_draw": "026160: base chunk10 and five digit chunks.026D80 selects front/rear records and applies T*RZ*RY*RX*S.",
+  "fresh_digits": [
+    2,
+    2,
+    9,
+    3,
+    6
+  ],
+  "fresh_source": "1348A0 clears profile+12.0631BE supplies five zeros to057280; additive constants modulo100000 produce22936."
+}

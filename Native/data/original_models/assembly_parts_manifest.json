@@ -1,0 +1,180 @@
+{
+  "schema": "idas3-original-assembly-parts-v1",
+  "cars": [
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "sha256": "f44503824e4e54566867e9f8c009db64ebb10d17be2bba4f1c439e40328f9456"
+    },
+    {
+      "car": 1,
+      "folder": "toyota_ae86l",
+      "sha256": "6210db1219e30856d559212ddb2e20cb0a1e31df037bbac84dcc4a751b581152"
+    },
+    {
+      "car": 2,
+      "folder": "toyota_ae85l",
+      "sha256": "9401c299ec92c8e32161b8d9f0068d1fdbb035963512751dcf81d584ed48ac3f"
+    },
+    {
+      "car": 3,
+      "folder": "toyota_sw20",
+      "sha256": "8f7785efefadfb06041da70a3074ad01211a3f7b6c8ed208ad7350b8bab60a70"
+    },
+    {
+      "car": 4,
+      "folder": "toyota_zzw30",
+      "sha256": "8d31d1d663ff45ab24d7a857512faba6411c3943ef5e9e6dfdbe12010ba55cf5"
+    },
+    {
+      "car": 5,
+      "folder": "toyota_sxe10",
+      "sha256": "be9469b048955bba9317a78b1b836ea0d1b61023b0db658eda51ecaff8b4efc9"
+    },
+    {
+      "car": 6,
+      "folder": "toyota_st205",
+      "sha256": "dd2555be41fcd135db8c1005684925eec838e7cfccd809c115a1cf703b90985e"
+    },
+    {
+      "car": 7,
+      "folder": "nissan_bnr32",
+      "sha256": "fcb571a4010bedcab4b36c98cba184849ed81913a6c671909f0fd3fb57af9ac3"
+    },
+    {
+      "car": 8,
+      "folder": "nissan_bnr34",
+      "sha256": "a3e223938dee19510d63dc0ac3bbd6590ece672b25421a133ad65ffe5a201936"
+    },
+    {
+      "car": 9,
+      "folder": "nissan_s13k",
+      "sha256": "0a53b0f97eaada4e0cace30301030a06f2141af8ed17a0b959a59be35971d14c"
+    },
+    {
+      "car": 10,
+      "folder": "nissan_s14q",
+      "sha256": "6591988af6f4738337f8f5371d0d2bd491b7aa58c36032e2c1ffb40cd59c150f"
+    },
+    {
+      "car": 11,
+      "folder": "nissan_s14",
+      "sha256": "dca63827f82c2740039b687cce4b43646cedced3fea1d897e3feb49ad5e93e2a"
+    },
+    {
+      "car": 12,
+      "folder": "nissan_s15",
+      "sha256": "e179fbc4cb24030a118464c1330c9f56fc1432783dfff077d1403c18b6f6fda3"
+    },
+    {
+      "car": 13,
+      "folder": "nissan_rps13",
+      "sha256": "08fafd749640fb07175b738a5db0159335c73ba871e3df6f97cdf14b67ef300e"
+    },
+    {
+      "car": 14,
+      "folder": "nissan_rps13k",
+      "sha256": "f7fdf0d0b45fa5ffceb5568aaf2ab797316a248aec02ff6f90de7924e02afd1b"
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "sha256": "3080575c1339c2e1efed85d626bd0621d80e094f73b0eadcd1f982a02ff12646"
+    },
+    {
+      "car": 16,
+      "folder": "honda_eg6",
+      "sha256": "66535dd865776603a34de00cdada3cb4fbdf9f1690a5c2f1ffefba6c562511cc"
+    },
+    {
+      "car": 17,
+      "folder": "honda_dc2",
+      "sha256": "724487f9a338da91e55ef72fca09603d1ede024b3095c52ce5b0d7f174e0555e"
+    },
+    {
+      "car": 18,
+      "folder": "honda_ap1",
+      "sha256": "4d3eba3c46172b07326c5133c8b5dfefbae471aeafc1ee6bcbfcd2b1aee07c73"
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "sha256": "32f734fd898db6a5a80f9c4465bdee435b51b26ca2353fd310019c6240224c52"
+    },
+    {
+      "car": 20,
+      "folder": "mitsu_cn9a",
+      "sha256": "40610516c9caecf9cb4b8a1e02b319f694a5bdcff180710d76788bfec14fb517"
+    },
+    {
+      "car": 21,
+      "folder": "mitsu_ct9a",
+      "sha256": "de0ff7e853487a3b616c8184862e6a364a076131e5c44dd572ab212f67dbcd7f"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "sha256": "dfd76c49245a4ec29d6bc75bed1829ca8b506fba0955e76aa3254eb9776be1cb"
+    },
+    {
+      "car": 23,
+      "folder": "mazda_fd3sa",
+      "sha256": "d892abd126588b7e4ce3bc8e1ba07350eb34ea4e26b7e944b295db7e7910fb31"
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "sha256": "492e0ce663596a9cc37e33d2c7a697a8d617870a61dd181e9579b2800c363d11"
+    },
+    {
+      "car": 25,
+      "folder": "mazda_na6c",
+      "sha256": "49270c5e1879011f7534dde2937b3f14d7531528a9259f981b5fb0e209813660"
+    },
+    {
+      "car": 26,
+      "folder": "mazda_nb8c",
+      "sha256": "5b6396cd8f174c6aff1aeda76c194843a8ae16e2495f30fc8b8b83b9d523925b"
+    },
+    {
+      "car": 27,
+      "folder": "subaru_gc8s6",
+      "sha256": "243b16f15689b5bbad9eb6ff750e38c863172f1e7b7adeefe1e1de7bfb2f398f"
+    },
+    {
+      "car": 28,
+      "folder": "subaru_gdb",
+      "sha256": "954194648628b39f624277e19cb4de257af40f2f03df199dca3d2dc8d832fa0a"
+    },
+    {
+      "car": 29,
+      "folder": "subaru_gc8s5",
+      "sha256": "8632624d3eac1cfa2a3f81fc174826c89e4343123e99e2127dc632dc0ed027af"
+    },
+    {
+      "car": 30,
+      "folder": "suzuki_ea11r",
+      "sha256": "32767b6c0c21962dcf7cf2b2867b8169b38b1af07a3248103fa8739005056e01"
+    },
+    {
+      "car": 31,
+      "folder": "nissan_er34",
+      "sha256": "65e6234df9fd40d49ca19a3c7024a6b268bb9943c3724f23a58b8edf4b02ef1a"
+    },
+    {
+      "car": 32,
+      "folder": "mitsu_cp9a",
+      "sha256": "6866e6b1b2bd14853d704630d3e8cc05b89918f3ef1d41a962f100e7d5683908"
+    },
+    {
+      "car": 33,
+      "folder": "mitsu_cp9at",
+      "sha256": "fe301374e70bedfa55a131bb26ed4388f7a6c0c9ecc7179e3a7eb55b9b4f304a"
+    },
+    {
+      "car": 34,
+      "folder": "mazda_se3p",
+      "sha256": "b45f68ba02472abfe44aa8fbbbf2971ad9faee34bfc8ea17bf9056b05370d1f3"
+    }
+  ]
+}

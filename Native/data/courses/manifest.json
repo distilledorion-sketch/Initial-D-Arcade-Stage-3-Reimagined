@@ -1,0 +1,229 @@
+{
+  "schema": "idas3-course-paths-v1",
+  "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path",
+  "format": "little-endian uint32 count, uint32 components=3, count packed XYZ float32 records",
+  "coordinates": "Original native XYZ coordinates retained without resampling, smoothing, or scaling.",
+  "unit_scale": 1,
+  "metre_calibration": "Native guest QA labels distances metres; independent real-world calibration is unverified.",
+  "race_endpoint_status": "Authoring-path endpoints are imported; exact game timing gates and race start offsets are not yet decoded.",
+  "course_name_evidence": "Legacy race_condition_matrix_manifest.csv ExpectedCourseAssets mapping",
+  "private_assets": true,
+  "courses": [
+    {
+      "id": "k_ez",
+      "name": "Myogi",
+      "points": 1069,
+      "length_native_units": 3229.8496628128687,
+      "height_min": -44.963199615478516,
+      "height_max": 120.01699829101562,
+      "width_min": 12.599009510053616,
+      "width_max": 18.600435715445165,
+      "closed": true,
+      "start": [
+        0.0,
+        120.01699829101562,
+        0.0
+      ],
+      "finish": [
+        0.0,
+        120.01699829101562,
+        0.0
+      ],
+      "source_files_sha256": {
+        "k_ez_path.bin": "7c156d5e0a7ca224a4eb24711a877da6a35fe13357900f43eb105620f27b947c",
+        "k_ez_path_l.bin": "a6f0c5f9b92c43d503a9091b2b27b22416d130e33fe49911c7090c9d17d5cbcb",
+        "k_ez_path_r.bin": "05fc8d777c4e648d423b545eed5ed8650f959a9c58ed496a552a4c8d8116bd0d"
+      },
+      "combined_sha256": "3657332ce38d4bf3ede2d496134e6ccf836d291b75596761a007ba2df6c417c6"
+    },
+    {
+      "id": "s_nm",
+      "name": "Usui",
+      "points": 1401,
+      "length_native_units": 4242.089563780657,
+      "height_min": -33.98740005493164,
+      "height_max": 17.69540023803711,
+      "width_min": 8.824585872315971,
+      "width_max": 24.86286024221877,
+      "closed": true,
+      "start": [
+        200.87100219726562,
+        1.0,
+        -255.8990020751953
+      ],
+      "finish": [
+        200.87100219726562,
+        1.0,
+        -255.8990020751953
+      ],
+      "source_files_sha256": {
+        "s_nm_path.bin": "24572d6265f7c99cd79ecb8cf78bf12d6fdc23a811ae06e623ed0819f4db0d70",
+        "s_nm_path_l.bin": "31ef7d169b3cfcc023b4a15e13548f353f9a04a32aff65c44e5092782057823e",
+        "s_nm_path_r.bin": "26694de5f405ef52829561e9307df8bbfe5afaf1a7aca9cb23adc5843e1f805f"
+      },
+      "combined_sha256": "2e139f0151c9f9714027d3af3ae7a873f269135ec1f2260f5d18ce2e43eb3850"
+    },
+    {
+      "id": "h_hd",
+      "name": "Akagi",
+      "points": 3301,
+      "length_native_units": 6618.477758329207,
+      "height_min": 0.008206759579479694,
+      "height_max": 470.0190124511719,
+      "width_min": 7.761071304139404,
+      "width_max": 16.49810868284747,
+      "closed": false,
+      "start": [
+        1987.5400390625,
+        470.0190124511719,
+        -1971.1700439453125
+      ],
+      "finish": [
+        0.0,
+        0.008206759579479694,
+        0.0
+      ],
+      "source_files_sha256": {
+        "h_hd_path.bin": "90b2668f80248eafc565f8152206c52b2b9fd5838c7ce3722dd9d24927ea7920",
+        "h_hd_path_l.bin": "65dd92d4e00cba28ee10aa2557548a0c01d060d876faa5d1bfc744276db43d60",
+        "h_hd_path_r.bin": "1b331d0a8870ac42b3b3dd4df448420f9154e2045ad6aec7afa2fb94c7cd0fb0"
+      },
+      "combined_sha256": "71101e03fc661a34fd9455deaec8e491ce20b478eebd4d4732caa00a34125951"
+    },
+    {
+      "id": "k_df",
+      "name": "Akina",
+      "points": 4089,
+      "length_native_units": 8191.902131653519,
+      "height_min": 665.2009887695312,
+      "height_max": 1130.02001953125,
+      "width_min": 13.407065543047583,
+      "width_max": 23.400578185011298,
+      "closed": false,
+      "start": [
+        36.70920181274414,
+        1130.0,
+        -30.926300048828125
+      ],
+      "finish": [
+        2026.4300537109375,
+        667.8590087890625,
+        -2128.909912109375
+      ],
+      "source_files_sha256": {
+        "k_df_path.bin": "e82b616aa1ff3de39ca54d2024c06bc50f5ae0fe753751b95aaf05e17f7ff4cf",
+        "k_df_path_l.bin": "fe323602efd5f2d98c9f423f5da06f33aedcbdc01ffc4604fcf5394ed3b8cdd1",
+        "k_df_path_r.bin": "68d6528c6ef0337377c82ba6d2cb827ba3c9c8a742f315dbd37a82402baf3b17"
+      },
+      "combined_sha256": "77317751f74553cd134f88ac881bcfa430b36304fd188374bf4631eb2e92896d"
+    },
+    {
+      "id": "s_vh",
+      "name": "Happogahara",
+      "points": 2080,
+      "length_native_units": 5976.1937324916225,
+      "height_min": 899.85400390625,
+      "height_max": 1019.8699951171875,
+      "width_min": 7.749500041804092,
+      "width_max": 14.600608738222256,
+      "closed": false,
+      "start": [
+        -1691.1400146484375,
+        1019.8699951171875,
+        206.8560028076172
+      ],
+      "finish": [
+        234.01199340820312,
+        921.343994140625,
+        -514.6829833984375
+      ],
+      "source_files_sha256": {
+        "s_vh_path.bin": "ccffc24a110c367bfc56668280e713064c1c7c7dbdc4d6f6bf72926d8775857f",
+        "s_vh_path_l.bin": "3d99c9b2e778142f79363daf92838fb3b3f7c4e1176fc230fc9d08400ed4346c",
+        "s_vh_path_r.bin": "ae7e9b2429ca0729a886a895bc172ca33452a0c59005675fdc6f76c69d34e7e6"
+      },
+      "combined_sha256": "537e3b1a84a9b2d457d7627c2831c04dc3383c538b0ba0697b50f8888a512bea"
+    },
+    {
+      "id": "s_uh",
+      "name": "Irohazaka",
+      "points": 2951,
+      "length_native_units": 5913.7021536401035,
+      "height_min": 930.0,
+      "height_max": 1290.1199951171875,
+      "width_min": 6.595945107017407,
+      "width_max": 17.03257832290506,
+      "closed": false,
+      "start": [
+        0.0,
+        1290.010009765625,
+        0.0
+      ],
+      "finish": [
+        2350.31005859375,
+        930.0,
+        -65.35340118408203
+      ],
+      "source_files_sha256": {
+        "s_uh_path.bin": "fa4cb969b37d0d1f72571c5d49dc54dce527f1efbd926879df6f315bde93286b",
+        "s_uh_path_l.bin": "6fccbff64b2fc330d75e89e00fbcb54173dba2128766660ae43742c954cd1b28",
+        "s_uh_path_r.bin": "164eae67bf1abdc9f7ba2ee0e9329ce5b6d7f096b478d2124b0c653cd9ff2489"
+      },
+      "combined_sha256": "ad5bf5180b4eeefd284d0b87d931995ecfa014667e10ac89791619cbd188c2a5"
+    },
+    {
+      "id": "n_sy",
+      "name": "Shomaru",
+      "points": 3301,
+      "length_native_units": 6614.258431817096,
+      "height_min": 370.0,
+      "height_max": 640.0,
+      "width_min": 4.599526943188961,
+      "width_max": 10.367498072019817,
+      "closed": false,
+      "start": [
+        0.0,
+        550.0,
+        0.0
+      ],
+      "finish": [
+        1980.469970703125,
+        370.0,
+        -1538.2099609375
+      ],
+      "source_files_sha256": {
+        "n_sy_path.bin": "3778bcfa438cb3833eacbde1c3bf134d9ab3bc4ffcf2ad20207e31fc108d761d",
+        "n_sy_path_l.bin": "ca52346dc3a864efc412e19e764a9232703920cca2e57045c9ed95b8be32da9d",
+        "n_sy_path_r.bin": "382bc5243ac7144990c1ac0a387dc0b5a299ed653a25873eebec630caea1f322"
+      },
+      "combined_sha256": "9b4f423801de52ce8024ec5526251c0b419be97fc7eb6045d9079bfb5962b4d7"
+    },
+    {
+      "id": "k_tu",
+      "name": "Tsuchisaka",
+      "points": 3729,
+      "length_native_units": 7475.8673354263365,
+      "height_min": 352.5249938964844,
+      "height_max": 700.02197265625,
+      "width_min": 9.506165433886235,
+      "width_max": 15.503482072796249,
+      "closed": false,
+      "start": [
+        -7.939080238342285,
+        352.5249938964844,
+        13.891400337219238
+      ],
+      "finish": [
+        2311.3701171875,
+        568.1729736328125,
+        2864.510009765625
+      ],
+      "source_files_sha256": {
+        "k_tu_path.bin": "bc6d9299cc6554e044fadf9007b59f34562a58afdf2048f5138fd55bc0058f9f",
+        "k_tu_path_l.bin": "64aafa3241601d493ea73c2e922b7b0fecaaabe5c936e5a1395ed2a5ab87ab96",
+        "k_tu_path_r.bin": "7d9d2e2d33e00be14cd991163b88dda440994de60fee8d3e7a4ee132b324c9e3"
+      },
+      "combined_sha256": "735c11377e55781d2566639d8292bc40dfeb6934552447fd46919d34815f7228"
+    }
+  ]
+}

@@ -1,0 +1,690 @@
+{
+  "schema": "idas3-original-assembly-v1",
+  "appearance": "Original retail car33 display preset; neutral steering/suspension, lights off",
+  "model_bank": "../mitsu_cp9at.idasmesh",
+  "model_bank_sha256": "23b0530bcb623e7c6b8030621fed51d77ad0f9c08eba87b47e7c76d240c61950",
+  "capture": {
+    "car_index": 33,
+    "slot_map_address": 204028480,
+    "preset_instructions": 402,
+    "config_word": 29367296,
+    "draws": [
+      {
+        "slot": 0,
+        "semantic": 0,
+        "chunk": 44,
+        "pass": "material",
+        "return_pc": 201485746,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 78,
+        "semantic": 78,
+        "chunk": 86,
+        "pass": "material",
+        "return_pc": 201485752,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 17,
+        "semantic": 17,
+        "chunk": 54,
+        "pass": "material",
+        "return_pc": 201485758,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 5,
+        "semantic": 5,
+        "chunk": 49,
+        "pass": "material",
+        "return_pc": 201485782,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 11,
+        "semantic": 11,
+        "chunk": 52,
+        "pass": "material",
+        "return_pc": 201485804,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 20,
+        "semantic": 20,
+        "chunk": 57,
+        "pass": "material",
+        "return_pc": 201485826,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 0,
+        "semantic": 0,
+        "chunk": 44,
+        "pass": "material",
+        "return_pc": 201485848,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 34,
+        "semantic": 34,
+        "chunk": 60,
+        "pass": "material",
+        "return_pc": 201485866,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 40,
+        "semantic": 40,
+        "chunk": 62,
+        "pass": "material",
+        "return_pc": 201485942,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 1,
+        "semantic": 1,
+        "chunk": 45,
+        "pass": "material",
+        "return_pc": 201486182,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 46,
+        "semantic": 46,
+        "chunk": 66,
+        "pass": "direct",
+        "return_pc": 201486458,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 18,
+        "semantic": 18,
+        "chunk": 55,
+        "pass": "direct",
+        "return_pc": 201487408,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 218169836,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201487334,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201487358,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201487382,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "scale",
+            "source": 201487400,
+            "values": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 60,
+        "semantic": 60,
+        "chunk": 79,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              -0.754999995,
+              0.0199999996,
+              1.28699994
+            ]
+          },
+          {
+            "type": "rotate_y_float",
+            "source": 201488634,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              364
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          0.9993911385536194,
+          0.0,
+          0.034890979528427124,
+          -0.7549999952316284,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          -0.034890979528427124,
+          0.0,
+          0.9993911385536194,
+          1.2869999408721924,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 61,
+        "semantic": 61,
+        "chunk": 80,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              0.754999995,
+              0.0199999996,
+              1.28699994
+            ]
+          },
+          {
+            "type": "rotate_y_float",
+            "source": 201488634,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              364
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          0.9993911385536194,
+          0.0,
+          0.034890979528427124,
+          0.7549999952316284,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          -0.034890979528427124,
+          0.0,
+          0.9993911385536194,
+          1.2869999408721924,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 62,
+        "semantic": 62,
+        "chunk": 81,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              -0.752499998,
+              0.0199999996,
+              -1.22300005
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          -0.7524999976158142,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          0.0,
+          0.0,
+          1.0,
+          -1.2230000495910645,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 63,
+        "semantic": 63,
+        "chunk": 82,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              0.752499998,
+              0.0199999996,
+              -1.22300005
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.7524999976158142,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          0.0,
+          0.0,
+          1.0,
+          -1.2230000495910645,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ],
+    "original_instructions": 3259,
+    "draw_attempts": 23,
+    "draw_count": 16,
+    "external_draw_helpers": 6,
+    "final_matrix_depth": 0
+  },
+  "matrix_format": "row-major, column vectors, translation elements3/7/11; original postmultiplication order",
+  "matrix_accuracy": "Exact captured float inputs/integer angles; host sin/cos-derived matrices, hardware FSCA/FTRV bit parity untested",
+  "model_coordinate_transform": "none; +Z front, +Y up; no metric rescale applied",
+  "sources": {
+    "image": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\idas3_main_0C020000.bin",
+      "bytes": 4194304,
+      "sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
+    },
+    "parts": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\mitsu_cp9at.bin",
+      "bytes": 828,
+      "sha256": "fe301374e70bedfa55a131bb26ed4388f7a6c0c9ecc7179e3a7eb55b9b4f304a"
+    },
+    "capture": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\2026-09-05\\as\\outputs\\InitialDRemake\\data\\original_models\\mitsu_cp9at\\assembly\\source_capture.json",
+      "bytes": 3332,
+      "sha256": "4c7c284bb882bd659a296b5f40987cdb40a9bbf67b33d89f767af50b4ee2ac2c"
+    },
+    "bank_manifest": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\2026-09-05\\as\\outputs\\InitialDRemake\\data\\original_models\\mitsu_cp9at\\model_manifest.json",
+      "bytes": 91921,
+      "sha256": "f24bae1f3fe04dde0325db56b76c0b0b8cc1780f85051f714e992d661b49012c"
+    }
+  },
+  "binary_sha256": "9cdd60d2a8c9d69e325e3c6418fe10c9d809a86baab8ef62a1b180d537f65a42",
+  "evidence": {
+    "renderer": "0C026D80..0C028364",
+    "display_preset_bytes": "0C2F48E4, 12 bytes; applied by original routine 0C035F00",
+    "car_table_root": "0C33B2D4 -> 0C293A40",
+    "slot_lookup": "0C026100; object+354 semantic map, object+358 render remap",
+    "part_transforms": "0C0271CC onward; 23 records of 9 float32 values scaleXYZ/rotationXYZ/translationXYZ",
+    "matrix_helpers": "1F6610 push,1F65C0 pop,1FD060/1F6AC0 translate,1F6950/1F68A0/1F67E0 rotateZ/Y/X,1F69D0 scale"
+  },
+  "limitations": [
+    "Original selection branches run on a bounded CPU oracle; graphics/matrix callees are explicit hooks.",
+    "Separately loaded number plate model helper 0C026160 is omitted.",
+    "Wheel blur helper 0C029EE0 is omitted at neutral zero intensity.",
+    "Paint/material initialization overrides and dynamic lighting are not captured.",
+    "This is one original display preset, not every card/tuning/color/LOD state."
+  ]
+}

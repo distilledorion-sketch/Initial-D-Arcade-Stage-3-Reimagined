@@ -1,0 +1,53 @@
+{
+  "car": 20,
+  "enemy": -1,
+  "color": 4,
+  "day_draws": 20,
+  "old_day_draws": 20,
+  "restored_day_slots": [],
+  "lighting_states": [
+    {
+      "state": 0,
+      "draws": 20,
+      "extras": []
+    },
+    {
+      "state": 1,
+      "draws": 22,
+      "extras": [
+        {
+          "slot": 193,
+          "chunk": 33,
+          "return_pc": 201486236
+        }
+      ]
+    },
+    {
+      "state": 2,
+      "draws": 22,
+      "extras": [
+        {
+          "slot": 187,
+          "chunk": 31,
+          "return_pc": 201486032
+        }
+      ]
+    },
+    {
+      "state": 3,
+      "draws": 24,
+      "extras": [
+        {
+          "slot": 187,
+          "chunk": 31,
+          "return_pc": 201486032
+        },
+        {
+          "slot": 193,
+          "chunk": 33,
+          "return_pc": 201486078
+        }
+      ]
+    }
+  ]
+}

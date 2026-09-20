@@ -1,0 +1,175 @@
+{
+  "car": 29,
+  "enemy": -1,
+  "config": 0,
+  "rgb": [
+    67,
+    69,
+    77
+  ],
+  "instructions": 1944981,
+  "copied_shadow_models": 10,
+  "paint_masks": [
+    262402,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "schema": "idas3-original-car-materials-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_polygon_sha256": "c880b3b0dc735ed56dd34d76b9433484f457727714750018da6319a8ddadd088",
+  "output_sha256": "985ab1d53c24afe5448a1f56408daff8eac2e6b96f6464cbc74700aea086abca",
+  "batch_overrides": 26,
+  "diffuse_changes": [
+    {
+      "chunk": 0,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 1,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 1,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 2,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 2,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 3,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 4,
+      "batch": 0,
+      "before": "f2ffffff",
+      "after": "b2ffffff"
+    },
+    {
+      "chunk": 4,
+      "batch": 1,
+      "before": "f2ffffff",
+      "after": "b2ffffff"
+    },
+    {
+      "chunk": 5,
+      "batch": 0,
+      "before": "f2ffffff",
+      "after": "b2ffffff"
+    },
+    {
+      "chunk": 6,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 6,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 7,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 8,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 9,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 10,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 11,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 12,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 12,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 26,
+      "batch": 2,
+      "before": "ffffffff",
+      "after": "ff43454d"
+    },
+    {
+      "chunk": 26,
+      "batch": 3,
+      "before": "ffffffff",
+      "after": "ff43454d"
+    },
+    {
+      "chunk": 32,
+      "batch": 0,
+      "before": "ffffffff",
+      "after": "ff43454d"
+    },
+    {
+      "chunk": 32,
+      "batch": 1,
+      "before": "ffffffff",
+      "after": "ff43454d"
+    },
+    {
+      "chunk": 39,
+      "batch": 0,
+      "before": "ffffffff",
+      "after": "ff43454d"
+    },
+    {
+      "chunk": 39,
+      "batch": 1,
+      "before": "ffffffff",
+      "after": "ff43454d"
+    }
+  ],
+  "source": "0267C0 constructor material setup and masks;029040 through029AD0 including029E60\u21921911A0 palette\u2192028DA0 RGB,028B80/028C80 alpha,028EC0 specular,029ABC gloss writes. Later suspension lookup excluded.",
+  "boundaries": "Actual1D4BE0/1D4C40 parser. Explicit hooks: diagnostic output, completed texture upload/binding, byte-copy allocation and classification of shadow copies, discarded16D680 course-query return, compiler unsigned division. No host color invention."
+}

@@ -1,0 +1,97 @@
+{
+  "car": 1,
+  "folder": "toyota_ae86l",
+  "count": 3,
+  "colors": [
+    {
+      "car": 1,
+      "enemy": -1,
+      "config": 0,
+      "rgb": [
+        230,
+        230,
+        230
+      ],
+      "instructions": 4591333,
+      "copied_shadow_models": 26,
+      "paint_masks": [
+        68173832,
+        537133073,
+        34934912,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "palette_address": "0C33AD44",
+      "rgb24": 15132390,
+      "material_patches": 82,
+      "material_sha256": "77a7c7cc47516de80465f3c4b2fa10e879eb2a105348ab4021b3e4b64b693715",
+      "geometry_sha256": "fbf173c449bac6f6a21789fa8cb0f2fe1f88e413bfbb70dcd56378adec9def57",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9932
+    },
+    {
+      "car": 1,
+      "enemy": -1,
+      "config": 33554432,
+      "rgb": [
+        160,
+        0,
+        0
+      ],
+      "instructions": 4591334,
+      "copied_shadow_models": 26,
+      "paint_masks": [
+        68173832,
+        537133073,
+        34934912,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 1,
+      "palette_address": "0C33AD68",
+      "rgb24": 10485760,
+      "material_patches": 82,
+      "material_sha256": "25cdaae2496df9473b27e8da0c28befbec6712c4ea2b11fe03733dcf48d5c108",
+      "geometry_sha256": "76ecbdd4b0ab472035fb117f66c4f1db00d1bb76247228e502bb3cabedbbef23",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9933
+    },
+    {
+      "car": 1,
+      "enemy": -1,
+      "config": 67108864,
+      "rgb": [
+        125,
+        126,
+        127
+      ],
+      "instructions": 4591337,
+      "copied_shadow_models": 26,
+      "paint_masks": [
+        68173832,
+        537133073,
+        34934912,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 2,
+      "palette_address": "0C33AD8C",
+      "rgb24": 8224383,
+      "material_patches": 82,
+      "material_sha256": "bfa002515072a9098ffde85eea0719d2da77428ac733c1ac529c41f5f1c54a38",
+      "geometry_sha256": "0b538daf114f9b4853a9a4d6f90a9730e1c2f3f8e806ebdc46f966cb2a9e906b",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9936
+    }
+  ]
+}

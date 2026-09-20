@@ -1,0 +1,187 @@
+{
+  "car": 12,
+  "folder": "nissan_s15",
+  "count": 6,
+  "colors": [
+    {
+      "car": 12,
+      "enemy": -1,
+      "config": 0,
+      "rgb": [
+        130,
+        132,
+        133
+      ],
+      "instructions": 5051989,
+      "copied_shadow_models": 24,
+      "paint_masks": [
+        1216905217,
+        1423231232,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "palette_address": "0C33A9E4",
+      "rgb24": 8553605,
+      "material_patches": 88,
+      "material_sha256": "df9e14e35ffdb02a9569fb84ef4791ce1759dcdb44233561ce7eabec296af057",
+      "geometry_sha256": "6101a092b2adc0717757e7fe34089c0fd74d9e98af74ae7de4323a220e8de3d7",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9897
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "config": 33554432,
+      "rgb": [
+        220,
+        220,
+        220
+      ],
+      "instructions": 5051989,
+      "copied_shadow_models": 24,
+      "paint_masks": [
+        1216905217,
+        1423231232,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 1,
+      "palette_address": "0C33AA08",
+      "rgb24": 14474460,
+      "material_patches": 88,
+      "material_sha256": "706a94f2e10f3f43b50a5da9d457d2d3092ce515fcf3e69f8cd6d1ea342b4242",
+      "geometry_sha256": "a93d3118d29276b494c450aaf21332348fc39fd630d9385f058c4df2dafbec90",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9897
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "config": 67108864,
+      "rgb": [
+        21,
+        21,
+        21
+      ],
+      "instructions": 5051989,
+      "copied_shadow_models": 24,
+      "paint_masks": [
+        1216905217,
+        1423231232,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 2,
+      "palette_address": "0C33AA2C",
+      "rgb24": 1381653,
+      "material_patches": 88,
+      "material_sha256": "a26635d90a1f13ecd6b751b59bb7d14cd89144b091d84c038185e73dd2ce67f3",
+      "geometry_sha256": "ffc735a42406a0c98b22707417c00718a953094cba42077584fad714ee9f20c4",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9897
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "config": 100663296,
+      "rgb": [
+        0,
+        10,
+        85
+      ],
+      "instructions": 5051989,
+      "copied_shadow_models": 24,
+      "paint_masks": [
+        1216905217,
+        1423231232,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 3,
+      "palette_address": "0C33AA50",
+      "rgb24": 2645,
+      "material_patches": 88,
+      "material_sha256": "56e6b0ed2f3ecb2ba2b38b7d15bd2892b405b887234256d1ff29871957a6a9d2",
+      "geometry_sha256": "0b8e599fafcd6746828666c8c0c257e6fe333723d80c4f6a2b89d4881207ceb8",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9897
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "config": 134217728,
+      "rgb": [
+        230,
+        200,
+        0
+      ],
+      "instructions": 5051989,
+      "copied_shadow_models": 24,
+      "paint_masks": [
+        1216905217,
+        1423231232,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 4,
+      "palette_address": "0C33AA74",
+      "rgb24": 15124480,
+      "material_patches": 88,
+      "material_sha256": "9f17b3a15d12df75c429e4db5cc49d67d1bc75c8507fb3f2522ca44acb6a18f5",
+      "geometry_sha256": "e217452d0e5a19e5ad483f51754a594778a1a116c23377e59a8fa47c8bbecad0",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9897
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "config": 167772160,
+      "rgb": [
+        180,
+        10,
+        0
+      ],
+      "instructions": 5051989,
+      "copied_shadow_models": 24,
+      "paint_masks": [
+        1216905217,
+        1423231232,
+        9,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 5,
+      "palette_address": "0C33AA98",
+      "rgb24": 11799040,
+      "material_patches": 88,
+      "material_sha256": "152ff408deeb673220357b7b695848fec8f86cf82d0e7fa782dc9f1176b04b08",
+      "geometry_sha256": "4e1c36f8a4c4ac70731f12222770e0d84ee62ead9db25f3850ace846a050c8b5",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9897
+    }
+  ]
+}

@@ -1,0 +1,305 @@
+{
+  "schema": "idas3-original-rival-v1",
+  "program_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "table_original_start": "0xc271618",
+  "table_original_end_exclusive": "0xc283de4",
+  "table_bytes": 75724,
+  "table_sha256": "fcc94bf2c27acf9dcc674aa48583a01300d1357af456a0c9209747f9994532e9",
+  "paths": [
+    {
+      "condition": 0,
+      "file": "path_00.bin",
+      "source": "binary\\PATH_ezi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "03a8c12a614a327c82afeb691fa1f84e456faa564dbb9881ead3888a38aba8f1",
+      "inclusive_last_index": 952,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 1,
+      "file": "path_01.bin",
+      "source": "binary\\PATH_ezo_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "94b7ff92688f1ea2755b73eacd6893b32ed9af5ba724352b894ec0d68afdc066",
+      "inclusive_last_index": 952,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 2,
+      "file": "path_02.bin",
+      "source": "binary\\PATH_nmi_0.bin",
+      "source_bytes": 11000,
+      "source_sha256": "77266ec218b5fe552f597653704cc8a9c4390978b69a7fe3c1c08cbdb540b991",
+      "inclusive_last_index": 832,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 3,
+      "file": "path_03.bin",
+      "source": "binary\\PATH_nmo_0.bin",
+      "source_bytes": 11000,
+      "source_sha256": "ca02aafc8b1754b899e265f66937cb3da3b0f9457e7e583d4e43fc311d648fb2",
+      "inclusive_last_index": 832,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 4,
+      "file": "path_04.bin",
+      "source": "binary\\PATH_agi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "1df6d3aa035ff64ee01bd6c3d49c3175b03fe2eb84af5315ab572de36965b59c",
+      "inclusive_last_index": 584,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 5,
+      "file": "path_05.bin",
+      "source": "binary\\PATH_ago_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "3323220ba346361bcc53f3ecf981cac015a6a41581aecbb13fd3c41e168aee57",
+      "inclusive_last_index": 584,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 6,
+      "file": "path_06.bin",
+      "source": "binary\\PATH_dfi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "63a914143c5ad35bb0043438c2443904d3b683f2fb5a70c45b52cc4f99fdc34d",
+      "inclusive_last_index": 771,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 7,
+      "file": "path_07.bin",
+      "source": "binary\\PATH_dfo_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "1932518ac64fbcecff314deedc14f92d5e51ddc7829e83226045438d20674154",
+      "inclusive_last_index": 771,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 8,
+      "file": "path_08.bin",
+      "source": "binary\\PATH_vhi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "cdb01c1e899019f62e5b4a9f082014c0755f54d78f6acbe7c36671c405cf295c",
+      "inclusive_last_index": 560,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 9,
+      "file": "path_09.bin",
+      "source": "binary\\PATH_vho_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "672ea015b837e8be092b90550ef475597b74e7879bd5a4c3d5efa7445eef66da",
+      "inclusive_last_index": 560,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 10,
+      "file": "path_10.bin",
+      "source": "binary\\PATH_iri_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "5036be40c0a00172e24a707b214d0e6cbef808ff15b11f2a8b6d781a44d15720",
+      "inclusive_last_index": 512,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 11,
+      "file": "path_11.bin",
+      "source": "binary\\PATH_iro_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "ab8fb65a51300e616cec75c551ac53c99b5bb754e79986004a50f8a848f438b1",
+      "inclusive_last_index": 512,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 12,
+      "file": "path_12.bin",
+      "source": "binary\\PATH_shi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "b0d21ee055f4f3ab1c8cf12361ab2365ff2446187ef60bde3959625e588ae353",
+      "inclusive_last_index": 581,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 13,
+      "file": "path_13.bin",
+      "source": "binary\\PATH_sho_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "49ab486e258900b242751e3636170a55994fee10c5590d8f676c87d31822f9a5",
+      "inclusive_last_index": 581,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 14,
+      "file": "path_14.bin",
+      "source": "binary\\PATH_tui_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "150db6238e0ae98fd1a717c0e4d4d58cb7060a900ec518f4bcf940f657c87b22",
+      "inclusive_last_index": 680,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 15,
+      "file": "path_15.bin",
+      "source": "binary\\PATH_tuo_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "895ff5602d7fb3c0687dbc6b68f90b810b5085a75272b3a38d130357e9b3366b",
+      "inclusive_last_index": 680,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 16,
+      "file": "path_16.bin",
+      "source": "binary\\PATH_asi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "63a914143c5ad35bb0043438c2443904d3b683f2fb5a70c45b52cc4f99fdc34d",
+      "inclusive_last_index": 771,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    },
+    {
+      "condition": 17,
+      "file": "path_17.bin",
+      "source": "binary\\PATH_aso_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "1932518ac64fbcecff314deedc14f92d5e51ddc7829e83226045438d20674154",
+      "inclusive_last_index": 771,
+      "note": "Complete bytes preserved, including lookahead/padding beyond the player valid prefix"
+    }
+  ],
+  "alternate_paths": [
+    {
+      "condition": 0,
+      "source": "binary\\PATH_ezi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 1,
+      "source": "binary\\PATH_ezo_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 2,
+      "source": "binary\\PATH_nmi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 3,
+      "source": "binary\\PATH_nmo_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 4,
+      "source": "binary\\PATH_agi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 5,
+      "source": "binary\\PATH_ago_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 6,
+      "source": "binary\\PATH_dfi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 7,
+      "source": "binary\\PATH_dfo_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 8,
+      "source": "binary\\PATH_vhi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 9,
+      "source": "binary\\PATH_vho_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 10,
+      "source": "binary\\PATH_iri_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 11,
+      "source": "binary\\PATH_iro_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 12,
+      "source": "binary\\PATH_shi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 13,
+      "source": "binary\\PATH_sho_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 14,
+      "source": "binary\\PATH_tui_1.bin",
+      "source_bytes": 12000,
+      "source_sha256": "050007cfef375dda078d2711783ceddfe7e2977ad8e9e3221484c8cb968bc43e",
+      "available": true,
+      "file": "path_14_alternate.bin",
+      "inclusive_last_index": 680
+    },
+    {
+      "condition": 15,
+      "source": "binary\\PATH_tuo_1.bin",
+      "source_bytes": 12000,
+      "source_sha256": "895ff5602d7fb3c0687dbc6b68f90b810b5085a75272b3a38d130357e9b3366b",
+      "available": true,
+      "file": "path_15_alternate.bin",
+      "inclusive_last_index": 680
+    },
+    {
+      "condition": 16,
+      "source": "binary\\PATH_asi_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    },
+    {
+      "condition": 17,
+      "source": "binary\\PATH_aso_1.bin",
+      "source_bytes": 0,
+      "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "available": false
+    }
+  ],
+  "scope": "Numerical lookup data only; no original opcode interpreter/runtime"
+}

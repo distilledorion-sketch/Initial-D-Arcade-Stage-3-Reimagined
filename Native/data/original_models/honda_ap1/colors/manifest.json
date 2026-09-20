@@ -1,0 +1,187 @@
+{
+  "car": 18,
+  "folder": "honda_ap1",
+  "count": 6,
+  "colors": [
+    {
+      "car": 18,
+      "enemy": -1,
+      "config": 0,
+      "rgb": [
+        110,
+        110,
+        110
+      ],
+      "instructions": 4266343,
+      "copied_shadow_models": 23,
+      "paint_masks": [
+        168296449,
+        2468675620,
+        4240,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "palette_address": "0C33982C",
+      "rgb24": 7237230,
+      "material_patches": 79,
+      "material_sha256": "71fc0396f028eac8e34245bd87550677d0b3ef9c821705e38bdb464893a6f35e",
+      "geometry_sha256": "2cda5cae69a376bf939198ba3d363c692d0b07019946aacf99372ced3d50f607",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9906
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "config": 33554432,
+      "rgb": [
+        250,
+        190,
+        0
+      ],
+      "instructions": 4266343,
+      "copied_shadow_models": 23,
+      "paint_masks": [
+        168296449,
+        2468675620,
+        4240,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 1,
+      "palette_address": "0C339850",
+      "rgb24": 16432640,
+      "material_patches": 79,
+      "material_sha256": "c8c2d9c2b6b7228b82211269f8e98663de9686c1c18c0dd73af18f8525348c88",
+      "geometry_sha256": "2ff3cb5022f384b434ab551bc4164a69e92e5cd70a5323d316e46d8a09fb0530",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9906
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "config": 67108864,
+      "rgb": [
+        190,
+        0,
+        0
+      ],
+      "instructions": 4266343,
+      "copied_shadow_models": 23,
+      "paint_masks": [
+        168296449,
+        2468675620,
+        4240,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 2,
+      "palette_address": "0C339874",
+      "rgb24": 12451840,
+      "material_patches": 79,
+      "material_sha256": "b7af6d8ddfc6a33843d359f56ee4d539c33172ee7e69e0f9065e7336ca5ab382",
+      "geometry_sha256": "28c57eb2d76ff2f7a49bf6b2cf3830be5e707c737640678b45ce3483508c6e69",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9906
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "config": 100663296,
+      "rgb": [
+        220,
+        220,
+        220
+      ],
+      "instructions": 4266343,
+      "copied_shadow_models": 23,
+      "paint_masks": [
+        168296449,
+        2468675620,
+        4240,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 3,
+      "palette_address": "0C339898",
+      "rgb24": 14474460,
+      "material_patches": 79,
+      "material_sha256": "d924451a46e767eb71cf37f1fe5d7051fd99523129be07ca411cef9c99876744",
+      "geometry_sha256": "8e89d50c004464fe984cf207a3c8eaffbb012b3b2d8097e1ad850c3820a053f7",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9906
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "config": 134217728,
+      "rgb": [
+        0,
+        15,
+        60
+      ],
+      "instructions": 4266343,
+      "copied_shadow_models": 23,
+      "paint_masks": [
+        168296449,
+        2468675620,
+        4240,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 4,
+      "palette_address": "0C3398BC",
+      "rgb24": 3900,
+      "material_patches": 79,
+      "material_sha256": "1c26cbf5fec079c0afc29dc9712d5e6046432722ff9f8d5c5d26530d354532ff",
+      "geometry_sha256": "1da9e43b9af84a81b6fcf33e8b861a8638fa3573b40d494746e28e6ab01b43a2",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9906
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "config": 167772160,
+      "rgb": [
+        21,
+        21,
+        21
+      ],
+      "instructions": 4266343,
+      "copied_shadow_models": 23,
+      "paint_masks": [
+        168296449,
+        2468675620,
+        4240,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 5,
+      "palette_address": "0C3398E0",
+      "rgb24": 1381653,
+      "material_patches": 79,
+      "material_sha256": "6db62d3b390ca1f61dc6e23c2886a7e167004ec561ff48318c36334a6caf21c4",
+      "geometry_sha256": "a577d6422eee10e8aa3d83af47262104c24b5c2dfccccff15de7f9d67323b104",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9906
+    }
+  ]
+}

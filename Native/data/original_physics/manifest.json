@@ -1,0 +1,455 @@
+{
+  "schema": "idas3-original-physics-data-v1",
+  "source_program": "idas3_main_0C020000.bin",
+  "source_program_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_program_base": "0x0C020000",
+  "tables_sha256": "6792bb5a5bda17fd83e834598c9d3b523726bbf3aea6d2d9736043c0329c1ec2",
+  "tables_bytes": 19204,
+  "sections": [
+    {
+      "name": "mode_masks",
+      "original_address": "0x0C283E08",
+      "bytes": 128,
+      "pack_offset": 368,
+      "sha256": "41bdc6a0ecfc3b2f1a73824d6476914e6eb96fdbc029f93c4656ba4e8245caa8"
+    },
+    {
+      "name": "path_bounds",
+      "original_address": "0x0C283E88",
+      "bytes": 144,
+      "pack_offset": 496,
+      "sha256": "c15e853f57be61a1a78f624ae18a57201f43e544b96b5dc7f7324ec9b6fe382f"
+    },
+    {
+      "name": "car_geometry",
+      "original_address": "0x0C283F18",
+      "bytes": 1540,
+      "pack_offset": 640,
+      "sha256": "93f5010e86d7b5093a944a9f1980068a8cbe7d619000084c0643efa9d38d42b3"
+    },
+    {
+      "name": "frame_coefficients",
+      "original_address": "0x0C28451C",
+      "bytes": 2520,
+      "pack_offset": 2180,
+      "sha256": "0f1ea026da40bbd016091c2d46afa5c8f96fcde7b5925bb7c6ff28f49123c5c9"
+    },
+    {
+      "name": "vehicle_types",
+      "original_address": "0x0C284EF4",
+      "bytes": 140,
+      "pack_offset": 4700,
+      "sha256": "34d5c67fbdc7ddb60e3d5f7f835552778c7112b5792bd30b73092db9e33b3bda"
+    },
+    {
+      "name": "loss_parameters",
+      "original_address": "0x0C284F80",
+      "bytes": 280,
+      "pack_offset": 4840,
+      "sha256": "8498d644fb691d087bc3028f5e8d6efe2c0d74ebf2f97c6c7c4a1d9ea40cbf41"
+    },
+    {
+      "name": "throttle_history_counts",
+      "original_address": "0x0C285098",
+      "bytes": 140,
+      "pack_offset": 5120,
+      "sha256": "6cdfb33c5f4282090fcf4919c2427b80725c0ab0ca6ff971fef1b88f351f63e3"
+    },
+    {
+      "name": "angular_memory_0c285124",
+      "original_address": "0x0C285124",
+      "bytes": 1260,
+      "pack_offset": 5260,
+      "sha256": "14a26b92b9fa2ad04b8100e6aa755f39f2963360393344b1363d07747a0a765d"
+    },
+    {
+      "name": "angular_memory_0c285610",
+      "original_address": "0x0C285610",
+      "bytes": 1260,
+      "pack_offset": 6520,
+      "sha256": "67dc85e7e4998639f9e2f92a7862bcad130cd25961b5e96e973d87d6e75faf3f"
+    },
+    {
+      "name": "angular_memory_0c285afc",
+      "original_address": "0x0C285AFC",
+      "bytes": 1260,
+      "pack_offset": 7780,
+      "sha256": "341ad97e59a87c4876dfaf356c02fcac1a499f646a8a8bcdc2c054aa54e4e7c0"
+    },
+    {
+      "name": "angular_memory_0c285fe8",
+      "original_address": "0x0C285FE8",
+      "bytes": 1260,
+      "pack_offset": 9040,
+      "sha256": "a35a84295eb5339fbf4bde11a60771c87bdc553342cc3c6c84803242cd1b95e9"
+    },
+    {
+      "name": "angular_memory_0c2864d4",
+      "original_address": "0x0C2864D4",
+      "bytes": 1260,
+      "pack_offset": 10300,
+      "sha256": "cbea738a7b3907f2a433e70f7370876a1e1be00a982a0a4f47b3274ada201062"
+    },
+    {
+      "name": "angular_memory_0c2869c0",
+      "original_address": "0x0C2869C0",
+      "bytes": 1260,
+      "pack_offset": 11560,
+      "sha256": "e799e162a4fa2a2c71100ee1a19f481801340b78c8ebcb9eff70d14eae98b0cf"
+    },
+    {
+      "name": "angular_memory_0c286eac",
+      "original_address": "0x0C286EAC",
+      "bytes": 1260,
+      "pack_offset": 12820,
+      "sha256": "0b69e92df5205baafee174bdb1e40144ff5d50a0d15820a4fb67db5edc97f3af"
+    },
+    {
+      "name": "angular_memory_0c287398",
+      "original_address": "0x0C287398",
+      "bytes": 1260,
+      "pack_offset": 14080,
+      "sha256": "27abb0905ce9d4e67041465084e251dea708f012cdd825c2e0c9ca8a482374f7"
+    },
+    {
+      "name": "angular_memory_0c287884",
+      "original_address": "0x0C287884",
+      "bytes": 1260,
+      "pack_offset": 15340,
+      "sha256": "8aac01e25403449214f6185681e62c658ec5c0b443e6f903ba901be92d3d4910"
+    },
+    {
+      "name": "angular_memory_0c287d70",
+      "original_address": "0x0C287D70",
+      "bytes": 1260,
+      "pack_offset": 16600,
+      "sha256": "c4635fefae0790de33a8411fb70702bd5ed4166aaf6daecc40c80070c0b01ae1"
+    },
+    {
+      "name": "transmission_profiles",
+      "original_address": "0x0C28825C",
+      "bytes": 176,
+      "pack_offset": 17860,
+      "sha256": "5415a58b48956eb1c3f5b2c86f2e692ecc3cf4881e0768cbe5d2eae88cc7e207"
+    },
+    {
+      "name": "transmission_rows_and_override",
+      "original_address": "0x0C28830C",
+      "bytes": 864,
+      "pack_offset": 18036,
+      "sha256": "d5589cc4e0bf788f11a6264dd805ae3511f9b308902505f683b27adc40cc2c3e"
+    },
+    {
+      "name": "upgrade_coefficients",
+      "original_address": "0x0C28866C",
+      "bytes": 304,
+      "pack_offset": 18900,
+      "sha256": "2d91845bc3b6b88acce158e2d3ea93dfac4dcaed551d0d66a3522c8de01f7b31"
+    }
+  ],
+  "paths": [
+    {
+      "condition_code": 0,
+      "source": "binary/PATH_ezi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "03a8c12a614a327c82afeb691fa1f84e456faa564dbb9881ead3888a38aba8f1",
+      "file": "path_00.bin",
+      "sha256": "47a2e6dc62f873facaec1aeae2248e7c0af1449b197eea8ef5423d3df548d480",
+      "inclusive_last_index": 952,
+      "exported_points": 953,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 1,
+      "source": "binary/PATH_ezo_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "94b7ff92688f1ea2755b73eacd6893b32ed9af5ba724352b894ec0d68afdc066",
+      "file": "path_01.bin",
+      "sha256": "f8bf19c011beff5ce83ffeae7d2efdf84d281d51f42df98a0c72e5104903c23e",
+      "inclusive_last_index": 952,
+      "exported_points": 953,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 2,
+      "source": "binary/PATH_nmi_0.bin",
+      "source_bytes": 11000,
+      "source_sha256": "77266ec218b5fe552f597653704cc8a9c4390978b69a7fe3c1c08cbdb540b991",
+      "file": "path_02.bin",
+      "sha256": "7b14b554bc750900e13365b2c255574648361e7a3323faf63938e9c9cba2e149",
+      "inclusive_last_index": 832,
+      "exported_points": 833,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 3,
+      "source": "binary/PATH_nmo_0.bin",
+      "source_bytes": 11000,
+      "source_sha256": "ca02aafc8b1754b899e265f66937cb3da3b0f9457e7e583d4e43fc311d648fb2",
+      "file": "path_03.bin",
+      "sha256": "3b4dab5ac0a66348a33d9440fba23e7337b4d57598051d344ef32566073b25e5",
+      "inclusive_last_index": 832,
+      "exported_points": 833,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 4,
+      "source": "binary/PATH_agi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "1df6d3aa035ff64ee01bd6c3d49c3175b03fe2eb84af5315ab572de36965b59c",
+      "file": "path_04.bin",
+      "sha256": "a6dd32a4d333928f09c1a73f6511371eccbe40076fa2e005ecd9d9861c3afbdb",
+      "inclusive_last_index": 584,
+      "exported_points": 585,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 5,
+      "source": "binary/PATH_ago_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "3323220ba346361bcc53f3ecf981cac015a6a41581aecbb13fd3c41e168aee57",
+      "file": "path_05.bin",
+      "sha256": "0395809b2bac9be8dfb4e96670cd14151b018f6f60a0979ce9d4bb2b73d6e501",
+      "inclusive_last_index": 584,
+      "exported_points": 585,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 6,
+      "source": "binary/PATH_dfi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "63a914143c5ad35bb0043438c2443904d3b683f2fb5a70c45b52cc4f99fdc34d",
+      "file": "path_06.bin",
+      "sha256": "d78b28b1a135cdf6f531ce1efd29b6a3356d006ac77a855d48ca1d9675fb751d",
+      "inclusive_last_index": 771,
+      "exported_points": 772,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 7,
+      "source": "binary/PATH_dfo_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "1932518ac64fbcecff314deedc14f92d5e51ddc7829e83226045438d20674154",
+      "file": "path_07.bin",
+      "sha256": "98ccff616ae72a6213e5fbf0940b90fb8b5291e2bb4bd0e393f126149eec149f",
+      "inclusive_last_index": 771,
+      "exported_points": 772,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 8,
+      "source": "binary/PATH_vhi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "cdb01c1e899019f62e5b4a9f082014c0755f54d78f6acbe7c36671c405cf295c",
+      "file": "path_08.bin",
+      "sha256": "01d90126ee82673cf2fa994fd32ba49f90ca868e7a2aeca95379c021a5bb9a17",
+      "inclusive_last_index": 560,
+      "exported_points": 561,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 9,
+      "source": "binary/PATH_vho_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "672ea015b837e8be092b90550ef475597b74e7879bd5a4c3d5efa7445eef66da",
+      "file": "path_09.bin",
+      "sha256": "c4435504e28e7e90fdc26782ecdb69ea1e62d38693d610960b3982b7ece04d34",
+      "inclusive_last_index": 560,
+      "exported_points": 561,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 10,
+      "source": "binary/PATH_iri_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "5036be40c0a00172e24a707b214d0e6cbef808ff15b11f2a8b6d781a44d15720",
+      "file": "path_10.bin",
+      "sha256": "84651d265eabaaf0e7fc18a8fc9a56714c7874f26901dfe1a43d79a2c3b6940e",
+      "inclusive_last_index": 512,
+      "exported_points": 513,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 11,
+      "source": "binary/PATH_iro_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "ab8fb65a51300e616cec75c551ac53c99b5bb754e79986004a50f8a848f438b1",
+      "file": "path_11.bin",
+      "sha256": "f3c307f33352525949ad93b29e00779dd3d07bc33f39cfd3925588aaabe395f8",
+      "inclusive_last_index": 512,
+      "exported_points": 513,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 12,
+      "source": "binary/PATH_shi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "b0d21ee055f4f3ab1c8cf12361ab2365ff2446187ef60bde3959625e588ae353",
+      "file": "path_12.bin",
+      "sha256": "7d3138d5550a72d1a7dc5e78c37a25c0be8e1920f0623b3c0c09714889193d2b",
+      "inclusive_last_index": 581,
+      "exported_points": 582,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 13,
+      "source": "binary/PATH_sho_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "49ab486e258900b242751e3636170a55994fee10c5590d8f676c87d31822f9a5",
+      "file": "path_13.bin",
+      "sha256": "d6e6bf0c02ca9e5bd8de8e55fa1c39a7add8d8740f2cde9308302d87984393ba",
+      "inclusive_last_index": 581,
+      "exported_points": 582,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 14,
+      "source": "binary/PATH_tui_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "150db6238e0ae98fd1a717c0e4d4d58cb7060a900ec518f4bcf940f657c87b22",
+      "file": "path_14.bin",
+      "sha256": "a2c6939a5b1f02b93ecb8a708baf6486449518871d98a3f7bfdc85fdb6fafc16",
+      "inclusive_last_index": 680,
+      "exported_points": 681,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 15,
+      "source": "binary/PATH_tuo_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "895ff5602d7fb3c0687dbc6b68f90b810b5085a75272b3a38d130357e9b3366b",
+      "file": "path_15.bin",
+      "sha256": "d3fa823be60e1bb1112787efb6c4c588d58d581f914b822ccd71da3ff9c505a3",
+      "inclusive_last_index": 680,
+      "exported_points": 681,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 16,
+      "source": "binary/PATH_asi_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "63a914143c5ad35bb0043438c2443904d3b683f2fb5a70c45b52cc4f99fdc34d",
+      "file": "path_16.bin",
+      "sha256": "9d57ab5f7062fd09e2383691bd09de9e73c06d54ce6970d98844d7e235650f2b",
+      "inclusive_last_index": 771,
+      "exported_points": 772,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    },
+    {
+      "condition_code": 17,
+      "source": "binary/PATH_aso_0.bin",
+      "source_bytes": 12000,
+      "source_sha256": "1932518ac64fbcecff314deedc14f92d5e51ddc7829e83226045438d20674154",
+      "file": "path_17.bin",
+      "sha256": "1e11ac928a90344b53e8b4a6fc5154756cf40e04be3e2705620040da4fa4cc82",
+      "inclusive_last_index": 771,
+      "exported_points": 772,
+      "policy": "Exact original valid prefix; native XYZ float32 bits, no scale/reversal/resampling"
+    }
+  ],
+  "collision": [
+    {
+      "source": "binary/h_hd_colli_0.bin.nz",
+      "file": "collision_h_hd_0.rcl",
+      "bytes": 666468,
+      "sha256": "60049dd1323dcbbd8a75ce68b324079541ee17d3f68ea0fb845daeda983064eb",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/h_hd_colli_1.bin.nz",
+      "file": "collision_h_hd_1.rcl",
+      "bytes": 666468,
+      "sha256": "27539b606a8e05f11218551fbdfa74d0ea9bcbf3f121cc64f3fc79332821fd37",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/k_df_colli_0.bin.nz",
+      "file": "collision_k_df_0.rcl",
+      "bytes": 880708,
+      "sha256": "c27cb780fd1717aae527618d99e6973fec572a48431533bbab94d63bd390007e",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/k_df_colli_1.bin.nz",
+      "file": "collision_k_df_1.rcl",
+      "bytes": 874660,
+      "sha256": "c348606f1b38007ecfac57dfb45470086297751d7f7efb31645aa96d2dfd86e5",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/k_ez_colli.bin.nz",
+      "file": "collision_k_ez.rcl",
+      "bytes": 261596,
+      "sha256": "1b10e5827d7885d2a83a7e61be50a3036bfcab1406fdde39537a371c4d478c5f",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/k_tu_colli_0.bin.nz",
+      "file": "collision_k_tu_0.rcl",
+      "bytes": 787268,
+      "sha256": "58505052e2e63660eb04eba60170085dacbb486ecd9b2f68197c11f37a0c9f2a",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/k_tu_colli_1.bin.nz",
+      "file": "collision_k_tu_1.rcl",
+      "bytes": 786404,
+      "sha256": "81cfa9f6cfd5963912b995c0a1e6982526ecca99561f50f09a7fa1e1b275f7f1",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/n_sy_colli_0.bin.nz",
+      "file": "collision_n_sy_0.rcl",
+      "bytes": 750984,
+      "sha256": "fb9159e9f881f03f93fc37927e0a422620617cf8bfd42872b283d1abe4a33a70",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/n_sy_colli_1.bin.nz",
+      "file": "collision_n_sy_1.rcl",
+      "bytes": 748936,
+      "sha256": "bbe1e2b4b1201f43e498b86ce50822264c89f061ef2d1b3e12cd253df24bb804",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/s_nm_colli.bin.nz",
+      "file": "collision_s_nm.rcl",
+      "bytes": 440140,
+      "sha256": "b80e09ae92d189c2704b9bf3efeedcd98c9bea14a58e77ace4c18dc37363a7bd",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/s_uh_colli_0.bin.nz",
+      "file": "collision_s_uh_0.rcl",
+      "bytes": 517384,
+      "sha256": "71dcf60aaec67e3d149864b7cc135e4378b331b84db0bf1a60127b0eacd89730",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/s_uh_colli_1.bin.nz",
+      "file": "collision_s_uh_1.rcl",
+      "bytes": 517384,
+      "sha256": "a81f0a1e0ce2852ccbdd2e1331fe18509d83e7e5484177e51542bbde33f885bc",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/s_vh_colli_0.bin.nz",
+      "file": "collision_s_vh_0.rcl",
+      "bytes": 506304,
+      "sha256": "1b8b28daa6e7d3e814973af61a65092835c0445e0bde7170e66601895cc2cde5",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    },
+    {
+      "source": "binary/s_vh_colli_1.bin.nz",
+      "file": "collision_s_vh_1.rcl",
+      "bytes": 506496,
+      "sha256": "c9a5f2830519c84a32a6904d4ee6c723269d138a9c9963c73b3cf7ac7d5e27ad",
+      "policy": "Byte-for-byte RCL1 source, already uncompressed; no geometry changes"
+    }
+  ],
+  "limitations": [
+    "The upgrade table exports 76 identified coefficient cells. Values outside indices0..75 are not accepted; valid profile upgrade progression is not yet lifted.",
+    "All14 unchanged RCL1 collision datasets referenced by the36 original course/weather records are included. Collision geometry is shared across weather records; weather-dependent vehicle state is separate.",
+    "Car35 is an original special powertrain row, not a selectable model in the35-car frontend."
+  ]
+}

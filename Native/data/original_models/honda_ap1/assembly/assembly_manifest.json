@@ -1,0 +1,970 @@
+{
+  "schema": "idas3-original-assembly-v1",
+  "appearance": "Original retail car18 display preset; neutral steering/suspension, lights off",
+  "model_bank": "../honda_ap1.idasmesh",
+  "model_bank_sha256": "40738685e3dfa077ea98280809ca2dd138aeb3dfe8283d5958eef8afdcc8e032",
+  "capture": {
+    "car_index": 18,
+    "slot_map_address": 204017452,
+    "preset_instructions": 414,
+    "config_word": 4784136,
+    "draws": [
+      {
+        "slot": 0,
+        "semantic": 0,
+        "chunk": 1,
+        "pass": "material",
+        "return_pc": 201485746,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 78,
+        "semantic": 78,
+        "chunk": 31,
+        "pass": "material",
+        "return_pc": 201485752,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 17,
+        "semantic": 17,
+        "chunk": 10,
+        "pass": "material",
+        "return_pc": 201485758,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 5,
+        "semantic": 5,
+        "chunk": 6,
+        "pass": "material",
+        "return_pc": 201485782,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 20,
+        "semantic": 20,
+        "chunk": 13,
+        "pass": "material",
+        "return_pc": 201485826,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 28,
+        "semantic": 28,
+        "chunk": 16,
+        "pass": "material",
+        "return_pc": 201485848,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 34,
+        "semantic": 34,
+        "chunk": 18,
+        "pass": "material",
+        "return_pc": 201485866,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 41,
+        "semantic": 41,
+        "chunk": 22,
+        "pass": "material",
+        "return_pc": 201485942,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 1,
+        "semantic": 1,
+        "chunk": 2,
+        "pass": "material",
+        "return_pc": 201486182,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 47,
+        "semantic": 47,
+        "chunk": 25,
+        "pass": "direct",
+        "return_pc": 201486458,
+        "operations": [],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 18,
+        "semantic": 18,
+        "chunk": 11,
+        "pass": "direct",
+        "return_pc": 201487408,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 218169836,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201487334,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201487358,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201487382,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "scale",
+            "source": 201487400,
+            "values": [
+              1,
+              1,
+              1
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 53,
+        "semantic": 53,
+        "chunk": 59,
+        "pass": "direct",
+        "return_pc": 201487622,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201487482,
+            "values": [
+              0.74970001,
+              0.0199999996,
+              1.18669999
+            ]
+          },
+          {
+            "type": "rotate_y_float",
+            "source": 201487490,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201487522,
+            "values": [
+              364
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201487546,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201487568,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201487580,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_float",
+            "source": 201487588,
+            "values": [
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          0.9993911385536194,
+          -0.034890979528427124,
+          0.0,
+          0.7497000098228455,
+          0.034890979528427124,
+          0.9993911385536194,
+          0.0,
+          0.019999999552965164,
+          0.0,
+          0.0,
+          1.0,
+          1.1866999864578247,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 53,
+        "semantic": 53,
+        "chunk": 59,
+        "pass": "direct",
+        "return_pc": 201487964,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201487714,
+            "values": [
+              -0.74970001,
+              0.0199999996,
+              1.18669999
+            ]
+          },
+          {
+            "type": "rotate_y_float",
+            "source": 201487722,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201487742,
+            "values": [
+              364
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201487888,
+            "values": [
+              32768
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201487908,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201487920,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_float",
+            "source": 201487930,
+            "values": [
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          -0.9993911385536194,
+          -0.034890979528427124,
+          1.223901198893788e-16,
+          -0.7497000098228455,
+          -0.034890979528427124,
+          0.9993911385536194,
+          4.272912709935053e-18,
+          0.019999999552965164,
+          -1.2246468525851679e-16,
+          0.0,
+          -1.0,
+          1.1866999864578247,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 53,
+        "semantic": 53,
+        "chunk": 59,
+        "pass": "direct",
+        "return_pc": 201488188,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488048,
+            "values": [
+              0.747099996,
+              0.0199999996,
+              -1.26018
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488072,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488096,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488124,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488146,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_float",
+            "source": 201488154,
+            "values": [
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.7470999956130981,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          0.0,
+          0.0,
+          1.0,
+          -1.2601799964904785,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 53,
+        "semantic": 53,
+        "chunk": 59,
+        "pass": "direct",
+        "return_pc": 201488476,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488264,
+            "values": [
+              -0.747099996,
+              0.0199999996,
+              -1.26018
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488284,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488310,
+            "values": [
+              32768
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488334,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488346,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_float",
+            "source": 201488356,
+            "values": [
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          -1.0,
+          0.0,
+          1.2246468525851679e-16,
+          -0.7470999956130981,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          -1.2246468525851679e-16,
+          0.0,
+          -1.0,
+          -1.2601799964904785,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 60,
+        "semantic": 60,
+        "chunk": 27,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              -0.74970001,
+              0.0199999996,
+              1.18669999
+            ]
+          },
+          {
+            "type": "rotate_y_float",
+            "source": 201488634,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              364
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          0.9993911385536194,
+          0.0,
+          0.034890979528427124,
+          -0.7497000098228455,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          -0.034890979528427124,
+          0.0,
+          0.9993911385536194,
+          1.1866999864578247,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 61,
+        "semantic": 61,
+        "chunk": 28,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              0.74970001,
+              0.0199999996,
+              1.18669999
+            ]
+          },
+          {
+            "type": "rotate_y_float",
+            "source": 201488634,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              364
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          0.9993911385536194,
+          0.0,
+          0.034890979528427124,
+          0.7497000098228455,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          -0.034890979528427124,
+          0.0,
+          0.9993911385536194,
+          1.1866999864578247,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 62,
+        "semantic": 62,
+        "chunk": 29,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              -0.747099996,
+              0.0199999996,
+              -1.26018
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          -0.7470999956130981,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          0.0,
+          0.0,
+          1.0,
+          -1.2601799964904785,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      {
+        "slot": 63,
+        "semantic": 63,
+        "chunk": 30,
+        "pass": "direct",
+        "return_pc": 201488742,
+        "operations": [
+          {
+            "type": "translate",
+            "source": 201488618,
+            "values": [
+              0.747099996,
+              0.0199999996,
+              -1.26018
+            ]
+          },
+          {
+            "type": "rotate_z_u16",
+            "source": 201488660,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_y_u16",
+            "source": 201488686,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "rotate_x_u16",
+            "source": 201488712,
+            "values": [
+              0
+            ]
+          },
+          {
+            "type": "translate",
+            "source": 201488734,
+            "values": [
+              0,
+              0,
+              0
+            ]
+          }
+        ],
+        "matrix": [
+          1.0,
+          0.0,
+          0.0,
+          0.7470999956130981,
+          0.0,
+          1.0,
+          0.0,
+          0.019999999552965164,
+          0.0,
+          0.0,
+          1.0,
+          -1.2601799964904785,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      }
+    ],
+    "original_instructions": 3252,
+    "draw_attempts": 23,
+    "draw_count": 19,
+    "external_draw_helpers": 6,
+    "final_matrix_depth": 0
+  },
+  "matrix_format": "row-major, column vectors, translation elements3/7/11; original postmultiplication order",
+  "matrix_accuracy": "Exact captured float inputs/integer angles; host sin/cos-derived matrices, hardware FSCA/FTRV bit parity untested",
+  "model_coordinate_transform": "none; +Z front, +Y up; no metric rescale applied",
+  "sources": {
+    "image": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\idas3_main_0C020000.bin",
+      "bytes": 4194304,
+      "sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
+    },
+    "parts": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\parts\\honda_ap1.bin",
+      "bytes": 828,
+      "sha256": "4d3eba3c46172b07326c5133c8b5dfefbae471aeafc1ee6bcbfcd2b1aee07c73"
+    },
+    "capture": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\2026-09-05\\as\\outputs\\InitialDRemake\\data\\original_models\\honda_ap1\\assembly\\source_capture.json",
+      "bytes": 5195,
+      "sha256": "0331488707fe5ed19ae5c6e9e2d4c3a353c7628b21337ddb33f32de5218baf82"
+    },
+    "bank_manifest": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\2026-09-05\\as\\outputs\\InitialDRemake\\data\\original_models\\honda_ap1\\model_manifest.json",
+      "bytes": 89798,
+      "sha256": "10064b654dbac581cffd074ca6a8d5c21b6d43b94d11c1b081d415b3f6df8d9f"
+    }
+  },
+  "binary_sha256": "00345b43d17a9055ca11941c618eb1933e7f86407af001899637250a313edf14",
+  "evidence": {
+    "renderer": "0C026D80..0C028364",
+    "display_preset_bytes": "0C2F4830, 12 bytes; applied by original routine 0C035F00",
+    "car_table_root": "0C33B298 -> 0C290F2C",
+    "slot_lookup": "0C026100; object+354 semantic map, object+358 render remap",
+    "part_transforms": "0C0271CC onward; 23 records of 9 float32 values scaleXYZ/rotationXYZ/translationXYZ",
+    "matrix_helpers": "1F6610 push,1F65C0 pop,1FD060/1F6AC0 translate,1F6950/1F68A0/1F67E0 rotateZ/Y/X,1F69D0 scale"
+  },
+  "limitations": [
+    "Original selection branches run on a bounded CPU oracle; graphics/matrix callees are explicit hooks.",
+    "Separately loaded number plate model helper 0C026160 is omitted.",
+    "Wheel blur helper 0C029EE0 is omitted at neutral zero intensity.",
+    "Paint/material initialization overrides and dynamic lighting are not captured.",
+    "This is one original display preset, not every card/tuning/color/LOD state."
+  ]
+}

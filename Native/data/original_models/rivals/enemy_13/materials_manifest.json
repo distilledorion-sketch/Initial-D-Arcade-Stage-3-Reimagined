@@ -1,0 +1,469 @@
+{
+  "car": 0,
+  "enemy": 13,
+  "config": 4718593,
+  "rgb": [
+    230,
+    230,
+    230
+  ],
+  "instructions": 5634554,
+  "copied_shadow_models": 23,
+  "paint_masks": [
+    33619976,
+    35782689,
+    1116217348,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "schema": "idas3-original-car-materials-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_polygon_sha256": "d68fa90f86dcf3e390783182b9880e6c986f7a1504aea71420310ce0f521ce8b",
+  "output_sha256": "014508af075181349bebc10df889f00cc48ea0d4e14b5da99e744b649c3e64b8",
+  "batch_overrides": 76,
+  "diffuse_changes": [
+    {
+      "chunk": 0,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 1,
+      "batch": 4,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 1,
+      "batch": 5,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 2,
+      "batch": 3,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 2,
+      "batch": 4,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 7,
+      "batch": 4,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 7,
+      "batch": 5,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 8,
+      "batch": 2,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 8,
+      "batch": 3,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 9,
+      "batch": 0,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 9,
+      "batch": 1,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 13,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 13,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 14,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 15,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 15,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 16,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 16,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 17,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 17,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 18,
+      "batch": 0,
+      "before": "f2ffffff",
+      "after": "b2ffffff"
+    },
+    {
+      "chunk": 19,
+      "batch": 0,
+      "before": "f2ffffff",
+      "after": "b2ffffff"
+    },
+    {
+      "chunk": 20,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 20,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 21,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 22,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 23,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 23,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 24,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 24,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 25,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 25,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 26,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 26,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 27,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 27,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 28,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 28,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 29,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 29,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 30,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 30,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 31,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 32,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 32,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 33,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 33,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 34,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 34,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 35,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 35,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 36,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 36,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 37,
+      "batch": 0,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 37,
+      "batch": 1,
+      "before": "bfffffff",
+      "after": "59ffffff"
+    },
+    {
+      "chunk": 44,
+      "batch": 4,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 44,
+      "batch": 5,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 45,
+      "batch": 0,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 45,
+      "batch": 1,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 47,
+      "batch": 2,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 47,
+      "batch": 3,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 74,
+      "batch": 5,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 74,
+      "batch": 6,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 79,
+      "batch": 4,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 79,
+      "batch": 5,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 83,
+      "batch": 2,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 83,
+      "batch": 3,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 84,
+      "batch": 2,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 84,
+      "batch": 3,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 85,
+      "batch": 1,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 85,
+      "batch": 2,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 88,
+      "batch": 4,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    },
+    {
+      "chunk": 88,
+      "batch": 5,
+      "before": "ffffffff",
+      "after": "ffe6e6e6"
+    }
+  ],
+  "source": "0267C0 constructor material setup and masks;029040 through029AD0 including029E60\u21921911A0 palette\u2192028DA0 RGB,028B80/028C80 alpha,028EC0 specular,029ABC gloss writes. Later suspension lookup excluded.",
+  "boundaries": "Actual1D4BE0/1D4C40 parser. Explicit hooks: diagnostic output, completed texture upload/binding, byte-copy allocation and classification of shadow copies, discarded16D680 course-query return, compiler unsigned division. No host color invention."
+}

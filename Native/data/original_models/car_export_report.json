@@ -1,0 +1,352 @@
+[
+  {
+    "car_index": 0,
+    "folder": "toyota_ae86t",
+    "status": "exported",
+    "chunks": 106,
+    "vertices": 39566,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 56
+  },
+  {
+    "car_index": 1,
+    "folder": "toyota_ae86l",
+    "status": "exported",
+    "chunks": 112,
+    "vertices": 33589,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 61
+  },
+  {
+    "car_index": 2,
+    "folder": "toyota_ae85l",
+    "status": "exported",
+    "chunks": 96,
+    "vertices": 30265,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 55
+  },
+  {
+    "car_index": 3,
+    "folder": "toyota_sw20",
+    "status": "exported",
+    "chunks": 100,
+    "vertices": 30123,
+    "draws": 16,
+    "instructions": 3252,
+    "textures": 57
+  },
+  {
+    "car_index": 4,
+    "folder": "toyota_zzw30",
+    "status": "exported",
+    "chunks": 96,
+    "vertices": 33228,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 53
+  },
+  {
+    "car_index": 5,
+    "folder": "toyota_sxe10",
+    "status": "exported",
+    "chunks": 98,
+    "vertices": 31406,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 50
+  },
+  {
+    "car_index": 6,
+    "folder": "toyota_st205",
+    "status": "exported",
+    "chunks": 65,
+    "vertices": 22421,
+    "draws": 16,
+    "instructions": 3270,
+    "textures": 39
+  },
+  {
+    "car_index": 7,
+    "folder": "nissan_bnr32",
+    "status": "exported",
+    "chunks": 97,
+    "vertices": 28546,
+    "draws": 17,
+    "instructions": 3252,
+    "textures": 60
+  },
+  {
+    "car_index": 8,
+    "folder": "nissan_bnr34",
+    "status": "exported",
+    "chunks": 95,
+    "vertices": 35240,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 59
+  },
+  {
+    "car_index": 9,
+    "folder": "nissan_s13k",
+    "status": "exported",
+    "chunks": 116,
+    "vertices": 33376,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 55
+  },
+  {
+    "car_index": 10,
+    "folder": "nissan_s14q",
+    "status": "exported",
+    "chunks": 116,
+    "vertices": 31234,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 48
+  },
+  {
+    "car_index": 11,
+    "folder": "nissan_s14",
+    "status": "exported",
+    "chunks": 75,
+    "vertices": 22991,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 53
+  },
+  {
+    "car_index": 12,
+    "folder": "nissan_s15",
+    "status": "exported",
+    "chunks": 102,
+    "vertices": 36950,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 49
+  },
+  {
+    "car_index": 13,
+    "folder": "nissan_rps13",
+    "status": "exported",
+    "chunks": 94,
+    "vertices": 27171,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 61
+  },
+  {
+    "car_index": 14,
+    "folder": "nissan_rps13k",
+    "status": "exported",
+    "chunks": 102,
+    "vertices": 28627,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 62
+  },
+  {
+    "car_index": 15,
+    "folder": "honda_ek9",
+    "status": "exported",
+    "chunks": 112,
+    "vertices": 27394,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 54
+  },
+  {
+    "car_index": 16,
+    "folder": "honda_eg6",
+    "status": "exported",
+    "chunks": 98,
+    "vertices": 25237,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 56
+  },
+  {
+    "car_index": 17,
+    "folder": "honda_dc2",
+    "status": "exported",
+    "chunks": 103,
+    "vertices": 26199,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 50
+  },
+  {
+    "car_index": 18,
+    "folder": "honda_ap1",
+    "status": "exported",
+    "chunks": 98,
+    "vertices": 30940,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 57
+  },
+  {
+    "car_index": 19,
+    "folder": "mitsu_ce9a",
+    "status": "exported",
+    "chunks": 79,
+    "vertices": 23353,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 50
+  },
+  {
+    "car_index": 20,
+    "folder": "mitsu_cn9a",
+    "status": "exported",
+    "chunks": 97,
+    "vertices": 29576,
+    "draws": 18,
+    "instructions": 3252,
+    "textures": 68
+  },
+  {
+    "car_index": 21,
+    "folder": "mitsu_ct9a",
+    "status": "exported",
+    "chunks": 89,
+    "vertices": 33216,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 53
+  },
+  {
+    "car_index": 22,
+    "folder": "mazda_fd3s",
+    "status": "exported",
+    "chunks": 138,
+    "vertices": 43164,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 61
+  },
+  {
+    "car_index": 23,
+    "folder": "mazda_fd3sa",
+    "status": "exported",
+    "chunks": 102,
+    "vertices": 31274,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 52
+  },
+  {
+    "car_index": 24,
+    "folder": "mazda_fc3s",
+    "status": "exported",
+    "chunks": 116,
+    "vertices": 38696,
+    "draws": 18,
+    "instructions": 3252,
+    "textures": 59
+  },
+  {
+    "car_index": 25,
+    "folder": "mazda_na6c",
+    "status": "exported",
+    "chunks": 82,
+    "vertices": 23784,
+    "draws": 20,
+    "instructions": 3259,
+    "textures": 64
+  },
+  {
+    "car_index": 26,
+    "folder": "mazda_nb8c",
+    "status": "exported",
+    "chunks": 94,
+    "vertices": 29924,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 50
+  },
+  {
+    "car_index": 27,
+    "folder": "subaru_gc8s6",
+    "status": "exported",
+    "chunks": 106,
+    "vertices": 30144,
+    "draws": 20,
+    "instructions": 3252,
+    "textures": 68
+  },
+  {
+    "car_index": 28,
+    "folder": "subaru_gdb",
+    "status": "exported",
+    "chunks": 92,
+    "vertices": 37648,
+    "draws": 18,
+    "instructions": 3252,
+    "textures": 51
+  },
+  {
+    "car_index": 29,
+    "folder": "subaru_gc8s5",
+    "status": "exported",
+    "chunks": 51,
+    "vertices": 12359,
+    "draws": 13,
+    "instructions": 3252,
+    "textures": 37
+  },
+  {
+    "car_index": 30,
+    "folder": "suzuki_ea11r",
+    "status": "exported",
+    "chunks": 66,
+    "vertices": 26685,
+    "draws": 20,
+    "instructions": 3258,
+    "textures": 53
+  },
+  {
+    "car_index": 31,
+    "folder": "nissan_er34",
+    "status": "exported",
+    "chunks": 86,
+    "vertices": 34006,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 48
+  },
+  {
+    "car_index": 32,
+    "folder": "mitsu_cp9a",
+    "status": "exported",
+    "chunks": 77,
+    "vertices": 28893,
+    "draws": 19,
+    "instructions": 3252,
+    "textures": 53
+  },
+  {
+    "car_index": 33,
+    "folder": "mitsu_cp9at",
+    "status": "exported",
+    "chunks": 100,
+    "vertices": 30508,
+    "draws": 16,
+    "instructions": 3259,
+    "textures": 60
+  },
+  {
+    "car_index": 34,
+    "folder": "mazda_se3p",
+    "status": "exported",
+    "chunks": 105,
+    "vertices": 29120,
+    "draws": 15,
+    "instructions": 3252,
+    "textures": 54
+  }
+]

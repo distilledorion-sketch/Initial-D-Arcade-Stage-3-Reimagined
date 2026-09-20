@@ -1,0 +1,34 @@
+{
+  "car": 1,
+  "enemy": 23,
+  "color": 0,
+  "day_draws": 23,
+  "old_day_draws": 20,
+  "restored_day_slots": [
+    203,
+    205,
+    209
+  ],
+  "lighting_states": [
+    {
+      "state": 0,
+      "draws": 23,
+      "extras": []
+    },
+    {
+      "state": 1,
+      "draws": 24,
+      "extras": []
+    },
+    {
+      "state": 2,
+      "draws": 24,
+      "extras": []
+    },
+    {
+      "state": 3,
+      "draws": 25,
+      "extras": []
+    }
+  ]
+}

@@ -1,0 +1,1562 @@
+{
+  "schema": "idas3-course-bank-roster-v1",
+  "course": "s_nm",
+  "scene_course_index": 1,
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "coordinate_transform": "none; source XYZ/UV and material words retained",
+  "models": {
+    "/driveA/model/course/s_nm/nm_pol": {
+      "file": "data/original_models/courses/s_nm/banks/nm_pol.idasmesh",
+      "count": 30,
+      "bank_counts": [
+        30
+      ],
+      "sha256": "f062a54b3e33ac5937793e3ef3773ca0f77b46595dffb0d22e261c07fdf9f368",
+      "sources": [
+        {
+          "table": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm\\nm_pol.tbl",
+            "bytes": 120,
+            "sha256": "216a0a2a64efc315d15b0fa08974ee29e852ced85e298f6dba99fe5f4a9745df"
+          },
+          "payload": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm\\nm_pol.bin.nz",
+            "bytes": 6417776,
+            "sha256": "6522b44f2aa007dfb75463e4a806fcb153bd886c9638b6ec9902901880f7f7c7"
+          },
+          "decoded_sha256": "6522b44f2aa007dfb75463e4a806fcb153bd886c9638b6ec9902901880f7f7c7",
+          "first_chunk": 0,
+          "count": 30
+        }
+      ],
+      "chunks": [
+        {
+          "index": 0,
+          "batches": 110,
+          "bounds": [
+            [
+              -6.428243637084961,
+              303.95599365234375
+            ],
+            [
+              -8.976181030273438,
+              33.435089111328125
+            ],
+            [
+              -335.4605712890625,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 1,
+          "batches": 91,
+          "bounds": [
+            [
+              -53.52031707763672,
+              264.7499084472656
+            ],
+            [
+              -26.59687042236328,
+              43.77886199951172
+            ],
+            [
+              -544.072998046875,
+              -64.28243255615234
+            ]
+          ]
+        },
+        {
+          "index": 2,
+          "batches": 81,
+          "bounds": [
+            [
+              -419.83734130859375,
+              -4.178471565246582
+            ],
+            [
+              -44.68156051635742,
+              48.836143493652344
+            ],
+            [
+              -590.7078857421875,
+              -35.5556526184082
+            ]
+          ]
+        },
+        {
+          "index": 3,
+          "batches": 69,
+          "bounds": [
+            [
+              -487.1340026855469,
+              -104.3233413696289
+            ],
+            [
+              2.000001907348633,
+              48.85967254638672
+            ],
+            [
+              -419.83734130859375,
+              1.9073486328125e-06
+            ]
+          ]
+        },
+        {
+          "index": 4,
+          "batches": 89,
+          "bounds": [
+            [
+              -427.39300537109375,
+              -153.80560302734375
+            ],
+            [
+              -25.625288009643555,
+              33.432647705078125
+            ],
+            [
+              0.0,
+              305.74200439453125
+            ]
+          ]
+        },
+        {
+          "index": 5,
+          "batches": 78,
+          "bounds": [
+            [
+              -303.8643493652344,
+              53.37824249267578
+            ],
+            [
+              -23.787443161010742,
+              42.07049560546875
+            ],
+            [
+              51.38560104370117,
+              533.7824096679688
+            ]
+          ]
+        },
+        {
+          "index": 6,
+          "batches": 93,
+          "bounds": [
+            [
+              5.307938575744629,
+              471.1526794433594
+            ],
+            [
+              -52.696651458740234,
+              61.547569274902344
+            ],
+            [
+              53.079383850097656,
+              540.838134765625
+            ]
+          ]
+        },
+        {
+          "index": 7,
+          "batches": 77,
+          "bounds": [
+            [
+              37.552642822265625,
+              488.45001220703125
+            ],
+            [
+              -20.881868362426758,
+              32.617881774902344
+            ],
+            [
+              -3.814697265625e-06,
+              392.6272277832031
+            ]
+          ]
+        },
+        {
+          "index": 8,
+          "batches": 3,
+          "bounds": [
+            [
+              191.95883178710938,
+              207.78402709960938
+            ],
+            [
+              -0.3499999940395355,
+              6.75
+            ],
+            [
+              -257.7062683105469,
+              -254.4638214111328
+            ]
+          ]
+        },
+        {
+          "index": 9,
+          "batches": 4,
+          "bounds": [
+            [
+              191.95883178710938,
+              207.78402709960938
+            ],
+            [
+              -0.3499999940395355,
+              6.75
+            ],
+            [
+              -257.7062683105469,
+              -254.4638214111328
+            ]
+          ]
+        },
+        {
+          "index": 10,
+          "batches": 4,
+          "bounds": [
+            [
+              191.95883178710938,
+              207.78402709960938
+            ],
+            [
+              -0.3499999940395355,
+              6.75
+            ],
+            [
+              -257.7062683105469,
+              -254.4638214111328
+            ]
+          ]
+        },
+        {
+          "index": 11,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.4000000059604645,
+              0.4000000059604645
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 12,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.23599998652935028,
+              0.23599998652935028
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 13,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.3799999952316284,
+              0.3799999952316284
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 14,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.4000000059604645,
+              0.4000000059604645
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 15,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.31200000643730164,
+              0.31200000643730164
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 16,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.64000004529953,
+              0.64000004529953
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 17,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.35999998450279236,
+              0.35999998450279236
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 18,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.46000000834465027,
+              0.46000000834465027
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 19,
+          "batches": 3,
+          "bounds": [
+            [
+              -464.5202941894531,
+              463.8296813964844
+            ],
+            [
+              -38.4180793762207,
+              19.998388290405273
+            ],
+            [
+              -515.7225952148438,
+              517.7152709960938
+            ]
+          ]
+        },
+        {
+          "index": 20,
+          "batches": 1,
+          "bounds": [
+            [
+              -464.4715881347656,
+              463.7849426269531
+            ],
+            [
+              -35.13807678222656,
+              19.998388290405273
+            ],
+            [
+              -515.6719970703125,
+              517.6682739257812
+            ]
+          ]
+        },
+        {
+          "index": 21,
+          "batches": 73,
+          "bounds": [
+            [
+              -6.428243637084961,
+              303.95599365234375
+            ],
+            [
+              -8.97618293762207,
+              31.89188003540039
+            ],
+            [
+              -335.4605712890625,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 22,
+          "batches": 66,
+          "bounds": [
+            [
+              -53.520301818847656,
+              264.75
+            ],
+            [
+              -26.596900939941406,
+              33.8916015625
+            ],
+            [
+              -544.072998046875,
+              -64.28240203857422
+            ]
+          ]
+        },
+        {
+          "index": 23,
+          "batches": 57,
+          "bounds": [
+            [
+              -419.8370056152344,
+              -4.178470134735107
+            ],
+            [
+              -44.67850112915039,
+              42.500701904296875
+            ],
+            [
+              -590.7080078125,
+              -35.55569839477539
+            ]
+          ]
+        },
+        {
+          "index": 24,
+          "batches": 42,
+          "bounds": [
+            [
+              -487.1340026855469,
+              -116.62000274658203
+            ],
+            [
+              2.0,
+              42.500701904296875
+            ],
+            [
+              -419.8370056152344,
+              1.9999999949504854e-06
+            ]
+          ]
+        },
+        {
+          "index": 25,
+          "batches": 62,
+          "bounds": [
+            [
+              -427.39300537109375,
+              -153.80599975585938
+            ],
+            [
+              -25.62529945373535,
+              30.57670021057129
+            ],
+            [
+              -9.999999974752427e-07,
+              305.74200439453125
+            ]
+          ]
+        },
+        {
+          "index": 26,
+          "batches": 53,
+          "bounds": [
+            [
+              -303.864013671875,
+              53.37820053100586
+            ],
+            [
+              -23.787500381469727,
+              38.2135009765625
+            ],
+            [
+              51.38560104370117,
+              533.781982421875
+            ]
+          ]
+        },
+        {
+          "index": 27,
+          "batches": 70,
+          "bounds": [
+            [
+              5.3079400062561035,
+              471.1520080566406
+            ],
+            [
+              -50.806400299072266,
+              53.767398834228516
+            ],
+            [
+              53.07939910888672,
+              538.8270263671875
+            ]
+          ]
+        },
+        {
+          "index": 28,
+          "batches": 54,
+          "bounds": [
+            [
+              37.5526008605957,
+              488.45001220703125
+            ],
+            [
+              -20.881900787353516,
+              24.998899459838867
+            ],
+            [
+              -3.999999989900971e-06,
+              392.62701416015625
+            ]
+          ]
+        },
+        {
+          "index": 29,
+          "batches": 1,
+          "bounds": [
+            [
+              -154.76300048828125,
+              81.93250274658203
+            ],
+            [
+              -22.067399978637695,
+              131.92799377441406
+            ],
+            [
+              -258.1300048828125,
+              446.37200927734375
+            ]
+          ]
+        }
+      ]
+    },
+    "/driveA/model/course/s_nm/nm_etc_f_pol": {
+      "file": "data/original_models/courses/s_nm/banks/nm_etc_f_pol.idasmesh",
+      "count": 1,
+      "bank_counts": [
+        1
+      ],
+      "sha256": "5c8248adf469474af5cf053b66b4b6457caee5b0882c5f1ee6985117af34ef54",
+      "sources": [
+        {
+          "table": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm\\nm_etc_f_pol.tbl",
+            "bytes": 4,
+            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+          },
+          "payload": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm\\nm_etc_f_pol.bin.nz",
+            "bytes": 4800,
+            "sha256": "2113e054585e3569b2894b144ebaa5a5f5c7382ad9bb8f07e5465bd4df204248"
+          },
+          "decoded_sha256": "2113e054585e3569b2894b144ebaa5a5f5c7382ad9bb8f07e5465bd4df204248",
+          "first_chunk": 0,
+          "count": 1
+        }
+      ],
+      "chunks": [
+        {
+          "index": 0,
+          "batches": 1,
+          "bounds": [
+            [
+              -2000.0,
+              2000.0
+            ],
+            [
+              -300.0,
+              1200.0
+            ],
+            [
+              -2000.0,
+              2000.0
+            ]
+          ]
+        }
+      ]
+    },
+    "/driveA/model/course/s_nm2/nm2_pol": {
+      "file": "data/original_models/courses/s_nm/banks/nm2_pol.idasmesh",
+      "count": 35,
+      "bank_counts": [
+        35
+      ],
+      "sha256": "87904d94739f9ae8a215dc656d4f5aba468ccc1b626699c3a29940ec9c06f6ce",
+      "sources": [
+        {
+          "table": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm2\\nm2_pol.tbl",
+            "bytes": 140,
+            "sha256": "1470db6ab44e5da864cae65638913594bce43a7c8dca9ccfec54dec5985072e9"
+          },
+          "payload": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm2\\nm2_pol.bin.nz",
+            "bytes": 5502432,
+            "sha256": "6f1284aa1f4c3b07a4c00286bdb8ddbacccce81c4f45d45f0d862116f603d81d"
+          },
+          "decoded_sha256": "6f1284aa1f4c3b07a4c00286bdb8ddbacccce81c4f45d45f0d862116f603d81d",
+          "first_chunk": 0,
+          "count": 35
+        }
+      ],
+      "chunks": [
+        {
+          "index": 0,
+          "batches": 3,
+          "bounds": [
+            [
+              191.95883178710938,
+              207.78402709960938
+            ],
+            [
+              -0.3499999940395355,
+              6.75
+            ],
+            [
+              -257.7062683105469,
+              -254.4638214111328
+            ]
+          ]
+        },
+        {
+          "index": 1,
+          "batches": 4,
+          "bounds": [
+            [
+              191.95883178710938,
+              207.78402709960938
+            ],
+            [
+              -0.3499999940395355,
+              6.75
+            ],
+            [
+              -257.7062683105469,
+              -254.4638214111328
+            ]
+          ]
+        },
+        {
+          "index": 2,
+          "batches": 4,
+          "bounds": [
+            [
+              191.95883178710938,
+              207.78402709960938
+            ],
+            [
+              -0.3499999940395355,
+              6.75
+            ],
+            [
+              -257.7062683105469,
+              -254.4638214111328
+            ]
+          ]
+        },
+        {
+          "index": 3,
+          "batches": 4,
+          "bounds": [
+            [
+              203.6909942626953,
+              206.4530029296875
+            ],
+            [
+              -1.3383500576019287,
+              6.546999931335449
+            ],
+            [
+              -216.63400268554688,
+              -159.16600036621094
+            ]
+          ]
+        },
+        {
+          "index": 4,
+          "batches": 1,
+          "bounds": [
+            [
+              -1.25,
+              1.25
+            ],
+            [
+              -1.25,
+              1.25
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 5,
+          "batches": 4,
+          "bounds": [
+            [
+              203.6909942626953,
+              206.4530029296875
+            ],
+            [
+              -1.3383500576019287,
+              6.546999931335449
+            ],
+            [
+              -216.63400268554688,
+              -159.16600036621094
+            ]
+          ]
+        },
+        {
+          "index": 6,
+          "batches": 95,
+          "bounds": [
+            [
+              -6.428239822387695,
+              303.95599365234375
+            ],
+            [
+              -8.976180076599121,
+              33.43510055541992
+            ],
+            [
+              -335.46099853515625,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 7,
+          "batches": 84,
+          "bounds": [
+            [
+              -53.52031707763672,
+              264.7499084472656
+            ],
+            [
+              -26.59687042236328,
+              43.77886199951172
+            ],
+            [
+              -544.072998046875,
+              -64.28243255615234
+            ]
+          ]
+        },
+        {
+          "index": 8,
+          "batches": 81,
+          "bounds": [
+            [
+              -419.83734130859375,
+              -4.178471565246582
+            ],
+            [
+              -44.68156051635742,
+              48.836143493652344
+            ],
+            [
+              -590.7078857421875,
+              -35.5556526184082
+            ]
+          ]
+        },
+        {
+          "index": 9,
+          "batches": 69,
+          "bounds": [
+            [
+              -487.1340026855469,
+              -104.3233413696289
+            ],
+            [
+              2.000001907348633,
+              48.85967254638672
+            ],
+            [
+              -419.83734130859375,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 10,
+          "batches": 88,
+          "bounds": [
+            [
+              -427.39300537109375,
+              -153.80560302734375
+            ],
+            [
+              -25.625288009643555,
+              33.432647705078125
+            ],
+            [
+              -3.814697265625e-06,
+              305.74200439453125
+            ]
+          ]
+        },
+        {
+          "index": 11,
+          "batches": 77,
+          "bounds": [
+            [
+              -303.8643493652344,
+              53.37824249267578
+            ],
+            [
+              -23.787443161010742,
+              42.07049560546875
+            ],
+            [
+              51.38560104370117,
+              533.7824096679688
+            ]
+          ]
+        },
+        {
+          "index": 12,
+          "batches": 92,
+          "bounds": [
+            [
+              5.307938575744629,
+              471.1526794433594
+            ],
+            [
+              -52.696651458740234,
+              61.547569274902344
+            ],
+            [
+              53.079383850097656,
+              540.838134765625
+            ]
+          ]
+        },
+        {
+          "index": 13,
+          "batches": 75,
+          "bounds": [
+            [
+              37.552642822265625,
+              488.45001220703125
+            ],
+            [
+              -20.881868362426758,
+              32.617881774902344
+            ],
+            [
+              -3.814697265625e-06,
+              392.6272277832031
+            ]
+          ]
+        },
+        {
+          "index": 14,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.4000000059604645,
+              0.4000000059604645
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 15,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.23599998652935028,
+              0.23599998652935028
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 16,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.3799999952316284,
+              0.3799999952316284
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 17,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.4000000059604645,
+              0.4000000059604645
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 18,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.31200000643730164,
+              0.31200000643730164
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 19,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.64000004529953,
+              0.64000004529953
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 20,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.35999998450279236,
+              0.35999998450279236
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 21,
+          "batches": 1,
+          "bounds": [
+            [
+              -0.46000000834465027,
+              0.46000000834465027
+            ],
+            [
+              0.0,
+              2.0
+            ],
+            [
+              0.0,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 22,
+          "batches": 3,
+          "bounds": [
+            [
+              -464.5202941894531,
+              463.8296813964844
+            ],
+            [
+              -38.4180793762207,
+              19.998388290405273
+            ],
+            [
+              -515.7225952148438,
+              517.7152709960938
+            ]
+          ]
+        },
+        {
+          "index": 23,
+          "batches": 1,
+          "bounds": [
+            [
+              -464.4715881347656,
+              463.7849426269531
+            ],
+            [
+              -35.13807678222656,
+              19.998388290405273
+            ],
+            [
+              -515.6719970703125,
+              517.6682739257812
+            ]
+          ]
+        },
+        {
+          "index": 24,
+          "batches": 66,
+          "bounds": [
+            [
+              -6.428239822387695,
+              303.95599365234375
+            ],
+            [
+              -8.976180076599121,
+              31.89189910888672
+            ],
+            [
+              -335.46099853515625,
+              0.0
+            ]
+          ]
+        },
+        {
+          "index": 25,
+          "batches": 62,
+          "bounds": [
+            [
+              -53.52031707763672,
+              264.7499084472656
+            ],
+            [
+              -26.596860885620117,
+              33.891624450683594
+            ],
+            [
+              -544.072998046875,
+              -64.28243255615234
+            ]
+          ]
+        },
+        {
+          "index": 26,
+          "batches": 55,
+          "bounds": [
+            [
+              -419.8372802734375,
+              -4.178471565246582
+            ],
+            [
+              -44.67851638793945,
+              42.50065231323242
+            ],
+            [
+              -590.7080078125,
+              -35.5556526184082
+            ]
+          ]
+        },
+        {
+          "index": 27,
+          "batches": 42,
+          "bounds": [
+            [
+              -487.1340026855469,
+              -116.6202621459961
+            ],
+            [
+              2.000001907348633,
+              42.50065231323242
+            ],
+            [
+              -419.8372802734375,
+              1.9073486328125e-06
+            ]
+          ]
+        },
+        {
+          "index": 28,
+          "batches": 61,
+          "bounds": [
+            [
+              -427.39300537109375,
+              -153.80560302734375
+            ],
+            [
+              -25.62529945373535,
+              30.57669448852539
+            ],
+            [
+              -9.5367431640625e-07,
+              305.74200439453125
+            ]
+          ]
+        },
+        {
+          "index": 29,
+          "batches": 51,
+          "bounds": [
+            [
+              -303.86431884765625,
+              53.37822341918945
+            ],
+            [
+              -23.7874698638916,
+              38.21345901489258
+            ],
+            [
+              51.38560104370117,
+              533.7822265625
+            ]
+          ]
+        },
+        {
+          "index": 30,
+          "batches": 66,
+          "bounds": [
+            [
+              5.307938575744629,
+              471.1524353027344
+            ],
+            [
+              -50.806400299072266,
+              53.76738739013672
+            ],
+            [
+              53.079383850097656,
+              538.8270263671875
+            ]
+          ]
+        },
+        {
+          "index": 31,
+          "batches": 48,
+          "bounds": [
+            [
+              37.552642822265625,
+              488.45001220703125
+            ],
+            [
+              -20.881900787353516,
+              24.99886703491211
+            ],
+            [
+              -3.814697265625e-06,
+              392.62701416015625
+            ]
+          ]
+        },
+        {
+          "index": 32,
+          "batches": 1,
+          "bounds": [
+            [
+              -154.76300048828125,
+              81.93250274658203
+            ],
+            [
+              -22.067399978637695,
+              131.92799377441406
+            ],
+            [
+              -258.1300048828125,
+              446.37200927734375
+            ]
+          ]
+        },
+        {
+          "index": 33,
+          "batches": 7,
+          "bounds": [
+            [
+              -464.9440002441406,
+              461.6409912109375
+            ],
+            [
+              -31.26930046081543,
+              20.250999450683594
+            ],
+            [
+              -516.4290161132812,
+              516.9810180664062
+            ]
+          ]
+        },
+        {
+          "index": 34,
+          "batches": 6,
+          "bounds": [
+            [
+              -464.927001953125,
+              461.6409912109375
+            ],
+            [
+              -31.26930046081543,
+              20.250999450683594
+            ],
+            [
+              -516.4290161132812,
+              516.8599853515625
+            ]
+          ]
+        }
+      ]
+    },
+    "/driveA/model/course/s_nm/nm_etc_r_pol": {
+      "file": "data/original_models/courses/s_nm/banks/nm_etc_r_pol.idasmesh",
+      "count": 1,
+      "bank_counts": [
+        1
+      ],
+      "sha256": "cae273e47786895ee5b0cbe2ca66211da8fa8a2cfd7b226528259b9f8d523f1a",
+      "sources": [
+        {
+          "table": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm\\nm_etc_r_pol.tbl",
+            "bytes": 4,
+            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+          },
+          "payload": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm\\nm_etc_r_pol.bin.nz",
+            "bytes": 2640,
+            "sha256": "83f107532aed924fbc72f4c01f1d55c8ed695a9b027d8f4b70ad1e8bbcb2c4f7"
+          },
+          "decoded_sha256": "83f107532aed924fbc72f4c01f1d55c8ed695a9b027d8f4b70ad1e8bbcb2c4f7",
+          "first_chunk": 0,
+          "count": 1
+        }
+      ],
+      "chunks": [
+        {
+          "index": 0,
+          "batches": 1,
+          "bounds": [
+            [
+              -2000.0,
+              2000.0
+            ],
+            [
+              -300.0,
+              1200.0
+            ],
+            [
+              -2000.0,
+              2000.0
+            ]
+          ]
+        }
+      ]
+    },
+    "/driveA/model/course/s_nm2/nm2_etc_f_pol": {
+      "file": "data/original_models/courses/s_nm/banks/nm2_etc_f_pol.idasmesh",
+      "count": 1,
+      "bank_counts": [
+        1
+      ],
+      "sha256": "f3dd4c7c08983f96936574e6617e157df4142ed14ce804d4d25d6b76f35ea72f",
+      "sources": [
+        {
+          "table": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm2\\nm2_etc_f_pol.tbl",
+            "bytes": 4,
+            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+          },
+          "payload": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm2\\nm2_etc_f_pol.bin.nz",
+            "bytes": 66288,
+            "sha256": "a739d1a132d6d2956cae545181f57ebf2762ebb56803ac05876589c748830347"
+          },
+          "decoded_sha256": "a739d1a132d6d2956cae545181f57ebf2762ebb56803ac05876589c748830347",
+          "first_chunk": 0,
+          "count": 1
+        }
+      ],
+      "chunks": [
+        {
+          "index": 0,
+          "batches": 8,
+          "bounds": [
+            [
+              -2000.0,
+              2000.0
+            ],
+            [
+              -300.0,
+              1394.8599853515625
+            ],
+            [
+              -2000.0,
+              2000.0
+            ]
+          ]
+        }
+      ]
+    },
+    "/driveA/model/course/s_nm2/nm2_etc_r_pol": {
+      "file": "data/original_models/courses/s_nm/banks/nm2_etc_r_pol.idasmesh",
+      "count": 1,
+      "bank_counts": [
+        1
+      ],
+      "sha256": "ed32f1c2e03ec5c86040cd41691d97e26a4684b7f96bf4886ba9dd1e31a40b25",
+      "sources": [
+        {
+          "table": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm2\\nm2_etc_r_pol.tbl",
+            "bytes": 4,
+            "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+          },
+          "payload": {
+            "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\s_nm2\\nm2_etc_r_pol.bin.nz",
+            "bytes": 2640,
+            "sha256": "a0534307bab96cdd0bcd62419f5b9974c46a946e2bfa0c0d5946d7cfee586f87"
+          },
+          "decoded_sha256": "a0534307bab96cdd0bcd62419f5b9974c46a946e2bfa0c0d5946d7cfee586f87",
+          "first_chunk": 0,
+          "count": 1
+        }
+      ],
+      "chunks": [
+        {
+          "index": 0,
+          "batches": 1,
+          "bounds": [
+            [
+              -2000.0,
+              2000.0
+            ],
+            [
+              -300.0,
+              1200.0
+            ],
+            [
+              -2000.0,
+              2000.0
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  "textures": {
+    "/driveA/model/course/s_nm/nm_tex": {
+      "file": "data/original_assets/courses/s_nm/nm_tex/textures.idastex",
+      "count": 119
+    },
+    "/driveA/model/course/s_nm/nm_etc_f_tex": {
+      "file": "data/original_assets/courses/s_nm/nm_etc_f_tex/textures.idastex",
+      "count": 1
+    },
+    "/driveA/model/course/s_nm/nm_etc_r_tex": {
+      "file": "data/original_assets/courses/s_nm/nm_etc_r_tex/textures.idastex",
+      "count": 1,
+      "palette_id": 21,
+      "palette_address": "0C29D5A8"
+    },
+    "/driveA/model/course/s_nm2/nm2_etc_f_tex": {
+      "file": "data/original_assets/courses/s_nm/nm2_etc_f_tex/textures.idastex",
+      "count": 1
+    },
+    "/driveA/model/course/s_nm2/nm2_etc_r_tex": {
+      "file": "data/original_assets/courses/s_nm/nm2_etc_r_tex/textures.idastex",
+      "count": 1
+    }
+  },
+  "variants": [
+    {
+      "night": 0,
+      "weather": 0,
+      "source_record": "0C2F0740",
+      "paths": [
+        "/driveA/model/course/s_nm/nm_pol",
+        "/driveA/model/course/s_nm/nm_tex",
+        "/driveA/model/course/s_nm/nm_etc_f_pol",
+        "/driveA/model/course/s_nm/nm_etc_f_tex",
+        "/driveA/path/s_nm_path",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/PATH_nm"
+      ],
+      "model": "data/original_models/courses/s_nm/banks/nm_pol.idasmesh",
+      "world_bank_counts": [
+        30
+      ],
+      "world_chunk_count": 30,
+      "textures": {
+        "file": "data/original_assets/courses/s_nm/nm_tex/textures.idastex",
+        "count": 119
+      },
+      "background": "data/original_models/courses/s_nm/banks/nm_etc_f_pol.idasmesh",
+      "background_chunk_count": 1,
+      "background_textures": {
+        "file": "data/original_assets/courses/s_nm/nm_etc_f_tex/textures.idastex",
+        "count": 1
+      }
+    },
+    {
+      "night": 0,
+      "weather": 1,
+      "source_record": "0C2F0940",
+      "paths": [
+        "/driveA/model/course/s_nm2/nm2_pol",
+        "/driveA/model/course/s_nm/nm_tex",
+        "/driveA/model/course/s_nm/nm_etc_r_pol",
+        "/driveA/model/course/s_nm/nm_etc_r_tex",
+        "/driveA/path/s_nm_path",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/PATH_nm"
+      ],
+      "model": "data/original_models/courses/s_nm/banks/nm2_pol.idasmesh",
+      "world_bank_counts": [
+        35
+      ],
+      "world_chunk_count": 35,
+      "textures": {
+        "file": "data/original_assets/courses/s_nm/nm_tex/textures.idastex",
+        "count": 119
+      },
+      "background": "data/original_models/courses/s_nm/banks/nm_etc_r_pol.idasmesh",
+      "background_chunk_count": 1,
+      "background_textures": {
+        "file": "data/original_assets/courses/s_nm/nm_etc_r_tex/textures.idastex",
+        "count": 1,
+        "palette_id": 21,
+        "palette_address": "0C29D5A8"
+      }
+    },
+    {
+      "night": 1,
+      "weather": 0,
+      "source_record": "0C2F0B40",
+      "paths": [
+        "/driveA/model/course/s_nm2/nm2_pol",
+        "/driveA/model/course/s_nm/nm_tex",
+        "/driveA/model/course/s_nm2/nm2_etc_f_pol",
+        "/driveA/model/course/s_nm2/nm2_etc_f_tex",
+        "/driveA/path/s_nm_path",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/PATH_nm"
+      ],
+      "model": "data/original_models/courses/s_nm/banks/nm2_pol.idasmesh",
+      "world_bank_counts": [
+        35
+      ],
+      "world_chunk_count": 35,
+      "textures": {
+        "file": "data/original_assets/courses/s_nm/nm_tex/textures.idastex",
+        "count": 119
+      },
+      "background": "data/original_models/courses/s_nm/banks/nm2_etc_f_pol.idasmesh",
+      "background_chunk_count": 1,
+      "background_textures": {
+        "file": "data/original_assets/courses/s_nm/nm2_etc_f_tex/textures.idastex",
+        "count": 1
+      }
+    },
+    {
+      "night": 1,
+      "weather": 1,
+      "source_record": "0C2F0D40",
+      "paths": [
+        "/driveA/model/course/s_nm2/nm2_pol",
+        "/driveA/model/course/s_nm/nm_tex",
+        "/driveA/model/course/s_nm2/nm2_etc_r_pol",
+        "/driveA/model/course/s_nm2/nm2_etc_r_tex",
+        "/driveA/path/s_nm_path",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/s_nm_colli",
+        "/driveA/binary/PATH_nm"
+      ],
+      "model": "data/original_models/courses/s_nm/banks/nm2_pol.idasmesh",
+      "world_bank_counts": [
+        35
+      ],
+      "world_chunk_count": 35,
+      "textures": {
+        "file": "data/original_assets/courses/s_nm/nm_tex/textures.idastex",
+        "count": 119
+      },
+      "background": "data/original_models/courses/s_nm/banks/nm2_etc_r_pol.idasmesh",
+      "background_chunk_count": 1,
+      "background_textures": {
+        "file": "data/original_assets/courses/s_nm/nm2_etc_r_tex/textures.idastex",
+        "count": 1
+      }
+    }
+  ],
+  "selection_status": "Geometry imported; scene load metadata is published only after original render selection is captured."
+}

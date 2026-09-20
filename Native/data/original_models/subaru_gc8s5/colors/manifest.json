@@ -1,0 +1,37 @@
+{
+  "car": 29,
+  "folder": "subaru_gc8s5",
+  "count": 1,
+  "colors": [
+    {
+      "car": 29,
+      "enemy": -1,
+      "config": 0,
+      "rgb": [
+        67,
+        69,
+        77
+      ],
+      "instructions": 1944981,
+      "copied_shadow_models": 10,
+      "paint_masks": [
+        262402,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "palette_address": "0C33AABC",
+      "rgb24": 4408653,
+      "material_patches": 26,
+      "material_sha256": "985ab1d53c24afe5448a1f56408daff8eac2e6b96f6464cbc74700aea086abca",
+      "geometry_sha256": "e7c3904b1daebeb720c7f9276f1118c48ad305621e765ac3fc924dd40ecdb409",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9891
+    }
+  ]
+}

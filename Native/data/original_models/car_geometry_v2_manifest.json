@@ -1,0 +1,7946 @@
+{
+  "schema": "idas3-car-geometry-v2",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "appearances": [
+    {
+      "car": 0,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 100,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 100,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 0,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        204
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 100,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 100,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 0,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        204
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 100,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 100,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 1,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 1,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        204
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 1,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        204
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 2,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 2,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        204
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 2,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "color": 6,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 32,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            },
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            },
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            },
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            },
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            },
+            {
+              "slot": 193,
+              "chunk": 33,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 72,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 74,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 27,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 27,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 27,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 27,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 27,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 77,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 28,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 28,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 28,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 28,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 29,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 50,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 50,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "color": 6,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        205,
+        199
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 26,
+      "old_day_draws": 19,
+      "restored_day_slots": [
+        198,
+        204,
+        205,
+        207,
+        208,
+        191,
+        199
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 26,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 28,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 27,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 29,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        205,
+        199
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        206,
+        199
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        206,
+        199
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 89,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 1,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 2,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 3,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 4,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 5,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 6,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "color": 7,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 103,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 2,
+      "enemy": 0,
+      "color": 0,
+      "day_draws": 22,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": 1,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 67,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 67,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": 2,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 30,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": 3,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 79,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 79,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": 4,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": 5,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": 6,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": 7,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 19,
+      "restored_day_slots": [
+        203,
+        209,
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 194,
+              "chunk": 80,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 194,
+              "chunk": 80,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": 8,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 85,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": 9,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209,
+        199,
+        200
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 43,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": 10,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": 11,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": 12,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 21,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 75,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 75,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 0,
+      "enemy": 13,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 21,
+      "restored_day_slots": [
+        203,
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 101,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 101,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": 14,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 31,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": 15,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 24,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 58,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": 16,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 33,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": 17,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 187,
+              "chunk": 63,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": 18,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": 19,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": 20,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 22,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": 21,
+      "color": 0,
+      "day_draws": 19,
+      "old_day_draws": 19,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 19,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 21,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": 22,
+      "color": 0,
+      "day_draws": 21,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 1,
+      "enemy": 23,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        205,
+        209
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": 24,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 191,
+              "chunk": 99,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 191,
+              "chunk": 99,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": 25,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 75,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 75,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": 26,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 76,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": 27,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        205,
+        199
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 25,
+          "extras": []
+        }
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": 28,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 191,
+              "chunk": 99,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 191,
+              "chunk": 99,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 0,
+      "enemy": 29,
+      "color": 0,
+      "day_draws": 23,
+      "old_day_draws": 20,
+      "restored_day_slots": [
+        203,
+        209,
+        202
+      ],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 23,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 24,
+          "extras": []
+        },
+        {
+          "state": 2,
+          "draws": 25,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 101,
+              "return_pc": 201486032
+            }
+          ]
+        },
+        {
+          "state": 3,
+          "draws": 26,
+          "extras": [
+            {
+              "slot": 188,
+              "chunk": 101,
+              "return_pc": 201486032
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "car": 29,
+      "enemy": 30,
+      "color": 0,
+      "day_draws": 20,
+      "old_day_draws": 20,
+      "restored_day_slots": [],
+      "lighting_states": [
+        {
+          "state": 0,
+          "draws": 20,
+          "extras": []
+        },
+        {
+          "state": 1,
+          "draws": 22,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 50,
+              "return_pc": 201486236
+            }
+          ]
+        },
+        {
+          "state": 2,
+          "draws": 21,
+          "extras": []
+        },
+        {
+          "state": 3,
+          "draws": 23,
+          "extras": [
+            {
+              "slot": 193,
+              "chunk": 50,
+              "return_pc": 201486078
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "source": "026100 slots0..211, 026D80 drawing, four day/night and brake states; original matrix-helper arguments captured at explicit boundaries. Prior materials and plate transforms preserved. No hardware pixel-equivalence claim."
+}

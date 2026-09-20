@@ -1,0 +1,12 @@
+{
+  "schema": "idas3-original-fsca-data-v1",
+  "source": "C:\\Users\\Developer\\Documents\\Codex\\SH4Recomp_Working_v0935_on_v0921_2026-08-12\\reference_tools\\flycast_source\\core\\hw\\sh4\\fsca-table.h",
+  "source_sha256": "f7f2912cf098efd40c7507b8a91dbd8adba478449dd08bd0fdc883c5dafc3c04",
+  "payload_sha256": "da5ed930c0102e1aa7c7f77a79697f16c52e52de68996b80d55b9192bb4bb26a",
+  "file": "fsca_table.bin",
+  "bytes": 131088,
+  "file_sha256": "4dc6f36f3154c3ef05c7ea3138b6276e21218835ef3454f2932dfa9acd5ff40d",
+  "provenance": "Local primary Flycast core/hw/sh4/fsca-table.h numerical lookup data, expanded by the documented sh4_rom.cpp phase/sign policy",
+  "contract": "32768 float32 words, phase0..32767; upper half XORs the sign bit; cosine adds0x4000 to the16-bit phase. Finite normal-FPSCR FSCA reference contract; not independent physical-silicon certification.",
+  "runtime": "Native matrix arithmetic uses this numerical table only; no interpreter or guest memory is loaded"
+}

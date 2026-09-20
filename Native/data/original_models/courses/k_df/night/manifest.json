@@ -1,0 +1,59 @@
+{
+  "source_record": "0C2EFF40 + 7*1024, variant0",
+  "models": "Original df2 banks; 137 original indexed chunks",
+  "world_textures": "Original shared k_df/df_tex bank, unchanged",
+  "assembly": "Same indexed30sector assembly selection; extra chunks135/136 preserved pending original effects dispatch",
+  "background_texture_count": 1,
+  "sources": {
+    "a_polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_pol_a.bin.nz",
+      "sha256": "cd39796a01a73f6d89c3f5e3e003398dd737ad418ac3a97f4088a0efa8b01bf7"
+    },
+    "a_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_pol_a.tbl",
+      "sha256": "81fbdc1e851979cbdceaf56c5037c230c02a92130ef65d9ae396b10d444e6cec"
+    },
+    "a_texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\..\\k_df\\df_tex.tbl",
+      "sha256": "965165a252a6f1c42b9f437e33cf26cf6223d4bdc5f594a6446b9aa3800f0049"
+    },
+    "b_polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_pol_b.bin.nz",
+      "sha256": "552b0afa1f91d1d27148441e0c76fa73253af16ee18fe1e7062a45362e92206c"
+    },
+    "b_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_pol_b.tbl",
+      "sha256": "14c73746ca7d717e4daae007e935e114c84a2a048ae5fd3007fd2a56c64761a0"
+    },
+    "b_texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\..\\k_df\\df_tex.tbl",
+      "sha256": "965165a252a6f1c42b9f437e33cf26cf6223d4bdc5f594a6446b9aa3800f0049"
+    },
+    "c_polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_pol_c.bin.nz",
+      "sha256": "a14a2b2a19a8e9ba02f39570bce003886ce4eac51abcb4fccce5efc19ddd3053"
+    },
+    "c_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_pol_c.tbl",
+      "sha256": "197756057e4ce0b9f63b49512b8b457294d6803d665ac3257a2cbf8581185e5e"
+    },
+    "c_texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\..\\k_df\\df_tex.tbl",
+      "sha256": "965165a252a6f1c42b9f437e33cf26cf6223d4bdc5f594a6446b9aa3800f0049"
+    },
+    "background_polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_etc_f_pol.bin.nz",
+      "sha256": "7a4909a46a7be035adc01eaef8d72a2ea774599fcad7414d2d2235b7cd5c2f9f"
+    },
+    "background_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_etc_f_pol.tbl",
+      "sha256": "df3f619804a92fdb4057192dc43dd748ea778adc52bc498ce80524c014b81119"
+    },
+    "background_texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\course\\k_df2\\df2_etc_f_tex.tbl",
+      "sha256": "3bed619ceb0c484eb364b3c6e1f1cf6ea52fcf122e109569606a118e9184e5fb"
+    }
+  },
+  "changes": "None to XYZ,UV,materials,colors or texture pixels",
+  "limits": "Host night headlights/lighting remain presentation reconstruction"
+}

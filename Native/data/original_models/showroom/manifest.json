@@ -1,0 +1,173 @@
+{
+  "schema": "idas3-original-showroom-shadow-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_files": {
+    "polygon": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\selcrs\\selcrs_pol.bin.nz",
+      "sha256": "6406ee1b0f65291f4b5fe7ac2a1c8d8d9ac5a52a4c9ee3909d4c86b4297e26e0"
+    },
+    "table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\selcrs\\selcrs_pol.tbl",
+      "sha256": "c4a859fefcc1f271fa2fd36e612cf7f64f549ccd7d7b5cd642f7aede68671b58"
+    },
+    "texture_table": {
+      "path": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\selcrs\\selcrs_tex.tbl",
+      "sha256": "7ed2de0f9728f63515f7b2855d220908bd2e5fda8fb452d5258be7742d595bb2"
+    }
+  },
+  "loader_strings": {
+    "0xc266d4c": "/driveA/model/selcrs/selcrs_pol",
+    "0xc266d6c": "/driveA/model/selcrs/selcrs_tex"
+  },
+  "bank_binding": "11D940 -> owner+120 -> 12D1E0 stack[1] -> selector+436 -> 12DC60/05A8E0 chunk4 -> 10F040 display+16 -> 10FA00",
+  "selected_chunk": 4,
+  "draw_count": 2,
+  "textures_required": false,
+  "material_handling": "Keep original VUR alpha gradient, GMP and ICH. No UI color-buffer override.",
+  "other_chunks": "Preserved to retain original indices; not selected by this shadow helper.",
+  "dimension_words": [
+    [
+      1060957585,
+      1074391941
+    ],
+    [
+      1060957585,
+      1074391941
+    ],
+    [
+      1060957585,
+      1074391941
+    ],
+    [
+      1062752748,
+      1073783767
+    ],
+    [
+      1062786302,
+      1073448223
+    ],
+    [
+      1062786302,
+      1073448223
+    ],
+    [
+      1062786302,
+      1073448223
+    ],
+    [
+      1063289618,
+      1074727485
+    ],
+    [
+      1063440613,
+      1074912035
+    ],
+    [
+      1062752748,
+      1074895258
+    ],
+    [
+      1062920520,
+      1074685542
+    ],
+    [
+      1062920520,
+      1074685542
+    ],
+    [
+      1062970851,
+      1074555519
+    ],
+    [
+      1062752748,
+      1075260162
+    ],
+    [
+      1062752748,
+      1075260162
+    ],
+    [
+      1061729337,
+      1074270306
+    ],
+    [
+      1062501089,
+      1073838293
+    ],
+    [
+      1062383649,
+      1074597462
+    ],
+    [
+      1062568198,
+      1073657938
+    ],
+    [
+      1061997773,
+      1074425496
+    ],
+    [
+      1062886965,
+      1074412913
+    ],
+    [
+      1062886965,
+      1074412913
+    ],
+    [
+      1063490945,
+      1074664571
+    ],
+    [
+      1063490945,
+      1074664571
+    ],
+    [
+      1061997773,
+      1074404524
+    ],
+    [
+      1060957585,
+      1073406280
+    ],
+    [
+      1061880332,
+      1073708270
+    ],
+    [
+      1063004406,
+      1074538742
+    ],
+    [
+      1063004406,
+      1074538742
+    ],
+    [
+      1063004406,
+      1074538742
+    ],
+    [
+      1059229532,
+      1070688371
+    ],
+    [
+      1063440613,
+      1074912035
+    ],
+    [
+      1063232576,
+      1074596204
+    ],
+    [
+      1063286263,
+      1074435981
+    ],
+    [
+      1063073192,
+      1074406202
+    ]
+  ],
+  "shadow_vertices": 94,
+  "shadow_triangles": 82,
+  "model_sha256": "bfa04ff07c0228913a4eb3efecbff60e4fac60527047acb335983d1d90d65be6"
+}

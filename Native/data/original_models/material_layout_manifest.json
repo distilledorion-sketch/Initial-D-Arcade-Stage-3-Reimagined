@@ -1,0 +1,286 @@
+{
+  "schema": "idas3-car-material-layout-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "cars": [
+    {
+      "car": 0,
+      "folder": "toyota_ae86t",
+      "materials": 229,
+      "batches": 349,
+      "polygon_sha256": "d68fa90f86dcf3e390783182b9880e6c986f7a1504aea71420310ce0f521ce8b",
+      "layout_sha256": "e4563c911b237a06f13e2c572e54345448658d0b33a2ef9802805e83605e21d9"
+    },
+    {
+      "car": 1,
+      "folder": "toyota_ae86l",
+      "materials": 234,
+      "batches": 347,
+      "polygon_sha256": "ece80c80cbaae8a2096fd2615cbd517ff5f4f0472a37841d7c9f1014ac17a65c",
+      "layout_sha256": "1a5475e9c7c6ea5903ca0f8f768b97dd7098968931842c3a1fd6cfd34b0dda55"
+    },
+    {
+      "car": 2,
+      "folder": "toyota_ae85l",
+      "materials": 203,
+      "batches": 301,
+      "polygon_sha256": "251fd5a70ce8ba7fcebcfea1d3e7d75451c5d0de402244fd60e59b8503c0f011",
+      "layout_sha256": "a5b23aec7c654ae0faf0381071576f9688d8aef7c816110d93a72ba517382f5f"
+    },
+    {
+      "car": 3,
+      "folder": "toyota_sw20",
+      "materials": 222,
+      "batches": 333,
+      "polygon_sha256": "91a0701c5e33b7279b6da0a4a13e1a736b1434309942965b90d8eb0def64c3b4",
+      "layout_sha256": "d1cb1ea4676dcc12cbe80f5e007a1e9ca56f01f90cf3d0f80d6953bbc8805c3e"
+    },
+    {
+      "car": 4,
+      "folder": "toyota_zzw30",
+      "materials": 197,
+      "batches": 293,
+      "polygon_sha256": "68d18cad683afe12253cfe791e6fdab5f6422d83e88de2cc26f1ed169d1e8368",
+      "layout_sha256": "b355ccb5113ce38dfa966eb7c29bfdbbd707a09c0263521902f66786ee0e00c9"
+    },
+    {
+      "car": 5,
+      "folder": "toyota_sxe10",
+      "materials": 193,
+      "batches": 283,
+      "polygon_sha256": "998b11f2ceac61ffd7fac0a9a76e4f921c0077b42768a9d9e9305e273fe9f5f0",
+      "layout_sha256": "8ff0d09ae6dd540954936caa352e3f62a9b60086a0e1e9fb48a23e8fd45f879f"
+    },
+    {
+      "car": 6,
+      "folder": "toyota_st205",
+      "materials": 156,
+      "batches": 221,
+      "polygon_sha256": "b2bf3b13747f159a1d495202a8a4897773f238693cbaad11ad7ef00cc9658963",
+      "layout_sha256": "44c2000f6107e5b590a79fd11c28c370c543cb4da1bca9e34e165be23f556d84"
+    },
+    {
+      "car": 7,
+      "folder": "nissan_bnr32",
+      "materials": 220,
+      "batches": 323,
+      "polygon_sha256": "586ac489562297c87029813bb857e9370e2c3298f2022afbb6d906cb0e76c99e",
+      "layout_sha256": "dba7ddbd6df2dc32dffa97a657545b17e9ca30b31dd4b790e908820c5e349284"
+    },
+    {
+      "car": 8,
+      "folder": "nissan_bnr34",
+      "materials": 224,
+      "batches": 324,
+      "polygon_sha256": "e9b962a36c1a6fb3cfa4d62fa496e6f2134f990a8af1310a28b238a436776df9",
+      "layout_sha256": "3691622e55dae18fc8ff2b8ac9cc9821b4b550ad1dfc50fe35971ed894a564de"
+    },
+    {
+      "car": 9,
+      "folder": "nissan_s13k",
+      "materials": 266,
+      "batches": 392,
+      "polygon_sha256": "01007646631e4ea68e921859a96496f7a4521a04a02fbbc7279e13a4280891c5",
+      "layout_sha256": "bba7fa0d95a27fc081b6f77de2b3aa762ed63e1305d34179b5e81f3318595674"
+    },
+    {
+      "car": 10,
+      "folder": "nissan_s14q",
+      "materials": 224,
+      "batches": 328,
+      "polygon_sha256": "66dbd1967fae146f7209d49d8bd10faca2132af8538281292d85beab117635f8",
+      "layout_sha256": "3e5c87044b1b4283d3291a15889f1f49f9b5c0ff7d53a58f30aa82ed18b52fff"
+    },
+    {
+      "car": 11,
+      "folder": "nissan_s14",
+      "materials": 175,
+      "batches": 267,
+      "polygon_sha256": "dcfd87f6bbcd084d43f53ed944be769db612f596c0247e45e1c4174809976a04",
+      "layout_sha256": "d0f05a50d215af43b5cc61d291a29b7908ac027f6625fb16e65657777c92ef4b"
+    },
+    {
+      "car": 12,
+      "folder": "nissan_s15",
+      "materials": 211,
+      "batches": 323,
+      "polygon_sha256": "2040bdffb52839790ba30c5743573efcac3dfefc6a618fe294d3370994bea44c",
+      "layout_sha256": "bd87dbb1c99dd15a89d3719ab69491bb8aaff8a412e340d2aa7101655c728727"
+    },
+    {
+      "car": 13,
+      "folder": "nissan_rps13",
+      "materials": 210,
+      "batches": 319,
+      "polygon_sha256": "3911a6de2e0faf60e7023e86b56944f7329e55fbd9b37ce1f00a55ae889bf002",
+      "layout_sha256": "007482b4f7eb0c399504f9c2978f99f2c25efddc41a865d20bd4144a89be09dc"
+    },
+    {
+      "car": 14,
+      "folder": "nissan_rps13k",
+      "materials": 211,
+      "batches": 310,
+      "polygon_sha256": "2b7a6222fcc150faa77c7a8d4b9bac0b15138080c34fc2b3004e6c36ac373356",
+      "layout_sha256": "ebd345e4e1d33362a77e4eab12e31f58d7632e1000f6b59bfd3e53654a9133ae"
+    },
+    {
+      "car": 15,
+      "folder": "honda_ek9",
+      "materials": 214,
+      "batches": 320,
+      "polygon_sha256": "716919178ceeeba49f76b4acb1255ef5d176c6d32cc5df8d02fbd428ee39529a",
+      "layout_sha256": "19017512b69ff3037a6c02b41d41341fd69dd01ce5c8c6d657d8914cbf78c58d"
+    },
+    {
+      "car": 16,
+      "folder": "honda_eg6",
+      "materials": 204,
+      "batches": 297,
+      "polygon_sha256": "878f351a2d218a8996bc0000f2ec7660d498d460d3fc381cecfa1459eb92eb59",
+      "layout_sha256": "ff2ec082c87209468bd67ba8b83554a7e72f62c497c247cdd5ea63f716871136"
+    },
+    {
+      "car": 17,
+      "folder": "honda_dc2",
+      "materials": 209,
+      "batches": 312,
+      "polygon_sha256": "2298774134f47433ded5f3862e28747b11b7037fb97d0cb3076ae022f4aa325c",
+      "layout_sha256": "8dfcde7db0da74ba3e81b7f1aac91d845be397a249967c8fc8e88198ffe16232"
+    },
+    {
+      "car": 18,
+      "folder": "honda_ap1",
+      "materials": 202,
+      "batches": 294,
+      "polygon_sha256": "666b25f5267ed9301db1d443ffbdfe9b62d070c8fc5c76ddf7b5e4fea88d4d99",
+      "layout_sha256": "e395c10639037cda65fa4694ba87ab6988da909314041199af6177af0679b695"
+    },
+    {
+      "car": 19,
+      "folder": "mitsu_ce9a",
+      "materials": 165,
+      "batches": 241,
+      "polygon_sha256": "8084f82419a2cbe0f9a83d3cda6e7c104f1bf6cb9ebf2dfc8ac8a930c44a1f88",
+      "layout_sha256": "8d62825698bfe2e22f3b81a21124e49ec6288b3454b5a58cf82753756d5c94b6"
+    },
+    {
+      "car": 20,
+      "folder": "mitsu_cn9a",
+      "materials": 210,
+      "batches": 301,
+      "polygon_sha256": "f2bd785edabaac9ae9284c329f9fe2448115acc4fa0c2569f2f4454326be2e9e",
+      "layout_sha256": "7db2ffc217a5ef9924039a367a24b7b1136de31c42e4e3886781810346b46384"
+    },
+    {
+      "car": 21,
+      "folder": "mitsu_ct9a",
+      "materials": 202,
+      "batches": 313,
+      "polygon_sha256": "6264e56eb6c8801efb1072679e94da3826f68531d013563a89a47703f6b64396",
+      "layout_sha256": "61b73a44ae21269ef3edc853f0439080fd7fce6172e6c19a2153abeca32b0678"
+    },
+    {
+      "car": 22,
+      "folder": "mazda_fd3s",
+      "materials": 282,
+      "batches": 417,
+      "polygon_sha256": "8d8327e491568dd6ac7662791dbed418f4e0036205472ec6b65cab61ebd0f720",
+      "layout_sha256": "608602e116c6aa95697d3be60389bde8e192ae0c326f98ff41b4d8d6da3ffe73"
+    },
+    {
+      "car": 23,
+      "folder": "mazda_fd3sa",
+      "materials": 218,
+      "batches": 308,
+      "polygon_sha256": "66473e0387a583268698500b12914e66d54ae7f4774e36470511ebd24de089a7",
+      "layout_sha256": "335600e3b8e43539db7acf605ed7752d1117a3e6f624defcf20f248e571c2b02"
+    },
+    {
+      "car": 24,
+      "folder": "mazda_fc3s",
+      "materials": 231,
+      "batches": 331,
+      "polygon_sha256": "74cc2b6a82f57827f39cb6c508770b1a996575abbf1587415cedd66c668dca49",
+      "layout_sha256": "e9086c5a7f7e9a77ab75dd93fe1839a48f503661b050075db7bad673665af7b5"
+    },
+    {
+      "car": 25,
+      "folder": "mazda_na6c",
+      "materials": 188,
+      "batches": 259,
+      "polygon_sha256": "b89469ab83f3c3c14f75e4243c0f352ebc0e0f643d31bd8f3bc1ab11d27e0057",
+      "layout_sha256": "324555304a65f22d613ca7101c8b53860455aa21ea52dfc2a0150a438e8675b5"
+    },
+    {
+      "car": 26,
+      "folder": "mazda_nb8c",
+      "materials": 195,
+      "batches": 294,
+      "polygon_sha256": "430ff2f6c0bb837da6d4131bf947f29b7895ffdc137c811226f34c0be003e3da",
+      "layout_sha256": "ae3fc3cbd10db3aa8c2b92554cd1500b081888856502240741cbb6518144f94a"
+    },
+    {
+      "car": 27,
+      "folder": "subaru_gc8s6",
+      "materials": 212,
+      "batches": 318,
+      "polygon_sha256": "c6c98188e3c84a76aecf5b497c2e3b17a648390c9795023c1106d842e1d39417",
+      "layout_sha256": "299c4ff1fcb889255242dc2c9af57e1812173ab9d65882cd65102b55ce45ee50"
+    },
+    {
+      "car": 28,
+      "folder": "subaru_gdb",
+      "materials": 180,
+      "batches": 274,
+      "polygon_sha256": "34a960c2cc6a522fd12f84bc9d9b07ea2ee2d6c3bf049292ec9e62582007c8c6",
+      "layout_sha256": "47e76380430e697ae949c76d322f0c9f5ac67bf9cfdca5a4f7e32d3d1b5663d8"
+    },
+    {
+      "car": 29,
+      "folder": "subaru_gc8s5",
+      "materials": 81,
+      "batches": 105,
+      "polygon_sha256": "c880b3b0dc735ed56dd34d76b9433484f457727714750018da6319a8ddadd088",
+      "layout_sha256": "69051d44f32516a48fe34c16a77801ff9c519cb18540f333ec2bf2d809f924ef"
+    },
+    {
+      "car": 30,
+      "folder": "suzuki_ea11r",
+      "materials": 166,
+      "batches": 250,
+      "polygon_sha256": "93833074da643406622a016783fd4c596c678c66bba9f16b4f7c4ef0acee5ad1",
+      "layout_sha256": "13ae7982b9192fdde2e6fd372c088430a3bf91ae065386bb30062e36c2433224"
+    },
+    {
+      "car": 31,
+      "folder": "nissan_er34",
+      "materials": 181,
+      "batches": 331,
+      "polygon_sha256": "c927637466eeab51263dc382dad5a6d203dd87e640c2e5028b311e177daf9fda",
+      "layout_sha256": "073f9e820f43b8e37eb842f1d07fb5354093cd85942c7c2033b5fd52af0664d8"
+    },
+    {
+      "car": 32,
+      "folder": "mitsu_cp9a",
+      "materials": 163,
+      "batches": 236,
+      "polygon_sha256": "fb4bebf540f16a2a109f7cbf90d0b023e3003516c595519432111a3f3fd49f23",
+      "layout_sha256": "b3b073169880268473fe6f6af65a8b4dec58a0869bfd226d33f5f048b59ca7c3"
+    },
+    {
+      "car": 33,
+      "folder": "mitsu_cp9at",
+      "materials": 204,
+      "batches": 342,
+      "polygon_sha256": "aec9c19d61b5a5008450952d9f31150bf6a6c0312a1aa0994a5ad84af1ff0f8f",
+      "layout_sha256": "ece7294dd3cfda24f556e984d5a43ed10cf80ecfc0cd2c742cd7cdd806fda5bb"
+    },
+    {
+      "car": 34,
+      "folder": "mazda_se3p",
+      "materials": 216,
+      "batches": 376,
+      "polygon_sha256": "dcf4c3e15e4e0a5ea1296313d8a6c665c00aea0af4bdd91fe9cdb0b89639c5eb",
+      "layout_sha256": "cbc2d14b055e829bcf3c9db498206a13824f496c7a668f1bb68982601f5605ff"
+    }
+  ]
+}

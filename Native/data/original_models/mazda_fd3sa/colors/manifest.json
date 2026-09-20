@@ -1,0 +1,157 @@
+{
+  "car": 23,
+  "folder": "mazda_fd3sa",
+  "count": 5,
+  "colors": [
+    {
+      "car": 23,
+      "enemy": -1,
+      "config": 0,
+      "rgb": [
+        82,
+        82,
+        97
+      ],
+      "instructions": 4258730,
+      "copied_shadow_models": 21,
+      "paint_masks": [
+        537657346,
+        1313427970,
+        598058,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 0,
+      "palette_address": "0C339C88",
+      "rgb24": 5395041,
+      "material_patches": 86,
+      "material_sha256": "1f8d43d2e98107bed89193002b7ada924aab838352e8f9ee121a2e8b9650f61e",
+      "geometry_sha256": "1e6451fc1bd0bc7a8b8fe1d6b729db3c75e66aa024afbde0f1bbb73e01e20118",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9943
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "config": 33554432,
+      "rgb": [
+        1,
+        37,
+        112
+      ],
+      "instructions": 4258730,
+      "copied_shadow_models": 21,
+      "paint_masks": [
+        537657346,
+        1313427970,
+        598058,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 1,
+      "palette_address": "0C339CAC",
+      "rgb24": 75120,
+      "material_patches": 86,
+      "material_sha256": "dd9114cdc649a71d5e78f93a975464f6bdf4fc11317c932d739900bbf3669109",
+      "geometry_sha256": "4f1e7df64e8403947fccc5c45a300c97b8e350320a34acc5d25be43c9710617c",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9943
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "config": 67108864,
+      "rgb": [
+        220,
+        220,
+        220
+      ],
+      "instructions": 4258730,
+      "copied_shadow_models": 21,
+      "paint_masks": [
+        537657346,
+        1313427970,
+        598058,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 2,
+      "palette_address": "0C339CD0",
+      "rgb24": 14474460,
+      "material_patches": 86,
+      "material_sha256": "caaf76080ed11d0cd03f8fa105ca27042eed6932d523effc66ea428da8ef741a",
+      "geometry_sha256": "b820f7064109a1c878b86b541521c8918514ece4fb950b8d2c1ae78214d0f30c",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9943
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "config": 100663296,
+      "rgb": [
+        21,
+        21,
+        21
+      ],
+      "instructions": 4258730,
+      "copied_shadow_models": 21,
+      "paint_masks": [
+        537657346,
+        1313427970,
+        598058,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 3,
+      "palette_address": "0C339CF4",
+      "rgb24": 1381653,
+      "material_patches": 86,
+      "material_sha256": "b3a57adb46d6ef916e4402ba5627973771cf2e71bec1a79220f15052a6183412",
+      "geometry_sha256": "e0b5a0c55421a4627a5c96ed32487857872b7d1d02c4d30a94433c9551ac49a1",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9943
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "config": 134217728,
+      "rgb": [
+        185,
+        5,
+        0
+      ],
+      "instructions": 4258730,
+      "copied_shadow_models": 21,
+      "paint_masks": [
+        537657346,
+        1313427970,
+        598058,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "color": 4,
+      "palette_address": "0C339D18",
+      "rgb24": 12125440,
+      "material_patches": 86,
+      "material_sha256": "e13cfe6abe97791ae3faabb5b15d35afd60922827b94cc396884ef11d30b1d97",
+      "geometry_sha256": "9a233caf03a5a4ccde0b3e7c4f08a6e579c80cd0c58ec714c1fc6328e654163e",
+      "geometry_matches_default": true,
+      "geometry_instructions": 9943
+    }
+  ]
+}

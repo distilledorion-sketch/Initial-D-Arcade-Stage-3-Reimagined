@@ -1,0 +1,42 @@
+{
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "scene": 20,
+  "reverse": 0,
+  "night": 1,
+  "weather": 0,
+  "path_record": "0xc23eae3",
+  "paths": [
+    "/driveA/model/course/k_dfa/dfa_pol",
+    "/driveA/model/course/k_dfa/dfa_tex",
+    "/driveA/model/course/k_df2/df2_etc_f_pol",
+    "/driveA/model/course/k_df2/df2_etc_f_tex",
+    "/driveA/path/k_df_path",
+    "/driveA/binary/k_df_colli_0",
+    "/driveA/binary/k_df_colli_1",
+    "/driveA/binary/PATH_df"
+  ],
+  "models": [
+    {
+      "file": "data/original_models/attract/demo/dfa_pol.idasmesh",
+      "chunks": 31,
+      "bank_counts": [
+        20,
+        10,
+        1
+      ],
+      "textures": "data/original_assets/attract/demo/dfa_tex/textures.idastex",
+      "texture_count": 180,
+      "sha256": "87099196b5b20aed3bbc052a481cbd50b9878ed596787407b0f905cde1633022"
+    },
+    {
+      "file": "data/original_models/attract/demo/df2_etc_f_pol.idasmesh",
+      "chunks": 1,
+      "bank_counts": [
+        1
+      ],
+      "textures": "data/original_assets/attract/demo/df2_etc_f_tex/textures.idastex",
+      "texture_count": 1,
+      "sha256": "82e6dad0c63821b29e81b3254132912f78921ccde0bd611fe70a35be00016bfd"
+    }
+  ]
+}

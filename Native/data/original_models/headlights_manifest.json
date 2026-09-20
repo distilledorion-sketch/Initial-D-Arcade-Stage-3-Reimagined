@@ -1,0 +1,864 @@
+{
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source": "029040 enables motor from191440/298320.027080..0271BA advances;0272E8..027436 chooses18/19 and parts1D4/1B0 transforms.",
+  "appearances": [
+    {
+      "car": 0,
+      "enemy": -1,
+      "closedChunk": 83,
+      "openChunk": 84,
+      "instance": 11,
+      "maximumPhase": 13312,
+      "frameDuration": 40,
+      "source_hashes": [
+        "8f71cf2a212d1bc5adca3619a703510fb54a73433425c81e5477512766e3748c",
+        "c69795f4bac3ab89c359cddda848fe4f09a26f595a001ae0099606625c0193a7"
+      ]
+    },
+    {
+      "car": 1,
+      "enemy": -1,
+      "closedChunk": 40,
+      "openChunk": 41,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "fbf173c449bac6f6a21789fa8cb0f2fe1f88e413bfbb70dcd56378adec9def57",
+        "1594120fa91bd67f3ca95659712a5a845d4765effa6400685ec8ebf5a2c5e3fa"
+      ]
+    },
+    {
+      "car": 2,
+      "enemy": -1,
+      "closedChunk": 35,
+      "openChunk": 36,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "e752115ad0a307b919f1e8ee40df515532d327ac4cc159fd2e8b7d850c77cccb",
+        "45968dab79a36cee4cff0da935ee3a6a5f4693ee06d65a92e2b6d50edd677d77"
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 7424,
+      "frameDuration": 40,
+      "source_hashes": [
+        "8b2669702234da0c247ef137640fa89c4a237b398d841162da4c0ecbe2395b2a",
+        "d28533883a97da5784f1a30e53e13450464966e0cc9bc5b5d37bab3afdb44de1"
+      ]
+    },
+    {
+      "car": 4,
+      "enemy": -1,
+      "closedChunk": 6,
+      "openChunk": 7,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "a6fae5dbef36378761d1c95d89f074b17de4d888c966d9cc9e2abc369a93826d",
+        "4a5235107901d1bcbf13e08b4a070687d047d9656a6d13a5b94c84dd5ddf913c"
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": -1,
+      "closedChunk": 37,
+      "openChunk": 38,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "492d6ca1840da27ce2afa8ab6f0a8f367e08b9c70f78d195ed01b5c1481ce607",
+        "4c733639dbedc700141c7712f3719ef797110f1b49fde9b106c7316f3ccba3ed"
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": -1,
+      "closedChunk": 32,
+      "openChunk": 33,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "103fd364ceaf916b45dce94fcfdde7ae6ad85cfeaeb5b8dce4d8aba237807e89",
+        "f9d9e642095f7b777b3bb48add6809beb975a065f15a70fc5fb2ca0b3e5a8be6"
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": -1,
+      "closedChunk": 12,
+      "openChunk": 13,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "6e8a02ddde61d46a54ad94a0285a2da9ca0cc33aa259973fd5bdb2299f502b55",
+        "28ac9a9c695453a60d8a1e6dcaabe642b94128d9f4b2db607a9656e527c7a592"
+      ]
+    },
+    {
+      "car": 8,
+      "enemy": -1,
+      "closedChunk": 36,
+      "openChunk": 37,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "3707c671cb0704a095974a9fda032670fcb3c3563727ab97c766d3958347a01e",
+        "fbb6f775142e03cd39cbbfc94eb9d97ca03afd458258de209775e546e7883f6e"
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "0170c93245591a5011fc0423c1f54ff1560d6ada0f3e1af068b12ec827615a4e",
+        "84996b24c6a85ab596cb8d7e1cbcdd0ab2d7d0d753c50a8d7af686954283a87a"
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": -1,
+      "closedChunk": 44,
+      "openChunk": 45,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "ebcb9d6027522f9200b6389027b498b360707abc1f6da219cb2377b6bf64abe2",
+        "85c27e634b6b346f235437fae7f1dfac6dc2da786276eeebf39dee86cef6103c"
+      ]
+    },
+    {
+      "car": 11,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "19fcd5ffe4d770d282384eb241ccd49ecd331969cef6a69b6a45b03a0fe7e4cc",
+        "dfdf0792507e54758bb5191d1c1384aa4284bc49ca989b4fbedb248e033b7712"
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": -1,
+      "closedChunk": 10,
+      "openChunk": 11,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "6101a092b2adc0717757e7fe34089c0fd74d9e98af74ae7de4323a220e8de3d7",
+        "a5c3261d7523c799a74dd4f418b6b408c20c388d7cbe032e08941323c095ffe6"
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 8448,
+      "frameDuration": 40,
+      "source_hashes": [
+        "43315631db616215bad70f4b19dd04389d5327e3209dddc1f4a01ed346ce2e85",
+        "e23af173317b73f97dd6c6287d3e205480d221fd38f1c6aff9d7d0da6c244449"
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": -1,
+      "closedChunk": 10,
+      "openChunk": 11,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "48b18cb0a73c55c1aa2c1307c47dda502eea18a72c0ebe76e590c993383506ee",
+        "e02b71aef6e7cfe3368e6654bd4e3b7ead9a73165ec8f3f1c599d952927296c9"
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": -1,
+      "closedChunk": 9,
+      "openChunk": 10,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "6417cb6ab8745e7ae78933c0e143a7ade4913ea326561b6cd77470e27b18adad",
+        "651e77c2e1aaff217052ddc9ba1d62b7753ef7e4fd76bf03dfaa64631df7bd26"
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "3acdc05e553445136422f1914d66b38b55bcfd0e9eabfceb42958f81cedcec80",
+        "96c54288e5e7416d7a484e6770c2ab33d452845a79fcd64e5e6b1f9ded93519a"
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": -1,
+      "closedChunk": 39,
+      "openChunk": 40,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "0d5eab19e11a1b4b5d341374edb52ad38adb10b0dc1a9d8d0aec5e888dd0eff2",
+        "29e438cd03ff38b3ebeba21fe73bc39145fba080f96cf5cf223242a50bea5f2a"
+      ]
+    },
+    {
+      "car": 18,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "2cda5cae69a376bf939198ba3d363c692d0b07019946aacf99372ced3d50f607",
+        "b3908dcd46edc49a4a26abb7d5646735335df901b2a33a275bd76a664a6a76f9"
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": -1,
+      "closedChunk": 29,
+      "openChunk": 30,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "f82bb695c0f2c3cfea2a4dc4c8bf3a89b85bdeac95ff7b7ca6c5f1e358373b79",
+        "b1b81bdec014fce458fdb55246e33093c59535492552764cb21e613580873dd8"
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": -1,
+      "closedChunk": 10,
+      "openChunk": 11,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "1ad3ce658e6f3653d35b3a9b74eec0332b59f477630e5727cee2778f3e9b4097",
+        "78e0373a399ee9a1fa85e9ed06dbeb19b3b9d6cee3eaec1d9ae6e73eff57ab17"
+      ]
+    },
+    {
+      "car": 21,
+      "enemy": -1,
+      "closedChunk": 34,
+      "openChunk": 35,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "83d1bff9a92001667eb2c242016f1db0ce3757c7c605a35b32815a31349a28d6",
+        "d36002b2de2b196a5f37bff35abacf4975711e39a81643278a8eeff10b1aaad6"
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": -1,
+      "closedChunk": 49,
+      "openChunk": 50,
+      "instance": 11,
+      "maximumPhase": 9472,
+      "frameDuration": 40,
+      "source_hashes": [
+        "ce553fea289ebcf31d84593f7da4305dacc4c8545043b52d4b534cd06d6a049d",
+        "9d2e3dd11fcd245b6a7956d59bb5986dae1ee703d020666b8892568c63d11811"
+      ]
+    },
+    {
+      "car": 23,
+      "enemy": -1,
+      "closedChunk": 40,
+      "openChunk": 41,
+      "instance": 11,
+      "maximumPhase": 9472,
+      "frameDuration": 40,
+      "source_hashes": [
+        "1e6451fc1bd0bc7a8b8fe1d6b729db3c75e66aa024afbde0f1bbb73e01e20118",
+        "51398c0d2f7c8dc236474823b7a86d03fd2582f20cf538429eafb273dc4ac44c"
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": -1,
+      "closedChunk": 43,
+      "openChunk": 44,
+      "instance": 11,
+      "maximumPhase": 8704,
+      "frameDuration": 40,
+      "source_hashes": [
+        "91831dae4debdeb16833e75489fb344bbec522998455208bbad5315804fc6c71",
+        "99889a334275e8cb26486e7759de1f65e9c55ff6c0ff1563f2df6f834c3d9f61"
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": -1,
+      "closedChunk": 46,
+      "openChunk": 47,
+      "instance": 11,
+      "maximumPhase": 7936,
+      "frameDuration": 40,
+      "source_hashes": [
+        "c5fc2fd1d233805bb1b1ed280c41ed949376cdd0bb3913ad1b2d481248a54d4b",
+        "b11d992f897ff92165143415fd3b508a8fb5bde74a0d9e007177076e4c26bc2d"
+      ]
+    },
+    {
+      "car": 26,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "6c5e37950d466ad894c1fe18c8e1c747cf1f559e791962c99a573cb925bf5208",
+        "2ceaef9b14539b06f41a5b6e9bd86d2277f19847d4a4e894f60e8a38bbd46210"
+      ]
+    },
+    {
+      "car": 27,
+      "enemy": -1,
+      "closedChunk": 41,
+      "openChunk": 42,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "320d25926f63138aca73ce447082d977d805da2fb6ffde71320700ba764cd2df",
+        "301f817ffd21a7cde19713c9d4adcd3814b90aeaec4078df79464330e2708fa8"
+      ]
+    },
+    {
+      "car": 28,
+      "enemy": -1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "af9ba7cf66af3760c625fee7e069fe3cc42bc809f38b3320f07a194a5dcdfa65",
+        "5f15ad9322217ea7a9eb1df902b3a9bf6c5019f9944c8436a04abc78d95058d1"
+      ]
+    },
+    {
+      "car": 29,
+      "enemy": -1,
+      "closedChunk": 34,
+      "openChunk": 35,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "e7c3904b1daebeb720c7f9276f1118c48ad305621e765ac3fc924dd40ecdb409",
+        "874003adc3edd57ace484c560f7b46414dce481568016bcc434a78e32866e2bd"
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": -1,
+      "closedChunk": 34,
+      "openChunk": 35,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "c4004984236e98b2eaca6752bdb385a53107e3dee0780f561ffaf745b55626cd",
+        "4a3aaee1cb7fb6fafbcf55fcae5d1ae9cf661afdb8d2e8751aa5b750a39dc605"
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": -1,
+      "closedChunk": 33,
+      "openChunk": 34,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "ba350bde14f64a3728a95b183887db1f8724a66e977999b0b39963b0b516ddc2",
+        "3e32edb8fec199221b01a30aa5ffc46018b235c386b4f6f6390acfba30a8c104"
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": -1,
+      "closedChunk": 42,
+      "openChunk": 43,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "968b9269807c681ce687ed8e3a343dda899bee9058f28e831478dba56295647a",
+        "8c678a7f6f104a5b914c62adcc495d0f491ae96ad0db9974490582e3d55a6631"
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": -1,
+      "closedChunk": 55,
+      "openChunk": 56,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "3832677f560663aa08ed2058216a1577d2c24c8ab74ba690c8980f53b77e5c95",
+        "3cd8dac31b695a42d3802ca8ddaf839c5e205cbb933901209c008846b4dc3b56"
+      ]
+    },
+    {
+      "car": 34,
+      "enemy": -1,
+      "closedChunk": 70,
+      "openChunk": 71,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "435c1928f8241cb077b9baa222037902d417fb20b4418f3e8ff11a94624feed9",
+        "e10122fcd852deb65f2a0cd1d516a33d1b6be777f5b80d8aefd19d6e3e402984"
+      ]
+    },
+    {
+      "car": 2,
+      "enemy": 0,
+      "closedChunk": 35,
+      "openChunk": 36,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "5a176ffc19e72b4bafbf7bcd9c5369d9c4a99e4fdb0ebb05a9bd4e34b517f4a5",
+        "6355c96c36013ac76bb0b3e79b8ba10ffe5427537d47c851e3267720a80bb113"
+      ]
+    },
+    {
+      "car": 13,
+      "enemy": 1,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 8448,
+      "frameDuration": 40,
+      "source_hashes": [
+        "37212d8f42a90d724dcb8fada36f6b39bcfa182e531ed1e00e640bd2cbd496de",
+        "7ee933a0aa746dab4f233b4aa3bc39ae1a1324eba93d60dde684c409bc8f13e4"
+      ]
+    },
+    {
+      "car": 16,
+      "enemy": 2,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "94317853737c7ab2c3db6f4d28b8df4794945ff018bf33562508d393d732a805",
+        "bb92ecf08faea92807b6e804bdb11ab23d9be1fb6fcaf7a7544ba97e7c77937f"
+      ]
+    },
+    {
+      "car": 25,
+      "enemy": 3,
+      "closedChunk": 46,
+      "openChunk": 47,
+      "instance": 11,
+      "maximumPhase": 7936,
+      "frameDuration": 40,
+      "source_hashes": [
+        "f94bef1e0bf827093affa92f6fd746cfe8230365b6a9b02c2b4ca9898de88294",
+        "bc2e917da28eca0ceb16a1f9ada7ef949cd616c4c5985eae5dab3a2b091f3a6f"
+      ]
+    },
+    {
+      "car": 31,
+      "enemy": 4,
+      "closedChunk": 33,
+      "openChunk": 34,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "f7c30bebd67e517960d5c19b80695a5ec9975d210b53ba9ba543a2f46c4e8ad5",
+        "2a05c3f0aa90f1555e544a06caac02d3403d38648920f519b7168e38a70e82f6"
+      ]
+    },
+    {
+      "car": 14,
+      "enemy": 5,
+      "closedChunk": 10,
+      "openChunk": 11,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "c5ae9b6cb1d7f675fdcb2b627ac08c0c25fba71ee8fda387d2963edf2dd89066",
+        "64d1b9f7de2a2621405f4cf5df1d5bb46f77fbaae8a261ba4ad27de1ac134686"
+      ]
+    },
+    {
+      "car": 12,
+      "enemy": 6,
+      "closedChunk": 10,
+      "openChunk": 11,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "56f11e1340830341f36b0c38cb175d1bdfc452e4b00cd5593a0d7b26b830f186",
+        "706d989868b49fccaa648fd8a6d3e0cfdc0bc78be17cfe2ad5eab7d0253e7a24"
+      ]
+    },
+    {
+      "car": 10,
+      "enemy": 7,
+      "closedChunk": 44,
+      "openChunk": 45,
+      "instance": 10,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "4ed84da54e8d4df7c765d0e0fb658c011a86f68095f39d557c722b47da477e75",
+        "1d661b336cdd88043310c5d9fd5306eeb8efaccdc2f805a88dad7f2591a427d1"
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": 8,
+      "closedChunk": 49,
+      "openChunk": 50,
+      "instance": 11,
+      "maximumPhase": 9472,
+      "frameDuration": 40,
+      "source_hashes": [
+        "a1b63e7fbc10749dcdd50b6563b926abaef03e8280f0c896c2a500dc08f6fcc1",
+        "37a6be9a8a78b32eb7cb6bbd8c4726310da7379254c7e3e783b65f9514cc58ab"
+      ]
+    },
+    {
+      "car": 9,
+      "enemy": 9,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "afc00061d8118a043747e0cca1f233f509f3c45a9935b56de774b66684c36f47",
+        "c6135b79ea85d103cc976a95913c86645e97dc614ba303d611463854426d9e89"
+      ]
+    },
+    {
+      "car": 7,
+      "enemy": 10,
+      "closedChunk": 12,
+      "openChunk": 13,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "19ca16f857262aa1dc33e8f8fc2cedc625abb36fa43f085c43e8f21b11c49870",
+        "c8814745716f7a8ff883c7770ba68f0c13002e149bce71935d062fdc94bdec5b"
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": 11,
+      "closedChunk": 29,
+      "openChunk": 30,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "21b8fbffceff1547e21fc62f89c6d69b39eeebb95e45fdad24ec4ac15a6b3010",
+        "d62e1568bb37795f610650b523354f059d9c0547af2e7a7b3ee77076e85015c2"
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": 12,
+      "closedChunk": 43,
+      "openChunk": 44,
+      "instance": 12,
+      "maximumPhase": 8704,
+      "frameDuration": 40,
+      "source_hashes": [
+        "67cfaa7c0f54217e2d904d65b17a8e8f4a0265e47a1a748b52c804f2d25ec32e",
+        "2462bc803c8e69c846e6c18c4941c1b88d1d1a33a0b713417599b0fdbfcb78a0"
+      ]
+    },
+    {
+      "car": 0,
+      "enemy": 13,
+      "closedChunk": 83,
+      "openChunk": 84,
+      "instance": 12,
+      "maximumPhase": 13312,
+      "frameDuration": 40,
+      "source_hashes": [
+        "90658cd62df59157144c1e3bc27cc3442704f7ac447cbd25453b2fe0c7a00ac4",
+        "b58e85dfd5563468665985c227b1a8b992ff4ce8818e5a698d9fd973d032a41f"
+      ]
+    },
+    {
+      "car": 20,
+      "enemy": 14,
+      "closedChunk": 10,
+      "openChunk": 11,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "8bb888eca89cb90fb2c767731e1ff23c0adc713274a3ef39b93be37024f9511a",
+        "005c1ea13e4294b7434c1811d02eaf8cdaa4c676be904344add4da4535699bb1"
+      ]
+    },
+    {
+      "car": 19,
+      "enemy": 15,
+      "closedChunk": 29,
+      "openChunk": 30,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "ae8b7bd6b02a3525bbd9e526b7f9b0612f94f4ff445ceff4a8e2fd4171bae362",
+        "c7920d26634b0b125c01414e7f35c2e106a8ba89bd1bbd6a889e53a6bebd05d9"
+      ]
+    },
+    {
+      "car": 3,
+      "enemy": 16,
+      "closedChunk": 11,
+      "openChunk": 12,
+      "instance": 11,
+      "maximumPhase": 7424,
+      "frameDuration": 40,
+      "source_hashes": [
+        "fcb652bdb608fd459c9bd78358f41d8e5059011d587dc99496cd68ca9ce6af17",
+        "7eec57fb78a0ddc34af7be4f1e16ab11ff8d68d170233f82651c3171660c92b1"
+      ]
+    },
+    {
+      "car": 6,
+      "enemy": 17,
+      "closedChunk": 32,
+      "openChunk": 33,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "dfb9beba1a3a26509780a5475f2a8cf90924ddc1bee2afb138e6dc6341452c21",
+        "8733de3cb848808c8608f0d5ef4cdc8418da33d3436570d8df5f12de01fc7466"
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": 18,
+      "closedChunk": 9,
+      "openChunk": 10,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "f0bd2ccf81ab061ba50f68cb375b2638d259a9785b987c1aa9ff026ed91aa538",
+        "d6faadd81e93a233979eaa755c43156f68d481052b621208220ffd54a2e12cc9"
+      ]
+    },
+    {
+      "car": 17,
+      "enemy": 19,
+      "closedChunk": 39,
+      "openChunk": 40,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "98d6d642993a1882b50a0feee0c0fb421ed1cb51e039543922a179f260331941",
+        "4636306f1134acceab8b8a1a13e0fee6a3891f0e29ed37bc8649746e9b163f35"
+      ]
+    },
+    {
+      "car": 15,
+      "enemy": 20,
+      "closedChunk": 9,
+      "openChunk": 10,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "02d0011b153ccfbe9f95235ec07cd2090b249266e40eb4403faa079dd4ad0120",
+        "ddd76c31bdcd266a6cfbbf704d22b789f31181a342a8460071a682569690359f"
+      ]
+    },
+    {
+      "car": 5,
+      "enemy": 21,
+      "closedChunk": 37,
+      "openChunk": 38,
+      "instance": 10,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "e438c5c552a9c203f9f63b1bde2c483b1f13ae3358e6013da9cc888ed372294a",
+        "acefbcd9a8a9e2dde14a7c2f8522ab3036408f34428cb67b941bc112386efbc9"
+      ]
+    },
+    {
+      "car": 30,
+      "enemy": 22,
+      "closedChunk": 34,
+      "openChunk": 35,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "b7c554aa9e01a9aaa5af21261f73b277d78e41c0b74320ec076d5ed057e87fd4",
+        "716a9e2f4fdbfeba37c717574ca3574eab70f33d19bbf8df7b4c63f749db92ed"
+      ]
+    },
+    {
+      "car": 1,
+      "enemy": 23,
+      "closedChunk": 40,
+      "openChunk": 41,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "81d7203887ebc7b8d0c89b5dcd0021a5993671471c7ee06db2a512dc6795dd7a",
+        "a7a63a0070996f1fd8ca80df8f887a2f8a7f4e9b2ab8a9a0e66a317b81dcf497"
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": 24,
+      "closedChunk": 49,
+      "openChunk": 50,
+      "instance": 11,
+      "maximumPhase": 9472,
+      "frameDuration": 40,
+      "source_hashes": [
+        "cb35ed2d7188c46d9863759bcb51eaf5c10ffd7f0d679787ca0fd9319deb197c",
+        "a8a4eeac34d969bc3e7b0539a84f5db5e85ad5eca5756be54374637c1ee60d2f"
+      ]
+    },
+    {
+      "car": 24,
+      "enemy": 25,
+      "closedChunk": 43,
+      "openChunk": 44,
+      "instance": 11,
+      "maximumPhase": 8704,
+      "frameDuration": 40,
+      "source_hashes": [
+        "9cd72fa714334721bb16c05bd035af8a69e499820fd49b44cd6de7f41dd5fc72",
+        "50b6d8d635072f18c45a578ab1a8ecebc03ad1ff004665aa84e47e7dda91a07e"
+      ]
+    },
+    {
+      "car": 32,
+      "enemy": 26,
+      "closedChunk": 42,
+      "openChunk": 43,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "3d3d32caa1d7498e88f2dc6b805d138e8f169d6cd9f7a893343ccdcdd7ea54f8",
+        "7a7b7c7343d4df21ddc00ccdeae78a0fdb9316bfde7b451f9b0af3c9c1a36c00"
+      ]
+    },
+    {
+      "car": 33,
+      "enemy": 27,
+      "closedChunk": 55,
+      "openChunk": 56,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "f8fd5e3e0388ccca7e5f7fe0fe01a61538c57524abf53b528e4f7ea8b5c70c6b",
+        "a8589967bd6ecfb39fea2a965a5b49b082cd61f3a610319c63a0459b85b3e205"
+      ]
+    },
+    {
+      "car": 22,
+      "enemy": 28,
+      "closedChunk": 49,
+      "openChunk": 50,
+      "instance": 11,
+      "maximumPhase": 9472,
+      "frameDuration": 40,
+      "source_hashes": [
+        "85f805eb91ddbafc1ef453e4d5e67f3d8d5f40648ca91fb1e58127a3fea78ab6",
+        "0b780fbb64085cbd0c3469c4265029caa7c351bb69a679ceeeec954ad31bbf25"
+      ]
+    },
+    {
+      "car": 0,
+      "enemy": 29,
+      "closedChunk": null,
+      "openChunk": null,
+      "instance": null,
+      "maximumPhase": 13312,
+      "frameDuration": 40,
+      "source_hashes": [
+        "aab84499c5817c0783f87259585c2e7828c168cc43d7720da5b5edb813baf62c",
+        "0ce8f44d5a153a0016fd12daadaf6b998f2dafc98e4b507c5424507a50bbbb1e"
+      ]
+    },
+    {
+      "car": 29,
+      "enemy": 30,
+      "closedChunk": 34,
+      "openChunk": 35,
+      "instance": 11,
+      "maximumPhase": 0,
+      "frameDuration": 40,
+      "source_hashes": [
+        "8c9cb82de94ce3b27994de5a43fdedb31186af58cf753d7a85a2f16330910c66",
+        "d5daa63d076d385ee7e284847e30764c3c12e3f75311f3de182128364617418a"
+      ]
+    }
+  ]
+}

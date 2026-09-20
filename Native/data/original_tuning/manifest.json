@@ -1,0 +1,734 @@
+{
+  "schema": "idas3-original-tuning-v1",
+  "program_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "table_sha256": "c8d5f0d8aa4a61d3fdfed25f768bdedfc97529cbbab7cbaf75e62f75047d04cf",
+  "source_table": "0c30ecc0",
+  "cars": [
+    {
+      "car": 0,
+      "row": [
+        "0c30d038",
+        "00000005",
+        "0c30cbac",
+        "00000013",
+        "0c30d02c",
+        "00000003",
+        "0c30cd74",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        11,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 1,
+      "row": [
+        "0c30c7c4",
+        "00000005",
+        "0c30c338",
+        "00000013",
+        "0c30c7b8",
+        "00000003",
+        "0c30c500",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        11,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 2,
+      "row": [
+        "0c30bf3c",
+        "00000005",
+        "0c30bae0",
+        "00000011",
+        "0c30bf30",
+        "00000003",
+        "0c30bc78",
+        "0000003a"
+      ],
+      "basic_steps": [
+        8,
+        10,
+        10,
+        10,
+        5
+      ]
+    },
+    {
+      "car": 3,
+      "row": [
+        "0c30de3c",
+        "00000005",
+        "0c30da4c",
+        "0000000c",
+        "0c30de24",
+        "00000006",
+        "0c30db6c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        7,
+        11,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 4,
+      "row": [
+        "0c30eca0",
+        "00000004",
+        "0c30e8c8",
+        "0000000b",
+        "0c30ec88",
+        "00000006",
+        "0c30e9d0",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 5,
+      "row": [
+        "0c30e5b0",
+        "00000004",
+        "0c30e15c",
+        "00000010",
+        "0c30e594",
+        "00000007",
+        "0c30e2dc",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        12,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 6,
+      "row": [
+        "0c30d6b0",
+        "00000003",
+        "0c30d290",
+        "0000000e",
+        "0c30d698",
+        "00000006",
+        "0c30d3e0",
+        "0000003a"
+      ],
+      "basic_steps": [
+        12,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 7,
+      "row": [
+        "0c306234",
+        "00000005",
+        "0c305da0",
+        "00000013",
+        "0c306220",
+        "00000005",
+        "0c305f68",
+        "0000003a"
+      ],
+      "basic_steps": [
+        8,
+        12,
+        11,
+        9,
+        5
+      ]
+    },
+    {
+      "car": 8,
+      "row": [
+        "0c3069a4",
+        "00000004",
+        "0c306554",
+        "00000010",
+        "0c30698c",
+        "00000006",
+        "0c3066d4",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        12,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 9,
+      "row": [
+        "0c308764",
+        "00000004",
+        "0c3082cc",
+        "00000013",
+        "0c30874c",
+        "00000006",
+        "0c308494",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        11,
+        13,
+        5
+      ]
+    },
+    {
+      "car": 10,
+      "row": [
+        "0c3096c4",
+        "00000004",
+        "0c309248",
+        "00000012",
+        "0c3096b0",
+        "00000005",
+        "0c3093f8",
+        "0000003a"
+      ],
+      "basic_steps": [
+        13,
+        11,
+        13,
+        5
+      ]
+    },
+    {
+      "car": 11,
+      "row": [
+        "0c308ee0",
+        "00000004",
+        "0c308a90",
+        "00000010",
+        "0c308ec8",
+        "00000006",
+        "0c308c10",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        11,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 12,
+      "row": [
+        "0c309e54",
+        "00000004",
+        "0c309a04",
+        "00000010",
+        "0c309e3c",
+        "00000006",
+        "0c309b84",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        12,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 13,
+      "row": [
+        "0c307808",
+        "00000004",
+        "0c3073a4",
+        "00000011",
+        "0c3077f4",
+        "00000005",
+        "0c30753c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        12,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 14,
+      "row": [
+        "0c307fa0",
+        "00000004",
+        "0c307b20",
+        "00000012",
+        "0c307f88",
+        "00000006",
+        "0c307cd0",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        11,
+        13,
+        5
+      ]
+    },
+    {
+      "car": 15,
+      "row": [
+        "0c3007e8",
+        "00000005",
+        "0c300328",
+        "00000015",
+        "0c3007d8",
+        "00000004",
+        "0c300520",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        9,
+        11,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 16,
+      "row": [
+        "0c2fff68",
+        "00000005",
+        "0c2ffae8",
+        "00000012",
+        "0c2fff50",
+        "00000006",
+        "0c2ffc98",
+        "0000003a"
+      ],
+      "basic_steps": [
+        8,
+        9,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 17,
+      "row": [
+        "0c2ff750",
+        "00000005",
+        "0c2ff28c",
+        "00000015",
+        "0c2ff73c",
+        "00000005",
+        "0c2ff484",
+        "0000003a"
+      ],
+      "basic_steps": [
+        8,
+        11,
+        10,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 18,
+      "row": [
+        "0c2feed4",
+        "00000004",
+        "0c2feae4",
+        "0000000c",
+        "0c2feebc",
+        "00000006",
+        "0c2fec04",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        12,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 19,
+      "row": [
+        "0c303cf8",
+        "00000004",
+        "0c3038ac",
+        "00000010",
+        "0c303ce4",
+        "00000005",
+        "0c303a2c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        7,
+        9,
+        9,
+        5
+      ]
+    },
+    {
+      "car": 20,
+      "row": [
+        "0c304498",
+        "00000005",
+        "0c30404c",
+        "00000010",
+        "0c304484",
+        "00000005",
+        "0c3041cc",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        9,
+        9,
+        9,
+        5
+      ]
+    },
+    {
+      "car": 21,
+      "row": [
+        "0c3059fc",
+        "00000004",
+        "0c305564",
+        "00000013",
+        "0c3059e4",
+        "00000006",
+        "0c30572c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        10,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 22,
+      "row": [
+        "0c301964",
+        "00000005",
+        "0c301454",
+        "00000018",
+        "0c30194c",
+        "00000006",
+        "0c301694",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        12,
+        12,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 23,
+      "row": [
+        "0c302018",
+        "00000003",
+        "0c301be4",
+        "0000000f",
+        "0c302004",
+        "00000005",
+        "0c301d4c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        13,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 24,
+      "row": [
+        "0c301030",
+        "00000005",
+        "0c300bd0",
+        "00000011",
+        "0c301020",
+        "00000004",
+        "0c300d68",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        10,
+        11,
+        12,
+        5
+      ]
+    },
+    {
+      "car": 25,
+      "row": [
+        "0c3027b8",
+        "00000004",
+        "0c302328",
+        "00000013",
+        "0c3027a8",
+        "00000004",
+        "0c3024f0",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        12,
+        10,
+        5
+      ]
+    },
+    {
+      "car": 26,
+      "row": [
+        "0c302ec4",
+        "00000004",
+        "0c302abc",
+        "0000000d",
+        "0c302eac",
+        "00000006",
+        "0c302bf4",
+        "0000003a"
+      ],
+      "basic_steps": [
+        11,
+        11,
+        10,
+        5
+      ]
+    },
+    {
+      "car": 27,
+      "row": [
+        "0c30a968",
+        "00000004",
+        "0c30a4bc",
+        "00000014",
+        "0c30a954",
+        "00000005",
+        "0c30a69c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        10,
+        12,
+        13,
+        5
+      ]
+    },
+    {
+      "car": 28,
+      "row": [
+        "0c30b070",
+        "00000004",
+        "0c30ac58",
+        "0000000e",
+        "0c30b060",
+        "00000004",
+        "0c30ada8",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 29,
+      "row": [
+        "0c30a194",
+        "00000001",
+        "0c309ed8",
+        "00000000",
+        "0c30a190",
+        "00000001",
+        "0c309ed8",
+        "0000003a"
+      ],
+      "basic_steps": [
+        5
+      ]
+    },
+    {
+      "car": 30,
+      "row": [
+        "0c30b764",
+        "00000004",
+        "0c30b360",
+        "0000000d",
+        "0c30b750",
+        "00000005",
+        "0c30b498",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 31,
+      "row": [
+        "0c3070a0",
+        "00000004",
+        "0c306c94",
+        "0000000d",
+        "0c307084",
+        "00000007",
+        "0c306dcc",
+        "0000003a"
+      ],
+      "basic_steps": [
+        9,
+        11,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 32,
+      "row": [
+        "0c304b74",
+        "00000004",
+        "0c304740",
+        "0000000f",
+        "0c304b60",
+        "00000005",
+        "0c3048a8",
+        "0000003a"
+      ],
+      "basic_steps": [
+        7,
+        9,
+        11,
+        5
+      ]
+    },
+    {
+      "car": 33,
+      "row": [
+        "0c305274",
+        "00000004",
+        "0c304e28",
+        "00000010",
+        "0c305260",
+        "00000005",
+        "0c304fa8",
+        "0000003a"
+      ],
+      "basic_steps": [
+        7,
+        11,
+        10,
+        5
+      ]
+    },
+    {
+      "car": 34,
+      "row": [
+        "0c303634",
+        "00000004",
+        "0c3031dc",
+        "00000010",
+        "0c303614",
+        "00000008",
+        "0c30335c",
+        "0000003a"
+      ],
+      "basic_steps": [
+        12,
+        11,
+        10,
+        5
+      ]
+    }
+  ],
+  "descriptions_euc_jp": {
+    "0c260d68": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff21\uff24\uff2a\uff35\uff33\uff34\u3000\uff24\uff32\uff29\uff36\uff25\u3000\uff33\uff39\uff33\uff34\uff25\uff2d\uff3d",
+    "0c260da0": "\uff33\uff34\uff25\uff30\uff14\u3000\uff3b\uff35\uff30\u3000\uff33\uff34\uff32\uff25\uff33\uff33\u3000\uff32\uff25\uff33\uff29\uff33\uff34\uff21\uff2e\uff23\uff25\uff3d",
+    "0c260ddc": "\uff21\uff25\uff32\uff2f\uff24\uff39\uff2e\uff21\uff2d\uff29\uff23\u3000\uff28\uff2f\uff2f\uff24",
+    "0c260e00": "\uff33\uff34\uff25\uff30\uff13\u3000\uff3b\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff25\uff23\uff35\uff3d",
+    "0c260e28": "\uff26\uff32\uff2f\uff2e\uff34\u3000\uff33\uff30\uff2f\uff29\uff2c\uff25\uff32",
+    "0c260e44": "\uff32\uff25\uff21\uff32\u3000\uff33\uff30\uff2f\uff29\uff2c\uff25\uff32",
+    "0c260e60": "\uff33\uff34\uff25\uff30\uff12\u3000\uff3b\uff21\uff24\uff2a\uff35\uff33\uff34\u3000\uff23\uff2f\uff2f\uff2c\uff29\uff2e\uff27\u3000\uff33\uff39\uff33\uff34\uff25\uff2d\uff3d",
+    "0c260e9c": "\uff33\uff34\uff25\uff30\uff11\u3000\uff3b\uff21\uff24\uff2a\uff35\uff33\uff34\u3000\uff29\uff2e\uff34\uff21\uff2b\uff25\u2212\uff25\uff38\uff28\uff21\uff35\uff33\uff34\uff3d",
+    "0c260ed8": "\uff2d\uff35\uff26\uff26\uff2c\uff25\uff32",
+    "0c260ee8": "\uff32\uff25\uff21\uff32\u3000\uff22\uff35\uff2d\uff30\uff25\uff32",
+    "0c260f00": "\uff37\uff28\uff25\uff25\uff2c\uff33",
+    "0c260f10": "\uff23\uff21\uff32\uff22\uff2f\uff2e\u3000\uff28\uff2f\uff2f\uff24",
+    "0c260f28": "\uff33\uff29\uff24\uff25\u3000\uff33\uff2b\uff29\uff32\uff34",
+    "0c260f40": "\uff28\uff2f\uff2f\uff24",
+    "0c260f4c": "\uff32\uff25\uff33\uff25\uff34\u3000\uff25\uff23\uff35",
+    "0c260f60": "\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff22\uff32\uff21\uff2b\uff25\u3000\uff26\uff2c\uff35\uff29\uff24",
+    "0c260f88": "\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff23\uff2f\uff2f\uff2c\uff21\uff2e\uff34",
+    "0c260fa8": "\uff35\uff30\uff27\uff32\uff21\uff24\uff25\u3000\uff30\uff2c\uff35\uff27\u3000\uff23\uff2f\uff32\uff24\uff33",
+    "0c260fd0": "\uff35\uff30\uff27\uff32\uff21\uff24\uff25\u3000\uff32\uff21\uff23\uff29\uff2e\uff27\u3000\uff30\uff2c\uff35\uff27\uff33",
+    "0c260ffc": "\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff28\uff29\uff27\uff28\u3000\uff27\uff32\uff21\uff24\uff25\u3000\uff34\uff32\uff21\uff2e\uff33\uff2d\uff29\uff33\uff33\uff29\uff2f\uff2e\u3000\uff2f\uff29\uff2c",
+    "0c261044": "\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff28\uff29\uff27\uff28\u3000\uff27\uff32\uff21\uff24\uff25\u3000\uff24\uff29\uff26\uff26\u3000\uff2f\uff29\uff2c",
+    "0c26107c": "\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff28\uff29\uff27\uff28\u3000\uff27\uff32\uff21\uff24\uff25\u3000\uff25\uff2e\uff27\uff29\uff2e\uff25\u3000\uff2f\uff29\uff2c",
+    "0c2610b8": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff29\uff2e\uff33\uff34\uff21\uff2c\uff2c\u3000\uff34\uff35\uff32\uff22\uff2f\uff23\uff28\uff21\uff27\uff25\uff32\uff3d",
+    "0c2610f0": "\uff23\uff21\uff32\uff22\uff2f\uff2e\u3000\uff28\uff2f\uff2f\uff24  ",
+    "0c26110c": "\uff21\uff25\uff32\uff2f\uff24\uff39\uff2e\uff21\uff2d\uff29\uff23\u3000\uff2d\uff29\uff32\uff32\uff2f\uff32\uff33",
+    "0c261134": "\uff2d\uff29\uff32\uff32\uff2f\uff32\uff33",
+    "0c261144": "\uff32\uff25\uff24\u3000\uff33\uff35\uff2e\uff33\u3000\uff33\uff34\uff29\uff23\uff2b\uff25\uff32",
+    "0c261168": "\uff29\uff2e\uff34\uff25\uff32\uff23\uff2f\uff2f\uff2c\uff25\uff32\u3000\uff33\uff23\uff2f\uff2f\uff30",
+    "0c26118c": "\uff26\uff35\uff2c\uff2c\u3000\uff26\uff25\uff2e\uff24\uff25\uff32\u3000\uff2b\uff29\uff34",
+    "0c2611ac": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff22\uff29\uff27\u3000\uff33\uff29\uff2e\uff27\uff2c\uff25\u3000\uff34\uff35\uff32\uff22\uff29\uff2e\uff25\uff3d",
+    "0c2611f0": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff22\uff2f\uff32\uff25\u3000\uff35\uff30\u3000\uff34\uff2f\u3000\u5343\u516b\u767e\uff3d",
+    "0c261220": "\uff28\uff21\uff32\uff24\uff34\uff2f\uff30",
+    "0c261230": "\uff2d\uff35\uff24\u3000\uff27\uff35\uff21\uff32\uff24",
+    "0c261244": "\uff33\uff2f\uff26\uff34\uff34\uff2f\uff30",
+    "0c261254": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff29\uff2e\uff33\uff34\uff21\uff2c\uff2c\u3000\uff21\uff2e\uff34\uff29\u2212\uff2c\uff21\uff27\u3000\uff33\uff39\uff33\uff34\uff25\uff2d\uff3d",
+    "0c261294": "\uff25\uff2d\uff30\uff25\uff32\uff2f\uff32\u3000\uff33\uff34\uff29\uff23\uff2b\uff25\uff32",
+    "0c2612b4": "\uff33\uff34\uff29\uff23\uff2b\uff25\uff32",
+    "0c2612c4": "\uff23\uff21\uff32\uff22\uff2f\uff2e\u3000\uff34\uff32\uff35\uff2e\uff2b",
+    "0c2612e0": "\uff32\uff25\uff21\uff32\u3000\uff33\uff30\uff2f\uff29\uff2c\uff25\uff32\uff2c\uff25\uff33\uff33",
+    "0c261304": "\uff33\uff25\uff36\uff25\uff2e\u3000\uff33\uff34\uff21\uff32\u3000\uff32\uff21\uff23\uff25\uff32\uff33\u3000\uff33\uff34\uff29\uff23\uff2b\uff25\uff32",
+    "0c261338": "\uff33\uff30\uff25\uff25\uff24\u3000\uff33\uff34\uff21\uff32\uff33\u3000\uff33\uff34\uff29\uff23\uff2b\uff25\uff32",
+    "0c261360": "\uff26\uff2f\uff27\u3000\uff2c\uff21\uff2d\uff30\uff33",
+    "0c261374": "\uff33\uff2d\uff2f\uff2b\uff25\u3000\uff26\uff29\uff2c\uff2d",
+    "0c26138c": "\uff21\uff25\uff32\uff2f\uff24\uff39\uff2e\uff21\uff2d\uff29\uff23\u3000\uff33\uff23\uff2f\uff2f\uff30\u3000\uff33\uff25\uff34",
+    "0c2613b8": "\u30a8\u30a2\u30b9\u30af\u30fc\u30d7\u30bb\u30c3\u30c8",
+    "0c2613cc": "\uff2f\uff36\uff25\uff32\u3000\uff26\uff25\uff2e\uff24\uff25\uff32",
+    "0c2613e4": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff29\uff2e\uff33\uff34\uff21\uff2c\uff2c\u3000\uff33\uff35\uff30\uff25\uff32\uff23\uff28\uff21\uff32\uff27\uff25\uff32\uff3d",
+    "0c261420": "\uff33\uff34\uff25\uff30\uff13\u3000\uff3b\uff29\uff2e\uff33\uff34\uff21\uff2c\uff2c\u3000\uff34\uff35\uff32\uff22\uff2f\uff23\uff28\uff21\uff27\uff25\uff32\uff3d",
+    "0c261458": "\uff33\uff34\uff25\uff30\uff12\u3000\uff3b\uff23\uff28\uff21\uff2e\uff27\uff25\u3000\uff25\uff23\uff35\uff3d",
+    "0c261480": "\uff33\uff34\uff25\uff30\uff15\u3000\uff3b\uff35\uff30\uff27\uff32\uff21\uff24\uff25\u3000\uff32\uff21\uff23\uff29\uff2e\uff27\u3000\uff25\uff2e\uff27\uff29\uff2e\uff25\uff3d",
+    "0c2614bc": "\uff26\uff35\uff2a\uff29\uff37\uff21\uff32\uff21\u3000\uff34\uff2f\uff26\uff35\u3000\uff33\uff28\uff2f\uff30\u3000\uff33\uff34\uff29\uff23\uff2b\uff25\uff32",
+    "0c2614f4": "\u30a8\u30a2\u30ed\u30bb\u30c3\u30c8",
+    "0c261504": "\uff21\uff25\uff32\uff2f\u3000\uff33\uff25\uff34"
+  }
+}

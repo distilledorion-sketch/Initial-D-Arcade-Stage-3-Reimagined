@@ -1,0 +1,404 @@
+{
+  "slots": [
+    1,
+    2,
+    3,
+    4,
+    79
+  ],
+  "description": [
+    "rear_day",
+    "brake_day",
+    "rear_night",
+    "brake_night",
+    "illuminated_plate"
+  ],
+  "source": "Original slot table0C33B250; renderer0C026EB2..0C026F9C byte81 light andbyte80 brake branches",
+  "cars": [
+    {
+      "id": 0,
+      "folder": "toyota_ae86t",
+      "chunks": [
+        75,
+        76,
+        77,
+        78,
+        99
+      ]
+    },
+    {
+      "id": 1,
+      "folder": "toyota_ae86l",
+      "chunks": [
+        30,
+        31,
+        32,
+        33,
+        74
+      ]
+    },
+    {
+      "id": 2,
+      "folder": "toyota_ae85l",
+      "chunks": [
+        26,
+        27,
+        28,
+        29,
+        64
+      ]
+    },
+    {
+      "id": 3,
+      "folder": "toyota_sw20",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        32
+      ]
+    },
+    {
+      "id": 4,
+      "folder": "toyota_zzw30",
+      "chunks": [
+        1,
+        2,
+        3,
+        4,
+        20
+      ]
+    },
+    {
+      "id": 5,
+      "folder": "toyota_sxe10",
+      "chunks": [
+        27,
+        28,
+        29,
+        30,
+        71
+      ]
+    },
+    {
+      "id": 6,
+      "folder": "toyota_st205",
+      "chunks": [
+        23,
+        24,
+        25,
+        26,
+        62
+      ]
+    },
+    {
+      "id": 7,
+      "folder": "nissan_bnr32",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        34
+      ]
+    },
+    {
+      "id": 8,
+      "folder": "nissan_bnr34",
+      "chunks": [
+        26,
+        27,
+        28,
+        29,
+        70
+      ]
+    },
+    {
+      "id": 9,
+      "folder": "nissan_s13k",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        42
+      ]
+    },
+    {
+      "id": 10,
+      "folder": "nissan_s14q",
+      "chunks": [
+        33,
+        34,
+        35,
+        36,
+        79
+      ]
+    },
+    {
+      "id": 11,
+      "folder": "nissan_s14",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        31
+      ]
+    },
+    {
+      "id": 12,
+      "folder": "nissan_s15",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        31
+      ]
+    },
+    {
+      "id": 13,
+      "folder": "nissan_rps13",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        31
+      ]
+    },
+    {
+      "id": 14,
+      "folder": "nissan_rps13k",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        29
+      ]
+    },
+    {
+      "id": 15,
+      "folder": "honda_ek9",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        29
+      ]
+    },
+    {
+      "id": 16,
+      "folder": "honda_eg6",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        29
+      ]
+    },
+    {
+      "id": 17,
+      "folder": "honda_dc2",
+      "chunks": [
+        29,
+        30,
+        31,
+        32,
+        69
+      ]
+    },
+    {
+      "id": 18,
+      "folder": "honda_ap1",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        32
+      ]
+    },
+    {
+      "id": 19,
+      "folder": "mitsu_ce9a",
+      "chunks": [
+        20,
+        21,
+        22,
+        23,
+        57
+      ]
+    },
+    {
+      "id": 20,
+      "folder": "mitsu_cn9a",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        30
+      ]
+    },
+    {
+      "id": 21,
+      "folder": "mitsu_ct9a",
+      "chunks": [
+        24,
+        25,
+        26,
+        27,
+        66
+      ]
+    },
+    {
+      "id": 22,
+      "folder": "mazda_fd3s",
+      "chunks": [
+        39,
+        40,
+        41,
+        42,
+        84
+      ]
+    },
+    {
+      "id": 23,
+      "folder": "mazda_fd3sa",
+      "chunks": [
+        29,
+        30,
+        31,
+        32,
+        71
+      ]
+    },
+    {
+      "id": 24,
+      "folder": "mazda_fc3s",
+      "chunks": [
+        32,
+        33,
+        34,
+        35,
+        73
+      ]
+    },
+    {
+      "id": 25,
+      "folder": "mazda_na6c",
+      "chunks": [
+        34,
+        35,
+        36,
+        37,
+        78
+      ]
+    },
+    {
+      "id": 26,
+      "folder": "mazda_nb8c",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        31
+      ]
+    },
+    {
+      "id": 27,
+      "folder": "subaru_gc8s6",
+      "chunks": [
+        30,
+        31,
+        32,
+        33,
+        75
+      ]
+    },
+    {
+      "id": 28,
+      "folder": "subaru_gdb",
+      "chunks": [
+        2,
+        3,
+        4,
+        5,
+        29
+      ]
+    },
+    {
+      "id": 29,
+      "folder": "subaru_gc8s5",
+      "chunks": [
+        27,
+        28,
+        29,
+        30,
+        49
+      ]
+    },
+    {
+      "id": 30,
+      "folder": "suzuki_ea11r",
+      "chunks": [
+        24,
+        25,
+        26,
+        27,
+        64
+      ]
+    },
+    {
+      "id": 31,
+      "folder": "nissan_er34",
+      "chunks": [
+        23,
+        24,
+        25,
+        26,
+        63
+      ]
+    },
+    {
+      "id": 32,
+      "folder": "mitsu_cp9a",
+      "chunks": [
+        34,
+        35,
+        36,
+        37,
+        75
+      ]
+    },
+    {
+      "id": 33,
+      "folder": "mitsu_cp9at",
+      "chunks": [
+        45,
+        46,
+        47,
+        48,
+        87
+      ]
+    },
+    {
+      "id": 34,
+      "folder": "mazda_se3p",
+      "chunks": [
+        58,
+        59,
+        60,
+        61,
+        102
+      ]
+    }
+  ]
+}
