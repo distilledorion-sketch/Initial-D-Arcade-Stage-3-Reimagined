@@ -17,8 +17,6 @@ The download includes the runtime assets. You do not need Unity to play. Source-
 
 **Current version:** `0.3.95-community-replays.6` · **Platform:** Windows x64 / Direct3D 11
 
-The game checks GitHub at startup. A newer Windows release offers **Yes / No**: Yes downloads and verifies the update, closes the game, installs it and restarts; No continues to the game. Current builds continue immediately after the check. Offline checks time out without preventing play. Existing players need to install this updater-enabled build once; later releases can update from inside the game.
-
 ## Features
 
 - GitHub update checks with optional automatic download, installation and restart.
