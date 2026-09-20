@@ -1,0 +1,987 @@
+{
+  "schema": "idas3-original-selection-music-v1",
+  "banks": [
+    {
+      "name": "TYPE",
+      "sha256": "c5620bd3afb65b6fa6f7ce73aa41ddbaeca4b306fb1b6a27dbf9507e584d1e69",
+      "bytes": 219392,
+      "source_command": 424,
+      "source_level": 109,
+      "program_table": 472,
+      "program_offsets": [
+        500,
+        644,
+        916,
+        1868,
+        2012,
+        2156,
+        2300,
+        2572,
+        2716,
+        2860,
+        3472
+      ],
+      "sequence_table": 3876,
+      "song_offset": 3892,
+      "song_bytes": 10216,
+      "sample_table": 17220,
+      "samples": [
+        {
+          "id": 0,
+          "source_descriptor": [
+            50349208,
+            2803117242,
+            0,
+            21388
+          ],
+          "source_offset": 17560,
+          "source_bytes": 21388,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 11450,
+          "loop_end_exclusive": 42772,
+          "decoded_frames": 42776,
+          "pcm_file": "TYPE/00.pcm16",
+          "pcm_sha256": "f8ecbeca846d1274249512ce724d022dd29e31796890ed270422c0d600c77309"
+        },
+        {
+          "id": 1,
+          "source_descriptor": [
+            50370596,
+            2582395334,
+            0,
+            19704
+          ],
+          "source_offset": 38948,
+          "source_bytes": 19704,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 14790,
+          "loop_end_exclusive": 39404,
+          "decoded_frames": 39408,
+          "pcm_file": "TYPE/01.pcm16",
+          "pcm_sha256": "78aaaaa0f637288c194efdbc662bf4f55d07d1e36ba444af8bbdf9ad6606db02"
+        },
+        {
+          "id": 2,
+          "source_descriptor": [
+            50390300,
+            256118572,
+            0,
+            1956
+          ],
+          "source_offset": 58652,
+          "source_bytes": 1956,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 3884,
+          "loop_end_exclusive": 3908,
+          "decoded_frames": 3912,
+          "pcm_file": "TYPE/02.pcm16",
+          "pcm_sha256": "941e0e827cc8226419aa5ed87c4e914d76b6dc0b97625f7d872c26203a019d35"
+        },
+        {
+          "id": 3,
+          "source_descriptor": [
+            8449216,
+            788660224,
+            0,
+            12036
+          ],
+          "source_offset": 60608,
+          "source_bytes": 12036,
+          "encoding": 1,
+          "looping": false,
+          "loop_start": 0,
+          "loop_end_exclusive": 12034,
+          "decoded_frames": 12036,
+          "pcm_file": "TYPE/03.pcm16",
+          "pcm_sha256": "b88a66efce017c30fc11dce8a0a55f66ec62df5c87c0225b565e7f043f20548e"
+        },
+        {
+          "id": 4,
+          "source_descriptor": [
+            72644,
+            320798720,
+            0,
+            9796
+          ],
+          "source_offset": 72644,
+          "source_bytes": 9796,
+          "encoding": 0,
+          "looping": false,
+          "loop_start": 0,
+          "loop_end_exclusive": 4895,
+          "decoded_frames": 4898,
+          "pcm_file": "TYPE/04.pcm16",
+          "pcm_sha256": "781d1de6023c577e96dfe73805b3465df6c793a4c764ab2fabebf3ae0acd62ad"
+        },
+        {
+          "id": 5,
+          "source_descriptor": [
+            82440,
+            410320896,
+            0,
+            12528
+          ],
+          "source_offset": 82440,
+          "source_bytes": 12528,
+          "encoding": 0,
+          "looping": false,
+          "loop_start": 0,
+          "loop_end_exclusive": 6261,
+          "decoded_frames": 6264,
+          "pcm_file": "TYPE/05.pcm16",
+          "pcm_sha256": "d0fb9bc98e094c34e48c89ca34168862e93aa5a62366a24672a66f94e5b79c3f"
+        },
+        {
+          "id": 6,
+          "source_descriptor": [
+            50426616,
+            3011420332,
+            0,
+            22976
+          ],
+          "source_offset": 94968,
+          "source_bytes": 22976,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 41132,
+          "loop_end_exclusive": 45950,
+          "decoded_frames": 45952,
+          "pcm_file": "TYPE/06.pcm16",
+          "pcm_sha256": "cac9d47424ccbc0520a775402aebdd590e90d2d81f4c72f1699d5e810a087d6f"
+        },
+        {
+          "id": 7,
+          "source_descriptor": [
+            50449592,
+            1396462372,
+            0,
+            10656
+          ],
+          "source_offset": 117944,
+          "source_bytes": 10656,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 21284,
+          "loop_end_exclusive": 21308,
+          "decoded_frames": 21312,
+          "pcm_file": "TYPE/07.pcm16",
+          "pcm_sha256": "dd87fcf9d91299475c7db6874c973a433ec9d4e05d603bc24444e3443ed26eb5"
+        },
+        {
+          "id": 8,
+          "source_descriptor": [
+            50460248,
+            621552884,
+            0,
+            4744
+          ],
+          "source_offset": 128600,
+          "source_bytes": 4744,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 9460,
+          "loop_end_exclusive": 9484,
+          "decoded_frames": 9488,
+          "pcm_file": "TYPE/08.pcm16",
+          "pcm_sha256": "4344bd177070450239f6c3bc000ec3cdafc5b7640da7d8f96fe97e14d832a94d"
+        },
+        {
+          "id": 9,
+          "source_descriptor": [
+            50464992,
+            2267170344,
+            0,
+            17300
+          ],
+          "source_offset": 133344,
+          "source_bytes": 17300,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 17960,
+          "loop_end_exclusive": 34594,
+          "decoded_frames": 34600,
+          "pcm_file": "TYPE/09.pcm16",
+          "pcm_sha256": "f5e9450290e465b0a60beada620dd27f32879551d6745ef28947042dbac974bc"
+        },
+        {
+          "id": 10,
+          "source_descriptor": [
+            50482292,
+            1080311884,
+            0,
+            8244
+          ],
+          "source_offset": 150644,
+          "source_bytes": 8244,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 16460,
+          "loop_end_exclusive": 16484,
+          "decoded_frames": 16488,
+          "pcm_file": "TYPE/10.pcm16",
+          "pcm_sha256": "117498f415ceddfe4529798f41fe696c0d62153264ec179adc4f25d15f03bd87"
+        },
+        {
+          "id": 11,
+          "source_descriptor": [
+            50490536,
+            426771840,
+            0,
+            3260
+          ],
+          "source_offset": 158888,
+          "source_bytes": 3260,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 1408,
+          "loop_end_exclusive": 6512,
+          "decoded_frames": 6520,
+          "pcm_file": "TYPE/11.pcm16",
+          "pcm_sha256": "87cf169da98ffe69324747e466428d805897ed4af8cf48d3e127a8353e07a6df"
+        },
+        {
+          "id": 12,
+          "source_descriptor": [
+            50493796,
+            591662972,
+            0,
+            4516
+          ],
+          "source_offset": 162148,
+          "source_bytes": 4516,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 3964,
+          "loop_end_exclusive": 9028,
+          "decoded_frames": 9032,
+          "pcm_file": "TYPE/12.pcm16",
+          "pcm_sha256": "21b66d3e98f742f7eb1198e352b6af2ba2a96a90a9a449c8097904dcc25d71c7"
+        },
+        {
+          "id": 13,
+          "source_descriptor": [
+            50498312,
+            465836972,
+            0,
+            3556
+          ],
+          "source_offset": 166664,
+          "source_bytes": 3556,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 7084,
+          "loop_end_exclusive": 7108,
+          "decoded_frames": 7112,
+          "pcm_file": "TYPE/13.pcm16",
+          "pcm_sha256": "968732a3af596bc880882e3fb2202c2a965f95d25dfb7eede1f1da4d3e3b03bc"
+        },
+        {
+          "id": 14,
+          "source_descriptor": [
+            50501868,
+            303305212,
+            0,
+            2316
+          ],
+          "source_offset": 170220,
+          "source_bytes": 2316,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 4604,
+          "loop_end_exclusive": 4628,
+          "decoded_frames": 4632,
+          "pcm_file": "TYPE/14.pcm16",
+          "pcm_sha256": "514f5d4974b12a63cab89cd14c3cac0a6395503d8c2fdea995f9ba7486c82cfd"
+        },
+        {
+          "id": 15,
+          "source_descriptor": [
+            42115576,
+            1484525346,
+            0,
+            22656
+          ],
+          "source_offset": 172536,
+          "source_bytes": 22656,
+          "encoding": 1,
+          "looping": true,
+          "loop_start": 3874,
+          "loop_end_exclusive": 22652,
+          "decoded_frames": 22656,
+          "pcm_file": "TYPE/15.pcm16",
+          "pcm_sha256": "f6c7c6d8167c61de32f6ddd82a23f9a109742ea1dbba8bbbc1de0841a621080c"
+        },
+        {
+          "id": 16,
+          "source_descriptor": [
+            50526840,
+            384046796,
+            0,
+            2932
+          ],
+          "source_offset": 195192,
+          "source_bytes": 2932,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 5836,
+          "loop_end_exclusive": 5860,
+          "decoded_frames": 5864,
+          "pcm_file": "TYPE/16.pcm16",
+          "pcm_sha256": "a829d6f896fdd341e926ee7605feaccc395a0905535dd9a129d0fd0548226ad8"
+        },
+        {
+          "id": 17,
+          "source_descriptor": [
+            50529772,
+            104597028,
+            0,
+            800
+          ],
+          "source_offset": 198124,
+          "source_bytes": 800,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 1572,
+          "loop_end_exclusive": 1596,
+          "decoded_frames": 1600,
+          "pcm_file": "TYPE/17.pcm16",
+          "pcm_sha256": "1ebb12a49b3a041f06e62a3c15478b9dfc8571059c160508116cfaab25d3af65"
+        },
+        {
+          "id": 18,
+          "source_descriptor": [
+            50530572,
+            291246404,
+            0,
+            2224
+          ],
+          "source_offset": 198924,
+          "source_bytes": 2224,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 4420,
+          "loop_end_exclusive": 4444,
+          "decoded_frames": 4448,
+          "pcm_file": "TYPE/18.pcm16",
+          "pcm_sha256": "e9afad110fc7cab3a69442f7fbe0d1967889084b51cabe597e3c7d9ffea3b0e3"
+        },
+        {
+          "id": 19,
+          "source_descriptor": [
+            50532796,
+            252972796,
+            0,
+            1932
+          ],
+          "source_offset": 201148,
+          "source_bytes": 1932,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 3836,
+          "loop_end_exclusive": 3860,
+          "decoded_frames": 3864,
+          "pcm_file": "TYPE/19.pcm16",
+          "pcm_sha256": "49153332ccf250e2ee0033a96beb42df241c51d8057a18c08dabb164dcaec0f7"
+        },
+        {
+          "id": 20,
+          "source_descriptor": [
+            50534728,
+            2137292620,
+            0,
+            16308
+          ],
+          "source_offset": 203080,
+          "source_bytes": 16308,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 32588,
+          "loop_end_exclusive": 32612,
+          "decoded_frames": 32616,
+          "pcm_file": "TYPE/20.pcm16",
+          "pcm_sha256": "5c19f5ecbc716cdb54d459932015ac23d1ebb26d0e9fdd72322164eb097f74aa"
+        }
+      ]
+    },
+    {
+      "name": "SELECT",
+      "sha256": "043963567bcd2b130aec6582743df27ebb7d5d530735aa18e52b6b29fe084520",
+      "bytes": 485280,
+      "source_command": 168,
+      "source_level": 103,
+      "program_table": 472,
+      "program_offsets": [
+        500,
+        644,
+        788,
+        932,
+        2148,
+        2292,
+        2436,
+        2580,
+        2724,
+        2996,
+        3140
+      ],
+      "sequence_table": 3544,
+      "song_offset": 3560,
+      "song_bytes": 11188,
+      "sample_table": 17860,
+      "samples": [
+        {
+          "id": 0,
+          "source_descriptor": [
+            33572600,
+            1988108800,
+            0,
+            60676
+          ],
+          "source_offset": 18168,
+          "source_bytes": 60676,
+          "encoding": 0,
+          "looping": true,
+          "loop_start": 8704,
+          "loop_end_exclusive": 30336,
+          "decoded_frames": 30338,
+          "pcm_file": "SELECT/00.pcm16",
+          "pcm_sha256": "a01ffd53ac9e5d491ba6d0407b811ec514a2b1a8714b883e6768451f14700add"
+        },
+        {
+          "id": 1,
+          "source_descriptor": [
+            8467452,
+            4227727360,
+            0,
+            64512
+          ],
+          "source_offset": 78844,
+          "source_bytes": 64512,
+          "encoding": 1,
+          "looping": false,
+          "loop_start": 0,
+          "loop_end_exclusive": 64510,
+          "decoded_frames": 64512,
+          "pcm_file": "SELECT/01.pcm16",
+          "pcm_sha256": "9eefd77b69524b67b3f5503bda664cd553bbf884721471c2baa27884784040c8"
+        },
+        {
+          "id": 2,
+          "source_descriptor": [
+            8531964,
+            1153368064,
+            0,
+            17604
+          ],
+          "source_offset": 143356,
+          "source_bytes": 17604,
+          "encoding": 1,
+          "looping": false,
+          "loop_start": 0,
+          "loop_end_exclusive": 17599,
+          "decoded_frames": 17604,
+          "pcm_file": "SELECT/02.pcm16",
+          "pcm_sha256": "24f0e3e9c53de8fd61aabe068f26dacf8b8d511b02fe57214416f3fc5ed3cb2c"
+        },
+        {
+          "id": 3,
+          "source_descriptor": [
+            50492608,
+            367793620,
+            0,
+            2808
+          ],
+          "source_offset": 160960,
+          "source_bytes": 2808,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 5588,
+          "loop_end_exclusive": 5612,
+          "decoded_frames": 5616,
+          "pcm_file": "SELECT/03.pcm16",
+          "pcm_sha256": "18f53aae94489c3506824e501e83f74beb05c477c478749f12ea207ca875ac14"
+        },
+        {
+          "id": 4,
+          "source_descriptor": [
+            50495416,
+            874263556,
+            0,
+            6672
+          ],
+          "source_offset": 163768,
+          "source_bytes": 6672,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 13316,
+          "loop_end_exclusive": 13340,
+          "decoded_frames": 13344,
+          "pcm_file": "SELECT/04.pcm16",
+          "pcm_sha256": "fa997b7e00833a39bdf6ccc34dac910fa48715f8145a48c8c41b8b16fb67cd68"
+        },
+        {
+          "id": 5,
+          "source_descriptor": [
+            50502088,
+            446438020,
+            0,
+            3408
+          ],
+          "source_offset": 170440,
+          "source_bytes": 3408,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 6788,
+          "loop_end_exclusive": 6812,
+          "decoded_frames": 6816,
+          "pcm_file": "SELECT/05.pcm16",
+          "pcm_sha256": "be53c25484d5874c68a0b8dc1ddea100ba9054c5310687df0ef62c25a58e1e31"
+        },
+        {
+          "id": 6,
+          "source_descriptor": [
+            50505496,
+            485235924,
+            0,
+            3704
+          ],
+          "source_offset": 173848,
+          "source_bytes": 3704,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 7380,
+          "loop_end_exclusive": 7404,
+          "decoded_frames": 7408,
+          "pcm_file": "SELECT/06.pcm16",
+          "pcm_sha256": "4acd88c4b64332bd30f19e70431d50305364997c05c391d3f858cf01413c271a"
+        },
+        {
+          "id": 7,
+          "source_descriptor": [
+            50509200,
+            587997940,
+            0,
+            4488
+          ],
+          "source_offset": 177552,
+          "source_bytes": 4488,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 8948,
+          "loop_end_exclusive": 8972,
+          "decoded_frames": 8976,
+          "pcm_file": "SELECT/07.pcm16",
+          "pcm_sha256": "01114e2a0f32c9cc6479eccca760e9bf58d16790f52fd5db5c7454f4432e1bf5"
+        },
+        {
+          "id": 8,
+          "source_descriptor": [
+            50513688,
+            1488738468,
+            0,
+            11360
+          ],
+          "source_offset": 182040,
+          "source_bytes": 11360,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 22692,
+          "loop_end_exclusive": 22716,
+          "decoded_frames": 22720,
+          "pcm_file": "SELECT/08.pcm16",
+          "pcm_sha256": "d1bef4e188005f6177f52d75badd035941480222ecca7904c0abaeb339f8f511"
+        },
+        {
+          "id": 9,
+          "source_descriptor": [
+            50525048,
+            865350524,
+            0,
+            6604
+          ],
+          "source_offset": 193400,
+          "source_bytes": 6604,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 13180,
+          "loop_end_exclusive": 13204,
+          "decoded_frames": 13208,
+          "pcm_file": "SELECT/09.pcm16",
+          "pcm_sha256": "c51679bb999488a73029dabb2e8f7e3a4ae953c403015c2d660ab0093b344a47"
+        },
+        {
+          "id": 10,
+          "source_descriptor": [
+            50531652,
+            320606980,
+            0,
+            2448
+          ],
+          "source_offset": 200004,
+          "source_bytes": 2448,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 4868,
+          "loop_end_exclusive": 4892,
+          "decoded_frames": 4896,
+          "pcm_file": "SELECT/10.pcm16",
+          "pcm_sha256": "c39fe472c8f2ff8b204e6a9caf0ead60142686a0413b88df61ac6a0a17e0129f"
+        },
+        {
+          "id": 11,
+          "source_descriptor": [
+            50534100,
+            168561140,
+            0,
+            1288
+          ],
+          "source_offset": 202452,
+          "source_bytes": 1288,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 2548,
+          "loop_end_exclusive": 2572,
+          "decoded_frames": 2576,
+          "pcm_file": "SELECT/11.pcm16",
+          "pcm_sha256": "96d981df24be0c82a5ab805a2883795ad16abe3e7cff7fb6477e1ad333ba81c5"
+        },
+        {
+          "id": 12,
+          "source_descriptor": [
+            50535388,
+            416553148,
+            0,
+            3180
+          ],
+          "source_offset": 203740,
+          "source_bytes": 3180,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 6332,
+          "loop_end_exclusive": 6356,
+          "decoded_frames": 6360,
+          "pcm_file": "SELECT/12.pcm16",
+          "pcm_sha256": "820c518f2af19c5fba467d50bc04b7f4b8fa0f0b8ccf4ec2b486e7a53c8becfa"
+        },
+        {
+          "id": 13,
+          "source_descriptor": [
+            33761352,
+            2986363648,
+            0,
+            91140
+          ],
+          "source_offset": 206920,
+          "source_bytes": 91140,
+          "encoding": 0,
+          "looping": true,
+          "loop_start": 19200,
+          "loop_end_exclusive": 45568,
+          "decoded_frames": 45570,
+          "pcm_file": "SELECT/13.pcm16",
+          "pcm_sha256": "012269e50a74dfbfbba625805cb5d569860939ab940daeaec43f2f040f78b8e6"
+        },
+        {
+          "id": 14,
+          "source_descriptor": [
+            50629708,
+            3011420332,
+            0,
+            22976
+          ],
+          "source_offset": 298060,
+          "source_bytes": 22976,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 41132,
+          "loop_end_exclusive": 45950,
+          "decoded_frames": 45952,
+          "pcm_file": "SELECT/14.pcm16",
+          "pcm_sha256": "cac9d47424ccbc0520a775402aebdd590e90d2d81f4c72f1699d5e810a087d6f"
+        },
+        {
+          "id": 15,
+          "source_descriptor": [
+            50652684,
+            1805413252,
+            0,
+            13776
+          ],
+          "source_offset": 321036,
+          "source_bytes": 13776,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 27524,
+          "loop_end_exclusive": 27548,
+          "decoded_frames": 27552,
+          "pcm_file": "SELECT/15.pcm16",
+          "pcm_sha256": "24d515d1c6331d2fcddce055e77e3f2b7ed35a575e2e9197916ba44347b4c7e7"
+        },
+        {
+          "id": 16,
+          "source_descriptor": [
+            33889244,
+            1711415488,
+            0,
+            52232
+          ],
+          "source_offset": 334812,
+          "source_bytes": 52232,
+          "encoding": 0,
+          "looping": true,
+          "loop_start": 8384,
+          "loop_end_exclusive": 26114,
+          "decoded_frames": 26116,
+          "pcm_file": "SELECT/16.pcm16",
+          "pcm_sha256": "acddb7b81c90be5a05876bcd54c9d1fed26caaa5bccc94271bc4a6991c105962"
+        },
+        {
+          "id": 17,
+          "source_descriptor": [
+            33941476,
+            1565667728,
+            0,
+            47784
+          ],
+          "source_offset": 387044,
+          "source_bytes": 47784,
+          "encoding": 0,
+          "looping": true,
+          "loop_start": 12688,
+          "loop_end_exclusive": 23890,
+          "decoded_frames": 23892,
+          "pcm_file": "SELECT/17.pcm16",
+          "pcm_sha256": "bbe0edc6c242620c90168bb942a2943640188c8db82f3ce90d69203701748e06"
+        },
+        {
+          "id": 18,
+          "source_descriptor": [
+            33989260,
+            1652564736,
+            0,
+            50436
+          ],
+          "source_offset": 434828,
+          "source_bytes": 50436,
+          "encoding": 0,
+          "looping": true,
+          "loop_start": 8960,
+          "loop_end_exclusive": 25216,
+          "decoded_frames": 25218,
+          "pcm_file": "SELECT/18.pcm16",
+          "pcm_sha256": "b65cf1835b00ae3e7e4315e8310d4c799cb24fdf3d96e7fcbe3a680520dc23e8"
+        }
+      ]
+    },
+    {
+      "name": "RESULT",
+      "sha256": "5832f73859d86fc333235cf8d4e422807dfe0cb479dea3c36e646623c392065d",
+      "bytes": 128512,
+      "source_command": 424,
+      "source_level": 108,
+      "program_table": 440,
+      "program_offsets": [
+        468,
+        612,
+        756,
+        900,
+        1044,
+        1188,
+        1332,
+        1956,
+        2100,
+        2244
+      ],
+      "sequence_table": 2648,
+      "song_offset": 2664,
+      "song_bytes": 6160,
+      "sample_table": 11936,
+      "samples": [
+        {
+          "id": 0,
+          "source_descriptor": [
+            50343732,
+            2164528764,
+            0,
+            16516
+          ],
+          "source_offset": 12084,
+          "source_bytes": 16516,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 5756,
+          "loop_end_exclusive": 33028,
+          "decoded_frames": 33032,
+          "pcm_file": "RESULT/00.pcm16",
+          "pcm_sha256": "e20d8fbe140895de9f50306065fdc2165d1d6c2c66c389e6534e8313fcf5fc45"
+        },
+        {
+          "id": 1,
+          "source_descriptor": [
+            41971640,
+            2986363648,
+            0,
+            45572
+          ],
+          "source_offset": 28600,
+          "source_bytes": 45572,
+          "encoding": 1,
+          "looping": true,
+          "loop_start": 19200,
+          "loop_end_exclusive": 45568,
+          "decoded_frames": 45572,
+          "pcm_file": "RESULT/01.pcm16",
+          "pcm_sha256": "74a600f18d7306dc26666378eb6c5e532ac8df6d06def558ad1123d3ed0997d7"
+        },
+        {
+          "id": 2,
+          "source_descriptor": [
+            50405820,
+            416553148,
+            0,
+            3180
+          ],
+          "source_offset": 74172,
+          "source_bytes": 3180,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 6332,
+          "loop_end_exclusive": 6356,
+          "decoded_frames": 6360,
+          "pcm_file": "RESULT/02.pcm16",
+          "pcm_sha256": "820c518f2af19c5fba467d50bc04b7f4b8fa0f0b8ccf4ec2b486e7a53c8becfa"
+        },
+        {
+          "id": 3,
+          "source_descriptor": [
+            50409000,
+            352064740,
+            0,
+            2688
+          ],
+          "source_offset": 77352,
+          "source_bytes": 2688,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 5348,
+          "loop_end_exclusive": 5372,
+          "decoded_frames": 5376,
+          "pcm_file": "RESULT/03.pcm16",
+          "pcm_sha256": "d2e2b27a6f1969cfceb97e179cc873cce7063ed8da0b477b98552e0b0d24f982"
+        },
+        {
+          "id": 4,
+          "source_descriptor": [
+            50411688,
+            869020596,
+            0,
+            6632
+          ],
+          "source_offset": 80040,
+          "source_bytes": 6632,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 13236,
+          "loop_end_exclusive": 13260,
+          "decoded_frames": 13264,
+          "pcm_file": "RESULT/04.pcm16",
+          "pcm_sha256": "09fe1bc4c6591bffa79abca09142e367625ae3187531cb16d49cfc8371d42d17"
+        },
+        {
+          "id": 5,
+          "source_descriptor": [
+            50418320,
+            277089424,
+            0,
+            2116
+          ],
+          "source_offset": 86672,
+          "source_bytes": 2116,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 3216,
+          "loop_end_exclusive": 4228,
+          "decoded_frames": 4232,
+          "pcm_file": "RESULT/05.pcm16",
+          "pcm_sha256": "62d35a460ef0f65b9114557c98bc1c1ff2a84c151079383e5dae5bda0b017643"
+        },
+        {
+          "id": 6,
+          "source_descriptor": [
+            50420436,
+            851194532,
+            0,
+            6496
+          ],
+          "source_offset": 88788,
+          "source_bytes": 6496,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 12964,
+          "loop_end_exclusive": 12988,
+          "decoded_frames": 12992,
+          "pcm_file": "RESULT/06.pcm16",
+          "pcm_sha256": "4ce307ab5d9ab261498162a937b3ba8228b81229cdd9646cf189f17926be5afe"
+        },
+        {
+          "id": 7,
+          "source_descriptor": [
+            50426932,
+            2904337668,
+            0,
+            22160
+          ],
+          "source_offset": 95284,
+          "source_bytes": 22160,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 44292,
+          "loop_end_exclusive": 44316,
+          "decoded_frames": 44320,
+          "pcm_file": "RESULT/07.pcm16",
+          "pcm_sha256": "0bd844ab34e5b6dafa75fe9392d3309e76e892f397432deee94879f9fe6f3842"
+        },
+        {
+          "id": 8,
+          "source_descriptor": [
+            50449092,
+            1447319084,
+            0,
+            11044
+          ],
+          "source_offset": 117444,
+          "source_bytes": 11044,
+          "encoding": 2,
+          "looping": true,
+          "loop_start": 22060,
+          "loop_end_exclusive": 22084,
+          "decoded_frames": 22088,
+          "pcm_file": "RESULT/08.pcm16",
+          "pcm_sha256": "4bd9f9cd7466b6dbd8b4c22a1a22d58005e0786a42873fd38d36a7aabf47c364"
+        }
+      ]
+    }
+  ],
+  "builtin_sample": {
+    "source_id": 1,
+    "driver_sha256": "6b1a51d7576b6333a0aa741ce3b0b3ca6c3818d6de2b092d37b9196672478f67",
+    "descriptor_offset": 34508,
+    "sample_offset": 37228,
+    "bytes": 200,
+    "encoding": 0,
+    "loop_start": 0,
+    "loop_end_exclusive": 100,
+    "pcm_sha256": "58ec017508982b2601a7058b9f52f959e7c093ae369a098b0dca2de719bb10f3"
+  },
+  "pcm_format": "Signed little-endian PCM16 at AICA native44100Hz before per-note pitch.",
+  "decoder": "AICA PCMS0/1/2. Yamaha PCMS2 has no SPSD leakage; low nibble first; delta saturated before accumulation. PCMS2 saves pre-LSA quantizer/history and restores it for each loop. Original encoded bytes are retained in DTPK.",
+  "source_derivations": [
+    "Original ARM3084..3110 program lookup",
+    "Original ARM4494..4578 sample descriptor and offset lookup",
+    "Original ARM39A0..3AB4 layer selection",
+    "Original ARM3BEC..3C10 raw envelope/LFO transfer"
+  ],
+  "limitations": "Bank import alone does not schedule or play the A8 songs. DSP/effects data remains original and requires playback support."
+}

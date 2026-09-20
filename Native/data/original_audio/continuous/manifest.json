@@ -1,0 +1,1539 @@
+{
+  "schema": "idas3-continuous-audio-v1",
+  "program_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "driver_sha256": "6b1a51d7576b6333a0aa741ce3b0b3ca6c3818d6de2b092d37b9196672478f67",
+  "pitch_table_sha256": "3b0b6f86d8845a0c928ea088759c0fbff6eff8a4c120715da25576a0ebb76a81",
+  "voice_tables_sha256": "840526c0877ae61c46dc3d5b575ce8c8690cf1d3253f016b7c7c399c05d3b990",
+  "control_sha256": "211cb1221695984ca31c0c38d0ee8fff331645ef871b0e032af5d8b50d1c1027",
+  "selections_sha256": "5f0fac9a3e186a2d23293705a0184359bfcda636830acd67e43e134c80a1042f",
+  "source": "0C3E20 initialization, 0C3B60 curves, 0C3C60 settings, 0C4360 frame controller",
+  "scope": "Original control data and complete DTPK banks. Import does not implement ICS playback or cabinet DSP.",
+  "families": [
+    {
+      "family": 0,
+      "curve_address": "0c2fb464",
+      "groups": [
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1024,
+          "parameter_address": "0c25d4a0",
+          "parameters": [
+            1024,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d15c"
+        },
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1025,
+          "parameter_address": "0c25d4c4",
+          "parameters": [
+            1025,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d174"
+        }
+      ]
+    },
+    {
+      "family": 1,
+      "curve_address": "0c2fb464",
+      "groups": [
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1024,
+          "parameter_address": "0c25d4a0",
+          "parameters": [
+            1024,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d15c"
+        },
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1025,
+          "parameter_address": "0c25d4c4",
+          "parameters": [
+            1025,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d174"
+        }
+      ]
+    },
+    {
+      "family": 2,
+      "curve_address": "0c2fb464",
+      "groups": [
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1024,
+          "parameter_address": "0c25d4a0",
+          "parameters": [
+            1024,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d15c"
+        },
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1025,
+          "parameter_address": "0c25d4c4",
+          "parameters": [
+            1025,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d174"
+        }
+      ]
+    },
+    {
+      "family": 3,
+      "curve_address": "0c2fb544",
+      "groups": [
+        {
+          "bank": "PACK8.bin",
+          "instrument": 2048,
+          "parameter_address": "0c25d458",
+          "parameters": [
+            2048,
+            6912,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d120"
+        },
+        {
+          "bank": "PACK8.bin",
+          "instrument": 2049,
+          "parameter_address": "0c25d47c",
+          "parameters": [
+            2049,
+            6912,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d138"
+        }
+      ]
+    },
+    {
+      "family": 4,
+      "curve_address": "0c2fb464",
+      "groups": [
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1024,
+          "parameter_address": "0c25d4a0",
+          "parameters": [
+            1024,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d15c"
+        },
+        {
+          "bank": "PACK4.bin",
+          "instrument": 1025,
+          "parameter_address": "0c25d4c4",
+          "parameters": [
+            1025,
+            5632,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d174"
+        }
+      ]
+    },
+    {
+      "family": 5,
+      "curve_address": "0c2fb5b4",
+      "groups": [
+        {
+          "bank": "PACK13.bin",
+          "instrument": 2816,
+          "parameter_address": "0c25d6e0",
+          "parameters": [
+            2816,
+            10240,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d33c"
+        },
+        {
+          "bank": "PACK13.bin",
+          "instrument": 2817,
+          "parameter_address": "0c25d704",
+          "parameters": [
+            2817,
+            10240,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d354"
+        }
+      ]
+    },
+    {
+      "family": 6,
+      "curve_address": "0c2fb544",
+      "groups": [
+        {
+          "bank": "PACK8.bin",
+          "instrument": 2048,
+          "parameter_address": "0c25d458",
+          "parameters": [
+            2048,
+            6912,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d120"
+        },
+        {
+          "bank": "PACK8.bin",
+          "instrument": 2049,
+          "parameter_address": "0c25d47c",
+          "parameters": [
+            2049,
+            6912,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d138"
+        }
+      ]
+    },
+    {
+      "family": 7,
+      "curve_address": "0c2fb624",
+      "groups": [
+        {
+          "bank": "PACK5.bin",
+          "instrument": 256,
+          "parameter_address": "0c25d4e8",
+          "parameters": [
+            256,
+            5888,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d198"
+        },
+        {
+          "bank": "PACK5.bin",
+          "instrument": 257,
+          "parameter_address": "0c25d50c",
+          "parameters": [
+            257,
+            5888,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1b0"
+        }
+      ]
+    },
+    {
+      "family": 8,
+      "curve_address": "0c2fb624",
+      "groups": [
+        {
+          "bank": "PACK5.bin",
+          "instrument": 256,
+          "parameter_address": "0c25d4e8",
+          "parameters": [
+            256,
+            5888,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d198"
+        },
+        {
+          "bank": "PACK5.bin",
+          "instrument": 257,
+          "parameter_address": "0c25d50c",
+          "parameters": [
+            257,
+            5888,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1b0"
+        }
+      ]
+    },
+    {
+      "family": 9,
+      "curve_address": "0c2fb694",
+      "groups": [
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2304,
+          "parameter_address": "0c25d530",
+          "parameters": [
+            2304,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1d4"
+        },
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2305,
+          "parameter_address": "0c25d554",
+          "parameters": [
+            2305,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1ec"
+        }
+      ]
+    },
+    {
+      "family": 10,
+      "curve_address": "0c2fb694",
+      "groups": [
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2304,
+          "parameter_address": "0c25d530",
+          "parameters": [
+            2304,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1d4"
+        },
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2305,
+          "parameter_address": "0c25d554",
+          "parameters": [
+            2305,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1ec"
+        }
+      ]
+    },
+    {
+      "family": 11,
+      "curve_address": "0c2fb694",
+      "groups": [
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2304,
+          "parameter_address": "0c25d530",
+          "parameters": [
+            2304,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1d4"
+        },
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2305,
+          "parameter_address": "0c25d554",
+          "parameters": [
+            2305,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1ec"
+        }
+      ]
+    },
+    {
+      "family": 12,
+      "curve_address": "0c2fb694",
+      "groups": [
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2304,
+          "parameter_address": "0c25d530",
+          "parameters": [
+            2304,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1d4"
+        },
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2305,
+          "parameter_address": "0c25d554",
+          "parameters": [
+            2305,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1ec"
+        }
+      ]
+    },
+    {
+      "family": 13,
+      "curve_address": "0c2fb694",
+      "groups": [
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2304,
+          "parameter_address": "0c25d530",
+          "parameters": [
+            2304,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1d4"
+        },
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2305,
+          "parameter_address": "0c25d554",
+          "parameters": [
+            2305,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1ec"
+        }
+      ]
+    },
+    {
+      "family": 14,
+      "curve_address": "0c2fb694",
+      "groups": [
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2304,
+          "parameter_address": "0c25d530",
+          "parameters": [
+            2304,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1d4"
+        },
+        {
+          "bank": "PACK9.bin",
+          "instrument": 2305,
+          "parameter_address": "0c25d554",
+          "parameters": [
+            2305,
+            7424,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1ec"
+        }
+      ]
+    },
+    {
+      "family": 15,
+      "curve_address": "0c2fb704",
+      "groups": [
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1792,
+          "parameter_address": "0c25d578",
+          "parameters": [
+            1792,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d210"
+        },
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1793,
+          "parameter_address": "0c25d59c",
+          "parameters": [
+            1793,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d228"
+        }
+      ]
+    },
+    {
+      "family": 16,
+      "curve_address": "0c2fb704",
+      "groups": [
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1792,
+          "parameter_address": "0c25d578",
+          "parameters": [
+            1792,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d210"
+        },
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1793,
+          "parameter_address": "0c25d59c",
+          "parameters": [
+            1793,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d228"
+        }
+      ]
+    },
+    {
+      "family": 17,
+      "curve_address": "0c2fb704",
+      "groups": [
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1792,
+          "parameter_address": "0c25d578",
+          "parameters": [
+            1792,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d210"
+        },
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1793,
+          "parameter_address": "0c25d59c",
+          "parameters": [
+            1793,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d228"
+        }
+      ]
+    },
+    {
+      "family": 18,
+      "curve_address": "0c2fb774",
+      "groups": [
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1792,
+          "parameter_address": "0c25d578",
+          "parameters": [
+            1792,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d210"
+        },
+        {
+          "bank": "PACK7.bin",
+          "instrument": 1793,
+          "parameter_address": "0c25d59c",
+          "parameters": [
+            1793,
+            6656,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d228"
+        }
+      ]
+    },
+    {
+      "family": 19,
+      "curve_address": "0c2fb7e4",
+      "groups": [
+        {
+          "bank": "PACK3.bin",
+          "instrument": 768,
+          "parameter_address": "0c25d650",
+          "parameters": [
+            768,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2c4"
+        },
+        {
+          "bank": "PACK3.bin",
+          "instrument": 769,
+          "parameter_address": "0c25d674",
+          "parameters": [
+            769,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2dc"
+        }
+      ]
+    },
+    {
+      "family": 20,
+      "curve_address": "0c2fb7e4",
+      "groups": [
+        {
+          "bank": "PACK3.bin",
+          "instrument": 768,
+          "parameter_address": "0c25d650",
+          "parameters": [
+            768,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2c4"
+        },
+        {
+          "bank": "PACK3.bin",
+          "instrument": 769,
+          "parameter_address": "0c25d674",
+          "parameters": [
+            769,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2dc"
+        }
+      ]
+    },
+    {
+      "family": 21,
+      "curve_address": "0c2fb7e4",
+      "groups": [
+        {
+          "bank": "PACK3.bin",
+          "instrument": 768,
+          "parameter_address": "0c25d650",
+          "parameters": [
+            768,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2c4"
+        },
+        {
+          "bank": "PACK3.bin",
+          "instrument": 769,
+          "parameter_address": "0c25d674",
+          "parameters": [
+            769,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2dc"
+        }
+      ]
+    },
+    {
+      "family": 22,
+      "curve_address": "0c2fb854",
+      "groups": [
+        {
+          "bank": "PACK1.bin",
+          "instrument": 0,
+          "parameter_address": "0c25d380",
+          "parameters": [
+            0,
+            4864,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d06c"
+        },
+        {
+          "bank": "PACK1.bin",
+          "instrument": 1,
+          "parameter_address": "0c25d3a4",
+          "parameters": [
+            1,
+            4864,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d084"
+        }
+      ]
+    },
+    {
+      "family": 23,
+      "curve_address": "0c2fb854",
+      "groups": [
+        {
+          "bank": "PACK1.bin",
+          "instrument": 0,
+          "parameter_address": "0c25d380",
+          "parameters": [
+            0,
+            4864,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d06c"
+        },
+        {
+          "bank": "PACK1.bin",
+          "instrument": 1,
+          "parameter_address": "0c25d3a4",
+          "parameters": [
+            1,
+            4864,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d084"
+        }
+      ]
+    },
+    {
+      "family": 24,
+      "curve_address": "0c2fb854",
+      "groups": [
+        {
+          "bank": "PACK1.bin",
+          "instrument": 0,
+          "parameter_address": "0c25d380",
+          "parameters": [
+            0,
+            4864,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d06c"
+        },
+        {
+          "bank": "PACK1.bin",
+          "instrument": 1,
+          "parameter_address": "0c25d3a4",
+          "parameters": [
+            1,
+            4864,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d084"
+        }
+      ]
+    },
+    {
+      "family": 25,
+      "curve_address": "0c2fb934",
+      "groups": [
+        {
+          "bank": "PACK6.bin",
+          "instrument": 1536,
+          "parameter_address": "0c25d5c0",
+          "parameters": [
+            1536,
+            6144,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d24c"
+        },
+        {
+          "bank": "PACK6.bin",
+          "instrument": 1537,
+          "parameter_address": "0c25d5e4",
+          "parameters": [
+            1537,
+            6144,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d264"
+        }
+      ]
+    },
+    {
+      "family": 26,
+      "curve_address": "0c2fb934",
+      "groups": [
+        {
+          "bank": "PACK6.bin",
+          "instrument": 1536,
+          "parameter_address": "0c25d5c0",
+          "parameters": [
+            1536,
+            6144,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d24c"
+        },
+        {
+          "bank": "PACK6.bin",
+          "instrument": 1537,
+          "parameter_address": "0c25d5e4",
+          "parameters": [
+            1537,
+            6144,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d264"
+        }
+      ]
+    },
+    {
+      "family": 27,
+      "curve_address": "0c2fb9a4",
+      "groups": [
+        {
+          "bank": "PACK2.bin",
+          "instrument": 512,
+          "parameter_address": "0c25d608",
+          "parameters": [
+            512,
+            5120,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d288"
+        },
+        {
+          "bank": "PACK2.bin",
+          "instrument": 513,
+          "parameter_address": "0c25d62c",
+          "parameters": [
+            513,
+            5120,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2a0"
+        }
+      ]
+    },
+    {
+      "family": 28,
+      "curve_address": "0c2fb9a4",
+      "groups": [
+        {
+          "bank": "PACK2.bin",
+          "instrument": 512,
+          "parameter_address": "0c25d608",
+          "parameters": [
+            512,
+            5120,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d288"
+        },
+        {
+          "bank": "PACK2.bin",
+          "instrument": 513,
+          "parameter_address": "0c25d62c",
+          "parameters": [
+            513,
+            5120,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2a0"
+        }
+      ]
+    },
+    {
+      "family": 29,
+      "curve_address": "0c2fb9a4",
+      "groups": [
+        {
+          "bank": "PACK2.bin",
+          "instrument": 512,
+          "parameter_address": "0c25d608",
+          "parameters": [
+            512,
+            5120,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d288"
+        },
+        {
+          "bank": "PACK2.bin",
+          "instrument": 513,
+          "parameter_address": "0c25d62c",
+          "parameters": [
+            513,
+            5120,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2a0"
+        }
+      ]
+    },
+    {
+      "family": 30,
+      "curve_address": "0c2fba14",
+      "groups": [
+        {
+          "bank": "PACK12.bin",
+          "instrument": 2560,
+          "parameter_address": "0c25d698",
+          "parameters": [
+            2560,
+            9984,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d300"
+        },
+        {
+          "bank": "PACK12.bin",
+          "instrument": 2561,
+          "parameter_address": "0c25d6bc",
+          "parameters": [
+            2561,
+            9984,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d318"
+        }
+      ]
+    },
+    {
+      "family": 31,
+      "curve_address": "0c2fb624",
+      "groups": [
+        {
+          "bank": "PACK5.bin",
+          "instrument": 256,
+          "parameter_address": "0c25d4e8",
+          "parameters": [
+            256,
+            5888,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d198"
+        },
+        {
+          "bank": "PACK5.bin",
+          "instrument": 257,
+          "parameter_address": "0c25d50c",
+          "parameters": [
+            257,
+            5888,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d1b0"
+        }
+      ]
+    },
+    {
+      "family": 32,
+      "curve_address": "0c2fb7e4",
+      "groups": [
+        {
+          "bank": "PACK3.bin",
+          "instrument": 768,
+          "parameter_address": "0c25d650",
+          "parameters": [
+            768,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2c4"
+        },
+        {
+          "bank": "PACK3.bin",
+          "instrument": 769,
+          "parameter_address": "0c25d674",
+          "parameters": [
+            769,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2dc"
+        }
+      ]
+    },
+    {
+      "family": 33,
+      "curve_address": "0c2fb7e4",
+      "groups": [
+        {
+          "bank": "PACK3.bin",
+          "instrument": 768,
+          "parameter_address": "0c25d650",
+          "parameters": [
+            768,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2c4"
+        },
+        {
+          "bank": "PACK3.bin",
+          "instrument": 769,
+          "parameter_address": "0c25d674",
+          "parameters": [
+            769,
+            5376,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d2dc"
+        }
+      ]
+    },
+    {
+      "family": 34,
+      "curve_address": "0c2fb8c4",
+      "groups": [
+        {
+          "bank": "PACK14.bin",
+          "instrument": 3328,
+          "parameter_address": "0c25d3c8",
+          "parameters": [
+            3328,
+            13312,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d0a8"
+        },
+        {
+          "bank": "PACK14.bin",
+          "instrument": 3329,
+          "parameter_address": "0c25d3ec",
+          "parameters": [
+            3329,
+            13312,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1175334912,
+            954627278
+          ],
+          "descriptor_address": "0c25d0c0"
+        }
+      ]
+    },
+    {
+      "family": 35,
+      "curve_address": "0c2fb4d4",
+      "groups": [
+        {
+          "bank": "PACK11.bin",
+          "instrument": 1280,
+          "parameter_address": "0c25d410",
+          "parameters": [
+            1280,
+            9728,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1174011904,
+            956502639
+          ],
+          "descriptor_address": "0c25d0e4"
+        },
+        {
+          "bank": "PACK11.bin",
+          "instrument": 1281,
+          "parameter_address": "0c25d434",
+          "parameters": [
+            1281,
+            9728,
+            1065353216,
+            1132396544,
+            240,
+            255,
+            0,
+            1174011904,
+            956502639
+          ],
+          "descriptor_address": "0c25d0fc"
+        }
+      ]
+    }
+  ],
+  "banks": [
+    {
+      "file": "PACK1.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK1.bin.nz",
+      "bytes": 621280,
+      "sha256": "082b1eda6d7f1752f9aa7d23711b150b757f0ad2eee66f3181cd4e6befd5a5bc"
+    },
+    {
+      "file": "PACK10.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK10.bin.nz",
+      "bytes": 53824,
+      "sha256": "c10c054d6ccdebbc9f4aa7dadb72bba79c110e813d0af27936b2f3b5557cf4bd"
+    },
+    {
+      "file": "PACK11.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK11.bin.nz",
+      "bytes": 980192,
+      "sha256": "95bd6d6bb7821927c7498be18a6c215fb55565c07390fc258c2c3839b0366d65"
+    },
+    {
+      "file": "PACK12.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK12.bin.nz",
+      "bytes": 570176,
+      "sha256": "552c8d07e369fc89224ece264da2ff57d3640f373f0bf80f8138203831b36fa7"
+    },
+    {
+      "file": "PACK13.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK13.bin.nz",
+      "bytes": 897952,
+      "sha256": "005663b959a0341f7eedb093f062063811e7b9c2a168a2820fab91628ac0ddc9"
+    },
+    {
+      "file": "PACK14.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK14.bin.nz",
+      "bytes": 737344,
+      "sha256": "c4d6512fc9d516006432be327643f52ebff651e6f54f26b0857b8251a0de224c"
+    },
+    {
+      "file": "PACK2.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK2.bin.nz",
+      "bytes": 794496,
+      "sha256": "4f67a9446d5c48572b13a250fe1591348e58a40387bae0a00602b8d3365e0a0b"
+    },
+    {
+      "file": "PACK3.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK3.bin.nz",
+      "bytes": 696512,
+      "sha256": "8bdb90b08e1bfaff09f98b36b94eebbe296f43b2f3b0e4c31c18b62c7f641479"
+    },
+    {
+      "file": "PACK4.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK4.bin.nz",
+      "bytes": 662176,
+      "sha256": "a89451e1931c4370bf9e926e8a114b6904abff862243d9bb1b4e697388089e8f"
+    },
+    {
+      "file": "PACK5.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK5.bin.nz",
+      "bytes": 782944,
+      "sha256": "05580ddd133ba795bfb8edb49c9be9e71c10e0203a081259d1bbf14905e43d41"
+    },
+    {
+      "file": "PACK6.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK6.bin.nz",
+      "bytes": 1180096,
+      "sha256": "594636dbc6e13747dca4ac520e851d673994a90691396f785742d0610ed5d066"
+    },
+    {
+      "file": "PACK7.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK7.bin.nz",
+      "bytes": 701632,
+      "sha256": "54cfccc4ec419efec92fe0410e7d10758f6562b7b5db33d3e5328dd5000f354a"
+    },
+    {
+      "file": "PACK8.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK8.bin.nz",
+      "bytes": 805664,
+      "sha256": "5d8f13950df7dbdb861c50aa8d7db0c5238888de5d0045ba57370244ee75bf12"
+    },
+    {
+      "file": "PACK9.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK9.bin.nz",
+      "bytes": 1036416,
+      "sha256": "75b9bdec8f062d0f751c62abbca13b775d4dc8e4d5b66550d9d14b5922866586"
+    }
+  ]
+}

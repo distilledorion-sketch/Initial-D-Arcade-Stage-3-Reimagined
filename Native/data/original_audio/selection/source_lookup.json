@@ -1,0 +1,13 @@
+{
+  "driver_sha256": "6b1a51d7576b6333a0aa741ce3b0b3ca6c3818d6de2b092d37b9196672478f67",
+  "calls": 13666,
+  "instruction_bound_per_call": 512,
+  "programs": 32,
+  "samples": 49,
+  "hooks": [
+    "ARM7 STM sp!,{pc} PC+12 convention",
+    "2000/21F4 allocation success",
+    "3AF8 capture selected layer instead of audio output"
+  ],
+  "scope": "Original3084 instrument,39A0 group/key/velocity selection,4494 sample lookup including PCMS-dependent offsets/loop adjustments and built-in sample1; isolated RAM only."
+}

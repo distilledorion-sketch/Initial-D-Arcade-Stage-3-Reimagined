@@ -1,0 +1,280 @@
+{
+  "schema": "idas3-original-dialogue-scores-v1",
+  "source": "original ARM7 AICADRV.bin driver run over each preserved bank",
+  "scores": [
+    {
+      "name": "AFTER_L",
+      "cues": [
+        34
+      ],
+      "bytes": 1449312,
+      "sha256": "5895614c6f047b68ea6b6fb6b4aeafc97b031002fa30aa8419ca38d7fd6dd510"
+    },
+    {
+      "name": "AFTER_W",
+      "cues": [
+        35
+      ],
+      "bytes": 378928,
+      "sha256": "3ca87fbdd5b6e574f24abf36f5f5cc32f805d9bc078b46706737eba53da23d10"
+    },
+    {
+      "name": "AFTER_W2",
+      "cues": [
+        36
+      ],
+      "bytes": 1040624,
+      "sha256": "034a1a9c30831048340b873958afa7e44d9060dfafbcfcfe98c99c48e2bbeb13"
+    },
+    {
+      "name": "ATSUO2",
+      "cues": [
+        7
+      ],
+      "bytes": 604944,
+      "sha256": "0906b4d705a1bcf4cb599f101ab5e0fec5c3d2be5153a94637d0195e6c578fe9"
+    },
+    {
+      "name": "BUNTA",
+      "cues": [
+        33
+      ],
+      "bytes": 538864,
+      "sha256": "9a89d6f1f764c817f43ec6585f8c8acc30c5d0a6e4bc4da12a883273e1b11ca5"
+    },
+    {
+      "name": "DAIKI",
+      "cues": [
+        21
+      ],
+      "bytes": 462032,
+      "sha256": "d79f7843894343f9e8e17aa78990b1c2798376f7eeedc0bc879fdcef0615c6a9"
+    },
+    {
+      "name": "DEBU",
+      "cues": [
+        9
+      ],
+      "bytes": 1014864,
+      "sha256": "cc18cbb6e5231e8fa117b97d39903951751d10218a82f75e1dbecc9746a8f20e"
+    },
+    {
+      "name": "IKETANI",
+      "cues": [
+        12
+      ],
+      "bytes": 854256,
+      "sha256": "e0345484a51877a81d53f5370004a84192172bbc7dfb92156b30adaa7a59a2fa"
+    },
+    {
+      "name": "ITSUKI",
+      "cues": [
+        3
+      ],
+      "bytes": 410288,
+      "sha256": "299fc20e723366f97549e640affc0851319a3d16afcedd5c03cd6b5f1288dcfc"
+    },
+    {
+      "name": "KAI",
+      "cues": [
+        19
+      ],
+      "bytes": 1265968,
+      "sha256": "402737e097998b302307f96878cb5ca3ca778fe62267962602653ea915155bb2"
+    },
+    {
+      "name": "KEISUKE",
+      "cues": [
+        11
+      ],
+      "bytes": 567312,
+      "sha256": "4bd032167a24b6697f331999fa1c3a0105e82a29c902ab5a83e14b2031aa45a7"
+    },
+    {
+      "name": "KEISUKE2",
+      "cues": [
+        31
+      ],
+      "bytes": 978576,
+      "sha256": "fb60e3b210592d03e13f5f862c8f2da1e8a4bd3a8a541960ac45522458cde877"
+    },
+    {
+      "name": "KENJI2",
+      "cues": [
+        4
+      ],
+      "bytes": 509968,
+      "sha256": "6c820ed181d43b59d950887a5e854e3e87efc55f5cff769f2cc62efedc06d134"
+    },
+    {
+      "name": "KENTA",
+      "cues": [
+        10
+      ],
+      "bytes": 634288,
+      "sha256": "47d047c6a308b67b07691323c494f1b7d48c6daf56c9c43504187296e821facd"
+    },
+    {
+      "name": "KYOKO2",
+      "cues": [
+        27
+      ],
+      "bytes": 1862256,
+      "sha256": "4bbc7c851b1adf4eb9f86b2f48cd83ce04f29d3715efa25e6a9ffe73c966e4e2"
+    },
+    {
+      "name": "LANEVO5",
+      "cues": [
+        29
+      ],
+      "bytes": 630480,
+      "sha256": "38e91d5bac06a8fa3f811a5d93fff777be93e763951b332771ff67eaa6a8927d"
+    },
+    {
+      "name": "LANEVO6",
+      "cues": [
+        30
+      ],
+      "bytes": 789072,
+      "sha256": "00ed0014e74b1bf0d139bfc19041be96720f69aaef71b08a608e849ae96fefb4"
+    },
+    {
+      "name": "LOSE3",
+      "cues": [
+        38
+      ],
+      "bytes": 3171984,
+      "sha256": "d78053b953e91452a1290cc13c2e86d8b11d49317df087e33da856445a84b54d"
+    },
+    {
+      "name": "MAKO",
+      "cues": [
+        8
+      ],
+      "bytes": 1399584,
+      "sha256": "cfcd0e6be5ddbcb83344ba0872192e36b1e9b726b491de8732e51bc1cd21c032"
+    },
+    {
+      "name": "MIKI",
+      "cues": [
+        20
+      ],
+      "bytes": 911376,
+      "sha256": "068a1c3f6b32242e5b386b81be2dd80f6eb29ff47821614b308c8d3fd3f00c88"
+    },
+    {
+      "name": "NAKAZATO",
+      "cues": [
+        13
+      ],
+      "bytes": 517808,
+      "sha256": "61f46b3c0008cb55fe41e6ab2ec1611f0bb0433876bc1d9670ff2cb8d169a23a"
+    },
+    {
+      "name": "NOBUHIKO",
+      "cues": [
+        24
+      ],
+      "bytes": 807776,
+      "sha256": "587eca69051cce9a8fd2dfb27b13e0a27d615d14a9e167a5e407d657dad58705"
+    },
+    {
+      "name": "RYOSUKE",
+      "cues": [
+        15,
+        28
+      ],
+      "bytes": 1034688,
+      "sha256": "db87b92d89295da027f9cefb77aff6b0d96f5b5bdff8e6a888f8f7caf474b9e6"
+    },
+    {
+      "name": "SAKAI",
+      "cues": [
+        22
+      ],
+      "bytes": 757040,
+      "sha256": "2db6f8d2ed063643489ae5497e1c08df1302b6beab8c52109e3c634fc7c36f33"
+    },
+    {
+      "name": "SAKAMOTO",
+      "cues": [
+        25
+      ],
+      "bytes": 1980752,
+      "sha256": "62c24bcb1f93ece613c7d0f1020bad221c2c3b77a8955fe2645beb317287e4ca"
+    },
+    {
+      "name": "SEIJI",
+      "cues": [
+        17
+      ],
+      "bytes": 664192,
+      "sha256": "298f71fa4d7f95da525daa972c19a3c65d13f387bb8b0444025b0bb1ec1edfa0"
+    },
+    {
+      "name": "SHINGO",
+      "cues": [
+        5
+      ],
+      "bytes": 768576,
+      "sha256": "e6f09ed5fde6676632cbbb514fc0fcad4411fe7fb8c8c175266a515b3c93327f"
+    },
+    {
+      "name": "SUDOU",
+      "cues": [
+        14,
+        18
+      ],
+      "bytes": 511760,
+      "sha256": "7a60195c8a7de31563f28780b9113d121a8124752b16ae7cdc4855ab2b000cf7"
+    },
+    {
+      "name": "SUETSUGI",
+      "cues": [
+        6
+      ],
+      "bytes": 611328,
+      "sha256": "9492a86cf048215d3ecf61e38a2f1d100f0ab2d2bd667d1b8edcfc6369a6a3ec"
+    },
+    {
+      "name": "TACHI",
+      "cues": [
+        23
+      ],
+      "bytes": 655232,
+      "sha256": "4195bee8f44cfd0b3a531126a0de214b7e5d845eb13ef79686e6bf3effdc77d8"
+    },
+    {
+      "name": "TAKUMI1",
+      "cues": [
+        16
+      ],
+      "bytes": 1052496,
+      "sha256": "f356608b2ad28c04d5503b2af8e1e63fef4183689d1fc79dcf3b0d7049de4846"
+    },
+    {
+      "name": "TAKUMI3",
+      "cues": [
+        32
+      ],
+      "bytes": 1992624,
+      "sha256": "d78cfb2e3e89c654027e88b5cab1153fa8923accf55b60c75126f4439e2fd8fd"
+    },
+    {
+      "name": "WATARU",
+      "cues": [
+        26
+      ],
+      "bytes": 751888,
+      "sha256": "b9917abc9569756b66acc5c9803ed516e21dad047c4341611bb5e71208c39df5"
+    },
+    {
+      "name": "WIN2",
+      "cues": [
+        37
+      ],
+      "bytes": 712912,
+      "sha256": "a0a5beb440821fa5ed14bb42b342185cb8e85d7d8459ae554b03d31f6d70b661"
+    }
+  ]
+}

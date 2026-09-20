@@ -1,0 +1,958 @@
+{
+  "schema": "idas-race-music-titles-v1",
+  "methodology": "Official title spellings, native course taxonomy, and cross-stage audio comparison; individual file-mapping evidence states where identification is inferred.",
+  "tracks": [
+    {
+      "id": "stage3.01_gamble_rumble",
+      "title": "Gamble Rumble",
+      "artist": "m.o.v.e",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html",
+        "https://avex.jp/initial-d-fbc/discography/index.php"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.02_speedy_speed_boy",
+      "title": "Speedy Speed Boy",
+      "artist": "Marko Polo",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html",
+        "https://avex.jp/eurobeat/release/detail.php?id=1016073"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.03_remember_me",
+      "title": "Remember Me",
+      "artist": "Leslie Parrish",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.04_save_me",
+      "title": "Save Me",
+      "artist": "Leslie Parrish",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.05_over_the_rainbow",
+      "title": "Over the Rainbow",
+      "artist": "Powerful T.",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.06_stop_your_self_control",
+      "title": "Stop Your Self Control",
+      "artist": "Marko Polo",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html",
+        "https://avex.jp/eurobeat/release/detail.php?id=1016073"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.07_crazy_for_love",
+      "title": "Crazy for Love",
+      "artist": "Dusty",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.08_express_love",
+      "title": "Express Love",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.09_blackout",
+      "title": "Black Out",
+      "artist": "Overload",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.10_fall_in_the_web",
+      "title": "Fall in the Web of Desire",
+      "artist": "Powerful T.",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.11_pamela",
+      "title": "Pamela",
+      "artist": "Matt Land",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.12_fight_for_love_tonight",
+      "title": "Fight for Love Tonight",
+      "artist": "Ace Warrior",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage3.13_dancin_in_my_dreams",
+      "title": "Dancin' in My Dreams",
+      "artist": "J. Storm",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/english/ac_ver03/bgm.html"
+      ],
+      "fileMappingEvidence": "Existing named Stage 3 stream association retained; display spelling checked against Sega official BGM page. The audio identity was not re-fingerprinted in this title update."
+    },
+    {
+      "id": "stage1.EZ001",
+      "title": "Space Boy",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Decoded first 15 seconds matched Stage 2 EZ001.bin with normalized PCM correlation 0.961509; mono low-pass/resample to 1000 Hz and short lag search, winning lag -1 to -3 ms. All wrong candidates scored at most 0.1053. Stage 2 identity is supported by course-prefix mapping and Sega official BGM assignments."
+    },
+    {
+      "id": "stage1.MD001",
+      "title": "Love Is in Danger",
+      "artist": "Priscilla",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Decoded first 15 seconds matched Stage 2 NM002.bin with normalized PCM correlation 0.946458; mono low-pass/resample to 1000 Hz and short lag search, winning lag -1 to -3 ms. All wrong candidates scored at most 0.1053. Stage 2 identity is supported by course-prefix mapping and Sega official BGM assignments."
+    },
+    {
+      "id": "stage1.HR001",
+      "title": "Grand Prix",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Decoded first 15 seconds matched Stage 2 DF001.bin with normalized PCM correlation 0.940946; mono low-pass/resample to 1000 Hz and short lag search, winning lag -1 to -3 ms. All wrong candidates scored at most 0.1053. Stage 2 identity is supported by course-prefix mapping and Sega official BGM assignments."
+    },
+    {
+      "id": "stage1.VH002",
+      "title": "Heartbeat",
+      "artist": "Nathalie",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Decoded first 15 seconds matched Stage 2 VH001.bin with normalized PCM correlation 0.709997; mono low-pass/resample to 1000 Hz and short lag search, winning lag -1 to -3 ms. All wrong candidates scored at most 0.1053. Stage 2 identity is supported by course-prefix mapping and Sega official BGM assignments."
+    },
+    {
+      "id": "stage1.VH003",
+      "title": "Beat of the Rising Sun",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Decoded first 15 seconds matched Stage 2 DF002.bin with normalized PCM correlation 0.464565; mono low-pass/resample to 1000 Hz and short lag search, winning lag -1 to -3 ms. All wrong candidates scored at most 0.1053. Stage 2 identity is supported by course-prefix mapping and Sega official BGM assignments."
+    },
+    {
+      "id": "stage1.EZ002",
+      "title": "Don't Stop the Music",
+      "artist": "Lou Grant",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Decoded first 15 seconds matched Stage 2 NM001.bin with normalized PCM correlation 0.950113; mono low-pass/resample to 1000 Hz and short lag search, winning lag -1 to -3 ms. All wrong candidates scored at most 0.1053. Stage 2 identity is supported by course-prefix mapping and Sega official BGM assignments."
+    },
+    {
+      "id": "stage2.EZ001",
+      "title": "Space Boy",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Myogi day: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.EZ002",
+      "title": "Night of Fire",
+      "artist": "Niko",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Myogi night: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.NM001",
+      "title": "Don't Stop the Music",
+      "artist": "Lou Grant",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Usui day: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.NM002",
+      "title": "Love Is in Danger",
+      "artist": "Priscilla",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Usui night: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.HD001",
+      "title": "Killing My Love",
+      "artist": "Leslie Parrish",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Akagi day: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.HD002",
+      "title": "Running in the 90's",
+      "artist": "Max Coveri",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Akagi night: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.DF001",
+      "title": "Grand Prix",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Akina day: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.DF002",
+      "title": "Beat of the Rising Sun",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Akina night: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.VH001",
+      "title": "Heartbeat",
+      "artist": "Nathalie",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Happogahara: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.UH001",
+      "title": "Rock Me to the Top",
+      "artist": "Dusty",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Irohazaka day: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage2.UH002",
+      "title": "Station to Station",
+      "artist": "Derreck Simons",
+      "sources": [
+        "https://backup.segakore.fr/hitmaker/game/INITIALD/k_as2/bgm/index.html",
+        "https://initiald.fandom.com/wiki/Initial_D_Arcade_Stage_Ver._2#Soundtrack"
+      ],
+      "fileMappingEvidence": "Irohazaka night: inferred from original course-prefix taxonomy and numbered day/night streams, corroborated by Sega's official course/time BGM assignments. Payload stream descriptors 0x23DDB8, stride 72; navigation prefixes 0x21C308/0x21C320/0x21C338/0x21C350/0x21C368/0x21C380; course blocks start 0x27F578. Not a full original-program selection trace."
+    },
+    {
+      "id": "stage4.avex_02_letsgocomeon",
+      "title": "Let's Go, Come On",
+      "artist": "Manuel",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 1, offset 4853760, has embedded filename prefix 'avex_02_letsgocomeon'; inid4.h maps the same entry to ../adx_song/avex_02_letsgocomeon.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_03_gobeatcrazy",
+      "title": "Go Beat Crazy",
+      "artist": "Fastway",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 2, offset 10641408, has embedded filename prefix 'avex_03_gobeatcrazy.'; inid4.h maps the same entry to ../adx_song/avex_03_gobeatcrazy.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_04_speedcar",
+      "title": "Speed Car",
+      "artist": "D-Team",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 3, offset 17176576, has embedded filename prefix 'avex_04_speedcar.adx'; inid4.h maps the same entry to ../adx_song/avex_04_speedcar.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_05_flytometothemoon",
+      "title": "Fly to Me to the Moon & Back",
+      "artist": "The Spiders from Mars",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 4, offset 22675456, has embedded filename prefix 'avex_05_flytometothe'; inid4.h maps the same entry to ../adx_song/avex_05_flytometothemoon.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_06_revolution",
+      "title": "Revolution",
+      "artist": "Fastway",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 5, offset 28239872, has embedded filename prefix 'avex_06_revolution.a'; inid4.h maps the same entry to ../adx_song/avex_06_revolution.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_07_wellseeheaven",
+      "title": "We'll See Heaven",
+      "artist": "Digital Planet",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 6, offset 34455552, has embedded filename prefix 'avex_07_wellseeheave'; inid4.h maps the same entry to ../adx_song/avex_07_wellseeheaven.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_08_allaround",
+      "title": "All Around",
+      "artist": "Lia",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 7, offset 40204288, has embedded filename prefix 'avex_08_allaround.ad'; inid4.h maps the same entry to ../adx_song/avex_08_allaround.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_09_eldorado",
+      "title": "Eldorado",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 8, offset 46233600, has embedded filename prefix 'avex_09_eldorado.adx'; inid4.h maps the same entry to ../adx_song/avex_09_eldorado.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_10_raisinhell",
+      "title": "Raising Hell",
+      "artist": "Fastway",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 9, offset 51357696, has embedded filename prefix 'avex_10_raisinhell.a'; inid4.h maps the same entry to ../adx_song/avex_10_raisinhell.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_11_spacelove",
+      "title": "Space Love",
+      "artist": "Fastway",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 10, offset 56922112, has embedded filename prefix 'avex_11_spacelove.ad'; inid4.h maps the same entry to ../adx_song/avex_11_spacelove.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_12_nocontrol",
+      "title": "No Control",
+      "artist": "Manuel",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 11, offset 63696896, has embedded filename prefix 'avex_12_nocontrol.ad'; inid4.h maps the same entry to ../adx_song/avex_12_nocontrol.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_13_foreveryoung",
+      "title": "Forever Young",
+      "artist": "Symbol",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 12, offset 70137856, has embedded filename prefix 'avex_13_foreveryoung'; inid4.h maps the same entry to ../adx_song/avex_13_foreveryoung.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_14_riderofthesky",
+      "title": "Rider of the Sky",
+      "artist": "Ace",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 13, offset 77434880, has embedded filename prefix 'avex_14_riderofthesk'; inid4.h maps the same entry to ../adx_song/avex_14_riderofthesky.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage4.avex_15_thefiresonme",
+      "title": "The Fire's on Me",
+      "artist": "Spock",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-26336?jsiteid=mumo"
+      ],
+      "fileMappingEvidence": "inid4.afs entry 14, offset 83122176, has embedded filename prefix 'avex_15_thefiresonme'; inid4.h maps the same entry to ../adx_song/avex_15_thefiresonme.adx. Title and artist verified against Avex mu-mo's Stage 4 original soundtrack listing AVCA-26336."
+    },
+    {
+      "id": "stage5.avex_02_sunintherain",
+      "title": "Sun in the Rain",
+      "artist": "Manuel",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 0, offset 61440, has embedded filename prefix 'avex_02_sunintherain', matching only inid5.ybo cue SONG:AVEX_02_SUNINTHERAIN. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_03_lookabomba",
+      "title": "Looka Bomba",
+      "artist": "Go 2",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 1, offset 6725632, has embedded filename prefix 'avex_03_lookabomba.a', matching only inid5.ybo cue SONG:AVEX_03_LOOKABOMBA. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_04_sweetsixteengirl",
+      "title": "Sweet Sixteen Girl",
+      "artist": "Candy Taylor",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 2, offset 12955648, has embedded filename prefix 'avex_04_sweetsixteen', matching only inid5.ybo cue SONG:AVEX_04_SWEETSIXTEENGIRL. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_05_loveisanameoflove",
+      "title": "Love Is the Name of Love",
+      "artist": "Irene",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 3, offset 19505152, has embedded filename prefix 'avex_05_loveisanameo', matching only inid5.ybo cue SONG:AVEX_05_LOVEISANAMEOFLOVE. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_06_adrenaline",
+      "title": "Adrenaline",
+      "artist": "Manuel",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 4, offset 26853376, has embedded filename prefix 'avex_06_adrenaline.a', matching only inid5.ybo cue SONG:AVEX_06_ADRENALINE. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_07_blackufo",
+      "title": "Black U.F.O.",
+      "artist": "Lupin",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 5, offset 33976320, has embedded filename prefix 'avex_07_blackufo.adx', matching only inid5.ybo cue SONG:AVEX_07_BLACKUFO. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_08_discofire",
+      "title": "Disco Fire",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 6, offset 41627648, has embedded filename prefix 'avex_08_discofire.ad', matching only inid5.ybo cue SONG:AVEX_08_DISCOFIRE. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_09_midnightlove",
+      "title": "Midnight Love",
+      "artist": "Neo",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 7, offset 48939008, has embedded filename prefix 'avex_09_midnightlove', matching only inid5.ybo cue SONG:AVEX_09_MIDNIGHTLOVE. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_10_gasgasgas",
+      "title": "Gas Gas Gas",
+      "artist": "Manuel",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 8, offset 55336960, has embedded filename prefix 'avex_10_gasgasgas.ad', matching only inid5.ybo cue SONG:AVEX_10_GASGASGAS. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_11_chemicallove",
+      "title": "Chemical Love",
+      "artist": "Kevin & Cherry",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 9, offset 65236992, has embedded filename prefix 'avex_11_chemicallove', matching only inid5.ybo cue SONG:AVEX_11_CHEMICALLOVE. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_12_rockinhardcore",
+      "title": "Rockin' Hardcore",
+      "artist": "Fastway",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 10, offset 71589888, has embedded filename prefix 'avex_12_rockinhardco', matching only inid5.ybo cue SONG:AVEX_12_ROCKINHARDCORE. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_13_speedman",
+      "title": "Speed Man",
+      "artist": "Dave Simon",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 11, offset 78225408, has embedded filename prefix 'avex_13_speedman.adx', matching only inid5.ybo cue SONG:AVEX_13_SPEEDMAN. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_14_fighting",
+      "title": "Fighting",
+      "artist": "Cody",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 12, offset 84955136, has embedded filename prefix 'avex_14_fighting.adx', matching only inid5.ybo cue SONG:AVEX_14_FIGHTING. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage5.avex_15_rightnow",
+      "title": "Right Now",
+      "artist": "Dark Angels",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCA-29098"
+      ],
+      "fileMappingEvidence": "inid5.afs entry 13, offset 92180480, has embedded filename prefix 'avex_15_rightnow.adx', matching only inid5.ybo cue SONG:AVEX_15_RIGHTNOW. The full filename is reconstructed from that cue and the ADX format. Title and artist verified against Avex mu-mo's Stage 5 original soundtrack listing AVCA-29098."
+    },
+    {
+      "id": "stage6.avex_01_super_rider",
+      "title": "Super Rider",
+      "artist": "Mark Astley",
+      "sources": [
+        "https://avex.jp/eurobeat/release/detail.php?id=1014181",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6962 named avex_01_super_rider, sound record at 85042, contains PLAYWAVE index 6962 into Inid6.xwb. Exact encoded data starts at 825110528; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_02_rock_beaten_wild",
+      "title": "Rock Beatin' Wild",
+      "artist": "Fastway",
+      "sources": [
+        "https://scp-music.bandcamp.com/album/initial-beat-2-music-from-the-initiald-world",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6963 named avex_02_rock_beaten_wild, sound record at 85078, contains PLAYWAVE index 6963 into Inid6.xwb. Exact encoded data starts at 837253120; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_03_once_upon_a_time",
+      "title": "Once Upon a Time",
+      "artist": "Pamsy",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCD-10172?jsiteid=mumo",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6964 named avex_03_once_upon_a_time, sound record at 85114, contains PLAYWAVE index 6964 into Inid6.xwb. Exact encoded data starts at 847818752; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_04_set_me_free",
+      "title": "Set Me Free",
+      "artist": "Cherry",
+      "sources": [
+        "https://avex.jp/eurobeat/news/detail.php?id=1112218",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6965 named avex_04_set_me_free, sound record at 85150, contains PLAYWAVE index 6965 into Inid6.xwb. Exact encoded data starts at 859985920; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_05_king_of_eurobeat",
+      "title": "King of Eurobeat",
+      "artist": "Jordan",
+      "sources": [
+        "https://avex.jp/eurobeat/release/detail.php?id=1015873",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6966 named avex_05_king_of_eurobeat, sound record at 85186, contains PLAYWAVE index 6966 into Inid6.xwb. Exact encoded data starts at 870998016; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_06_the_love_bite",
+      "title": "The Lovebite",
+      "artist": "Dusty",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCD-10183?jsiteid=mumo",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6967 named avex_06_the_love_bite, sound record at 85222, contains PLAYWAVE index 6967 into Inid6.xwb. Exact encoded data starts at 882190336; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_07_euro_night",
+      "title": "Euronight",
+      "artist": "Eurogroove",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCD-10192?jsiteid=mumo",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6968 named avex_07_euro_night, sound record at 85258, contains PLAYWAVE index 6968 into Inid6.xwb. Exact encoded data starts at 895260672; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_08_queen_of_meam",
+      "title": "Queen of Mean",
+      "artist": "The Snake",
+      "sources": [
+        "https://avex.jp/eurobeat/release/detail.php?id=1015873",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6969 named avex_08_queen_of_meam, sound record at 85294, contains PLAYWAVE index 6969 into Inid6.xwb. Exact encoded data starts at 908359680; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_09_mad_desire",
+      "title": "Mad Desire",
+      "artist": "Stephy Martini",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCD-10172?jsiteid=mumo",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6970 named avex_09_mad_desire, sound record at 85330, contains PLAYWAVE index 6970 into Inid6.xwb. Exact encoded data starts at 919496704; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_10_burn_into_the_beat",
+      "title": "Burn into the Beat",
+      "artist": "Nick Mansell",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCD-10183?jsiteid=mumo",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6971 named avex_10_burn_into_the_beat, sound record at 85366, contains PLAYWAVE index 6971 into Inid6.xwb. Exact encoded data starts at 933193728; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_11_forever_sad",
+      "title": "Forever Sad",
+      "artist": "Hely",
+      "sources": [
+        "https://shop.mu-mo.net/mitem/AVCD-10194?jsiteid=mumo",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6972 named avex_11_forever_sad, sound record at 85402, contains PLAYWAVE index 6972 into Inid6.xwb. Exact encoded data starts at 945115136; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_12_hurricane_man",
+      "title": "Hurricane Man",
+      "artist": "Gold-Rake",
+      "sources": [
+        "https://avex.jp/chozen/discography/",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6973 named avex_12_hurricane_man, sound record at 85438, contains PLAYWAVE index 6973 into Inid6.xwb. Exact encoded data starts at 957988864; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_13_dont_turn_it_off",
+      "title": "Don't Turn It Off",
+      "artist": "Go 2",
+      "sources": [
+        "https://scp-music.bandcamp.com/album/initial-beat-2-music-from-the-initiald-world",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6974 named avex_13_dont_turn_it_off, sound record at 85474, contains PLAYWAVE index 6974 into Inid6.xwb. Exact encoded data starts at 969816064; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage6.avex_14_you_are_my_wonder",
+      "title": "You Are My Wonder",
+      "artist": "Queen 26",
+      "sources": [
+        "https://avex.jp/eurobeat/release/detail.php?id=1015873",
+        "https://dengekionline.com/elem/000/000/886/886611/"
+      ],
+      "fileMappingEvidence": "Inid6.xsb cue 6975 named avex_14_you_are_my_wonder, sound record at 85510, contains PLAYWAVE index 6975 into Inid6.xwb. Exact encoded data starts at 977766400; only a RIFF container was added. Display spelling corrects native cue abbreviations/typos using primary label/publisher credits and the cited Sega-series soundtrack roster."
+    },
+    {
+      "id": "stage7.avex_01_disconnected",
+      "title": "Disconnected",
+      "artist": "Hotblade",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9220 named avex_01_disconnected, sound record at 112426, contains PLAYWAVE index 9220 into Inid7.xwb. Exact encoded data starts at 1196460032; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_02_remember_me",
+      "title": "Remember Me",
+      "artist": "Leslie Parrish",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9221 named avex_02_remember_me, sound record at 112462, contains PLAYWAVE index 9221 into Inid7.xwb. Exact encoded data starts at 1205004288; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_03_night_of_fire",
+      "title": "Night of Fire",
+      "artist": "Niko",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9222 named avex_03_night_of_fire, sound record at 112498, contains PLAYWAVE index 9222 into Inid7.xwb. Exact encoded data starts at 1214355456; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_04_i_need_a_revolution",
+      "title": "I Need a Revolution",
+      "artist": "Marko",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9223 named avex_04_i_need_a_revolution, sound record at 112534, contains PLAYWAVE index 9223 into Inid7.xwb. Exact encoded data starts at 1225287680; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_05_power_two",
+      "title": "Power Two",
+      "artist": "Hotblade",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9224 named avex_05_power_two, sound record at 112570, contains PLAYWAVE index 9224 into Inid7.xwb. Exact encoded data starts at 1238634496; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_06_crazy_for_love",
+      "title": "Crazy for Love",
+      "artist": "Dusty",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9225 named avex_06_crazy_for_love, sound record at 112606, contains PLAYWAVE index 9225 into Inid7.xwb. Exact encoded data starts at 1251688448; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_07_burning_up_the_night(total_fire)",
+      "title": "Burning Up the Night (Total Fire)",
+      "artist": "2 Fast",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9226 named avex_07_burning_up_the_night(total_fire), sound record at 112642, contains PLAYWAVE index 9226 into Inid7.xwb. Exact encoded data starts at 1260423168; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_08_freedom_ride",
+      "title": "Freedom Ride",
+      "artist": "The Snake",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9227 named avex_08_freedom_ride, sound record at 112678, contains PLAYWAVE index 9227 into Inid7.xwb. Exact encoded data starts at 1270093824; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_09_ministry_of_power",
+      "title": "Ministry of Power",
+      "artist": "Fastway",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9228 named avex_09_ministry_of_power, sound record at 112714, contains PLAYWAVE index 9228 into Inid7.xwb. Exact encoded data starts at 1280116736; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_10_speed_of_light",
+      "title": "Speed of Light",
+      "artist": "The Snake",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9229 named avex_10_speed_of_light, sound record at 112750, contains PLAYWAVE index 9229 into Inid7.xwb. Exact encoded data starts at 1288849408; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_11_the_top",
+      "title": "The Top",
+      "artist": "Ken Blast",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9230 named avex_11_the_top, sound record at 112786, contains PLAYWAVE index 9230 into Inid7.xwb. Exact encoded data starts at 1302194176; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_12_up_and_dance_up_and_go",
+      "title": "Up & Dance, Up & Go",
+      "artist": "Lou Master",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9231 named avex_12_up_and_dance_up_and_go, sound record at 112822, contains PLAYWAVE index 9231 into Inid7.xwb. Exact encoded data starts at 1312745472; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_13_pamela",
+      "title": "Pamela",
+      "artist": "Matt Land",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9232 named avex_13_pamela, sound record at 112858, contains PLAYWAVE index 9232 into Inid7.xwb. Exact encoded data starts at 1321680896; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage7.avex_14_limousine",
+      "title": "Limousine",
+      "artist": "Manuel",
+      "sources": [
+        "https://initiald.sega.jp/inid7aax/special.html"
+      ],
+      "fileMappingEvidence": "IniD7.xsb cue 9233 named avex_14_limousine, sound record at 112894, contains PLAYWAVE index 9233 into Inid7.xwb. Exact encoded data starts at 1334073344; only a RIFF container was added. Display title and artist come from Sega's original Stage 7 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_01_breakin_out",
+      "title": "Breakin' Out",
+      "artist": "Ace",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11147 named avex_01_breakin_out, sound record at 134806, contains PLAYWAVE index 11147 into IniD8.xwb. Exact encoded data starts at 1162860544; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_02_notings_gonna_stop_us_tonight",
+      "title": "Nothing's Gonna Stop Us Tonight",
+      "artist": "Annalise",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11158 named avex_02_notings_gonna_stop_us_tonight, sound record at 135202, contains PLAYWAVE index 11158 into IniD8.xwb. Exact encoded data starts at 1294217216; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_03_come_on_baby",
+      "title": "Come On Baby",
+      "artist": "Fastway",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11148 named avex_03_come_on_baby, sound record at 134842, contains PLAYWAVE index 11148 into IniD8.xwb. Exact encoded data starts at 1175099392; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_04_sunlight",
+      "title": "Sunlight",
+      "artist": "Kaioh",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11151 named avex_04_sunlight, sound record at 134950, contains PLAYWAVE index 11151 into IniD8.xwb. Exact encoded data starts at 1211324416; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_05_prayer",
+      "title": "Prayer",
+      "artist": "Ducky Chix",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11149 named avex_05_prayer, sound record at 134878, contains PLAYWAVE index 11149 into IniD8.xwb. Exact encoded data starts at 1187719168; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_06_your_love_is_like_a_medicine",
+      "title": "Your Love Is Like a Medicine",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11165 named avex_06_your_love_is_like_a_medicine, sound record at 135430, contains PLAYWAVE index 11165 into IniD8.xwb. Exact encoded data starts at 1372209152; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_07_when_the_sun_goes_down",
+      "title": "When the Sun Goes Down",
+      "artist": "Ken Blast",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11153 named avex_07_when_the_sun_goes_down, sound record at 135022, contains PLAYWAVE index 11153 into IniD8.xwb. Exact encoded data starts at 1236666368; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_08_super_driver",
+      "title": "Super Driver",
+      "artist": "Daniel",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11150 named avex_08_super_driver, sound record at 134914, contains PLAYWAVE index 11150 into IniD8.xwb. Exact encoded data starts at 1200408576; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_09_kiss",
+      "title": "Kiss",
+      "artist": "Bamboo Bimbo",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11155 named avex_09_kiss, sound record at 135094, contains PLAYWAVE index 11155 into IniD8.xwb. Exact encoded data starts at 1261608960; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_10_far_from_the_light",
+      "title": "Far from the Light",
+      "artist": "Leo River",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11160 named avex_10_far_from_the_light, sound record at 135274, contains PLAYWAVE index 11160 into IniD8.xwb. Exact encoded data starts at 1317617664; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_11_the_race_of_the_night",
+      "title": "The Race of the Night",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11166 named avex_11_the_race_of_the_night, sound record at 135466, contains PLAYWAVE index 11166 into IniD8.xwb. Exact encoded data starts at 1384765440; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_12_nonsense_sensation",
+      "title": "Nonsense Sensation",
+      "artist": "Paul Harris",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11152 named avex_12_nonsense_sensation, sound record at 134986, contains PLAYWAVE index 11152 into IniD8.xwb. Exact encoded data starts at 1223864320; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_13_hearts_on_fire",
+      "title": "Heart's on Fire",
+      "artist": "David Dima",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11156 named avex_13_hearts_on_fire, sound record at 135130, contains PLAYWAVE index 11156 into IniD8.xwb. Exact encoded data starts at 1272614912; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_14_adrenaline",
+      "title": "Adrenaline",
+      "artist": "Ace",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11157 named avex_14_adrenaline, sound record at 135166, contains PLAYWAVE index 11157 into IniD8.xwb. Exact encoded data starts at 1283530752; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_15_never_say_never",
+      "title": "Never Say Never",
+      "artist": "Manuel",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11162 named avex_15_never_say_never, sound record at 135322, contains PLAYWAVE index 11162 into IniD8.xwb. Exact encoded data starts at 1336102912; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "stage8.avex_16_i_just_wanna_stay_with_you",
+      "title": "I Just Wanna Stay with You",
+      "artist": "Dream Fighters",
+      "sources": [
+        "https://initiald.sega.jp/inid8/sp_music.html"
+      ],
+      "fileMappingEvidence": "IniD8.xsb cue 11164 named avex_16_i_just_wanna_stay_with_you, sound record at 135394, contains PLAYWAVE index 11164 into IniD8.xwb. Exact encoded data starts at 1360992256; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    }
+  ]
+}

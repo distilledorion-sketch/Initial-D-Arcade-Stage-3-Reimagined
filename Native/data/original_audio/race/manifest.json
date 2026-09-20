@@ -1,0 +1,183 @@
+{
+  "schema": "idas3-race-audio-v1",
+  "program_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "scene": 4,
+  "scene_source": "067A06 -> 1416A0, table31DE94 row4: bank2,3,3,4,5",
+  "scope": "Preserved original banks and cue mappings, including PACK23 compound skid sequences. Import does not implement sequence playback or cabinet DSP/envelope/pan.",
+  "banks": [
+    {
+      "file": "PACK22.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK22.bin.nz",
+      "sha256": "76428dccec9d7479f19ecc9643b3702f31f842528387dd094fcaaabc07b4c7f8",
+      "bank": 2,
+      "cue_table": "0c31ec1c",
+      "cues": [
+        {
+          "cue": 0,
+          "command": "000002a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 1,
+          "command": "000102a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 2,
+          "command": "000202a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 3,
+          "command": "000302a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 4,
+          "command": "000402a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 5,
+          "command": "000502a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 6,
+          "command": "000602a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 7,
+          "command": "000702a9",
+          "level": 127,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "file": "PACK23.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK23.bin.nz",
+      "sha256": "9885bab452cb423afd9a211ab73356c89639a110949c39594268cef016c538ee",
+      "bank": 3,
+      "cue_table": "0c31ec7c",
+      "cues": [
+        {
+          "cue": 0,
+          "command": "000003a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 1,
+          "command": "000103a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 2,
+          "command": "000203a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 3,
+          "command": "000303a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 4,
+          "command": "000503a9",
+          "level": 127,
+          "reserved": 0
+        },
+        {
+          "cue": 5,
+          "command": "000403a9",
+          "level": 127,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "file": "PACK24.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK24.bin.nz",
+      "sha256": "10cbdb80580ec0ca45de5752266c399deb452b94b6f7c233deda30b29a360e1d",
+      "bank": 4,
+      "cue_table": "0c31ecc4",
+      "cues": [
+        {
+          "cue": 0,
+          "command": "000004a9",
+          "level": 122,
+          "reserved": 0
+        },
+        {
+          "cue": 1,
+          "command": "000104a9",
+          "level": 122,
+          "reserved": 0
+        },
+        {
+          "cue": 2,
+          "command": "000204a9",
+          "level": 122,
+          "reserved": 0
+        },
+        {
+          "cue": 3,
+          "command": "000304a9",
+          "level": 122,
+          "reserved": 0
+        },
+        {
+          "cue": 4,
+          "command": "000404a9",
+          "level": 122,
+          "reserved": 0
+        },
+        {
+          "cue": 5,
+          "command": "000504a9",
+          "level": 122,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "file": "PACK25.dtpk",
+      "source": "C:\\Users\\Developer\\Documents\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\sound\\pack\\PACK25.bin.nz",
+      "sha256": "4c3f1e6043715c02976da6dee7bbba0918b12a37f49f56c5a0beafe483905aa7",
+      "bank": 5,
+      "cue_table": "0c31ed0c",
+      "cues": [
+        {
+          "cue": 0,
+          "command": "000005a9",
+          "level": 70,
+          "reserved": 0
+        },
+        {
+          "cue": 1,
+          "command": "000105a9",
+          "level": 70,
+          "reserved": 0
+        },
+        {
+          "cue": 2,
+          "command": "000205a9",
+          "level": 70,
+          "reserved": 0
+        }
+      ]
+    }
+  ]
+}
