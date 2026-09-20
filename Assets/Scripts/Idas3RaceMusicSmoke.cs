@@ -88,12 +88,12 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-custom-music-check")>=0){yield return CheckCustomMusic();Finish(true,null);yield break;}
         yield return Capture("opponent-picker");yield return CheckStageFilters();
         int previous=host.RaceMusic.State.activeIndex;
-        for(int track=86;track<=101;++track){
-            if(!host.RaceMusicMenu.IsOpen){yield return Hold(KeyCode.L,.75);Check(host.RaceMusicMenu.IsOpen,"Stage8 selection could not reopen the normal opponent picker");}
-            StageFilter(8);HighlightTrack(track);
-            if(track==LongestTrack(8))yield return Capture("opponent-stage8-long-title");
+        for(int track=102;track<=116;++track){
+            if(!host.RaceMusicMenu.IsOpen){yield return Hold(KeyCode.L,.75);Check(host.RaceMusicMenu.IsOpen,"Special Stage selection could not reopen the normal opponent picker");}
+            StageFilter(10);HighlightTrack(track);
+            if(track==LongestTrack(10))yield return Capture("opponent-special-stage-long-title");
             SelectTrack(track);yield return Frames(3);host.RaceMusic.Refresh();
-            Check(!host.RaceMusicMenu.IsOpen&&host.RaceMusic.State.selectedIndex==track,"Stage8 track did not save from the filtered opponent picker: "+track);
+            Check(!host.RaceMusicMenu.IsOpen&&host.RaceMusic.State.selectedIndex==track,"Special Stage track did not save from the filtered opponent picker: "+track);
             Check(host.RaceMusic.State.activeIndex==previous,"Picker changed currently playing music");
         }
         yield return Capture("opponent-selected");
@@ -101,8 +101,8 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         // Start skips only the native character dialogue; stop injecting as
         // soon as the actual car showcase starts.
         for(int frame=0;ReadPresentation().phase==0&&Time.realtimeSinceStartupAsDouble<wait;++frame){if(frame%12==0)padPulse=0x10;yield return null;}
-        Check(ReadPresentation().phase==1,"Selected Stage8 race did not reach the first car showcase");
-        yield return CheckCountdownAudio(101,"singleplayer");Finish(true,null);
+        Check(ReadPresentation().phase==1,"Selected Special Stage race did not reach the first car showcase");
+        yield return CheckCountdownAudio(116,"singleplayer");Finish(true,null);
     }
     private bool ReturnCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-return-check")>=0;
     private IEnumerator CheckCustomMusic(){
@@ -164,15 +164,15 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         HighlightTrack(track);host.RaceMusicMenu.Activate();
     }
     private void HighlightTrack(int track){var menu=host.RaceMusicMenu;for(int i=0;i<menu.VisibleTrackCount&&menu.HighlightedTrackId!=track;++i)menu.Navigate(1);Check(menu.HighlightedTrackId==track,"Track absent from actual filtered picker list: "+track);}
-    private void StageFilter(int stage){var menu=host.RaceMusicMenu;for(int i=0;i<9&&menu.StageFilter!=stage;++i)menu.NavigateHorizontal(1);Check(menu.StageFilter==stage,"Could not select Stage"+stage+" filter");}
+    private void StageFilter(int stage){var menu=host.RaceMusicMenu;for(int i=0;i<11&&menu.StageFilter!=stage;++i)menu.NavigateHorizontal(1);Check(menu.StageFilter==stage,"Could not select Stage"+stage+" filter");}
     private int LongestTrack(int stage){int id=-1,length=-1;foreach(var e in host.RaceMusic.Entries)if(e.stage==stage&&e.title.Length>length){id=e.id;length=e.title.Length;}return id;}
     private IEnumerator CheckStageFilters(){
-        var menu=host.RaceMusicMenu;Check(menu.StageFilter==0&&menu.VisibleTrackCount==103,"All Tracks does not show102 songs and the custom importer");
+        var menu=host.RaceMusicMenu;Check(menu.StageFilter==0&&menu.VisibleTrackCount==118,"All Tracks does not show117 songs and the custom importer");
         yield return Frames(6);yield return PadHorizontal(-1);Check(menu.StageFilter==9,"Controller left did not wrap All Tracks to Custom");
         yield return PadHorizontal(1);Check(menu.StageFilter==0,"Controller right did not wrap Custom to All Tracks");
-        int[] starts={0,13,19,1,30,44,58,72,86},counts={102,6,11,12,14,14,14,14,16};
-        for(int stage=1;stage<=8;++stage){
-            menu.NavigateHorizontal(1);Check(menu.StageFilter==stage,"Nine-tab horizontal order is incorrect");
+        int[] starts={0,13,19,1,30,44,58,72,86,0,102},counts={117,6,11,12,14,14,14,14,16,1,15};
+        foreach(int stage in new[]{1,2,10,3,4,5,6,7,8}){
+            menu.NavigateHorizontal(1);Check(menu.StageFilter==stage,"Special Stage tab order is incorrect");
             Check(menu.VisibleTrackCount==counts[stage],"Stage"+stage+" filter count changed");
             int first=menu.HighlightedTrackId;var ids=new HashSet<int>();
             for(int i=0;i<counts[stage];++i){ids.Add(menu.HighlightedTrackId);menu.Navigate(1);}
@@ -183,8 +183,8 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     }
     private void CheckRaceCatalog()
     {
-        Check(host.RaceMusic.State.count==102&&host.RaceMusic.Entries.Length==102,"Expected102 native songs and101 race choices plus default");
-        for(int id=1;id<=101;++id){int stage=id<13?3:id<19?1:id<30?2:id<44?4:id<58?5:id<72?6:id<86?7:8;Check(Array.Exists(host.RaceMusic.Entries,e=>e.id==id&&e.stage==stage),"Stable native song ID absent or stage metadata incorrect: "+id);}
+        Check(host.RaceMusic.State.count==117&&host.RaceMusic.Entries.Length==117,"Expected117 native songs and116 race choices plus default");
+        for(int id=1;id<=116;++id){int stage=id<13?3:id<19?1:id<30?2:id<44?4:id<58?5:id<72?6:id<86?7:id<102?8:10;Check(Array.Exists(host.RaceMusic.Entries,e=>e.id==id&&e.stage==stage),"Stable native song ID absent or stage metadata incorrect: "+id);}
         Check(Array.Exists(host.RaceMusic.Entries,e=>e.id==-1&&e.stage==0),"Game default choice missing");
         Check(!Array.Exists(host.RaceMusic.Entries,e=>e.id==0||e.title.Contains("Gamble")||e.artist.Contains("Gamble")),"Gamble Rumble remains a race option");
         Check(!host.RaceMusic.Select(0,1),"Excluded race track can still be selected");
@@ -279,6 +279,9 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     }
     private IEnumerator Capture(string name)
     {
+        // Hidden standalone windows do not receive IMGUI repaint events.
+        // Keep navigation/playback checks usable without claiming visual QA.
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-no-capture")>=0){yield return Frames(2);yield break;}
         var music=host.RaceMusicMenu;var lobby=host.GetComponent<Idas3MultiplayerMenu>();
         bool drawMusic=music.IsOpen||music.HintVisible,drawLobby=lobby!=null&&lobby.IsOpen,expectPicker=music.IsOpen;
         int oldAa=QualitySettings.antiAliasing;RenderTexture target=null;Texture2D window=null,picture=null;
@@ -328,7 +331,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     private void WriteReport(string file,bool passed,string error,bool stopped)
     {
         var state=host.RaceMusic.State;File.WriteAllText(Path.Combine(root,file),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,checks=checks,error=error,captures=captures.ToArray(),selectedIndex=state.selectedIndex,activeIndex=state.activeIndex,
-            scope=ReturnCheck?"Private-save actual Unity/native player: first/second car showcase and running-race returns, held View Change routed through production bindings, picker eligibility/visibility/open and native selection checked; hidden test has no IMGUI screenshot validation.":"Private-save actual Unity/native player. Injected physical key reaches production bindings and held-View-Change router; captures are actual scene and OnGUI, with AA1 readback only."},true));
+            scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-no-capture")>=0?"Hidden private-save Unity/native player: production controller/key routing, tab order, song choices and countdown playback checked; screenshots and IMGUI appearance not validated.":ReturnCheck?"Private-save actual Unity/native player: first/second car showcase and running-race returns, held View Change routed through production bindings, picker eligibility/visibility/open and native selection checked; hidden test has no IMGUI screenshot validation.":"Private-save actual Unity/native player. Injected physical key reaches production bindings and held-View-Change router; captures are actual scene and OnGUI, with AA1 readback only."},true));
     }
     private void Finish(bool passed,string error)
     {

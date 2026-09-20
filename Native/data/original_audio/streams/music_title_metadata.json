@@ -953,6 +953,156 @@
         "https://initiald.sega.jp/inid8/sp_music.html"
       ],
       "fileMappingEvidence": "IniD8.xsb cue 11164 named avex_16_i_just_wanna_stay_with_you, sound record at 135394, contains PLAYWAVE index 11164 into IniD8.xwb. Exact encoded data starts at 1360992256; only a RIFF container was added. Display title and artist come from Sega's original Stage 8 SOUND LIST; native cue spelling remains in the stable ID."
+    },
+    {
+      "id": "specialstage.100",
+      "title": "100",
+      "artist": "Dave Rodgers",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename 100.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.BACK_ON_THE_ROCKS",
+      "title": "Back on the Rocks",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename BACK_ON_THE_ROCKS.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.BIG_IN_JAPAN",
+      "title": "Big in Japan",
+      "artist": "Robert Patton",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename BIG_IN_JAPAN.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.BURNING_DESIRE",
+      "title": "Burning Desire",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename BURNING_DESIRE.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.CRAZY_FOR_YOUR_LOVE",
+      "title": "Crazy for Your Love",
+      "artist": "Morris",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename CRAZY_FOR_YOUR_LOVE.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.CRAZY_NIGHT",
+      "title": "Crazy Night",
+      "artist": "Boys Band",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename CRAZY_NIGHT.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.DONT_STAND_SO_CLOSE",
+      "title": "Don't Stand So Close",
+      "artist": "Dr. Love",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename DONT_STAND_SO_CLOSE.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.DONT_YOU",
+      "title": "Don't You (Forget About My Love)",
+      "artist": "Sophie",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename DONT_YOU.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.GET_ME_POWER",
+      "title": "Get Me Power",
+      "artist": "Mega NRG Man",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename GET_ME_POWER.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.I_NEED_YOUR_LOVE",
+      "title": "I Need Your Love",
+      "artist": "Dave Simon",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename I_NEED_YOUR_LOVE.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.MIKADO",
+      "title": "Mikado",
+      "artist": "Dave McLoud",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename MIKADO.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.NO_ONE_SLEEP_IN_TOKYO",
+      "title": "No One Sleep in Tokyo",
+      "artist": "Edo Boys",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename NO_ONE_SLEEP_IN_TOKYO.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.STAY",
+      "title": "Stay",
+      "artist": "Victoria",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename STAY.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.WEST_END_GUY",
+      "title": "West End Guy",
+      "artist": "Digital Planet",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename WEST_END_GUY.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
+    },
+    {
+      "id": "specialstage.WHITE_LIGHT",
+      "title": "White Light",
+      "artist": "Mr. Groove",
+      "sources": [
+        "https://www.play-asia.com/super-eurobeat-presents-initial-d-special-stage-original-soundtr/13/7063r",
+        "https://vgost.fandom.com/wiki/Initial_D%3A_Special_Stage"
+      ],
+      "fileMappingEvidence": "Original RACEBGM.AFS filename WHITE_LIGHT.ADX; title/artist cross-checked with the Special Stage soundtrack listings."
     }
   ]
 }

@@ -15,7 +15,7 @@ struct RaceMusicTrack {
 // Append-only order: settings.txt stores this index. Original Stage3 indices
 // 0..12 must stay fixed. IDs are the stable keys for the future music menu.
 // Display titles may be corrected without changing IDs, source paths or indices.
-inline constexpr std::array<RaceMusicTrack,102> raceMusicCatalog{{
+inline constexpr std::array<RaceMusicTrack,117> raceMusicCatalog{{
     {"stage3.01_gamble_rumble", "Gamble Rumble", 3, "01_gamble_rumble.bin", "m.o.v.e"},
     {"stage3.02_speedy_speed_boy", "Speedy Speed Boy", 3, "02_speedy_speed_boy.bin", "Marko Polo"},
     {"stage3.03_remember_me", "Remember Me", 3, "03_remember_me.bin", "Leslie Parrish"},
@@ -118,6 +118,21 @@ inline constexpr std::array<RaceMusicTrack,102> raceMusicCatalog{{
     {"stage8.avex_14_adrenaline", "Adrenaline", 8, "stage8/avex_14_adrenaline.wav", "Ace"},
     {"stage8.avex_15_never_say_never", "Never Say Never", 8, "stage8/avex_15_never_say_never.wav", "Manuel"},
     {"stage8.avex_16_i_just_wanna_stay_with_you", "I Just Wanna Stay with You", 8, "stage8/avex_16_i_just_wanna_stay_with_you.wav", "Dream Fighters"},
+    {"specialstage.100", "100", 10, "specialstage/100.ADX", "Dave Rodgers"},
+    {"specialstage.BACK_ON_THE_ROCKS", "Back on the Rocks", 10, "specialstage/BACK_ON_THE_ROCKS.ADX", "Mega NRG Man"},
+    {"specialstage.BIG_IN_JAPAN", "Big in Japan", 10, "specialstage/BIG_IN_JAPAN.ADX", "Robert Patton"},
+    {"specialstage.BURNING_DESIRE", "Burning Desire", 10, "specialstage/BURNING_DESIRE.ADX", "Mega NRG Man"},
+    {"specialstage.CRAZY_FOR_YOUR_LOVE", "Crazy for Your Love", 10, "specialstage/CRAZY_FOR_YOUR_LOVE.ADX", "Morris"},
+    {"specialstage.CRAZY_NIGHT", "Crazy Night", 10, "specialstage/CRAZY_NIGHT.ADX", "Boys Band"},
+    {"specialstage.DONT_STAND_SO_CLOSE", "Don't Stand So Close", 10, "specialstage/DONT_STAND_SO_CLOSE.ADX", "Dr. Love"},
+    {"specialstage.DONT_YOU", "Don't You (Forget About My Love)", 10, "specialstage/DONT_YOU.ADX", "Sophie"},
+    {"specialstage.GET_ME_POWER", "Get Me Power", 10, "specialstage/GET_ME_POWER.ADX", "Mega NRG Man"},
+    {"specialstage.I_NEED_YOUR_LOVE", "I Need Your Love", 10, "specialstage/I_NEED_YOUR_LOVE.ADX", "Dave Simon"},
+    {"specialstage.MIKADO", "Mikado", 10, "specialstage/MIKADO.ADX", "Dave McLoud"},
+    {"specialstage.NO_ONE_SLEEP_IN_TOKYO", "No One Sleep in Tokyo", 10, "specialstage/NO_ONE_SLEEP_IN_TOKYO.ADX", "Edo Boys"},
+    {"specialstage.STAY", "Stay", 10, "specialstage/STAY.ADX", "Victoria"},
+    {"specialstage.WEST_END_GUY", "West End Guy", 10, "specialstage/WEST_END_GUY.ADX", "Digital Planet"},
+    {"specialstage.WHITE_LIGHT", "White Light", 10, "specialstage/WHITE_LIGHT.ADX", "Mr. Groove"},
 }};
 
 inline int clampMusicTrack(int index) {

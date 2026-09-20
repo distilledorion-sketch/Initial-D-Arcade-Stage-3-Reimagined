@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.11 - September 20, 2026
+
+- Added a Special Stage tab immediately after Stage 2 with 15 additional PS2 race songs; excluded the 16 songs already represented in the catalog.
+- Preserved existing song selections, original song files, and PS2 loop points.
+- Added ADX v3 playback; all new songs and repeated loops matched an independent decoder. Controller navigation, selection, and countdown playback passed in Unity.
+
+
 
 ## 0.3.95-community-replays.10 — September 20, 2026
 

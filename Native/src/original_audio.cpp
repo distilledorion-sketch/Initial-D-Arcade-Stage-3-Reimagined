@@ -9,14 +9,14 @@
 namespace idas3 {
 OriginalAudioClip decodeOriginalAdx(std::span<const std::uint8_t> data){
     // Format/codec references: vgmstream src/meta/adx.c and
-    // src/coding/adx_decoder.c. Only the identified unencrypted Stage4
-    // encoding3/version4 path is accepted; other ADX codecs fail explicitly.
+    // src/coding/adx_decoder.c. Supports unencrypted encoding3 v3 (PS2
+    // Special Stage) and v4; other codecs/encryption fail explicitly.
     if(data.size()<38||data[0]!=0x80||data[1]!=0)
         throw std::runtime_error("Invalid original ADX header");
     const auto be16=[&](std::size_t at){return (unsigned(data[at])<<8)|unsigned(data[at+1]);};
     const auto be32=[&](std::size_t at){return (std::uint32_t(be16(at))<<16)|be16(at+2);};
     const auto signed16=[&](std::size_t at){const auto value=be16(at);return value<32768?int(value):int(value)-65536;};
-    if(data[4]!=3||data[5]!=18||data[6]!=4||data[18]!=4||data[19]!=0)
+    if(data[4]!=3||data[5]!=18||data[6]!=4||(data[18]!=3&&data[18]!=4)||data[19]!=0)
         throw std::runtime_error("Unsupported ADX codec/version/encryption");
     OriginalAudioClip out;out.channels=data[7];out.sampleRate=be32(8);
     const std::size_t frames=be32(12),start=std::size_t(be16(2))+4;
@@ -24,7 +24,8 @@ OriginalAudioClip decodeOriginalAdx(std::span<const std::uint8_t> data){
     if((out.channels!=1&&out.channels!=2)||out.sampleRate<8000||out.sampleRate>48000||
         !frames||frames>64*1024*1024/out.channels||!cutoff||cutoff>=out.sampleRate/2)
         throw std::runtime_error("Invalid ADX sample metadata");
-    const std::size_t historyEnd=0x18+std::max(out.channels,2u)*4;
+    const bool version3=data[18]==3;
+    const std::size_t historyEnd=version3?0x14:0x18+std::max(out.channels,2u)*4;
     if(start<historyEnd+6||start>data.size()||
         !std::equal(data.begin()+start-6,data.begin()+start,"(c)CRI"))
         throw std::runtime_error("Invalid ADX data offset/signature");
@@ -35,7 +36,7 @@ OriginalAudioClip decodeOriginalAdx(std::span<const std::uint8_t> data){
     // V4 stores two initial predictor samples per channel before optional
     // loop data. CRI AINF can occupy that extension instead of loop records.
     std::size_t ainfSize=0;
-    if(start-6>=historyEnd+12&&be32(historyEnd+4)==0x41494e46u){
+    if(!version3&&start-6>=historyEnd+12&&be32(historyEnd+4)==0x41494e46u){
         ainfSize=be32(historyEnd+8);
         if(ainfSize<8||ainfSize>start-6-historyEnd)
             throw std::runtime_error("Invalid ADX AINF extent");
@@ -55,7 +56,7 @@ OriginalAudioClip decodeOriginalAdx(std::span<const std::uint8_t> data){
     const int coefficient1=int(predictor*8192.f),coefficient2=int(predictor*predictor*-4096.f);
     out.samples.resize(frames*out.channels);
     for(unsigned channel=0;channel<out.channels;++channel){
-        int previous=signed16(0x18+channel*4),older=signed16(0x1a+channel*4);
+        int previous=version3?0:signed16(0x18+channel*4),older=version3?0:signed16(0x1a+channel*4);
         for(std::size_t block=0;block<blocks;++block){
             const std::size_t at=start+(block*out.channels+channel)*18;
             const unsigned storedScale=be16(at);
@@ -67,9 +68,11 @@ OriginalAudioClip decodeOriginalAdx(std::span<const std::uint8_t> data){
             for(std::size_t sample=0;sample<count;++sample){
                 const unsigned packed=data[at+2+sample/2];
                 const int nibble=int((sample&1)?packed&15:packed>>4);
-                // V4 combines both predictor products before the arithmetic
-                // shift; splitting their rounding implements a different codec.
-                const auto prediction=(std::int64_t(coefficient1)*previous+std::int64_t(coefficient2)*older)>>12;
+                // Early v3 rounds the two predictor products separately.
+                // Preserve v4's combined rounding for the existing songs.
+                const auto prediction=version3?
+                    ((std::int64_t(coefficient1)*previous)>>12)+((std::int64_t(coefficient2)*older)>>12):
+                    (std::int64_t(coefficient1)*previous+std::int64_t(coefficient2)*older)>>12;
                 const auto decoded=std::clamp<std::int64_t>((nibble<8?nibble:nibble-16)*scale+prediction,-32768,32767);
                 older=previous;previous=int(decoded);
                 out.samples[(block*32+sample)*out.channels+channel]=std::int16_t(decoded);

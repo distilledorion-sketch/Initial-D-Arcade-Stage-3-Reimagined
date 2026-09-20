@@ -89,7 +89,7 @@ constexpr std::array<std::string_view,16> stage8Paths{
     "stage8/avex_15_never_say_never.wav","stage8/avex_16_i_just_wanna_stay_with_you.wav"};
 
 void catalog(){
-    check(raceMusicCatalog.size()==102,"Race catalog must retain 86 tracks and append 16 Stage 8 tracks");
+    check(raceMusicCatalog.size()==117,"Race catalog must retain 102 tracks and append 15 Special Stage tracks");
     std::set<std::string> ids,paths;
     for(std::size_t i=0;i<raceMusicCatalog.size();++i){
         const auto& track=raceMusicCatalog[i];
@@ -123,10 +123,15 @@ void catalog(){
             check(track.stage==7,"Stage 7 track source is incorrect");
             check(track.relativePath==stage7Paths[i-72],"Stage 7 track order/path is incorrect");
             check(track.artist&&*track.artist,"Stage 7 artist is missing");
-        }else{
+        }else if(i<102){
             check(track.stage==8,"Stage 8 track source is incorrect");
             check(track.relativePath==stage8Paths[i-86],"Stage 8 track order/path is incorrect");
             check(track.artist&&*track.artist,"Stage 8 artist is missing");
+        }else{
+            check(track.stage==10,"Special Stage category is incorrect");
+            check(std::string_view(track.id).starts_with("specialstage."),"Special Stage ID is incorrect");
+            check(path.extension()==".ADX","Special Stage source extension changed");
+            for(std::size_t old=0;old<102;++old)check(std::string_view(track.title)!=raceMusicCatalog[old].title,"Duplicate Special Stage title");
         }
     }
     check(findMusicTrack("no-such-stage-track")==-1,"Unknown stable ID accepted");
@@ -137,7 +142,7 @@ void catalog(){
     check(clampMusicTrack(58)==58&&clampMusicTrack(71)==71,"New Stage 6 saved index changed");
     check(clampMusicTrack(72)==72&&clampMusicTrack(85)==85,"New Stage 7 saved index changed");
     check(clampMusicTrack(86)==86&&clampMusicTrack(101)==101,"New Stage 8 saved index changed");
-    check(clampMusicTrack(102)==101&&clampMusicTrack(std::numeric_limits<int>::max())==101,"Upper saved-index clamp is stale");
+    check(clampMusicTrack(102)==102&&clampMusicTrack(116)==116&&clampMusicTrack(117)==116&&clampMusicTrack(std::numeric_limits<int>::max())==116,"Upper saved-index clamp is stale");
 }
 
 std::array<short,2> referenceSample(const OriginalAudioClip& clip,double cursor){
@@ -212,7 +217,7 @@ void playback(const std::filesystem::path& root){
             check(clip.looping&&clip.loopEnd>clip.loopStart&&clip.loopEnd<=clip.frames(),label+": original source loop bounds missing");
             compareWindow(audio,clip,clip.loopEnd-64,256,label+" source loop boundary");
         }
-        if(index==19||index==58||index==72||index==86){
+        if(index==19||index==58||index==72||index==86||index==102){
             audio.musicFrame=0;
             for(unsigned i=0;i<44100;++i)audio.renderStereo(800,0,0,0,false);
             check(clip.frames()>clip.sampleRate,"One-second rate fixture is shorter than a second");
@@ -222,7 +227,7 @@ void playback(const std::filesystem::path& root){
         const auto serial=audio.outputResetSerial();const auto cursor=audio.attractStatistics().frame;
         check(audio.selectMusicTrack(int(index)),"Same selection should remain valid");
         check(audio.outputResetSerial()==serial&&audio.attractStatistics().frame==cursor,"Same selection restarted playback");
-        for(int invalid:{-1,102,std::numeric_limits<int>::max()}){
+        for(int invalid:{-1,117,std::numeric_limits<int>::max()}){
             check(!audio.selectMusicTrack(invalid),"Invalid race track was accepted");
             check(audio.musicTrack==int(index)&&audio.outputResetSerial()==serial&&audio.attractStatistics().frame==cursor,"Invalid selection mutated playback");
         }
@@ -233,8 +238,9 @@ void playback(const std::filesystem::path& root){
     audio.selectMusicTrack(57);audio.nextMusic();check(audio.musicTrack==58,"Stage 6 tracks were not appended after Stage 5");
     audio.selectMusicTrack(71);audio.nextMusic();check(audio.musicTrack==72,"Stage 7 tracks were not appended after Stage 6");
     audio.selectMusicTrack(85);audio.nextMusic();check(audio.musicTrack==86,"Stage 8 tracks were not appended after Stage 7");
-    audio.selectMusicTrack(101);audio.nextMusic();check(audio.musicTrack==0,"Final added track does not wrap to Stage 3 index 0");
-    audio.selectMusicTrack(101);audio.renderStereo(800,0,0,0,false);audio.scene(false,false,true);
+    audio.selectMusicTrack(101);audio.nextMusic();check(audio.musicTrack==102,"Special Stage append boundary changed");
+    audio.selectMusicTrack(116);audio.nextMusic();check(audio.musicTrack==0,"Final added track does not wrap to Stage 3 index 0");
+    audio.selectMusicTrack(116);audio.renderStereo(800,0,0,0,false);audio.scene(false,false,true);
     const auto pausedCursor=audio.attractStatistics().frame;
     for(unsigned i=0;i<735;++i)check(audio.renderStereo(800,0,0,0,false)==std::array<short,2>{},"Paused added track is audible");
     check(audio.attractStatistics().frame==pausedCursor,"Paused added track cursor advanced");
@@ -242,8 +248,8 @@ void playback(const std::filesystem::path& root){
     check(audio.attractStatistics().frame>pausedCursor,"Added track did not resume");
     // This covers configure's persisted-index boundary; Main settings-file
     // parsing itself remains an application-harness responsibility.
-    EngineAudio restored;restored.musicTrack=101;restored.configure(root);
-    check(restored.musicTrack==101&&restored.musicName()==raceMusicCatalog[101].title,"Configure discarded valid persisted added-track index");
+    EngineAudio restored;restored.musicTrack=116;restored.configure(root);
+    check(restored.musicTrack==116&&restored.musicName()==raceMusicCatalog[116].title,"Configure discarded valid persisted added-track index");
 }
 
 void menuContinuity(const std::filesystem::path& root){
@@ -255,7 +261,7 @@ void menuContinuity(const std::filesystem::path& root){
     for(unsigned tick=0;tick<8;++tick){feed(tickOriginalSelectionMusic(manager));for(unsigned i=0;i<735;++i)audio.renderStereo(800,0,0,0,false);}
     check(audio.selectionPlaying()&&audio.selectionSamplePosition()>0,"Menu fixture did not start TYPE");
     const auto cursor=audio.selectionSamplePosition(),started=audio.selectionStatistics().songsStarted,serial=audio.outputResetSerial();
-    check(audio.selectMusicTrack(101),"Cannot choose added race music from menu");
+    check(audio.selectMusicTrack(116),"Cannot choose added race music from menu");
     check(audio.selectionPlaying()&&audio.selectionSamplePosition()==cursor&&audio.selectionStatistics().songsStarted==started,"Race selection restarted/stopped TYPE");
     check(audio.outputResetSerial()==serial,"Menu race selection unnecessarily reset output queue");
     audio.nextMusic();check(audio.musicTrack==0,"Menu cycle failed to wrap new catalog");
@@ -266,6 +272,6 @@ void menuContinuity(const std::filesystem::path& root){
 int main(int argc,char** argv){try{
     if(argc!=2)throw std::runtime_error("Usage: race_music_catalog_tests <native-root>");
     catalog();playback(argv[1]);menuContinuity(argv[1]);customPlayback(argv[1]);
-    std::cout<<"PASS race music catalog: "<<checks<<" checks, 102 decoded tracks, "<<pcmFrames<<" bounded mixer frames, "<<audibleFrames<<" audible sampled frames; no audio device or save writes\n";
+    std::cout<<"PASS race music catalog: "<<checks<<" checks, 117 decoded tracks, "<<pcmFrames<<" bounded mixer frames, "<<audibleFrames<<" audible sampled frames; no audio device or save writes\n";
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

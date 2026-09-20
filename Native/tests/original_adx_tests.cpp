@@ -41,7 +41,7 @@ int main(int argc,char** argv)try{
     auto looped=decodeOriginalAdx(valid);require(looped.looping&&looped.loopStart==7&&looped.loopEnd==42&&looped.frames()==49,"ADX preserves exact nonblock-aligned loop and full PCM");
     {std::ofstream f(proof/"nonaligned-loop.adx",std::ios::binary);f.write(reinterpret_cast<const char*>(valid.data()),valid.size());}
     for(std::size_t size=0;size<valid.size();++size){auto cut=valid;cut.resize(size);reject(cut);}
-    for(auto [at,value]:std::array<std::pair<unsigned,unsigned>,7>{{{4,2},{5,17},{6,8},{7,0},{7,3},{18,3},{19,8}}}){auto bad=valid;bad[at]=std::uint8_t(value);reject(bad);}
+    for(auto [at,value]:std::array<std::pair<unsigned,unsigned>,7>{{{4,2},{5,17},{6,8},{7,0},{7,3},{18,5},{19,8}}}){auto bad=valid;bad[at]=std::uint8_t(value);reject(bad);}
     for(unsigned rate:{0u,7999u,48001u,0xffffffffu}){auto bad=valid;be32(bad,8,rate);reject(bad);}
     for(unsigned count:{0u,0xffffffffu}){auto bad=valid;be32(bad,12,count);reject(bad);}
     for(unsigned cutoff:{0u,22050u,65535u}){auto bad=valid;be16(bad,16,cutoff);reject(bad);}
@@ -50,5 +50,15 @@ int main(int argc,char** argv)try{
     {auto bad=valid;bad[58]='?';reject(bad);}
     {auto bad=valid;be16(bad,64,0x8001);reject(bad);}
     {auto bad=valid;be32(bad,36,0x41494e46);be32(bad,40,0xffffffff);reject(bad);}
+    // V3 has no predictor history and loop metadata starts at 0x14.
+    auto v3=fixture();v3[18]=3;std::fill(v3.begin()+20,v3.begin()+58,0);
+    be32(v3,24,1);be32(v3,28,7);be32(v3,36,42);
+    const auto oldClip=decodeOriginalAdx(v3);
+    require(oldClip.looping&&oldClip.loopStart==7&&oldClip.loopEnd==42,"V3 loop offsets misread as history");
+    require(oldClip.samples[0]==0&&oldClip.samples[1]==6,"V3 must start from zero predictor history");
+    require(oldClip.samples==decodeOriginalSpsd(v3).samples,"V3 format dispatch changed PCM");
+    {std::ofstream f(proof/"v3-loop.adx",std::ios::binary);f.write(reinterpret_cast<const char*>(v3.data()),v3.size());}
+    for(auto [start,end]:std::array<std::pair<unsigned,unsigned>,4>{{{7,7},{8,7},{0,50},{0xffffffffu,42}}}){auto bad=v3;be32(bad,28,start);be32(bad,36,end);reject(bad);}
+    for(std::size_t size=0;size<v3.size();++size){auto cut=v3;cut.resize(size);reject(cut);}
     std::cout<<"PASS "<<checks<<" ADX metadata/dispatch/history/loop/truncation/unsupported-codec/bounds checks; source PCM comparisons are separate.\n";return 0;
 }catch(const std::exception& error){std::cerr<<"FAIL "<<error.what()<<'\n';return 1;}

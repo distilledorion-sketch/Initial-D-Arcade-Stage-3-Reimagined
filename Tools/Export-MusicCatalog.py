@@ -22,7 +22,7 @@ DECLARATION = re.compile(
 STRING = r'"(?:[^"\\]|\\.)*"'
 ENTRY = re.compile(
     r"\s*\{\s*(" + STRING + r")\s*,\s*(" + STRING + r")\s*,\s*"
-    r"([12345678])\s*,\s*(" + STRING + r")\s*,\s*(" + STRING + r")\s*\}\s*,?")
+    r"(10|[12345678])\s*,\s*(" + STRING + r")\s*,\s*(" + STRING + r")\s*\}\s*,?")
 ORIGINAL_IDS = (
     "stage3.01_gamble_rumble", "stage3.02_speedy_speed_boy", "stage3.03_remember_me",
     "stage3.04_save_me", "stage3.05_over_the_rainbow", "stage3.06_stop_your_self_control",
@@ -106,14 +106,15 @@ def parse_entries(header: str) -> list[dict]:
     require(len({item["relativePath"].casefold() for item in entries}) == len(entries),
             "Duplicate Windows asset path")
     for item in entries:
-        require(item["id"].startswith(f"stage{item['sourceStage']}."), "ID/source stage mismatch")
+        prefix = "specialstage." if item["sourceStage"] == 10 else f"stage{item['sourceStage']}."
+        require(item["id"].startswith(prefix), "ID/source stage mismatch")
         require(bool(item["title"]) and bool(item["artist"]), "Empty track title or artist")
         relative = item["relativePath"]
         path = PurePosixPath(relative)
         require(relative and "\\" not in relative and ":" not in relative
                 and not path.is_absolute() and ".." not in path.parts
                 and path.as_posix() == relative
-                and path.suffix.lower() == (".wav" if item["sourceStage"] in (6, 7, 8) else ".adx" if item["sourceStage"] in (4, 5) else ".bin"),
+                and path.suffix.lower() == (".wav" if item["sourceStage"] in (6, 7, 8) else ".adx" if item["sourceStage"] in (4, 5, 10) else ".bin"),
                 f"Invalid portable asset path: {relative}")
     return entries
 
@@ -142,7 +143,7 @@ def inspect_spsd(data: bytes, label: str) -> dict:
 
 
 def inspect_adx(data: bytes, label: str) -> dict:
-    """Validate the unencrypted standard ADX v4 files used by Stages 4 and 5.
+    """Validate unencrypted standard ADX v3/v4 files, including Special Stage.
 
     Header/loop layout: vgmstream src/meta/adx.c. Frames here mean decoded
     sample frames, not the 18-byte ADPCM blocks (32 samples per channel).
@@ -153,10 +154,10 @@ def inspect_adx(data: bytes, label: str) -> dict:
     encoding, block, bits, channels = struct.unpack_from("4B", data, 4)
     rate, frames, cutoff, version = struct.unpack_from(">IIHH", data, 8)
     require(encoding == 3 and block == 18 and bits == 4 and channels in (1, 2)
-            and version == 0x0400, f"Unsupported or encrypted ADX: {label}")
+            and version in (0x0300, 0x0400), f"Unsupported or encrypted ADX: {label}")
     require(8000 <= rate <= 48000 and 0 < frames <= rate * 3600
             and 0 < cutoff < rate // 2, f"Invalid ADX audio bounds: {label}")
-    history_end = 0x18 + max(8, channels * 4)
+    history_end = 0x14 if version == 0x0300 else 0x18 + max(8, channels * 4)
     require(history_end + 6 <= start <= len(data)
             and data[start-6:start] == b"(c)CRI", f"Invalid ADX data offset: {label}")
     encoded_bytes = ((frames + 31) // 32) * block * channels
@@ -180,7 +181,7 @@ def inspect_adx(data: bytes, label: str) -> dict:
                     f"Invalid ADX loop bounds: {label}")
     return dict(sampleRate=rate, channels=channels, frames=frames,
                 durationSeconds=frames/rate, sha256=hashlib.sha256(data).hexdigest(),
-                bytes=len(data), format="ADX", codec="CRI ADX ADPCM", version=4,
+                bytes=len(data), format="ADX", codec="CRI ADX ADPCM", version=version >> 8,
                 bitsPerSample=bits, blockBytes=block, highpassHz=cutoff,
                 encodedDataOffset=start, encodedDataBytes=encoded_bytes,
                 looping=looping, loopStartFrames=loop_start, loopEndFrames=loop_end,
@@ -270,7 +271,7 @@ def export(project: Path) -> dict:
     for item in entries:
         path = (streams / item["relativePath"]).resolve()
         require(path.is_relative_to(streams), f"Asset escapes streams root: {item['id']}")
-        metadata = (inspect_msadpcm_wav if item["sourceStage"] in (6, 7, 8) else inspect_adx if item["sourceStage"] in (4, 5) else inspect_spsd)(
+        metadata = (inspect_msadpcm_wav if item["sourceStage"] in (6, 7, 8) else inspect_adx if item["sourceStage"] in (4, 5, 10) else inspect_spsd)(
             path.read_bytes(), item["id"])
         title = titles[item["id"]]
         require(title["title"] == item["title"] and title["artist"] == item["artist"]
@@ -283,7 +284,7 @@ def export(project: Path) -> dict:
             source = imported[item["id"]]
             for field in ("sourceStage", "sampleRate", "channels", "frames", "sha256", "bytes"):
                 require(item[field] == source[field], f"Extra import {field} mismatch: {item['id']}")
-            if item["sourceStage"] in (4, 5, 6, 7, 8):
+            if item["sourceStage"] in (4, 5, 6, 7, 8, 10):
                 for field in metadata:
                     require(item[field] == source[field],
                             f"Encoded audio import {field} mismatch: {item['id']}")
@@ -319,7 +320,7 @@ def main() -> None:
         finally:
             if os.path.exists(name):
                 os.unlink(name)
-    counts = {stage: sum(track["sourceStage"] == stage for track in result["tracks"]) for stage in (1, 2, 3, 4, 5, 6, 7, 8)}
+    counts = {stage: sum(track["sourceStage"] == stage for track in result["tracks"]) for stage in (1, 2, 3, 4, 5, 6, 7, 8, 10)}
     print(json.dumps(dict(status="verified" if args.check else "exported", path=str(output),
                           tracks=result["trackCount"], stages=counts,
                           nativeAudioBytesChanged=0), indent=2))

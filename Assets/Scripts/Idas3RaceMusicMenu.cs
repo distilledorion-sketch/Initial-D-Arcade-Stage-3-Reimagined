@@ -14,7 +14,9 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     }
     private const float Width=800,Height=592;
     private const int VisibleRows=8;
-    private static readonly string[] StageLabels={"ALL","STAGE 1","STAGE 2","STAGE 3","STAGE 4","STAGE 5","STAGE 6","STAGE 7","STAGE 8","CUSTOM"};
+    // Display order is independent of persisted/native category IDs.
+    private static readonly int[] StageIds={0,1,2,10,3,4,5,6,7,8,9};
+    private static readonly string[] StageLabels={"ALL","STAGE 1","STAGE 2","SPECIAL STAGE","STAGE 3","STAGE 4","STAGE 5","STAGE 6","STAGE 7","STAGE 8","CUSTOM"};
     private static readonly Color Ink=new Color32(5,10,18,255),Panel=new Color32(13,24,35,255);
     private static readonly Color Edge=new Color32(94,126,142,255),White=new Color32(245,245,238,255);
     private static readonly Color Yellow=new Color32(255,221,44,255),Red=new Color32(188,13,13,255);
@@ -85,7 +87,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     public void NavigateHorizontal(int stageDelta)
     {
         if(!IsOpen||stageDelta==0)return;
-        ChangeStage(Wrap(stageFilter+Math.Sign(stageDelta),StageLabels.Length));
+        ChangeStage(StageIds[Wrap(Array.IndexOf(StageIds,stageFilter)+Math.Sign(stageDelta),StageIds.Length)]);
     }
     internal void NavigateDevice(int horizontal,int vertical,bool wheel){
         WheelNavigation=wheel;
@@ -203,15 +205,15 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         Fill(new Rect(0,66,Width-136,2),White);
         Text(new Rect(25,9,590,48),"Select BGM",titleStyle);
         Text(new Rect(596,24,175,24),"RACE MUSIC",button,Yellow);
-        float tabWidth=(Width-44-4*(StageLabels.Length-1))/StageLabels.Length;
+        float tabWidth=(Width-44-4*(StageLabels.Length-1))/(StageLabels.Length+.8f),tabX=22;
         DiagnosticStageLabelsFit=true;
         for(int i=0;i<StageLabels.Length;++i){
-            var rect=new Rect(22+i*(tabWidth+4),91,tabWidth,32);
+            var rect=new Rect(tabX,91,tabWidth*(StageIds[i]==10?1.8f:1),32);tabX=rect.xMax+4;
             var content=new GUIContent(StageLabels[i]);stageButton.fontSize=14;
             while(stageButton.fontSize>10&&stageButton.CalcSize(content).x>rect.width-10)--stageButton.fontSize;
             var measured=stageButton.CalcSize(content);
             DiagnosticStageLabelsFit&=measured.x<=rect.width-10&&measured.y<=rect.height&&rect.xMin>=22&&rect.xMax<=Width-21.9f;
-            if(Button(rect,StageLabels[i],stageFilter==i,stageButton))ChangeStage(i);
+            if(Button(rect,StageLabels[i],stageFilter==StageIds[i],stageButton))ChangeStage(StageIds[i]);
         }
         if(Event.current.type==EventType.ScrollWheel&&new Rect(20,134,760,384).Contains(Event.current.mousePosition)){
             Navigate(Event.current.delta.y>=0?1:-1);Event.current.Use();
@@ -235,7 +237,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         var rect=new Rect(22,134+row*48,754,46);
         Fill(rect,focus?Blue:Panel);if(focus){Frame(rect,Yellow);Fill(new Rect(rect.x,rect.y,4,rect.height),Yellow);}
         else Fill(new Rect(rect.x,rect.yMax-1,rect.width,1),new Color32(36,54,64,255));
-        Text(new Rect(30,rect.y+13,42,23),entry.stage==0?"AUTO":entry.stage==9?"USER":"S"+entry.stage,numberStyle,focus?Yellow:Muted);
+        Text(new Rect(30,rect.y+13,42,23),entry.stage==0?"AUTO":entry.stage==9?"USER":entry.stage==10?"SS":"S"+entry.stage,numberStyle,focus?Yellow:Muted);
         Text(new Rect(83,rect.y+4,682,23),entry.title,label,focus?Yellow:White);
         Text(new Rect(84,rect.y+27,571,18),entry.artist,artistStyle,Muted);
         if(current)Text(new Rect(661,rect.y+27,104,18),"SELECTED",numberStyle,Yellow);
