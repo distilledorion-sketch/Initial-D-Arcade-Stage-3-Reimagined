@@ -18,6 +18,7 @@
 extern "C" {
 #endif
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedReadFinish(char* output,int capacity);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneReadPresence(char* output,int capacity);
 IDAS3_UNITY_EXPORT void IDAS3_UNITY_CALL Idas3SharedAckFinish();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedReadReplay(uint8_t* output,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayRecordingOptions(uint32_t flags);

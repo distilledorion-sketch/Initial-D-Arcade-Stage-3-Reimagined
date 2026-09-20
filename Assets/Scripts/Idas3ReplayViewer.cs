@@ -14,6 +14,8 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     public static Idas3ReplayViewer Instance { get; private set; }
     internal Idas3Native.Status Status { get; private set; }
     public Camera View { get; private set; }
+    internal Idas3ReplayData.Details PresenceMetadata => browsing ? null : replay?.Metadata;
+    internal bool PresenceEnabled => audioOptions.discordPresence;
     Idas3SceneRenderer scene;
     Idas3UnityUi ui;
     Idas3ReplayData replay;

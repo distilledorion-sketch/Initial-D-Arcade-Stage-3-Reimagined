@@ -76,6 +76,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private int windowedWidth = 1280, windowedHeight = 720;
     internal string Failure => failure;
     internal bool Ready => ready;
+    internal bool PresenceAllowed => ready&&!stopping&&!diagnosticMode;
+    internal bool ReplayViewerOpen => replayLibrary!=null&&replayLibrary.ViewerOpen;
     internal Idas3Native.Status Status { get; private set; }
     internal float SubmissionMilliseconds => simulationAndSubmissionMs;
     internal float NativeStepMilliseconds { get; private set; }

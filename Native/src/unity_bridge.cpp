@@ -234,6 +234,21 @@ void IDAS3_UNITY_EVENT renderEvent(int eventId)noexcept{
 }
 extern "C" {
 uint32_t IDAS3_UNITY_CALL Idas3UnityVersion(){return 1;}
+int IDAS3_UNITY_CALL Idas3SceneReadPresence(char* output,int capacity){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app)return 0;
+    try{
+        const auto& a=*r.app;const bool menu=a.menu;
+        std::ostringstream json;
+        json<<"{\"condition\":"<<(menu?a.frontend.course*2+int(a.frontend.reverse):a.courseIndex*2+int(a.reverse))
+            <<",\"night\":"<<int(menu?a.frontend.night:a.night)<<",\"weather\":"<<int(menu?a.frontend.wet:a.wet)
+            <<",\"car\":"<<a.frontend.car<<",\"mode\":"<<(a.multiplayer.active?1:a.frontend.gameMode==original::OriginalGameMode::TimeAttack?0:a.bunta?3:2)
+            <<",\"ticks6000\":"<<a.race.elapsed6000<<",\"opponentName\":"
+            <<std::quoted(a.multiplayer.active?a.multiplayer.remoteName:a.battle?OriginalVsBanner::rivalDisplayName(a.battleProfile.u(24)):std::string())<<"}";
+        const auto text=json.str();if(!output||capacity<=int(text.size()))return -1;
+        std::memcpy(output,text.c_str(),text.size()+1);return int(text.size());
+    }catch(...){return 0;}
+}
 int IDAS3_UNITY_CALL Idas3SharedReadFinish(char* output,int capacity){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app||r.app->sharedFinishJson.empty())return 0;

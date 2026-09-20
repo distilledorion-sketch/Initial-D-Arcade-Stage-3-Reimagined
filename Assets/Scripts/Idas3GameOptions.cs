@@ -21,6 +21,7 @@ public sealed class Idas3GameOptions
         public float wheelFeedbackStrength=.35f;
         public string wheelFeedbackDevice="";
         public bool showFps,muteWhenUnfocused;
+        public bool discordPresence=true;
         public bool communityTimes=true;
         public bool replayTimeAttack=true,replayOnline,replayLegend;
         public bool TimeAttackReplayRequired=>communityTimes||replayTimeAttack;
@@ -222,6 +223,6 @@ public sealed class Idas3GameOptions
         a.wheelForceFeedback==b.wheelForceFeedback&&a.wheelFeedbackStrength==b.wheelFeedbackStrength&&
         a.wheelFeedbackInvert==b.wheelFeedbackInvert&&a.wheelFeedbackDevice==b.wheelFeedbackDevice&&
         a.showFps==b.showFps&&a.muteWhenUnfocused==b.muteWhenUnfocused&&a.communityTimes==b.communityTimes&&
-        a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
+        a.discordPresence==b.discordPresence&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
         a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
 }

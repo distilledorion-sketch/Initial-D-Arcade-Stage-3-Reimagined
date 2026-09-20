@@ -1,4 +1,4 @@
-0.3.95-community-replays.6
+0.3.95-community-replays.7
 
 GITHUB GAME UPDATES
 At startup the game checks the latest public GitHub Windows release. If an update is available, choose YES to download, verify, apply it and restart, or NO to continue playing. Up-to-date builds proceed directly to the game. Offline checks time out and allow play. Saves, settings, custom music and replays are preserved. You can also check from the title screen through Options > Gameplay > Game Updates.
@@ -427,3 +427,7 @@ REPLAY VIEWER
 Run Replay Viewer.cmd in this folder. In leaderboard admin, choose Download for 3D viewer, then Open replay in the viewer and select the downloaded .idreplay file. You can also drag a replay onto Replay Viewer.cmd.
 The normal D3 HUD uses recorded RPM, speed, gear and clocks for detailed recordings. Body and wheel movement interpolate between the captured 60 Hz states. H/Select hides playback controls. Older recordings are labeled LEGACY: missing RPM, tuning and body/wheel movement cannot be recovered. Playback renders the scene again; it is not an exact recording of every pixel, sound, particle or original camera frame.
 Space/A/Start pauses playback, arrows/D-pad seek, C/Y switches camera, Q/E or right stick rotates the orbit camera. The viewer does not change saves or upload times. Cosmetic tuning and engine audio are not included in recordings.
+
+DISCORD RICH PRESENCE
+With Discord running, your profile shows Initial D Arcade Stage 3 and your current game activity. Turn it off through Options > Gameplay > Discord Rich Presence, then APPLY. No account linking is required.
+

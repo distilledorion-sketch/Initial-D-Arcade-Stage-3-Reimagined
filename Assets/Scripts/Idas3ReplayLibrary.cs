@@ -11,6 +11,8 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
 {
     public static string DefaultFolder => Path.Combine(Application.persistentDataPath, "userdata-unity-scene", "replays");
     public string Folder { get; private set; }
+    System.Diagnostics.Process viewerProcess;
+    internal bool ViewerOpen { get { try { return viewerProcess!=null&&!viewerProcess.HasExited; } catch { return false; } } }
     Idas3SceneGame host; Idas3PauseMenu menu; double retryAt;
     Task<string> saveJob;byte[] savingJson;double nextPoll;
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] public static extern int Idas3ReplayRecordingOptions(uint flags);
@@ -112,10 +114,12 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
     {
         try
         {
+            if(ViewerOpen)return;
+            viewerProcess?.Dispose();viewerProcess=null;
             Directory.CreateDirectory(Folder);
             string executable=Path.GetFullPath(Path.Combine(Application.dataPath,"../InitialDUnity.exe"));
             if(Application.isEditor)throw new InvalidOperationException("Open the replay viewer from a built game.");
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable,"-idas3-replay-viewer -idas3-replay-library \""+Folder+"\""){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(executable)});
+            viewerProcess=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable,"-idas3-replay-viewer -idas3-replay-library \""+Folder+"\""){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(executable)});
         }
         catch(Exception e){menu.ReplayStatus="Could not open replay viewer: "+e.Message;}
     }

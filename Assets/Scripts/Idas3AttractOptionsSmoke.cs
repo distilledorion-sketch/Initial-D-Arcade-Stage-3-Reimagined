@@ -293,6 +293,29 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(OptionsExitCheck){yield return OptionsExitRegression();yield break;}
         if(ReportsCheck){yield return ReportsRegression();yield break;}
         if(UpdatesCheck){yield return UpdatesRegression();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0){
+            Idas3DiscordChecks.Run(Check);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-live-check")>=0){
+                using(var rpc=new DiscordRPC.DiscordRpcClient(Idas3DiscordPresence.ApplicationId,autoEvents:false)){
+                    bool connected=false,accepted=false;rpc.OnReady+=(s,m)=>connected=true;rpc.OnPresenceUpdate+=(s,m)=>accepted=true;
+                    Check(rpc.Initialize(),"Discord transport initialized in Unity player");
+                    double end=Time.realtimeSinceStartupAsDouble+12;
+                    while(!connected&&Time.realtimeSinceStartupAsDouble<end){rpc.Invoke();yield return null;}
+                    Check(connected,"Discord accepted application ID in Unity player");
+                    rpc.SetPresence(Idas3DiscordPresence.Build(new Idas3DiscordPresence.Description{details="Testing Rich Presence",state=Idas3DiscordPresence.GameTitle},DateTime.UtcNow));
+                    end=Time.realtimeSinceStartupAsDouble+8;
+                    while(!accepted&&Time.realtimeSinceStartupAsDouble<end){rpc.Invoke();yield return null;}
+                    Check(accepted,"Discord acknowledged logo, activity and leaderboard button");
+                }
+            }
+            menu.OpenAttractOptions();menu.SelectTab(2);
+            for(int i=0;i<8;i++)menu.Navigate(1);
+            Check(menu.DiagnosticSelection==9,"Discord toggle is controller accessible");menu.Activate();Check(!options.Draft.discordPresence,"Confirm toggles presence");
+            menu.Navigate(1);menu.Navigate(1);menu.Activate();Check(!options.Current.discordPresence,"Apply persists presence off");
+            menu.SelectTab(2);for(int i=0;i<8;i++)menu.Navigate(1);
+            foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720)}){yield return Resize(size.x,size.y,false);yield return Capture("discord-gameplay-"+size.x,size.x,size.y);}
+            menu.Back();menu.Back();CheckTitle("Discord settings preserve original title");Finish(true,null);yield break;
+        }
         CheckTitle("Diagnostic did not begin in original attract mode");
         Check(!options.Current.wheelForceFeedback,"Diagnostic must leave force feedback disabled");
         yield return Until(()=>menu.AttractPromptVisible,2,"Attract options prompt missing");yield return Capture("attract-prompt");
@@ -396,6 +419,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,finalFrontendStage=finalStage,options=options.Current,
             captures=captures.ToArray(),captureDimensions=captureDimensions.ToArray(),observations=observations.ToArray(),scope=ReportsCheck?"Private-save native/Unity regression: repeated synthetic controller Start, race pause/resume with continuously held keyboard/trigger/rebound A acceleration and steering, original live TA HUD capture, controlled-position finish gates and natural timeout; physical controllers not tested.":"Actual original attract frontend and managed options with private saves. Prompt captures request 640x480, 1024x768, 1280x720 and 1920x800 and report actual dimensions before restoring 1200x720. Synthetic physical keyboard/controller input traverses normal bindings and hold routing, including remapped confirm-button conflict and focus interruption. Apply, Back and persistence use normal options owners. Captures use actual OnGUI Repaint; no guest runtime, race fixture, native pause, or hardware force output."};
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Gameplay captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Yes/No prompt, explicit Yes and No semantics, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));Debug.Log((report.passed?"PASS":"FAIL")+" attract options "+error);
 #if UNITY_EDITOR

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.7 — September 20, 2026
+
+- Add Discord Rich Presence with the Initial D Arcade Stage 3 title and supplied logo.
+- Show menus, race mode, track direction, conditions, opponents, results, and replay activity.
+- Add a View Leaderboard button and an on/off setting under Gameplay.
+- Keep Discord communication off the race frame loop; no account linking required.
+
 ## 0.3.95-community-replays.6 — September 20, 2026
 
 - Check GitHub before entering the game; show a Yes/No prompt for newer Windows releases.

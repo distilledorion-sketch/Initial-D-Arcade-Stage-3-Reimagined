@@ -165,7 +165,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>tab==6?4:tab==5?2:tab==0||tab==4?4:tab==1||tab==2?8:bindings!=null?9+BindingFirstSelection-1:0;
+    private int Rows=>tab==6?4:tab==5?2:tab==0||tab==4?4:tab==2?9:tab==1?8:bindings!=null?9+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -267,6 +267,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==7)v.importedSceneryDetail=Wrap(v.importedSceneryDetail+direction,3);
         }else if(tab==2){
             if(row==0)v.defaultCamera=1-v.defaultCamera;
+            if(row==8)v.discordPresence=!v.discordPresence;
             if(row==1)v.showFps=!v.showFps;
             if(row==2)v.muteWhenUnfocused=!v.muteWhenUnfocused;
             if(row==3)v.controllerResponse=Wrap(v.controllerResponse+direction,ControllerResponses.Length);
@@ -449,9 +450,10 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(Button(new Rect(595,426,387,29),"999999 POINTS + UPGRADES",selection==7,FullTuneAvailable)){selection=7;queued=Command.FullTune;}
             Text(new Rect(290,467,294,27),"GAME UPDATES",label);
             if(Button(new Rect(595,464,387,29),Updates?.ButtonLabel??"CHECK FOR UPDATES",selection==8,AttractOptions&&Updates!=null&&Updates.CanActivate)){selection=8;Updates.Activate();}
-            string help=selection==7?(FullTuneAvailable?"Choose a save, then a make and car. New cars use normal setup first.":"Leave online play and finish the current screen to use Full Tune."):
-                selection==8?(!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable."):"Deadzone is saved per controller response. Updates are checked on startup; choose GAME UPDATES to check again.";
-            Text(new Rect(288,504,687,40),help,wrapped);
+            ChoiceRow(8,"DISCORD RICH PRESENCE",v.discordPresence?"ON":"OFF");
+            string help=selection==7?(FullTuneAvailable?"Choose a save, then a make and car for upgrades.":"Finish the current screen and leave online play to use Full Tune."):
+                selection==8?(!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable."):"Deadzone is saved per controller response. APPLY saves changes.";
+            Text(new Rect(288,536,687,16),selection==9?"Shares game activity with the Discord desktop app. APPLY saves your choice.":help,small);
         }else if(tab==5){
             ChoiceRow(0,"COMMUNITY TIMES",v.communityTimes?"ON":"OFF");
             if(Button(new Rect(595,257,387,35),"VIEW SHARED RANKINGS",selection==2))Application.OpenURL(Idas3CommunityTimes.ServiceUrl);
