@@ -2727,12 +2727,14 @@ struct App {
             projectedHeadlightTextureBase=crowTextureBase+(courseCrows?std::uint32_t(courseCrows->textures.size()):0u);
             if(originalHandling&&!renderer.loadTextures(projectedHeadlightTextures,true))return false;
             rainTextureBase=projectedHeadlightTextureBase+(originalHandling?std::uint32_t(projectedHeadlightTextures.size()):0u);
-            if(wet&&courseIndex!=8){
+            if(wet||courseIndex==8){
                 if(rainTextures.size()==0)rainTextures=NativeTextureBank::load(root/"data/original_assets/weather/rain/textures/textures.idastex");
                 if(!renderer.loadTextures(rainTextures,true))return false;
-                rainmarkTextureBase=rainTextureBase+std::uint32_t(rainTextures.size());
-                if(rainmarkTextures.size()==0)rainmarkTextures=NativeTextureBank::load(root/"data/original_assets/weather/rainmark/textures/textures.idastex");
-                if(!renderer.loadTextures(rainmarkTextures,true))return false;
+                if(courseIndex!=8){
+                    rainmarkTextureBase=rainTextureBase+std::uint32_t(rainTextures.size());
+                    if(rainmarkTextures.size()==0)rainmarkTextures=NativeTextureBank::load(root/"data/original_assets/weather/rainmark/textures/textures.idastex");
+                    if(!renderer.loadTextures(rainmarkTextures,true))return false;
+                }
             }
             texturesPending=false;menuTexturesLoaded=false;
         }
@@ -2856,9 +2858,10 @@ struct App {
             }
         }
         // Best-run telemetry remains available for records; Time Attack has no ghost car.
-        // Rain and spray are scene geometry, depth-tested against cars/scenery
+        // Snow/rain and tire spray are scene geometry, depth-tested against cars/scenery
         // and drawn before the HUD. Their private clock cannot alter physics.
-        const bool weatherVisible=wet&&courseIndex!=8&&!menu;
+        const bool snowWeather=courseIndex==8;
+        const bool weatherVisible=(wet||snowWeather)&&!menu;
         std::array<WetWeather::Car,2> weatherCars{{
             {drawCar.position,drawCar.yaw,std::abs(drawCar.speed),true},
             {lerp(previousRival.position,rivalVehicle.position,poseAlpha),lerpAngle(previousRival.yaw,rivalVehicle.yaw,poseAlpha),std::abs(rivalVehicle.speed),rivalVisible}}};
@@ -2873,7 +2876,7 @@ struct App {
             bindContacts(weatherCars[0],presentedSession().roadContact().surfaces0CAA9518,drawCar.position-vehicle.position);
             if(rivalVisible&&!multiplayer.active&&!replayPlaybackActive)bindContacts(weatherCars[1],presentedSession().rivalRoadContact().surfaces0CAA9764,weatherCars[1].position-rivalVehicle.position);
         }
-        wetWeather.advance(dt,weatherVisible,paused&&!multiplayer.active,weatherCars);
+        wetWeather.advance(dt,weatherVisible,paused&&!multiplayer.active,weatherCars,snowWeather);
         wetWeather.build(camera,target,weatherVisible,performanceRainDetail==1?4u:1u);
         for(unsigned i=0;i<wetWeather.count;++i){
             const auto& q=wetWeather.quads[i];

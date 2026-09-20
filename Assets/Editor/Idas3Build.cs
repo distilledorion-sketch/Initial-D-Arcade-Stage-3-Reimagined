@@ -33,7 +33,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.7";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.8";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -119,6 +119,14 @@ public static class Idas3Build
         BuildUnityScene();
     }
 
+    public static void RebuildWindowsPlayer(){
+        const string output="Builds/Current/InitialDUnity.exe";
+        if(!File.Exists(output))throw new FileNotFoundException("Build the complete Windows package first.",output);
+        Configure();
+        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
+            target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
+        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Windows player build failed: "+report.summary.result);
+    }
     public static void RebuildWindowsScripts(){
         const string output="Builds/Current/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete Windows package first.",output);

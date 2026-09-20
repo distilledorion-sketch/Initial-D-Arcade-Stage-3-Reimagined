@@ -65,6 +65,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public uint nativeVertexCount, nativeRangeCount;
         public int[] sourceListCounts, sourceDepthCompareCounts;
         public int sourceTranslucentDepthWriteRanges;
+        public int snowFlakes,snowPowder;
         public bool mirrorEnabled;
         public Vector3 mirrorPosition, mirrorTarget;
         public RivalStatus rival;
@@ -317,6 +318,19 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
                     uint isp=unchecked((uint)Marshal.ReadInt32(source.ranges,offset+20));
                     ++record.sourceListCounts[(pcw>>24)&7];++record.sourceDepthCompareCounts[(isp>>29)&7];
                     if(((pcw>>24)&7)==2&&(isp&(1u<<26))==0)++record.sourceTranslucentDepthWriteRanges;
+                    if(depthCheck&&s.course==8&&unchecked((uint)Marshal.ReadInt32(source.ranges,offset+12))==0x941024d2u){
+                        int texture=Marshal.ReadInt32(source.ranges,offset+8)-(int)source.textureCount+11;
+                        int quads=Marshal.ReadInt32(source.ranges,offset+4)/6;
+                        Check(texture==1||texture==7,"Snow submitted rain/water-trail textures.");
+                        if(texture==1)record.snowFlakes+=quads;else record.snowPowder+=quads;
+                    }
+                }
+                if(depthCheck&&s.course==8){
+                    Check(record.snowFlakes>0,"Akina Snow submitted no snowfall.");
+                    if(name.StartsWith("depth-driving-",StringComparison.Ordinal)&&s.speedMetresPerSecond>2)
+                        Check(record.snowPowder>0,"Moving car submitted no tire snow powder.");
+                    bool reduced=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-weather-reduced")>=0;
+                    Check(record.snowFlakes+record.snowPowder<=(reduced?88:352),"Snow exceeded its particle budget.");
                 }
                 if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-depth-dump")>=0&&
                     (name=="depth-driving-11"||name=="depth-camera-static")){
@@ -1103,8 +1117,9 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         pause.SetOpen(false);yield return Frames(30);
         Check((host.Status.flags&1)!=0&&host.Status.frontendStage==6&&host.Status.course==3,
             "Depth setup did not return from the Akina shortcut to Course6.");
-        int direction=depthCourse<3?37:39;
-        for(int i=0;i<Math.Abs(depthCourse-3);++i){yield return Key(direction);yield return Frames(6);}
+        // Follow the course selected by the carousel; its display order is
+        // intentionally different from the native course indices.
+        for(int i=0;host.Status.course!=depthCourse&&i<11;++i){yield return Key(39);yield return Frames(6);}
         Check(host.Status.course==depthCourse,"Depth setup could not select the requested course.");
         // Snow starts after Route; Happogahara starts after Weather. The
         // native owner chooses those exits, so stop when it leaves the menu.
@@ -1125,10 +1140,13 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         startWait=0;
         while(host.Status.racePhase!=2&&startWait++<1800)yield return Frames(1);
         Check(host.Status.racePhase==2,"Depth setup did not finish the selected course showcase/countdown.");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-weather-reduced")>=0){
+            Check(Idas3Native.Idas3SceneSetPerformance(1)==1,"Reduced weather setting failed.");yield return Frames(4);
+        }
         yield return Capture("depth-timeattack-bumper",true);
         yield return Key(67);yield return Frames(12);
         yield return Capture("depth-timeattack-chase",true);
-        yield return Key(67);yield return Frames(12);
+        if(depthCourse!=8){yield return Key(67);yield return Frames(12);}
         held=87;
         for(int i=0;i<12;++i){
             yield return Frames(120);

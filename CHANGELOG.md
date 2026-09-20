@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.95-community-replays.8 — September 20, 2026
+
+- Restore snowfall and tire snow powder on Akina Snow using original effect textures.
+- Keep rain streaks and water trails separate from snow effects.
+- Apply Full/Reduced weather detail to snow as well as rain; rename the Graphics setting to Weather & Spray.
+
 ## 0.3.95-community-replays.7 â€” September 20, 2026
 
 - Add Discord Rich Presence with the Initial D Arcade Stage 3 title and supplied logo.

@@ -432,7 +432,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(4,"ANTI-ALIASING",v.antiAliasing==0?"OFF":v.antiAliasing+"× MSAA");
             int preset=Idas3GameOptions.PerformancePreset(v);
             ChoiceRow(5,"QUALITY PRESET",preset<0?"CUSTOM":new[]{"ORIGINAL","BALANCED","LOW"}[preset]);
-            ChoiceRow(6,"RAIN & SPRAY",new[]{"FULL","REDUCED"}[v.rainDetail]);
+            ChoiceRow(6,"WEATHER & SPRAY",new[]{"FULL","REDUCED"}[v.rainDetail]);
             ChoiceRow(7,"IMPORTED SCENERY",new[]{"ORIGINAL","BALANCED","LOW"}[v.importedSceneryDetail]);
             string help=selection==6?"Balanced: 720p / 2x AA. Low: 540p / no AA. Both use reduced effects and scenery, capped at 60 FPS. Mirror and gameplay stay enabled.":
                 selection==7?"Reduced uses fewer rain and spray particles. Rain stays visible and wet grip is unchanged.":
