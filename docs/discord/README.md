@@ -10,4 +10,6 @@ The game samples its small native state snapshot once per second. Discord IPC us
 
 Dependencies: [DiscordRPC 1.6.1](https://github.com/Lachee/discord-rpc-csharp/releases/tag/v1.6.1) and [Newtonsoft.Json 13.0.3](https://github.com/JamesNK/Newtonsoft.Json/releases/tag/13.0.3). Their MIT licenses are included under `Assets/Plugins/Discord`.
 
+DiscordRPC includes a two-line null-image fix for Discord replies that omit the optional small badge. The patched source is in `ThirdParty/DiscordRPC`; `Assets/Plugins/Discord/UPSTREAM.txt` records its upstream revision and rebuild command. Distributed players include both licenses in `InitialDUnity_Data/Plugins/Discord-LICENSES.txt`.
+
 Developer verification uses private saves: run the player with `-idas3-attract-options-smoke <new-output-directory> -idas3-discord-check`. Add `-idas3-discord-live-check` with Discord running to verify the actual IPC handshake and activity acknowledgement. Normal diagnostics suppress Rich Presence.

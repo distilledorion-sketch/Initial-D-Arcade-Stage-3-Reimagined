@@ -134,6 +134,7 @@ public sealed class Idas3DiscordPresence : MonoBehaviour
         var previous=client;client=null;lastDescription=null;lastSession=null;
         if(previous!=null)try{previous.Dispose();}catch{}
     }
+    internal static void YieldToReplay(){var presence=FindAnyObjectByType<Idas3DiscordPresence>();if(presence!=null)presence.Disconnect();}
     void OnApplicationQuit()=>Disconnect();
     void OnDestroy()=>Disconnect();
 }

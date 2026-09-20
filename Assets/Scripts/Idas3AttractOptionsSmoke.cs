@@ -242,7 +242,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             // This cannot pass the helper's archive preflight or replace files.
             string executable=Path.Combine(Path.GetDirectoryName(Application.dataPath),"InitialDUnity.exe");
             byte[] before=File.ReadAllBytes(executable);
-            var fixture=JsonUtility.FromJson<Idas3Updates.Release>(Idas3UpdateChecks.Fixture("v0.3.95-community-replays.7"));
+            var fixture=JsonUtility.FromJson<Idas3Updates.Release>(Idas3UpdateChecks.Fixture("v99.0.0"));
             fixture.assets[0].size=128;fixture.assets[0].digest="sha256:dbbbb3dfe4dfa8819bed4ec6cb8a3baf0e1af53963d9c077b39b2a56cdfea9da";
             updates.ApplyResponse(200,JsonUtility.ToJson(fixture));
             typeof(Idas3Updates).GetField("downloadUrl",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(updates,
@@ -264,7 +264,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         observations.Add("Before menu capture: updateWindow="+updates.WindowVisible+" menuOpen="+menu.IsOpen+" menuRepaints="+menu.DiagnosticRepaints);
         Check(!updates.WindowVisible,"Update modal remained open after live check");
         yield return Capture("updates-offline");
-        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v0.3.95-community-replays.7"));
+        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v99.0.0"));
         Check(updates.State==Idas3Updates.CheckState.Available&&updates.CanActivate,"New version enables download action");
         int installs=0;updates.InstallOverride=()=>installs++;
         pulse=13;yield return Frames(5);Check(updates.WindowVisible&&installs==0,"Keyboard confirm opens Yes/No prompt without installing");

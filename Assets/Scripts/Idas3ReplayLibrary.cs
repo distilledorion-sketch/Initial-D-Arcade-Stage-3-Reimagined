@@ -119,6 +119,7 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
             Directory.CreateDirectory(Folder);
             string executable=Path.GetFullPath(Path.Combine(Application.dataPath,"../InitialDUnity.exe"));
             if(Application.isEditor)throw new InvalidOperationException("Open the replay viewer from a built game.");
+            Idas3DiscordPresence.YieldToReplay();
             viewerProcess=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable,"-idas3-replay-viewer -idas3-replay-library \""+Folder+"\""){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(executable)});
         }
         catch(Exception e){menu.ReplayStatus="Could not open replay viewer: "+e.Message;}

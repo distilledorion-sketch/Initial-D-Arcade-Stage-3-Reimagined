@@ -1,0 +1,12 @@
+DiscordRPC source: Lachee/discord-rpc-csharp v1.6.1
+Commit: a007e0ee1356972b6eb4f70ba55fb66e88008644
+https://github.com/Lachee/discord-rpc-csharp/tree/v1.6.1
+MIT license: DiscordRPC-LICENSE.txt
+
+Local change: Entities/Assets.cs Merge handles null large/small image keys
+before StartsWith. Discord may omit the optional small image in its reply.
+Patched source is included under ThirdParty/DiscordRPC. Rebuild using:
+dotnet build ThirdParty/DiscordRPC/DiscordRPC.csproj -c Release -p:TargetFrameworks=netstandard2.0
+
+Newtonsoft.Json 13.0.3, netstandard2.0 assembly from the official NuGet package.
+MIT license: Newtonsoft.Json-LICENSE.txt
