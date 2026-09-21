@@ -26,6 +26,7 @@
 #include "car_shadow.h"
 #include "car_presentation.h"
 #include "car_pose_interpolation.h"
+#include "online_visual_correction.h"
 #include "original_number_plate.h"
 #include "original_car_dimensions.h"
 #include "original_car_body_position.h"
@@ -110,8 +111,8 @@ struct HostInput {
     bool button(WORD b)const{return (pressedButtons&b)!=0;}
 };
 struct App {
-    std::filesystem::path importedCourseRoot,sadamineCourseRoot;
-    std::filesystem::path& importedRoot(int id){return id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
+    std::filesystem::path importedCourseRoot,sadamineCourseRoot,ennaCourseRoot;
+    std::filesystem::path& importedRoot(int id){return id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
     std::optional<ImportedCourse> importedCourse;
     struct MultiplayerState {
         std::string localName="PLAYER",remoteName="OPPONENT";
@@ -706,7 +707,7 @@ struct App {
                           const original::OriginalBattleProfile* local=nullptr,
                           const original::OriginalBattleProfile* remote=nullptr){
         validateMultiplayerConfig(request);
-        if(Frontend::isImportedCourse(request.course)&&importedRoot(request.course).empty())throw std::logic_error("Hakone course pack is not installed");
+        if(Frontend::isImportedCourse(request.course)&&importedRoot(request.course).empty())throw std::logic_error("Selected online course pack is not installed");
         if(importedCourse)returnToCourseSelection(true);
         if(multiplayer.active)leaveMultiplayer();
         multiplayer={};auto& mp=multiplayer;
@@ -1006,6 +1007,8 @@ struct App {
             if(importedRoot(frontend.course).empty())throw std::logic_error("Hakone course pack is not registered");
             if(!importedCourse||importedCourse->id!=unsigned(frontend.course))importedCourse=ImportedCourse::load(importedRoot(frontend.course));
             courseIndex=3;
+            // SHIONA_NIT is the sole authored Enna scenery variant.
+            if(importedCourse->id==11)night=frontend.night=true;
         }else importedCourse.reset();
         steeringSmoothing.reset();
         buntaVisitActive=timeAttackVisitActive=timeAttackLectureDone=timeSummaryDone=false;
@@ -2783,6 +2786,8 @@ struct App {
             if(importedCourse)renderer.nearClip=.1f;
         }
         auto& mesh=raceMesh;mesh.vertices.clear();mesh.ranges.clear();mesh.vertices.reserve(140000);
+        static const bool copyCourseBaseline=std::getenv("IDAS3_COPY_COURSE_BASELINE")!=nullptr;
+        mesh.borrowCachedGeometry=renderer.sceneCapture()!=nullptr&&!copyCourseBaseline;
         if(originalHandling&&!replayPlaybackActive)appendProjectedHeadlights(mesh);
         const auto courseRangeBegin=mesh.ranges.size();
         if(hasOriginalScenery){

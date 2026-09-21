@@ -15,6 +15,9 @@ Shader "IDAS3/Original Scene Material"
   _ImportedHasShadow("Imported road shadow enabled",Float)=0
   _ImportedSky("Imported sky",Float)=0
   _ImportedNight("Imported night scenery",Float)=0
+  _ImportedPs2Lighting("PS2 baked color and linear fog",Float)=0
+  _ImportedSkyFollowXZ("Sky follows camera XZ",Float)=0
+  _ImportedBillboard("Upright spectator sprite",Float)=0
  }
  SubShader {
   Tags { "RenderType"="Opaque" }

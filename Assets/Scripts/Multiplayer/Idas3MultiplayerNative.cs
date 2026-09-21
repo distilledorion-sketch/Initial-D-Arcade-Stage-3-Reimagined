@@ -103,6 +103,7 @@ namespace Idas3.Multiplayer
     {
         const string Library = "Idas3Unity";
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerEnableAuthority(ulong race,int remoteAutomatic,int boost);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerEnableAuthorityRules(ulong race,int remoteAutomatic,int boost,int collisions);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerAuthorityPacket([Out] byte[] bytes,uint capacity);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerAuthorityReceive([In] byte[] bytes,uint count);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerAuthorityStatus(ref Idas3AuthorityStatus status);

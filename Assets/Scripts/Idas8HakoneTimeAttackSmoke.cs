@@ -13,7 +13,7 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
     static string output,packName="HAKONE";static Idas8HakoneTimeAttackSmoke active;
     Idas3SceneGame host;int pulse;bool accelerate;
     public static bool Configure(ref string saves){
-        var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-sadamine-ta-smoke");if(at>=0)packName="SADAMINE";else at=Array.IndexOf(args,"-hakone-ta-smoke");if(at<0)return false;
+        var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-enna-ta-smoke");if(at>=0)packName="ENNA";else{at=Array.IndexOf(args,"-sadamine-ta-smoke");if(at>=0)packName="SADAMINE";else at=Array.IndexOf(args,"-hakone-ta-smoke");}if(at<0)return false;
         if(at+1>=args.Length)throw new ArgumentException("Supply a new Hakone TA diagnostic directory");
         output=Path.GetFullPath(args[at+1]);if(Directory.Exists(output))throw new IOException("Diagnostic directory must be new");
         Directory.CreateDirectory(output);saves=Path.Combine(output,"userdata");Directory.CreateDirectory(saves);
@@ -68,10 +68,11 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         throw new Exception("Imported showcase never reached countdown");
     }
     IEnumerator SelectImportedRace(){
-        for(int stage=6;stage<=9;++stage){
+        int last=packName=="ENNA"?8:9;
+        for(int stage=6;stage<=last;++stage){
             if(host.Status.frontendStage!=stage)throw new Exception("Wrong imported menu stage "+stage);
             yield return Key(13);
-            if(stage<9)yield return Until(()=>host.Status.frontendStage!=stage,120,"Imported selection transition");
+            if(stage<last)yield return Until(()=>host.Status.frontendStage!=stage,120,"Imported selection transition");
             else yield return Until(()=>(host.Status.flags&16385u)==16384u,600,"Imported menu launches race");
             yield return Frames(3);
         }
@@ -82,7 +83,7 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         bool trees=Array.IndexOf(Environment.GetCommandLineArgs(),"-imported-trees-check")>=0;
         if(trees)Idas8ImportedTreeChecks.Run();
         yield return Frames(3);
-        if(!FindAnyObjectByType<Idas8HakoneCourse>().testBuild){
+        if(packName!="ENNA"&&!FindAnyObjectByType<Idas8HakoneCourse>().testBuild){
             if(host.Status.frontendStage!=0||(host.Status.flags&16385u)!=1u)throw new Exception("Main build must retain normal title startup");
             yield return Capture("main-build-title");
         }
@@ -105,10 +106,15 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         }
         yield return Key(13);
         yield return Until(()=>(host.Status.flags&1u)!=0,150,"Continue returns to course menu");yield return Frames(20);yield return Capture("hakone-saved-records");
-        for(int stage=6;stage<=9;stage++){
+        int lastStage=packName=="ENNA"?8:9;
+        for(int stage=6;stage<=lastStage;stage++){
             if(host.Status.frontendStage!=stage)throw new Exception("Unexpected retry menu stage");
+            if(packName=="ENNA"&&stage==8){
+                yield return Capture("enna-weather-dry");
+                yield return Key(39);yield return Frames(3);yield return Capture("enna-weather-wet");
+            }
             yield return Key(13);
-            if(stage<9)yield return Until(()=>host.Status.frontendStage!=stage,120,"Retry selection transition");
+            if(stage<lastStage)yield return Until(()=>host.Status.frontendStage!=stage,120,"Retry selection transition");
             else yield return Until(()=>(host.Status.flags&16385u)==16384u,600,"Menu relaunches Hakone");
             yield return Frames(3);
         }
@@ -117,6 +123,11 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         yield return Until(()=>(host.Status.flags&1024u)==0,600,"Loading completes");yield return Frames(20);yield return Capture("hakone-race-intro");
         if(IntroCameraCheck)yield return CheckIntroCamera("retry");
         accelerate=true;for(int i=0;i<1800&&host.Status.speedMetresPerSecond<=2;i++)yield return null;yield return Capture("hakone-live-record-hud");if(host.Status.speedMetresPerSecond<=2)throw new Exception("Relaunch state: "+JsonUtility.ToJson(host.Status));
+        if(packName=="ENNA"){
+            if((host.Status.flags&131072u)==0)throw new Exception("Wet menu choice did not launch wet race");
+            yield return Frames(120);yield return Capture("enna-driving-headlights");
+            var course=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();course.VerifyPresentation();
+        }
         if(trees){
             for(int i=0;i<6;i++){yield return Frames(20);FindAnyObjectByType<Idas8HakoneCourse>().VerifyTreeState();yield return Capture("trees-moving-"+i);}
             int aa=QualitySettings.antiAliasing;QualitySettings.antiAliasing=0;yield return Frames(3);FindAnyObjectByType<Idas8HakoneCourse>().VerifyTreeState();yield return Capture("trees-aa-off");
@@ -125,10 +136,15 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         accelerate=false;yield return Capture("menu-background",true);
         if(performance)FindAnyObjectByType<Idas8HakoneCourse>().CheckSceneryPerformance(output,"race",true);
         for(int condition=0;condition<8;condition++){
+            if(packName=="ENNA"&&condition<4)continue;
             if(Idas3Native.Idas3SceneStartImportedCourseConditions(Path.Combine(Application.streamingAssetsPath,packName),condition&1,(condition>>2)&1,(condition>>1)&1)!=1)throw new Exception(Idas3Native.Error());
             yield return Frames(35);
             var scenery=FindAnyObjectByType<Idas8HakoneCourse>();
-            if(scenery.LoadedCourse!=packName||scenery.LoadedVariant!=Idas8HakoneCourse.Variant(host.Status.flags))throw new Exception("Wrong imported scenery/conditions");
+            if(packName=="ENNA"){
+                if(!FindAnyObjectByType<IdasSpecialStageEnnaCourse>().Loaded||(host.Status.flags&IdasSpecialStageEnnaCourse.SceneFlag)==0)throw new Exception("Enna scenery not loaded");
+                FindAnyObjectByType<IdasSpecialStageEnnaCourse>().VerifyPresentation();
+                if(((host.Status.flags&131072u)!=0)!=((condition&2)!=0))throw new Exception("Enna weather selection lost");
+            }else if(scenery.LoadedCourse!=packName||scenery.LoadedVariant!=Idas8HakoneCourse.Variant(host.Status.flags))throw new Exception("Wrong imported scenery/conditions");
             if(trees)scenery.VerifyTreeState();
             if(performance)scenery.CheckSceneryPerformance(output,"condition-"+condition,false);
             yield return Capture("condition-"+condition);

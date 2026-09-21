@@ -67,4 +67,24 @@ public static class Idas3ControllerMenuChecks
             File.WriteAllText(Path.Combine(root,"result.txt"),"PASS "+checks+" checks\n");File.WriteAllText("Verification/wheel-menu-navigation-20260918/unit-result.txt","PASS "+checks+" checks; isolated preferences: "+root+"\n");Debug.Log("PASS controller menu checks "+checks);
         }finally{UnityEngine.Object.DestroyImmediate(go);}
     }
+    public static void RunPointerChecks(){
+        checks=0;Idas3Native.FrameInput frame=default;
+        var focus=new Idas3MenuFocus();Action build=()=>{focus.Begin();focus.Control("first",new Rect(0,0,30,30),true,true);focus.Control("second",new Rect(0,70,30,30),true,true);focus.End();};
+            frame=new Idas3Native.FrameInput{padConnected=1};Idas3MenuPointer.ApplyConfirm(ref frame,false,true,false);
+            Check((frame.key0&(1u<<13))==0,"Managed mouse click must not confirm controller highlight");
+            frame=default;Idas3MenuPointer.ApplyConfirm(ref frame,false,true,false);Check(frame.key0==0,"Managed mouse click without pad stays a pointer");
+            Idas3MenuPointer.ApplyConfirm(ref frame,true,false,false);Check((frame.key0&(1u<<13))!=0,"Keypad Enter remains confirm");
+            frame=default;Idas3MenuPointer.ApplyConfirm(ref frame,false,true,true);Check((frame.key0&(1u<<13))!=0,"Original native menus retain click confirm");
+            var pointer=new Idas3MenuPointer();Check(pointer.BlockNavigation(true,true),"Pointer takes priority over held controller");
+            Check(pointer.BlockNavigation(false,true),"Held controller cannot resume after click");Check(pointer.BlockNavigation(false,false),"Neutral releases pointer gate");
+            Check(!pointer.BlockNavigation(false,true),"Fresh controller input resumes after neutral");
+            focus.Reset();build();focus.Poll(0,0,false,false,false,10);focus.Poll(0,1,false,false,false,11);focus.Poll(0,0,true,false,false,12);
+            focus.Pointer("first");Check(focus.Selected=="first"&&!focus.Control("second",default,true,true),"Click takes focus and cancels stale activation");
+            focus.Poll(0,0,true,false,false,13);Check(!focus.Control("first",default,true,true),"Held confirm cannot activate mouse selection again");
+            focus.Poll(0,0,false,false,false,14);focus.Poll(0,0,true,false,false,15);Check(focus.Control("first",default,true,true),"Fresh confirm activates clicked selection");
+            focus.Poll(0,0,false,false,false,16);focus.Poll(0,0,true,false,false,17);focus.Pointer();Check(!focus.Control("first",default,true,true),"Blank pointer click cancels queued confirmation");
+        Directory.CreateDirectory("Verification/mouse-menu-20260921");
+        File.WriteAllText("Verification/mouse-menu-20260921/unit-result.txt","PASS "+checks+" pointer checks\n");
+        Debug.Log("PASS pointer menu checks "+checks);
+    }
 }

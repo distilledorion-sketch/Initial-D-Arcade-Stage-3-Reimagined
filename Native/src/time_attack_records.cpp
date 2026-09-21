@@ -9,7 +9,7 @@ namespace {
 constexpr const char* legacyHeader="condition,weather,car,finish_ticks6000";
 constexpr const char* namedHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night";
 constexpr const char* splitHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3";
-bool valid(const TimeAttackEntry& e){return e.condition<22&&e.weather<2&&e.car<35&&e.ticks6000>0&&e.ticks6000<10800000
+bool valid(const TimeAttackEntry& e){return e.condition<24&&e.weather<2&&e.car<35&&e.ticks6000>0&&e.ticks6000<10800000
     && (e.intermediate6000==std::array<std::uint32_t,3>{} || (e.intermediate6000[0]>0&&e.intermediate6000[0]<e.intermediate6000[1]&&e.intermediate6000[1]<e.intermediate6000[2]&&e.intermediate6000[2]<e.ticks6000))
     &&std::all_of(e.nameGlyphs.begin(),e.nameGlyphs.end(),[](auto c){return c<=221;});}
 }
@@ -31,7 +31,7 @@ void TimeAttackRecords::record(TimeAttackEntry entry){
     if(!valid(entry))throw std::invalid_argument("Invalid native Time Attack record");
     entries_.push_back(entry);
     std::stable_sort(entries_.begin(),entries_.end(),[](auto a,auto b){return a.ticks6000<b.ticks6000;});
-    std::array<unsigned,44> count{};std::array<std::array<bool,35>,44> models{};
+    std::array<unsigned,48> count{};std::array<std::array<bool,35>,48> models{};
     std::erase_if(entries_,[&](auto e){const auto key=e.condition*2+e.weather;
         const bool keep=count[key]<10||!models[key][e.car];++count[key];models[key][e.car]=true;return !keep;});
 }
@@ -41,7 +41,8 @@ bool TimeAttackRecords::load(const std::filesystem::path& file){
     if(!named&&line!=legacyHeader)return false;
     TimeAttackRecords loaded;std::size_t rows=0;
     while(std::getline(in,line)){
-        if(++rows>2000)return false;
+        // 24 directions x 2 weather states, top ten plus 34 other model bests.
+        if(++rows>24u*2u*44u)return false;
         std::replace(line.begin(),line.end(),',',' ');std::istringstream row(line);TimeAttackEntry e;std::string extra;
         if(!(row>>e.condition>>e.weather>>e.car>>e.ticks6000))return false;
         if(named){

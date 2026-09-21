@@ -12,8 +12,8 @@ namespace Idas3.Multiplayer
         public readonly int Course;
         public readonly bool Reverse,Wet,Night;
         public Idas3RaceChoice(int course,bool reverse,bool wet,bool night) {
-            if(course<0||course>10)throw new ArgumentOutOfRangeException(nameof(course));
-            Course=course;Reverse=reverse;Wet=wet||course==8;Night=night||course==4||course==8;
+            if(course<0||course>11)throw new ArgumentOutOfRangeException(nameof(course));
+            Course=course;Reverse=reverse;Wet=wet||course==8;Night=night||course==4||course==8||course==11;
         }
         public bool Equals(Idas3RaceChoice other)=>Course==other.Course&&Reverse==other.Reverse&&Wet==other.Wet&&Night==other.Night;
         public override bool Equals(object other)=>other is Idas3RaceChoice choice&&Equals(choice);
@@ -28,16 +28,18 @@ namespace Idas3.Multiplayer
     }
 
     // All transport callbacks, protocol transitions and native calls run on the
-    // Unity main thread. Only the local machine simulates its own original car.
+    // Unity main thread. Both cars share the same verified input simulation.
     public sealed class Idas3MultiplayerSession : IDisposable
     {
         const uint Magic = 0x504D3349;
-        const ushort Protocol = 8;
+        const ushort Protocol = 9;
         enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs }
-        public bool ExperimentalAuthority { get; } = Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-authority")>=0 ||
-            File.Exists(Path.Combine(Application.dataPath,"..","authority_test.txt"));
+        // Retain this diagnostic property name; shared simulation is now the
+        // normal online path, including rooms with car collisions switched off.
+        public bool ExperimentalAuthority { get; } = true;
         public Idas3AuthorityStatus AuthorityStatus { get; private set; }
         readonly byte[] authorityPacket=new byte[1064];
+        ulong authorityPacketFrame;
         int pendingAuthorityWinner=-3;
         Idas3BattleRecord? pendingAuthorityRecord;
         ulong pendingAuthorityHostTicks,pendingAuthorityClientTicks;
@@ -185,6 +187,12 @@ namespace Idas3.Multiplayer
         public bool Wet => SelectedChoice.Wet;
         public bool Night => SelectedChoice.Night;
         public bool BoostEnabled { get; private set; } = true;
+        public bool CollisionsEnabled { get; private set; } = true;
+        public void SetCollisions(bool enabled) {
+            if(!IsHost||nativeRace||HasCourseDraw||Busy||CollisionsEnabled==enabled)return;
+            CollisionsEnabled=enabled;localReady=remoteReady=false;++revision;
+            if(HandshakeComplete)SendLobby();
+        }
         public void SetBoost(bool enabled) {
             if(!IsHost||nativeRace||HasCourseDraw||Busy||BoostEnabled==enabled)return;
             BoostEnabled=enabled;localReady=remoteReady=false;++revision;
@@ -195,6 +203,8 @@ namespace Idas3.Multiplayer
         public Idas3CarSnapshot LocalSnapshot { get; private set; }
         public Idas3CarSnapshot RemoteSnapshot { get; private set; }
         public IReadOnlyList<Idas3Room> Rooms => transport?.Rooms ?? emptyRooms;
+        public bool EnnaAvailable { get; } = File.Exists(Path.Combine(Application.streamingAssetsPath,"ENNA/menu.idastex"));
+        public int AvailableCourseCount=>EnnaAvailable?12:11;
         public IReadOnlyList<Idas3PlayerInfo> Players { get { UpdatePlayers(); return players; } }
         public static readonly string[] CarNames = {
             "AE86 TRUENO","AE86 LEVIN","AE85 LEVIN","SW20 MR2","ZZW30 MR-S","SXE10 ALTEZZA","ST205 CELICA",
@@ -291,7 +301,8 @@ namespace Idas3.Multiplayer
         }
         public void SetRaceOptions(int course, bool reverse, bool wet, bool night)
         {
-            if (nativeRace || HasCourseDraw || Busy || course < 0 || course > 10) return;
+            if (nativeRace || HasCourseDraw || Busy || course < 0 || course > 11) return;
+            if(course==11&&!EnnaAvailable)return;
             var choice=new Idas3RaceChoice(course,reverse,wet,night);
             if(LocalChoice.Equals(choice))return;
             LocalChoice=choice;localReady=remoteReady=false;++localPlayerSerial;localSelectionSerial=localPlayerSerial;
@@ -301,7 +312,7 @@ namespace Idas3.Multiplayer
         void SendPlayer() { Send(Packet.Player,w=>{w.Write(revision);w.Write(localPlayerSerial);w.Write(LocalCar);WriteChoice(w,LocalChoice);w.Write(localReady);WriteRecord(w,LocalRecord);LocalSavedCar.Write(w);}); }
         void SendLobby()
         {
-            Send(Packet.Lobby,w=>{w.Write(revision);w.Write(remotePlayerSerial);WriteChoice(w,LocalChoice);WriteChoice(w,RemoteChoice);w.Write(LocalCar);w.Write(remoteCar);w.Write(localReady);w.Write(remoteReady);WriteRecord(w,LocalRecord);LocalSavedCar.Write(w);w.Write(BoostEnabled);});
+            Send(Packet.Lobby,w=>{w.Write(revision);w.Write(remotePlayerSerial);WriteChoice(w,LocalChoice);WriteChoice(w,RemoteChoice);w.Write(LocalCar);w.Write(remoteCar);w.Write(localReady);w.Write(remoteReady);WriteRecord(w,LocalRecord);LocalSavedCar.Write(w);w.Write(BoostEnabled);w.Write(CollisionsEnabled);});
         }
         static void WriteRecord(BinaryWriter writer,Idas3BattleRecord record) {
             writer.Write(record.battles);writer.Write(record.wins);writer.Write(record.level);writer.Write(record.streak);
@@ -314,7 +325,7 @@ namespace Idas3.Multiplayer
         static Idas3RaceChoice ReadChoice(BinaryReader r)
         {
             int course=r.ReadInt32(); bool reverse=r.ReadBoolean(),wet=r.ReadBoolean(),night=r.ReadBoolean();
-            Require(course>=0 && course<=10 && (course!=4 || night) && (course!=8 || wet&&night),"Invalid course options.");
+            Require(course>=0 && course<=11 && ((course!=4&&course!=11) || night) && (course!=8 || wet&&night),"Invalid course options.");
             return new Idas3RaceChoice(course,reverse,wet,night);
         }
         void PeerChanged()
@@ -334,11 +345,24 @@ namespace Idas3.Multiplayer
             if (compatibility!=null) return compatibility;
             string path=Path.Combine(Application.dataPath,"Plugins/x86_64/Idas3Unity.dll");
             using(var hash=SHA256.Create()) {
-                using(var file=File.OpenRead(path)) compatibility="idas3-mp8-"+Convert.ToBase64String(hash.ComputeHash(file));
+                using(var file=File.OpenRead(path)) compatibility="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
                 using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) compatibility+="-"+Convert.ToBase64String(hash.ComputeHash(file));
             }
+            compatibility+="-enna-"+EnnaFingerprint(Path.Combine(Application.streamingAssetsPath,"ENNA"));
             compatibility+=ExperimentalAuthority?"-authority1":"-pose1";
             return compatibility;
+        }
+        internal static string EnnaFingerprint(string folder)
+        {
+            if(!File.Exists(Path.Combine(folder,"menu.idastex")))return "absent";
+            // Hash only simulation inputs, once per handshake. Two peers must
+            // not run different paths/collision meshes under identical code.
+            using(var hash=SHA256.Create())using(var combined=new MemoryStream()){
+                foreach(string name in new[]{"course.id","enna_path.bin","enna_path_l.bin","enna_path_r.bin","race-markers.bin","collision-0.rcl","collision-1.rcl"}){
+                    using(var file=File.OpenRead(Path.Combine(folder,name))){var part=hash.ComputeHash(file);combined.Write(part,0,part.Length);}
+                }
+                return Convert.ToBase64String(hash.ComputeHash(combined.ToArray()));
+            }
         }
         static string Clean(string name)
         {
@@ -385,14 +409,14 @@ namespace Idas3.Multiplayer
                         uint rev=r.ReadUInt32(),ackSerial=r.ReadUInt32();var hostChoice=ReadChoice(r);var guestChoice=ReadChoice(r);
                         int hostCar=r.ReadInt32(),guestCar=r.ReadInt32();
                         Require(hostCar>=0&&hostCar<35&&guestCar>=0&&guestCar<35,"Invalid car selection.");
-                        bool hostReady=r.ReadBoolean(),guestReady=r.ReadBoolean();var hostRecord=ReadRecord(r);var hostSavedCar=Idas3OnlineCar.Read(r,hostCar);bool hostBoost=r.ReadBoolean();
+                        bool hostReady=r.ReadBoolean(),guestReady=r.ReadBoolean();var hostRecord=ReadRecord(r);var hostSavedCar=Idas3OnlineCar.Read(r,hostCar);bool hostBoost=r.ReadBoolean(),hostCollisions=r.ReadBoolean();
                         Require(ackSerial<=localPlayerSerial,"Invalid player acknowledgement.");
                         if(nativeRace||HasCourseDraw){
                             Require(rev<=revision,"Race settings changed after the selection was locked.");break;
                         }
                         if(rev>=revision) {
                             acknowledgedLocalPlayerSerial=Math.Max(acknowledgedLocalPlayerSerial,ackSerial);
-                            bool changed=rev!=revision;revision=rev;RemoteSavedCar=hostSavedCar;remoteCar=hostCar;remoteRecord=hostRecord;RemoteChoice=hostChoice;BoostEnabled=hostBoost;
+                            bool changed=rev!=revision;revision=rev;RemoteSavedCar=hostSavedCar;remoteCar=hostCar;remoteRecord=hostRecord;RemoteChoice=hostChoice;BoostEnabled=hostBoost;CollisionsEnabled=hostCollisions;
                             if(ackSerial==localPlayerSerial){
                                 Require(guestCar==LocalCar&&guestChoice.Equals(LocalChoice),"Acknowledged pick differs from your selection.");
                                 localReady=guestReady;remoteReady=hostReady;
@@ -590,7 +614,7 @@ namespace Idas3.Multiplayer
             }
             nativeRace=true;
             pendingAuthorityWinner=-3;pendingAuthorityRecord=null;AuthorityStatus=default;
-            if(ExperimentalAuthority)Require(Idas3MultiplayerNative.Idas3MultiplayerEnableAuthority(raceId,RemoteSavedCar.Automatic?1:0,BoostEnabled?1:0)==1,Idas3Native.Error());
+            if(ExperimentalAuthority)Require(Idas3MultiplayerNative.Idas3MultiplayerEnableAuthorityRules(raceId,RemoteSavedCar.Automatic?1:0,BoostEnabled?1:0,CollisionsEnabled?1:0)==1,Idas3Native.Error());
             Require(Idas3Native.Idas3SceneSetPreRaceNames(Clean(transport?.LocalName),remoteName)==1,Idas3Native.Error());
             var localStats=RaceLocalRecord;var remoteStats=RaceRemoteRecord;
             Require(Idas3MultiplayerNative.Idas3MultiplayerSetBattleRecords(ref localStats,ref remoteStats)==1,Idas3Native.Error());
@@ -641,7 +665,7 @@ namespace Idas3.Multiplayer
                 if(releaseAt>0&&now>=releaseAt) {
                     if(IsHost&&!releaseAck) {Fail("Start acknowledgement was not received. Please reconnect and retry.");return;}
                     Require(Idas3MultiplayerNative.Idas3MultiplayerSetGo(1)==1,Idas3Native.Error());
-                    RaceReleased=true;state="Racing";status=ExperimentalAuthority?"Experimental online race. Car-to-car contact enabled.":"Race live. F1 opens the room; C switches the camera. Car-to-car contact is disabled.";
+                    RaceReleased=true;state="Racing";status="Race live. Car collisions "+(CollisionsEnabled?"ON":"OFF")+". Boost "+(BoostEnabled?"ON":"OFF")+". F1 opens the room.";
                 }
             }
             if(nativeRace&&!ExperimentalAuthority&&poseCount>0) {
@@ -665,15 +689,19 @@ namespace Idas3.Multiplayer
         }
         void AfterAuthorityFrame()
         {
-            if(Now-lastPose>=1.0/30) {
+            var status=new Idas3AuthorityStatus{size=96,version=1};
+            Require(Idas3MultiplayerNative.Idas3MultiplayerAuthorityStatus(ref status)==1,Idas3Native.Error());AuthorityStatus=status;
+            // Publish each newly simulated input frame. A wall-clock 30Hz
+            // threshold made a 60Hz peer predict two (sometimes three) ticks
+            // between updates. Retransmit while stalled so recovery still works.
+            if(status.frame!=authorityPacketFrame||Now-lastPose>=1.0/30) {
+                authorityPacketFrame=status.frame;
                 lastPose=Now;int count=Idas3MultiplayerNative.Idas3MultiplayerAuthorityPacket(authorityPacket,(uint)authorityPacket.Length);
                 Require(count>=40&&count<=authorityPacket.Length,Idas3Native.Error());
                 Send(Packet.AuthorityInputs,w=>{w.Write(raceId);w.Write(count);w.Write(authorityPacket,0,count);},false);++SnapshotsSent;
             }
             var remote=new Idas3CarSnapshot{size=128,version=1};
             Require(Idas3MultiplayerNative.Idas3MultiplayerGetRemoteSnapshot(ref remote)==1,Idas3Native.Error());RemoteSnapshot=remote;
-            var status=new Idas3AuthorityStatus{size=96,version=1};
-            Require(Idas3MultiplayerNative.Idas3MultiplayerAuthorityStatus(ref status)==1,Idas3Native.Error());AuthorityStatus=status;
             if(status.winner==-3)return;
             if(IsHost&&!resultSent){
                 resultSent=true;Send(Packet.Results,w=>{w.Write(raceId);w.Write(status.winner);w.Write(status.hostFinishTicks);w.Write(status.clientFinishTicks);});

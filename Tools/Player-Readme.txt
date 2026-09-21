@@ -1,4 +1,8 @@
-0.3.95-community-replays.7
+0.3.95-community-replays.13
+
+TODAY'S UPDATE - SEPTEMBER 21, 2026
+Enna Skyline is included in the main game and online course selection: downhill/uphill, dry/wet, night scenery and Akina handling. Enna Time Attack boards and replay downloads are available on the community leaderboard.
+Online boost and car collisions default ON and can be changed by the host before racing. Opponent smoothing, network input delivery, mouse/controller menus, scenery processing and replay-save performance have been improved. Both online players need this update.
 
 GITHUB GAME UPDATES
 At startup the game checks the latest public GitHub Windows release. If an update is available, choose YES to download, verify, apply it and restart, or NO to continue playing. Up-to-date builds proceed directly to the game. Offline checks time out and allow play. Saves, settings, custom music and replays are preserved. You can also check from the title screen through Options > Gameplay > Game Updates.

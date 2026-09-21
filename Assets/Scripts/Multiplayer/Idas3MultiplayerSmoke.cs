@@ -84,7 +84,7 @@ namespace Idas3.Multiplayer
             public bool lobbyAutoClosed,liveMenuReopened,secondLobbyAutoClosed;
             public int checks,course,maxPeerRanges,maxPeerMainRanges;
             public double elapsedSeconds;
-            public bool authorityEnabled,menuPixelsChecked,mirrorInputFixture;
+            public bool authorityEnabled,menuPixelsChecked,mirrorInputFixture,boostEnabled,collisionsEnabled;
             public Idas3AuthorityStatus authority;
             public int authorityStallFrames,maxObservedPing;
             public double configuredRttMs,configuredJitterMs,configuredLossPercent;
@@ -135,7 +135,7 @@ namespace Idas3.Multiplayer
             if(pendingDisconnectCheck&&(pendingPeerRoot.Length==0||pendingSteamCheck))throw new ArgumentException("Disconnect check requires two isolated LAN peers and their output directories.");
             if(pendingReturnCheck&&(pendingPeerRoot.Length==0||pendingSteamCheck||pendingDisconnectCheck))throw new ArgumentException("Return-to-lobby check requires two isolated LAN peers and must run separately from disconnect/Steam checks.");
             pendingPort=IntegerArgument(args,"-idas3-multiplayer-port",27830,1024,65535);
-            pendingCourse=IntegerArgument(args,"-idas3-multiplayer-course",0,0,10);
+            pendingCourse=IntegerArgument(args,"-idas3-multiplayer-course",0,0,11);
             Directory.CreateDirectory(pendingRoot);saves=Path.Combine(pendingRoot,"userdata");Directory.CreateDirectory(saves);
             if(Array.IndexOf(args,"-idas3-multiplayer-saved-cars-check")>=0){
                 var fixtures=Path.GetFullPath(Argument(args,"-idas3-multiplayer-saved-cars-fixture",""));
@@ -224,6 +224,7 @@ namespace Idas3.Multiplayer
         private void Update()
         {
             if(finished)return;
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-profile")>=0){QualitySettings.vSyncCount=0;Application.targetFrameRate=240;}
             if(host.Failure!=null){Finish(false,host.Failure);return;}
             double timeout=returnCheck?360:240;
             if(Time.realtimeSinceStartupAsDouble-began>timeout){Finish(false,"Multiplayer diagnostic exceeded "+timeout+" seconds.");return;}
@@ -311,6 +312,7 @@ namespace Idas3.Multiplayer
             if(quickCheck){yield return QuickMatchRuntimeCheck();yield break;}
             if(steamCheck){yield return SteamRuntimeCheck();yield break;}
             session.ConfigureLocalTest(port,role=="host"?"SMOKE HOST":"SMOKE JOIN");
+            if(course==11){host.GameOptions.BeginEdit();host.GameOptions.Draft.replayOnline=true;Check(host.GameOptions.ApplyDraft(),"Enable online replay recording");}
             Check(session.Available,"LAN diagnostic transport is unavailable.");
             session.SetCar(role=="host"?0:8);
             if(ChallengerCheck)session.SetRaceOptions(course,false,course==8,course==4||course==8);
@@ -323,8 +325,8 @@ namespace Idas3.Multiplayer
                     Check(!overlay.SearchingVisible,"Search badge visible in attract/menu");
                     pulse=13;yield return Until(()=>host.Status.frontendStage!=0,5,"Waiting room swallowed frontend Start");
                     pulse=116;yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1)==0,35,"Cannot start offline race while searching");
-                    var tick=host.Status.simulationTicks;yield return Frames(15);
-                    Check(host.Status.simulationTicks>tick&&overlay.SearchingVisible,"Waiting search stopped race or lost badge");
+                    var tick=host.Status.simulationTicks;
+                    yield return Until(()=>host.Status.simulationTicks>tick&&overlay.SearchingVisible,5,"Waiting search stopped race or lost badge");
                     yield return CaptureChallenger("accepting-challengers");
                     foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720),new Vector2Int(1920,1080),new Vector2Int(2560,1080)})
                         yield return CaptureChallenger("accepting-"+size.x+"x"+size.y,size.x,size.y);
@@ -383,6 +385,36 @@ namespace Idas3.Multiplayer
                     File.WriteAllText(Path.Combine(root,"boost-on"),"on");
                 }
                 Check(session.BoostEnabled,"Boost final rule differs");
+                Check(session.ExperimentalAuthority,"Normal online rooms must use shared simulation without a test switch");
+                session.SetReady(true);
+                yield return Until(()=>session.Players[0].Ready&&session.Players[1].Ready,15,"Collision test readiness did not settle");
+                File.WriteAllText(Path.Combine(root,"collisions-ready"),"ready");
+                yield return Until(()=>File.Exists(Path.Combine(peerRoot,"collisions-ready")),15,"Peer collision readiness missing");
+                bool finalCollisions=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-collisions-off")<0;
+                if(role=="host"){
+                    session.SetCollisions(false);
+                    Check(!session.LocalReady&&!session.Players[1].Ready,"Changing collisions did not clear readiness");
+                    yield return Until(()=>File.Exists(Path.Combine(peerRoot,"collisions-off")),15,"Collision OFF not acknowledged");
+                    if(finalCollisions)session.SetCollisions(true);
+                    if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-boost-off")>=0)session.SetBoost(false);
+                }else{
+                    yield return Until(()=>!session.CollisionsEnabled&&!session.LocalReady,15,"Host collision OFF/readiness reset not received");
+                    session.SetCollisions(true);Check(!session.CollisionsEnabled,"Guest changed host collision rule");
+                    File.WriteAllText(Path.Combine(root,"collisions-off"),"off");
+                    yield return Until(()=>session.CollisionsEnabled==finalCollisions,15,"Final collision rule not received");
+                    if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-boost-off")>=0)
+                        yield return Until(()=>!session.BoostEnabled,15,"Final boost OFF not received");
+                }
+                File.WriteAllText(Path.Combine(root,"rules-final"),"agreed");
+                yield return Until(()=>File.Exists(Path.Combine(peerRoot,"rules-final")),15,"Peer rules acknowledgement missing");
+                yield return CaptureMenu("room-rules");
+                if(!WorldOnly){
+                    if(role=="host"){
+                        yield return VerifyRuleNavigation("BOOST",()=>session.BoostEnabled);
+                        yield return VerifyRuleNavigation("CAR COLLISIONS",()=>session.CollisionsEnabled);
+                        File.WriteAllText(Path.Combine(root,"controller-rules-passed.txt"),"Both rules toggled twice through menu navigation and retained focus.\n");
+                    }else yield return Until(()=>File.Exists(Path.Combine(peerRoot,"controller-rules-passed.txt")),20,"Host rule navigation test did not finish");
+                }
             }
             if(SavedCarCheck){
                 Check(session.Garage.Count>=2&&session.LocalSavedCar.Saved,"Saved garage was not loaded");
@@ -447,10 +479,11 @@ namespace Idas3.Multiplayer
             yield return Until(()=>session.IsRacing&&session.RaceReleased,40,"Synchronized race countdown did not release.");
             if(course>=9){
                 var choice=session.SelectedChoice;
-                uint expected=(course==10?524288u:0u)|16384u|(choice.Reverse?32768u:0u)|(choice.Night?65536u:0u)|(choice.Wet?131072u:0u);
-                Check((host.Status.flags&770048u)==expected,"Hakone native course/conditions differ from lobby");
-                Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedCourse==Idas8HakoneCourse.CourseName(expected),"Imported online course identity mismatch");
-                Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedVariant==Idas8HakoneCourse.Variant(expected),"Hakone online scenery variant missing");
+                uint expected=(course==11?1048576u:course==10?524288u:0u)|16384u|(choice.Reverse?32768u:0u)|(choice.Night?65536u:0u)|(choice.Wet?131072u:0u);
+                Check((host.Status.flags&1818624u)==expected,"Hakone native course/conditions differ from lobby");
+                if(course==11){var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();Check(enna!=null&&enna.Loaded,"Enna online scenery missing");enna.VerifyPresentation();}
+                else {Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedCourse==Idas8HakoneCourse.CourseName(expected),"Imported online course identity mismatch");
+                Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedVariant==Idas8HakoneCourse.Variant(expected),"Hakone online scenery variant missing");}
             }
             Check(!menu.IsOpen&&ReadSourceStatus().phase==1,"Lobby reopened when the first showcase shot began.");
             if(showcaseCheck)yield return CaptureUnobstructedShowcase();
@@ -474,7 +507,8 @@ namespace Idas3.Multiplayer
                 "Both native cars did not complete600 source race ticks with100 remote snapshots.");
             if(ContactMotionCheck){
                 yield return Until(()=>lastLocal.raceTicks-firstLocalTick>=1800&&lastRemote.raceTicks-firstRemoteTick>=1800,70,"Contact fixture did not run for 30 source seconds");
-                Check(lastAuthority.contactFrames>0,"Contact fixture never exercised car-to-car contact");
+                Check(session.CollisionsEnabled?lastAuthority.contactFrames>0:lastAuthority.contactFrames==0,
+                    "Native car contact did not match the agreed collision rule");
             }
             Check(lastLocal.Valid((uint)(role=="host"?0:8))&&lastRemote.Valid((uint)(role=="host"?8:0)),"Final snapshots contain the wrong car model or invalid state.");
             Check(localTravel>10&&remoteTravel>10&&peakLocalSpeed>3&&peakRemoteSpeed>3,"Both drivers did not move through the course.");
@@ -514,6 +548,7 @@ namespace Idas3.Multiplayer
                 peerLeft=true;driving=false;session.LeaveRoom();yield return Frames(10);
                 Check(!session.InLobby&&!session.IsRacing,"Joiner did not return from the disconnected race.");
             }
+            if(course==11)yield return VerifyEnnaReplay();
             Finish(true,null);
         }
         private KeyCode manualKey;
@@ -707,7 +742,9 @@ namespace Idas3.Multiplayer
                     var source=ReadSourceStatus();
                     if(source.phase==0){yield return null;continue;}
                     if(previousPhase==0){Check(source.phase==1,"Second start did not begin at the first original showcase shot.");heldOwner=source.ownerTicks;heldSolver=source.simulationTicks;}
-                    if(source.phase!=previousPhase){Check(source.phase==previousPhase+1,"Second start skipped showcase/VS/countdown order.");previousPhase=source.phase;phases.Add(source.phase);}
+                    // Names animate within the two showcase shots; the current
+                    // presentation has no separate phase 3 hold before countdown.
+                    if(source.phase!=previousPhase){Check(source.phase==(previousPhase==2?4:previousPhase+1),"Second start skipped showcase/countdown order.");previousPhase=source.phase;phases.Add(source.phase);}
                     if(source.phase<=3)Check(source.ownerTicks==heldOwner&&source.simulationTicks==heldSolver&&source.countdownRemaining==240,"Second showcase advanced source physics or countdown early.");
                     if(source.phase==4&&source.countdownDigit>=1&&source.countdownDigit<=3&&source.countdownDigit!=previousDigit){
                         Check(previousDigit<0?source.countdownDigit==3:source.countdownDigit==previousDigit-1,"Second source countdown digit order.");previousDigit=source.countdownDigit;digits.Add(previousDigit);
@@ -833,6 +870,12 @@ namespace Idas3.Multiplayer
             session.HostRoom();
             yield return Until(()=>session.InLobby&&session.IsHost&&!string.IsNullOrEmpty(session.RoomCode),30,"Steam did not create this diagnostic's host lobby.");
             roomCode=session.RoomCode;
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-profile")>=0){
+                var transport=(Idas3SteamTransport)typeof(Idas3MultiplayerSession).GetField("transport",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(session);
+                var costs=transport.DiagnosticMembershipCost();
+                File.WriteAllText(Path.Combine(root,"steam-membership-cost.txt"),string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    "Own-room live Steam read-only query pair: {0:F6} ms/check; cached identity guard: {1:F6} ms/check; iterations: {2}. No second Steam account or Internet race.\n",costs[0],costs[1],costs[2]));
+            }
             File.WriteAllText(Path.Combine(root,"room.json"),JsonUtility.ToJson(new RoomNotice{
                 role=role,code=roomCode,phase="steam-own-room",port=0,course=session.Course,utc=DateTime.UtcNow.ToString("O")},true));
             Phase("steam-menu");menu.SetOpen(true);yield return Frames(4);
@@ -861,17 +904,20 @@ namespace Idas3.Multiplayer
             if(!MotionCheck||!session.ExperimentalAuthority)return;
             var native=new double[26];
             if(Idas3MultiplayerMotionSample(native,26)!=1)return;
-            var row=new double[39];row[0]=Time.realtimeSinceStartupAsDouble;Array.Copy(native,0,row,1,26);
+            var row=new double[47];row[0]=Time.realtimeSinceStartupAsDouble;Array.Copy(native,0,row,1,26);
             var camera=host.GetComponent<Camera>();var eye=camera.transform.position;var target=camera.transform.forward;
             var screen=camera.WorldToViewportPoint(new Vector3((float)native[7],(float)native[8],(float)native[9]));
             row[27]=eye.x;row[28]=eye.y;row[29]=eye.z;row[30]=target.x;row[31]=target.y;row[32]=target.z;
             row[33]=screen.x;row[34]=screen.y;row[35]=screen.z;row[36]=session.AuthorityStatus.contactFrames;
-            row[37]=session.LocalSnapshot.yaw;row[38]=session.RemoteSnapshot.yaw;motionSamples.Add(row);
+            row[37]=session.LocalSnapshot.yaw;row[38]=session.RemoteSnapshot.yaw;
+            row[39]=host.NativeStepMilliseconds;row[40]=host.RendererMilliseconds;row[41]=host.UiMilliseconds;row[42]=host.NetworkMilliseconds;
+            var renderer=host.GetComponent<Idas3SceneRenderer>();row[43]=renderer.GeometryUploadCount;row[44]=renderer.UploadedVertexCount;row[45]=renderer.ActiveMeshCount;row[46]=Time.unscaledDeltaTime*1000;
+            motionSamples.Add(row);
         }
         private void WriteMotion(){
             if(!MotionCheck)return;
             using(var writer=new StreamWriter(Path.Combine(root,"motion.csv"))){
-                writer.WriteLine("wall,frame,alpha,rollbacks,replayed,visual_x,visual_y,visual_z,body_x,body_y,body_z,raw_x,raw_y,raw_z,offset_x,offset_y,offset_z,previous_x,previous_y,previous_z,current_x,current_y,current_z,local_x,local_y,local_z,render_frame,eye_x,eye_y,eye_z,forward_x,forward_y,forward_z,viewport_x,viewport_y,viewport_z,contacts,local_yaw,remote_yaw");
+                writer.WriteLine("wall,frame,alpha,rollbacks,replayed,visual_x,visual_y,visual_z,body_x,body_y,body_z,raw_x,raw_y,raw_z,offset_x,offset_y,offset_z,previous_x,previous_y,previous_z,current_x,current_y,current_z,local_x,local_y,local_z,render_frame,eye_x,eye_y,eye_z,forward_x,forward_y,forward_z,viewport_x,viewport_y,viewport_z,contacts,local_yaw,remote_yaw,native_ms,renderer_ms,ui_ms,network_ms,uploads,vertices,meshes,frame_ms");
                 foreach(var row in motionSamples){for(int i=0;i<row.Length;++i){if(i>0)writer.Write(',');writer.Write(row[i].ToString("R",System.Globalization.CultureInfo.InvariantCulture));}writer.WriteLine();}
             }
         }
@@ -946,6 +992,25 @@ namespace Idas3.Multiplayer
             var image=new Texture2D(target.width,target.height,TextureFormat.RGB24,false);image.ReadPixels(new Rect(0,0,target.width,target.height),0,0);image.Apply();RenderTexture.active=old;
             File.WriteAllBytes(Path.Combine(root,name+".png"),image.EncodeToPNG());
             Destroy(image);target.Release();Destroy(target);yield return null;
+        }
+        private IEnumerator VerifyRuleNavigation(string name,Func<bool> value)
+        {
+            var field=typeof(Idas3MultiplayerMenu).GetField("controllerFocus",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            var focus=(Idas3MenuFocus)field.GetValue(menu);string id="course-option:"+name;
+            menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);
+            for(int i=0;i<40&&focus.Selected!=id;++i){
+                menu.ProcessMenuNavigation(0,1,false,false,false,Time.realtimeSinceStartupAsDouble);
+                menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);
+                yield return null;
+            }
+            Check(focus.Selected==id,"Controller cannot reach "+name);
+            for(int i=0;i<2;++i){
+                bool before=value();
+                menu.ProcessMenuNavigation(0,0,true,false,false,Time.realtimeSinceStartupAsDouble);
+                yield return Until(()=>value()!=before,3,"Controller did not toggle "+name);
+                menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);
+                yield return Frames(2);Check(focus.Selected==id,"Changing "+name+" lost controller focus");
+            }
         }
         private IEnumerator CaptureMenu(string name)
         {
@@ -1055,7 +1120,7 @@ namespace Idas3.Multiplayer
                 remoteSourceSeconds=raceObserved?(lastRemote.raceTicks-firstRemoteTick)/60.0:0,
                 localSourceMinusWallSeconds=raceObserved?(lastLocal.raceTicks-firstLocalTick)/60.0-(lastPoseObservedAt-firstPoseObservedAt):0,
                 minRemoteSnapshotMinusLocalSeconds=raceObserved?minObservedRemoteOffset:0,maxRemoteSnapshotMinusLocalSeconds=raceObserved?maxObservedRemoteOffset:0,
-                authorityEnabled=session.ExperimentalAuthority,menuPixelsChecked=!WorldOnly,mirrorInputFixture=MirrorCheck,authority=lastAuthority,authorityStallFrames=authorityStallFrames,maxObservedPing=maxObservedPing,
+                authorityEnabled=session.ExperimentalAuthority,boostEnabled=session.BoostEnabled,collisionsEnabled=session.CollisionsEnabled,menuPixelsChecked=!WorldOnly,mirrorInputFixture=MirrorCheck,authority=lastAuthority,authorityStallFrames=authorityStallFrames,maxObservedPing=maxObservedPing,
                 configuredRttMs=session.DiagnosticRttMs,configuredJitterMs=session.DiagnosticJitterMs,configuredLossPercent=session.DiagnosticLossPercent,droppedPackets=session.DiagnosticDroppedPackets,
                 elapsedSeconds=Time.realtimeSinceStartupAsDouble-began,maxPeerRanges=maxPeerRanges,maxPeerMainRanges=maxPeerMainRanges,
                 localRaceTicksObserved=raceObserved?lastLocal.raceTicks-firstLocalTick:0,remoteRaceTicksObserved=raceObserved?lastRemote.raceTicks-firstRemoteTick:0,

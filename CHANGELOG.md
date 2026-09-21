@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.95-community-replays.13 - September 21, 2026
+
+- Added Enna Skyline to the main game, including scenery, collision data, start title and replay support. Supports downhill/uphill and dry/wet at night, using Akina handling.
+- Added Enna to online course selection and community Time Attack rankings, with replay-backed submissions and public replay downloads.
+- Restored online car collisions and boost through the shared two-car simulation with prediction and rollback. Both default on; the host can change either before the race, with synchronized rules and readiness resets.
+- Smoothed opponent visual corrections and sent fresh online input on simulation ticks. Reduced repeated Steam lobby membership queries during races.
+- Fixed mouse selection being overridden by connected controllers in settings, online menus and the replay library.
+- Reduced scenery copying and repeated transformed-mesh work during course-sector changes. Buffered replay CSV writing reduces finish-time save overhead while preserving recorded samples.
+- Retained mirrors, weather, scenery detail and gameplay features. Performance gains vary by machine; occasional frame-time spikes remain under investigation.
+
+Verification covered all twelve tracks in night/wet conditions (snow on Akina Snow), replay sample and rendered-scene comparisons, menu input checks, and two-player Enna races in all four direction/weather combinations with injected latency, jitter and loss. Online tests ran on one PC; they are not two-account Steam Internet tests.
+
+Both online players must install this update. The updater preserves personal saves, settings, custom music and replays.
+
 ## 0.3.95-community-replays.11 - September 20, 2026
 
 - Added a Special Stage tab immediately after Stage 2 with 15 additional PS2 race songs; excluded the 16 songs already represented in the catalog.
@@ -8,20 +22,20 @@
 
 
 
-## 0.3.95-community-replays.10 — September 20, 2026
+## 0.3.95-community-replays.10 â€” September 20, 2026
 
 - Restored the arcade race-intro HUD entrance: TIME slides from the left and RECORD / DIFFERENCE / DRIVER slide from the right, with backing strips entering before their labels.
 - Restored the Legend of the Streets rival portrait entrance and the delayed player names. Online battle panels use the same entrance timing.
 - Uses the original game's slide filters on the race's 60 Hz clock, preserving numeric clocks and stable animation during pause or repeated renders.
 - Verified filter output against original instructions, rendered all three HUD modes at three aspect ratios, and checked the Unity pre-race sequence.
 
-## 0.3.95-community-replays.9 — September 20, 2026
+## 0.3.95-community-replays.9 â€” September 20, 2026
 
 - Improve Windows frame-cap pacing by waiting immediately before presentation with a high-resolution timer.
 - Keep existing FPS choices, VSync behavior, and uncapped rendering.
 - Reset pacing after focus changes and long stalls; avoid catch-up bursts and duplicate software limiters.
 
-## 0.3.95-community-replays.8 — September 20, 2026
+## 0.3.95-community-replays.8 â€” September 20, 2026
 
 - Restore snowfall and tire snow powder on Akina Snow using original effect textures.
 - Keep rain streaks and water trails separate from snow effects.

@@ -37,6 +37,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3RaceMusicMenu raceMusicMenu;
     internal Idas3CustomRaceMusic CustomMusic {get;private set;}
     private Idas3Native.FrameInput previousMusicInput;
+    private readonly Idas3MenuPointer musicPointer=new Idas3MenuPointer();
+    private readonly Idas3MenuPointer pausePointer=new Idas3MenuPointer();
     private float musicHoldSeconds;
     private bool musicReleaseBlocked;
     private int musicPickerContext, musicNavigationAxis;
@@ -83,6 +85,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     internal float NativeStepMilliseconds { get; private set; }
     internal float RendererMilliseconds { get; private set; }
     internal float UiMilliseconds { get; private set; }
+    internal float NetworkMilliseconds { get; private set; }
     private bool performanceDiagnostics;
 
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)]
@@ -128,7 +131,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 : Path.Combine(Application.streamingAssetsPath, "IDAS3");
             string saves = Path.Combine(Application.persistentDataPath, "userdata-unity-scene");
             var hakone=FindAnyObjectByType<Idas8HakoneCourse>();
-            bool importedTest=hakone!=null&&hakone.testBuild;
+            var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();
+            bool ennaTest=enna!=null&&enna.testBuild;
+            bool importedTest=(hakone!=null&&hakone.testBuild)||ennaTest;
             string pack=Path.Combine(Application.streamingAssetsPath,"HAKONE");
             bool importedCourse=File.Exists(Path.Combine(pack,"menu.idastex"));
             if(importedTest&&!Application.isEditor)assets=File.ReadAllText(Path.Combine(Application.streamingAssetsPath,"d3-assets.txt")).Trim();
@@ -146,7 +151,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             diagnostic = Idas3RaceMusicSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3AttractOptionsSmoke.Configure(ref saves) || diagnostic;
             diagnosticMode = diagnostic || (importedTest && (Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-smoke")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-menu-smoke")>=0));
-            performanceDiagnostics = diagnostic && Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0;
+            performanceDiagnostics = diagnostic && (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-multiplayer-profile") >= 0);
             MatchOutputResolution();
             if (!diagnostic && !Directory.Exists(saves))
             {
@@ -231,6 +236,18 @@ public sealed class Idas3SceneGame : MonoBehaviour
             Idas3RaceMusicSmoke.Attach(this);
             Idas3AttractOptionsSmoke.Attach(this);
             string sadaminePack=Path.Combine(Application.streamingAssetsPath,"SADAMINE");
+            string ennaPack=Path.Combine(Application.streamingAssetsPath,"ENNA");
+            if(File.Exists(Path.Combine(ennaPack,"menu.idastex"))){
+                if(Idas3Native.Idas3SceneRegisterImportedCourse(ennaPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
+                if(enna==null)enna=new GameObject("Enna Skyline course").AddComponent<IdasSpecialStageEnnaCourse>();
+                if(ennaTest){
+                    int direction=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-uphill")>=0?1:0;
+                    bool direct=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-race")>=0;
+                    int weather=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-wet")>=0?1:0;
+                    int started=direct?Idas3Native.Idas3SceneStartImportedCourseConditions(ennaPack,direction,1,weather):Idas3Native.Idas3SceneShowImportedCourseMenu(ennaPack);
+                    if(started!=1)throw new InvalidOperationException(Idas3Native.Error());RefreshScene();
+                }
+            }
             if(File.Exists(Path.Combine(sadaminePack,"menu.idastex"))){
                 if(Idas3Native.Idas3SceneRegisterImportedCourse(sadaminePack)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(hakone==null)hakone=new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
@@ -238,7 +255,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if(importedCourse){
                 if(Idas3Native.Idas3SceneRegisterImportedCourse(pack)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(hakone==null)hakone=new GameObject("Hakone course").AddComponent<Idas8HakoneCourse>();
-                if(importedTest){
+                if(importedTest&&!ennaTest){
                 int direction=Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-uphill")>=0?1:0;
                 int night=Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-night")>=0?1:0;
                 int wet=Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-wet")>=0?1:0;
@@ -248,8 +265,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 RefreshScene();
                 }
                 if(diagnosticMode)DiagnosticFocusOverride=true;
-                Idas8HakoneTimeAttackSmoke.Attach(this);
             }
+            Idas8HakoneTimeAttackSmoke.Attach(this);
         }
         catch (Exception error) { Fail(error.ToString()); }
     }
@@ -302,7 +319,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             bool muteBackground = gameOptions.Current.muteWhenUnfocused && !Focused;
             if (muteBackground != appliedBackgroundMute) ApplyNativeOptions(gameOptions.Current, false);
             MatchOutputResolution();
+            double networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
             multiplayer.BeforeFrame();
+            if(performanceDiagnostics)NetworkMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
             challenger.Tick();
             var frame = new Idas3Native.FrameInput {
                 size = (uint)Marshal.SizeOf<Idas3Native.FrameInput>(),
@@ -319,7 +338,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
             {
                 for (int i = 0; i < keys.Length; ++i)
                     if (keys[i] != KeyCode.F1 && Input.GetKey(keys[i])) frame.SetKey(virtualKeys[i]);
-                if (Input.GetKey(KeyCode.KeypadEnter) || (!networkRoom && !pauseMenu.IsOpen && Input.GetMouseButton(0))) frame.SetKey(13);
+                // Managed menus hit-test the pointer themselves. Translating
+                // their click to Enter activates the controller selection first.
+                Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0),
+                    !networkRoom&&!pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput);
                 controllerDevices.TryRead(out physicalPad);
             }
             Func<KeyCode,bool> physicalKey = Focused ? Input.GetKey : NoKeyHeld;
@@ -411,7 +433,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (performanceDiagnostics) NativeStepMilliseconds = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
             RefreshScene();
             simulationAndSubmissionMs = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
+            networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
             multiplayer.AfterFrame();
+            if(performanceDiagnostics)NetworkMilliseconds+=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
             Idas3MultiplayerPresentationSmoke.AfterFrame(this,multiplayer);
             UpdateWheelFeedback();
             if (!OnlineRace && !challenger.Active && CanOpenPause && (Status.flags & 2u) != 0 && !pauseMenu.IsOpen && !multiplayerMenu.IsOpen)
@@ -609,6 +633,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
         }
         if (raceMusicMenu.IsOpen)
         {
+            if(musicPointer.BlockNavigation(Idas3MenuPointer.Active,MenuNavigationHeld(raw))){
+                previousMusicInput=raw;NeutralizeControls(ref frame);
+                raceMusicMenu.SetContext(opponent,0,hint);return true;
+            }
             bool pressed(int key) => Held(raw, key) && !Held(previousMusicInput, key);
             uint buttons = raw.padButtons & ~previousMusicInput.padButtons;
             if (pressed(27) || pressed(8) || (buttons & 0x2000) != 0) raceMusicMenu.Back();
@@ -777,6 +805,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
         frame.padButtons = frame.leftTrigger = frame.rightTrigger = frame.padConnected = 0;
         frame.thumbLX = frame.thumbLY = frame.thumbRX = frame.thumbRY = 0;
     }
+    private static bool MenuNavigationHeld(Idas3Native.FrameInput frame) =>
+        Held(frame,13)||Held(frame,8)||Held(frame,27)||Held(frame,37)||Held(frame,38)||Held(frame,39)||Held(frame,40)||
+        (frame.padButtons&0x301Fu)!=0||Math.Abs(frame.thumbLX)>16000||Math.Abs(frame.thumbLY)>16000;
     private void RoutePauseInput(ref Idas3Native.FrameInput frame)
     {
         var raw = frame;
@@ -807,7 +838,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             {
                 // A rebound pause control may also be the device's menu A/B.
                 // Wait for release before interpreting it as a menu command.
-                if (pauseOpenReleaseBlocked)
+                if(pausePointer.BlockNavigation(Idas3MenuPointer.Active,MenuNavigationHeld(raw))){menuNavigationAxis=0;}
+                else if (pauseOpenReleaseBlocked)
                 {
                     if (!closeHeld) pauseOpenReleaseBlocked = false;
                 }

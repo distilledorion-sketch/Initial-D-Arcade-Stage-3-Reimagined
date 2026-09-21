@@ -32,13 +32,13 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     void Start() {
         try {
             host=FindAnyObjectByType<Idas3SceneGame>();view=Idas3ReplayViewer.Instance != null ? Idas3ReplayViewer.Instance.View : host.GetComponent<Camera>();
-            if((SceneFlags&16384u)!=0)LoadVariant(Variant(SceneFlags));
+            if((SceneFlags&16384u)!=0&&(SceneFlags&IdasSpecialStageEnnaCourse.SceneFlag)==0)LoadVariant(Variant(SceneFlags));
             if(testBuild&&(Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-smoke")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-menu-smoke")>=0))gameObject.AddComponent<Idas8HakoneRaceSmoke>();
         } catch(Exception e) {Debug.LogException(e);Application.Quit(1);}
     }
     void LateUpdate(){
         if(view==null)return;
-        bool active=(SceneFlags&16384u)!=0&&(SceneFlags&(1u|4096u|262144u))==0;
+        bool active=(SceneFlags&16384u)!=0&&(SceneFlags&(1u|4096u|262144u|IdasSpecialStageEnnaCourse.SceneFlag))==0;
         if(active!=visible){foreach(Transform child in transform)child.gameObject.SetActive(active);visible=active;}
         if(!active)return;
         string wanted=Variant(SceneFlags);

@@ -11,6 +11,12 @@ int main()try{
         Idas3MultiplayerConfig c{40,1,course,slot,course==8?1u:0u,slot,car,34-car,slot,1};
         validateMultiplayerConfig(c);check(true,"all car/course/grid config domain");
     }
+    for(unsigned reverse=0;reverse<2;++reverse)for(unsigned wet=0;wet<2;++wet){
+        Idas3MultiplayerConfig enna{40,2,11,reverse,wet,1,0,8,0,1};
+        validateMultiplayerConfig(enna);check(true,"Enna downhill/uphill dry/wet allowed");
+        enna.night=0;rejected([&]{validateMultiplayerConfig(enna);});
+        enna.night=1;enna.course=12;rejected([&]{validateMultiplayerConfig(enna);});
+    }
     Idas3MultiplayerConfig c{40,1,3,0,0,0,0,8,0,1};
     for(unsigned field=0;field<10;++field){auto bad=c;auto* words=reinterpret_cast<std::uint32_t*>(&bad);words[field]=0xffffffff;rejected([&]{validateMultiplayerConfig(bad);});}
     Idas3MultiplayerSnapshot s{128,1};s.flags=Idas3MpActive;s.car=8;s.headlightCounter=-1;

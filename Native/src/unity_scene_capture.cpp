@@ -26,34 +26,41 @@ void UnitySceneCapture::capture(const Renderer& r,const Mesh& mesh,Vec3 eye,Vec3
 #if !defined(IDAS3_PORTABLE_SCENE)
     using namespace DirectX;
 #endif
-    if(mesh.vertices.size()>2000000)throw std::runtime_error("Scene geometry budget exceeded");
-    vertices_.resize(mesh.vertices.size());
+    std::size_t vertexCount=mesh.vertices.size();
+    if(mesh.borrowCachedGeometry){vertexCount=0;for(const auto& range:mesh.ranges)vertexCount+=range.count;}
+    if(vertexCount>2000000)throw std::runtime_error("Scene geometry budget exceeded");
+    vertices_.resize(vertexCount);
     static_assert(sizeof(Vertex)==sizeof(Idas3SceneVertex));
     const auto previousRanges=ranges_.size();
     static const bool disableIdentities=std::getenv("IDAS3_GEOMETRY_IDS_OFF")!=nullptr;
-    if(disableIdentities&&!vertices_.empty())std::memcpy(vertices_.data(),mesh.vertices.data(),vertices_.size()*sizeof(Vertex));
+    if(disableIdentities&&!mesh.borrowCachedGeometry&&!vertices_.empty())std::memcpy(vertices_.data(),mesh.vertices.data(),vertices_.size()*sizeof(Vertex));
     ranges_.resize(mesh.ranges.size());geometryIds_.resize(mesh.ranges.size());
     std::size_t covered=0;bool contiguous=true;
     for(unsigned i=0;i<mesh.ranges.size();++i){const auto& s=mesh.ranges[i];
-        if(size_t(s.first)+s.count>mesh.vertices.size()||s.carLighting>2)throw std::runtime_error("Invalid captured mesh range");
-        contiguous=contiguous&&s.first==covered;covered=size_t(s.first)+s.count;
+        if((!s.borrowedVertices&&size_t(s.first)+s.count>mesh.vertices.size())||s.carLighting>2)throw std::runtime_error("Invalid captured mesh range");
+        const auto first=mesh.borrowCachedGeometry?std::uint32_t(covered):s.first;
+        const auto* source=s.borrowedVertices?s.borrowedVertices:mesh.vertices.data()+s.first;
+        contiguous=contiguous&&first==covered;covered=size_t(first)+s.count;
         // Keep an owned snapshot for managed readers, but do not copy static
         // course bytes again when the identical range still occupies this slot.
         // Changed order, slices, merged ranges and all dynamic geometry copy.
-        const bool retained=disableIdentities||(s.geometryId&&i<previousRanges&&geometryIds_[i]==s.geometryId&&
-            ranges_[i].first==s.first&&ranges_[i].count==s.count);
-        if(!retained&&s.count)std::memcpy(vertices_.data()+s.first,mesh.vertices.data()+s.first,size_t(s.count)*sizeof(Vertex));
-        Idas3SceneRange range{s.first,s.count,s.texture,s.tsp,s.pcw,s.isp,s.gmp,
+        const bool retained=(disableIdentities&&!mesh.borrowCachedGeometry)||(!disableIdentities&&s.geometryId&&i<previousRanges&&geometryIds_[i]==s.geometryId&&
+            ranges_[i].first==first&&ranges_[i].count==s.count);
+        if(!retained&&s.count)std::memcpy(vertices_.data()+first,source,size_t(s.count)*sizeof(Vertex));
+        static const bool validateRanges=std::getenv("IDAS3_VALIDATE_GEOMETRY_IDS")!=nullptr;
+        if(validateRanges&&s.count&&std::memcmp(vertices_.data()+first,source,size_t(s.count)*sizeof(Vertex)))
+            throw std::runtime_error("Cached scene range differs from source geometry");
+        Idas3SceneRange range{first,s.count,s.texture,s.tsp,s.pcw,s.isp,s.gmp,
             unsigned(s.original)|(unsigned(s.emissive)<<1)|(unsigned(s.billboard)<<2)|(unsigned(bool(s.originalLightDirection))<<3)|(unsigned(s.courseGeometry)<<4)|(unsigned(s.sourceFaceCulling)<<5),
             s.gloss,s.carLighting?s.carLighting+1:s.courseLighting?1u:0u,s.viewMask,i,{}};
         if(s.originalLightDirection)std::copy(s.originalLightDirection->begin(),s.originalLightDirection->end(),range.lightDirection);
         ranges_[i]=range;
         geometryIds_[i]=s.geometryId;
     }
-    if((!contiguous||covered!=mesh.vertices.size())&&!vertices_.empty())
+    if(!mesh.borrowCachedGeometry&&(!contiguous||covered!=mesh.vertices.size())&&!vertices_.empty())
         std::memcpy(vertices_.data(),mesh.vertices.data(),vertices_.size()*sizeof(Vertex));
     static const bool validateIdentities=std::getenv("IDAS3_VALIDATE_GEOMETRY_IDS")!=nullptr;
-    if(validateIdentities&&!vertices_.empty()&&std::memcmp(vertices_.data(),mesh.vertices.data(),vertices_.size()*sizeof(Vertex)))
+    if(validateIdentities&&!mesh.borrowCachedGeometry&&!vertices_.empty()&&std::memcmp(vertices_.data(),mesh.vertices.data(),vertices_.size()*sizeof(Vertex)))
         throw std::runtime_error("Cached scene snapshot differs from source geometry");
     overlays_.clear();
     if(overlay)overlays_.push_back({overlay,unsigned(r.width),unsigned(r.height),unsigned(behind),0});

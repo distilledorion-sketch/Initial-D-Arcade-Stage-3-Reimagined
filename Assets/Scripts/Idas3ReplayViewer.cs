@@ -31,6 +31,16 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     Task<string> picker;
     bool resumeAfterPicker;
     bool controlsVisible = true;
+    readonly Idas3MenuPointer menuPointer=new Idas3MenuPointer();
+    bool PointerOwnsControls()
+    {
+        var key=Keyboard.current;var pad=Gamepad.current;
+        bool held=key?.anyKey.isPressed==true||pad?.buttonSouth.isPressed==true||pad?.buttonEast.isPressed==true||
+            pad?.buttonNorth.isPressed==true||pad?.buttonWest.isPressed==true||pad?.startButton.isPressed==true||
+            pad?.selectButton.isPressed==true||(pad?.dpad.ReadValue().sqrMagnitude??0)>0||
+            Mathf.Abs(pad?.rightStick.x.ReadValue()??0)>.2f;
+        return menuPointer.BlockNavigation(Idas3MenuPointer.Active,held);
+    }
     readonly byte[] detailBytes = new byte[132];
     readonly byte[] opponentFrameBytes=new byte[160];
     bool opponentPov,browsing;
@@ -93,16 +103,20 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             if (!initialized)
             {
                 string assets = Application.isEditor ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native")) : Path.Combine(Application.streamingAssetsPath, "IDAS3");
+                if (!Application.isEditor && Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-enna-test") >= 0)
+                    assets = File.ReadAllText(Path.Combine(Application.streamingAssetsPath, "d3-assets.txt")).Trim();
                 string storage = Path.Combine(Application.temporaryCachePath, "replay-viewer-session");
                 if (Idas3SceneInitialize(assets, storage, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 initialized = true;
                 audioOutput=gameObject.AddComponent<Idas3UnityAudio>();audioOutput.Initialize();
-                foreach (var pack in new[] { "HAKONE", "SADAMINE" })
+                foreach (var pack in new[] { "HAKONE", "SADAMINE", "ENNA" })
                 {
                     string root = Path.Combine(Application.streamingAssetsPath, pack);
                     if (File.Exists(Path.Combine(root, "menu.idastex")) && Idas3Native.Idas3SceneRegisterImportedCourse(root) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 }
                 new GameObject("Replay imported course").AddComponent<Idas8HakoneCourse>();
+                if(FindAnyObjectByType<IdasSpecialStageEnnaCourse>()==null)
+                    new GameObject("Replay Enna Skyline").AddComponent<IdasSpecialStageEnnaCourse>();
             }
             replay = loaded;opponentPov=false;ConfigurePerspective();seconds = 0; filename = Path.GetFileName(path); message = null; playing = proofDirectory == null;browsing=false;
             Present();
@@ -147,7 +161,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     }
     void BrowseInput()
     {
-        if(picker!=null)return;
+        if(picker!=null||PointerOwnsControls())return;
         var key=Keyboard.current;var pad=Gamepad.current;
         if(key?.escapeKey.wasPressedThisFrame==true||pad?.buttonEast.wasPressedThisFrame==true){if(replay!=null)browsing=false;return;}
         if(libraryFiles.Length==0)return;
@@ -222,6 +236,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             double now = Time.realtimeSinceStartupAsDouble;
             float delta = (float)Math.Max(0, Math.Min(.25, now - lastUpdateAt)); lastUpdateAt = now;
             var keyboard = Keyboard.current; var pad = Gamepad.current;
+            if(!PointerOwnsControls()){
             if(keyboard?.tabKey.wasPressedThisFrame==true||pad?.buttonWest.wasPressedThisFrame==true)SwitchPov();
             if(keyboard?.escapeKey.wasPressedThisFrame==true||pad?.buttonEast.wasPressedThisFrame==true){Browse();return;}
             if (keyboard?.hKey.wasPressedThisFrame == true || pad?.selectButton.wasPressedThisFrame == true) controlsVisible = !controlsVisible;
@@ -234,6 +249,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             orbit += (pad?.rightStick.x.ReadValue() ?? 0) * delta;
             if (keyboard?.qKey.isPressed == true) orbit -= delta;
             if (keyboard?.eKey.isPressed == true) orbit += delta;
+            }
             if (playing) { seconds = Math.Min(replay.Duration, seconds + delta * rate); if (seconds >= replay.Duration) playing = false; }
             Present();
             UpdateReplayAudio(delta);
@@ -256,6 +272,9 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     static string Clock(double value) => string.Format("{0}:{1:00.000}", (int)value / 60, value % 60);
     void OnGUI()
     {
+        // Update already routes keyboard/gamepad actions. Do not let IMGUI
+        // also submit whichever button last received keyboard focus.
+        if(Event.current.type==EventType.KeyDown||Event.current.type==EventType.KeyUp)Event.current.Use();
         float scale = Mathf.Max(.6f, Mathf.Min(Screen.width / 1280f, Screen.height / 720f));
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));
         float width = Screen.width / scale, height = Screen.height / scale;
@@ -322,7 +341,15 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     void Proof()
     {
         proofFrame++;
-        if (proofFrame % 40 == 1) { seconds = replay.Duration * Math.Min(1, proofFrame / 40 * .5); cameraMode = proofFrame >= 120 ? 3 : 0;if(CanSwitchPov&&proofFrame==81)SwitchPov(); }
+        bool courseSweep=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-course-sweep")>=0;
+        bool railSweep=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-rail-sweep")>=0;
+        if (proofFrame % 40 == 1) {
+            int sample=proofFrame/40;
+            seconds = replay.Duration * (courseSweep ? Math.Min(1,sample/4*.2) : Math.Min(1,sample*.5));
+            cameraMode = courseSweep ? sample%4 : proofFrame >= 120 ? 3 : 0;
+            if(railSweep){seconds=.75+sample*.03;cameraMode=1;}
+            if(!courseSweep&&CanSwitchPov&&proofFrame==81)SwitchPov();
+        }
         if (proofFrame % 40 != 30) return;
         Directory.CreateDirectory(proofDirectory);
         var target = new RenderTexture(1280, 720, 24); var previous = View.targetTexture; var active = RenderTexture.active;
@@ -332,7 +359,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         ScreenCapture.CaptureScreenshot(Path.Combine(proofDirectory, "viewer-" + proofFrame + ".png"));
         View.targetTexture = previous; RenderTexture.active = active; Destroy(texture); target.Release(); Destroy(target);
         File.AppendAllText(Path.Combine(proofDirectory, "playback.txt"), "seconds=" + seconds + " camera=" + cameraMode + " opponentPov="+opponentPov+" meshes=" + scene.ActiveMeshCount + " position=" + Viewed.Sample(seconds).position + "\n");
-        if (proofFrame >= 150) Application.Quit();
+        if (proofFrame >= (railSweep?470:courseSweep?950:150)) Application.Quit();
     }
     // Opt-in verification in a separate viewer; never opens player save files.
     System.Collections.IEnumerator AudioProof(string folder){

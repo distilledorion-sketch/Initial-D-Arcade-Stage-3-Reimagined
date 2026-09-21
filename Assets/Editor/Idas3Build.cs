@@ -33,7 +33,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.11";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.13";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -248,6 +248,12 @@ public static class Idas3Build
         string sadamineDestination=Path.Combine(Path.GetDirectoryName(output),"InitialDUnity_Data/StreamingAssets/SADAMINE");
         foreach(string file in Directory.GetFiles(sadamineSource,"*",SearchOption.AllDirectories)){
             string target=Path.Combine(sadamineDestination,Path.GetRelativePath(sadamineSource,file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
+        }
+        string ennaSource=Path.Combine(project,"RuntimeAssets/ENNA");
+        string ennaDestination=Path.Combine(Path.GetDirectoryName(output),"InitialDUnity_Data/StreamingAssets/ENNA");
+        foreach(string file in Directory.GetFiles(ennaSource,"*",SearchOption.AllDirectories)){
+            string target=Path.Combine(ennaDestination,Path.GetRelativePath(ennaSource,file));
             Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
         }
         // Post-build staging avoids importing 14,376 native assets into Unity.

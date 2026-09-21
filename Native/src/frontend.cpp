@@ -72,7 +72,7 @@ void Frontend::drawHakoneBackdrop(int width,int height) {
     compositeImage(pixels,width,height,importedArtwork(course).at(0),0,168,640,312);
 }
 std::vector<int> Frontend::courseChoices()const {
-    if(gameMode==original::OriginalGameMode::TimeAttack){std::vector<int> choices{0,1,2,3,5,8,4,6,7};for(int id:{hakoneCourse,sadamineCourse})if(importedArtwork(id).size())choices.push_back(id);return choices;}
+    if(gameMode==original::OriginalGameMode::TimeAttack){std::vector<int> choices{0,1,2,3,5,8,4,6,7};for(int id:{hakoneCourse,sadamineCourse,ennaCourse})if(importedArtwork(id).size())choices.push_back(id);return choices;}
     if(gameMode!=original::OriginalGameMode::BuntaChallenge)return {0,1,2,3,5,8,4,6,7};
     std::vector<int> result;
     for(unsigned i=0;i<8;++i)result.push_back(int(original::originalBuntaCourse(i,std::bit_cast<std::int32_t>(battleProfile.u(1080+i*4)))));
@@ -590,11 +590,11 @@ void Frontend::advance(double seconds) {
             (stage==FrontendStage::Course || stage==FrontendStage::Route || stage==FrontendStage::Weather || stage==FrontendStage::Time)?31:36;
         if(carConfirmationFrame>=0 && ++carConfirmationFrame>=confirmationFrames) {
             if(gameMode==original::OriginalGameMode::TimeAttack &&
-                    (stage==FrontendStage::Time || (course==4&&stage==FrontendStage::Weather) ||
+                    (stage==FrontendStage::Time || ((course==4||course==ennaCourse)&&stage==FrontendStage::Weather) ||
                      (course==8&&stage==FrontendStage::Route))){
                 //138740 completes the choice, then enters phase3. Happo and
                 // Snow take the same final exit after their forced choices.
-                if(course==4)night=true;
+                if(course==4||course==ennaCourse)night=true;
                 if(course==8){wet=true;night=true;}
                 selectionExitFrame=0;
                 return false;
@@ -609,7 +609,7 @@ void Frontend::advance(double seconds) {
             }
             // Original1387A0/1387BC force night and finish the TA setup here.
             // Snow has independent snow and wet flags in the original physics.
-            else if(course==4 && stage==FrontendStage::Weather){night=true;startRequested=true;}
+            else if((course==4||course==ennaCourse) && stage==FrontendStage::Weather){night=true;startRequested=true;}
             else if(course==8 && stage==FrontendStage::Route){wet=true;night=true;startRequested=true;}
             else {stage=FrontendStage(int(stage)+1);if(stage==FrontendStage::Course)synchronizeCourseCarousel();}
             frameRemainder=0;return true;

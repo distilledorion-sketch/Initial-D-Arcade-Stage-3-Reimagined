@@ -53,7 +53,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
             if(File.Exists(Path.Combine(folder,"identity.json")))credential=Read<Identity>("identity.json",1024)?.token;
             if(string.IsNullOrEmpty(credential)||credential.Length!=64){byte[] bytes=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(bytes);credential=BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();Write("identity.json",new Identity{token=credential});}
             if(File.Exists(Path.Combine(folder,"pending.json")))pending=Read<Pending>("pending.json",2*1024*1024)??new Pending();
-            pending.runs.RemoveAll(r=>!Uploadable(r));if(pending.runs.Count>1980)pending.runs.RemoveRange(1980,pending.runs.Count-1980);
+            pending.runs.RemoveAll(r=>!Uploadable(r));if(pending.runs.Count>2112)pending.runs.RemoveRange(2112,pending.runs.Count-2112);
             Write("pending.json",pending);CleanReplayFiles();
             if(File.Exists(Path.Combine(folder,"snapshot.json"))){try{snapshot=Read<Snapshot>("snapshot.json",2*1024*1024);if(!UsableCommunitySnapshot(snapshot))snapshot=null;}catch(Exception){snapshot=null;}}
             cacheDirty=true;StartCoroutine(Collect());if(!diagnosticOffline)StartCoroutine(Synchronize());
@@ -77,7 +77,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     private bool QueueFinish(Run run,string source){
         var existing=pending.runs.Find(r=>r.condition==run.condition&&r.weather==run.weather&&r.car==run.car);
         if(existing!=null&&existing.ticks6000<=run.ticks6000)return false;
-        if(existing==null&&pending.runs.Count>=1980)throw new IOException("Upload queue is full.");
+        if(existing==null&&pending.runs.Count>=2112)throw new IOException("Upload queue is full.");
         int size=Idas3SharedReadReplay(null,0);if(size<96||size>Idas3ReplayCodec.MaxRaw)throw new InvalidDataException("Completed replay unavailable.");
         byte[] replay=new byte[size];if(Idas3SharedReadReplay(replay,size)!=size)throw new InvalidDataException("Replay changed while reading.");
         run.replayVersion=2;encodingRun=run;encodingSource=source;
@@ -113,12 +113,12 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     }
     public static bool Uploadable(Run r)=>Valid(r)&&r.imported==0&&r.replayVersion==2&&r.ruleset==Ruleset&&r.epoch>=FirstReplaySeason&&SupportedBuild(r.build)&&Guid.TryParseExact(r.id,"D",out _);
     public static bool Valid(Run r){
-        if(r==null||r.condition<0||r.condition>21||r.weather<0||r.weather>1||r.car<0||r.car>34||r.ticks6000<60000||r.ticks6000>=10800000||r.nameGlyphs==null||r.nameGlyphs.Length!=5||r.splits==null||r.splits.Length!=4||r.imported<0||r.imported>1||r.manual<(r.imported==1?-1:0)||r.manual>1||r.night<(r.imported==1?-1:0)||r.night>1||r.points<(r.imported==1?-1:0)||r.points>999999)return false;
+        if(r==null||r.condition<0||r.condition>23||r.weather<0||r.weather>1||r.car<0||r.car>34||r.ticks6000<60000||r.ticks6000>=10800000||r.nameGlyphs==null||r.nameGlyphs.Length!=5||r.splits==null||r.splits.Length!=4||r.imported<0||r.imported>1||r.manual<(r.imported==1?-1:0)||r.manual>1||r.night<(r.imported==1?-1:0)||r.night>1||r.points<(r.imported==1?-1:0)||r.points>999999)return false;
         foreach(int n in r.nameGlyphs)if(n<0||n>221)return false;
         int prior=0,count=0;bool ended=false;foreach(int n in r.splits){if(n==0){ended=true;continue;}if(ended||n<=prior||n>r.ticks6000)return false;prior=n;count++;}
         return (r.imported==1&&count==0)||(count>=2&&prior==r.ticks6000);
     }
-    private static bool ValidSnapshot(Snapshot s){if(s==null||s.ruleset!=Ruleset||s.entries==null||s.entries.Length>1980)return false;foreach(var r in s.entries)if(!Valid(r))return false;return true;}
+    private static bool ValidSnapshot(Snapshot s){if(s==null||s.ruleset!=Ruleset||s.entries==null||s.entries.Length>2112)return false;foreach(var r in s.entries)if(!Valid(r))return false;return true;}
     internal static bool UsableCommunitySnapshot(Snapshot s){
         if(!ValidSnapshot(s)||s.epoch<FirstReplaySeason)return false;
         foreach(var r in s.entries)if(r.epoch!=s.epoch||r.imported!=0||!r.replayAvailable||!SupportedBuild(r.build))return false;

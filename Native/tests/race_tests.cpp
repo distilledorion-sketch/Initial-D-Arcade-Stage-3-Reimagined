@@ -42,6 +42,14 @@ int main(){try{
     auto dir=std::filesystem::temp_directory_path()/"idas3_remake_race_test";std::filesystem::create_directories(dir);
     auto file=(dir/"test.csv").string();require(rep.save(file),"save ghost");Replay loaded;require(loaded.load(file)&&loaded.frames.size()==2,"load ghost");
     require(rep.save(file),"replace existing ghost");
+    Replay precision;
+    for(unsigned i=1;i<=18000;++i)precision.record(i,{float(i)*.1234567f,-float(i)*.00001234567f,float(i)*123.4567f},float(i)*-.00234567f,float(i)*.03456789f,2);
+    precision.finishTicks6000=1799999;
+    require(precision.save(file)&&loaded.load(file)&&loaded.frames.size()==precision.frames.size(),"buffered five minute ghost round trip");
+    for(std::size_t i=0;i<precision.frames.size();++i){const auto& a=precision.frames[i];const auto& b=loaded.frames[i];
+        require(a.tick==b.tick&&a.gear==b.gear&&a.speed==b.speed&&a.yaw==b.yaw&&a.position.x==b.position.x&&a.position.y==b.position.y&&a.position.z==b.position.z,"CSV retains exact finite float values across buffer boundaries");
+    }
+    require(loaded.finishTicks6000==precision.finishTicks6000,"buffered ghost retains exact finish");
     rep.finishTicks6000=148;require(rep.save(file)&&loaded.load(file),"save exact original finish");
     require(loaded.finishTicks6000==148&&loaded.frames.back().tick==2,"finish precision survives reload independently of frame tick");
     rep.frames.back().gear=0;require(!rep.sharedBytes(148).empty()&&rep.save(file)&&loaded.load(file)&&loaded.frames.back().gear==0,"finish neutral survives replay export and CSV reload");

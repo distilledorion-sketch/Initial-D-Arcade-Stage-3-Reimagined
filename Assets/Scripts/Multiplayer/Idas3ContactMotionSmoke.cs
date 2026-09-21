@@ -22,7 +22,8 @@ namespace Idas3.Multiplayer {
             float lateral=Vector3.Dot(contactCenter-local.actor,right);
             float desired=contactHeading+Mathf.Clamp(lateral*.045f,-.13f,.13f);
             float error=Mathf.DeltaAngle(local.yaw*Mathf.Rad2Deg,desired*Mathf.Rad2Deg);
-            return error>1.2f?key==KeyCode.D:error< -1.2f&&key==KeyCode.A;
+            // Positive bound steering decreases the rendered yaw.
+            return error>1.2f?key==KeyCode.A:error< -1.2f&&key==KeyCode.D;
         }
         private IEnumerator RecordRenderedMotion(){
             var end=new WaitForEndOfFrame();

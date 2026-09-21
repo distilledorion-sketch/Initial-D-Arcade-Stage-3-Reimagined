@@ -185,7 +185,7 @@ int main(int argc,char** argv)try{
             OnlineRaceSimulation sim(root,selected);
             for(unsigned slot=0;slot<2;++slot){
                 const auto grid=selected.imported->onlineSpawn(scenario&1,slot);
-                require(sim.car(slot).selection().physics.conditionCode==((selected.imported->id==10?2u:0u)+(scenario&1)),"Both online cars use Usui for Sadamine, Myogi for Hakone");
+                require(sim.car(slot).selection().physics.conditionCode==selected.imported->handlingCondition(scenario&1),"Both online cars use the imported course handling selection");
                 require(std::abs(sim.car(slot).actor().f(0)-grid.position[0])<1&&std::abs(sim.car(slot).actor().f(8)-grid.position[2])<1,"Online car initialized on wrong track");
                 require(sim.rules(slot).rules().goalIndex==selected.imported->rules(scenario&1).goalIndex,"Online finish gate is not Hakone");
             }

@@ -136,7 +136,7 @@ async function handle(request,env){
  if(path==='/api/v1/board'&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'read:'+ip);
   const condition=Number(url.searchParams.get('condition')),weather=Number(url.searchParams.get('weather')),car=Number(url.searchParams.get('car')??-1);
-  if(!Number.isInteger(condition)||condition<0||condition>21||![0,1].includes(weather)||!Number.isInteger(car)||car< -1||car>34)return json({error:'Invalid board.'},400);
+  if(!Number.isInteger(condition)||condition<0||condition>=COURSES.length*2||![0,1].includes(weather)||!Number.isInteger(car)||car< -1||car>34)return json({error:'Invalid board.'},400);
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   const rows=(await env.DB.prepare(`WITH ranked AS (SELECT r.*,ROW_NUMBER() OVER(PARTITION BY r.device_id,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank FROM runs r JOIN devices d ON r.device_id=d.id WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.hidden=0 AND d.blocked=0 AND (?=-1 OR r.car=?)) SELECT * FROM ranked WHERE personal_rank=1 ORDER BY ticks,created_at,id LIMIT 50`).bind(env.RULESET,epoch,condition,weather,car,car).all()).results;
   return json({entries:rows.map(publicRun),epoch,generatedAt:now()});

@@ -41,11 +41,15 @@ struct MeshRange {
     // Nonzero only for a complete, immutable cached vertex range. Material
     // ownership may change independently. Appending vertices invalidates it.
     std::uint64_t geometryId=0;
+    // Scene-capture-only reference, consumed synchronously before its course
+    // cache can change. The published Unity snapshot still owns its bytes.
+    const Vertex* borrowedVertices=nullptr;
 };
 class Mesh {
 public:
     std::vector<Vertex> vertices;
     std::vector<MeshRange> ranges;
+    bool borrowCachedGeometry=false;
     void append(const Mesh& mesh);
     void beginRange(std::uint32_t texture=0xffffffff,std::uint32_t tsp=0,
         std::uint32_t pcw=0,std::uint32_t isp=0,std::uint32_t gmp=0,bool original=false,bool emissive=false,
@@ -81,7 +85,8 @@ private:
     const NativeAssembly* assembly_=nullptr;
     const NativeModel* model_=nullptr;
     bool courseGeometry_=false;
-    Mesh mesh_;
+    Mesh mesh_,scratch_;
+    NativeAssembly previousAssembly_;
     std::vector<std::size_t> instanceVertices_;
     struct ObjectMesh {NativeAssembly assembly;Mesh mesh,scratch;std::vector<std::size_t> instanceVertices;};
     std::vector<ObjectMesh> objectMeshes_;

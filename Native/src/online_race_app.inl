@@ -1,9 +1,11 @@
-// Included inside App. Version2 is opt-in and owns a separate two-car race.
+// Included inside App. Version2 owns the shared two-car online race.
 std::unique_ptr<original::OnlineRaceSimulation> authorityRace;
 std::unique_ptr<original::OnlineRaceLink> authorityLink;
 original::OriginalHostInputState authorityInput;
 std::array<Vec3,2> authorityVisualOffset{};
 std::array<float,2> authorityYawOffset{};
+Vec3 authorityRemoteCorrectionVelocity{};
+float authorityRemoteYawVelocity=0;
 std::array<std::uint64_t,2> authorityFinishFrame{},authorityFinishTicks{};
 std::array<bool,2> authorityFinished{},authorityTimeUp{};
 bool authorityStalled=false;
@@ -15,6 +17,7 @@ const original::OriginalDrivingSession& presentedSession()const {
 void clearAuthority(){
     authorityLink.reset();authorityRace.reset();authorityInput={};
     authorityVisualOffset={};authorityYawOffset={};authorityFinishFrame={};authorityFinishTicks={};
+    authorityRemoteCorrectionVelocity={};authorityRemoteYawVelocity=0;
     authorityFinished={};authorityTimeUp={};authorityStalled=false;authorityConfirmedWinner=-3;
 }
 void confirmedAuthorityFrame(const original::OnlineRaceFrame& frame){
@@ -36,10 +39,12 @@ void confirmedAuthorityFrame(const original::OnlineRaceFrame& frame){
     audio.applyConfirmedOnlineAudio(frame.engine[local],frame.tires[local]);
     if(frame.rules[local].timeExtension)raceFeedback.extend(std::bit_cast<std::int32_t>(frame.states[local].remaining.value)-frame.rules[local].secondsAdded*6000);
 }
-void enableAuthority(std::uint64_t raceId,bool remoteAutomatic,bool boost){
+void enableAuthority(std::uint64_t raceId,bool remoteAutomatic,bool boost,bool collisions=true){
     if(!multiplayer.active||multiplayer.config.version!=2||!multiplayer.waiting||authorityRace)
         throw std::logic_error("Authority mode requires a fresh, held version2 race");
-    original::OnlineRaceSetup setup;setup.condition=unsigned(courseIndex)*2+unsigned(reverse);setup.wet=wet;setup.boost=boost;
+    original::OnlineRaceSetup setup;
+    setup.condition=unsigned(courseIndex)*2+unsigned(reverse);
+    setup.wet=wet;setup.boost=boost;setup.collisions=collisions;
     if(importedCourse)setup.imported=std::make_shared<const ImportedCourse>(*importedCourse);
     const auto local=multiplayer.config.localSlot;
     setup.profiles[local]=battleProfile;setup.profiles[1-local]=multiplayer.remoteProfile;
@@ -83,7 +88,10 @@ void receiveAuthority(std::span<const std::uint8_t> packet){
     authorityLink->receive(packet);authorityLink->reconcile();
     for(unsigned i=0;i<2;++i){const auto& a=authorityRace->car(i).actor();
         authorityVisualOffset[i]=authorityVisualOffset[i]+positions[i]-Vec3{a.f(0),a.f(4),a.f(8)};
-        const auto distance=length(authorityVisualOffset[i]);if(distance>4)authorityVisualOffset[i]=authorityVisualOffset[i]*(4/distance);
+        const auto distance=length(authorityVisualOffset[i]);if(distance>4){
+            authorityVisualOffset[i]=authorityVisualOffset[i]*(4/distance);
+            if(i!=multiplayer.config.localSlot)authorityRemoteCorrectionVelocity={};
+        }
         authorityYawOffset[i]=wrapAngle(authorityYawOffset[i]+yaw[i]-a.f(28));
     }
 }
@@ -92,7 +100,13 @@ void simulateAuthority(const DriverInput& d){
     const auto input=original::adaptOriginalHostInput(inputState,{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp},automatic,false,0);
     if(!authorityLink->step(input)){authorityStalled=true;return;}
     authorityStalled=false;authorityInput=inputState;
-    for(unsigned i=0;i<2;++i){authorityVisualOffset[i]=authorityVisualOffset[i]*.875f;authorityYawOffset[i]*=.875f;}
+    const auto remote=1-multiplayer.config.localSlot;
+    advanceOnlineVisualCorrection(authorityVisualOffset[remote],authorityRemoteCorrectionVelocity,physicsDt);
+    advanceOnlineVisualCorrection(authorityYawOffset[remote],authorityRemoteYawVelocity,physicsDt);
+    // Keep local control/camera response unchanged; only the remote visual
+    // correction gets the smoother velocity-preserving catch-up.
+    authorityVisualOffset[multiplayer.config.localSlot]*=.875f;
+    authorityYawOffset[multiplayer.config.localSlot]*=.875f;
     previous=vehicle;previousPitch=bodyPitch;previousRoll=bodyRoll;previousWheelPose=wheelPose;
     const auto local=multiplayer.config.localSlot;const auto& state=authorityRace->rules(local).state();const auto& frame=authorityRace->lastFrame();
     originalRaceStart=authorityRace->start();originalRace.restoreNumericalState(state);originalCoordinate=state.previousCoordinate;originalRaceOwnerFrame=std::uint32_t(authorityRace->frame());

@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <limits>
 #include <bit>
+#include <charconv>
 
 namespace idas3 {
 void RaceClock::start(float totalLength) {
@@ -72,12 +73,21 @@ bool Replay::save(const std::string& filename) const {
     if(frames.empty()||truncated) return false;
     const auto tmp=filename+".tmp";
     std::ofstream out(tmp); if(!out) return false;
-    out<<"tick,speed,yaw,pos_x,pos_y,pos_z,gear"<<(finishTicks6000?",finish_ticks6000\n":"\n")<<std::setprecision(9);
+    out<<"tick,speed,yaw,pos_x,pos_y,pos_z,gear"<<(finishTicks6000?",finish_ticks6000\n":"\n");
+    // Locale-independent round-trip float precision, buffered as a block.
+    // Per-value iostream formatting used to stall the finish frame twice:
+    // once for last_run and once for a new personal-best ghost.
+    std::array<char,65536> buffer;char* cursor=buffer.data();
+    const auto integer=[&](auto value){cursor=std::to_chars(cursor,buffer.data()+buffer.size(),value).ptr;};
+    const auto scalar=[&](float value){cursor=std::to_chars(cursor,buffer.data()+buffer.size(),value,std::chars_format::general,9).ptr;};
     for(const auto& f:frames) {
-        out<<f.tick<<','<<f.speed<<','<<f.yaw<<','<<f.position.x<<','<<f.position.y<<','<<f.position.z<<','<<f.gear;
-        if(finishTicks6000)out<<','<<(&f==&frames.back()?finishTicks6000:0);
-        out<<'\n';
+        if(buffer.data()+buffer.size()-cursor<512){out.write(buffer.data(),cursor-buffer.data());cursor=buffer.data();}
+        integer(f.tick);*cursor++=',';scalar(f.speed);*cursor++=',';scalar(f.yaw);*cursor++=',';
+        scalar(f.position.x);*cursor++=',';scalar(f.position.y);*cursor++=',';scalar(f.position.z);*cursor++=',';integer(f.gear);
+        if(finishTicks6000){*cursor++=',';integer(&f==&frames.back()?finishTicks6000:0);}
+        *cursor++='\n';
     }
+    out.write(buffer.data(),cursor-buffer.data());
     out.close();if(!out) return false;
     std::error_code ec;
     std::filesystem::rename(tmp,filename,ec);

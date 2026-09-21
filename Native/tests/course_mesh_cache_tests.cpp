@@ -12,6 +12,15 @@ void equal(const Mesh& a,const Mesh& b){
     for(std::size_t i=0;i<a.ranges.size();++i){const auto& x=a.ranges[i];const auto& y=b.ranges[i];
         require(x.first==y.first&&x.count==y.count&&x.texture==y.texture&&x.tsp==y.tsp&&x.pcw==y.pcw&&x.isp==y.isp&&x.gmp==y.gmp&&x.original==y.original&&x.emissive==y.emissive&&x.gloss==y.gloss&&x.billboard==y.billboard&&x.originalLightDirection==y.originalLightDirection&&x.courseLighting==y.courseLighting&&x.viewMask==y.viewMask&&x.carLighting==y.carLighting&&x.courseGeometry==y.courseGeometry&&x.sourceFaceCulling==y.sourceFaceCulling,"Cached course material/order/ownership changed");}
 }
+Mesh materialize(const Mesh& source){
+    Mesh result;
+    for(auto range:source.ranges){
+        const auto* data=range.borrowedVertices?range.borrowedVertices:source.vertices.data()+range.first;
+        range.first=std::uint32_t(result.vertices.size());range.borrowedVertices=nullptr;
+        result.vertices.insert(result.vertices.end(),data,data+range.count);result.ranges.push_back(range);
+    }
+    return result;
+}
 void verifyIdentities(const Mesh& mesh){
     static std::map<std::uint64_t,std::vector<Vertex>> previous;
     std::map<std::uint64_t,std::vector<Vertex>> current;
@@ -156,6 +165,7 @@ int main(int argc,char** argv)try{
     identityBoundaries();
     ordinaryFaceEligibility();
     CourseMeshCache cache;unsigned scenes=0,assemblies=0;std::uint64_t vertices=0;
+    Renderer capture;require(capture.initializeSceneCapture(640,480),"Initialize capture regression");
     for(const auto& folder:std::filesystem::directory_iterator(root/"data/original_models/courses")){
         if(!folder.is_directory())continue;
         const auto id=folder.path().filename().string();
@@ -172,9 +182,17 @@ int main(int argc,char** argv)try{
                 expected.originalCar(scene.model,assembly,{0,0,0},0);
                 expected.triangle({2,0,0},{3,1,0},{4,0,0},{.3f,.4f,.5f});
                 for(unsigned repeat=0;repeat<3;++repeat){
-                    Mesh actual;actual.triangle({-1,0,0},{0,1,0},{1,0,0},{.3f,.4f,.5f});
+                    Mesh actual;actual.borrowCachedGeometry=repeat==2;actual.triangle({-1,0,0},{0,1,0},{1,0,0},{.3f,.4f,.5f});
                     cache.appendTo(actual,scene.model,assembly);cache.appendTo(actual,scene.model,assembly);
-                    actual.triangle({2,0,0},{3,1,0},{4,0,0},{.3f,.4f,.5f});equal(expected,actual);verifyIdentities(actual);
+                    actual.triangle({2,0,0},{3,1,0},{4,0,0},{.3f,.4f,.5f});
+                    if(actual.borrowCachedGeometry){
+                        require(capture.draw(actual,{0,2,-3},{0,0,0},false,false),"Capture borrowed course");
+                        const auto& frame=capture.sceneCapture()->frame();
+                        require(frame.vertexCount==expected.vertices.size()&&frame.rangeCount==expected.ranges.size()&&
+                            !std::memcmp(frame.vertices,expected.vertices.data(),expected.vertices.size()*sizeof(Vertex)),"Borrowed capture changed published geometry");
+                        actual=materialize(actual);
+                    }
+                    equal(expected,actual);verifyIdentities(actual);
                 }
                 ++assemblies;vertices+=expected.vertices.size();
             }

@@ -84,8 +84,8 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
     public static string FileStem(Idas3ReplayData.Details m)
     {
         // Same direction semantics as the game's original start banner.
-        string[] forward={"ccw","ccw","dh","dh","ob","dh","ob","ob","dh","dh","dh"};
-        string[] reverse={"cw","cw","uh","uh","ib","rev","ib","ib","uh","uh","uh"};
+        string[] forward={"ccw","ccw","dh","dh","ob","dh","ob","ob","dh","dh","dh","dh"};
+        string[] reverse={"cw","cw","uh","uh","ib","rev","ib","ib","uh","uh","uh","uh"};
         int course=m.condition/2;
         string player=m.playerName;
         if(string.IsNullOrWhiteSpace(player)&&m.nameGlyphs!=null){var name=new StringBuilder();foreach(int g in m.nameGlyphs)if(g>=162&&g<=187)name.Append((char)('A'+g-162));else if(g>=188&&g<=197)name.Append((char)('0'+g-188));else if(g==220)name.Append(' ');player=name.ToString();}

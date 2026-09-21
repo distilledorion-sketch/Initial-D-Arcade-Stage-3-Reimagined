@@ -201,6 +201,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetLocalSnapshot(Idas3Mu
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerApplyRemoteSnapshot(const Idas3MultiplayerSnapshot* snapshot);
 // Experimental version2 input authority. Call Enable while StartSaved is held.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerEnableAuthority(uint64_t race,int remoteAutomatic,int boost);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerEnableAuthorityRules(uint64_t race,int remoteAutomatic,int boost,int collisions);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityPacket(uint8_t* bytes,uint32_t capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityReceive(const uint8_t* bytes,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityStatus(Idas3AuthorityStatus* status);

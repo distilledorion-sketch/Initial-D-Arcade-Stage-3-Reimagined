@@ -20,12 +20,15 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     private bool legendCheck, flickerCheck, headlightCheck, attractFlicker, hiresFlicker, driveInspect, cullCheck, depthCheck, introCheck;
     private bool introWarmup, introFoliageCheck, carDoorCheck, diagnosticPoseActive;
     private bool perfCheck, perfLegend, perfNight, perfWet;
+    private bool perfFullDrive,perfReverse;
+    private readonly float[] driveTelemetry=new float[12];
+    [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneCourseDriveDiagnostic(int enabled,[Out] float[] values,int count);
     private bool rivalCheck, rivalPostResult, rivalFastForward, retireCheck;
     private int rivalRecord;
     private Idas3RivalAudioProbe rivalAudio;
     private readonly List<RivalObservation> rivalObservations=new List<RivalObservation>();
     private int perfCourse=3,perfWarmup=180,perfFrames=600,perfMainRenders,perfAllRenders;
-    private int PerformanceCourse => (host.Status.flags&16384u)!=0 ? ((host.Status.flags&524288u)!=0?10:9) : host.Status.course;
+    private int PerformanceCourse => (host.Status.flags&IdasSpecialStageEnnaCourse.SceneFlag)!=0 ? 11 : (host.Status.flags&16384u)!=0 ? ((host.Status.flags&524288u)!=0?10:9) : host.Status.course;
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowValue(int field);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneReplayCaptureDiagnostic(int enabled);
     private Camera perfMainCamera;
@@ -115,6 +118,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public double wallMs,submissionMs,nativeMs,rendererMs,uiMs,cpuFrameMs,cpuMainMs,cpuRenderMs,gpuMs;
         public long mainThreadAllocatedBytes;
         public float speed;
+        public float courseDistance,courseLength,raceProgress,travel;
+        public bool wallContact;
         public bool focused,frameTimingValid;
     }
     [Serializable] private class PerfMetric {
@@ -130,6 +135,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public ulong firstNativeFrame,lastNativeFrame,firstSimulationTick,lastSimulationTick;
         public int replayFramesBefore,replayFramesAfter,rivalReplayFramesBefore,rivalReplayFramesAfter;
         public bool replayCaptureEnabled;
+        public bool fullDrive,reverseRequested,finishedRace,timeUp,timerGraceAllowed; public int diagnosticTimeExtensions;
+        public float finalDistance,courseLength,furthestRaceProgress;
         public int requestedFrameCap;
         public bool legacyFrameCap,highResolutionFrameTimer;
         public int[] gcCollections;
@@ -162,9 +169,9 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         int selectedRivalRecord=DiagnosticInt(args,"-idas3-scene-rival-record",0,0,16);
         if(requestedRival&&selectedRivalRecord!=0&&selectedRivalRecord!=1&&selectedRivalRecord!=16)
             throw new ArgumentException("-idas3-scene-rival-record requires 0 (first), 1 (lost), or 16 (won).");
-        int selectedPerfCourse=DiagnosticInt(args,"-idas3-scene-perf-course",3,0,10);
+        int selectedPerfCourse=DiagnosticInt(args,"-idas3-scene-perf-course",3,0,11);
         int selectedPerfWarmup=DiagnosticInt(args,"-idas3-scene-perf-warmup",180,60,3600);
-        int selectedPerfFrames=DiagnosticInt(args,"-idas3-scene-perf-frames",600,60,7200);
+        int selectedPerfFrames=DiagnosticInt(args,"-idas3-scene-perf-frames",600,60,72000);
         bool selectedPerfNight=Array.IndexOf(args,"-idas3-scene-perf-night")>=0;
         bool selectedPerfWet=Array.IndexOf(args,"-idas3-scene-perf-wet")>=0;
         bool requestedFoliage=Array.IndexOf(args,"-idas3-scene-intro-foliage-check")>=0;
@@ -211,6 +218,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         active.perfCheck=requestedPerf;active.perfCourse=selectedPerfCourse;
         active.perfWarmup=selectedPerfWarmup;active.perfFrames=selectedPerfFrames;
         active.perfNight=selectedPerfNight;active.perfWet=selectedPerfWet;
+        active.perfFullDrive=Array.IndexOf(args,"-idas3-perf-full-drive")>=0;
+        active.perfReverse=Array.IndexOf(args,"-idas3-perf-reverse")>=0;
         active.perfLegend=Array.IndexOf(args,"-idas3-scene-perf-legend")>=0;
         active.rivalCheck=requestedRival;active.rivalRecord=selectedRivalRecord;
         active.retireCheck=Array.IndexOf(args,"-idas3-scene-retire-check")>=0;
@@ -977,7 +986,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         // Legend and Time Attack have different course lists. Read the actual
         // selected course rather than assuming a Time Attack carousel index.
         // Passing Snow may also change retained wet/night selections below.
-        for(int i=0;Idas3SceneModeFlowValue(30)!=perfCourse&&i<11;++i){
+        for(int i=0;Idas3SceneModeFlowValue(30)!=perfCourse&&i<12;++i){
             yield return Key(39);yield return Frames(6);
         }
         Check(Idas3SceneModeFlowValue(30)==perfCourse,"Performance course carousel did not select the requested course.");
@@ -986,6 +995,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             if(perfLegend&&stage==10&&perfWet){yield return Key(39);yield return Frames(8);yield return Key(39);yield return Frames(8);}
             Check(stage>=6&&stage<=10,"Performance setup reached an unexpected selection owner.");
             int conditions=Idas3SceneModeFlowValue(31);
+            if(!perfLegend&&stage==7&&perfReverse){yield return Key(39);yield return Frames(6);}
             if(!perfLegend&&((stage==8&&perfWet!=((conditions&1)!=0))||(stage==9&&perfNight!=((conditions&2)!=0)))){yield return Key(39);yield return Frames(6);}
             yield return Key(13);yield return Frames(stage==10?240:60);
             if(perfLegend&&stage==10){
@@ -996,7 +1006,11 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         while(((host.Status.flags&1)!=0||host.Status.racePhase!=2)&&wait++<900)yield return null;
         Check(PerformanceCourse==perfCourse&&(host.Status.flags&1)==0&&(host.Status.flags&16)!=0&&host.Status.racePhase==2,
             "Performance benchmark did not start the requested race with original handling.");
-        Check(Idas3SceneModeFlowValue(31)==((perfWet?1:0)|((perfNight||perfCourse==4)?2:0)),"Measured weather/time must match requested conditions");
+        Check(Idas3SceneModeFlowValue(31)==((perfWet?1:0)|((perfNight||perfCourse==4||perfCourse==11)?2:0)),"Measured weather/time must match requested conditions");
+        if(perfFullDrive){
+            Check(Idas3SceneCourseDriveDiagnostic(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-timer-grace")>=0?2:1,driveTelemetry,12)==1,"Isolated full-course driver unavailable");
+            Check((driveTelemetry[8]!=0)==perfReverse,"Wrong driving direction selected");
+        }
         if(perfLegend){
             for(int i=0;i<4&&!scene.MirrorCamera.enabled;++i){yield return Key(67);yield return Frames(4);}
             Check(scene.MirrorCamera.enabled,"Legend performance race has no bumper mirror.");
@@ -1014,6 +1028,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             targetFrameRate=Application.targetFrameRate,baseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-perf-baseline")>=0,
             nightRequested=perfNight,wetRequested=perfWet,frameTimingEnabled=timingEnabled,mirrorEnabled=scene.MirrorCamera.enabled,
             samples=samples,gcCollections=new int[GC.MaxGeneration+1]};
+        report.fullDrive=perfFullDrive;report.reverseRequested=perfReverse;
+        if(perfFullDrive)report.scope="Visible automatic rendering with original race physics, collisions, weather, recording and HUD; diagnostic route-following controls at fixed 60 Hz source steps. One source tick per rendered frame accelerates wall-clock traversal when FPS exceeds 60. No teleport or collision changes. Opt-in diagnostic timer grace and extension counts are reported; this validates rendering coverage, not race qualification. Completion and timeout reported separately. No screenshots or disk writes during timed driving.";
         if(offscreen)report.scope="CPU scene-submission benchmark at 2560x1080 AA4 with matched source ticks and cache-on/off runs. Hidden windows may skip automatic camera rendering; render-event counts are reported. No GPU or display FPS claim; screenshots separately verify rendered output.";
         if(manualRender)report.scope="Fixed-input private benchmark: explicit main Camera.Render to a 2560x1080 AA4 target every measured frame. Main camera automatic rendering disabled to avoid duplicate draws. Frame timing/counter data can lag; this is an offscreen workload, not display FPS. No captures or readbacks during measurement.";
         if(perfWet){
@@ -1055,6 +1071,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         double tickMilliseconds=1000.0/System.Diagnostics.Stopwatch.Frequency;
         // All arrays and delegates are prepared before this loop. No captures,
         // readbacks, JSON serialization or filesystem traffic are performed.
+        int measuredFrames=0;
         for(int i=0;i<perfFrames;++i){
             if(timingEnabled)FrameTimingManager.CaptureFrameTimings();
             yield return null;
@@ -1063,7 +1080,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             double renderMs=(System.Diagnostics.Stopwatch.GetTimestamp()-renderStart)*tickMilliseconds;
             long now=System.Diagnostics.Stopwatch.GetTimestamp(),allocated=GC.GetAllocatedBytesForCurrentThread();
             var status=host.Status;var source=scene.CurrentFrame;
-            Check(PerformanceCourse==perfCourse&&status.racePhase==2&&(status.flags&1)==0&&(status.flags&16)!=0,
+            Check(PerformanceCourse==perfCourse&&(status.racePhase==2||perfFullDrive&&status.racePhase==3)&&(status.flags&1)==0&&(status.flags&16)!=0,
                 "Performance measurement left the original-handling race.");
             Check(status.renderedFrames==lastNative+1,"Performance measurement skipped a native source frame.");
             var sample=new PerfSample{index=i,unityFrame=Time.frameCount,nativeFrame=status.renderedFrames,
@@ -1083,8 +1100,17 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
                     sample.cpuRenderMs=timing.cpuRenderThreadFrameTime;sample.gpuMs=timing.gpuFrameTime>0?timing.gpuFrameTime:-1;
                 }
             }
-            samples[i]=sample;lastNative=status.renderedFrames;previousTicks=now;previousAllocated=allocated;
+            if(perfFullDrive){
+                Check(Idas3SceneCourseDriveDiagnostic(-1,driveTelemetry,12)==1,"Driver telemetry unavailable");
+                sample.courseDistance=driveTelemetry[0];sample.courseLength=driveTelemetry[1];sample.raceProgress=driveTelemetry[2];
+                sample.wallContact=driveTelemetry[4]!=0;sample.travel=driveTelemetry[9];
+                report.timerGraceAllowed=driveTelemetry[11]!=0;report.diagnosticTimeExtensions=(int)driveTelemetry[10];report.finishedRace=driveTelemetry[5]!=0;report.timeUp=driveTelemetry[6]!=0;
+                report.finalDistance=driveTelemetry[0];report.courseLength=driveTelemetry[1];report.furthestRaceProgress=driveTelemetry[3];
+            }
+            samples[i]=sample;measuredFrames=i+1;lastNative=status.renderedFrames;previousTicks=now;previousAllocated=allocated;
+            if(perfFullDrive&&report.finishedRace)break;
         }
+        if(perfFullDrive){Idas3SceneCourseDriveDiagnostic(0,null,0);Array.Resize(ref samples,measuredFrames);report.samples=samples;report.sampleFrames=measuredFrames;}
         report.measuredSeconds=(previousTicks-beganTicks)/(double)System.Diagnostics.Stopwatch.Frequency;
         Camera.onPostRender-=CountPerformanceRender;held=0;
         report.lastNativeFrame=host.Status.renderedFrames;report.lastSimulationTick=host.Status.simulationTicks;
@@ -1106,9 +1132,10 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             SummarizePerformance("geometryUploads",samples,s=>s.geometryUploads),SummarizePerformance("materialUpdates",samples,s=>s.materialUpdates),
             SummarizePerformance("uiDraws",samples,s=>s.uiDraws)};
         File.WriteAllText(Path.Combine(root,"performance.json"),JsonUtility.ToJson(report,true));
-        if(manualRender)Check(perfMainRenders==perfFrames,"Every measured frame must render exactly once");
-        if(!offscreen)Check(perfMainRenders>=perfFrames-2,"Unity skipped normal camera rendering during the benchmark; timing is not representative.");
-        else Check(report.lastNativeFrame-report.firstNativeFrame==(ulong)perfFrames,"CPU benchmark skipped scene submissions");
+        if(manualRender)Check(perfMainRenders==measuredFrames,"Every measured frame must render exactly once");
+        if(!offscreen)Check(perfMainRenders>=measuredFrames-2,"Unity skipped normal camera rendering during the benchmark; timing is not representative.");
+        else Check(report.lastNativeFrame-report.firstNativeFrame==(ulong)measuredFrames,"CPU benchmark skipped scene submissions");
+        if(perfFullDrive)Check(report.finishedRace&&!report.timeUp,"Course driver did not finish the race; do not count this as full-track coverage.");
         Check(report.audioAfter.consumedFrames>report.audioBefore.consumedFrames,"Unity audio did not run during performance measurement.");
         if(frameCap>0)Idas3FramePacingChecks.RunPlatform(host.GameOptions);
         Finish(true,null);

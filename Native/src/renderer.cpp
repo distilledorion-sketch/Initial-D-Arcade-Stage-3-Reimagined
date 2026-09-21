@@ -80,11 +80,18 @@ void Mesh::append(const Mesh& mesh){
         beginRange(range.texture,range.tsp,range.pcw,range.isp,range.gmp,range.original,range.emissive,range.gloss,range.billboard,range.originalLightDirection,range.courseLighting,range.viewMask,range.carLighting,range.courseGeometry,range.sourceFaceCulling);
         if(ranges.back().count==0)ranges.back().geometryId=range.geometryId;
         ranges.back().count+=range.count;
-        vertices.insert(vertices.end(),mesh.vertices.begin()+range.first,mesh.vertices.begin()+range.first+range.count);
+        if(borrowCachedGeometry&&ranges.back().count==range.count&&range.geometryId)
+            ranges.back().borrowedVertices=mesh.vertices.data()+range.first;
+        else vertices.insert(vertices.end(),mesh.vertices.begin()+range.first,mesh.vertices.begin()+range.first+range.count);
     }
 }
 void CourseMeshCache::prepare(const NativeModel& model,const NativeAssembly& assembly,bool courseGeometry){
     if(model_!=&model||assembly_!=&assembly||courseGeometry_!=courseGeometry){
+        static const bool sectorRebuildBaseline=std::getenv("IDAS3_SECTOR_REBUILD_BASELINE")!=nullptr;
+        if(!sectorRebuildBaseline&&model_==&model&&courseGeometry_==courseGeometry){
+            rebuildObjectMesh(model,assembly,previousAssembly_,mesh_,scratch_,instanceVertices_,courseGeometry);
+            assembly_=&assembly;return;
+        }
         invalidate();mesh_.vertices.clear();mesh_.ranges.clear();
         instanceVertices_.clear();instanceVertices_.push_back(0);
         NativeAssembly single;single.instances.resize(1);
@@ -97,6 +104,7 @@ void CourseMeshCache::prepare(const NativeModel& model,const NativeAssembly& ass
         objectMeshes_.clear();
         model_=&model;assembly_=&assembly;
         courseGeometry_=courseGeometry;
+        previousAssembly_=assembly;
     }
 }
 void CourseMeshCache::appendTo(Mesh& destination,const NativeModel& model,const NativeAssembly& assembly,bool courseGeometry){
@@ -116,7 +124,9 @@ void CourseMeshCache::appendWithInsertions(Mesh& destination,const NativeModel& 
             if(destination.ranges.back().count==0&&begin==r.first&&end==std::size_t(r.first)+r.count)
                 destination.ranges.back().geometryId=r.geometryId;
             destination.ranges.back().count+=std::uint32_t(end-begin);
-            destination.vertices.insert(destination.vertices.end(),mesh_.vertices.begin()+begin,mesh_.vertices.begin()+end);
+            if(destination.borrowCachedGeometry&&destination.ranges.back().count==end-begin&&destination.ranges.back().geometryId)
+                destination.ranges.back().borrowedVertices=mesh_.vertices.data()+begin;
+            else destination.vertices.insert(destination.vertices.end(),mesh_.vertices.begin()+begin,mesh_.vertices.begin()+end);
         }
     };
     objectMeshes_.resize(insertions.size());std::size_t cursor=0;
@@ -134,6 +144,13 @@ void CourseMeshCache::appendWithInsertions(Mesh& destination,const NativeModel& 
 void Mesh::beginRange(std::uint32_t texture,std::uint32_t tsp,std::uint32_t pcw,std::uint32_t isp,std::uint32_t gmp,bool original,bool emissive,std::uint32_t gloss,bool billboard,std::optional<std::array<float,3>> originalLightDirection,bool courseLighting,std::uint32_t viewMask,std::uint32_t carLighting,bool courseGeometry,bool sourceFaceCulling){
     if(ranges.empty()||ranges.back().texture!=texture||ranges.back().tsp!=tsp||ranges.back().pcw!=pcw||ranges.back().isp!=isp||ranges.back().gmp!=gmp||ranges.back().original!=original||ranges.back().emissive!=emissive||ranges.back().gloss!=gloss||ranges.back().billboard!=billboard||ranges.back().originalLightDirection!=originalLightDirection||ranges.back().courseLighting!=courseLighting||ranges.back().viewMask!=viewMask||ranges.back().carLighting!=carLighting||ranges.back().courseGeometry!=courseGeometry||ranges.back().sourceFaceCulling!=sourceFaceCulling){
         ranges.push_back({std::uint32_t(vertices.size()),0,texture,tsp,pcw,isp,gmp,original,emissive,gloss,billboard,originalLightDirection,courseLighting,viewMask,carLighting,courseGeometry,sourceFaceCulling});
+    }
+    // A matching material can extend a borrowed range. Materialize only that
+    // boundary so the original coalescing and submission order are unchanged.
+    if(auto& last=ranges.back();last.borrowedVertices){
+        last.first=std::uint32_t(vertices.size());
+        vertices.insert(vertices.end(),last.borrowedVertices,last.borrowedVertices+last.count);
+        last.borrowedVertices=nullptr;
     }
     // Even a matching material may receive new geometry. A caller copying a
     // complete immutable range can restore its identity only when count==0.

@@ -54,7 +54,9 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public int DepthBufferRebuildCount { get; private set; }
     public int UploadedTextureCount => textureCache.Count;
     private Camera main, mirror, backdrop, canvasClear;
-    private Shader sceneShader, opaqueAlphaDepthShader;
+    private Shader sceneShader, directSceneShader, opaqueAlphaDepthShader;
+    private bool geometryStageBaseline;
+    private bool rangeReuseBaseline;
     private CommandBuffer opaqueAlphaDepth, mirrorAlphaDepth;
     private readonly List<RangeObject> depthCandidates = new List<RangeObject>();
     private readonly List<RangeObject> mainDepthDraws = new List<RangeObject>(), mirrorDepthDraws = new List<RangeObject>();
@@ -120,7 +122,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         public SceneRange materialRange;
         public ulong materialTextureGeneration;
         public int materialQueue;
-        public bool materialConfigured, depthMaterialDirty;
+        public bool materialConfigured, depthMaterialDirty, depthCandidate;
         public uint parentScope = uint.MaxValue;
         public bool active = true;
         public Bounds bounds;
@@ -151,6 +153,10 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             Debug.Log("IDAS3 scene diagnostics: depthTestFlip=" + diagnosticFlipDepth + ", noCull=" + diagnosticNoCull);
         sceneShader = Shader.Find("IDAS3/Original Scene Material");
         if (sceneShader == null || !sceneShader.isSupported) throw new InvalidOperationException("Original Unity scene shader is unavailable.");
+        directSceneShader = Resources.Load<Shader>("Idas3SceneDirect");
+        if (directSceneShader == null || !directSceneShader.isSupported) throw new InvalidOperationException("Direct Unity scene shader is unavailable.");
+        geometryStageBaseline = Array.IndexOf(arguments, "-idas3-geometry-stage-baseline") >= 0;
+        rangeReuseBaseline = Array.IndexOf(arguments, "-idas3-range-reuse-baseline") >= 0;
         opaqueAlphaDepthShader = Shader.Find("Hidden/IDAS3/Opaque Alpha Depth");
         if (opaqueAlphaDepthShader == null || !opaqueAlphaDepthShader.isSupported) throw new InvalidOperationException("Original opaque-alpha depth shader is unavailable.");
         // This component shares the host camera GameObject. Captured vertices
@@ -263,6 +269,23 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 var item = diagnosticPerfBaseline || rangeCacheOff ? GetRangeObject(ActiveMeshCount) : selectedRanges[i] ?? ClaimRangeObject();
                 if(!diagnosticPerfBaseline&&!rangeCacheOff)selectedRanges[i]=item;
                 ++ActiveMeshCount;
+                int queue = 1000 + rank++;
+                CountDepthMode(range);
+                ulong geometryId = geometryIdsOff ? 0 : ((ulong*)geometryIds.ToPointer())[i];
+                // Native identities guarantee immutable vertex bytes. A cached
+                // active renderer with identical material/ownership needs only
+                // its source-order queue maintained. Camera/light globals still
+                // update and Unity still culls/renders both views normally.
+                if (!rangeReuseBaseline && !diagnosticPerfBaseline && !diagnosticNoCull && !validateGeometryIds &&
+                    geometryId != 0 && item.geometryId == geometryId && item.active && item.vertexCache.IsCreated &&
+                    item.parentScope == range.lightScope && item.materialConfigured &&
+                    item.materialTextureGeneration == textureGeneration && SameRange(item.materialRange, range)) {
+                    if (item.materialQueue != queue) {
+                        item.material.renderQueue = queue; item.materialQueue = queue; ++MaterialUpdateCount;
+                    }
+                    if (item.depthCandidate) depthCandidates.Add(item);
+                    continue;
+                }
                 if (diagnosticPerfBaseline || !item.active) { item.gameObject.SetActive(true); item.active = true; }
                 if (diagnosticPerfBaseline || item.parentScope != range.lightScope) {
                     item.gameObject.transform.SetParent(owners[range.lightScope], false);
@@ -287,7 +310,6 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 // including static course geometry. Immutable cached ranges
                 // have native identities; dynamic/untagged ranges still get
                 // an exact byte comparison. Lighting/camera buffers update.
-                ulong geometryId = geometryIdsOff ? 0 : ((ulong*)geometryIds.ToPointer())[i];
                 bool immutableMatch = geometryId != 0 && geometryId == item.geometryId && item.vertexCache.IsCreated && item.cachedBillboard == billboard;
                 if (validateGeometryIds && immutableMatch &&
                     UnsafeUtility.MemCmp(rangeVertices, NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(item.vertexCache), vertexBytes) != 0)
@@ -322,8 +344,6 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 }
                 else if (diagnosticNoCull) { item.bounds = new Bounds(frame.mainCamera.eye, Vector3.one * 20000000f); item.mesh.bounds = item.bounds; }
                 item.geometryId = geometryId;
-                int queue = 1000 + rank++;
-                CountDepthMode(range);
                 // Include all source words, override direction, view mask,
                 // submission order and texture ownership in the exact key.
                 // Lighting and diagnostic camera changes are shader globals.
@@ -337,8 +357,9 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                     item.material.renderQueue = queue; item.materialQueue = queue;
                     ++MaterialUpdateCount;
                 }
-                if (!diagnosticAlphaDepthOff && (range.flags & 1) != 0 && IsCourseGeometry(range) && nativeList == 2 &&
-                    ((range.tsp >> 29) & 7) == 4 && ((range.tsp >> 26) & 7) == 5)
+                item.depthCandidate = !diagnosticAlphaDepthOff && (range.flags & 1) != 0 && IsCourseGeometry(range) && nativeList == 2 &&
+                    ((range.tsp >> 29) & 7) == 4 && ((range.tsp >> 26) & 7) == 5;
+                if (item.depthCandidate)
                 {
                     if (item.depthMaterial == null) { item.depthMaterial = new Material(opaqueAlphaDepthShader); item.depthMaterialDirty = true; }
                     if (diagnosticPerfBaseline || item.depthMaterialDirty) {
@@ -512,6 +533,16 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     }
     private void ConfigureMaterial(Material m, SceneRange r, int queue)
     {
+        bool original = (r.flags & 1) != 0;
+        bool actorCull = !diagnosticActorCullBaseline && ((r.flags & 32) != 0 || diagnosticCarCull);
+        int cullMode = original && (IsCourseGeometry(r) || actorCull) && (r.flags & 4) == 0 && !diagnosticCullBaseline
+            ? (int)((r.isp >> 27) & 3) : 0;
+        // The geometry stage only rejects authored backfaces or selects the
+        // final vertex's flat colors. When neither operation applies its output
+        // is exactly the vertex shader's output, including both camera views.
+        Shader wanted = !geometryStageBaseline && cullMode < 2 && (!original || (r.pcw & 2) != 0)
+            ? directSceneShader : sceneShader;
+        if (m.shader != wanted) m.shader = wanted;
         m.renderQueue = queue;
         // SetInt aliases SetFloat in Unity. Source material words require the
         // true integer setter or their low bits are lost above2^24.
@@ -520,14 +551,11 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         m.SetInteger("courseLightRange", r.lightScope != 0 ? 1 : 0); m.SetInteger("_LightScope", (int)r.lightScope); m.SetInteger("viewMask", (int)r.viewMask);
         uint g = r.gloss & 255; m.SetFloat("glossCoefficient", (1 + (g & 31) / 32f) * Mathf.Pow(2, (int)(g >> 5) - 1));
         var direction = r.lightDirection; direction.w = (r.flags & 8) != 0 ? 1 : 0; m.SetVector("_LightOverride", direction);
-        bool original = (r.flags & 1) != 0;
         // Tagged car owners preserve source winding. Menu reflection owners
         // supply their explicit inverted parity in the native ISP word.
         // Test winding in world space in the existing geometry pass, avoiding
         // both the mirror's handedness and Unity render-target Y inversion.
-        bool actorCull = !diagnosticActorCullBaseline && ((r.flags & 32) != 0 || diagnosticCarCull);
-        m.SetInteger("courseCullMode", original && (IsCourseGeometry(r) || actorCull) && (r.flags & 4) == 0 && !diagnosticCullBaseline
-            ? (int)((r.isp >> 27) & 3) : 0);
+        m.SetInteger("courseCullMode", cullMode);
         uint source = original ? r.tsp >> 29 : 1, destination = original ? (r.tsp >> 26) & 7 : 0;
         m.SetInt("_SrcBlend", (int)Factor(source, true, false)); m.SetInt("_DstBlend", (int)Factor(destination, false, false));
         m.SetInt("_SrcBlendAlpha", (int)Factor(source, true, true)); m.SetInt("_DstBlendAlpha", (int)Factor(destination, false, true));

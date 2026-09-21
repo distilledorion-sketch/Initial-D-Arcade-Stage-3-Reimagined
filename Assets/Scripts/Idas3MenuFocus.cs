@@ -29,6 +29,7 @@ internal sealed class Idas3MenuFocus
         if(!visible.Exists(x=>x.id==activate))activate=null;
     }
     internal bool Focused(string id)=>selected==id;
+    internal void Pointer(string id=null){activate=null;armed=false;axis=0;if(id!=null)selected=id;}
     internal bool Poll(int horizontal,int vertical,bool confirm,bool back,bool blocked,double now)
     {
         if(blocked){armed=false;activate=null;axis=0;wasConfirm=confirm;wasBack=back;return false;}

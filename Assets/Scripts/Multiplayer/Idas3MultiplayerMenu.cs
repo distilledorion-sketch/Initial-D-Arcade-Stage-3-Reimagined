@@ -19,7 +19,7 @@ namespace Idas3.Multiplayer
         private static readonly Color Cyan=new Color32(94,205,242,255);
         private static readonly Color Green=new Color32(108,225,156,255);
         private static readonly Color Red=new Color32(255,128,124,255);
-        private static readonly string[] Courses={"MYOGI","USUI","AKAGI","AKINA","HAPPOGAHARA","IROHAZAKA","SHOMARU","TSUCHISAKA","AKINA SNOW","HAKONE","SADAMINE"};
+        private static readonly string[] Courses={"MYOGI","USUI","AKAGI","AKINA","HAPPOGAHARA","IROHAZAKA","SHOMARU","TSUCHISAKA","AKINA SNOW","HAKONE","SADAMINE","ENNA SKYLINE"};
         private Idas3MultiplayerSession session;
         private GUIStyle title,heading,label,small,button,field,number,wrapped;
         private string joinCode="";
@@ -131,7 +131,7 @@ namespace Idas3.Multiplayer
             if(wheel&&horizontal!=0){vertical=horizontal;horizontal=0;}
             navigationHeld=confirm||back;
             if(!IsOpen)return;
-            if(controllerFocus.Poll(horizontal,vertical,confirm,back,blocked||InputCovered,now)){
+            if(controllerFocus.Poll(horizontal,vertical,confirm,back,blocked||InputCovered||Idas3MenuPointer.Active,now)){
                 if(codeEditing){codeEditing=false;controllerFocus.Reset();}else SetOpen(false);
             }
         }
@@ -253,6 +253,7 @@ namespace Idas3.Multiplayer
         private bool ActionButton(Rect rect,string text,bool enabled=true,bool primary=false,string identity=null)
         {
             string id=identity??rect.x+":"+rect.y+":"+text;
+            if(enabled&&GUI.enabled&&Event.current.type==EventType.MouseDown&&rect.Contains(Event.current.mousePosition))controllerFocus.Pointer(id);
             bool controllerClick=IsOpen&&controllerFocus.Control(id,rect,enabled&&GUI.enabled,Event.current.type==EventType.Repaint);
             bool hover=enabled&&rect.Contains(Event.current.mousePosition);
             Fill(rect,!enabled?new Color32(25,36,48,255):primary?(hover?new Color32(255,233,107,255):Yellow):(hover?new Color32(38,67,96,255):Raised));
@@ -273,6 +274,7 @@ namespace Idas3.Multiplayer
             if(session==null||session.ChallengerPending)return;
             SynchronizeRaceVisibility();
             Styles();GUI.depth=DisconnectedFinishVisible?-13000:-10000;
+            if(IsOpen&&!InputCovered&&(Event.current.type==EventType.MouseDown||Event.current.type==EventType.MouseDrag||Event.current.type==EventType.MouseUp))controllerFocus.Pointer();
             bool oldEnabled=GUI.enabled;GUI.enabled=oldEnabled&&(DisconnectedFinishVisible||!InputCovered);
             Matrix4x4 oldMatrix=GUI.matrix;
             bool diagnostic=IsOpen&&diagnosticTarget!=null&&Event.current.type==EventType.Repaint;
@@ -459,14 +461,15 @@ namespace Idas3.Multiplayer
             Text(new Rect(722,162,356,34),"Both ready: each driver's complete pick has a 50% chance when the battle starts.",wrapped);
             var local=session.LocalChoice;
             bool canEdit=!session.IsRacing&&!session.Busy;
-            if(ActionButton(new Rect(722,207,38,51),"<",canEdit))ChangeOptions((local.Course+Courses.Length-1)%Courses.Length,local.Reverse,local.Wet,local.Night);
+            if(ActionButton(new Rect(722,207,38,51),"<",canEdit))ChangeOptions((local.Course+session.AvailableCourseCount-1)%session.AvailableCourseCount,local.Reverse,local.Wet,local.Night);
             Text(new Rect(767,207,266,51),Track(local.Course),button,Yellow);
-            if(ActionButton(new Rect(1040,207,38,51),">",canEdit))ChangeOptions((local.Course+1)%Courses.Length,local.Reverse,local.Wet,local.Night);
-            OptionRow(266,"DIRECTION",Direction(local.Course,local.Reverse),canEdit,()=>ChangeOptions(local.Course,!local.Reverse,local.Wet,local.Night));
-            OptionRow(318,"SURFACE",local.Course==8?"SNOW":local.Wet?"WET":"DRY",canEdit&&local.Course!=8,()=>ChangeOptions(local.Course,local.Reverse,!local.Wet,local.Night));
-            OptionRow(370,"TIME",local.Night?"NIGHT":"DAY",canEdit&&local.Course!=4&&local.Course!=8,()=>ChangeOptions(local.Course,local.Reverse,local.Wet,!local.Night));
-            OptionRow(422,"BOOST / TURBO",session.BoostEnabled?"ON":"OFF",canEdit&&session.IsHost&&session.ExperimentalAuthority,()=>session.SetBoost(!session.BoostEnabled));
-            Text(new Rect(722,478,356,22),"Host sets boost. Changes clear both READY states.",small);
+            if(ActionButton(new Rect(1040,207,38,51),">",canEdit))ChangeOptions((local.Course+1)%session.AvailableCourseCount,local.Reverse,local.Wet,local.Night);
+            OptionRow(264,"DIRECTION",Direction(local.Course,local.Reverse),canEdit,()=>ChangeOptions(local.Course,!local.Reverse,local.Wet,local.Night));
+            OptionRow(309,"SURFACE",local.Course==8?"SNOW":local.Wet?"WET":"DRY",canEdit&&local.Course!=8,()=>ChangeOptions(local.Course,local.Reverse,!local.Wet,local.Night));
+            OptionRow(354,"TIME",local.Night?"NIGHT":"DAY",canEdit&&local.Course!=4&&local.Course!=8&&local.Course!=11,()=>ChangeOptions(local.Course,local.Reverse,local.Wet,!local.Night));
+            OptionRow(399,"BOOST",session.BoostEnabled?"ON":"OFF",canEdit&&session.IsHost,()=>session.SetBoost(!session.BoostEnabled));
+            OptionRow(444,"CAR COLLISIONS",session.CollisionsEnabled?"ON":"OFF",canEdit&&session.IsHost,()=>session.SetCollisions(!session.CollisionsEnabled));
+            Text(new Rect(722,489,356,20),"Host controls rules; changes reset READY.",small);
         }
         private void SelectedCourse()
         {
@@ -479,18 +482,18 @@ namespace Idas3.Multiplayer
             Text(new Rect(734,217,332,43),Track(session.Course),heading,Yellow);
             Text(new Rect(722,295,356,49),Conditions(session.Course,session.Reverse,session.Wet,session.Night),wrapped,Color.white);
             Text(new Rect(722,355,356,49),"PICKED BY\n"+Safe(winner?.Name,"DRIVER"),wrapped);
-            Text(new Rect(722,402,356,20),"BOOST / TURBO: "+(session.BoostEnabled?"ON":"OFF"),small,Yellow);
+            Text(new Rect(722,402,356,20),"BOOST: "+(session.BoostEnabled?"ON":"OFF")+"   CAR COLLISIONS: "+(session.CollisionsEnabled?"ON":"OFF"),small,Yellow);
             Fill(new Rect(722,422,356,1),Edge);
             Text(new Rect(722,441,356,52),Safe(session.CourseDrawText,"Chosen at random from both drivers' complete picks."),wrapped);
         }
         private void OptionRow(float y,string name,string value,bool enabled,Action action)
         {
-            Text(new Rect(722,y+12,128,26),name,small);
-            if(ActionButton(new Rect(862,y,216,46),value,enabled))action();
+            Text(new Rect(722,y+8,140,26),name,small);
+            if(ActionButton(new Rect(872,y,206,40),value,enabled,identity:"course-option:"+name))action();
         }
         private void ChangeOptions(int course,bool reverse,bool wet,bool night)
         {
-            if(course==4)night=true;if(course==8){wet=true;night=true;}
+            if(course==4||course==11)night=true;if(course==8){wet=true;night=true;}
             session.SetRaceOptions(course,reverse,wet,night);
         }
         private void StatusLine()

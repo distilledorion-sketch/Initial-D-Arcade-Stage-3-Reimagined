@@ -1,4 +1,4 @@
-export const COURSES=['Myogi','Usui','Akagi','Akina','Happogahara','Irohazaka','Shomaru','Tsuchisaka','Akina Snow','Hakone','Sadamine'];
+export const COURSES=['Myogi','Usui','Akagi','Akina','Happogahara','Irohazaka','Shomaru','Tsuchisaka','Akina Snow','Hakone','Sadamine','Enna Skyline'];
 export const MIN_CLIENT_BUILD='0.3.95-community-replays.1';
 export function supportedBuild(build,minimum=MIN_CLIENT_BUILD){
  const parse=value=>typeof value==='string'&&/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([a-z][a-z0-9-]*)\.(0|[1-9]\d*))?$/.exec(value);
@@ -14,7 +14,7 @@ export function validateRun(x,ruleset){
  if(!x||typeof x!=='object')throw new Error('Invalid run.');
  x.imported??=0;
  const integer=(v,a,b)=>Number.isInteger(v)&&v>=a&&v<=b;
- if(![0,1].includes(x.imported)||x.ruleset!==ruleset||!integer(x.epoch,1,1000000)||!/^[-a-f0-9]{36}$/.test(x.id||'')||!integer(x.condition,0,21)||!integer(x.weather,0,1)||!integer(x.car,0,34)||!integer(x.ticks6000,60000,10799999))throw new Error('Invalid run or incompatible handling version.');
+ if(![0,1].includes(x.imported)||x.ruleset!==ruleset||!integer(x.epoch,1,1000000)||!/^[-a-f0-9]{36}$/.test(x.id||'')||!integer(x.condition,0,COURSES.length*2-1)||!integer(x.weather,0,1)||!integer(x.car,0,34)||!integer(x.ticks6000,60000,10799999))throw new Error('Invalid run or incompatible handling version.');
  if(!Array.isArray(x.nameGlyphs)||x.nameGlyphs.length!==5||!x.nameGlyphs.every(v=>integer(v,0,221)))throw new Error('Invalid driver name.');
  if(!Array.isArray(x.splits)||x.splits.length!==4||!x.splits.every(v=>integer(v,0,x.ticks6000)))throw new Error('Invalid checkpoints.');
  const passed=x.splits.filter(v=>v>0);
@@ -32,7 +32,7 @@ export const rankedSql=`WITH personal AS (
  SELECT *,ROW_NUMBER() OVER(PARTITION BY condition,weather ORDER BY ticks,created_at,id) AS course_rank,
  ROW_NUMBER() OVER(PARTITION BY condition,weather,car ORDER BY ticks,created_at,id) AS model_rank
  FROM personal WHERE personal_rank=1
-) SELECT * FROM ranked WHERE course_rank<=10 OR model_rank=1 ORDER BY condition,weather,ticks,created_at,id LIMIT 1980`;
+) SELECT * FROM ranked WHERE course_rank<=10 OR model_rank=1 ORDER BY condition,weather,ticks,created_at,id LIMIT ${COURSES.length*2*2*44}`;
 export async function sha(text){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),v=>v.toString(16).padStart(2,'0')).join('');}
 export function token(){const bytes=crypto.getRandomValues(new Uint8Array(32));return Array.from(bytes,v=>v.toString(16).padStart(2,'0')).join('');}
 export function sameSecret(a,b){if(typeof a!=='string'||typeof b!=='string'||a.length!==64||b.length!==64)return false;let diff=0;for(let i=0;i<64;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0;}

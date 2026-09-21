@@ -34,7 +34,7 @@ namespace Idas3.Multiplayer
         private CSteamID lobby, pendingLobby;
         private ulong local, host, peer;
         private long operation;
-        private double deadline, lastReceive, lastHeartbeat;
+        private double deadline, lastReceive, lastHeartbeat, lastMembershipCheck;
         private string pendingKind;
         private string buildCompatibility = "";
         private bool polling;
@@ -204,6 +204,7 @@ namespace Idas3.Multiplayer
         private void RefreshPeer()
         {
             if (!InLobby) return;
+            lastMembershipCheck = clock.Elapsed.TotalSeconds;
             // GetLobbyOwner is available only after joining. Validate the
             // advertised owner against Steam here, never during discovery.
             if (!CompatibleRoom(lobby) || SteamMatchmaking.GetLobbyOwner(lobby).m_SteamID != host ||
@@ -229,12 +230,26 @@ namespace Idas3.Multiplayer
 
         private bool Allowed(ulong id)
         {
-            if (!InLobby || id == 0 || id != peer || id == local) return false;
-            int n = SteamMatchmaking.GetNumLobbyMembers(lobby);
-            if (n != 2) return false;
-            for (int i = 0; i < n; ++i)
-                if (SteamMatchmaking.GetLobbyMemberByIndex(lobby, i).m_SteamID == id) return true;
-            return false;
+            // RefreshPeer admits only a member of this validated two-driver
+            // room. Steam callbacks run before packet delivery and revoke that
+            // identity on membership changes. Do not repeat synchronous Steam
+            // membership queries for every frame, send and received packet.
+            return InLobby && id != 0 && id == peer && id != local;
+        }
+
+        internal double[] DiagnosticMembershipCost()
+        {
+            if(!Available||!InLobby||peer!=0)throw new InvalidOperationException("Membership benchmark requires an isolated one-member Steam lobby.");
+            // Measure only read-only calls against our own diagnostic room.
+            // A real two-member check performs these calls once or twice more
+            // per packet/frame depending on the member's list position.
+            const int iterations=4096;
+            ulong sink=0;var timer=Stopwatch.StartNew();
+            for(int i=0;i<iterations;++i){sink+=(ulong)SteamMatchmaking.GetNumLobbyMembers(lobby);sink^=SteamMatchmaking.GetLobbyMemberByIndex(lobby,0).m_SteamID;}
+            double queries=timer.Elapsed.TotalMilliseconds;timer.Restart();
+            for(int i=0;i<iterations;++i)if(Allowed(local))++sink;
+            double cached=timer.Elapsed.TotalMilliseconds;
+            GC.KeepAlive(sink);return new[]{queries/iterations,cached/iterations,(double)iterations};
         }
 
         private void OnSessionRequest(SteamNetworkingMessagesSessionRequest_t request)
@@ -289,6 +304,10 @@ namespace Idas3.Multiplayer
             SteamAPI.RunCallbacks();
             if (!Available) return;
             double now = clock.Elapsed.TotalSeconds;
+            // Callbacks normally update admission immediately. Retain a low
+            // frequency audit for a missed/delayed lobby notification.
+            if (InLobby && now - lastMembershipCheck >= 1) RefreshPeer();
+            if (!Available) return;
             if (IsBusy && now > deadline) {
                 ++operation; EndOperation(); Fail("Steam request timed out. Please retry.");
             }

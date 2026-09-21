@@ -55,6 +55,10 @@ struct UnityRuntime {
     std::string error;
     std::unique_ptr<App> app; //render callback only
     bool sceneMode=false;
+    bool diagnosticCourseDriver=false;
+    bool diagnosticTimerGrace=false;
+    unsigned diagnosticExtensions=0;
+    float diagnosticSteer=0;
     // A borrowed exported texture remains valid until shutdown, even when a
     // resize is rendered before Unity consumes its generation notification.
 #if !defined(IDAS3_PORTABLE_SCENE)
@@ -111,7 +115,7 @@ void publish(UnityRuntime& r,int eventId){
     s.frontendStage=int(app.frontend.stage);s.attractChild=int(app.frontend.attractChild());s.course=app.courseIndex;s.car=app.frontend.car;
     s.racePhase=int(app.race.phase);s.flags=(app.menu?1u:0)|(app.paused?2u:0)|(app.active?4u:0)|(app.running?8u:0)|(app.originalHandling?16u:0)|(app.legendVisitActive?32u:0)|(app.legendVisitActive&&app.legendVisit.choiceVisible()?64u:0)|(app.multiplayer.active?128u:0)|(app.multiplayer.active&&app.multiplayer.waiting?256u:0)|(app.preRaceDialogueActive?512u:0)|(app.loadingActive?1024u:0)|(app.multiplayerDisconnected()?2048u:0)|(app.extraModeVisitActive()?4096u:0)|(app.canRetireLegendRace()?8192u:0);
     if(app.resultVisit.initialized)s.flags|=262144u;
-    if(app.importedCourse)s.flags|=(app.importedCourse->id==10?524288u:0u)|16384u|(app.reverse?32768u:0u)|(app.night?65536u:0u)|(app.wet?131072u:0u);
+    if(app.importedCourse)s.flags|=(app.importedCourse->id==11?1048576u:app.importedCourse->id==10?524288u:0u)|16384u|(app.reverse?32768u:0u)|(app.night?65536u:0u)|(app.wet?131072u:0u);
     s.speedMetresPerSecond=app.vehicle.speed;s.rpm=app.vehicle.rpm;
     s.reserved=r.sceneMode?1u:0u;
     if(r.sceneMode){s.textureGeneration=0;r.texture=nullptr;return;}
@@ -127,6 +131,7 @@ void publish(UnityRuntime& r,int eventId){
 #endif
 }
 void destroyApp(UnityRuntime& r,bool save){
+    r.diagnosticCourseDriver=false;r.diagnosticTimerGrace=false;r.diagnosticExtensions=0;r.diagnosticSteer=0;
     if(r.sceneMode)idas3::resetUnityAudioOutput();
     std::exception_ptr saveError;
     if(r.app&&save&&!r.app->replayPlaybackActive)try{r.app->saveSettings();}catch(...){saveError=std::current_exception();}
@@ -196,7 +201,30 @@ void frame(UnityRuntime& r,const Idas3UnityInput& input){
 #endif
         if(!app.renderer.resize(input.width,input.height))throw std::runtime_error(app.renderer.error);
     }
-    if(!app.menu&&!app.paused&&!app.loadingActive&&!app.extraModeVisitActive()&&!app.legendVisitActive&&!app.preRaceDialogueActive&&!app.vsActive&&!(app.multiplayer.active&&app.multiplayer.waiting))app.advanceHostClock(dt,[&]{app.simulate(app.driver());++r.ticks;});else app.clock.reset();
+    if(!app.menu&&!app.paused&&!app.loadingActive&&!app.extraModeVisitActive()&&!app.legendVisitActive&&!app.preRaceDialogueActive&&!app.vsActive&&!(app.multiplayer.active&&app.multiplayer.waiting))app.advanceHostClock(dt,[&]{
+        auto driver=app.driver();
+        if(r.diagnosticCourseDriver&&app.race.phase==RacePhase::Running){
+            if(r.diagnosticTimerGrace&&app.originalRace.state().remaining.value<60000u){
+                auto state=app.originalRace.state();state.remaining.value+=360000u;
+                app.originalRace.restoreNumericalState(state);++r.diagnosticExtensions;
+            }
+            const auto p=app.projectRacePosition(app.vehicle.position);
+            const float speed=std::max(0.f,app.vehicle.speed),look=std::max(6.f,speed*.35f);
+            float target=58.f;
+            for(float offset:{8.f,18.f,32.f,50.f}){
+                const float curvature=std::abs(app.sampleRaceDistance(p.sample.distance+offset).curvature);
+                target=std::min(target,std::sqrt(80.f/std::max(.001f,curvature)));
+            }
+            target=std::clamp(target,32.f,58.f);
+            const Vec3 aim=app.sampleRaceDistance(p.sample.distance+look).center-app.vehicle.position;
+            const float angle=wrapAngle(std::atan2(aim.x,aim.z)-app.vehicle.yaw);
+            const float demand=std::clamp(3.5f*std::atan2(2*app.config.wheelbase*std::sin(angle),look)/recoveredSteeringLimit,-1.f,1.f);
+            r.diagnosticSteer+=std::clamp(demand-r.diagnosticSteer,-.07f,.07f);
+            driver={};driver.automatic=true;driver.steer=-r.diagnosticSteer;
+            driver.throttle=std::clamp((target-speed)*.6f,0.f,1.f);driver.brake=std::clamp((speed-target)*.3f,0.f,.8f);
+        }
+        app.simulate(driver);++r.ticks;
+    });else app.clock.reset();
     if(app.messageSeconds>0){app.messageSeconds-=float(dt);if(app.messageSeconds<=0)app.message.clear();}
     if(dt>0)app.renderFps+=(float(1/dt)-app.renderFps)*.025f;
     if(r.sceneMode)Idas3UiBeginFrame(app.renderer.width,app.renderer.height);
@@ -282,7 +310,7 @@ int IDAS3_UNITY_CALL Idas3SharedReadPersonalImport(char* output,int capacity){
 }
 int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* values,int count,int enabled){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
-    if(!r.sceneMode||!r.app||count<0||count>1980||(count&&!values))return 0;
+    if(!r.sceneMode||!r.app||count<0||count>2112||(count&&!values))return 0;
     try{
         TimeAttackRecords next;
         for(int i=0;i<count;++i){const auto* p=values+i*14;TimeAttackEntry e;
@@ -323,6 +351,24 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneReplayCaptureDiagnostic(int en
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.app||r.app->saveRoot.filename()!="userdata"||!fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_SCENE_TEST.txt"))return 0;
     r.app->diagnosticCaptureOff=enabled==0;return 1;
+}
+// Isolated performance driving only: controls go through the original solver.
+// Never teleports, disables collisions or touches user saves. Mode 2 explicitly
+// allows timer grace for coverage sweeps and reports every diagnostic extension.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCourseDriveDiagnostic(int enabled,float* values,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||r.app->multiplayer.active||r.app->saveRoot.filename()!="userdata"||
+       !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_SCENE_TEST.txt"))return 0;
+    if(enabled < -1 || enabled > 2 || (values?count!=12:count!=0))return 0;
+    if(enabled>=0){r.diagnosticCourseDriver=enabled!=0;r.diagnosticTimerGrace=enabled==2;r.diagnosticSteer=0;if(enabled)r.diagnosticExtensions=0;}
+    if(values&&count==12){const auto& a=*r.app;
+        values[0]=a.progress;values[1]=a.course.length;values[2]=a.race.progress;
+        values[3]=a.race.furthest;values[4]=a.vehicle.wallContact?1.f:0.f;
+        values[5]=a.race.phase==RacePhase::Finished?1.f:0.f;values[6]=a.race.timeUp?1.f:0.f;
+        values[7]=float(a.segment);values[8]=a.reverse?1.f:0.f;values[9]=a.vehicle.travel;
+        values[10]=float(r.diagnosticExtensions);values[11]=r.diagnosticTimerGrace?1.f:0.f;
+    }
+    return 1;
 }
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
@@ -425,7 +471,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weath
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.app||!r.sceneMode||r.app->saveRoot.filename()!="replay-viewer-session")throw std::logic_error("Replay playback requires isolated viewer storage");
-        if(condition<0||condition>21||weather<0||weather>1||night<0||night>1||car<0||car>34||manual<0||manual>1)throw std::invalid_argument("Invalid replay selection");
+        if(condition<0||condition>23||weather<0||weather>1||night<0||night>1||car<0||car>34||manual<0||manual>1)throw std::invalid_argument("Invalid replay selection");
         auto& a=*r.app;a.replayPlaybackActive=true;a.validationMode=true;
         a.frontend.gameMode=original::OriginalGameMode::TimeAttack;
         a.frontend.course=condition/2;a.courseIndex=condition/2;
@@ -1070,9 +1116,12 @@ int IDAS3_UNITY_CALL Idas3MultiplayerStart(const Idas3MultiplayerConfig* config)
     catch(...){unityError("Unknown multiplayer start error");return 0;}
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerEnableAuthority(uint64_t race,int remoteAutomatic,int boost){
+    return Idas3MultiplayerEnableAuthorityRules(race,remoteAutomatic,boost,1);
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerEnableAuthorityRules(uint64_t race,int remoteAutomatic,int boost,int collisions){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
-    try{if(!r.sceneMode||!r.app||remoteAutomatic<0||remoteAutomatic>1||boost<0||boost>1)throw std::invalid_argument("Invalid authority initialization");
-        r.app->enableAuthority(race,remoteAutomatic!=0,boost!=0);return 1;
+    try{if(!r.sceneMode||!r.app||remoteAutomatic<0||remoteAutomatic>1||boost<0||boost>1||collisions<0||collisions>1)throw std::invalid_argument("Invalid authority initialization");
+        r.app->enableAuthority(race,remoteAutomatic!=0,boost!=0,collisions!=0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityPacket(uint8_t* bytes,uint32_t capacity){

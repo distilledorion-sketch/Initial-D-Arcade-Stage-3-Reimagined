@@ -10,6 +10,7 @@ using UnityEngine;
 public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
 {
     private static bool ReportsCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-reports-check")>=0;
+    private static bool PointerCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pointer-live-check")>=0;
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowFixture(int scene);
     private static string pendingRoot;
     private static Idas3AttractOptionsSmoke active;
@@ -81,7 +82,36 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             if(failure!=null){Finish(false,failure.ToString());yield break;}if(value is IEnumerator child)stack.Push(child);else yield return value;
         }
     }
-    private void Update(){if(!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-began>(ReportsCheck?240:45)))Finish(false,host.Failure??"Attract options diagnostic timeout.");}
+    private void Update(){if(!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-began>(ReportsCheck||PointerCheck?300:45)))Finish(false,host.Failure??"Attract options diagnostic timeout.");}
+    private IEnumerator PointerRegression(){
+        padConnected=true;yield return Release();menu.OpenAttractOptions();menu.SelectTab(2);
+        int camera=options.Draft.defaultCamera;bool fps=options.Draft.showFps;
+        File.WriteAllText(Path.Combine(root,"pointer-phase.txt"),"settings");
+        yield return Until(()=>options.Draft.showFps!=fps,90,"Real mouse did not change FPS setting");
+        Check(options.Draft.defaultCamera==camera&&menu.IsOpen,"Mouse activated controller-highlighted camera instead of FPS");
+        yield return Capture("pointer-settings");menu.SetOpen(false);yield return Release();
+        var session=host.MultiplayerSession;session.ConfigureLocalTest(28475,"MOUSE TEST");session.HostRoom();
+        yield return Until(()=>session.InLobby,15,"Local isolated lobby opened");
+        var online=host.GetComponent<Idas3.Multiplayer.Idas3MultiplayerMenu>();online.SetOpen(true);yield return Frames(8);
+        for(int i=0;i<40&&online.ControllerSelection!="course-option:BOOST";++i){
+            online.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);
+            online.ProcessMenuNavigation(0,1,false,false,false,Time.realtimeSinceStartupAsDouble);yield return Frames(2);
+        }
+        Check(online.ControllerSelection=="course-option:BOOST","Controller highlights Boost before mouse target differs");
+        File.WriteAllText(Path.Combine(root,"pointer-phase.txt"),"online-collisions");
+        yield return Until(()=>!session.CollisionsEnabled,90,"Mouse did not toggle collisions");
+        Check(session.BoostEnabled&&session.InLobby,"Mouse activated wrong controller-highlighted online action");
+        Check(online.ControllerSelection=="course-option:CAR COLLISIONS","Clicked online action takes controller focus");
+        File.WriteAllText(Path.Combine(root,"pointer-phase.txt"),"open-music");
+        yield return Until(()=>host.RaceMusicMenu.IsOpen,60,"Mouse opens song selection");
+        int initial=host.RaceMusicMenu.HighlightedTrackId,chosen=int.MinValue;host.RaceMusicMenu.Selected+=id=>chosen=id;
+        File.WriteAllText(Path.Combine(root,"pointer-phase.txt"),"choose-music");
+        yield return Until(()=>chosen!=int.MinValue,60,"Mouse chooses song");
+        Check(chosen!=initial,"Mouse selected a different song from controller highlight");
+        Check(!host.RaceMusicMenu.IsOpen,"Mouse selected song only once and closed chooser");
+        observations.Add("Real mouse clicks with injected connected pad: settings row, lobby collisions while Boost focused, and song distinct from initial highlight.");
+        session.LeaveRoom();Finish(true,null);
+    }
     private void CheckTitle(string message){Check((host.Status.flags&1u)!=0&&host.Status.frontendStage==0&&(host.Status.flags&2u)==0,message);}
     private IEnumerator OptionsExitRegression(){
         CheckTitle("Options exit regression starts at title");
@@ -290,6 +320,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate physical-input injection");yield return Release();
+        if(PointerCheck){yield return PointerRegression();yield break;}
         if(OptionsExitCheck){yield return OptionsExitRegression();yield break;}
         if(ReportsCheck){yield return ReportsRegression();yield break;}
         if(UpdatesCheck){yield return UpdatesRegression();yield break;}
@@ -418,6 +449,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         var report=new Report{passed=passed&&stopped,shutdownComplete=stopped,error=error,applicationVersion=Application.version,
             checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,finalFrontendStage=finalStage,options=options.Current,
             captures=captures.ToArray(),captureDimensions=captureDimensions.ToArray(),observations=observations.ToArray(),scope=ReportsCheck?"Private-save native/Unity regression: repeated synthetic controller Start, race pause/resume with continuously held keyboard/trigger/rebound A acceleration and steering, original live TA HUD capture, controlled-position finish gates and natural timeout; physical controllers not tested.":"Actual original attract frontend and managed options with private saves. Prompt captures request 640x480, 1024x768, 1280x720 and 1920x800 and report actual dimensions before restoring 1200x720. Synthetic physical keyboard/controller input traverses normal bindings and hold routing, including remapped confirm-button conflict and focus interruption. Apply, Back and persistence use normal options owners. Captures use actual OnGUI Repaint; no guest runtime, race fixture, native pause, or hardware force output."};
+        if(PointerCheck)report.scope="Actual Unity settings, local lobby, and music chooser; real OS mouse clicks while a synthetic connected controller highlights a different control. Private saves; no physical controller hardware validation.";
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Gameplay captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Yes/No prompt, explicit Yes and No semantics, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";

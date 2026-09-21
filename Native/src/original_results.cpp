@@ -8,7 +8,7 @@ namespace idas3 {
 namespace {
 constexpr float lit(std::uint32_t bits){return std::bit_cast<float>(bits);}
 void validate(const OriginalResultsState& s){
-    if(s.carId>=35||s.condition>=22||s.sectionCapacity<2||s.sectionCapacity>4||s.sectionCount>s.sectionCapacity||(s.recordFlags&~0x78000000u))throw std::invalid_argument("Unsupported original Time Attack results state");
+    if(s.carId>=35||s.condition>=24||s.sectionCapacity<2||s.sectionCapacity>4||s.sectionCount>s.sectionCapacity||(s.recordFlags&~0x78000000u))throw std::invalid_argument("Unsupported original Time Attack results state");
     std::uint32_t previous=0;
     for(unsigned i=0;i<s.sectionCount;i++){if(s.sectionTimes6000[i]<previous||s.sectionTimes6000[i]>s.totalTicks6000)throw std::invalid_argument("Results require cumulative section timestamps");previous=s.sectionTimes6000[i];}
 }
