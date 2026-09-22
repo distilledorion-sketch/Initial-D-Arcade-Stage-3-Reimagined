@@ -159,6 +159,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetCustomRaceMusic(const short
 // are host-persisted; these calls never write settings/profiles themselves.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetOptions(Idas3Options* options);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneApplyOptions(const Idas3Options* options);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetTireVolume(float value);
+IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetTireVolume();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetControllerResponse(int response);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetControllerResponse();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSteeringDeadzone(float value);

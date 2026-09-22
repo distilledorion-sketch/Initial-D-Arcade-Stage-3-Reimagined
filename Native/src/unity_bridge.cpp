@@ -11,6 +11,7 @@
 #include "../tests/time_attack_completion_app_tests.inl"
 #include "../tests/finish_music_app_tests.inl"
 #include "../tests/imported_car_lighting_app_tests.inl"
+#include "../tests/driving_effects_app_tests.inl"
 #include "../tests/shared_times_app_tests.inl"
 #include "../tests/player_replays_app_tests.inl"
 #include "shared_time_import.h"
@@ -339,6 +340,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
         if(scene==-2)return runTimeAttackCompletionAppTests(*r.app)==0?1:0;
         if(scene==-3)return runFinishMusicAppTests(*r.app)==0?1:0;
         if(scene==-4)return runImportedCarLightingAppTests(*r.app)==0?1:0;
+        if(scene==-11)return runDrivingEffectsAppTests(*r.app)==0?1:0;
         if(scene==-5)return runSharedTimeAppTests(*r.app)==0?1:0;
         if(scene==-6)return runSharedImportAppTests(*r.app)==0?1:0;
         if(scene==-7)return runPerformanceOptionsAppTests(*r.app)==0?1:0;
@@ -371,6 +373,15 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
         prepareModeFlowFixture(*r.app,unsigned(scene));
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
         if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);
+        if(scene>=250&&scene<=253){std::ofstream out(r.app->saveRoot.parent_path()/("effect-ranges-"+std::to_string(scene)+".txt"));
+            out<<"base "<<r.app->smokeTextureBase<<" coverage corner "<<std::hex<<r.app->smokeTextures.at(4).argb[0]<<std::dec<<'\n';
+            const auto& frame=r.app->renderer.sceneCapture()->frame();
+            const auto& smoke=frame.textures[r.app->smokeTextureBase+4];
+            const auto& expected=r.app->smokeTextures.at(4);
+            if(smoke.width!=expected.width||smoke.height!=expected.height||std::memcmp(smoke.argb,expected.argb.data(),expected.argb.size()*4))throw std::runtime_error("Smoke texture binding mismatch");
+            out<<"smoke binding checked "<<smoke.width<<' '<<smoke.height<<'\n';
+            const auto& ranges=r.app->raceMesh.ranges;for(unsigned i=unsigned(ranges.size()>4?ranges.size()-4:0);i<ranges.size();++i){const auto& q=ranges[i];out<<q.first<<' '<<q.count<<' '<<q.texture<<' '<<std::hex<<q.tsp<<' '<<q.pcw<<' '<<q.gmp<<std::dec<<'\n';}
+        }
         publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
@@ -416,6 +427,9 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 23:return a.fullTuneActive;case 24:return int(a.resultVisit.tuning.kind);
     case 25:return int(a.battleProfile.u(72));case 26:return int(a.resultVisit.child.phase);
     case 27:return a.frontend.inputReady();case 28:return a.activeSaveSlot;case 29:return a.fullTuneSelecting;
+    case 40:return int(a.smokeTextureBase);
+    case 38:return int(a.drivingEffects.markCount());
+    case 39:return int(a.drivingEffects.smokeCount());
     case 36:return a.playerProjectedHeadlight.enabled();
     case 37:return a.carPresentation.headlightState().visible;
     case 34:return a.aiDifficulty;
@@ -635,7 +649,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAudio(double dt,int playing,i
         if(!r.app||!r.sceneMode||!r.app->replayPlaybackActive||!std::isfinite(dt)||dt<0||dt>.25||playing<0||playing>1||reset<0||reset>1)
             throw std::invalid_argument("Invalid replay audio state");
         auto& a=*r.app;
-        a.audio.setOutputGains({master,0,engine,effects});
+        a.audio.setOutputGains({master,0,engine,effects,a.audio.outputGains().tires});
         const bool audible=playing&&a.replayDetailed;
         if(reset){a.audio.resetRaceEffects();a.audio.selectOriginalEngine(a.root,a.frontend.battleProfile);idas3::resetUnityAudioOutput();}
         if(!audible)idas3::resetUnityAudioOutput();
@@ -909,12 +923,23 @@ int IDAS3_UNITY_CALL Idas3SceneApplyOptions(const Idas3Options* options){
         auto& app=*r.app;
         // The setter validates every gain before changing anything. All later
         // assignments are bounded/nonthrowing; rejected options are atomic.
-        app.audio.setOutputGains({options->masterGain,options->musicGain,options->engineGain,options->effectsGain});
+        app.audio.setOutputGains({options->masterGain,options->musicGain,options->engineGain,options->effectsGain,app.audio.outputGains().tires});
         app.drivingView=options->cameraView==0?OriginalDrivingView::Bumper:OriginalDrivingView::Chase;
         app.managedPauseOverlay=options->managedPauseOverlay!=0;
         publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown options apply error");return 0;}
+}
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetTireVolume(float value){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app)throw std::logic_error("Tire volume requires initialized scene mode");
+        auto gains=r.app->audio.outputGains();gains.tires=value;r.app->audio.setOutputGains(gains);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetTireVolume(){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    return r.sceneMode&&r.app?r.app->audio.outputGains().tires:-1.f;
 }
 int IDAS3_UNITY_CALL Idas3SceneSetControllerResponse(int response){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

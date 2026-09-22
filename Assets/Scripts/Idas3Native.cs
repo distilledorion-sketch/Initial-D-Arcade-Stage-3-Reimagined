@@ -52,6 +52,8 @@ internal static class Idas3Native
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneGetOptions(ref Options options);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneApplyOptions(ref Options options);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetControllerResponse(int response);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetTireVolume(float value);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern float Idas3SceneGetTireVolume();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneGetControllerResponse();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetSteeringDeadzone(float value);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern float Idas3SceneGetSteeringDeadzone();

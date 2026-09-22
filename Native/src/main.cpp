@@ -24,6 +24,7 @@
 #include "chase_camera.h"
 #include "original_chase_camera.h"
 #include "car_shadow.h"
+#include "driving_effects.h"
 #include "car_presentation.h"
 #include "car_pose_interpolation.h"
 #include "online_visual_correction.h"
@@ -132,6 +133,11 @@ struct App {
         bool savedReverse=false,savedWet=false,savedNight=false,savedAutomatic=true;
     } multiplayer;
     WetWeather wetWeather;
+    DrivingEffects drivingEffects;
+    std::array<std::array<original::OriginalCollisionQuery,4>,2> effectRoadQueries{};
+    bool validationHideDrivingEffects=false;
+    NativeTextureBank smokeTextures;
+    std::uint32_t smokeTextureBase=0;
     int performanceRainDetail=0;
     int aiDifficulty=0;
     WeatherShelter weatherShelter;
@@ -1145,7 +1151,7 @@ struct App {
         }
         if(!originalHandling)audio.useDevelopmentEngine();
         texturesPending=true;
-        menu=false;paused=false;wetWeather.reset();audio.resetRaceEffects();race.start(originalHandling?float(originalRace.rules().goalIndex):trackFinish-trackStart);
+        menu=false;paused=false;wetWeather.reset();drivingEffects.reset();for(auto& car:effectRoadQueries)for(auto& q:car)original::clearOriginalCollisionQuery(q);audio.resetRaceEffects();race.start(originalHandling?float(originalRace.rules().goalIndex):trackFinish-trackStart);
         race.originalTiming=originalHandling;if(originalHandling){race.remaining6000=std::bit_cast<std::int32_t>(originalRace.state().remaining.value);
             race.sectionCapacity=1;for(auto index:originalRace.rules().sectionIndices)if(index>=0)++race.sectionCapacity;race.sectionCapacity=std::min(race.sectionCapacity,4u);}
         raceFeedback.reset(race.remaining6000);
@@ -2666,6 +2672,7 @@ struct App {
         return menu?renderMenu(0):render(0);
     }
     bool render(double dt,bool drawRearView=true){
+        if(menu){carPresentation.raceReflections(false);rivalPresentation.raceReflections(false);}
         renderer.supplementalCourseLampLighting=false;
         if(loadingActive)return renderLoading(dt);
         if(buntaVisitActive)return renderBuntaVisit(dt);
@@ -2754,6 +2761,9 @@ struct App {
                     if(!renderer.loadTextures(rainmarkTextures,true))return false;
                 }
             }
+            smokeTextureBase=rainTextureBase+((wet||courseIndex==8)?std::uint32_t(rainTextures.size()):0u)+((wet&&courseIndex!=8)?std::uint32_t(rainmarkTextures.size()):0u);
+            if(smokeTextures.size()==0)smokeTextures=NativeTextureBank::load(root/"data/original_assets/effects/smoke/textures.idastex");
+            if(!renderer.loadTextures(smokeTextures,true))return false;
             texturesPending=false;menuTexturesLoaded=false;
         }
         const float alpha=clock.alpha();VehicleState drawCar=vehicle;drawCar.position=lerp(previous.position,vehicle.position,alpha);drawCar.yaw=lerpAngle(previous.yaw,vehicle.yaw,alpha);
@@ -2812,21 +2822,42 @@ struct App {
         scenery(mesh,menu?trackStart:progress);
         if(courseCrows)mesh.originalCar(courseCrows->model,courseCrows->assembly(),{0,0,0},0,crowTextureBase);
         if(hasOriginalScenery)for(auto i=courseRangeBegin;i<mesh.ranges.size();++i)mesh.ranges[i].courseLighting=true;
-        if(originalHandling&&!replayPlaybackActive&&!menu&&presentedSession().ready()){
-            CarShadowFootprint shadow;shadow.widthScale=1.70f;shadow.lengthScale=2.15f;shadow.opacity=.46f;shadow.surfaceLift=.02f;bool valid=true;
-            const auto& road=presentedSession().roadContact();
-            for(std::size_t i=0;i<4;++i){const auto& query=road.surfaces0CAA9518[i];
-                if(std::int32_t(query.u(60))<0){valid=false;break;}
-                shadow.roadPoints[i]=Vec3{query.f(12),query.f(16),query.f(20)}+(drawCar.position-vehicle.position);
-            }
-            if(valid)appendCarContactShadow(mesh,shadow);
+        const float poseAlpha=menu||paused||race.phase==RacePhase::Finished?1.f:alpha;
+        std::array<DrivingEffects::Car,2> effectCars{};
+        if(originalHandling&&!menu&&presentedSession().ready()){
+            const auto bind=[&](unsigned slot,const VehicleState& state,Vec3 position,float yaw,const CarPresentation& presentation){
+                auto& car=effectCars[slot];car.position=position;car.yaw=yaw;car.visible=true;
+                car.speed=std::abs(state.speed);car.slip=state.slip;car.grounded=true;
+                const auto origins=presentation.wheelOrigins();
+                original::OriginalTriangleSearchTrace trace;original::OriginalSurfaceScratch scratch;
+                for(unsigned i=0;i<4;++i){
+                    const auto p=position+right(yaw)*origins[i].x+forward(yaw)*origins[i].z;
+                    auto& q=effectRoadQueries[slot][i];
+                    q.setf(32,p.x);q.setf(36,p.y);q.setf(40,p.z);
+                    if(!original::queryOriginalCollisionSurface(presentedSession().collision(),q,trace,scratch)||q.f(4)<.2f||std::abs(q.f(16)-p.y)>1.25f){car.grounded=false;break;}
+                    car.points[i]={q.f(12),q.f(16),q.f(20)};car.normals[i]=normalized(Vec3{q.f(0),q.f(4),q.f(8)});
+                }
+                // Remote/replay records carry pose, not the local slip scalar.
+                // Estimate lateral travel from their actual displayed movement.
+                if(slot==1||replayPlaybackActive){const auto old=slot?previousRival.position:previous.position;
+                    const auto motion=state.position-old;
+                    if(length(motion)>.015f){car.slip=2.f/pi*std::asin(std::clamp(std::abs(dot(normalized(motion),right(yaw))),0.f,1.f));car.speed=length(motion)*60.f;}
+                }
+                if(car.grounded&&!validationHideDrivingEffects){CarShadowFootprint shadow;shadow.roadPoints=car.points;
+                    shadow.widthScale=1.35f;shadow.lengthScale=1.65f;shadow.opacity=.48f;shadow.surfaceLift=.012f;
+                    float ground=0;for(auto p:car.points)ground+=p.y*.25f;shadow.separation=std::max(0.f,position.y-ground);
+                    appendCarContactShadow(mesh,shadow);}
+                if(car.grounded){float ground=0;for(auto p:car.points)ground+=p.y*.25f;car.grounded=std::abs(position.y-ground)<.3f;}
+            };
+            bind(0,vehicle,drawCar.position,drawCar.yaw,carPresentation);
+            if(rivalVisible)bind(1,rivalVehicle,lerp(previousRival.position,rivalVehicle.position,poseAlpha),lerpAngle(previousRival.yaw,rivalVehicle.yaw,poseAlpha),rivalPresentation);
         }
         const auto carTextureBase=hasOriginalScenery?std::uint32_t(originalCourseTextures.size()+originalBackgroundTextures.size()):0u;
-        const float poseAlpha=menu||paused||race.phase==RacePhase::Finished?1.f:alpha;
         CarWheelPose drawWheels;
         if(originalHandling&&!menu){
             drawWheels=interpolateCarWheels(previousWheelPose,wheelPose,poseAlpha);
         }else if(!menu){drawWheels.steeringRadians=vehicle.steering*.3f;for(auto& rotation:drawWheels.rotationRadians)rotation=std::fmod(vehicle.travel/.3f,2*pi);}
+        carPresentation.raceReflections(!menu&&!validationHideDrivingEffects);
         const auto& carAssembly=carPresentation.pose(drawWheels,replayPlaybackActive?replayLights:originalHandling&&!menu?playerProjectedHeadlight.enabled():night,!menu&&vehicle.brake>.05f);
         const auto bodyAngles=interpolateCarBodyAngles({previousPitch,previousRoll},{bodyPitch,bodyRoll},poseAlpha);
         const float drawPitch=bodyAngles.pitch,drawRoll=bodyAngles.roll;
@@ -2837,7 +2868,7 @@ struct App {
             drawPitch,drawRoll,carTextureBase,carPresentation.illuminatedChunks(),true);
         mesh.originalCar(numberPlate.model,carPresentation.profilePlateAssembly(),bodyPosition,drawCar.yaw,
             drawPitch,drawRoll,carTextureBase+std::uint32_t(originalTextures.size()),{},true);
-        if(originalHandling&&!menu)for(auto i=playerRangeBegin;i<mesh.ranges.size();++i)mesh.ranges[i].carLighting=1;
+        if(originalHandling&&!menu)for(auto i=playerRangeBegin;i<mesh.ranges.size();++i){mesh.ranges[i].carLighting=1;if(mesh.ranges[i].gmp&(1u<<11)){auto& range=mesh.ranges[i];range.texture=smokeTextureBase+5;range.tsp=(range.tsp&0x03c7ff3fu)|(4u<<29)|(1u<<26)|(1u<<20)|(3u<<6);}}
         if(showMultiplayerAura){
             auto& aura=multiplayerAura[0];
             aura.update(std::uint32_t(std::fmod(multiplayer.auraSeconds*60.,4294967296.)),unsigned(frontend.car),drawCar.position,camera);
@@ -2854,23 +2885,17 @@ struct App {
             const auto angles=interpolateCarBodyAngles({previousRivalPitch,previousRivalRoll},{rivalPitch,rivalRoll},poseAlpha);
             const auto pitch=angles.pitch,roll=angles.roll;
             const auto wheels=interpolateCarWheels(previousRivalWheels,rivalWheels,poseAlpha);
-            CarShadowFootprint shadow;shadow.widthScale=1.70f;shadow.lengthScale=2.15f;shadow.opacity=.46f;shadow.surfaceLift=.02f;bool valid=true;
-            if(multiplayer.active||replayPlaybackActive)valid=false; // Replays have no live AI road contacts.
-            else {
-                const auto& road=presentedSession().rivalRoadContact();
-                for(unsigned i=0;i<4;++i){const auto& query=road.surfaces0CAA9764[i];if(std::int32_t(query.u(60))<0){valid=false;break;}shadow.roadPoints[i]=Vec3{query.f(12),query.f(16),query.f(20)}+(position-rivalVehicle.position);}
-            }
-            if(valid)appendCarContactShadow(mesh,shadow);
             const auto base=carTextureBase+std::uint32_t(originalTextures.size()+numberPlate.textures.size());
             const auto body=lerp(previousRivalBodyWorld,rivalBodyWorld,poseAlpha);
             // 034ADC..034B24 copies the original published actor+92 bit0
             // into ACar+80. The rival solver already produces this signal.
             const bool braking=replayPlaybackActive?rivalVehicle.brake>.05f:(renderedRivalActor()[92/4]&1)!=0;
+            rivalPresentation.raceReflections(!validationHideDrivingEffects);
             const auto& assembly=rivalPresentation.pose(wheels,replayPlaybackActive?replayRivalLights:originalHandling?rivalProjectedHeadlight.enabled():night,braking);
             const auto rivalRangeBegin=mesh.ranges.size();
             mesh.originalCar(rivalModel,assembly,body,yaw,pitch,roll,base,rivalPresentation.illuminatedChunks(),true);
             mesh.originalCar(rivalPlate.model,(multiplayer.active||(replayPlaybackActive&&loadedRivalEnemy==-2))?rivalPresentation.profilePlateAssembly():rivalPlate.assembly(),body,yaw,pitch,roll,base+std::uint32_t(rivalTextures.size()),{},true);
-            if(originalHandling)for(auto i=rivalRangeBegin;i<mesh.ranges.size();++i)mesh.ranges[i].carLighting=2;
+            if(originalHandling)for(auto i=rivalRangeBegin;i<mesh.ranges.size();++i){mesh.ranges[i].carLighting=2;if(mesh.ranges[i].gmp&(1u<<11)){auto& range=mesh.ranges[i];range.texture=smokeTextureBase+5;range.tsp=(range.tsp&0x03c7ff3fu)|(4u<<29)|(1u<<26)|(1u<<20)|(3u<<6);}}
             if(showMultiplayerAura){
                 auto& aura=multiplayerAura[1];
                 aura.update(std::uint32_t(std::fmod(multiplayer.auraSeconds*60.,4294967296.)),multiplayer.config.remoteCar,position,camera);
@@ -2878,6 +2903,8 @@ struct App {
             }
         }
         // Best-run telemetry remains available for records; Time Attack has no ghost car.
+        drivingEffects.advance(dt,originalHandling&&!menu&&!wet&&courseIndex!=8,paused&&!multiplayer.active,effectCars);
+        if(!validationHideDrivingEffects)drivingEffects.append(mesh,camera,target,smokeTextureBase+4,night);
         // Snow/rain and tire spray are scene geometry, depth-tested against cars/scenery
         // and drawn before the HUD. Their private clock cannot alter physics.
         const bool snowWeather=courseIndex==8;

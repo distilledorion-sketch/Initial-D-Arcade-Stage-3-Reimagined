@@ -38,6 +38,10 @@ namespace Idas3.Multiplayer
         private string pendingKind;
         private string buildCompatibility = "";
         private bool polling;
+        private Idas3SteamActivity activity;
+        public bool ActivityRequested {get;set;}
+        public string ActivityState {get;set;}="online";
+        public Idas3OnlineActivity Activity=>Available?activity?.Get(UnityEngine.Time.realtimeSinceStartupAsDouble)??default:default;
 
         public string Kind => "Steam";
         public bool Available { get; private set; }
@@ -83,6 +87,7 @@ namespace Idas3.Multiplayer
                 if (!SteamUser.BLoggedOn()) throw new InvalidOperationException("Steam is offline. Sign in before using online races.");
                 local = SteamUser.GetSteamID().m_SteamID;
                 LocalName = CleanName(SteamFriends.GetPersonaName(), "Driver");
+                activity=new Idas3SteamActivity(local,GameNamespace+"-activity-v1"+(buildCompatibility.Contains("-quick-smoke-")?buildCompatibility:""));
                 callbacks.Add(Callback<LobbyDataUpdate_t>.Create(OnLobbyData));
                 callbacks.Add(Callback<LobbyChatUpdate_t>.Create(OnLobbyMembers));
                 callbacks.Add(Callback<SteamNetworkingMessagesSessionRequest_t>.Create(OnSessionRequest));
@@ -141,6 +146,7 @@ namespace Idas3.Multiplayer
         void BrowseDistance(ELobbyDistanceFilter distance)
         {
             if (!CanStart()) return;
+            activity?.CancelSearch();
             rooms.Clear(); long token = Begin("Finding rooms");
             SteamMatchmaking.AddRequestLobbyListStringFilter(GameKey, GameNamespace, ELobbyComparison.k_ELobbyComparisonEqual);
             SteamMatchmaking.AddRequestLobbyListStringFilter(ProtocolKey, TransportProtocol, ELobbyComparison.k_ELobbyComparisonEqual);
@@ -304,6 +310,7 @@ namespace Idas3.Multiplayer
             SteamAPI.RunCallbacks();
             if (!Available) return;
             double now = clock.Elapsed.TotalSeconds;
+            if(activity!=null){activity.Requested=ActivityRequested;activity.SetState(ActivityState);activity.Poll(UnityEngine.Time.realtimeSinceStartupAsDouble,IsBusy);}
             // Callbacks normally update admission immediately. Retain a low
             // frequency audit for a missed/delayed lobby notification.
             if (InLobby && now - lastMembershipCheck >= 1) RefreshPeer();
@@ -392,6 +399,7 @@ namespace Idas3.Multiplayer
 
         public void Dispose()
         {
+            activity?.Dispose();activity=null;
             Leave();
             foreach (var callback in callbacks) callback.Dispose(); callbacks.Clear();
             foreach (var call in calls) call.Dispose(); calls.Clear();

@@ -29,7 +29,7 @@ struct OriginalEngineAudioStatistics {
     float maximumTireStrength=0,maximumTireSpeed=0;
 };
 struct AudioOutputGains {
-    float master=1,music=1,engine=1,effects=1;
+    float master=1,music=1,engine=1,effects=1,tires=1;
 };
 // Original SPSD music, race effects and native ICS engine playback.
 class EngineAudio {
@@ -108,7 +108,7 @@ public:
     // Same mixer used by waveOut and bounded offline application checks.
     std::array<short,2> renderStereo(float rpm,float throttle,float speed,float slip,bool active);
     // Host output controls, not the original instrument/manager volume state.
-    // Engine includes tire PCM. Shared wet tails remain until they decay;
+    // Engine and tire PCM have independent gains. Shared wet tails remain until they decay;
     // master controls the final mix including those tails. No clock resets.
     void setOutputGains(const AudioOutputGains& gains);
     AudioOutputGains outputGains()const{return outputGains_;}
@@ -171,10 +171,11 @@ private:
     // Keep the source DSP sends on the same clock as their dry samples. The
     // larger frames live on the heap instead of consuming the window stack.
     std::vector<OriginalIcsMixFrame> engineFrames=std::vector<OriginalIcsMixFrame>(8820);
+    std::vector<std::int32_t> tireFrames=std::vector<std::int32_t>(8820);
     std::size_t engineRead=0,engineCount=0;
     bool enginePrimed=false;
     OriginalEngineAudioStatistics engineStats;
-    void appendEngineFrame(const OriginalIcsMixFrame& frame);
+    void appendEngineFrame(const OriginalIcsMixFrame& frame,std::int32_t tire=0);
     void renderOriginalEngineFrame();
     void clearOriginalDspSends();
     void selectOriginalSoundSet(int soundSet);

@@ -78,6 +78,32 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);frozen=true;
+            for(int fixture=250;fixture<=253;++fixture){
+                Check(Idas3SceneModeFlowFixture(fixture)==1,"Driving effects fixture");
+                frozen=false;yield return Frames(3);frozen=true;
+                Check(Idas3SceneModeFlowValue(38)>0,"Road-contact skid marks exist");
+                Check(Idas3SceneModeFlowValue(39)>0,"Recovered-texture tire smoke exists");
+                yield return Capture("effects-"+fixture);
+                if(fixture==251){
+                    string name="Original texture "+(Idas3SceneModeFlowValue(40)+4)+" sampler ";
+                    foreach(var tex in Resources.FindObjectsOfTypeAll<Texture2D>())if(tex.name.StartsWith(name)){
+                        var rt=new RenderTexture(tex.width,tex.height,0,RenderTextureFormat.ARGB32);rt.Create();Graphics.Blit(tex,rt);
+                        var prior=RenderTexture.active;RenderTexture.active=rt;
+                        var copy=new Texture2D(tex.width,tex.height,TextureFormat.RGBA32,false);copy.ReadPixels(new Rect(0,0,tex.width,tex.height),0,0);copy.Apply();
+                        File.WriteAllBytes(Path.Combine(root,"gpu-smoke.png"),copy.EncodeToPNG());
+                        bool transparent=true;
+                        for(int edge=0;edge<copy.width;++edge)transparent&=copy.GetPixel(edge,0).a<.01f&&copy.GetPixel(edge,copy.height-1).a<.01f&&copy.GetPixel(0,edge).a<.01f&&copy.GetPixel(copy.width-1,edge).a<.01f;
+                        Check(transparent,"Entire smoke GPU boundary is transparent");
+                        RenderTexture.active=prior;Destroy(copy);rt.Release();Destroy(rt);break;
+                    }
+                }
+            }
+            Check(Idas3SceneModeFlowFixture(-11)==1,"Live original driving effects and physics isolation");
+            Finish(true,null);yield break;
+        }
+
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-headlight-toggle-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
             headlightsCheck=true;headlightBindings=new Idas3ControlBindings();headlightBindings.Initialize(Path.Combine(root,"binding-test"));
@@ -657,7 +683,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-performance-options-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0?
+            "Controlled Akina/Enna before/after race captures, recovered smoke texture binding and full GPU alpha boundary, plus1800 frames of original driving with real slip/road contacts and unchanged320-word physics state. No physical input device or network peer used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-performance-options-check")>=0?
             "Performance options migration, persistence, display rollback, controller navigation, imported foliage LOD and native mirror/weather geometry with unchanged race ticks/car/profile/driving RNG/wet state. Isolated fixtures, not a low-end hardware FPS benchmark.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-import-times-check")>=0?
             "Personal import from isolated multi-slot and legacy fixtures, fastest-record deduplication, unknown metadata, exclusion of aggregate-only rows, read-only saves, controller action, live HTTPS uploads, persistent acknowledgments and sharing-off behavior. Disposable remote times require cleanup.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-check")>=0?
             "Actual native gate finishes on original and imported courses, shared target selection, timeout exclusion, one-shot upload, C# validation/packing, controller settings and live Unity HTTPS registration/upload/snapshot. Controlled gate traversal in isolated saves; not a human driven race. Disposable remote installation requires moderation cleanup.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-imported-car-light-check")>=0?

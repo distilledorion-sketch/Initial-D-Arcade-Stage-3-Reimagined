@@ -10,7 +10,8 @@ public sealed class Idas3GameOptions
     [Serializable] public sealed class Values
     {
         public int version=1;
-        public float masterVolume=1,musicVolume=1,engineVolume=1,effectsVolume=1;
+        public float masterVolume=1,musicVolume=1,engineVolume=1,effectsVolume=1,tireVolume=1;
+        public int audioSettingsVersion=1;
         public int displayMode,width=1280,height=720;
         public bool vSync=true;
         public int frameRateLimit=60,antiAliasing=4,defaultCamera,controllerResponse;
@@ -126,7 +127,7 @@ public sealed class Idas3GameOptions
                 // Initialize missing fields explicitly. The zero marker lets
                 // old JSON migrate without treating saved zero deadzones as
                 // missing once these settings have been written.
-                var loaded=new Values{version=0,steeringSettingsVersion=0};
+                var loaded=new Values{version=0,steeringSettingsVersion=0,audioSettingsVersion=0};
                 JsonUtility.FromJsonOverwrite(File.ReadAllText(file),loaded);
                 if(loaded==null||loaded.version!=1)throw new InvalidDataException("Unsupported options format.");
                 current=Normalize(loaded);loadedSaved=true;
@@ -211,6 +212,8 @@ public sealed class Idas3GameOptions
         if(source==null)throw new ArgumentNullException(nameof(source));var value=source.Clone();value.version=1;
         value.masterVolume=Volume(value.masterVolume);value.musicVolume=Volume(value.musicVolume);
         value.engineVolume=Volume(value.engineVolume);value.effectsVolume=Volume(value.effectsVolume);
+        if(value.audioSettingsVersion<1)value.tireVolume=value.engineVolume;
+        value.tireVolume=Volume(value.tireVolume);value.audioSettingsVersion=1;
         value.displayMode=Math.Max(0,Math.Min(2,value.displayMode));value.width=Math.Max(640,Math.Min(8192,value.width));
         value.height=Math.Max(360,Math.Min(8192,value.height));
         if(value.antiAliasing!=0&&value.antiAliasing!=2&&value.antiAliasing!=4&&value.antiAliasing!=8)value.antiAliasing=4;
@@ -255,7 +258,7 @@ public sealed class Idas3GameOptions
     public static bool DisplayChanged(Values a,Values b)=>a.displayMode!=b.displayMode||a.width!=b.width||a.height!=b.height;
     private static bool SameHudPositions(Values a,Values b){for(int i=0;i<10;++i)if(a.HudOffset(i)!=b.HudOffset(i))return false;return true;}
     public static bool Equivalent(Values a,Values b)=>a!=null&&b!=null&&
-        a.masterVolume==b.masterVolume&&a.musicVolume==b.musicVolume&&a.engineVolume==b.engineVolume&&a.effectsVolume==b.effectsVolume&&
+        a.masterVolume==b.masterVolume&&a.musicVolume==b.musicVolume&&a.engineVolume==b.engineVolume&&a.effectsVolume==b.effectsVolume&&a.tireVolume==b.tireVolume&&a.audioSettingsVersion==b.audioSettingsVersion&&
         !DisplayChanged(a,b)&&a.vSync==b.vSync&&a.frameRateLimit==b.frameRateLimit&&a.antiAliasing==b.antiAliasing&&
         a.aiDifficulty==b.aiDifficulty&&a.defaultCamera==b.defaultCamera&&a.controllerResponse==b.controllerResponse&&
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&

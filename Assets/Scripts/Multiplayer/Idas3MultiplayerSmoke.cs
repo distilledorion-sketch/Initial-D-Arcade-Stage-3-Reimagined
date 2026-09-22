@@ -852,6 +852,11 @@ namespace Idas3.Multiplayer
             session.QuickMatch();Phase("quick-match-search");
             yield return Until(()=>session.IsQuickMatching&&session.InLobby&&session.IsHost,35,"Quick Match did not host after finding no compatible rooms.");
             roomCode=session.RoomCode;Phase("quick-match-waiting");
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-activity-check")>=0){
+                yield return Until(()=>session.Activity.Available&&session.Activity.Queuing==1,45,"Isolated Steam presence did not count the queuing player.");
+                Check(session.Activity.Online==1&&session.Activity.Racing==0,"Presence counted unrelated Spacewar players or duplicate memberships.");
+                File.WriteAllText(Path.Combine(root,"activity-queuing.json"),JsonUtility.ToJson(session.Activity,true));
+            }
             yield return new WaitForSecondsRealtime(6);
             Check(session.IsQuickMatching&&session.InLobby&&session.RoomCode==roomCode,"Waiting search lost or replaced its own room.");
             Check(!session.HandshakeComplete&&!session.IsRacing,"Isolated matchmaking unexpectedly admitted another player.");
@@ -859,7 +864,18 @@ namespace Idas3.Multiplayer
             yield return CaptureMenu("quick-match-waiting");
             session.CancelQuickMatch();yield return Frames(12);
             Check(!session.IsQuickMatching&&!session.InLobby&&!session.IsRacing,"Cancel Search did not leave the hosted lobby.");
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-activity-check")>=0){
+                yield return Until(()=>session.Activity.Available&&session.Activity.Online==1&&session.Activity.Queuing==0,45,"Leaving matchmaking did not update Steam presence.");
+                File.WriteAllText(Path.Combine(root,"activity-online.json"),JsonUtility.ToJson(session.Activity,true));
+            }
             Phase("quick-match-cancelled");yield return CaptureMenu("quick-match-cancelled");
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-activity-check")>=0){
+                // The existing unique quick-smoke build key also isolates this
+                // manual host room from every ordinary player's browser.
+                session.HostRoom();yield return Until(()=>session.InLobby&&session.IsHost,30,"Manual lobby after Quick Match cancel failed.");
+                yield return CaptureMenu("manual-lobby");session.LeaveRoom();yield return Frames(5);
+                Check(!session.InLobby,"Manual test lobby did not close");
+            }
             Finish(true,null);
         }
         private IEnumerator SteamRuntimeCheck()
@@ -1063,14 +1079,14 @@ namespace Idas3.Multiplayer
         }
         private static bool MenuHeaderVisible(Texture2D picture)
         {
-            float scale=Mathf.Min(1.5f,Mathf.Min(picture.width/1168f,picture.height/700f));
-            float left=(picture.width-1120*scale)*.5f,top=(picture.height-660*scale)*.5f;
+            float scale=Mathf.Min(1.5f,Mathf.Min(picture.width/940f,picture.height/652f));
+            float left=(picture.width-900*scale)*.5f,top=(picture.height-620*scale)*.5f;
             int y=Mathf.Clamp(picture.height-1-Mathf.RoundToInt(top+2*scale),0,picture.height-1);
-            int yellow=0,total=0;
-            for(int x=Mathf.RoundToInt(left+10*scale);x<left+1110*scale;x+=4){
-                Color32 pixel=picture.GetPixel(x,y);++total;if(pixel.r>180&&pixel.g>130&&pixel.b<145)++yellow;
+            int accent=0,total=0;
+            for(int x=Mathf.RoundToInt(left+10*scale);x<left+890*scale;x+=4){
+                Color32 pixel=picture.GetPixel(x,y);++total;if(pixel.r>150&&pixel.g<90&&pixel.b<105)++accent;
             }
-            return total>0&&yellow>total*.7f;
+            return total>0&&accent>total*.7f;
         }
         private IEnumerator CaptureWorld(string name)
         {

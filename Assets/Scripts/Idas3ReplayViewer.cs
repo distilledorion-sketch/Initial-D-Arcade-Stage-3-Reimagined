@@ -266,6 +266,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     void UpdateReplayAudio(double delta){
         bool audible=playing&&!browsing&&picker==null&&Viewed.Detailed;
         bool reset=!audioWasPlaying||double.IsNaN(audioSeconds)||Math.Abs(seconds-audioSeconds-delta*rate)>.1;
+        if(Idas3Native.Idas3SceneSetTireVolume(audioOptions.tireVolume)!=1)throw new InvalidOperationException("Could not apply replay tire volume.");
         if(Idas3ReplayAudio(delta,audible?1:0,audible&&reset?1:0,audioOptions.masterVolume,audioOptions.engineVolume,audioOptions.effectsVolume)!=1)
             throw new InvalidOperationException(Idas3Native.Error());
         audioWasPlaying=audible;audioSeconds=seconds;

@@ -2,6 +2,35 @@
 // separate regression in mode_flow_app_tests.inl; these select authored scenes
 // quickly for Unity rendering and controller-route verification.
 void prepareModeFlowFixture(App& app,unsigned scene){
+    if(scene>=250&&scene<=253){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        app.validationMode=true;app.replayPlaybackActive=false;app.paused=false;
+        app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.course=app.courseIndex=scene>=252?11:3;app.frontend.reverse=app.reverse=false;
+        app.frontend.night=app.night=false;app.frontend.wet=app.wet=false;
+        app.frontend.car=0;app.start();
+        app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;app.menu=false;
+        app.race.phase=RacePhase::Running;app.race.remaining6000=120*6000;
+        app.drivingView=OriginalDrivingView::Chase;app.paused=true;
+        app.validationHideDrivingEffects=(scene%2)==0;
+        app.replayPlaybackActive=true;app.replayCameraMode=3;app.replayOrbit=.65f;
+        std::array<DrivingEffects::Car,2> cars{};auto& car=cars[0];
+        car.visible=true;car.speed=24;car.slip=.5f;car.yaw=app.vehicle.yaw;
+        const auto origins=app.carPresentation.wheelOrigins();
+        original::OriginalTriangleSearchTrace trace;original::OriginalSurfaceScratch scratch;
+        for(unsigned frame=0;frame<100;++frame){
+            car.position=app.vehicle.position-forward(car.yaw)*(float(99-frame)*.18f);car.grounded=true;
+            for(unsigned i=0;i<4;++i){const auto p=car.position+right(car.yaw)*origins[i].x+forward(car.yaw)*origins[i].z;
+                original::OriginalCollisionQuery q;original::clearOriginalCollisionQuery(q);
+                q.setf(32,p.x);q.setf(36,p.y);q.setf(40,p.z);
+                if(!original::queryOriginalCollisionSurface(app.presentedSession().collision(),q,trace,scratch)){car.grounded=false;break;}
+                car.points[i]={q.f(12),q.f(16),q.f(20)};car.normals[i]=normalized(Vec3{q.f(0),q.f(4),q.f(8)});
+            }
+            app.drivingEffects.advance(1./60,true,false,cars);
+        }
+        app.input={};return;
+    }
+
     if(scene>=240&&scene<=242){
         if(app.multiplayer.active)app.leaveMultiplayer();
         app.validationMode=true;app.replayPlaybackActive=false;app.paused=false;

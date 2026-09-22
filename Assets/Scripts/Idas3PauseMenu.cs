@@ -173,7 +173,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>tab==7?11:tab==6?4:tab==5?2:tab==0||tab==4?4:tab==2?10:tab==1?8:bindings!=null?10+BindingFirstSelection-1:0;
+    private int Rows=>tab==7?11:tab==6?4:tab==5?2:tab==0?5:tab==4?4:tab==2?10:tab==1?8:bindings!=null?10+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -261,7 +261,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==0)v.masterVolume=Mathf.Clamp01(v.masterVolume+direction*.05f);
             if(row==1)v.musicVolume=Mathf.Clamp01(v.musicVolume+direction*.05f);
             if(row==2)v.engineVolume=Mathf.Clamp01(v.engineVolume+direction*.05f);
-            if(row==3)v.effectsVolume=Mathf.Clamp01(v.effectsVolume+direction*.05f);
+            if(row==3)v.tireVolume=Mathf.Clamp01(v.tireVolume+direction*.05f);
+            if(row==4)v.effectsVolume=Mathf.Clamp01(v.effectsVolume+direction*.05f);
         }else if(tab==7){
             if(row==0){OpenHudEditor();return;}--row;
             if(row==0)v.minimapSize=Wrap(v.minimapSize+direction,3);
@@ -445,8 +446,9 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(tab==0){
             VolumeRow(0,"MASTER",v.masterVolume,value=>v.masterVolume=value);
             VolumeRow(1,"MUSIC",v.musicVolume,value=>v.musicVolume=value);
-            VolumeRow(2,"ENGINE / TIRES",v.engineVolume,value=>v.engineVolume=value);
-            VolumeRow(3,"EFFECTS / VOICES",v.effectsVolume,value=>v.effectsVolume=value);
+            VolumeRow(2,"ENGINE",v.engineVolume,value=>v.engineVolume=value);
+            VolumeRow(3,"TIRE SQUEAL",v.tireVolume,value=>v.tireVolume=value);
+            VolumeRow(4,"EFFECTS / VOICES",v.effectsVolume,value=>v.effectsVolume=value);
             Text(new Rect(288,497,683,29),"Changes take effect when you choose APPLY.",small);
         }else if(tab==7){
             if(Button(new Rect(278,170,714,29),"OPEN LIVE HUD EDITOR",selection==1)){selection=1;OpenHudEditor();}
@@ -522,7 +524,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(Button(new Rect(731,583,279,35),"BACK",selection==Rows+3))Back();
     }
     private void VolumeRow(int row,string name,float value,Action<float> set){
-        float y=200+row*68;var rect=new Rect(278,y-5,714,55);if(selection==row+1)Frame(rect,Red);
+        float y=200+row*56;var rect=new Rect(278,y-5,714,55);if(selection==row+1)Frame(rect,Red);
         Text(new Rect(290,y+5,231,32),name,label);
         float before=value;value=GUI.HorizontalSlider(new Rect(557,y+13,317,20),value,0,1);
         if(!Mathf.Approximately(before,value)){selection=row+1;set(value);notice="";}

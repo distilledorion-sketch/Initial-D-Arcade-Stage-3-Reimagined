@@ -13,7 +13,7 @@ EngineAudio::~EngineAudio()=default;
 EngineAudio::~EngineAudio(){if(output){waveOutReset(output);for(auto& h:headers)if(h.dwFlags&WHDR_PREPARED)waveOutUnprepareHeader(output,&h,sizeof(h));waveOutClose(output);}}
 #endif
 void EngineAudio::setOutputGains(const AudioOutputGains& gains){
-    for(const auto value:{gains.master,gains.music,gains.engine,gains.effects})
+    for(const auto value:{gains.master,gains.music,gains.engine,gains.effects,gains.tires})
         if(!std::isfinite(value)||value<0.f||value>1.f)throw std::invalid_argument("Audio output gain must be finite in0..1");
     outputGains_=gains;
 }
@@ -100,9 +100,9 @@ void EngineAudio::selectOriginalSoundSet(int soundSet){
     if(soundSet!=4){nativeEngine.reset();presentationEngine.reset();nativeTire.reset();engineRead=engineCount=0;enginePrimed=false;pendingEngineFrame=false;}
     originalSoundSet=soundSet;
 }
-void EngineAudio::appendEngineFrame(const OriginalIcsMixFrame& frame){
+void EngineAudio::appendEngineFrame(const OriginalIcsMixFrame& frame,std::int32_t tire){
     if(engineCount==engineFrames.size()){engineRead=(engineRead+1)%engineFrames.size();--engineCount;++engineStats.droppedFrames;}
-    engineFrames[(engineRead+engineCount)%engineFrames.size()]=frame;++engineCount;
+    const auto at=(engineRead+engineCount)%engineFrames.size();engineFrames[at]=frame;tireFrames[at]=tire;++engineCount;
 }
 void EngineAudio::clearOriginalDspSends(){
     if(nativeMusic)nativeMusic->clearDspSends();
@@ -146,9 +146,9 @@ void EngineAudio::renderOriginalEngineFrame(){
     // still advances exactly735 frames for each original60Hz driving frame.
     if(!enginePrimed){for(unsigned i=0;i<1024;++i)appendEngineFrame({});enginePrimed=true;}
     for(unsigned i=0;i<735;++i){auto pcm=nativeEngine->renderFrame();const auto tire=nativeTire->renderFrame();
-        for(auto& value:pcm.dry){engineStats.dryEnergy+=double(value)*value;value+=std::int32_t(float(tire)*.45f);}
+        for(const auto value:pcm.dry)engineStats.dryEnergy+=double(value)*value;
         for(const auto value:pcm.effects)engineStats.effectSendEnergy+=double(value)*value;
-        engineStats.tireEnergy+=double(tire)*tire;appendEngineFrame(pcm);++engineStats.pcmFrames;
+        engineStats.tireEnergy+=double(tire)*tire;appendEngineFrame(pcm,std::int32_t(float(tire)*.45f));++engineStats.pcmFrames;
     }
     engineStats.tireCues=nativeTire->startedCues();engineStats.tireSamples=nativeTire->startedSamples();
 }
@@ -356,7 +356,7 @@ void EngineAudio::update(float rpm,float throttle,float speed,float slip,bool ac
 #endif
 std::array<short,2> EngineAudio::renderStereo(float rpm,float throttle,float speed,float slip,bool active){
             std::array<short,2> result{};std::array<float,2> engine{};std::array<std::int32_t,16> dspInput{};
-            const auto gains=outputGains_;
+            const auto gains=outputGains_;float tires=0;
             const auto scaleSend=[](std::int32_t value,float gain){return gain==1.f?value:std::int32_t(float(value)*gain);};
             if(nativeEngine){
                 if(active&&!musicPaused&&!vehicleMuted){
@@ -376,14 +376,20 @@ std::array<short,2> EngineAudio::renderStereo(float rpm,float throttle,float spe
                         const auto pcm=presentationEngine->renderFrame();
                         for(unsigned c=0;c<2;++c)engine[c]=pcm.dry[c]/32768.f;
                         dspInput=pcm.effects;++presentationPcmFrames;
-                    }else if(engineCount){const auto& pcm=engineFrames[engineRead];for(unsigned c=0;c<2;++c)engine[c]=pcm.dry[c]/32768.f;dspInput=pcm.effects;engineRead=(engineRead+1)%engineFrames.size();--engineCount;}
+                    }else if(engineCount){const auto& pcm=engineFrames[engineRead];
+                        // Preserve the old integer summation exactly when both sliders match.
+                        const auto tire=tireFrames[engineRead];
+                        for(unsigned c=0;c<2;++c)engine[c]=(pcm.dry[c]+(gains.engine==gains.tires?tire:0))/32768.f;
+                        if(gains.engine!=gains.tires)tires=tire/32768.f;
+                        dspInput=pcm.effects;engineRead=(engineRead+1)%engineFrames.size();--engineCount;}
                     else if(enginePrimed)++engineStats.underflowFrames;
                 }
             }else{
             phase+=double(std::clamp(rpm,600.f,10000.f))/30/44100*6.283185307;phase=std::fmod(phase,6.283185307);noise=noise*1664525u+1013904223u;float hiss=(int(noise>>16)-32768)/32768.f;
             const float tone=float(std::sin(phase)*.55+std::sin(phase*2)*.28+std::sin(phase*3)*.1);
             const float tire=std::clamp((std::abs(slip)-.09f)*3,0.f,.8f)*std::clamp(speed/15,0.f,1.f);
-            engine.fill(active&&!vehicleMuted?(tone*(.07f+.11f*throttle)+hiss*(.012f*speed/50+.06f*tire)):0.f);
+            if(gains.engine==gains.tires)engine.fill(active&&!vehicleMuted?(tone*(.07f+.11f*throttle)+hiss*(.012f*speed/50+.06f*tire)):0.f);
+            else if(active&&!vehicleMuted){engine.fill(tone*(.07f+.11f*throttle)+hiss*.012f*speed/50);tires=hiss*.06f*tire;}
             }
             if(gains.engine!=1.f)for(auto& value:dspInput)value=scaleSend(value,gains.engine);
             const auto frame=std::size_t(musicFrame);const bool play=!musicPaused&&!raceMusicHeld&&(!legendStreamOwner||legendStreamStats.playing)&&frame<music.frames();
@@ -408,10 +414,10 @@ std::array<short,2> EngineAudio::renderStereo(float rpm,float throttle,float spe
                 // skid sequences, music and one-shots playing together.
                 // Keep the default arithmetic and summation order unchanged.
                 float mixed;
-                if(gains.music==1.f&&gains.engine==1.f&&gains.effects==1.f)
+                if(gains.music==1.f&&gains.engine==1.f&&gains.effects==1.f&&gains.tires==1.f)
                     mixed=(engine[channel]+song*.38f*musicGain+(selectionPcm[channel]/32768.f)*.38f+
                         (wet[channel]/32768.f)*.38f+(effectPcm[channel]/32768.f)*.45f)*.60f;
-                else mixed=(engine[channel]*gains.engine+song*.38f*musicGain*gains.music+
+                else mixed=(engine[channel]*gains.engine+tires*gains.tires+song*.38f*musicGain*gains.music+
                     (selectionPcm[channel]/32768.f)*.38f*gains.music+(wet[channel]/32768.f)*.38f+
                     (effectPcm[channel]/32768.f)*.45f*gains.effects)*.60f;
                 if(gains.master!=1.f)mixed*=gains.master;

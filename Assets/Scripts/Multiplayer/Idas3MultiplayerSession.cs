@@ -162,6 +162,9 @@ namespace Idas3.Multiplayer
         public string ErrorText { get; private set; } = "";
         public string RoomCode => transport?.RoomCode ?? "";
         public string TransportName => transport?.Kind ?? "Steam";
+        public bool ActivityRequested {get;set;}
+        public Idas3OnlineActivity Activity=>transport is Idas3SteamTransport steam?steam.Activity:default;
+        public string LobbyName=>Idas3LobbyNames.ForHost(IsHost?transport?.LocalName:remoteName);
         public string ResultText { get; private set; } = "";
         public bool DisconnectedFinish { get; private set; }
         public event Action RaceDisconnected;
@@ -227,7 +230,11 @@ namespace Idas3.Multiplayer
         public void OpenMenu()
         {
             if(DisconnectedFinish)return;
-            RefreshGarage();
+            RefreshGarage();InitializeOnlinePresence();
+        }
+        public void InitializeOnlinePresence()
+        {
+            if(DisconnectedFinish)return;
             if (transport == null) SetTransport(TransportIndex == 0 ? (IIdas3Transport)new Idas3SteamTransport() : new Idas3TcpTransport());
             if (transport is IIdas3MatchmakingTransport matchmaking) matchmaking.BuildCompatibility=Compatibility()+matchmakingTestScope;
             if (!Available) { ClearError(); transport.Initialize(); }
@@ -255,7 +262,7 @@ namespace Idas3.Multiplayer
         {
             OpenMenu(); if (nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
             ResetPeer(); localNonce = Nonce(); ClearError(); state = "Connecting"; operationAt=Now;
-            transport.Host(Clean(transport.LocalName) + "'s battle");
+            transport.Host(Idas3LobbyNames.ForHost(transport.LocalName));
             if (IsHost) { state="Lobby"; status="Share the room code. Both drivers must select Ready before the host starts."; }
         }
         public void JoinRoom(string code)
@@ -268,7 +275,7 @@ namespace Idas3.Multiplayer
         {
             OpenMenu();if(nativeRace||DisconnectedFinish||!Available||Busy||InLobby||!(transport is IIdas3MatchmakingTransport matchmaking))return;
             ResetPeer();localNonce=Nonce();ClearError();state="Matching";ResultText="";
-            quickMatch=new Idas3QuickMatch(matchmaking,()=>Now,()=>UnityEngine.Random.value,Clean(transport.LocalName)+"'s quick battle");
+            quickMatch=new Idas3QuickMatch(matchmaking,()=>Now,()=>UnityEngine.Random.value,Idas3LobbyNames.ForHost(transport.LocalName));
             quickMatch.Failed+=Fail;
             quickMatch.Matched+=()=>{state="Lobby";status="Opponent found. Choose your car and course, then Ready. One driver's course is selected randomly.";};
             quickMatch.Start();
@@ -629,11 +636,15 @@ namespace Idas3.Multiplayer
         void PollTransport()
         {
             if(polling||transport==null)return;polling=true;
-            try {impairment.Flush(transport);transport.Poll();} finally {polling=false;}
+            try {
+                if(transport is Idas3SteamTransport steam){steam.ActivityRequested=ActivityRequested;steam.ActivityState=Idas3OnlineActivity.StateFor(nativeRace,state,IsQuickMatching,InLobby,HandshakeComplete,DisconnectedFinish);}
+                impairment.Flush(transport);transport.Poll();} finally {polling=false;}
         }
         void BeforeFrameCore()
         {
-            if(DisconnectedFinish)return;
+            // The neutral finish blocks race work, but Steam presence still
+            // reports this connected client as online after leaving its peer.
+            if(DisconnectedFinish){if(transport is Idas3SteamTransport&&Available)PollTransport();return;}
             if(transport==null||!Available){if(nativeRace)DisconnectRace("The network connection is unavailable.");return;}
             PollTransport();
             if(DisconnectedFinish)return;

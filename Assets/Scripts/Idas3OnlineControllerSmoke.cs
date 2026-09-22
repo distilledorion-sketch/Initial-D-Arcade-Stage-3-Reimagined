@@ -138,10 +138,12 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     private IEnumerator ControllerMenus(){
         Pad();yield return Frames(5);yield return Button(GamepadButton.Select);
         Check(menu.IsOpen&&menu.ControllerActionCount>3,"Select did not open navigable Online menu");
+        yield return FocusAction(":JOIN WITH ADDRESS");yield return Button(GamepadButton.South);
         yield return FocusAction(":EDIT");yield return Button(GamepadButton.South);
         yield return FocusAction(":1");yield return Button(GamepadButton.South);
         yield return FocusAction(":DONE");yield return Button(GamepadButton.South);
-        Check(menu.ControllerActionCount<40,"Controller keyboard did not return to browser");
+        Check(menu.ControllerActionCount<40,"Controller keyboard did not return to code entry");
+        yield return Button(GamepadButton.East);
         yield return FocusAction(":HOST A BATTLE");yield return Button(GamepadButton.South);
         yield return Until(()=>host.MultiplayerSession.InLobby,5,"Controller could not host LAN room");yield return Frames(8);
         yield return FocusAction(":AT  /  CHANGE");yield return Button(GamepadButton.South);
@@ -193,7 +195,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         yield return WheelInput(-1);Check(host.GameOptions.Draft.musicVolume<original,"Wheel steering edits music volume");
         yield return new WaitForEndOfFrame();var picture=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(root,"wheel-options.png"),picture.EncodeToPNG());Destroy(picture);
         yield return WheelInput(back:true);Check(!host.PauseMenu.WheelEditing,"Brake finishes value edit");
-        for(int i=0;i<4;++i)yield return WheelInput(1);yield return WheelInput(confirm:true);Check(!host.GameOptions.HasUnsavedChanges,"Wheel reaches Apply");
+        for(int i=0;i<5;++i)yield return WheelInput(1);yield return WheelInput(confirm:true);Check(!host.GameOptions.HasUnsavedChanges,"Wheel reaches Apply");
         yield return WheelInput(back:true);yield return WheelInput(1);Check(host.PauseMenu.SelectedTab==1,"Wheel selects Graphics category");
         yield return WheelInput(1);yield return WheelInput(1);yield return WheelInput(confirm:true);yield return WheelInput(1);
         yield return WheelInput(confirm:true);yield return WheelInput(confirm:true);Check(host.PauseMenu.BindingChoiceVisible,"Wheel opens binding actions");
@@ -201,7 +203,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         yield return WheelInput(back:true);Check(!host.PauseMenu.BindingChoiceVisible,"Wheel cancels binding actions");
         yield return WheelInput(back:true);yield return WheelInput(back:true);
         yield return WheelInput(back:true);yield return WheelInput(back:true);Check(!host.PauseMenu.IsOpen,"Wheel exits pause");
-        menu.SetOpen(true);yield return Frames(6);yield return WheelAction(":EDIT");yield return WheelAction(":1");yield return WheelAction(":DONE");
+        menu.SetOpen(true);yield return Frames(6);yield return WheelAction(":JOIN WITH ADDRESS");yield return WheelAction(":EDIT");yield return WheelAction(":1");yield return WheelAction(":DONE");yield return WheelInput(back:true);
         yield return WheelAction(":HOST A BATTLE");yield return Until(()=>host.MultiplayerSession.InLobby,5,"Wheel hosts LAN room");yield return Frames(6);
         yield return WheelAction(":MUSIC  /");Check(host.RaceMusicMenu.IsOpen,"Wheel opens music picker");
         int song=host.RaceMusicMenu.HighlightedTrackId;yield return WheelInput(1);Check(host.RaceMusicMenu.HighlightedTrackId!=song,"Steering selects another song without paddles");
@@ -328,7 +330,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
             physicalKey=KeyCode.None;Pad(.6f,-.35f);yield return Frames(5);
         }
         CensusInputs("after-online-close-recovery");CheckPhysicalEndpoints("after-online-close-recovery");Check(!host.MultiplayerSession.InLobby&&!host.MultiplayerSession.IsRacing,"Diagnostic unexpectedly entered an online room/race");
-        if(physicalSlot<0&&!steam){yield return ControllerMenus();yield return WheelMenus();}
+        if(physicalSlot<0&&!steam){yield return ControllerMenus();if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-menu-screens")>=0)yield return Idas3.Multiplayer.Idas3OnlineMenuScreens.Run(root);yield return WheelMenus();}
         Pad();yield return Frames(3);Observe("complete");Finish(true,null);
     }
     private void Finish(bool passed,string error)

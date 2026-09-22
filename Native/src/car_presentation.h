@@ -35,6 +35,10 @@ public:
     // Apply to this appearance's privately loaded model, before rendering.
     // Validates every captured source material before making any change.
     void applyMaterials(NativeModel& model)const;
+    // Race-only first authored environment layer. Menu owners retain their
+    // explicitly selected layer masks and resource bindings.
+    void raceReflections(bool enabled){profileInput_.overlayLayers=enabled?1u:0u;}
+    std::array<Vec3,4> wheelOrigins()const;
     std::size_t materialPatchCount()const{return materials_.size();}
 private:
     static CarPresentation loadAppearance(const std::filesystem::path& root,const std::filesystem::path& base,unsigned carId,std::size_t chunkCount);

@@ -1,5 +1,6 @@
 #include "car_presentation.h"
 #include "car_catalog.h"
+#include "original_rival_reflection_config.h"
 #include "original_car_color_catalog.h"
 #include "car_lamp_catalog.h"
 #include "original_rival_appearance_catalog.h"
@@ -32,7 +33,11 @@ CarPresentation CarPresentation::load(const std::filesystem::path& root,unsigned
 CarPresentation CarPresentation::loadRival(const std::filesystem::path& root,unsigned carId,unsigned enemyId,std::size_t chunks){
     if(enemyId>=originalRivalAppearances.size()||originalRivalAppearances[enemyId].car!=carId)throw std::runtime_error("Original rival appearance car/preset mismatch");
     const std::string folder="enemy_"+std::string(enemyId<10?"0":"")+std::to_string(enemyId);
-    return loadAppearance(root,root/"data/original_models/rivals_v2"/folder,carId,chunks);
+    auto out=loadAppearance(root,root/"data/original_models/rivals_v2"/folder,carId,chunks);
+    out.profileInput_.appearance.word=originalRivalReflectionConfigs.at(enemyId);
+    out.profileInput_.visibility=original::originalCarVisibility(out.profileInput_.appearance,int(enemyId));
+    out.profileInput_.wheelOffsets=original::originalCarWheelOffsets(out.profileInput_.appearance);
+    return out;
 }
 CarPresentation CarPresentation::loadPlayerProfile(const std::filesystem::path& root,const original::OriginalBattleProfile& profile,unsigned materialVariant){
     return loadConfiguredAppearance(root,profile,original::originalPlayerAppearanceConfig(profile,materialVariant));
@@ -71,6 +76,14 @@ void CarPresentation::advanceOriginalFrame(bool lightsOn){
 }
 CarPresentation CarPresentation::loadAppearance(const std::filesystem::path& root,const std::filesystem::path& base,unsigned carId,std::size_t chunks){
     CarPresentation out;
+    const auto modelRoot=root/"data/original_models"/originalCarFolders.at(carId);
+    out.profileParts_=original::OriginalCarParts::load(modelRoot/"assembly_parts.bin");
+    out.profileInput_.appearance=original::OriginalCarAppearanceConfig(carId);
+    out.profileInput_.visibility=original::originalCarVisibility(out.profileInput_.appearance);
+    out.profileInput_.primaryUsesCurrent=out.profileInput_.secondaryUsesCurrent=true;
+    out.profileContext_.semanticChunks=original::OriginalCarMaterialRebuild::load(modelRoot/"material_layout.bin",carId).semanticChunks();
+    out.profileContext_.carChunkCount=chunks;
+    out.profileInput_.overlayLayers=0;
     out.assembly_=NativeAssembly::load(base/"car.idasasm",chunks);
     out.baseCount_=out.assembly_.instances.size();out.lampChunks_=originalCarLampChunks[carId];
     unsigned rearCount=0;
@@ -168,6 +181,14 @@ void CarPresentation::applyMaterials(NativeModel& model)const{
     for(const auto& p:materials_){auto& b=model.chunks[p.chunk].batches[p.batch];
         std::copy_n(p.after.begin(),16,b.material.begin());std::copy_n(p.after.begin()+16,8,b.ich.begin());}
 }
+std::array<Vec3,4> CarPresentation::wheelOrigins()const{
+    std::array<Vec3,4> out;
+    for(unsigned i=0;i<4;++i){const auto& t=profileParts_.transforms[i<2?14:15].translation;
+        const float offset=i<2?profileInput_.wheelOffsets.front:profileInput_.wheelOffsets.rear;
+        out[i]={(i&1)?-t[0]-offset:t[0]+offset,0,t[2]};
+    }
+    return out;
+}
 const NativeAssembly& CarPresentation::pose(const CarWheelPose& wheels,bool lightsOn,bool braking){
     if(profileMaterials_){
         if(headlights_.counter<0||!profileInput_.visibility.popupMotorEnabled)advanceOriginalFrame(lightsOn);
@@ -230,6 +251,18 @@ const NativeAssembly& CarPresentation::pose(const CarWheelPose& wheels,bool ligh
     assembly_.instances.insert(assembly_.instances.end(),selected.extras.instances.begin(),selected.extras.instances.end());
     posedAssembly_.instances.clear();posedAssembly_.instances.reserve(selected.order.size());
     for(auto index:selected.order)posedAssembly_.instances.push_back(assembly_.instances[index]);
+    if(profileInput_.overlayLayers){
+        profileInput_.lights=lightsOn;profileInput_.braking=braking;profileInput_.headlights=headlights_;
+        const auto frame=original::originalCarRenderFrame(original::originalCarAssemblyPose(profileInput_,profileParts_),profileContext_,trig_);
+        bool layer=false;
+        for(const auto& item:frame.items){
+            if(item.operation==original::CarAssemblyCommandKind::LayerParameters)layer=true;
+            if(!layer||!item.isGeometry()||item.bank!=original::OriginalCarRenderBank::car)continue;
+            NativeModelInstance instance;instance.chunk=item.chunk;
+            for(unsigned row=0;row<4;++row)for(unsigned col=0;col<4;++col)instance.transform[row*4+col]=item.matrix.elements[col*4+row];
+            posedAssembly_.instances.push_back(instance);
+        }
+    }
     return posedAssembly_;
 }
 }

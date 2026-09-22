@@ -27,13 +27,13 @@ public static class Idas3ControllerMenuChecks
             Check(menu.SelectedTab==0,"Category wrap");menu.Activate();float volume=options.Draft.masterVolume;
             menu.NavigateHorizontal(-1);menu.Back();Check(options.Draft.masterVolume<volume,"Back from fields preserves draft");
             menu.Navigate(1);menu.Activate();menu.Back();menu.Navigate(-1);menu.Activate();Check(options.Draft.masterVolume<volume,"Switch category preserves draft");
-            for(int i=0;i<5;++i)menu.Navigate(1);menu.Activate();Check(!options.HasUnsavedChanges&&options.Current.masterVolume<volume,"Apply via menu navigation");
+            for(int i=0;i<6;++i)menu.Navigate(1);menu.Activate();Check(!options.HasUnsavedChanges&&options.Current.masterVolume<volume,"Apply via menu navigation");
             menu.Back();menu.Back();Check(!menu.IsOpen,"Exit settings");
             menu.SetWheelNavigation(true);menu.OpenAttractOptions();menu.Activate();
             float music=options.Draft.musicVolume;menu.NavigateHorizontal(1);menu.Activate();Check(menu.WheelEditing,"Pedal enters wheel value edit");
             menu.NavigateHorizontal(-1);Check(options.Draft.musicVolume<music,"Wheel edits focused value");
             menu.Back();Check(!menu.WheelEditing&&!menu.CategoryFocused,"Brake leaves edit before category");
-            for(int i=0;i<4;++i)menu.NavigateHorizontal(1);menu.Activate();Check(!options.HasUnsavedChanges&&options.Current.musicVolume<music,"Wheel reaches Apply without paddles");
+            for(int i=0;i<5;++i)menu.NavigateHorizontal(1);menu.Activate();Check(!options.HasUnsavedChanges&&options.Current.musicVolume<music,"Wheel reaches Apply without paddles");
             menu.Back();menu.NavigateHorizontal(1);Check(menu.SelectedTab==1,"Wheel switches category");menu.Back();Check(!menu.IsOpen,"Wheel exits settings");menu.SetWheelNavigation(false);
             menu.OpenAttractOptions();menu.SelectTab(3);menu.SelectBindingColumn(0);menu.Activate();
             Check(menu.BindingChoiceVisible&&!bindings.IsCapturing,"Binding actions accessible before capture");menu.Back();Check(!menu.BindingChoiceVisible,"Controller cancels binding chooser");

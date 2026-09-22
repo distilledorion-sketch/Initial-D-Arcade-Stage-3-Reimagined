@@ -193,6 +193,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             multiplayer = new Idas3MultiplayerSession(Status.car,saves);
             multiplayerMenu = gameObject.AddComponent<Idas3MultiplayerMenu>();
             multiplayerMenu.Initialize(multiplayer);
+            if(!diagnosticMode)multiplayer.InitializeOnlinePresence();
             gameOptions = new Idas3GameOptions();
             gameOptions.Changed += ApplyNativeOptions;
             gameOptions.Initialize(saves);
@@ -522,6 +523,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
         options.managedPauseOverlay = 1;
         if (Idas3Native.Idas3SceneApplyOptions(ref options) != 1)
             throw new InvalidOperationException("Could not apply audio/camera options. " + Idas3Native.Error());
+        if (Idas3Native.Idas3SceneSetTireVolume(values.tireVolume) != 1)
+            throw new InvalidOperationException("Could not apply tire-squeal volume. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetControllerResponse(values.controllerResponse) != 1)
             throw new InvalidOperationException("Could not apply controller response. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetSteeringDeadzone(values.SteeringDeadzone) != 1)

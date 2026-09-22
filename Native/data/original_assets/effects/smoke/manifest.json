@@ -1,0 +1,6 @@
+{
+  "smoke_source_sha256": "cee16f8d23fe8bd7028b8da7bea88b6329b0f74b9960fdc943fe784c2458260e",
+  "highlight_source_sha256": "f82c37e22eb153a4407d5efc7a0f5d1306dbe6928c02cca7d6a40209ce72b6c8",
+  "runtime_sha256": "2a9dee08bb5d064c74b70050a76017d3113a8e23632a4c41e547f19e475fb9df",
+  "scope": "Original art with host smoke coverage/edge conversion and highlight binding. Effect timing, rubber geometry and race reflection binding are host presentation, not proven arcade controller parity."
+}

@@ -1,4 +1,5 @@
-0.3.95-community-replays.15
+0.3.95-community-replays.18
+Settings > Audio: ENGINE and TIRE SQUEAL now have independent volume sliders. Lower TIRE SQUEAL without quieting the engine, then choose APPLY. Your old combined engine/tire volume is preserved for both sliders until you change it.
 Fixed numeric driver names on the community website and in replay filenames. Leaderboard labels now distinguish the Sileighty, Evo V and Evo VI TME.
 Settings > Controls > Toggle headlights: press H or click the controller's right stick during a race to switch headlights off/on. Select APPLY after rebinding. Existing custom controls are preserved; assign a free button if your old bindings already used H/right-stick click. Wheels can bind their own button.
 Corrected Enna Skyline's course-selection map orientation and Sadamine's mirrored sponsor banners in every weather and lighting variant.
@@ -451,3 +452,7 @@ Space/A/Start pauses playback, arrows/D-pad seek, C/Y switches camera, Q/E or ri
 DISCORD RICH PRESENCE
 With Discord running, your profile shows Initial D Arcade Stage 3 and your current game activity. Turn it off through Options > Gameplay > Discord Rich Presence, then APPLY. No account linking is required.
 
+
+Race visuals: dry tire smoke and skid marks, car highlights, and road-projected shadows (including opponents and replays). Smoke/highlight art comes from the original files; effect timing and skid geometry are host presentation.
+
+Online menu: compact pause-menu styling, host-named lobbies, three-row scrolling room list, and live Steam activity counts. A dash means activity is unavailable; + means Steam returned a capped sample. Counts cover presence-enabled clients.

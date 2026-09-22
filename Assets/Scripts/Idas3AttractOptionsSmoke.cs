@@ -462,7 +462,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         Check(applied<options.Current.masterVolume&&options.HasUnsavedChanges,"Audio row did not edit its draft");
         Check(NativeMaster()==unchanged.masterVolume,"Audio draft changed native gain before Apply");
         // Audio has four rows: from selection1, five Down actions reach Apply6.
-        for(int i=0;i<5;++i)menu.Navigate(1);menu.Activate();yield return Frames(4);
+        for(int i=0;i<6;++i)menu.Navigate(1);menu.Activate();yield return Frames(4);
         Check(options.LastError==null&&!options.HasUnsavedChanges&&options.Current.masterVolume==applied&&NativeMaster()==applied,"Attract Audio Apply failed");
         var loaded=new Idas3GameOptions(new OptionsTestPlatform());loaded.Initialize(Path.GetDirectoryName(options.FilePath));
         Check(loaded.LastError==null&&loaded.Current.masterVolume==applied,"Attract Audio Apply did not persist");

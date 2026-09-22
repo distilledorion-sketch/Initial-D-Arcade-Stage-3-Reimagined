@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.95-community-replays.18 - September 22, 2026
+
+- Redesigned the online browser, room/code entry, lobby, course draw, results and connection-loss UI with compact pause-menu styling. Existing Steam/LAN, controller/wheel navigation, saved cars, transmission, course/rule choices, music, readiness, race and rematch behavior remain available.
+- Open rooms use the host's name (for example, Chris Lobby), with three visible rows and an always-visible proportional scrollbar.
+- Added namespace-isolated Steam presence for online, queuing and racing counts. It also covers connected users outside race rooms. Counts refresh while the online menu is open; unavailable/stale data shows a dash and capped discovery shows a lower bound with +. Older clients without presence are not included. LAN has no global census.
+
+- Added dry tire smoke using recovered arcade smoke art and bounded road-contact skid ribbons. Effects pause, expire and break across lost contact/teleports; wet races keep their separate spray.
+- Enabled authored car reflection geometry with a recovered highlight texture for player and rival cars, with race-only additive highlights.
+- Projected car shadows onto the road in online races and replays as well as solo play.
+- Separated Engine and Tire Squeal volume under Settings > Audio. Tire PCM now remains separate through the queued mixer, allowing either channel to be muted without muting the other. Existing combined-volume settings migrate to both sliders without changing the player's current balance. Master, music and effects controls retain their behavior.
+
 ## 0.3.95-community-replays.15 - September 22, 2026
 
 - Fixed numeric driver-name glyphs on the community website and in replay filename generation. The original digit order is 1–9, then 0.
