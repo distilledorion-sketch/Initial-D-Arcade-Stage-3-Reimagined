@@ -7,6 +7,7 @@ $committed=$false
 $changed=[Collections.Generic.List[object]]::new()
 $applied=[Collections.Generic.List[object]]::new()
 $dialog=$null
+$patchValidation=$false
 function Inside([string]$root,[string]$path) {
     $full=[IO.Path]::GetFullPath($path)
     if(!$full.StartsWith($root.TrimEnd('\')+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'An update path escaped its folder.'}
@@ -15,13 +16,35 @@ function Inside([string]$root,[string]$path) {
 function NoLinks([string]$path) {
     $current=$path
     while($current){
-        if(Test-Path -LiteralPath $current){
-            $item=Get-Item -LiteralPath $current -Force
-            if(($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'Update folders must not contain junctions or symbolic links.'}
+        if([IO.File]::Exists($current) -or [IO.Directory]::Exists($current)){
+            if(([IO.File]::GetAttributes($current) -band [IO.FileAttributes]::ReparsePoint) -ne 0){throw 'Update folders must not contain junctions or symbolic links.'}
         }
-        $parent=Split-Path -Parent $current
-        if($parent -eq $current){break}
-        $current=$parent
+        $parent=[IO.Path]::GetDirectoryName($current)
+        if($parent -eq $current){break};$current=$parent
+    }
+}
+function FileHash([string]$path){
+    $input=[IO.File]::OpenRead($path);$hash=[Security.Cryptography.SHA256]::Create()
+    try{return [BitConverter]::ToString($hash.ComputeHash($input)).Replace('-','')}finally{$hash.Dispose();$input.Dispose()}
+}
+function SafeName([string]$value) {
+    $name=$value.Replace('/','\')
+    $parts=$name.Split('\')
+    if($name.Length -gt 220 -or $name.StartsWith('\') -or $name.Contains(':') -or $name.Contains([char]0)){throw 'Invalid update archive path.'}
+    foreach($part in $parts){
+        if($part -in @('.','..') -or $part -match '[<>:"|?*]' -or $part.EndsWith(' ') -or $part.EndsWith('.') -or $part -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)'){throw 'Unsafe update archive path.'}
+    }
+    $top=$parts[0]
+    if($parts.Length -gt 1){
+        if($top -notin @('InitialDUnity_Data','MonoBleedingEdge','D3D12')){throw 'Unexpected folder in game update.'}
+    }elseif($top -notin @('InitialDUnity.exe','UnityPlayer.dll','UnityCrashHandler64.exe','dstorage.dll','dstoragecore.dll','steam_appid.txt','READ ME.txt','Replay Viewer.cmd','MULTIPLAYER TEST.txt')){throw 'Unexpected file in game update.'}
+    foreach($part in $parts){if($part -in @('userdata','userdata-unity-scene','community-times','replays','custom-music','ADMIN-ACCESS.txt','identity.json','game-options.json','deploy.private.json')){throw 'Personal files cannot be included in a game update.'}}
+    return $name
+}
+function VerifyExisting($items) {
+    foreach($file in $items){
+        $path=Inside $install (Join-Path $install (SafeName $file.path));NoLinks $path
+        if(![IO.File]::Exists($path) -or ([IO.FileInfo]::new($path)).Length -ne $file.size -or (FileHash $path) -ne $file.sha256){throw 'Existing game files need a full download.'}
     }
 }
 function SetProgress([string]$text){
@@ -37,25 +60,33 @@ try {
     if(!(Test-Path -LiteralPath (Join-Path $install 'InitialDUnity.exe'))){throw 'The existing game executable was not found.'}
     if($TestMode -and !(Test-Path -LiteralPath (Join-Path (Split-Path -Parent $install) 'ISOLATED_UPDATE_TEST.txt'))){throw 'Updater tests require an isolated fixture.'}
     if((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $backup)){throw 'This update session was already used.'}
-    if($plan.sha256 -notmatch '\A[0-9a-f]{64}\z' -or (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $plan.sha256){throw 'The update download failed verification.'}
+    if($plan.sha256 -notmatch '\A[0-9a-f]{64}\z' -or (FileHash $archive) -ne $plan.sha256){throw 'The update download failed verification.'}
     $zip=[IO.Compression.ZipFile]::OpenRead($archive)
     try {
+$patchValidation=[bool]$plan.patch
+        $inventory=@{};$retained=[Collections.Generic.List[object]]::new()
+        if($plan.patch){
+            $manifests=@($zip.Entries | Where-Object { $_.FullName -eq 'update-patch.json' })
+            if($manifests.Count -ne 1 -or $manifests[0].Length -gt 16MB){throw 'Invalid patch manifest.'}
+            $reader=[IO.StreamReader]::new($manifests[0].Open())
+            try{$patch=$reader.ReadToEnd() | ConvertFrom-Json}finally{$reader.Dispose()}
+            if($patch.schema -ne 1 -or $patch.baseVersion -cne $plan.baseVersion -or $patch.targetVersion -cne $plan.targetVersion -or !$patch.files -or $patch.files.Count -gt 100000){throw 'Patch version or inventory mismatch.'}
+            foreach($file in $patch.files){
+                if(!$file.path -or $file.path.EndsWith('/') -or $file.path.EndsWith('\') -or $file.sha256 -cnotmatch '\A[0-9a-f]{64}\z' -or $file.size -lt 0 -or $file.size -gt 24GB -or $file.included -isnot [bool]){throw 'Invalid patch file record.'}
+                $key=SafeName $file.path
+                if($inventory.ContainsKey($key)){throw 'Duplicate patch inventory path.'}
+                $inventory[$key]=$file
+                if(!$file.included){$retained.Add($file)}
+            }
+            VerifyExisting $retained
+        }
         $paths=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
         $entries=[Collections.Generic.List[object]]::new()
         $expanded=0L;$existing=0L
         foreach($entry in $zip.Entries){
-            $name=$entry.FullName.Replace('/','\')
-            $parts=$name.Split('\')
-            if($name.Length -gt 220 -or $name.StartsWith('\') -or $name.Contains(':') -or $name.Contains([char]0)){throw 'Invalid update archive path.'}
-            foreach($part in $parts){
-                if($part -in @('.','..') -or $part -match '[<>:"|?*]' -or $part.EndsWith(' ') -or $part.EndsWith('.') -or $part -match '^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)'){throw 'Unsafe update archive path.'}
-            }
+            if($plan.patch -and $entry.FullName -eq 'update-patch.json'){continue}
+            $name=SafeName $entry.FullName
             if(($entry.ExternalAttributes -band 0x400) -ne 0 -or (($entry.ExternalAttributes -shr 16) -band 0xF000) -eq 0xA000){throw 'Links are not allowed in update archives.'}
-            $top=$parts[0]
-            if($parts.Length -gt 1){
-                if($top -notin @('InitialDUnity_Data','MonoBleedingEdge','D3D12')){throw 'Unexpected folder in game update.'}
-            }elseif($top -notin @('InitialDUnity.exe','UnityPlayer.dll','UnityCrashHandler64.exe','dstorage.dll','dstoragecore.dll','steam_appid.txt','READ ME.txt','Replay Viewer.cmd','MULTIPLAYER TEST.txt')){throw 'Unexpected file in game update.'}
-            foreach($part in $parts){if($part -in @('userdata','userdata-unity-scene','community-times','replays','custom-music','ADMIN-ACCESS.txt','identity.json','game-options.json','deploy.private.json')){throw 'Personal files cannot be included in a game update.'}}
             $destination=Inside $install (Join-Path $install $name)
             $extracted=Inside $stage (Join-Path $stage $name)
             NoLinks $destination
@@ -70,8 +101,15 @@ try {
             $entries.Add(@{entry=$entry;relative=$name;destination=$destination;extracted=$extracted})
         }
         foreach($required in @('InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data\globalgamemanagers','InitialDUnity_Data\Managed\Assembly-CSharp.dll')){
-            if(!$paths.Contains($required)){throw 'The download is not a complete Windows game package.'}
+            if(!($paths.Contains($required) -or ($plan.patch -and $inventory.ContainsKey($required)))){throw 'The download is not a complete Windows game package.'}
         }
+        if($plan.patch){
+            foreach($item in $entries){
+                if(!$inventory.ContainsKey($item.relative) -or !$inventory[$item.relative].included -or $item.entry.Length -ne $inventory[$item.relative].size){throw 'Unexpected patch payload.'}
+            }
+            foreach($key in $inventory.Keys){if($inventory[$key].included -and !$paths.Contains($key)){throw 'Missing patch payload.'}}
+        }
+        $patchValidation=$false
         $tempDrive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($session))
         $targetDrive=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($install))
         $needed=$expanded+$existing+64MB
@@ -84,9 +122,10 @@ try {
             $entryInput=$item.entry.Open();$entryOutput=[IO.File]::Open($item.extracted,[IO.FileMode]::CreateNew)
             try{$entryInput.CopyTo($entryOutput)}finally{$entryOutput.Dispose();$entryInput.Dispose()}
             if((Get-Item -LiteralPath $item.extracted).Length -ne $item.entry.Length){throw 'Extracted game data failed verification.'}
-            $newHash=(Get-FileHash -LiteralPath $item.extracted -Algorithm SHA256).Hash
+            $newHash=(FileHash $item.extracted)
+            if($plan.patch -and $newHash -ne $inventory[$item.relative].sha256){$patchValidation=$true;throw 'Patch payload failed verification.'}
             $oldHash=$null
-            if(Test-Path -LiteralPath $item.destination){$oldHash=(Get-FileHash -LiteralPath $item.destination -Algorithm SHA256).Hash}
+            if(Test-Path -LiteralPath $item.destination){$oldHash=(FileHash $item.destination)}
             if($oldHash -eq $newHash){continue}
             $saved=Inside $backup (Join-Path $backup $item.relative)
             if($oldHash){[IO.Directory]::CreateDirectory((Split-Path -Parent $saved))|Out-Null;[IO.File]::Copy($item.destination,$saved,$false)}
@@ -118,16 +157,17 @@ try {
         $dialog.Controls.Add($label);$dialog.Show();SetProgress 'Applying update. Please wait...'
     }
     # Detect concurrent modifications after preparation and before the first write.
+    if($plan.patch){VerifyExisting $retained}
     foreach($item in $changed){
         NoLinks $item.destination
-        $now=$null;if(Test-Path -LiteralPath $item.destination){$now=(Get-FileHash -LiteralPath $item.destination -Algorithm SHA256).Hash}
+        $now=$null;if(Test-Path -LiteralPath $item.destination){$now=(FileHash $item.destination)}
         if($now -ne $item.oldHash){throw 'The installation changed while the update was being prepared.'}
     }
     foreach($item in $changed){
         [IO.Directory]::CreateDirectory((Split-Path -Parent $item.destination))|Out-Null
         $applied.Add($item)
         [IO.File]::Copy($item.source,$item.destination,$true)
-        if((Get-FileHash -LiteralPath $item.destination -Algorithm SHA256).Hash -ne $item.newHash){throw 'An installed file failed verification.'}
+        if((FileHash $item.destination) -ne $item.newHash){throw 'An installed file failed verification.'}
         SetProgress ('Applying update: '+$applied.Count+' / '+$changed.Count+' files')
     }
     $committed=$true
@@ -144,15 +184,16 @@ try {
     exit 0
 }catch{
     $failure=$_.Exception.Message
+    if($patchValidation -and !$ready){[IO.File]::WriteAllText((Join-Path $session 'patch-invalid'),'Full package required')}
     if(!$committed){
         for($i=$applied.Count-1;$i -ge 0;$i--){
             $item=$applied[$i]
             try{
                 $target=Inside $install $item.destination;NoLinks $target
                 if($item.oldHash){
-                    $restored=$null;if(Test-Path -LiteralPath $target){$restored=(Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash}
+                    $restored=$null;if(Test-Path -LiteralPath $target){$restored=(FileHash $target)}
                     if($restored -ne $item.oldHash){[IO.File]::Copy($item.backup,$target,$true)}
-                    if((Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash -ne $item.oldHash){throw 'A rollback copy failed verification.'}
+                    if((FileHash $target) -ne $item.oldHash){throw 'A rollback copy failed verification.'}
                 }
                 elseif(Test-Path -LiteralPath $target){Remove-Item -LiteralPath $target -Force}
             }catch{$failure+=' Rollback needs attention: '+$_.Exception.Message}

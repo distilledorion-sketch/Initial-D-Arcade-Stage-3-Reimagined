@@ -46,5 +46,18 @@ internal static class Idas3UpdateChecks
         reject(r=>r.assets[0].digest="sha256:not-a-hash","Invalid checksum rejected");
         reject(r=>r.assets[0].browser_download_url="file:///C:/example.exe","Unexpected asset URL rejected");
         reject(r=>r.assets[0].name="Source-Code.zip","Wrong platform asset ignored");
+        var withPatch=JsonUtility.FromJson<Idas3Updates.Release>(json);
+        var patch=new Idas3Updates.Asset{name="Initial-D-Update-from-"+current+"-to-"+next.TrimStart('v')+"-Patch.zip",state="uploaded",size=50,digest="sha256:"+new string('b',64)};
+        patch.browser_download_url=Idas3Updates.RepositoryUrl+"/releases/download/"+next+"/"+patch.name;
+        withPatch.assets=new[]{patch,withPatch.assets[0]};
+        Func<Idas3Updates.Result> evaluate=()=>Idas3Updates.Evaluate(current,200,JsonUtility.ToJson(withPatch));
+        check(evaluate().patchBytes==50&&evaluate().bytes==123,"Matching patch selected while full repair download retained");
+        check(Idas3Updates.Evaluate("0.3.95-community-replays.5",200,JsonUtility.ToJson(withPatch)).patchUrl==null,"Wrong base patch ignored");
+        patch.size=123;check(evaluate().patchUrl==null,"Non-smaller patch ignored");patch.size=50;
+        patch.digest=null;check(evaluate().patchUrl==null,"Patch requires GitHub checksum");patch.digest="sha256:"+new string('b',64);
+        patch.browser_download_url="https://example.com/patch";check(evaluate().patchUrl==null,"Foreign patch URL ignored");
+        patch.browser_download_url=Idas3Updates.RepositoryUrl+"/releases/download/"+next+"/"+patch.name;
+        patch.state="new";check(evaluate().patchUrl==null,"Incomplete patch upload ignored");patch.state="uploaded";
+        withPatch.assets=new[]{patch};check(evaluate().state==Idas3Updates.CheckState.Unavailable,"Patch-only release requires full repair fallback");
     }
 }

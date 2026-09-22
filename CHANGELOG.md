@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.95-community-replays.20 - September 22, 2026
+
+- Replaced the PowerShell update installer with a bundled native executable. Update archive validation and staging use the game's existing runtime; applying patches/full repairs, rollback and restart no longer require PowerShell or a separately installed .NET runtime under Wine/Proton.
+- Preserved small-patch selection, full repair, checksums, private-file protections and process-exit handoff.
+
+- Added version-specific changed-file updates. Healthy installations download the matching small patch; unchanged files are verified locally. Missing or damaged required files trigger the full package fallback. Interrupted downloads do not silently switch to a large download.
+- Added Full Repair under Settings > Gameplay > Updates / Repair, including when already up to date. Saves, settings, replays and custom music remain untouched. The update prompt shows download sizes.
+- Releases retain the complete Windows ZIP for new installations, older clients and unsupported patch bases. Builds older than .19 need one full update before they can use patches.
+
 ## 0.3.95-community-replays.18 - September 22, 2026
 
 - Redesigned the online browser, room/code entry, lobby, course draw, results and connection-loss UI with compact pause-menu styling. Existing Steam/LAN, controller/wheel navigation, saved cars, transmission, course/rule choices, music, readiness, race and rematch behavior remain available.

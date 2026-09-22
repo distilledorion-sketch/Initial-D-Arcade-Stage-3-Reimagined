@@ -256,8 +256,32 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         Check(!menu.AttractPromptVisible,"Attract prompt remained visible under options");
         CheckTitle("Opening attract options changed Title or paused native state");observations.Add(input+"-opened-audio");
     }
+    private IEnumerator NativeInstallerRegression(){
+        string fixture=Path.Combine(root,"native-installer"),game=Path.Combine(fixture,"game"),session=Path.Combine(fixture,"session");
+        Directory.CreateDirectory(game);Directory.CreateDirectory(session);File.WriteAllText(Path.Combine(fixture,"ISOLATED_UPDATE_TEST.txt"),"Private fixture");
+        var files=new[]{"InitialDUnity.exe","UnityPlayer.dll","InitialDUnity_Data/globalgamemanagers","InitialDUnity_Data/Managed/Assembly-CSharp.dll"};
+        foreach(string name in files){string path=Path.Combine(game,name);Directory.CreateDirectory(Path.GetDirectoryName(path));File.WriteAllText(path,"old");}
+        Directory.CreateDirectory(Path.Combine(game,"userdata"));File.WriteAllText(Path.Combine(game,"userdata/card.json"),"save");
+        string archive=Path.Combine(session,"game.zip");
+        using(var zip=System.IO.Compression.ZipFile.Open(archive,System.IO.Compression.ZipArchiveMode.Create))foreach(string name in files){using(var stream=new StreamWriter(zip.CreateEntry(name).Open()))stream.Write("new");}
+        var preparation=System.Threading.Tasks.Task.Run(()=>Idas3UpdateStaging.Prepare(game,session,archive,Idas3UpdateStaging.Hash(archive),false,"1.0.0","1.0.1",0,0,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json)));
+        while(!preparation.IsCompleted)yield return null;
+        string plan=preparation.GetAwaiter().GetResult();
+        var asset=Resources.Load<TextAsset>("UpdateInstaller.exe");Check(asset!=null,"Native installer bundled in player");
+        string helper=Path.Combine(session,"install.exe");File.WriteAllBytes(helper,asset.bytes);
+        var start=new System.Diagnostics.ProcessStartInfo(helper){Arguments="\""+plan+"\" --test",UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=session};
+        using(var process=System.Diagnostics.Process.Start(start)){
+            yield return Until(()=>process.HasExited,20,"Bundled native installer did not finish");
+            Check(process.ExitCode==0,"Bundled native installer applied update: "+(File.Exists(Path.Combine(session,"error.txt"))?File.ReadAllText(Path.Combine(session,"error.txt")):""));
+        }
+        foreach(string name in files)Check(File.ReadAllText(Path.Combine(game,name))=="new","Native installed "+name);
+        Check(File.ReadAllText(Path.Combine(game,"userdata/card.json"))=="save","Native install preserved personal save");
+    }
+    private IEnumerator SimulateUpdateNetworkFailure(){yield return null;throw new IOException("Controlled interrupted download");}
+    private IEnumerator SimulateUpdateTransfer(bool fail){yield return null;if(fail)throw new Idas3Updates.PatchUnavailableException("Controlled patch verification failure");}
     private IEnumerator UpdatesRegression(){
         Idas3UpdateChecks.Run(Check);
+        yield return NativeInstallerRegression();
         var updates=menu.Updates;Check(updates!=null,"Update service attached");
         if(updates.State==Idas3Updates.CheckState.Idle){
             updates.CheckNow();Check(updates.State==Idas3Updates.CheckState.Checking,"Live anonymous GitHub request began");
@@ -303,10 +327,36 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         var dialogImage=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(root,"update-yes-no.png"),dialogImage.EncodeToPNG());Destroy(dialogImage);
         updates.HandleWindowInput(false,false,true,false);Check(!updates.WindowVisible&&installs==0,"Default No continues without downloading");yield return Release();
         pulse=13;yield return Frames(5);Check(updates.WindowVisible,"Can reopen update prompt");
-        updates.HandleWindowInput(true,false,true,false);Check(installs==1,"Yes requests installation once");updates.ContinueToGame();
+        updates.HandleWindowInput(true,false,false,false);updates.HandleWindowInput(true,false,true,false);Check(installs==1&&!updates.DiagnosticRepair,"Update requests normal installation once");updates.ContinueToGame();
+        updates.Activate();updates.HandleWindowInput(true,false,true,false);Check(installs==2&&updates.DiagnosticRepair,"Full Repair explicitly selects the full package");updates.ContinueToGame();
+        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v"+Application.version));updates.Activate();
+        Check(updates.WindowVisible&&updates.State==Idas3Updates.CheckState.Current,"Current build can open repair");
+        updates.HandleWindowInput(true,false,true,false);Check(installs==3&&updates.DiagnosticRepair,"Same-version Full Repair available");updates.ContinueToGame();
+        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v99.0.0"));
         yield return Release();padConnected=true;buttons=0x1000;yield return Frames(5);
         Check(updates.WindowVisible,"Controller confirm opens update prompt");updates.ContinueToGame();yield return Release();
         menu.SetWheelNavigation(true);menu.Activate();Check(updates.WindowVisible&&!menu.WheelEditing,"Wheel confirm invokes update prompt");updates.ContinueToGame();menu.SetWheelNavigation(false);
+        updates.InstallOverride=null;
+        var patchFixture=JsonUtility.FromJson<Idas3Updates.Release>(Idas3UpdateChecks.Fixture("v99.0.0"));
+        var patchAsset=new Idas3Updates.Asset{name="Initial-D-Update-from-"+Application.version+"-to-99.0.0-Patch.zip",size=50,state="uploaded",digest="sha256:"+new string('b',64)};
+        patchAsset.browser_download_url=Idas3Updates.RepositoryUrl+"/releases/download/v99.0.0/"+patchAsset.name;
+        patchFixture.assets=new[]{patchAsset,patchFixture.assets[0]};
+        var attempts=new List<bool>();
+        updates.DownloadOverride=patch=>{attempts.Add(patch);return SimulateUpdateTransfer(patch);};
+        updates.ApplyResponse(200,JsonUtility.ToJson(patchFixture));updates.AcceptUpdate();yield return Frames(6);
+        Check(attempts.Count==2&&attempts[0]&&!attempts[1],"Patch verification failure falls back once to full download");
+        attempts.Clear();updates.DownloadOverride=patch=>{attempts.Add(patch);return SimulateUpdateTransfer(false);};
+        updates.ApplyResponse(200,JsonUtility.ToJson(patchFixture));updates.AcceptUpdate();yield return Frames(4);
+        Check(attempts.Count==1&&attempts[0],"Healthy update downloads only patch");
+        attempts.Clear();updates.AcceptRepair();yield return Frames(4);
+        Check(attempts.Count==1&&!attempts[0],"Full Repair bypasses patch");
+        attempts.Clear();updates.DownloadOverride=patch=>{attempts.Add(patch);return SimulateUpdateTransfer(true);};
+        updates.ApplyResponse(200,JsonUtility.ToJson(patchFixture));updates.AcceptUpdate();yield return Frames(6);
+        Check(attempts.Count==2&&updates.State==Idas3Updates.CheckState.Unavailable,"Failed full fallback stops without a retry loop");
+        attempts.Clear();updates.DownloadOverride=patch=>{attempts.Add(patch);return SimulateUpdateNetworkFailure();};
+        updates.ApplyResponse(200,JsonUtility.ToJson(patchFixture));updates.AcceptUpdate();yield return Frames(4);
+        Check(attempts.Count==1&&attempts[0]&&updates.State==Idas3Updates.CheckState.Unavailable,"Network failure does not trigger a large full download");
+        updates.DownloadOverride=null;updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v99.0.0"));
         Check(!options.HasUnsavedChanges,"Update action does not change game settings");
         foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720),new Vector2Int(1920,800)}){
             yield return Resize(size.x,size.y,false);yield return Capture("updates-available-"+size.x+"x"+size.y,size.x,size.y);
@@ -539,7 +589,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(PointerCheck)report.scope="Actual Unity settings, local lobby, and music chooser; real OS mouse clicks while a synthetic connected controller highlights a different control. Private saves; no physical controller hardware validation.";
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Gameplay captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
-        if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Yes/No prompt, explicit Yes and No semantics, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
+        if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Update / Full Repair / Later, same-version repair and patch/full fallback state transitions with controlled transfer failures, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));Debug.Log((report.passed?"PASS":"FAIL")+" attract options "+error);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying=false;

@@ -26,20 +26,27 @@ public sealed class Idas3Updates : MonoBehaviour
     public string Message {get;private set;}="Check GitHub for the latest Windows release.";
     public string ReleaseUrl {get;private set;}
     public bool CanCheck=>!Busy&&Time.realtimeSinceStartupAsDouble>=nextCheck;
-    public bool CanActivate=>State==CheckState.Available||CanCheck;
-    public string ButtonLabel=>Busy?"PLEASE WAIT…":State==CheckState.Available?"INSTALL UPDATE":"CHECK FOR UPDATES";
+    public bool CanActivate=>State==CheckState.Available||State==CheckState.Current&&fullUrl!=null||CanCheck;
+    public string ButtonLabel=>Busy?"PLEASE WAIT…":State==CheckState.Available?"INSTALL UPDATE":State==CheckState.Current?"UPDATES / REPAIR":"CHECK FOR UPDATES";
     public bool WindowVisible {get;private set;}
     private bool Busy=>State==CheckState.Checking||State==CheckState.Downloading||State==CheckState.Preparing;
     private double nextCheck;
     private UnityWebRequest activeRequest;
     private string downloadUrl,downloadHash,sessionFolder;
+    private string fullUrl,fullHash,patchUrl,patchHash;
+    private long fullBytes,patchBytes;
+    private bool usingPatch,repair;
+    private int actionSelected=2;
+    internal bool DiagnosticRepair=>repair;
     private long downloadBytes;
-    private bool startupWindow,cancelled,yesSelected,previousCursor;
+    private bool startupWindow,cancelled,previousCursor;
     private int windowOpenedFrame;
     private CursorLockMode previousLock;
     private GUIStyle windowTitle,windowText,windowButton;
     private System.Diagnostics.Process installer;
     internal Action InstallOverride;
+    internal Func<bool,IEnumerator> DownloadOverride;
+    private IEnumerator CreateDownload()=>DownloadOverride?.Invoke(usingPatch)??DownloadAndInstall();
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Bootstrap(){
         Instance=null;StartupFinished=true;
@@ -57,7 +64,7 @@ public sealed class Idas3Updates : MonoBehaviour
         public string name,state,browser_download_url,digest;public long size;
     }
     internal struct Result {
-        public CheckState state;public string version,url,message,downloadUrl,hash;public long bytes;
+        public CheckState state;public string version,url,message,downloadUrl,hash;public long bytes;public string patchUrl,patchHash;public long patchBytes;
     }
 
     public void Initialize(bool checkOnStartup=true){
@@ -65,13 +72,13 @@ public sealed class Idas3Updates : MonoBehaviour
         if(checkOnStartup){StartupFinished=false;startupWindow=true;ShowWindow();CheckNow();}
     }
     public void Activate(){
-        if(State==CheckState.Available)ShowWindow();
+        if(State==CheckState.Available||State==CheckState.Current&&fullUrl!=null)ShowWindow();
         else if(CanCheck){ShowWindow();CheckNow();}
     }
     private void ShowWindow(){
         if(WindowVisible)return;
         previousCursor=Cursor.visible;previousLock=Cursor.lockState;Cursor.visible=true;Cursor.lockState=CursorLockMode.None;
-        WindowVisible=true;yesSelected=false;windowOpenedFrame=Time.frameCount;
+        WindowVisible=true;actionSelected=2;windowOpenedFrame=Time.frameCount;
     }
     internal void ContinueToGame(){
         WindowVisible=false;startupWindow=false;StartupFinished=true;
@@ -96,14 +103,16 @@ public sealed class Idas3Updates : MonoBehaviour
             if(operation!=null)yield return operation;
             ApplyResponse(request.responseCode,response.Text,operation==null||request.result!=UnityWebRequest.Result.Success||response.Exceeded);
             activeRequest=null;
-            if(State==CheckState.Current)ContinueToGame();
+            if(State==CheckState.Current&&startupWindow)ContinueToGame();
             else if(State==CheckState.Unavailable&&startupWindow){yield return new WaitForSecondsRealtime(1.5f);ContinueToGame();}
         }
     }
     internal void ApplyResponse(long code,string json,bool failed=false){
         var result=Evaluate(InstalledVersion,code,json,failed);
         State=result.state;AvailableVersion=result.version;ReleaseUrl=result.url;Message=result.message;
-        downloadUrl=result.downloadUrl;downloadHash=result.hash;downloadBytes=result.bytes;
+        fullUrl=result.downloadUrl;fullHash=result.hash;fullBytes=result.bytes;
+        patchUrl=result.patchUrl;patchHash=result.patchHash;patchBytes=result.patchBytes;repair=false;
+        SelectDownload(false);
     }
     internal static Result Evaluate(string installed,long code,string json,bool failed=false){
         var unavailable=new Result{state=CheckState.Unavailable,message="Could not check GitHub. You can keep playing; try again in a minute."};
@@ -124,9 +133,17 @@ public sealed class Idas3Updates : MonoBehaviour
             if(string.Equals(asset.browser_download_url,expected,StringComparison.Ordinal)&&asset.digest!=null&&Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z")){windows=asset;break;}
         }
         if(windows==null){unavailable.message="The latest release does not have a verified Windows download yet. Try again later.";return unavailable;}
+        Asset patch=null;
+        string patchName="Initial-D-Update-from-"+installed+"-to-"+release.tag_name.TrimStart('v')+"-Patch.zip";
+        if(order>0&&release.assets!=null)foreach(var asset in release.assets){
+            if(asset!=null&&asset.name==patchName&&asset.state=="uploaded"&&asset.size>0&&asset.size<windows.size&&
+                asset.browser_download_url==RepositoryUrl+"/releases/download/"+Uri.EscapeDataString(release.tag_name)+"/"+patchName&&
+                asset.digest!=null&&Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z")){patch=asset;break;}
+        }
         string version=release.tag_name.TrimStart('v');
         return new Result{state=order>0?CheckState.Available:CheckState.Current,version=version,url=url,
             downloadUrl=windows.browser_download_url,hash=windows.digest.Substring(7).ToLowerInvariant(),bytes=windows.size,
+            patchUrl=patch?.browser_download_url,patchHash=patch?.digest.Substring(7).ToLowerInvariant(),patchBytes=patch?.size??0,
             message=order>0?"Version "+version+" is available. Download and install it now?":
                 order==0?"You have the latest public Windows release.":"Your installed build is newer than the latest public Windows release."};
     }
@@ -156,23 +173,34 @@ public sealed class Idas3Updates : MonoBehaviour
     private static bool IsNumeric(string value){foreach(char c in value)if(c<'0'||c>'9')return false;return true;}
     private static int NumericCompare(string a,string b)=>a.Length==b.Length?string.CompareOrdinal(a,b):a.Length.CompareTo(b.Length);
 
-    [Serializable] private sealed class InstallPlan {
-        public string installRoot,archive,sha256,parentStartTicks;public int parentId;
+    private void SelectDownload(bool full){
+        usingPatch=!full&&patchUrl!=null;
+        downloadUrl=usingPatch?patchUrl:fullUrl;downloadHash=usingPatch?patchHash:fullHash;downloadBytes=usingPatch?patchBytes:fullBytes;
     }
-    internal void AcceptUpdate(){
-        if(State!=CheckState.Available)return;
+    internal void AcceptUpdate(){BeginInstall(false);}
+    internal void AcceptRepair(){BeginInstall(true);}
+    private void BeginInstall(bool full){
+        if(State!=CheckState.Available&&!(full&&State==CheckState.Current))return;
+        if(fullUrl==null||!TryCompareVersions(AvailableVersion,InstalledVersion,out int order)||order<0)return;
+        repair=full;SelectDownload(full);
         if(InstallOverride!=null){InstallOverride();return;}
-        cancelled=false;StartCoroutine(GuardInstall(DownloadAndInstall()));
+        cancelled=false;StartCoroutine(GuardInstall(CreateDownload()));
     }
+    internal sealed class PatchUnavailableException : IOException {internal PatchUnavailableException(string message):base(message){}}
     private IEnumerator GuardInstall(IEnumerator routine){
         while(true){
             object next=null;Exception failure=null;bool more=false;
             try{more=routine.MoveNext();if(more)next=routine.Current;}catch(Exception error){failure=error;}
             if(failure!=null){
+                (routine as IDisposable)?.Dispose();activeRequest=null;
+                if(usingPatch&&!cancelled&&failure is PatchUnavailableException){
+                    SelectDownload(true);Message="Downloading the full update…";
+                    routine=CreateDownload();continue;
+                }
                 State=CheckState.Unavailable;Message="The update could not be applied. Your current game is unchanged. "+failure.Message;
                 yield break;
             }
-            if(!more)yield break;
+            if(!more){(routine as IDisposable)?.Dispose();yield break;}
             yield return next;
         }
     }
@@ -182,8 +210,8 @@ public sealed class Idas3Updates : MonoBehaviour
         // Check access before downloading. Never request elevation or alter ACLs.
         string probe=Path.Combine(root,".update-write-check-"+Guid.NewGuid().ToString("N"));
         using(var stream=new FileStream(probe,FileMode.CreateNew,FileAccess.Write,FileShare.None,1,FileOptions.DeleteOnClose)){}
-        var script=Resources.Load<TextAsset>("UpdateInstaller.ps1");
-        if(script==null)throw new IOException("The bundled update installer is missing.");
+        var helperAsset=Resources.Load<TextAsset>("UpdateInstaller.exe");
+        if(helperAsset==null)throw new IOException("The bundled update installer is missing.");
         sessionFolder=Path.Combine(Path.GetTempPath(),"InitialDUpdates",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(sessionFolder);
         string archive=Path.Combine(sessionFolder,"game.zip");
         if(new DriveInfo(Path.GetPathRoot(sessionFolder)).AvailableFreeSpace<downloadBytes+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
@@ -199,7 +227,7 @@ public sealed class Idas3Updates : MonoBehaviour
                 yield return null;
             }
             activeRequest=null;
-            if(cancelled){ContinueToGame();State=CheckState.Available;yield break;}
+            if(cancelled){ContinueToGame();State=TryCompareVersions(AvailableVersion,InstalledVersion,out int comparison)&&comparison>0?CheckState.Available:CheckState.Current;yield break;}
             if(request.result!=UnityWebRequest.Result.Success)throw new IOException("Download interrupted. Please try again.");
         }
         State=CheckState.Preparing;Message="Verifying the downloaded update…";
@@ -210,25 +238,27 @@ public sealed class Idas3Updates : MonoBehaviour
         });
         while(!verification.IsCompleted)yield return null;
         if(!verification.GetAwaiter().GetResult())throw new IOException("Download verification failed. Nothing was installed.");
-        string helper=Path.Combine(sessionFolder,"install.ps1"),planPath=Path.Combine(sessionFolder,"install.json");
-        File.WriteAllText(helper,script.text,new UTF8Encoding(true));
-        using(var current=System.Diagnostics.Process.GetCurrentProcess()){
-            File.WriteAllText(planPath,JsonUtility.ToJson(new InstallPlan{installRoot=root,archive=archive,sha256=downloadHash,
-                parentId=current.Id,parentStartTicks=current.StartTime.ToUniversalTime().Ticks.ToString()},true));
-        }
-        var start=new System.Diagnostics.ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),"WindowsPowerShell/v1.0/powershell.exe")){
-            Arguments="-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "+Quote(helper)+" -ManifestPath "+Quote(planPath),
-            UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=sessionFolder
+        string helper=Path.Combine(sessionFolder,"install.exe");
+        File.WriteAllBytes(helper,helperAsset.bytes);
+        int parentId;long parentTime;
+        using(var current=System.Diagnostics.Process.GetCurrentProcess()){parentId=current.Id;parentTime=current.StartTime.ToUniversalTime().ToFileTimeUtc();}
+        Message="Checking game files and preparing the update…";
+        var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,sessionFolder,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json)));
+        while(!preparation.IsCompleted)yield return null;
+        string planPath;
+        try{planPath=preparation.GetAwaiter().GetResult();}catch(Idas3UpdateStaging.PatchRejectedException error){throw new PatchUnavailableException(error.Message);}
+        var start=new System.Diagnostics.ProcessStartInfo(helper){
+            Arguments=Quote(planPath),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=sessionFolder
         };
-        // PowerShell 5 needs its own default module path, even when the game was
-        // launched by PowerShell 7 during development.
-        start.EnvironmentVariables.Remove("PSModulePath");
         installer=System.Diagnostics.Process.Start(start);
         Message="Preparing the update. The game will restart automatically…";
+        double helperStarted=Time.realtimeSinceStartupAsDouble;
         while(!File.Exists(Path.Combine(sessionFolder,"ready"))){
+            if(Time.realtimeSinceStartupAsDouble-helperStarted>300){if(!installer.HasExited)installer.Kill();throw new IOException("Installer preparation timed out. The game remains open.");}
             if(installer.HasExited){
                 string error=Path.Combine(sessionFolder,"error.txt");
-                throw new IOException(File.Exists(error)?File.ReadAllText(error):"The installer could not start.");
+                string detail=File.Exists(error)?File.ReadAllText(error):"The installer exited before preparing the update (code "+installer.ExitCode+").";
+                throw new IOException(detail);
             }
             yield return null;
         }
@@ -248,9 +278,11 @@ public sealed class Idas3Updates : MonoBehaviour
         HandleWindowInput(left,right,confirm,back);
     }
     internal void HandleWindowInput(bool left,bool right,bool confirm,bool back){
-        if(State==CheckState.Available){
-            if(left)yesSelected=true;if(right)yesSelected=false;
-            if(back||confirm&&!yesSelected)ContinueToGame();else if(confirm)AcceptUpdate();
+        if(State==CheckState.Available||State==CheckState.Current){
+            if(left)actionSelected=(actionSelected+2)%3;if(right)actionSelected=(actionSelected+1)%3;
+            if(State==CheckState.Current&&actionSelected==0)actionSelected=1;
+            if(back||confirm&&actionSelected==2)ContinueToGame();
+            else if(confirm){if(actionSelected==1)AcceptRepair();else AcceptUpdate();}
         }else if(State==CheckState.Downloading&&back)cancelled=true;
         else if(State==CheckState.Unavailable&&(back||confirm))ContinueToGame();
     }
@@ -269,12 +301,18 @@ public sealed class Idas3Updates : MonoBehaviour
         GUI.Box(new Rect(0,0,640,330),GUIContent.none);
         GUI.Label(new Rect(20,18,600,50),State==CheckState.Checking?"CHECKING FOR UPDATES":State==CheckState.Available?"UPDATE AVAILABLE":State==CheckState.Downloading?"DOWNLOADING UPDATE":State==CheckState.Preparing?"INSTALLING UPDATE":"UPDATE CHECK",windowTitle);
         GUI.Label(new Rect(30,76,580,80),Message,windowText);
-        if(State==CheckState.Available){
-            GUI.Label(new Rect(30,157,580,58),"The game will close, install the update, and restart.\nYour saves, settings, music and replays will be kept.",windowText);
-            GUI.color=yesSelected?new Color(1,.85f,.3f):Color.white;
-            if(GUI.Button(new Rect(110,240,190,52),"YES",windowButton))AcceptUpdate();
-            GUI.color=!yesSelected?new Color(1,.85f,.3f):Color.white;
-            if(GUI.Button(new Rect(340,240,190,52),"NO",windowButton))ContinueToGame();GUI.color=Color.white;
+        if(State==CheckState.Available||State==CheckState.Current){
+            GUI.Label(new Rect(30,157,580,58),State==CheckState.Available?
+                "Update: "+((patchUrl!=null?patchBytes:fullBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+(fullBytes/1048576d).ToString("0")+" MB":
+                "Full Repair: "+(fullBytes/1048576d).ToString("0")+" MB",windowText);
+            for(int i=0;i<3;i++){
+                bool enabled=i==2||fullUrl!=null&&TryCompareVersions(AvailableVersion,InstalledVersion,out int order)&&order>=0&&(i!=0||State==CheckState.Available);
+                GUI.enabled=enabled;GUI.color=actionSelected==i?new Color(1,.85f,.3f):Color.white;
+                if(GUI.Button(new Rect(25+i*200,240,190,52),i==0?"UPDATE":i==1?"FULL REPAIR":"LATER",windowButton)){
+                    if(i==0)AcceptUpdate();else if(i==1)AcceptRepair();else ContinueToGame();
+                }
+            }
+            GUI.enabled=true;GUI.color=Color.white;
         }else if(State==CheckState.Downloading){
             float progress=activeRequest==null?0:Mathf.Clamp01((float)(activeRequest.downloadedBytes/(double)downloadBytes));
             GUI.Box(new Rect(60,171,520,25),GUIContent.none);GUI.DrawTexture(new Rect(64,175,512*progress,17),Texture2D.whiteTexture);

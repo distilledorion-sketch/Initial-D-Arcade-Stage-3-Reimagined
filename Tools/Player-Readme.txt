@@ -1,4 +1,6 @@
-0.3.95-community-replays.18
+0.3.95-community-replays.20
+Wine/Proton: automatic updates now use a bundled native installer without PowerShell. If an older build reports that the installer could not start, manually install this Windows release once through your existing Wine/Proton setup.
+Updates download a matching changed-file patch when available. Unchanged game files are verified before installation; missing or damaged required files trigger a full download. Full Repair is available under Settings > Gameplay > Updates / Repair, including on the latest version. Saves, settings, replays and custom music are preserved. Builds older than .19 need one full download to gain patch support.
 Settings > Audio: ENGINE and TIRE SQUEAL now have independent volume sliders. Lower TIRE SQUEAL without quieting the engine, then choose APPLY. Your old combined engine/tire volume is preserved for both sliders until you change it.
 Fixed numeric driver names on the community website and in replay filenames. Leaderboard labels now distinguish the Sileighty, Evo V and Evo VI TME.
 Settings > Controls > Toggle headlights: press H or click the controller's right stick during a race to switch headlights off/on. Select APPLY after rebinding. Existing custom controls are preserved; assign a free button if your old bindings already used H/right-stick click. Wheels can bind their own button.

@@ -18,3 +18,5 @@
 *.pcm binary
 Native/data/** -text
 RuntimeAssets/** -text
+
+*.bytes binary
