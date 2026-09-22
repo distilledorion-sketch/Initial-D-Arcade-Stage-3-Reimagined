@@ -41,6 +41,28 @@ async function handle(request,env){
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
  if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET});
  const ip=request.headers.get('CF-Connecting-IP')||'local';
+ if(path==='/api/v1/activity'&&request.method==='GET'){
+  await limit(env.PUBLIC_LIMIT,'activity-read:'+ip);
+  const row=await env.DB.prepare("SELECT value FROM settings WHERE key='online_activity'").first();
+  const activity=row?JSON.parse(row.value):null;
+  return json(activity&&activity.generatedAt<=now()&&now()-activity.generatedAt<45?{available:true,...activity,validFor:45-(now()-activity.generatedAt)}:{available:false});
+ }
+ if(path==='/api/v1/activity'&&request.method==='POST'){
+  await limit(env.PUBLIC_LIMIT,'activity-write:'+ip);
+  const bearer=/^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('Authorization')||'');
+  if(!bearer)return json({error:'Installation authentication required.'},401);
+  const device=await env.DB.prepare('SELECT id,blocked FROM devices WHERE token_hash=?').bind(await sha(bearer[1])).first();
+  if(!device)return json({error:'Unknown installation.'},401);
+  if(device.blocked)return json({error:'This installation is blocked.'},403);
+  await limit(env.WRITE_LIMIT,'activity:'+device.id);
+  const x=await body(request);
+  if(!['online','queuing','racing','age'].every(k=>Number.isInteger(x[k]))||x.online<1||x.online>51||x.queuing<0||x.racing<0||x.queuing+x.racing>x.online||x.age<0||x.age>30||typeof x.limited!=='boolean'||(!x.limited&&x.online>50))return json({error:'Invalid activity.'},400);
+  // A report is one game-scoped Steam survey, not a new player to add.
+  // Keep its original age and reject late surveys so retries cannot extend it.
+  const activity={online:x.online,queuing:x.queuing,racing:x.racing,limited:x.limited,generatedAt:now()-x.age};
+  await env.DB.prepare("INSERT INTO settings(key,value) VALUES ('online_activity',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value WHERE CAST(json_extract(settings.value,'$.generatedAt') AS INTEGER)<=?").bind(JSON.stringify(activity),activity.generatedAt).run();
+  return json({ok:true});
+ }
  if(path.startsWith('/api/admin/')){
   if(request.method!=='GET')originCheck(request,url);
   if(path==='/api/admin/login'&&request.method==='POST'){

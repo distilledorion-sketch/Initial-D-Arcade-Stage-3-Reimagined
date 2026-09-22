@@ -35,3 +35,9 @@ The checked-in configuration has a placeholder database ID. Production credentia
 - Client-reported telemetry and build versions are not authoritative anti-cheat verification.
 
 The service has no Steam-account linking requirement. Personal replay archives are separate from the Time Attack upload queue and are not uploaded automatically.
+
+## Online activity
+
+The public page polls `/api/v1/activity` every 15 seconds while visible. Starting in .21, a game client with Community Times enabled and Steam initialized shares fresh game-scoped Steam surveys using its existing installation token. Reports contain only aggregate online/queuing/racing counts, the search-limit flag, and sample age; no Steam identities, names, room codes or locations are sent. Diagnostics do not publish.
+
+The service retains only the newest survey in `settings.online_activity` (no schema migration). Reports are not summed across observers. The same activity namespace includes older compatible clients. A survey expires after 45 seconds; without a reporting client the page shows a dash rather than claiming zero. A plus sign indicates Steam's search limit. Client surveys are informational and are not authoritative anti-cheat or verified concurrent-user analytics.

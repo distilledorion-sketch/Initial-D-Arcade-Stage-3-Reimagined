@@ -163,6 +163,7 @@ namespace Idas3.Multiplayer
         public string RoomCode => transport?.RoomCode ?? "";
         public string TransportName => transport?.Kind ?? "Steam";
         public bool ActivityRequested {get;set;}
+        internal bool PublishActivity {set {if(transport is Idas3SteamTransport steam)steam.PublishActivity=value&&string.IsNullOrEmpty(matchmakingTestScope);}}
         public Idas3OnlineActivity Activity=>transport is Idas3SteamTransport steam?steam.Activity:default;
         public string LobbyName=>Idas3LobbyNames.ForHost(IsHost?transport?.LocalName:remoteName);
         public string ResultText { get; private set; } = "";

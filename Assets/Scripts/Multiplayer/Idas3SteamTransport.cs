@@ -40,6 +40,7 @@ namespace Idas3.Multiplayer
         private bool polling;
         private Idas3SteamActivity activity;
         public bool ActivityRequested {get;set;}
+        public bool PublishActivity {get;set;}
         public string ActivityState {get;set;}="online";
         public Idas3OnlineActivity Activity=>Available?activity?.Get(UnityEngine.Time.realtimeSinceStartupAsDouble)??default:default;
 
@@ -310,7 +311,7 @@ namespace Idas3.Multiplayer
             SteamAPI.RunCallbacks();
             if (!Available) return;
             double now = clock.Elapsed.TotalSeconds;
-            if(activity!=null){activity.Requested=ActivityRequested;activity.SetState(ActivityState);activity.Poll(UnityEngine.Time.realtimeSinceStartupAsDouble,IsBusy);}
+            if(activity!=null){activity.Requested=ActivityRequested||PublishActivity;activity.SetState(ActivityState);activity.Poll(UnityEngine.Time.realtimeSinceStartupAsDouble,IsBusy);}
             // Callbacks normally update admission immediately. Retain a low
             // frequency audit for a missed/delayed lobby notification.
             if (InLobby && now - lastMembershipCheck >= 1) RefreshPeer();

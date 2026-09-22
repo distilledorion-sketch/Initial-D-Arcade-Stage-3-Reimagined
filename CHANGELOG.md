@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.21 - September 22, 2026
+
+- Added Online, Queuing and Racing counts to the community leaderboard website.
+- Shares fresh game-scoped Steam activity surveys while Community Times is enabled. Counts include older builds using the same activity protocol; expired or unavailable surveys display a dash. Steam search limits display a plus sign.
+- Retains the smaller updates, Full Repair and Linux/Wine installer fixes from .20.
+
+
 ## 0.3.95-community-replays.20 - September 22, 2026
 
 - Replaced the PowerShell update installer with a bundled native executable. Update archive validation and staging use the game's existing runtime; applying patches/full repairs, rollback and restart no longer require PowerShell or a separately installed .NET runtime under Wine/Proton.

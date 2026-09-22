@@ -1,4 +1,4 @@
-0.3.95-community-replays.20
+0.3.95-community-replays.21
 Wine/Proton: automatic updates now use a bundled native installer without PowerShell. If an older build reports that the installer could not start, manually install this Windows release once through your existing Wine/Proton setup.
 Updates download a matching changed-file patch when available. Unchanged game files are verified before installation; missing or damaged required files trigger a full download. Full Repair is available under Settings > Gameplay > Updates / Repair, including on the latest version. Saves, settings, replays and custom music are preserved. Builds older than .19 need one full download to gain patch support.
 Settings > Audio: ENGINE and TIRE SQUEAL now have independent volume sliders. Lower TIRE SQUEAL without quieting the engine, then choose APPLY. Your old combined engine/tire volume is preserved for both sliders until you change it.

@@ -229,3 +229,32 @@ test('missing single simulation frames, invalid RPM and compressed expansion err
  const compressed=await compressReplay(replayFor(x));new DataView(compressed.buffer).setUint32(4,96,true);assert.equal((await uploadReplay(x,compressed)).status,400);
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);
 });
+
+test('activity surveys require an authenticated unblocked installation and valid bounded counts',async()=>{
+ const activity={online:12,queuing:3,racing:6,age:0,limited:false};
+ assert.deepEqual(await(await call('/api/v1/activity')).json(),{available:false});
+ assert.equal((await call('/api/v1/activity',activity)).status,401);
+ assert.equal((await call('/api/v1/activity',activity,auth())).status,401);
+ await call('/api/v1/register',{token:device});
+ for(const extra of [{online:0},{online:52},{online:51},{queuing:-1},{queuing:8,racing:6},{age:31},{age:-1},{age:1.5},{limited:1}])assert.equal((await call('/api/v1/activity',{...activity,...extra},auth())).status,400);
+ assert.equal((await call('/api/v1/activity',activity,auth())).status,200);
+ const result=await(await call('/api/v1/activity')).json();
+ assert.equal(result.available,true);assert.equal(result.online,12);assert.equal(result.queuing,3);assert.equal(result.racing,6);assert.equal(result.limited,false);assert.ok(result.validFor>40&&result.validFor<=45);
+ assert.deepEqual(Object.keys(result).sort(),['available','generatedAt','limited','online','queuing','racing','validFor'].sort());
+ db.prepare('UPDATE devices SET blocked=1').run();
+ assert.equal((await call('/api/v1/activity',activity,auth())).status,403);
+});
+test('activity surveys are not summed, cannot overwrite newer observations and expire',async()=>{
+ await call('/api/v1/register',{token:device});
+ const activity={online:4,queuing:1,racing:2,age:0,limited:false};
+ await call('/api/v1/activity',activity,auth());await call('/api/v1/activity',activity,auth());
+ assert.equal((await(await call('/api/v1/activity')).json()).online,4);
+ await call('/api/v1/activity',{...activity,online:20,age:20},auth());
+ assert.equal((await(await call('/api/v1/activity')).json()).online,4);
+ await call('/api/v1/activity',{...activity,online:51,limited:true},auth());
+ assert.equal((await(await call('/api/v1/activity')).json()).limited,true);
+ for(const generatedAt of [Math.floor(Date.now()/1000)-45,Math.floor(Date.now()/1000)+100]){
+  db.prepare("UPDATE settings SET value=? WHERE key='online_activity'").run(JSON.stringify({...activity,generatedAt}));
+  assert.deepEqual(await(await call('/api/v1/activity')).json(),{available:false});
+ }
+});

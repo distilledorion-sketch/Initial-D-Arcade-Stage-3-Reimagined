@@ -15,6 +15,13 @@ public static class Idas3OnlineMenuChecks {
         Check(a.Available&&a.Online==2&&a.Racing==1&&a.Queuing==1,"Deduplication, expiry, invalid records, distinct states");
         Check(a.Format(a.Online)=="2","Normal count");a.Limited=true;Check(a.Format(2)=="2+","Truncated Steam result never exact");
         Check(default(Idas3OnlineActivity).Format(0)=="—","Unavailable never shown as zero");
+        a.ObservedAt=100;
+        var report=Idas3CommunityTimes.PrepareActivity(a,100.2,-1);
+        Check(report!=null&&report.online==2&&report.queuing==1&&report.racing==1&&report.limited&&report.age==1,"Website report preserves counts, truncation and conservative sample age");
+        Check(Idas3CommunityTimes.PrepareActivity(a,131,-1)==null,"Website rejects expired survey");
+        Check(Idas3CommunityTimes.PrepareActivity(a,99,-1)==null,"Website rejects future survey");
+        Check(Idas3CommunityTimes.PrepareActivity(a,101,100)==null,"Website does not republish one survey");
+        Check(Idas3CommunityTimes.PrepareActivity(default,101,-1)==null,"Website never reports unknown as zero");
         a=Idas3SteamActivity.Aggregate(Array.Empty<Idas3SteamActivity.Sample>(),110,false);Check(a.Available&&a.Online==0,"Successful empty result");
         Check(Idas3OnlineActivity.StateFor(false,"Offline",false,false,false,false)=="online","Menus are online");
         Check(Idas3OnlineActivity.StateFor(false,"Matching",true,false,false,false)=="queuing","Searching counts as queuing");

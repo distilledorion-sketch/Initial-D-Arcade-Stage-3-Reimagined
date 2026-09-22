@@ -149,7 +149,7 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 0.3.95-community-replays.20
+  bundleVersion: 0.3.95-community-replays.21
   preloadedAssets: []
   metroInputSource: 0
   wsaTransparentSwapchain: 0

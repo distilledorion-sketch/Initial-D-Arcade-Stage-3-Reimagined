@@ -57,6 +57,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
             Write("pending.json",pending);CleanReplayFiles();
             if(File.Exists(Path.Combine(folder,"snapshot.json"))){try{snapshot=Read<Snapshot>("snapshot.json",2*1024*1024);if(!UsableCommunitySnapshot(snapshot))snapshot=null;}catch(Exception){snapshot=null;}}
             cacheDirty=true;StartCoroutine(Collect());if(!diagnosticOffline)StartCoroutine(Synchronize());
+            if(diagnosticStorage==null&&!Application.isEditor)StartCoroutine(ShareActivity());
         }catch(Exception e){status="Community storage unavailable. Local records remain active.";Debug.LogWarning("Community times initialization: "+e.GetType().Name);menu.CommunityStatus=status;}
     }
     private T Read<T>(string name,long max){var p=Path.Combine(folder,name);if(new FileInfo(p).Length>max)throw new IOException("Community file too large.");return JsonUtility.FromJson<T>(File.ReadAllText(p));}
@@ -216,6 +217,34 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
             }
             if(sent>0&&options.Current.communityTimes)yield return RefreshSnapshot();
             nextNetwork=Time.realtimeSinceStartupAsDouble+60;
+        }
+    }
+    [Serializable] internal sealed class ActivityReport {public int online,queuing,racing,age;public bool limited;}
+    internal static ActivityReport PrepareActivity(Idas3.Multiplayer.Idas3OnlineActivity activity,double now,double last){
+        double age=now-activity.ObservedAt;
+        if(!activity.Available||activity.Online<1||activity.ObservedAt==last||double.IsNaN(age)||age<0||age>30)return null;
+        return new ActivityReport{online=activity.Online,queuing=activity.Queuing,racing=activity.Racing,limited=activity.Limited,age=(int)Math.Ceiling(age)};
+    }
+    private IEnumerator ShareActivity(){
+        double last=-1;
+        while(host!=null){
+            var session=host.MultiplayerSession;
+            bool share=host.Ready&&options.Current.communityTimes&&registered;
+            if(session!=null)session.PublishActivity=share;
+            var activity=session?.Activity??default;
+            var report=PrepareActivity(activity,Time.realtimeSinceStartupAsDouble,last);
+            if(share&&report!=null){
+                last=activity.ObservedAt;
+                // Own request state: uploads and ranking refreshes may run concurrently.
+                using(var request=new UnityWebRequest(ServiceUrl+"/api/v1/activity","POST")){
+                    request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(JsonUtility.ToJson(report)));
+                    request.downloadHandler=new DownloadHandlerBuffer();request.timeout=8;
+                    request.SetRequestHeader("Content-Type","application/json");request.SetRequestHeader("Authorization","Bearer "+credential);
+                    UnityWebRequestAsyncOperation operation=null;try{operation=request.SendWebRequest();}catch(Exception){}
+                    if(operation!=null)yield return operation;
+                }
+            }
+            yield return new WaitForSecondsRealtime(15);
         }
     }
 }

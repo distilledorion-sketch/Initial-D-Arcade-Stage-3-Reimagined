@@ -14,6 +14,7 @@ namespace Idas3.Multiplayer {
     public struct Idas3OnlineActivity {
         public int Online,Queuing,Racing;
         public bool Available,Limited;
+        public double ObservedAt;
         internal static string StateFor(bool racing,string state,bool quick,bool inLobby,bool connected,bool disconnected)=>
             disconnected?"online":racing&&state!="Results"&&state!="Returning"?"racing":quick||inLobby&&!connected?"queuing":"online";
         public string Format(int count)=>Available?count.ToString(CultureInfo.InvariantCulture)+(Limited?"+":""):"—";
@@ -88,7 +89,7 @@ namespace Idas3.Multiplayer {
                 // Steam's index may lag our just-published record. Include self
                 // once using server time; the aggregator deduplicates identity.
                 samples.Add(new Sample{Owner=owner,Seen=time,State=state});
-                snapshot=Aggregate(samples,time,r.m_nLobbiesMatching>=SearchLimit);updated=UnityEngine.Time.realtimeSinceStartupAsDouble;
+                snapshot=Aggregate(samples,time,r.m_nLobbiesMatching>=SearchLimit);updated=UnityEngine.Time.realtimeSinceStartupAsDouble;snapshot.ObservedAt=updated;
             });
             var call=SteamMatchmaking.RequestLobbyList();if(call==SteamAPICall_t.Invalid){searching=false;snapshot=default;return;}search.Set(call);
         }
