@@ -113,7 +113,8 @@ struct HostInput {
 };
 struct App {
     std::filesystem::path importedCourseRoot,sadamineCourseRoot,ennaCourseRoot;
-    std::filesystem::path& importedRoot(int id){return id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
+    std::array<std::filesystem::path,3> specialStageCourseRoots;
+    std::filesystem::path& importedRoot(int id){return id>=12?specialStageCourseRoots.at(unsigned(id-12)):id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
     std::optional<ImportedCourse> importedCourse;
     struct MultiplayerState {
         std::string localName="PLAYER",remoteName="OPPONENT";
@@ -1017,8 +1018,8 @@ struct App {
             if(importedRoot(frontend.course).empty())throw std::logic_error("Hakone course pack is not registered");
             if(!importedCourse||importedCourse->id!=unsigned(frontend.course))importedCourse=ImportedCourse::load(importedRoot(frontend.course));
             courseIndex=3;
-            // SHIONA_NIT is the sole authored Enna scenery variant.
-            if(importedCourse->id==11)night=frontend.night=true;
+            // These PS2 courses only supply authored night scenery.
+            if(importedCourseDefinition(importedCourse->id).nightOnly)night=frontend.night=true;
         }else importedCourse.reset();
         steeringSmoothing.reset();
         buntaVisitActive=timeAttackVisitActive=timeAttackLectureDone=timeSummaryDone=false;

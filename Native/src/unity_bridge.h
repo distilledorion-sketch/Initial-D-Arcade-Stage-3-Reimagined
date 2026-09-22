@@ -29,6 +29,9 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayOpponentFrame(const uint8_t* 
 // Same borrowed lifetime as Idas3SceneGetFrame; no change to the existing
 // scene ABI. The generation/count guard prevents mixing frame publications.
 IDAS3_UNITY_EXPORT const uint64_t* IDAS3_UNITY_CALL Idas3SceneGetGeometryIds(uint64_t generation,uint32_t rangeCount);
+// Forward source-path segment under the viewed car, even on reverse routes.
+// -1 when no imported race is loaded. Does not advance simulation or replays.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneImportedSourceNode();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedReadPersonalImport(char* output,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* values,int count,int enabled);
 #pragma pack(push,8)

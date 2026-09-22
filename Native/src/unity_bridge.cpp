@@ -119,7 +119,7 @@ void publish(UnityRuntime& r,int eventId){
     s.frontendStage=int(app.frontend.stage);s.attractChild=int(app.frontend.attractChild());s.course=app.courseIndex;s.car=app.frontend.car;
     s.racePhase=int(app.race.phase);s.flags=(app.menu?1u:0)|(app.paused?2u:0)|(app.active?4u:0)|(app.running?8u:0)|(app.originalHandling?16u:0)|(app.legendVisitActive?32u:0)|(app.legendVisitActive&&app.legendVisit.choiceVisible()?64u:0)|(app.multiplayer.active?128u:0)|(app.multiplayer.active&&app.multiplayer.waiting?256u:0)|(app.preRaceDialogueActive?512u:0)|(app.loadingActive?1024u:0)|(app.multiplayerDisconnected()?2048u:0)|(app.extraModeVisitActive()?4096u:0)|(app.canRetireLegendRace()?8192u:0);
     if(app.resultVisit.initialized)s.flags|=262144u;
-    if(app.importedCourse)s.flags|=(app.importedCourse->id==11?1048576u:app.importedCourse->id==10?524288u:0u)|16384u|(app.reverse?32768u:0u)|(app.night?65536u:0u)|(app.wet?131072u:0u);
+    if(app.importedCourse)s.flags|=importedCourseDefinition(app.importedCourse->id).sceneFlags|16384u|(app.reverse?32768u:0u)|(app.night?65536u:0u)|(app.wet?131072u:0u);
     s.speedMetresPerSecond=app.vehicle.speed;s.rpm=app.vehicle.rpm;
     s.reserved=r.sceneMode?1u:0u;
     if(r.sceneMode){s.textureGeneration=0;r.texture=nullptr;return;}
@@ -517,7 +517,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weath
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.app||!r.sceneMode||r.app->saveRoot.filename()!="replay-viewer-session")throw std::logic_error("Replay playback requires isolated viewer storage");
-        if(condition<0||condition>23||weather<0||weather>1||night<0||night>1||car<0||car>34||manual<0||manual>1)throw std::invalid_argument("Invalid replay selection");
+        if(condition<0||condition>=int(supportedConditionCount)||weather<0||weather>1||night<0||night>1||car<0||car>34||manual<0||manual>1)throw std::invalid_argument("Invalid replay selection");
         auto& a=*r.app;a.replayPlaybackActive=true;a.validationMode=true;
         a.frontend.gameMode=original::OriginalGameMode::TimeAttack;
         a.frontend.course=condition/2;a.courseIndex=condition/2;
@@ -1044,6 +1044,12 @@ int IDAS3_UNITY_CALL Idas3SceneSetSteeringSmoothing(float value){
 float IDAS3_UNITY_CALL Idas3SceneGetSteeringSmoothing(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     return r.sceneMode&&r.app?r.app->steeringSmoothing.amount():-1.f;
+}
+int IDAS3_UNITY_CALL Idas3SceneImportedSourceNode(){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!r.app->importedCourse)return -1;
+    const auto& app=*r.app;
+    return int(app.importedCourse->source.project(app.vehicle.position).segment);
 }
 int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* out){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

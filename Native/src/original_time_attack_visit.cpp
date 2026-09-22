@@ -1,3 +1,4 @@
+#include "imported_course_catalog.h"
 #include "original_time_attack_visit.h"
 #include "original_time_attack_background.h"
 #include "original_time_attack_stats.h"
@@ -18,7 +19,7 @@ using Route=OriginalTimeAttackVisit::Route;
 using Command=OriginalLegendReturnCommand;
 constexpr std::array<const char*,8> mapNames{"myogi","usui","akagi","akina","happo","iroha","syomaru","tuchizaka"};
 float f(unsigned word){return std::bit_cast<float>(word);}
-bool valid(const OriginalTimeAttackVisit::Setup& s){return (s.condition<18||(s.condition<24&&!s.customCourseName.empty()&&!s.customMaps.empty()&&s.customMaps.size()<=5))&&s.weather<2&&s.car<35;}
+bool valid(const OriginalTimeAttackVisit::Setup& s){return (s.condition<18||(s.condition<idas3::supportedConditionCount&&!s.customCourseName.empty()&&!s.customMaps.empty()&&s.customMaps.size()<=5))&&s.weather<2&&s.car<35;}
 void putWord(OriginalRankingRecord& r,unsigned offset,std::uint32_t word){
     for(unsigned i=0;i<4;++i)r.bytes[offset+i]=std::uint8_t(word>>(i*8));
 }

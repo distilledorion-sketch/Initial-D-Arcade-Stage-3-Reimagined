@@ -1,5 +1,6 @@
 #pragma once
 #include "course.h"
+#include "imported_course_catalog.h"
 #include "original_driving_session.h"
 #include "original_race_path.h"
 #include "original_start_grid.h"
@@ -9,13 +10,12 @@
 namespace idas3 {
 // Imported course data only: the ordinary App remains the race owner.
 struct ImportedCourse {
-    // Hakone uses Myogi (0/1); Sadamine uses Usui (2/3); Enna uses Akina
-    // (6/7), including wet tables. Enna's current scenery pack is night-only.
-    // Imported geometry and presentation remain independent of vehicle handling.
-    unsigned handlingCondition(bool reverse)const{return (id==11?6u:id==10?2u:0u)+unsigned(reverse);}
+    // Preserve each donor's direction and dry/wet tuning while retaining the
+    // imported road, surface materials, collision meshes and race identity.
+    unsigned handlingCondition(bool reverse)const{return importedCourseDefinition(id).handlingCondition+unsigned(reverse);}
     static unsigned courseId(const std::filesystem::path& root){
         std::ifstream f(root/"course.id");unsigned value=9;
-        if(f&&(!(f>>value)||(value!=9&&value!=10&&value!=11)))throw std::runtime_error("Invalid imported course identity");
+        if(f&&(!(f>>value)||!isImportedCourseId(int(value))))throw std::runtime_error("Invalid imported course identity");
         return value;
     }
     unsigned id=9;
@@ -26,6 +26,7 @@ struct ImportedCourse {
     std::vector<Vec3> lamps;
     std::array<int,5> checkpoints{};
     std::array<int,4> times{};
+    std::array<std::array<float,4>,2> timerScale{{{1,1,1,1},{1,1,1,1}}};
     original::OriginalCollisionData collision;
     std::optional<std::array<int,5>> reverseCheckpoints;
     std::optional<original::OriginalCollisionData> reverseCollision;
@@ -38,21 +39,24 @@ struct ImportedCourse {
         return result;
     }
     std::array<int,4> raceTimes(bool reverse)const{
-        if(id!=11)return times;
+        if(!importedCourseDefinition(id).specialStage)return times;
         // Special Stage's time-attack mode has no countdown (001669a0).
-        // Experimental D3 race uses Akina's normal-difficulty timer policy;
-        // this is an adaptation, not recovered PS2 time-attack allowances.
+        // D3 normal-difficulty allowances are an adaptation. New longer routes
+        // scale each section up against its donor, never reduce its allowance.
         const auto condition=handlingCondition(reverse);
         const auto& bonus=original::originalTimeAttackBonusSeconds(condition);
-        return {original::originalTimeAttackInitialSeconds(condition,2),bonus[0],bonus[1],bonus[2]};
+        std::array<int,4> result{original::originalTimeAttackInitialSeconds(condition,2),bonus[0],bonus[1],bonus[2]};
+        for(unsigned i=0;i<4;++i)result[i]=int(std::ceil(result[i]*timerScale[unsigned(reverse)][i]));
+        return result;
     }
     static ImportedCourse load(const std::filesystem::path& root){
-        ImportedCourse c;c.root=root;c.id=courseId(root);if(c.id==10){c.slug="sadamine";c.name="SADAMINE";}else if(c.id==11){c.slug="enna";c.name="ENNA SKYLINE";}c.source=Course::load(root,c.slug,c.name);
+        ImportedCourse c;c.root=root;c.id=courseId(root);const auto& definition=importedCourseDefinition(c.id);
+        c.slug=definition.slug;c.name=definition.name;c.source=Course::load(root,c.slug,c.name);
         for(auto p:c.source.points)c.center.push_back({p.x,p.y,p.z});
         // RacePath uses the source edge winding, while Course canonicalizes it.
         for(auto p:c.source.right)c.left.push_back({p.x,p.y,p.z});
         for(auto p:c.source.left)c.right.push_back({p.x,p.y,p.z});
-        if(c.id==11){
+        if(definition.specialStage){
             std::ifstream f(root/"race-markers.bin",std::ios::binary);char magic[4]{};f.read(magic,4);
             c.reverseCheckpoints.emplace();
             f.read(reinterpret_cast<char*>(c.checkpoints.data()),20);
@@ -64,6 +68,13 @@ struct ImportedCourse {
             }
             c.collision=original::OriginalCollisionData::load(root/"collision-0.rcl");
             c.reverseCollision=original::OriginalCollisionData::load(root/"collision-1.rcl");
+            if(c.id>=12){
+                std::ifstream timing(root/"timer-scale.bin",std::ios::binary);timing.read(magic,4);
+                timing.read(reinterpret_cast<char*>(c.timerScale.data()),32);
+                if(!timing||std::string(magic,4)!="TSF1"||timing.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Invalid imported timer scale");
+                for(const auto& direction:c.timerScale)for(float scale:direction)
+                    if(!std::isfinite(scale)||scale<1||scale>4)throw std::runtime_error("Invalid imported section allowance");
+            }
             // These are original RCL1 meshes; retain the original solver's
             // wall-search policy, unlike the generated Stage 8 wall strips.
             c.times=c.raceTimes(false);return c;

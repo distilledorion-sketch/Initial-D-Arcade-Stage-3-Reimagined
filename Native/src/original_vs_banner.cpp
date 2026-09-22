@@ -1,3 +1,4 @@
+#include "imported_course_catalog.h"
 #include "original_vs_banner.h"
 #include "original_gasstand_data.h"
 #include <algorithm>
@@ -319,7 +320,7 @@ std::vector<int> OriginalVsBanner::unsequencedZoomChunks() const {
 unsigned OriginalVsBanner::headerCourse() const {
     // Imported tracks share one lettering baseline, independent of the course
     // whose handling they borrow. Irohazaka is the supplied D3 intro reference.
-    return setup_.customCourseName=="HAKONE"||setup_.customCourseName=="SADAMINE"||setup_.customCourseName=="ENNA SKYLINE"?5u:setup_.course;
+    return !setup_.customCourseName.empty()?5u:setup_.course;
 }
 
 std::string OriginalVsBanner::profileDisplayName(const original::OriginalBattleProfile& profile) const {
@@ -378,9 +379,9 @@ OriginalVsMetadataPlacement OriginalVsBanner::sourceTitleInkPlacement() const {
 }
 
 OriginalVsMetadataPlacement OriginalVsBanner::importedTitlePlacement() const {
-    if(setup_.customCourseName!="HAKONE"&&setup_.customCourseName!="SADAMINE"&&setup_.customCourseName!="ENNA SKYLINE")return {};
+    if(setup_.customCourseName.empty())return {};
     auto out=sourceTitleInkPlacement();out.chunk=-1;
-    const auto& image=importedTitles_.at(setup_.customCourseName=="HAKONE"?0:setup_.customCourseName=="SADAMINE"?1:2);
+    const auto& image=importedTitles_.at(unsigned(std::find_if(importedCourseDefinitions.begin(),importedCourseDefinitions.end(),[&](const auto& course){return course.name==setup_.customCourseName;})-importedCourseDefinitions.begin()));
     out.width=out.height*float(image.width)/float(image.height);
     return out;
 }
@@ -480,8 +481,8 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
     const unsigned first=setup_.showBattleRecords&&setup_.showVersus?0:2,end=setup_.customCourseName.empty()?2:3;
     for(unsigned side=first;side<end;++side){
         const auto bounds=side==2?OriginalVsBattleRecordPlacement{20,8,180,32,1}:battleRecordPlacement(side);if(bounds.opacity<=0||bounds.width<=0)continue;
-        if(side==2&&setup_.compactHeader&&(setup_.customCourseName=="HAKONE"||setup_.customCourseName=="SADAMINE"||setup_.customCourseName=="ENNA SKYLINE")){
-            const auto& title=importedTitles_.at(setup_.customCourseName=="HAKONE"?0:setup_.customCourseName=="SADAMINE"?1:2);
+        if(side==2&&setup_.compactHeader&&(!setup_.customCourseName.empty())){
+            const auto& title=importedTitles_.at(unsigned(std::find_if(importedCourseDefinitions.begin(),importedCourseDefinitions.end(),[&](const auto& course){return course.name==setup_.customCourseName;})-importedCourseDefinitions.begin()));
             const auto layout=importedTitlePlacement();
             compositeImage(target,width,height,title,(float(width)-640.f*fit)*.5f+layout.left*fit,
                 (float(height)-480.f*fit)*.5f+layout.top*fit,layout.width*fit,layout.height*fit);

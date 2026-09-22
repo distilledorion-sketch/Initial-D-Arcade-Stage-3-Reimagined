@@ -6,9 +6,9 @@ $folder=Join-Path $PSScriptRoot '../Native/data/original_assets/hud/imported_sta
 # menu type and blue/white race-title treatment; retain this reproducible source.
 $writer=[IO.BinaryWriter]::new([IO.File]::Create((Join-Path $folder 'titles.idastex')))
 try {
- $writer.Write([Text.Encoding]::ASCII.GetBytes("IDAS3T1`0"));$writer.Write([uint32]1);$writer.Write([uint32]2)
+ $writer.Write([Text.Encoding]::ASCII.GetBytes("IDAS3T1`0"));$writer.Write([uint32]1);$writer.Write([uint32]6)
  $index=0
- foreach($name in @('Hakone','Sadamine')){
+ foreach($name in @('Hakone','Sadamine','Enna Skyline','Myogi (Special Stage)','Usui (Special Stage)','Momiji Line')){
   $path=[Drawing.Drawing2D.GraphicsPath]::new()
   $font=[Drawing.FontFamily]::new('Times New Roman')
   $path.AddString($name,$font,3,52,[Drawing.PointF]::new(0,0),[Drawing.StringFormat]::GenericTypographic)

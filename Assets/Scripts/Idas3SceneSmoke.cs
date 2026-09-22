@@ -28,7 +28,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     private Idas3RivalAudioProbe rivalAudio;
     private readonly List<RivalObservation> rivalObservations=new List<RivalObservation>();
     private int perfCourse=3,perfWarmup=180,perfFrames=600,perfMainRenders,perfAllRenders;
-    private int PerformanceCourse => (host.Status.flags&IdasSpecialStageEnnaCourse.SceneFlag)!=0 ? 11 : (host.Status.flags&16384u)!=0 ? ((host.Status.flags&524288u)!=0?10:9) : host.Status.course;
+    private int PerformanceCourse => (host.Status.flags&IdasSpecialStageEnnaCourse.SceneFlag)!=0 ? IdasSpecialStageEnnaCourse.CourseId(host.Status.flags) : (host.Status.flags&16384u)!=0 ? ((host.Status.flags&524288u)!=0?10:9) : host.Status.course;
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowValue(int field);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneReplayCaptureDiagnostic(int enabled);
     private Camera perfMainCamera;
@@ -169,7 +169,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         int selectedRivalRecord=DiagnosticInt(args,"-idas3-scene-rival-record",0,0,16);
         if(requestedRival&&selectedRivalRecord!=0&&selectedRivalRecord!=1&&selectedRivalRecord!=16)
             throw new ArgumentException("-idas3-scene-rival-record requires 0 (first), 1 (lost), or 16 (won).");
-        int selectedPerfCourse=DiagnosticInt(args,"-idas3-scene-perf-course",3,0,11);
+        int selectedPerfCourse=DiagnosticInt(args,"-idas3-scene-perf-course",3,0,Idas3CourseCatalog.Count-1);
         int selectedPerfWarmup=DiagnosticInt(args,"-idas3-scene-perf-warmup",180,60,3600);
         int selectedPerfFrames=DiagnosticInt(args,"-idas3-scene-perf-frames",600,60,72000);
         bool selectedPerfNight=Array.IndexOf(args,"-idas3-scene-perf-night")>=0;
@@ -988,7 +988,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         // Legend and Time Attack have different course lists. Read the actual
         // selected course rather than assuming a Time Attack carousel index.
         // Passing Snow may also change retained wet/night selections below.
-        for(int i=0;Idas3SceneModeFlowValue(30)!=perfCourse&&i<12;++i){
+        for(int i=0;Idas3SceneModeFlowValue(30)!=perfCourse&&i<Idas3CourseCatalog.Count;++i){
             yield return Key(39);yield return Frames(6);
         }
         Check(Idas3SceneModeFlowValue(30)==perfCourse,"Performance course carousel did not select the requested course.");
@@ -1008,7 +1008,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         while(((host.Status.flags&1)!=0||host.Status.racePhase!=2)&&wait++<900)yield return null;
         Check(PerformanceCourse==perfCourse&&(host.Status.flags&1)==0&&(host.Status.flags&16)!=0&&host.Status.racePhase==2,
             "Performance benchmark did not start the requested race with original handling.");
-        Check(Idas3SceneModeFlowValue(31)==((perfWet?1:0)|((perfNight||perfCourse==4||perfCourse==11)?2:0)),"Measured weather/time must match requested conditions");
+        Check(Idas3SceneModeFlowValue(31)==((perfWet?1:0)|((perfNight||Idas3CourseCatalog.RequiresNight(perfCourse))?2:0)),"Measured weather/time must match requested conditions");
         if(aiCheck){
             Check(Idas3SceneModeFlowValue(35)==(perfLegend?2:0),"Difficulty applied to wrong race mode");
             host.GameOptions.BeginEdit();host.GameOptions.Draft.aiDifficulty=0;Check(host.GameOptions.ApplyDraft(),"Could not restore Normal");

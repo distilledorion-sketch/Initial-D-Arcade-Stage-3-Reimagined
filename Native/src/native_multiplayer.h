@@ -1,4 +1,5 @@
 #pragma once
+#include "imported_course_catalog.h"
 #include <stdint.h>
 #pragma pack(push,8)
 // Native scene bridge v1. Independent local source physics, render-only peer.
@@ -61,10 +62,10 @@ static_assert(offsetof(Idas3MultiplayerSnapshot,bodyPosition)==32);
 static_assert(offsetof(Idas3MultiplayerSnapshot,headlightPhase)==116);
 namespace idas3 {
 inline void validateMultiplayerConfig(const Idas3MultiplayerConfig& c){
-    if(c.size!=sizeof(c)||(c.version!=1&&c.version!=2)||c.course>=12||c.localCar>=35||c.remoteCar>=35||
+    if(c.size!=sizeof(c)||(c.version!=1&&c.version!=2)||c.course>=supportedCourseCount||c.localCar>=35||c.remoteCar>=35||
        c.localSlot>1||c.reverse>1||c.wet>1||c.night>1||c.automatic>1)
         throw std::invalid_argument("Invalid multiplayer configuration v1");
-    if(c.course==11&&!c.night)throw std::invalid_argument("Enna Skyline requires night scenery");
+    if(c.course>=11&&!c.night)throw std::invalid_argument("Special Stage courses require night scenery");
     if(c.course==8&&!c.wet)throw std::invalid_argument("Akina Snow requires wet=1");
 }
 // Reject malformed/foreign packets. Finite overshoots on wheel/control fields

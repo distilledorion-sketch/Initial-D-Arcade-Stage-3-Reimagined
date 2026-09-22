@@ -27,13 +27,13 @@ cmake --build Native/build-unity-d --target Idas3WheelFeedback
 
 ## Unity player
 
-Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all three imported courses beside the player.
+Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all six imported courses beside the player.
 
 `Open in Unity.cmd` opens the project for editing. The main scene is `Assets/Scenes/InitialDUnityScene.unity`.
 
 If Unity is installed outside the usual Hub location, set `IDAS3_UNITY_EDITOR` to the full path of `Editor/Unity.exe` before running the build.
 
-The public checkout uses `RuntimeAssets/HAKONE`, `RuntimeAssets/SADAMINE` and `RuntimeAssets/ENNA`. Private development/staging folders from the maintainer's computer are not required for the normal player build. Some historical diagnostic and asset-extraction tools still require their own input files; they are not part of the normal player build.
+The public checkout uses the six packs in `RuntimeAssets`: `HAKONE`, `SADAMINE`, `ENNA`, `MYOGI_SPECIAL`, `USUI_SPECIAL` and `MOMIJI`. Private development/staging folders from the maintainer's computer are not required for the normal player build. Some historical diagnostic and asset-extraction tools still require their own input files; they are not part of the normal player build. See [Special Stage imports](docs/special-stage-courses.md) for their provenance and handling choices.
 
 ## Tests
 
@@ -43,7 +43,7 @@ The leaderboard tests use Node.js with `node:sqlite` support:
 
 ```powershell
 cd Leaderboard
-node --test test/worker.test.mjs
+node --test test/*.test.mjs
 ```
 
 These use an in-memory database and do not submit scores or change the live service.

@@ -19,7 +19,7 @@ namespace Idas3.Multiplayer
         private static readonly Color Cyan=new Color32(225,226,230,255);
         private static readonly Color Green=new Color32(108,225,156,255);
         private static readonly Color Red=new Color32(222,35,49,255);
-        private static readonly string[] Courses={"MYOGI","USUI","AKAGI","AKINA","HAPPOGAHARA","IROHAZAKA","SHOMARU","TSUCHISAKA","AKINA SNOW","HAKONE","SADAMINE","ENNA SKYLINE"};
+        private static readonly string[] Courses=Array.ConvertAll(Idas3CourseCatalog.Names,name=>name.ToUpperInvariant());
         private Idas3MultiplayerSession session;
         private GUIStyle title,heading,label,small,button,field,number,wrapped,tightButton;
         private string joinCode="";
@@ -393,12 +393,12 @@ namespace Idas3.Multiplayer
             if(session.HasCourseDraw||session.IsRacing||terminal){SelectedCourse();return;}
             Section(new Rect(498,150,376,340),"YOUR COURSE PICK");Text(new Rect(791,164,63,23),"50/50",small);
             var c=session.LocalChoice;bool change=!session.IsRacing&&!session.Busy;
-            if(ActionButton(new Rect(516,205,29,35),"<",change))ChangeOptions((c.Course+session.AvailableCourseCount-1)%session.AvailableCourseCount,c.Reverse,c.Wet,c.Night);
+            if(ActionButton(new Rect(516,205,29,35),"<",change))ChangeOptions(Idas3CourseCatalog.NextAvailable(c.Course,-1),c.Reverse,c.Wet,c.Night);
             Text(new Rect(550,205,266,35),Track(c.Course),button);
-            if(ActionButton(new Rect(825,205,29,35),">",change))ChangeOptions((c.Course+1)%session.AvailableCourseCount,c.Reverse,c.Wet,c.Night);
+            if(ActionButton(new Rect(825,205,29,35),">",change))ChangeOptions(Idas3CourseCatalog.NextAvailable(c.Course,1),c.Reverse,c.Wet,c.Night);
             OptionRow(249,"DIRECTION",Direction(c.Course,c.Reverse),change,()=>ChangeOptions(c.Course,!c.Reverse,c.Wet,c.Night));
             OptionRow(294,"SURFACE",c.Course==8?"SNOW":c.Wet?"WET":"DRY",change&&c.Course!=8,()=>ChangeOptions(c.Course,c.Reverse,!c.Wet,c.Night));
-            OptionRow(339,"TIME",c.Night?"NIGHT":"DAY",change&&c.Course!=4&&c.Course!=8&&c.Course!=11,()=>ChangeOptions(c.Course,c.Reverse,c.Wet,!c.Night));
+            OptionRow(339,"TIME",c.Night?"NIGHT":"DAY",change&&!Idas3CourseCatalog.RequiresNight(c.Course),()=>ChangeOptions(c.Course,c.Reverse,c.Wet,!c.Night));
             OptionRow(384,"BOOST",session.BoostEnabled?"ON":"OFF",change&&session.IsHost,()=>session.SetBoost(!session.BoostEnabled));
             OptionRow(429,"CAR COLLISIONS",session.CollisionsEnabled?"ON":"OFF",change&&session.IsHost,()=>session.SetCollisions(!session.CollisionsEnabled));
         }
@@ -412,7 +412,7 @@ namespace Idas3.Multiplayer
             Text(new Rect(517,451,337,28),session.CountdownText,small);
         }
         private void OptionRow(float y,string name,string value,bool enabled,Action action){Fill(new Rect(516,y-3,338,1),Edge);Text(new Rect(516,y+8,155,25),name,small);if(ActionButton(new Rect(679,y,175,35),value,enabled,false,"course-option:"+name))action();}
-        private void ChangeOptions(int course,bool reverse,bool wet,bool night){if(course==4||course==11)night=true;if(course==8){wet=true;night=true;}session.SetRaceOptions(course,reverse,wet,night);}
+        private void ChangeOptions(int course,bool reverse,bool wet,bool night){if(Idas3CourseCatalog.RequiresNight(course))night=true;if(course==8){wet=true;night=true;}session.SetRaceOptions(course,reverse,wet,night);}
         private void StatusLine(){
             bool error=!string.IsNullOrEmpty(session.ErrorText);string text=error?session.ErrorText:session.StateName=="Returning"?"WAITING FOR THE OTHER DRIVER…":session.ResultText;
             if(string.IsNullOrEmpty(text)&&session.Busy&&!session.IsQuickMatching)text=session.StatusText;

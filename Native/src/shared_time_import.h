@@ -1,4 +1,5 @@
 #pragma once
+#include "imported_course_catalog.h"
 #include "local_driver_profiles.h"
 #include "local_save_slots.h"
 #include "original_record_rules.h"
@@ -13,7 +14,7 @@ inline std::string sharedPersonalImportJson(const std::filesystem::path& root){
     struct Row {TimeAttackEntry entry;int manual=-1,night=-1;};
     std::map<unsigned,Row> best;
     const auto add=[&](Row row){const auto& e=row.entry;
-        if(e.condition>=22||e.weather>1||e.car>=35||e.ticks6000<60000||e.ticks6000>=10800000||
+        if(e.condition>=supportedConditionCount||e.weather>1||e.car>=35||e.ticks6000<60000||e.ticks6000>=10800000||
            ((e.condition==16||e.condition==17)&&e.weather!=1))return;
         for(auto c:e.nameGlyphs)if(c>221)return;
         const unsigned key=(e.condition*2+e.weather)*35+e.car;

@@ -72,7 +72,6 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private bool AttractScreen => ready && (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 1u &&
         Status.frontendStage == 0 && !OnlineRace && !multiplayer.ChallengerPending;
     private bool AttractOptionsAllowed => AttractScreen && !pauseMenu.IsOpen && !multiplayerMenu.IsOpen && !raceMusicMenu.IsOpen;
-    private static readonly string[] CourseNames = {"MYOGI", "USUI", "AKAGI", "AKINA", "HAPPOGAHARA", "IROHAZAKA", "SHOMARU", "TSUCHISAKA", "AKINA SNOW"};
     private static Idas3SceneGame instance;
     private Camera outputCamera;
     private int windowedWidth = 1280, windowedHeight = 720;
@@ -249,6 +248,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
                     if(started!=1)throw new InvalidOperationException(Idas3Native.Error());RefreshScene();
                 }
             }
+            foreach(var name in new[]{"MYOGI_SPECIAL","USUI_SPECIAL","MOMIJI"}){
+                string specialPack=Path.Combine(Application.streamingAssetsPath,name);
+                if(!File.Exists(Path.Combine(specialPack,"menu.idastex")))continue;
+                if(Idas3Native.Idas3SceneRegisterImportedCourse(specialPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
+                if(enna==null)enna=new GameObject("Special Stage courses").AddComponent<IdasSpecialStageEnnaCourse>();
+            }
             if(File.Exists(Path.Combine(sadaminePack,"menu.idastex"))){
                 if(Idas3Native.Idas3SceneRegisterImportedCourse(sadaminePack)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(hakone==null)hakone=new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
@@ -312,7 +317,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             controllerDevices.Tick(Focused && !pauseMenu.IsOpen && !multiplayerMenu.IsOpen &&
                 !raceMusicMenu.IsOpen && !controlBindings.IsCapturing && !controlBindings.SuppressInput);
             pauseMenu.FrameRate = Time.unscaledDeltaTime > 0 ? 1f / Time.unscaledDeltaTime : 0;
-            pauseMenu.SetContext(OnlineRace, CanOpenPause && !OnlineRace, (Status.flags&16384u)!=0?Idas8HakoneCourse.CourseName(Status.flags):CourseNames[Mathf.Clamp(Status.course, 0, 8)], (Status.flags & 8192u) != 0);
+            pauseMenu.SetContext(OnlineRace, CanOpenPause && !OnlineRace, Idas3CourseCatalog.SceneName(Status), (Status.flags & 8192u) != 0);
             pauseMenu.FullTuneAvailable=pauseMenu.IsOpen&&!multiplayer.InLobby&&!multiplayer.Busy&&!multiplayer.ChallengerPending&&Idas3Native.Idas3SceneCanFullTune()==1;
             ExecutePauseCommands();
             if (stopping) return;

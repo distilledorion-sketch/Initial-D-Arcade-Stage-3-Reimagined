@@ -1,4 +1,5 @@
 #include "time_attack_records.h"
+#include "imported_course_catalog.h"
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
@@ -27,12 +28,16 @@ int main(){try{
     records.record({22,0,0,1500000});records.record({23,0,0,1550000});
     require(records.save(file)&&loaded.load(file),"Enna records survive save/reload");
     require(loaded.best(22,0,0).model==1500000&&loaded.best(23,0,0).model==1550000&&loaded.best(6,0,0).model==1000124&&loaded.best(20,0,0).model==1700000,"Enna directions do not overwrite Akina or Sadamine records");
-    bool rejected=false;try{records.record({24,0,0,1});}catch(const std::invalid_argument&){rejected=true;}require(rejected,"Unknown course condition rejected");
+    for(unsigned c=24;c<30;++c)for(unsigned w=0;w<2;++w)records.record({c,w,0,1800000+c*1000+w*500});
+    require(records.save(file)&&loaded.load(file),"New course records persist");
+    for(unsigned c=24;c<30;++c)for(unsigned w=0;w<2;++w)require(loaded.best(c,w,0).model==1800000+c*1000+w*500,"Special Stage course/direction/weather remains separate");
+    require(loaded.best(6,0,0).model==1000124&&loaded.best(22,0,0).model==1500000,"Existing records survive the new maps");
+    bool rejected=false;try{records.record({supportedConditionCount,0,0,1});}catch(const std::invalid_argument&){rejected=true;}require(rejected,"Unknown course condition rejected");
     TimeAttackRecords full;
-    for(unsigned condition=0;condition<24;++condition)for(unsigned weather=0;weather<2;++weather){
+    for(unsigned condition=0;condition<supportedConditionCount;++condition)for(unsigned weather=0;weather<2;++weather){
         for(unsigned place=0;place<10;++place)full.record({condition,weather,0,100000+place});
         for(unsigned car=1;car<35;++car)full.record({condition,weather,car,200000+car});
     }
-    require(full.entries().size()==2112&&full.save(file)&&loaded.load(file)&&loaded.entries().size()==2112,"Full retention across all twelve courses survives reload");
+    require(full.entries().size()==supportedConditionCount*2*44&&full.save(file)&&loaded.load(file)&&loaded.entries().size()==supportedConditionCount*2*44,"Full retention across all supported courses survives reload");
     std::filesystem::remove(file);std::cout<<"Native records: exact timestamps, source partitions, bounded retention and persistence pass.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

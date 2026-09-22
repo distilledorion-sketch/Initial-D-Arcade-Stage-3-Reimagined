@@ -8,7 +8,7 @@ const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').r
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
 const secret='a'.repeat(64),device='b'.repeat(64);
-beforeEach(async()=>{db?.close();db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_imported_times.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0003_replays.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0004_replay_chunks.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0005_enna_skyline.sql',import.meta.url),'utf8'));const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v));},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {meta:r};}});env={RULESET:'d3-community-v1',ADMIN_KEY_SHA256:await sha(secret),DB:{prepare:wrap,async batch(queries){db.exec('BEGIN');try{const out=[];for(const q of queries)out.push(await q.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}}};for(const key of ['PUBLIC_LIMIT','WRITE_LIMIT','AUTH_LIMIT'])env[key]={async limit(){return {success:true};}};});
+beforeEach(async()=>{db?.close();db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_imported_times.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0003_replays.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0004_replay_chunks.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0005_enna_skyline.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0006_special_stage_courses.sql',import.meta.url),'utf8'));const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v));},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {meta:r};}});env={RULESET:'d3-community-v1',ADMIN_KEY_SHA256:await sha(secret),DB:{prepare:wrap,async batch(queries){db.exec('BEGIN');try{const out=[];for(const q of queries)out.push(await q.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}}};for(const key of ['PUBLIC_LIMIT','WRITE_LIMIT','AUTH_LIMIT'])env[key]={async limit(){return {success:true};}};});
 async function call(path,data,headers={}){return worker.fetch(new Request('https://example.test'+path,{method:data?'POST':'GET',headers:{...(data?{'Content-Type':'application/json'}:{}),...headers},body:data?JSON.stringify(data):undefined}),env);}
 const run=(extra={})=>({id:crypto.randomUUID(),ruleset:'d3-community-v1',epoch:1,condition:0,weather:0,car:0,ticks6000:1200000,nameGlyphs:[162,163,164,221,221],splits:[300000,600000,900000,1200000],manual:1,night:0,points:999999,build:'0.3.95-community-replays.1',...extra});
 const auth=()=>({Authorization:'Bearer '+device});
@@ -30,11 +30,26 @@ test('Enna downhill/uphill dry/wet upload with replays and appear on separate bo
  }
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();
  assert.deepEqual(snapshot.courses,COURSES);assert.equal(snapshot.entries.length,4);
- assert.equal((await call('/api/v1/board?condition=24&weather=0')).status,400);
- assert.equal((await uploadReplay(run({condition:24}))).status,400);
+ assert.equal((await call('/api/v1/board?condition=30&weather=0')).status,400);
+ assert.equal((await uploadReplay(run({condition:30}))).status,400);
  assert.equal((await uploadReplay(run({condition:22,build:'0.3.95-enna-preview.1'}))).status,409);
  assert.equal((await call('/api/v1/runs',run({condition:22}),auth())).status,426);
  assert.equal((await uploadReplay(run({condition:22,imported:1}))).status,400);
+});
+test('Special Stage identities preserve six directions and dry/wet boards and replay metadata',async()=>{
+ assert.deepEqual(COURSES.slice(12),['Myogi (Special Stage)','Usui (Special Stage)','Momiji Line']);
+ await call('/api/v1/register',{token:device});
+ for(let condition=24;condition<30;++condition)for(const weather of [0,1]){
+  const x=run({condition,weather,night:1,build:'0.3.95-community-replays.25'});
+  assert.equal((await uploadReplay(x)).status,200);
+  const board=await(await call(`/api/v1/board?condition=${condition}&weather=${weather}`)).json();
+  assert.equal(board.entries.length,1);assert.equal(board.entries[0].id,x.id);
+  const download=await call('/api/v1/replay?id='+x.id);assert.equal(download.status,200);
+  const bytes=new Uint8Array(await download.arrayBuffer()),n=new DataView(bytes.buffer).getUint32(0,true);
+  const meta=JSON.parse(new TextDecoder().decode(bytes.subarray(4,4+n)));
+  assert.equal(meta.condition,condition);assert.equal(meta.weather,weather);
+ }
+ for(const condition of [0,1,2,3,4,5,8,9,12,13])assert.equal((await(await call(`/api/v1/board?condition=${condition}&weather=0`)).json()).entries.length,0);
 });
 test('personal battle and incomplete recordings cannot upload',async()=>{
  await call('/api/v1/register',{token:device});

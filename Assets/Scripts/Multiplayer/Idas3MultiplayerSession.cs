@@ -12,8 +12,8 @@ namespace Idas3.Multiplayer
         public readonly int Course;
         public readonly bool Reverse,Wet,Night;
         public Idas3RaceChoice(int course,bool reverse,bool wet,bool night) {
-            if(course<0||course>11)throw new ArgumentOutOfRangeException(nameof(course));
-            Course=course;Reverse=reverse;Wet=wet||course==8;Night=night||course==4||course==8||course==11;
+            if(course<0||course>=Idas3CourseCatalog.Count)throw new ArgumentOutOfRangeException(nameof(course));
+            Course=course;Reverse=reverse;Wet=wet||course==8;Night=night||Idas3CourseCatalog.RequiresNight(course);
         }
         public bool Equals(Idas3RaceChoice other)=>Course==other.Course&&Reverse==other.Reverse&&Wet==other.Wet&&Night==other.Night;
         public override bool Equals(object other)=>other is Idas3RaceChoice choice&&Equals(choice);
@@ -208,7 +208,7 @@ namespace Idas3.Multiplayer
         public Idas3CarSnapshot RemoteSnapshot { get; private set; }
         public IReadOnlyList<Idas3Room> Rooms => transport?.Rooms ?? emptyRooms;
         public bool EnnaAvailable { get; } = File.Exists(Path.Combine(Application.streamingAssetsPath,"ENNA/menu.idastex"));
-        public int AvailableCourseCount=>EnnaAvailable?12:11;
+        public int AvailableCourseCount { get {int count=0;for(int i=0;i<Idas3CourseCatalog.Count;++i)if(Idas3CourseCatalog.Available(i))++count;return count;} }
         public IReadOnlyList<Idas3PlayerInfo> Players { get { UpdatePlayers(); return players; } }
         public static readonly string[] CarNames = {
             "AE86 TRUENO","AE86 LEVIN","AE85 LEVIN","SW20 MR2","ZZW30 MR-S","SXE10 ALTEZZA","ST205 CELICA",
@@ -309,8 +309,8 @@ namespace Idas3.Multiplayer
         }
         public void SetRaceOptions(int course, bool reverse, bool wet, bool night)
         {
-            if (nativeRace || HasCourseDraw || Busy || course < 0 || course > 11) return;
-            if(course==11&&!EnnaAvailable)return;
+            if (nativeRace || HasCourseDraw || Busy || course < 0 || course >= Idas3CourseCatalog.Count) return;
+            if(!Idas3CourseCatalog.Available(course))return;
             var choice=new Idas3RaceChoice(course,reverse,wet,night);
             if(LocalChoice.Equals(choice))return;
             LocalChoice=choice;localReady=remoteReady=false;++localPlayerSerial;localSelectionSerial=localPlayerSerial;
@@ -333,7 +333,7 @@ namespace Idas3.Multiplayer
         static Idas3RaceChoice ReadChoice(BinaryReader r)
         {
             int course=r.ReadInt32(); bool reverse=r.ReadBoolean(),wet=r.ReadBoolean(),night=r.ReadBoolean();
-            Require(course>=0 && course<=11 && ((course!=4&&course!=11) || night) && (course!=8 || wet&&night),"Invalid course options.");
+            Require(course>=0 && course<Idas3CourseCatalog.Count && (!Idas3CourseCatalog.RequiresNight(course) || night) && (course!=8 || wet&&night),"Invalid course options.");
             return new Idas3RaceChoice(course,reverse,wet,night);
         }
         void PeerChanged()
@@ -356,17 +356,21 @@ namespace Idas3.Multiplayer
                 using(var file=File.OpenRead(path)) compatibility="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
                 using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) compatibility+="-"+Convert.ToBase64String(hash.ComputeHash(file));
             }
-            compatibility+="-enna-"+EnnaFingerprint(Path.Combine(Application.streamingAssetsPath,"ENNA"));
+            for(int course=11;course<Idas3CourseCatalog.Count;++course)
+                compatibility+="-"+course+"-"+SpecialStageFingerprint(Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12);
             compatibility+=ExperimentalAuthority?"-authority1":"-pose1";
             return compatibility;
         }
-        internal static string EnnaFingerprint(string folder)
+        internal static string EnnaFingerprint(string folder)=>SpecialStageFingerprint(folder,"enna",false);
+        internal static string SpecialStageFingerprint(string folder,string slug,bool scaledTimers)
         {
             if(!File.Exists(Path.Combine(folder,"menu.idastex")))return "absent";
             // Hash only simulation inputs, once per handshake. Two peers must
             // not run different paths/collision meshes under identical code.
             using(var hash=SHA256.Create())using(var combined=new MemoryStream()){
-                foreach(string name in new[]{"course.id","enna_path.bin","enna_path_l.bin","enna_path_r.bin","race-markers.bin","collision-0.rcl","collision-1.rcl"}){
+                var names=new List<string>{"course.id",slug+"_path.bin",slug+"_path_l.bin",slug+"_path_r.bin","race-markers.bin","collision-0.rcl","collision-1.rcl"};
+                if(scaledTimers)names.Add("timer-scale.bin");
+                foreach(string name in names){
                     using(var file=File.OpenRead(Path.Combine(folder,name))){var part=hash.ComputeHash(file);combined.Write(part,0,part.Length);}
                 }
                 return Convert.ToBase64String(hash.ComputeHash(combined.ToArray()));

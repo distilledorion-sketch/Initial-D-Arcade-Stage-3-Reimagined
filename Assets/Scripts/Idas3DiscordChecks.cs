@@ -11,9 +11,19 @@ internal static class Idas3DiscordChecks
         var ta=Idas3DiscordPresence.Describe(s,status,false,false);
         check(ta.details=="Time Attack · Akina Downhill"&&ta.state.StartsWith("Night / Wet"),"Time Attack course and conditions");
         check(ta.elapsedSeconds==134&&ta.timed,"Elapsed clock uses native race time");
-        foreach(int course in new[]{0,1,2,3,4,5,6,7,8,9,10})foreach(int direction in new[]{0,1}){
+        string[] courseNames={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow","Hakone","Sadamine","Enna Skyline","Myogi (Special Stage)","Usui (Special Stage)","Momiji Line"};
+        string[] forward={"Counterclockwise","Counterclockwise","Downhill","Downhill","Outbound","Downhill","Outbound","Outbound","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill"};
+        string[] reverse={"Clockwise","Clockwise","Uphill","Uphill","Inbound","Reverse","Inbound","Inbound","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill"};
+        check(courseNames.Length==Idas3CourseCatalog.Count,"Presence checks cover every course");
+        for(int course=0;course<courseNames.Length;++course)foreach(int direction in new[]{0,1}){
             s.condition=course*2+direction;var d=Idas3DiscordPresence.Describe(s,status,false,false);
-            check(d.details.Contains(Idas3ReplayData.Courses[course]),"Course "+course+" direction "+direction);
+            string expected=courseNames[course]+" "+(direction==0?forward[course]:reverse[course]);
+            check(d.details=="Time Attack · "+expected,"Course "+course+" direction "+direction);
+            var r=Idas3DiscordPresence.DescribeReplay(new Idas3ReplayData.Details{condition=s.condition,mode=0});
+            check(r.state==expected+" · Day / Dry · Time Attack","Replay course "+course+" direction "+direction);
+        }
+        foreach(int condition in new[]{-1,Idas3CourseCatalog.ConditionCount}){
+            s.condition=condition;check(Idas3DiscordPresence.Describe(s,status,false,false).details=="Time Attack · Choosing a course","Invalid course "+condition);
         }
         s.condition=0;check(Idas3DiscordPresence.Describe(s,status,false,false).details.EndsWith("Counterclockwise"),"Myogi forward direction");
         s.condition=19;check(Idas3DiscordPresence.Describe(s,status,false,false).details.EndsWith("Uphill"),"Hakone reverse direction");

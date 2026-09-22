@@ -111,7 +111,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
                 if(Idas3Native.Idas3SceneSetMapZoom(audioOptions.minimapZoom)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetMapSize(audioOptions.minimapSize)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 audioOutput=gameObject.AddComponent<Idas3UnityAudio>();audioOutput.Initialize();
-                foreach (var pack in new[] { "HAKONE", "SADAMINE", "ENNA" })
+                foreach (var pack in Idas3CourseCatalog.Packs)
                 {
                     string root = Path.Combine(Application.streamingAssetsPath, pack);
                     if (File.Exists(Path.Combine(root, "menu.idastex")) && Idas3Native.Idas3SceneRegisterImportedCourse(root) != 1) throw new InvalidOperationException(Idas3Native.Error());

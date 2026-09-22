@@ -7,7 +7,7 @@ Cloudflare Workers + D1 backend for Time Attack rankings, replay downloads and m
 Use Node.js with `node:sqlite` support (Node 22.13+):
 
 ```powershell
-node --test test/worker.test.mjs
+node --test test/*.test.mjs
 ```
 
 The tests use an in-memory database and never submit to the public service.
@@ -33,6 +33,7 @@ The checked-in configuration has a placeholder database ID. Production credentia
 - Moderation supports hiding/restoring runs and blocking/unblocking installations.
 - IP addresses are used for rate limiting, not stored with submissions. Worker observability is disabled in the supplied configuration.
 - Client-reported telemetry and build versions are not authoritative anti-cheat verification.
+- Course IDs 12–14 identify Myogi (Special Stage), Usui (Special Stage) and Momiji Line. Their directions use conditions 24–29; original Myogi and Usui records keep their existing IDs. Migration 0006 expands the condition constraint while preserving runs, replays and replay chunks. Apply it once when upgrading from 0005; do not rerun the season reset.
 
 The service has no Steam-account linking requirement. Personal replay archives are separate from the Time Attack upload queue and are not uploaded automatically.
 

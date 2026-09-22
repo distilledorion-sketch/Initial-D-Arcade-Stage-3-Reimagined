@@ -15,7 +15,9 @@ JOIN DISCORD: https://discord.gg/mJCZ5AvBb
 
 The download includes the runtime assets. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Current version:** `0.3.95-community-replays.24` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.25` · **Platform:** Windows x64 / Direct3D 11
+
+**Latest update:** `0.3.95-community-replays.25` adds the three Special Stage layouts below, with leaderboard and replay support, corrected menu maps and pause-screen names, and the Usui scenery fix.
 
 Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcade Stage 3**, the game logo, and your current race, menu, or replay activity. Toggle it under **Options > Gameplay > Discord Rich Presence**.
 
@@ -23,8 +25,8 @@ Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcad
 
 - GitHub update checks with small changed-file patches, full repair, installation and restart.
 - Time Attack, Legend of the Streets, Bunta Challenge and online battles.
-- Original course and car selections, plus Hakone, Sadamine and Enna Skyline.
-- Enna Skyline Time Attack rankings and online battles, with downhill/uphill and dry/wet options at night.
+- Original course and car selections, plus Hakone, Sadamine, Enna Skyline, Momiji Line and the longer Special Stage layouts of Myogi and Usui.
+- Special Stage courses support Time Attack rankings, replays and online battles, with downhill/uphill and dry/wet options at night.
 - Day, night and weather conditions supported by each course.
 - Controller, keyboard and supported wheel input.
 - Personal saves, progression, tuning and a Full Tune option.
@@ -54,7 +56,7 @@ The repository includes the runtime assets in `Native/data` and `RuntimeAssets`,
 | `Assets` | Unity scripts, shaders, resources, scenes and native plugins |
 | `Native/src` | Native gameplay, asset loading, menus, audio and renderer bridge |
 | `Native/data` | Original runtime data used by the game |
-| `RuntimeAssets` | Hakone, Sadamine and Enna Skyline runtime data |
+| `RuntimeAssets` | Six additional course packs, including four Special Stage layouts |
 | `Native/tests` | Native regression tests and isolated gameplay fixtures |
 | `Tools` | Local build, staging and asset utilities |
 | `Leaderboard` | Community leaderboard service, migrations and tests |

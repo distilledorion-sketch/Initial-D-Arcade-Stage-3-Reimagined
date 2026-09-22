@@ -33,7 +33,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.24";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.25";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -196,6 +196,26 @@ public static class Idas3Build
                 .Replace("LocalLow\\Chris\\Initial D Unity\\", "LocalLow\\Chris\\Initial D Unity Test\\"));
     }
 
+    public static void BuildSpecialStagePreview()
+    {
+        Configure();
+        string product=PlayerSettings.productName;
+        try {
+            PlayerSettings.productName="Initial D Course Preview";
+            AssetDatabase.SaveAssets();
+            BuildPlayer("Builds/SpecialStagePreview/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");
+            File.WriteAllText("Builds/SpecialStagePreview/READ ME.txt",
+                "LOCAL SPECIAL STAGE PREVIEW - NOT PUBLISHED\n"+
+                "Uses separate saves under Initial D Course Preview.\n"+
+                "Select Time Attack, then Myogi (Special Stage), Usui (Special Stage) or Momiji Line.\n"+
+                "Both directions, dry/wet and night scenery are available. Online tests require two copies of this build.\n"+
+                "These courses have community leaderboard boards; preview save data remains separate from the normal game.\n");
+        } finally {
+            PlayerSettings.productName=product;
+            AssetDatabase.SaveAssets();
+        }
+    }
+
     public static void BuildInputFixPlayer()
     {
         Configure();var product=PlayerSettings.productName;var version=PlayerSettings.bundleVersion;
@@ -238,23 +258,13 @@ public static class Idas3Build
             throw new InvalidOperationException("Unity build failed: " + report.summary.result);
         // Keep the imported course beside the original runtime data, so the
         // shipped player does not depend on the experimental build or source drive.
-        string hakoneSource=Path.Combine(project,"RuntimeAssets/HAKONE");
-        string hakoneDestination=Path.Combine(Path.GetDirectoryName(output),"InitialDUnity_Data/StreamingAssets/HAKONE");
-        foreach(string file in Directory.GetFiles(hakoneSource,"*",SearchOption.AllDirectories)){
-            string target=Path.Combine(hakoneDestination,Path.GetRelativePath(hakoneSource,file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
-        }
-        string sadamineSource=Path.Combine(project,"RuntimeAssets/SADAMINE");
-        string sadamineDestination=Path.Combine(Path.GetDirectoryName(output),"InitialDUnity_Data/StreamingAssets/SADAMINE");
-        foreach(string file in Directory.GetFiles(sadamineSource,"*",SearchOption.AllDirectories)){
-            string target=Path.Combine(sadamineDestination,Path.GetRelativePath(sadamineSource,file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
-        }
-        string ennaSource=Path.Combine(project,"RuntimeAssets/ENNA");
-        string ennaDestination=Path.Combine(Path.GetDirectoryName(output),"InitialDUnity_Data/StreamingAssets/ENNA");
-        foreach(string file in Directory.GetFiles(ennaSource,"*",SearchOption.AllDirectories)){
-            string target=Path.Combine(ennaDestination,Path.GetRelativePath(ennaSource,file));
-            Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
+        foreach(string pack in Idas3CourseCatalog.Packs){
+            string source=Path.Combine(project,"RuntimeAssets",pack);
+            string destinationPack=Path.Combine(Path.GetDirectoryName(output),"InitialDUnity_Data/StreamingAssets",pack);
+            foreach(string file in Directory.GetFiles(source,"*",SearchOption.AllDirectories)){
+                string target=Path.Combine(destinationPack,Path.GetRelativePath(source,file));
+                Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
+            }
         }
         // Post-build staging avoids importing 14,376 native assets into Unity.
         string steamApi = Path.Combine(Path.GetDirectoryName(output), "InitialDUnity_Data/Plugins/x86_64/steam_api64.dll");

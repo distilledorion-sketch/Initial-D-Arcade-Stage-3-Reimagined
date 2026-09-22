@@ -22,7 +22,7 @@ public sealed class Idas3ReplayData
     public Details Metadata { get; private set; }
     public Pose[] Frames { get; private set; }
     public double Duration => Metadata.ticks6000 / 6000.0;
-    public static readonly string[] Courses = { "Myogi", "Usui", "Akagi", "Akina", "Happogahara", "Irohazaka", "Shomaru", "Tsuchisaka", "Akina Snow", "Hakone", "Sadamine", "Enna Skyline" };
+    public static readonly string[] Courses = Idas3CourseCatalog.Names;
     static bool Finite(float x) => !float.IsNaN(x) && !float.IsInfinity(x);
     public static Idas3ReplayData Load(string path)
     {
@@ -39,7 +39,7 @@ public sealed class Idas3ReplayData
         int jsonLength = reader.ReadInt32();
         if (jsonLength < 2 || jsonLength > 8192 || jsonLength + 20 > data.Length) throw new InvalidDataException("Invalid replay header.");
         var metadata = JsonUtility.FromJson<Details>(new UTF8Encoding(false, true).GetString(reader.ReadBytes(jsonLength)));
-        if (metadata == null || metadata.condition < 0 || metadata.condition > 23 || metadata.car < 0 || metadata.car > 34 ||
+        if (metadata == null || metadata.condition < 0 || metadata.condition >= Idas3CourseCatalog.ConditionCount || metadata.car < 0 || metadata.car > 34 ||
             metadata.weather < 0 || metadata.weather > 1 || metadata.night < 0 || metadata.night > 1 || metadata.manual < 0 || metadata.manual > 1 ||
             metadata.ticks6000 < 100 || metadata.ticks6000 >= 10800000 || metadata.mode<0||metadata.mode>2||metadata.outcome<0||metadata.outcome>2)
             throw new InvalidDataException("Invalid replay course, car or finish time.");

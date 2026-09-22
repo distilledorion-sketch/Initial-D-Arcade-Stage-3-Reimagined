@@ -114,7 +114,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     }
     public static bool Uploadable(Run r)=>Valid(r)&&r.imported==0&&r.replayVersion==2&&r.ruleset==Ruleset&&r.epoch>=FirstReplaySeason&&SupportedBuild(r.build)&&Guid.TryParseExact(r.id,"D",out _);
     public static bool Valid(Run r){
-        if(r==null||r.condition<0||r.condition>23||r.weather<0||r.weather>1||r.car<0||r.car>34||r.ticks6000<60000||r.ticks6000>=10800000||r.nameGlyphs==null||r.nameGlyphs.Length!=5||r.splits==null||r.splits.Length!=4||r.imported<0||r.imported>1||r.manual<(r.imported==1?-1:0)||r.manual>1||r.night<(r.imported==1?-1:0)||r.night>1||r.points<(r.imported==1?-1:0)||r.points>999999)return false;
+        if(r==null||r.condition<0||r.condition>=Idas3CourseCatalog.ConditionCount||r.weather<0||r.weather>1||r.car<0||r.car>34||r.ticks6000<60000||r.ticks6000>=10800000||r.nameGlyphs==null||r.nameGlyphs.Length!=5||r.splits==null||r.splits.Length!=4||r.imported<0||r.imported>1||r.manual<(r.imported==1?-1:0)||r.manual>1||r.night<(r.imported==1?-1:0)||r.night>1||r.points<(r.imported==1?-1:0)||r.points>999999)return false;
         foreach(int n in r.nameGlyphs)if(n<0||n>221)return false;
         int prior=0,count=0;bool ended=false;foreach(int n in r.splits){if(n==0){ended=true;continue;}if(ended||n<=prior||n>r.ticks6000)return false;prior=n;count++;}
         return (r.imported==1&&count==0)||(count>=2&&prior==r.ticks6000);

@@ -18,16 +18,18 @@ $shade=[Drawing.SolidBrush]::new([Drawing.Color]::FromArgb(35,0,0,0));$g.FillRec
 TextPath $g 'Enna Skyline' 56 22 38 ([Drawing.Color]::Black) ([Drawing.Color]::White) 4
 $g.DrawLine([Drawing.Pens]::White,0,111,397,111)
 $r=[IO.BinaryReader]::new([IO.File]::OpenRead((Join-Path $base 'road.bin')));$null=$r.ReadBytes(4);$count=$r.ReadInt32();$points=@()
-for($i=0;$i -lt $count;$i++){ $x=$r.ReadSingle();$null=$r.ReadSingle();$z=$r.ReadSingle();if($i -ge 75 -and $i -le 1202 -and ($i%8 -eq 2 -or $i -eq 75 -or $i -eq 1202)){$points+=,[double[]]@($x,-$z)} };$r.Dispose()
+# Match the original Special Stage course-select atlas: screen axes follow world X/Z.
+for($i=0;$i -lt $count;$i++){ $x=$r.ReadSingle();$null=$r.ReadSingle();$z=$r.ReadSingle();if($i -ge 75 -and $i -le 1202 -and ($i%8 -eq 2 -or $i -eq 75 -or $i -eq 1202)){$points+=,[double[]]@($x,$z)} };$r.Dispose()
 $minX=($points|ForEach-Object {$_[0]}|Measure-Object -Minimum).Minimum;$maxX=($points|ForEach-Object {$_[0]}|Measure-Object -Maximum).Maximum
 $minY=($points|ForEach-Object {$_[1]}|Measure-Object -Minimum).Minimum;$maxY=($points|ForEach-Object {$_[1]}|Measure-Object -Maximum).Maximum
 $scale=[Math]::Min(165/($maxX-$minX),228/($maxY-$minY))
-$line=[Drawing.PointF[]]@($points|ForEach-Object {[Drawing.PointF]::new((435+($maxX-$_[0])*$scale),(42+($_[1]-$minY)*$scale))})
+$line=[Drawing.PointF[]]@($points|ForEach-Object {[Drawing.PointF]::new((435+($_[0]-$minX)*$scale),(42+($_[1]-$minY)*$scale))})
 $pen=[Drawing.Pen]::new([Drawing.Color]::FromArgb(150,0,0,0),5);$g.DrawLines($pen,$line);$pen.Dispose()
 $pen=[Drawing.Pen]::new([Drawing.Color]::White,2);$g.DrawLines($pen,$line);$pen.Dispose()
 foreach($end in @(0,($line.Length-1))){$point=$line[$end];$g.FillEllipse([Drawing.Brushes]::White,($point.X-3),($point.Y-3),6,6)}
 TextPath $g 'DOWNHILL' 14 ([Math]::Min(543,$line[0].X-33)) ([Math]::Max(8,$line[0].Y-20)) ([Drawing.Color]::White) ([Drawing.Color]::Black) 2
-TextPath $g 'UPHILL' 14 ([Math]::Min(550,$line[-1].X-22)) ([Math]::Min(291,$line[-1].Y+5)) ([Drawing.Color]::White) ([Drawing.Color]::Black) 2
+# Keep this label clear of the bend immediately to the endpoint's right.
+TextPath $g 'UPHILL' 14 400 ([Math]::Min(275,$line[-1].Y+27)) ([Drawing.Color]::White) ([Drawing.Color]::Black) 2
 $g.DrawLine([Drawing.Pens]::White,435,292,[single](435+1000*$scale),292)
 TextPath $g '1 km' 13 452 294 ([Drawing.Color]::White) ([Drawing.Color]::Black) 2
 $g.Dispose();$card.Save((Join-Path $PreviewDirectory 'enna-menu-card.png'))

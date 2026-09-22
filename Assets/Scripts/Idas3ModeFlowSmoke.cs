@@ -78,6 +78,45 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-release-presence-check")>=0)Idas3DiscordChecks.Run(Check);
+            for(int course=0;course<9;++course)
+                Check(Idas3CourseCatalog.SceneName(new Idas3Native.Status{course=course,flags=128u|131072u})==Idas3CourseCatalog.Names[course],"Original course pause identity");
+            int[] fixtures={308,311,320,323,332,335,284,288,260,261,230,231,250};
+            string[] names={"Myogi (Special Stage)","Myogi (Special Stage)","Usui (Special Stage)","Usui (Special Stage)",
+                "Momiji Line","Momiji Line","Enna Skyline","Enna Skyline","Hakone","Hakone","Sadamine","Sadamine","Akina"};
+            var field=typeof(Idas3PauseMenu).GetField("courseName",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            for(int i=0;i<fixtures.Length;++i){
+                host.PauseMenu.SetOpen(false);frozen=true;
+                Check(Idas3SceneModeFlowFixture(fixtures[i])==1,"Pause course fixture");
+                typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
+                yield return Frames(3);host.PauseMenu.SetOpen(true);yield return Frames(2);
+                Check(host.PauseMenu.IsOpen,"Course pause opens");
+                Check((string)field.GetValue(host.PauseMenu)==names[i],"Pause header uses actual map: "+names[i]);
+                var status=host.Status;status.flags|=128u|131072u;
+                Check(Idas3CourseCatalog.SceneName(status)==names[i],"Online/wet flags preserve course name");
+                if(i%2==0&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")<0)yield return Capture("pause-course-"+fixtures[i]);
+            }
+            Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-special-stage-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            for(int courseId=0;courseId<Idas3CourseCatalog.Count;++courseId)for(int direction=0;direction<2;++direction){
+                var metadata=new Idas3ReplayData.Details{condition=courseId*2+direction,playerName="TEST",mode=0,night=1,weather=0};
+                string stem=Idas3ReplayLibrary.FileStem(metadata);
+                Check(stem.Contains("_"+Idas3CourseCatalog.DirectionToken(courseId,direction!=0)+"_"),"Every supported replay filename has a direction");
+            }
+            for(int fixture=308;fixture<=343;++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Special Stage fixture: "+Idas3Native.Error());
+                typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
+                yield return Frames(3);
+                var course=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();
+                Check(course!=null&&course.LoadedCourseId==12+(fixture-308)/12,"Correct Special Stage scenery loaded");course.VerifyPresentation();
+                yield return Capture("special-stage-"+fixture);
+            }
+            Finish(true,null);yield break;
+        }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-selection-defaults-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
             int[] stages={7,8,9,9,7,8,7,8},conditions={0,0,0,7,6,4,4,4};
@@ -697,7 +736,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         var cameras=new List<Camera>();foreach(var item in Resources.FindObjectsOfTypeAll<Camera>())if(item!=null&&item.enabled&&item.gameObject.activeInHierarchy&&item.targetTexture==target)cameras.Add(item);
           cameras.Sort((a,b)=>a.depth.CompareTo(b.depth));foreach(var item in cameras)item.Render();
           Idas3PauseMenu captureMenu=null;
-          if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-full-tune-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-player-replays-check")>=0){
+          if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-full-tune-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-player-replays-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0){
               captureMenu=(Idas3PauseMenu)typeof(Idas3SceneGame).GetField("pauseMenu",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(host);
               if(captureMenu.IsOpen){camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();captureMenu.RequestDiagnosticCapture(target);
                   yield return Until(()=>captureMenu.DiagnosticCaptureReady,300,"Gameplay menu repaint (open="+captureMenu.IsOpen+", active="+captureMenu.isActiveAndEnabled+")");yield return new WaitForEndOfFrame();}
@@ -744,7 +783,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?
+            "Pause headers through real native race fixtures and Unity menus for every imported course in both directions, followed by an original course; online/wet identity flags checked without a network peer. Isolated saves.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0?
             "Controlled Akina/Enna before/after race captures, recovered smoke texture binding and full GPU alpha boundary, plus1800 frames of original driving with real slip/road contacts and unchanged320-word physics state. No physical input device or network peer used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-performance-options-check")>=0?
             "Performance options migration, persistence, display rollback, controller navigation, imported foliage LOD and native mirror/weather geometry with unchanged race ticks/car/profile/driving RNG/wet state. Isolated fixtures, not a low-end hardware FPS benchmark.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-import-times-check")>=0?
             "Personal import from isolated multi-slot and legacy fixtures, fastest-record deduplication, unknown metadata, exclusion of aggregate-only rows, read-only saves, controller action, live HTTPS uploads, persistent acknowledgments and sharing-off behavior. Disposable remote times require cleanup.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-check")>=0?

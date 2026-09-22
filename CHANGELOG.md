@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.95-community-replays.25 - September 22, 2026
+
+- Added Momiji Line and the longer Myogi and Usui layouts from Special Stage, using their extracted roads, collision, scenery, trees, spectators and checkpoints.
+- Matched their handling to similar Arcade Stage 3 courses: Momiji Line uses Akagi, Myogi (Special Stage) uses Shomaru, and Usui (Special Stage) uses Happogahara. Direction and dry/wet handling variants are preserved.
+- Added downhill/uphill and dry/wet Time Attack and online races. These Special Stage packs use their available night scenery.
+- Added separate personal records, community leaderboard boards, replay recordings and playback for all three layouts. Existing records and replay downloads are retained.
+- Added course-selection artwork and race titles. Section timers scale up for longer sections relative to the handling donor.
+- Fixed a forest backdrop appearing across the road on Usui (Special Stage) by restoring the course's original scenery visibility ranges in both directions.
+- Corrected the course-selection orientation of Enna Skyline, Myogi (Special Stage), Usui (Special Stage) and Momiji Line to match the original Special Stage maps, with direction labels at the correct endpoints.
+- Fixed the pause and race-options headers calling Enna Skyline and the new Special Stage maps Hakone.
+- Fixed Discord activity and replay descriptions for the new Special Stage courses.
+- Preserved the existing Myogi, Usui, Enna Skyline, Legend and Bunta course selections and behavior.
+
 ## 0.3.95-community-replays.24 - September 22, 2026
 
 - New Time Attack course setups default to the left route, Dry and Day where available, instead of inheriting previous race conditions.

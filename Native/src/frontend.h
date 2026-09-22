@@ -1,5 +1,6 @@
 #pragma once
 #include "native_assets.h"
+#include "imported_course_catalog.h"
 #include "time_attack_records.h"
 #include <functional>
 #include "original_mode_menu.h"
@@ -75,7 +76,7 @@ public:
     original::OriginalBuntaEligibility buntaEligibility()const {return original::originalBuntaEligibility(battleProfile);}
     bool unsupportedModeSelected()const {return stage==FrontendStage::Mode && gameMode==original::OriginalGameMode::BuntaChallenge && buntaEligibility()!=original::OriginalBuntaEligibility::Eligible;}
     static constexpr int hakoneCourse=9,sadamineCourse=10,ennaCourse=11;
-    static bool isImportedCourse(int value){return value==hakoneCourse||value==sadamineCourse||value==ennaCourse;}
+    static bool isImportedCourse(int value){return isImportedCourseId(value);}
     void enableHakoneCourse(const std::filesystem::path& root,int id=hakoneCourse);
     std::vector<int> courseChoices()const;
     void initialize(const std::filesystem::path& rootPath,bool preloadArtwork=false);
@@ -144,9 +145,9 @@ public:
     static std::vector<int> carsForMake(int makeIndex);
 private:
     std::uint32_t choiceFadeArgb()const;
-    NativeTextureBank hakoneArtwork,sadamineArtwork,ennaArtwork;
-    NativeTextureBank& importedArtwork(int id){return id==ennaCourse?ennaArtwork:id==sadamineCourse?sadamineArtwork:hakoneArtwork;}
-    const NativeTextureBank& importedArtwork(int id)const{return id==ennaCourse?ennaArtwork:id==sadamineCourse?sadamineArtwork:hakoneArtwork;}
+    std::array<NativeTextureBank,importedCourseDefinitions.size()> importedArtworks;
+    NativeTextureBank& importedArtwork(int id){return importedArtworks.at(unsigned(id-hakoneCourse));}
+    const NativeTextureBank& importedArtwork(int id)const{return importedArtworks.at(unsigned(id-hakoneCourse));}
     void drawHakoneBackdrop(int width,int height);
     struct Bank { NativeModel model; NativeTextureBank textures; };
     std::filesystem::path projectRoot,assetRoot;

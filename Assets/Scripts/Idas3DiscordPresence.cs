@@ -125,9 +125,17 @@ public sealed class Idas3DiscordPresence : MonoBehaviour
     static string Course(int condition)
     {
         int course=condition/2;if(condition<0||course>=Idas3ReplayData.Courses.Length)return "Choosing a course";
-        string[] forward={"Counterclockwise","Counterclockwise","Downhill","Downhill","Outbound","Downhill","Outbound","Outbound","Downhill","Downhill","Downhill","Downhill"};
-        string[] reverse={"Clockwise","Clockwise","Uphill","Uphill","Inbound","Reverse","Inbound","Inbound","Uphill","Uphill","Uphill","Uphill"};
-        return Idas3ReplayData.Courses[course]+" "+((condition&1)==0?forward[course]:reverse[course]);
+        string direction;
+        switch(Idas3CourseCatalog.DirectionToken(course,(condition&1)!=0)){
+            case "ccw":direction="Counterclockwise";break;
+            case "cw":direction="Clockwise";break;
+            case "ob":direction="Outbound";break;
+            case "ib":direction="Inbound";break;
+            case "rev":direction="Reverse";break;
+            case "uh":direction="Uphill";break;
+            default:direction="Downhill";break;
+        }
+        return Idas3ReplayData.Courses[course]+" "+direction;
     }
     void Disconnect()
     {

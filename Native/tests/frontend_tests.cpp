@@ -161,7 +161,7 @@ int main(int argc,char**argv) {
             snow.confirm();snow.advance(31./60.);
             require(!snow.reverse&&!snow.wet&&!snow.night,"Snow browsing contaminated another course's defaults");
         }
-        for(int forcedCourse:{4,8,Frontend::ennaCourse}) {
+        for(int forcedCourse:{4,8,Frontend::ennaCourse,12,13,14}) {
             Frontend restricted;restricted.course=forcedCourse;restricted.night=false;
             restricted.stage=forcedCourse==8?FrontendStage::Route:FrontendStage::Weather;
             require(!restricted.confirm() && restricted.confirmationInProgress(),"Restricted TA course skipped its confirmation");

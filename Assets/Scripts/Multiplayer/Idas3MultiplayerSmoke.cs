@@ -135,7 +135,7 @@ namespace Idas3.Multiplayer
             if(pendingDisconnectCheck&&(pendingPeerRoot.Length==0||pendingSteamCheck))throw new ArgumentException("Disconnect check requires two isolated LAN peers and their output directories.");
             if(pendingReturnCheck&&(pendingPeerRoot.Length==0||pendingSteamCheck||pendingDisconnectCheck))throw new ArgumentException("Return-to-lobby check requires two isolated LAN peers and must run separately from disconnect/Steam checks.");
             pendingPort=IntegerArgument(args,"-idas3-multiplayer-port",27830,1024,65535);
-            pendingCourse=IntegerArgument(args,"-idas3-multiplayer-course",0,0,11);
+            pendingCourse=IntegerArgument(args,"-idas3-multiplayer-course",0,0,Idas3CourseCatalog.Count-1);
             Directory.CreateDirectory(pendingRoot);saves=Path.Combine(pendingRoot,"userdata");Directory.CreateDirectory(saves);
             if(Array.IndexOf(args,"-idas3-multiplayer-saved-cars-check")>=0){
                 var fixtures=Path.GetFullPath(Argument(args,"-idas3-multiplayer-saved-cars-fixture",""));
@@ -312,7 +312,7 @@ namespace Idas3.Multiplayer
             if(quickCheck){yield return QuickMatchRuntimeCheck();yield break;}
             if(steamCheck){yield return SteamRuntimeCheck();yield break;}
             session.ConfigureLocalTest(port,role=="host"?"SMOKE HOST":"SMOKE JOIN");
-            if(course==11){host.GameOptions.BeginEdit();host.GameOptions.Draft.replayOnline=true;Check(host.GameOptions.ApplyDraft(),"Enable online replay recording");}
+            if(course>=11){host.GameOptions.BeginEdit();host.GameOptions.Draft.replayOnline=true;Check(host.GameOptions.ApplyDraft(),"Enable online replay recording");}
             Check(session.Available,"LAN diagnostic transport is unavailable.");
             session.SetCar(role=="host"?0:8);
             if(ChallengerCheck)session.SetRaceOptions(course,false,course==8,course==4||course==8);
@@ -479,9 +479,9 @@ namespace Idas3.Multiplayer
             yield return Until(()=>session.IsRacing&&session.RaceReleased,40,"Synchronized race countdown did not release.");
             if(course>=9){
                 var choice=session.SelectedChoice;
-                uint expected=(course==11?1048576u:course==10?524288u:0u)|16384u|(choice.Reverse?32768u:0u)|(choice.Night?65536u:0u)|(choice.Wet?131072u:0u);
-                Check((host.Status.flags&1818624u)==expected,"Hakone native course/conditions differ from lobby");
-                if(course==11){var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();Check(enna!=null&&enna.Loaded,"Enna online scenery missing");enna.VerifyPresentation();}
+                uint expected=(course>=11?1048576u:course==10?524288u:0u)|(course>=12?2097152u<<(course-12):0u)|16384u|(choice.Reverse?32768u:0u)|(choice.Night?65536u:0u)|(choice.Wet?131072u:0u);
+                Check((host.Status.flags&16498688u)==expected,"Hakone native course/conditions differ from lobby");
+                if(course>=11){var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();Check(enna!=null&&enna.LoadedCourseId==course,"Enna online scenery missing");enna.VerifyPresentation();}
                 else {Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedCourse==Idas8HakoneCourse.CourseName(expected),"Imported online course identity mismatch");
                 Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedVariant==Idas8HakoneCourse.Variant(expected),"Hakone online scenery variant missing");}
             }
@@ -548,7 +548,7 @@ namespace Idas3.Multiplayer
                 peerLeft=true;driving=false;session.LeaveRoom();yield return Frames(10);
                 Check(!session.InLobby&&!session.IsRacing,"Joiner did not return from the disconnected race.");
             }
-            if(course==11)yield return VerifyEnnaReplay();
+            if(course>=11)yield return VerifyEnnaReplay();
             Finish(true,null);
         }
         private KeyCode manualKey;
