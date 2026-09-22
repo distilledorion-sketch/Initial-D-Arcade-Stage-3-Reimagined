@@ -47,6 +47,10 @@ public sealed class Idas3UnityUi : MonoBehaviour
     bool performanceBaseline;
     uint lastUnresolved;
     public int DrawCount { get; private set; }
+    internal int HudVertexCount { get; private set; }
+    public Idas3GameOptions.Values HudOptionsOverride { get; set; }
+    readonly Rect[] hudBounds=new Rect[10];readonly bool[] hudVisible=new bool[10];
+    internal bool HudBounds(int group,out Rect bounds){bounds=hudBounds[group];return hudVisible[group];}
     public uint UnresolvedSurfaces { get; private set; }
     public int SourceTextureCount => textures.Count;
     static Color32 Color(uint argb) => new Color32((byte)(argb >> 16), (byte)(argb >> 8), (byte)argb, (byte)(argb >> 24));
@@ -86,7 +90,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         var go = new GameObject(label) { hideFlags = HideFlags.DontSave };
         go.transform.SetParent(transform, false);
         var camera = go.AddComponent<Camera>();
-        camera.clearFlags = CameraClearFlags.Nothing; camera.cullingMask = 0; camera.depth = depth;
+        camera.clearFlags = CameraClearFlags.Nothing; camera.cullingMask = 0; camera.depth = source.depth+depth;
         camera.orthographic = true; camera.allowHDR = false; camera.allowMSAA = false;
         return camera;
     }
@@ -143,6 +147,30 @@ public sealed class Idas3UnityUi : MonoBehaviour
         for (int i = 0; i < frame.vertexCount; ++i) {
             var v = vertices[i]; positions.Add(new Vector3(v.x, v.y, 0)); uv.Add(new Vector2(v.u, v.v)); colors.Add(Color(v.argb)); offsets.Add(Offset(v.offsetArgb));
         }
+        // Semantic groups keep all authored pieces on a shared pivot, including
+        // animated backings, digits, portraits and names from different banks.
+        HudVertexCount=0;Array.Clear(hudVisible,0,hudVisible.Length);
+        var layout=HudOptionsOverride??(sceneRenderer?sceneRenderer.HudOptions:null);
+        for(int i=0;i<frame.drawCount;++i){
+            var d=draws[i];
+            if(d.first+d.count>frame.vertexCount)throw new InvalidOperationException("UI draw outside source frame");
+            if((d.flags&8)==0)continue;
+            int group=(int)((d.flags>>8)&15);
+            float hudScale=layout?.HudGroupScale(group)??1f;
+            var pivot=HudPivot(group,frame.width,frame.height);
+            var offset=layout?.HudOffset(group)??Vector2.zero;
+            float hudX=pivot.x*(1-hudScale)+offset.x*frame.width,hudY=pivot.y*(1-hudScale)+offset.y*frame.height;
+            for(int k=(int)d.first;k<d.first+d.count;++k){
+                var v=vertices[k];var point=new Vector3(v.x*hudScale+hudX,v.y*hudScale+hudY,0);positions[k]=point;
+                if(group<hudBounds.Length){
+                    if(!hudVisible[group]){hudBounds[group]=new Rect(point.x,point.y,0,0);hudVisible[group]=true;}
+                    else{var bounds=hudBounds[group];hudBounds[group]=Rect.MinMaxRect(Mathf.Min(bounds.xMin,point.x),Mathf.Min(bounds.yMin,point.y),Mathf.Max(bounds.xMax,point.x),Mathf.Max(bounds.yMax,point.y));}
+                }
+            }
+            HudVertexCount+=(int)d.count;
+            d.clip=new Vector4(d.clip.x*hudScale+hudX,d.clip.y*hudScale+hudY,d.clip.z*hudScale+hudX,d.clip.w*hudScale+hudY);
+            draws[i]=d;
+        }
         mesh.Clear(); mesh.SetVertices(positions); mesh.SetUVs(0, uv); mesh.SetColors(colors); mesh.SetUVs(1, offsets);
         var batches = performanceBaseline ? new List<Draw>() : reusableBatches;
         batches.Clear();
@@ -185,6 +213,29 @@ public sealed class Idas3UnityUi : MonoBehaviour
         DrawCount = batches.Count; UnresolvedSurfaces = frame.unresolvedSurfaces;
         if (UnresolvedSurfaces != 0 && lastUnresolved != UnresolvedSurfaces) Debug.LogError("Original UI capture missed " + UnresolvedSurfaces + " surfaces; no framebuffer fallback is used.");
         lastUnresolved = UnresolvedSurfaces;
+    }
+    internal static Vector2 HudPivot(int group,float width,float height)=>
+        group==1?Vector2.zero:group==2?new Vector2(width,height):
+        group==3||group==6||group==7?new Vector2(width,0):
+        group==4?new Vector2(width*.5f,0):group==5?new Vector2(0,height):new Vector2(width*.5f,height*.5f);
+    internal void VerifyHudLayout(Action<bool,string> check,int requiredPanel)
+    {
+        var frame=new Frame{size=40};check(Idas3UiGetFrame(ref frame)==1,"HUD source frame unavailable");
+        var actual=mesh.vertices;var nativeDraws=new Draw[frame.drawCount];
+        check(Idas3UiCopyDraws(nativeDraws,nativeDraws.Length)==nativeDraws.Length,"HUD draw metadata unavailable");
+        var present=new bool[8];bool aligned=true;
+        foreach(var d in nativeDraws){
+            int group=(int)((d.flags>>8)&15);bool hud=(d.flags&8)!=0;
+            float scale=hud?sceneRenderer.HudOptions.HudGroupScale(group):1;
+            var anchor=HudPivot(group,frame.width,frame.height);
+            if(hud&&group<8)present[group]=true;
+            for(int k=(int)d.first;k<d.first+d.count;++k){
+                var v=vertices[k];var offset=hud?sceneRenderer.HudOptions.HudOffset(group):Vector2.zero;var expected=new Vector3(anchor.x+(v.x-anchor.x)*scale+offset.x*frame.width,anchor.y+(v.y-anchor.y)*scale+offset.y*frame.height,0);
+                aligned&=(actual[k]-expected).sqrMagnitude<.001f;
+            }
+        }
+        check(present[1]&&present[2]&&present[5]&&present[requiredPanel],"Missing independent timer/instruments/map/opponent or record groups");
+        check(aligned,"HUD pieces separated or unrelated layers changed");
     }
     // Explicit captures render the same overlay cameras as the normal player.
     public void RenderOverlayForCapture()

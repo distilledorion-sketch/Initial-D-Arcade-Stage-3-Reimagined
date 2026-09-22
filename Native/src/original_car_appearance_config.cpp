@@ -1,4 +1,5 @@
 #include "original_car_appearance_config.h"
+#include "original_car_color_catalog.h"
 #include <stdexcept>
 
 namespace idas3::original {
@@ -46,7 +47,7 @@ void applyOriginalCarAppearanceCall(OriginalCarAppearanceConfig& s,std::uint32_t
 OriginalCarAppearanceConfig originalPlayerAppearanceConfig(const OriginalBattleProfile& profile,std::uint32_t materialVariant){
     OriginalCarAppearanceConfig out(profile.u(16));
     for(unsigned slot:{0u,2u,1u,3u,4u,5u,6u,7u,9u})applyOriginalCarAppearanceCall(out,0x0c0287a0,slot,profile.byte(156+slot));
-    applyOriginalCarAppearanceCall(out,0x0c028660,profile.u(64));
+    applyOriginalCarAppearanceCall(out,0x0c028660,originalCarPresentationColor(out.car,profile.u(64)));
     applyOriginalCarAppearanceCall(out,0x0c0286a0,materialVariant);
     applyOriginalCarAppearanceCall(out,0x0c028720,profile.byte(166)&1);
     applyOriginalCarAppearanceCall(out,0x0c028760,(profile.byte(166)>>1)&1);

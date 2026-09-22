@@ -82,8 +82,10 @@ void OriginalCarMaterialRebuild::alpha(unsigned slot,float value){
 }
 void OriginalCarMaterialRebuild::rebuild(OriginalCarAppearanceConfig& config,std::uint32_t condition){
     if(config.car!=car_)throw std::invalid_argument("Original material car/config mismatch");
-    if(config.paintDirty){const unsigned color=(config.word>>25)&7;
-        if(color>=originalCarColorCounts[car_])throw std::out_of_range("Original material paint outside palette");
+    if(config.paintDirty){const unsigned color=originalCarPresentationColor(car_,(config.word>>25)&7);
+        // Packed appearances (including ranking cars) may predate validation.
+        // Repair only this render copy's paint bits; preserve every installed part.
+        config.word=(config.word&~(7u<<25))|(color<<25);
         const unsigned rgb=originalCarPaintRgb[car_][color];state_.rgb={rgb>>16,(rgb>>8)&255,rgb&255};
         for(const auto& p:paint_){auto& m=chunks_[p.chunk].materials[p.material].words;m[3]=(m[3]&0xff000000)|rgb;}
         config.paintDirty=false;

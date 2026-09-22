@@ -15,6 +15,7 @@ public sealed class Idas3GameOptions
         public bool vSync=true;
         public int frameRateLimit=60,antiAliasing=4,defaultCamera,controllerResponse;
         public int steeringSettingsVersion=1;
+        public int aiDifficulty;
         public float steeringDeadzoneGamepad=.1f,steeringDeadzonePrevious=.13f,steeringDeadzoneWheel;
         public float steeringSmoothing;
         public bool wheelForceFeedback,wheelFeedbackInvert;
@@ -26,11 +27,30 @@ public sealed class Idas3GameOptions
         public bool replayTimeAttack=true,replayOnline,replayLegend;
         public bool TimeAttackReplayRequired=>communityTimes||replayTimeAttack;
         public int rainDetail,importedSceneryDetail;
+        public Vector2[] hudPositions=new Vector2[10]; // Normalized offsets from each original anchor.
+        public static int HudPositionGroup(int group)=>group==6||group==7?3:group;
+        public Vector2 HudOffset(int group){group=HudPositionGroup(group);return group!=0&&hudPositions!=null&&group>=0&&group<hudPositions.Length?hudPositions[group]:Vector2.zero;}
+        public void SetHudOffset(int group,Vector2 offset){
+            group=HudPositionGroup(group);if(group<=0||group>=10)return;
+            if(hudPositions==null)hudPositions=new Vector2[10];else if(hudPositions.Length!=10)Array.Resize(ref hudPositions,10);
+            hudPositions[group]=offset;
+            if(group==3)hudPositions[6]=hudPositions[7]=offset;
+        }
+        public int hudTimerSize=2,hudSpeedometerSize=2,hudRecordsSize=2,hudLegendSize=2;
+        public int hudTimeExtensionSize=2;
+        public int hudOnlineSize=2,hudMirrorSize=2,hudMessagesSize=2,hudChallengersSize=2;
+        public float HudGroupScale(int group) {
+            int size=group==1?hudTimerSize:group==2?hudSpeedometerSize:group==3?hudRecordsSize:
+                group==4?hudMirrorSize:group==6?hudLegendSize:group==7?hudOnlineSize:group==8?hudChallengersSize:group==9?hudTimeExtensionSize:hudMessagesSize;
+            return group==0||group==5?1f:.5f+.25f*Math.Max(0,Math.Min(4,size));
+        }
+        public int minimapSize; // 0 = original, 1 = 125%, 2 = 150%.
+        public int minimapZoom=2; // Zoom-out only: 50%, 75%, original 100%.
         public float SteeringDeadzone {
             get=>controllerResponse==1?steeringDeadzonePrevious:controllerResponse==2?steeringDeadzoneWheel:steeringDeadzoneGamepad;
             set{if(controllerResponse==1)steeringDeadzonePrevious=value;else if(controllerResponse==2)steeringDeadzoneWheel=value;else steeringDeadzoneGamepad=value;}
         }
-        public Values Clone() => (Values)MemberwiseClone();
+        public Values Clone(){var copy=(Values)MemberwiseClone();copy.hudPositions=hudPositions==null?new Vector2[10]:(Vector2[])hudPositions.Clone();return copy;}
     }
     public struct ResolutionChoice
     {
@@ -196,6 +216,28 @@ public sealed class Idas3GameOptions
         if(value.antiAliasing!=0&&value.antiAliasing!=2&&value.antiAliasing!=4&&value.antiAliasing!=8)value.antiAliasing=4;
         if(value.frameRateLimit!=0)value.frameRateLimit=Math.Max(30,Math.Min(360,value.frameRateLimit));
         value.defaultCamera=value.defaultCamera==1?1:0;
+        value.aiDifficulty=Math.Max(0,Math.Min(2,value.aiDifficulty));
+        // Preserve an existing Time Attack placement; otherwise inherit a previously moved battle panel.
+        var shared=value.HudOffset(3);
+        if(shared==Vector2.zero&&value.hudPositions!=null){
+            foreach(int group in new[]{6,7})if(group<value.hudPositions.Length&&value.hudPositions[group]!=Vector2.zero){shared=value.hudPositions[group];break;}
+        }
+        value.SetHudOffset(3,shared);
+        var positions=new Vector2[10];
+        for(int i=0;i<positions.Length;++i){var point=value.HudOffset(i);
+            positions[i]=new Vector2(float.IsNaN(point.x)||float.IsInfinity(point.x)?0:Mathf.Clamp(point.x,-1,1),float.IsNaN(point.y)||float.IsInfinity(point.y)?0:Mathf.Clamp(point.y,-1,1));}
+        value.hudPositions=positions;
+        value.hudTimeExtensionSize=Math.Max(0,Math.Min(4,value.hudTimeExtensionSize));
+        value.hudTimerSize=Math.Max(0,Math.Min(4,value.hudTimerSize));
+        value.hudSpeedometerSize=Math.Max(0,Math.Min(4,value.hudSpeedometerSize));
+        value.hudRecordsSize=Math.Max(0,Math.Min(4,value.hudRecordsSize));
+        value.hudLegendSize=Math.Max(0,Math.Min(4,value.hudLegendSize));
+        value.hudOnlineSize=Math.Max(0,Math.Min(4,value.hudOnlineSize));
+        value.hudMirrorSize=Math.Max(0,Math.Min(4,value.hudMirrorSize));
+        value.hudMessagesSize=Math.Max(0,Math.Min(4,value.hudMessagesSize));
+        value.hudChallengersSize=Math.Max(0,Math.Min(4,value.hudChallengersSize));
+        value.minimapZoom=Math.Max(0,Math.Min(2,value.minimapZoom));
+        value.minimapSize=Math.Max(0,Math.Min(2,value.minimapSize));
         value.rainDetail=Math.Max(0,Math.Min(1,value.rainDetail));
         value.importedSceneryDetail=Math.Max(0,Math.Min(2,value.importedSceneryDetail));
         if(value.controllerResponse<0||value.controllerResponse>2)value.controllerResponse=0;
@@ -211,10 +253,11 @@ public sealed class Idas3GameOptions
     }
     private static float Deadzone(float value,float fallback)=>float.IsNaN(value)||float.IsInfinity(value)?fallback:Math.Max(0,Math.Min(.3f,value));
     public static bool DisplayChanged(Values a,Values b)=>a.displayMode!=b.displayMode||a.width!=b.width||a.height!=b.height;
+    private static bool SameHudPositions(Values a,Values b){for(int i=0;i<10;++i)if(a.HudOffset(i)!=b.HudOffset(i))return false;return true;}
     public static bool Equivalent(Values a,Values b)=>a!=null&&b!=null&&
         a.masterVolume==b.masterVolume&&a.musicVolume==b.musicVolume&&a.engineVolume==b.engineVolume&&a.effectsVolume==b.effectsVolume&&
         !DisplayChanged(a,b)&&a.vSync==b.vSync&&a.frameRateLimit==b.frameRateLimit&&a.antiAliasing==b.antiAliasing&&
-        a.defaultCamera==b.defaultCamera&&a.controllerResponse==b.controllerResponse&&
+        a.aiDifficulty==b.aiDifficulty&&a.defaultCamera==b.defaultCamera&&a.controllerResponse==b.controllerResponse&&
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&
         a.steeringDeadzonePrevious==b.steeringDeadzonePrevious&&a.steeringDeadzoneWheel==b.steeringDeadzoneWheel&&
         a.steeringSmoothing==b.steeringSmoothing&&
@@ -222,5 +265,6 @@ public sealed class Idas3GameOptions
         a.wheelFeedbackInvert==b.wheelFeedbackInvert&&a.wheelFeedbackDevice==b.wheelFeedbackDevice&&
         a.showFps==b.showFps&&a.muteWhenUnfocused==b.muteWhenUnfocused&&a.communityTimes==b.communityTimes&&
         a.discordPresence==b.discordPresence&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
-        a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
+        SameHudPositions(a,b)&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
+        a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
 }

@@ -965,6 +965,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(manualRender){Check(offscreen,"Manual performance rendering needs its private target");perfMainCamera.enabled=false;}
         Check(QualitySettings.antiAliasing==diagnosticAa&&QualitySettings.vSyncCount==0&&Application.targetFrameRate==-1,
             "Performance benchmark must retain AA4 with uncapped diagnostic presentation.");
+        bool aiCheck=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ai-difficulty-check")>=0;
+        if(aiCheck){host.GameOptions.BeginEdit();host.GameOptions.Draft.aiDifficulty=2;Check(host.GameOptions.ApplyDraft(),"Could not select Expert AI");}
         bool captureEnabled=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-replay-off")<0;
         Check(Idas3SceneReplayCaptureDiagnostic(captureEnabled?1:0)==1,"Private capture comparison switch");
         yield return Key(116);yield return Frames(20);
@@ -1007,6 +1009,53 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         Check(PerformanceCourse==perfCourse&&(host.Status.flags&1)==0&&(host.Status.flags&16)!=0&&host.Status.racePhase==2,
             "Performance benchmark did not start the requested race with original handling.");
         Check(Idas3SceneModeFlowValue(31)==((perfWet?1:0)|((perfNight||perfCourse==4||perfCourse==11)?2:0)),"Measured weather/time must match requested conditions");
+        if(aiCheck){
+            Check(Idas3SceneModeFlowValue(35)==(perfLegend?2:0),"Difficulty applied to wrong race mode");
+            host.GameOptions.BeginEdit();host.GameOptions.Draft.aiDifficulty=0;Check(host.GameOptions.ApplyDraft(),"Could not restore Normal");
+            Check(Idas3SceneModeFlowValue(34)==0&&Idas3SceneModeFlowValue(35)==(perfLegend?2:0),"Difficulty must stay fixed until the next battle");
+            yield return Frames(600);Check(host.Ready,"Expert AI race failed");yield return Capture("ai-race",true);Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-group-check")>=0){
+            yield return Frames(240);
+            if(perfLegend){
+                for(int view=0;view<4&&!scene.MirrorCamera.enabled;++view){yield return Key(67);yield return Frames(4);}
+                Check(scene.MirrorCamera.enabled,"Grouped HUD battle test requires an active mirror");
+            }
+            var fields=new[]{"original","hudTimerSize","hudSpeedometerSize","hudRecordsSize","hudLegendSize","hudOnlineSize","hudMirrorSize","hudTimeExtensionSize","mixed"};
+            foreach(string field in fields){
+                host.GameOptions.BeginEdit();var values=host.GameOptions.Draft;
+                values.hudTimerSize=values.hudSpeedometerSize=values.hudRecordsSize=values.hudLegendSize=values.hudOnlineSize=values.hudMirrorSize=values.hudTimeExtensionSize=2;
+                values.hudPositions=new Vector2[10];
+                if(field=="mixed"){
+                    values.hudTimerSize=0;values.hudSpeedometerSize=3;values.hudRecordsSize=1;values.hudLegendSize=1;values.hudOnlineSize=1;values.hudMirrorSize=0;
+                    foreach(int group in new[]{1,2,3,4,5,6,7,8,9})values.hudPositions[group]=new Vector2(group%2==0?-.04f:.04f,.03f);
+                }else if(field!="original")typeof(Idas3GameOptions.Values).GetField(field).SetValue(values,4);
+                Check(host.GameOptions.ApplyDraft(),"Independent HUD apply failed");
+                yield return Frames(3);
+                host.GetComponent<Idas3UnityUi>().VerifyHudLayout(Check,perfLegend?6:3);
+                if(scene.MirrorCamera.enabled){
+                    var raw=scene.CurrentFrame.mirrorCamera.viewport;float scale=values.HudGroupScale(4);
+                    var expected=new Rect(.5f+(raw.x/scene.CurrentFrame.width-.5f)*scale,1f-(raw.y+raw.w)/scene.CurrentFrame.height*scale,raw.z/scene.CurrentFrame.width*scale,raw.w/scene.CurrentFrame.height*scale);
+                    expected.position+=new Vector2(values.HudOffset(4).x,-values.HudOffset(4).y);
+                    Check(Vector4.Distance(new Vector4(expected.x,expected.y,expected.width,expected.height),new Vector4(scene.MirrorCamera.rect.x,scene.MirrorCamera.rect.y,scene.MirrorCamera.rect.width,scene.MirrorCamera.rect.height))<.0001f,"Mirror detached from its frame");
+                }
+                yield return Capture("independent-"+field,true);
+            }
+            Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-map-check")>=0){
+            for(int size=0;size<3;++size){
+                host.GameOptions.BeginEdit();host.GameOptions.Draft.minimapSize=size;
+                Check(host.GameOptions.ApplyDraft(),"Minimap size apply failed");
+                yield return Frames(2);yield return Capture("minimap-"+(100+size*25),true);
+            }
+            foreach(int zoom in new[]{0,1}){
+                host.GameOptions.BeginEdit();host.GameOptions.Draft.minimapZoom=zoom;
+                Check(host.GameOptions.ApplyDraft(),"Minimap zoom apply failed");
+                yield return Frames(2);yield return Capture("minimap-150-zoom-"+(50+zoom*25),true);
+            }
+            Finish(true,null);yield break;
+        }
         if(perfFullDrive){
             Check(Idas3SceneCourseDriveDiagnostic(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-timer-grace")>=0?2:1,driveTelemetry,12)==1,"Isolated full-course driver unavailable");
             Check((driveTelemetry[8]!=0)==perfReverse,"Wrong driving direction selected");

@@ -108,6 +108,8 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
                 string storage = Path.Combine(Application.temporaryCachePath, "replay-viewer-session");
                 if (Idas3SceneInitialize(assets, storage, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 initialized = true;
+                if(Idas3Native.Idas3SceneSetMapZoom(audioOptions.minimapZoom)!=1)throw new InvalidOperationException(Idas3Native.Error());
+                if(Idas3Native.Idas3SceneSetMapSize(audioOptions.minimapSize)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 audioOutput=gameObject.AddComponent<Idas3UnityAudio>();audioOutput.Initialize();
                 foreach (var pack in new[] { "HAKONE", "SADAMINE", "ENNA" })
                 {
@@ -219,7 +221,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             if(Idas3ReplayOpponentFrame(opponentFrameBytes,160)!=1)throw new InvalidOperationException(Idas3Native.Error());
         }
         if (Idas3ReplayPose(p.tick, p.position.x, p.position.y, p.position.z, p.yaw, p.speed, p.gear, pitch, cameraMode, orbit, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
-        Status = Idas3Native.ReadStatus(); scene.ApplyFrame(); ui.ApplyFrame();
+        Status = Idas3Native.ReadStatus(); scene.HudOptions=audioOptions; scene.ApplyFrame(); ui.ApplyFrame();
     }
     void Update()
     {

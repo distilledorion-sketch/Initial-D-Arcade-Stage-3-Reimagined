@@ -150,7 +150,11 @@ void Hud::routePreview(const Course& c,float x,float y,float w,float h){
 }
 void Hud::map(const Course& c,float x,float y,float w,float h,
         const VehicleState& player,const VehicleState* rival){
+    const UnityUiHudScope mapGroup(5);
     if(c.points.size()<2||!pixels)return;
+    const float mapScale=1.f+.25f*float(mapSize_);
+    // Grow upward and rightward; retain the original left/bottom margins.
+    y+=h*(1.f-mapScale);w*=mapScale;h*=mapScale;
     // Laid out on the source's own 640x480 canvas and anchored to the bottom
     // left exactly as the original HUD anchors its instruments, so it scales
     // and sits with them instead of floating on the development canvas.
@@ -161,7 +165,7 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
     // through, a dark outline with a lighter inner edge, and a near-black road.
     constexpr COLORREF field=RGB(120,142,130),outline=RGB(16,20,18),
         innerEdge=RGB(150,158,150),road=RGB(16,22,17);
-    const float border=std::max(1.f,2.f*fit),inner=std::max(1.f,fit);
+    const float border=std::max(1.f,2.f*fit*mapScale),inner=std::max(1.f,fit*mapScale);
     // Strokes, not filled rectangles: a filled one under the field would sit
     // behind it and make the whole panel opaque once the quads composite.
     const auto outlineRect=[&](float bx,float by,float bw,float bh,COLORREF colour,float t){
@@ -180,7 +184,8 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
     // A stretch of road, not the route: the window is sized from the road's own
     // width so every course reads at the same zoom.
     const float roadWidth=std::max(1.f,c.sample(c.length*.5f).width);
-    const float scale=(fieldBottom-fieldTop)/(roadWidth*10.f);
+    const float zoom=.5f+.25f*float(mapZoom_);
+    const float scale=(fieldBottom-fieldTop)/(roadWidth*10.f)*zoom;
     const float sine=std::sin(player.yaw),cosine=std::cos(player.yaw);
     const auto project=[&](const Vec3& p,float& px,float& py){
         const float ox=p.x-player.position.x,oz=p.z-player.position.z;
@@ -202,7 +207,7 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
            (ay<fieldTop-reach&&py<fieldTop-reach)||(ay>fieldBottom+reach&&py>fieldBottom+reach))continue;
         float x0=ax,y0=ay,x1=px,y1=py;
         if(!clipToFrame(x0,y0,x1,y1,fieldLeft,fieldTop,fieldRight,fieldBottom))continue;
-        mapStroke(x0,y0,x1,y1,road,std::max(1.5f,3.f*fit));
+        mapStroke(x0,y0,x1,y1,road,std::max(1.5f,3.f*fit*mapScale));
     }
     // The source's own indicators: game2d chunk 94 is the opponent, 93 the car.
     if(!originalHudReady)return;
@@ -284,6 +289,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
     if(settledTimeAttackResults&&(s.results->recordFlags&(OriginalResultsState::newRecord|OriginalResultsState::courseRecord|OriginalResultsState::modelRecord|OriginalResultsState::personalBest))){
         auto results=*s.results;results.announcementOnly=true;
         originalResults.paint(std::span<std::uint32_t>(pixels,std::size_t(width)*height),width,height,results);
+        unityUiMarkHud(pixels);
         return pixels;
     }
     // While the race-end announcement holds the road view the cabinet shows
@@ -403,12 +409,14 @@ const std::uint32_t* Hud::paint(const UiState& s){
             }
         }
         if(s.results&&s.results->livePanel&&!battleHud&&!announcement){
+            const UnityUiHudScope recordsGroup(3);
             const auto target=std::span<std::uint32_t>(pixels,std::size_t(width)*height);
             auto records=*s.results;records.slide208=entrance.labels;records.slide212=entrance.backings;
             originalResults.paint(target,width,height,records);
             if(s.hudIntroFrame>40)originalBattleNames.paintTimeAttack(target,width,height,s.frontend?unsigned(s.frontend->car):0u,s.frontend?&s.frontend->battleProfile:nullptr);
         }
         if(battleHud&&!announcement){
+            const UnityUiHudScope battleGroup(onlineBattle?7:6);
             const auto frame=onlineBattle?s.onlineBattleHud.frame:s.battleHudFrame;
             const auto enemy=onlineBattle?0xffffffffu:s.battleEnemy;
             const auto mode=onlineBattle?3u:s.battleProfileMode;
@@ -459,6 +467,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
         else if(!s.paused&&!race.originalTiming&&race.phase==RacePhase::Countdown)originalHud.paintStartSignal(std::span<std::uint32_t>(pixels,std::size_t(width)*height),width,height,std::clamp(race.countdownDigit(),1,3),unsigned(180-race.countdown));
         else if(!s.paused&&!race.originalTiming&&race.phase==RacePhase::Running&&race.ticks<60)originalHud.paintStartSignal(std::span<std::uint32_t>(pixels,std::size_t(width)*height),width,height,0,180+unsigned(race.ticks));
     }
+    if(!s.menu&&!settledResults)unityUiMarkHud(pixels);
     return pixels;
 }
 }

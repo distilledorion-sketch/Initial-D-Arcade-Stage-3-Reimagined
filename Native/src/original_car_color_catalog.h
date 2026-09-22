@@ -4,6 +4,11 @@
 namespace idas3::original {
 // Exact133B00/0DDB40 counts and1911A0 factory palettes. Generated from the canonical image.
 inline constexpr std::array<unsigned,35> originalCarColorCounts={3,3,3,6,6,7,6,5,6,6,5,6,6,5,6,4,6,5,6,5,5,6,6,5,4,4,6,5,4,1,5,7,5,5,8};
+// Presentation recovery only: malformed/legacy paint IDs use the same stock
+// color as the selection screen. Never modifies the stored driver profile.
+inline constexpr unsigned originalCarPresentationColor(unsigned car,unsigned color){
+    return color<originalCarColorCounts.at(car)?color:0u;
+}
 inline constexpr std::array<std::array<std::uint32_t,8>,35> originalCarPaintRgb={{
     {0xe6e6e6u,0xa00000u,0x7d7e7fu},
     {0xe6e6e6u,0xa00000u,0x7d7e7fu},

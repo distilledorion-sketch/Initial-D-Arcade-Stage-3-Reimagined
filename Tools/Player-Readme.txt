@@ -1,4 +1,13 @@
-0.3.95-community-replays.13
+0.3.95-community-replays.14
+
+POST-RACE PAINT RECOVERY
+Fixed the "Original material paint outside palette" crash after races. Invalid saved paint values use the default factory color for previews; existing driver saves and upgrades are preserved.
+
+AI DRIVER DIFFICULTY
+Settings > Gameplay > AI Driver Difficulty: Normal keeps the original pace; Hard adds 5% and Expert adds 10% to AI target pace. APPLY saves the setting for the next Legend of the Streets battle. Bunta Challenge, player handling, Time Attack and online human opponents are unchanged.
+
+HUD OPTIONS
+Settings > HUD > OPEN LIVE HUD EDITOR: Switch between bumper and third-person previews, drag HUD groups with the mouse, and resize with the mouse wheel or + / - buttons. Includes Time Extended, timer/sections, speedometer/gear, Time Attack records, Legend and Online opponent panels, mirror, minimap and Accepting Challengers. Time Attack records and both Legend/Online opponent panels share one position; moving any of them moves all three. Save & return applies the layout; Cancel discards edits. Countdown and finish/pass/fail/new-record announcements stay fixed. Minimap Zoom Out remains in HUD settings.
 
 TODAY'S UPDATE - SEPTEMBER 21, 2026
 Enna Skyline is included in the main game and online course selection: downhill/uphill, dry/wet, night scenery and Akina handling. Enna Time Attack boards and replay downloads are available on the community leaderboard.

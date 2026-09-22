@@ -19,7 +19,7 @@ static_assert(sizeof(UnityUiVertex)==24&&sizeof(UnityUiDraw)==48&&sizeof(UnityUi
 namespace {
 struct Surface{int width=0,height=0;std::vector<UnityUiVertex> vertices;std::vector<UnityUiDraw> draws;};
 struct Capture {
- bool enabled=false;UnityUiFrame frame{sizeof(UnityUiFrame)};Surface output;
+ unsigned hudGroup=0;bool enabled=false;UnityUiFrame frame{sizeof(UnityUiFrame)};Surface output;
  std::unordered_map<const std::uint32_t*,Surface> surfaces;
  std::vector<NativeImage> textures;
  std::unordered_map<const std::uint32_t*,std::pair<std::size_t,unsigned>> texturePointers;
@@ -62,7 +62,14 @@ void unityUiForgetTexture(const NativeImage& image){state().texturePointers.eras
 bool unityUiTriangle(const std::uint32_t* target,int width,int height,const NativeImage& image,UnityUiVertex a,UnityUiVertex b,UnityUiVertex c,float opacity,unsigned tsp,bool original,unsigned pcw){
  if(!unityUiEnabled())return false;
  auto& out=surface(target,width,height);const auto first=unsigned(out.vertices.size());out.vertices.insert(out.vertices.end(),{a,b,c});
- out.draws.push_back({first,3,texture(image),tsp,pcw,original?1u:0u,opacity,0,0,0,float(width),float(height)});return true;
+ out.draws.push_back({first,3,texture(image),tsp,pcw,(original?1u:0u)|(state().hudGroup<<8),opacity,0,0,0,float(width),float(height)});return true;
+}
+unsigned unityUiHudGroup(){return state().hudGroup;}
+unsigned unityUiSetHudGroup(unsigned group){auto& value=state().hudGroup;const auto old=value;value=group;return old;}
+void unityUiMarkHud(const std::uint32_t* target){
+ if(!unityUiEnabled())return;
+ auto found=state().surfaces.find(target);if(found==state().surfaces.end())return;
+ for(auto& draw:found->second.draws)draw.flags|=8u;
 }
 void unityUiClear(const std::uint32_t* target,int width,int height,unsigned argb){
  if(!unityUiEnabled())return;auto& out=surface(target,width,height);out.vertices.clear();out.draws.clear();

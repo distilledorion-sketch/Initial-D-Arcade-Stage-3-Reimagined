@@ -54,6 +54,9 @@ struct UnityRuntime {
     Idas3UnityStatus status{sizeof(Idas3UnityStatus)};
     std::string error;
     std::unique_ptr<App> app; //render callback only
+    std::unique_ptr<idas3::Hud> hudEditor;
+    idas3::Mesh hudCar;idas3::NativeTextureBank hudCarTextures;
+    std::vector<std::array<uint32_t,3>> hudCarRanges;std::vector<Idas3SceneTexture> hudCarImages;
     bool sceneMode=false;
     bool diagnosticCourseDriver=false;
     bool diagnosticTimerGrace=false;
@@ -137,7 +140,7 @@ void destroyApp(UnityRuntime& r,bool save){
     if(r.app&&save&&!r.app->replayPlaybackActive)try{r.app->saveSettings();}catch(...){saveError=std::current_exception();}
     // Stop native audio and wait for all its buffers in EngineAudio's original
     // destructor before the renderer releases the borrowed Unity device.
-    r.app.reset();
+    r.hudEditor.reset();r.hudCar={};r.hudCarTextures={};r.hudCarRanges.clear();r.hudCarImages.clear();r.app.reset();
 #if !defined(IDAS3_PORTABLE_SCENE)
     r.exportedTextures.clear();
 #endif
@@ -341,6 +344,30 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
         if(scene==-7)return runPerformanceOptionsAppTests(*r.app)==0?1:0;
         if(scene==-8)return runPlayerReplayAppTests(*r.app)==0?1:0;
         if(scene==-9)return runSharedRecordResetAppTests(*r.app)==0?1:0;
+        if(scene==-10){
+            auto& a=*r.app;const bool oldValidation=a.validationMode;const int oldDifficulty=a.aiDifficulty;
+            struct Restore{App& a;bool validation;int difficulty;~Restore(){a.validationMode=validation;a.aiDifficulty=difficulty;}}restore{a,oldValidation,oldDifficulty};
+            a.validationMode=true;a.multiplayer.active=false;a.paused=false;a.loadingActive=false;a.preRaceDialogueActive=a.legendVisitActive=false;
+            unsigned cases=0;
+            for(unsigned course:{0u,3u})for(unsigned level:{0u,15u}){
+                std::array<float,4> baseline{};
+                for(unsigned difficulty=0;difficulty<3;++difficulty){
+                    a.aiDifficulty=int(difficulty);a.frontend.gameMode=idas3::original::OriginalGameMode::BuntaChallenge;
+                    a.frontend.car=0;auto& p=a.frontend.battleProfile;p=idas3::original::makeOriginalFreshBattleProfile();
+                    p.setu(0,2);p.setu(16,0);p.setu(72,1000000);
+                    for(unsigned i=0;i<8;++i)p.setu(1080+i*4,level);
+                    idas3::original::selectOriginalBuntaCourse(p,course);a.start();
+                    if(!a.bunta||!a.battle||a.originalSession.rivalPaceInputs().aiDifficulty!=0)throw std::runtime_error("Bunta received a custom AI pace");
+                    for(unsigned frame=0;frame<600;++frame)a.simulate({});
+                    const auto& rival=a.originalSession.rivalActor();const std::array<float,4> sample{rival.f(68),rival.f(200),rival.f(204),rival.f(208)};
+                    if(difficulty==0)baseline=sample;else if(sample!=baseline)throw std::runtime_error("Difficulty changed Bunta speed or movement");
+                    ++cases;
+                }
+            }
+            std::ofstream log(a.saveRoot.parent_path()/"bunta-difficulty.txt");
+            log<<"PASS "<<cases<<" Bunta races: Normal, Hard and Expert produce identical speed and movement at two challenge levels on two courses. Original AI pace retained.\n";
+            return 1;
+        }
         prepareModeFlowFixture(*r.app,unsigned(scene));
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
         if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);
@@ -389,6 +416,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 23:return a.fullTuneActive;case 24:return int(a.resultVisit.tuning.kind);
     case 25:return int(a.battleProfile.u(72));case 26:return int(a.resultVisit.child.phase);
     case 27:return a.frontend.inputReady();case 28:return a.activeSaveSlot;case 29:return a.fullTuneSelecting;
+    case 34:return a.aiDifficulty;
+    case 35:return a.originalSession.ready()&&a.originalSession.rivalActive()?int(a.originalSession.rivalPaceInputs().aiDifficulty):0;
     case 32:return int(a.recording.frames.size());case 33:return int(a.rivalRecording.frames.size());
     case 30:return a.frontend.course;case 31:return unsigned(a.wet)|(unsigned(a.night)<<1);
     default:return -1;}
@@ -907,6 +936,56 @@ int IDAS3_UNITY_CALL Idas3SceneSetSteeringDeadzone(float value){
 float IDAS3_UNITY_CALL Idas3SceneGetSteeringDeadzone(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     return r.sceneMode&&r.app?r.app->steeringDeadzone:-1.f;
+}
+struct Idas3HudCarFrame {uint32_t size,vertices,ranges,textures;const void* vertexData;const void* rangeData;const void* textureData;};
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudCar(Idas3HudCarFrame* frame){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app||!frame||frame->size!=sizeof(*frame))throw std::invalid_argument("Invalid editor car request");
+        const auto folder=std::string(originalCarFolders.at(r.app->frontend.car));const auto root=r.app->root;
+        auto profile=r.app->frontend.battleProfile;profile.setu(16,unsigned(r.app->frontend.car));profile.setu(64,r.app->frontend.selectedColor());
+        auto model=idas3::NativeModel::load(root/"data/original_models"/folder/(folder+".idasmesh"));
+        auto presentation=idas3::CarPresentation::loadPlayerProfile(root,profile);presentation.applyMaterials(model);
+        r.hudCar={};r.hudCar.originalCar(model,presentation.pose({},false,false),{0,0,0},0);
+        r.hudCarTextures=idas3::NativeTextureBank::load(root/"data/original_assets/cars"/folder/"textures/textures.idastex");
+        r.hudCarRanges.clear();for(const auto& range:r.hudCar.ranges)r.hudCarRanges.push_back({range.first,range.count,range.texture});
+        r.hudCarImages.clear();for(unsigned i=0;i<r.hudCarTextures.size();++i){const auto& image=r.hudCarTextures.at(i);r.hudCarImages.push_back({image.width,image.height,image.argb.size(),image.argb.data()});}
+        *frame={sizeof(*frame),unsigned(r.hudCar.vertices.size()),unsigned(r.hudCarRanges.size()),unsigned(r.hudCarImages.size()),r.hudCar.vertices.data(),r.hudCarRanges.data(),r.hudCarImages.data()};return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,float seconds,int messages){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app||mode<0||mode>2||width<320||height<240||width>8192||height>8192||!std::isfinite(seconds))throw std::invalid_argument("Invalid HUD preview");
+        if(!r.hudEditor){auto hud=std::make_unique<idas3::Hud>();hud->loadOriginal(r.app->root);r.hudEditor=std::move(hud);}
+        auto& hud=*r.hudEditor;hud.resize(width,height);hud.setMapSize(mapSize);hud.setMapZoom(mapZoom);
+        idas3::Course course;course.name="HUD editor";course.length=1000;course.points={{0,0,0},{0,0,1000}};course.left={{-5,0,0},{-5,0,1000}};course.right={{5,0,0},{5,0,1000}};course.cumulative={0,1000};
+        idas3::VehicleState car;car.speed=36.f+std::sin(seconds)*6.f;car.rpm=6000.f+std::sin(seconds)*1200.f;car.gear=4;car.position={0,0,400};
+        auto rival=car;rival.position.z+=18.9f;
+        idas3::RaceClock race;race.phase=idas3::RacePhase::Running;race.originalTiming=true;race.ticks=300;race.elapsed6000=270000+unsigned(std::fmod(std::max(0.f,seconds),60.f)*6000);race.remaining6000=438000;race.sectionCapacity=4;race.sector=1;race.sectionTimes6000={220000,0,0,0};
+        if(messages){race.originalStartDigit=0;race.originalStartElapsed=180;}
+        idas3::OriginalResultsState records;records.livePanel=true;records.edgeAnchored=true;records.suppliedRecordTargets=true;records.bestTimes6000={1000000,1030000,1100000};records.modelBestAvailable=true;
+        idas3::UiState state;state.menu=false;state.course=&course;state.car=&car;state.rival=&rival;state.race=&race;state.hudIntroFrame=240;state.battleHudFrame=240;state.battleEnemy=13;state.battleProfileMode=0;state.battleAdvantage=18.9f;state.battleRivalPositionFraction=.2f;state.rearView=true;state.timeExtended=true;state.battle=mode==1;state.results=mode==0?&records:nullptr;
+        state.onlineBattleHud.active=mode==2;state.onlineBattleHud.frame=240;state.onlineBattleHud.playerName="PLAYER";state.onlineBattleHud.rivalName="OPPONENT";state.onlineBattleHud.playerCar=0;state.onlineBattleHud.rivalCar=8;state.onlineBattleHud.advantage=18.9f;
+        Idas3UiBeginFrame(width,height);auto pixels=hud.paint(state);
+        if(mode==0){const idas3::UnityUiHudScope group(4);hud.originalBank().paintAuthoredChunk(std::span<std::uint32_t>(const_cast<std::uint32_t*>(pixels),std::size_t(width)*height),width,height,186);idas3::unityUiMarkHud(pixels);}
+        idas3::unityUiSubmit(pixels,width,height,false,false,false);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||difficulty<0||difficulty>2){unityError("Invalid AI difficulty");return 0;}
+    r.app->aiDifficulty=difficulty;return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||zoom<0||zoom>2){unityError("Invalid minimap zoom");return 0;}
+    r.app->hud.setMapZoom(zoom);return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneSetMapSize(int size){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||size<0||size>2){unityError("Invalid minimap size");return 0;}
+    r.app->hud.setMapSize(size);return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneSetPerformance(int rainDetail){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

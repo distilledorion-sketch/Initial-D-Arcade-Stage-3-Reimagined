@@ -68,6 +68,8 @@ public:
     ~Hud();
     void loadOriginal(const std::filesystem::path& root);
     void resize(int w,int h);
+    void setMapSize(int size){mapSize_=size>=0&&size<=2?size:0;}
+    void setMapZoom(int zoom){mapZoom_=zoom>=0&&zoom<=2?zoom:2;}
     const std::uint32_t* paint(const UiState& s);
     const std::uint32_t* paintResult(const OriginalBattleResultsState&,
         std::span<const std::uint32_t> tuningOverlay,bool paused,bool showControls,bool suppressPauseOverlay=false);
@@ -128,6 +130,7 @@ private:
     // The desktop path forces alpha onto everything GDI drew, which would
     // flatten the map's see-through field. The map owns its own alpha, so it
     // records its frame and that pass leaves it alone.
+    int mapSize_=0,mapZoom_=2;
     int mapX0_=0,mapY0_=0,mapX1_=0,mapY1_=0;
 };
 }

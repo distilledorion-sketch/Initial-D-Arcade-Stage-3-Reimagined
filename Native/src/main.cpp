@@ -133,6 +133,7 @@ struct App {
     } multiplayer;
     WetWeather wetWeather;
     int performanceRainDetail=0;
+    int aiDifficulty=0;
     NativeTextureBank rainTextures,rainmarkTextures;
     std::uint32_t rainTextureBase=0,rainmarkTextureBase=0;
     fs::path root;
@@ -1066,6 +1067,7 @@ struct App {
             selection.collisionVariant=reverse?1u:0u;
             if(battle){
                 original::OriginalDrivingRivalSetup rival;
+                rival.aiDifficulty=multiplayer.active||bunta?0u:unsigned(aiDifficulty);
                 if(bunta){
                     const auto setup=original::makeOriginalBuntaRaceSetup(battleProfile,2);
                     rival.control=setup.ordinaryRivalControl;rival.geometryCar0C9015F8=setup.geometryCar0C9015F8;

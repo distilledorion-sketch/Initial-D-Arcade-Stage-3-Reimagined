@@ -9,9 +9,10 @@ const std::vector<std::uint32_t>& Frontend::paint(int,int){throw std::logic_erro
 struct CourseMapTestAccess {
     // The geometry the race HUD actually uses, on the source 640x480 canvas.
     static constexpr float x=14,y=352,w=112,h=112;
+    static inline int size=0,zoom=2;
     static std::vector<std::uint32_t> render(Hud& hud,const Course& course,int width,int height,
             const VehicleState& car,const VehicleState* rival){
-        hud.resize(width,height);GdiFlush();
+        hud.resize(width,height);hud.setMapSize(size);hud.setMapZoom(zoom);GdiFlush();
         // A nonzero background makes any write outside the frame visible.
         for(std::size_t i=0;i<std::size_t(width)*height;++i)hud.pixels[i]=0xff000000u|unsigned((i*2654435761u)&0xffffffu);
         hud.map(course,x,y,w,h,car,rival);
@@ -23,11 +24,13 @@ struct CourseMapTestAccess {
     static float fit(const Hud& hud){return std::min(float(hud.width)/640.f,float(hud.height)/480.f);}
     static void frame(const Hud& hud,int& x0,int& y0,int& x1,int& y1){
         const float f=fit(hud),base=float(hud.height)-480.f*f;
-        x0=int(x*f);y0=int(base+y*f);x1=int((x+w)*f)+1;y1=int(base+(y+h)*f)+1;
+        const float edge=112.f*(1.f+.25f*size);
+        x0=int(14.f*f);y0=int(base+(464.f-edge)*f);x1=int((14.f+edge)*f)+1;y1=int(base+464.f*f)+1;
     }
     static std::pair<int,int> center(const Hud& hud){
         const float f=fit(hud),base=float(hud.height)-480.f*f;
-        return {int((x+w*.5f)*f),int(base+(y+h*.5f)*f)};
+        const float edge=112.f*(1.f+.25f*size);
+        return {int((14.f+edge*.5f)*f),int(base+(464.f-edge*.5f)*f)};
     }
 };
 }
@@ -47,7 +50,9 @@ int main(int argc,char** argv)try{
         car.yaw=std::atan2(here.tangent.x,here.tangent.z)+yawOffset;
         return car;
     };
-    for(auto [width,height]:{std::pair{1280,720},std::pair{2560,1004},std::pair{960,540}}){
+    for(A::zoom=0;A::zoom<3;++A::zoom)
+    for(A::size=0;A::size<3;++A::size)
+    for(auto [width,height]:{std::pair{640,480},std::pair{1280,720},std::pair{2560,1080},std::pair{960,540}}){
         const auto car=carAt(course.length*.4f,0);
         const auto image=A::render(hud,course,width,height,car,nullptr);
         int x0=0,y0=0,x1=0,y1=0;A::frame(hud,x0,y0,x1,y1);
@@ -122,6 +127,15 @@ int main(int argc,char** argv)try{
             (void)ahead;++cases;
         }
     }
-    std::cout<<"PASS "<<cases<<" course map cases across three viewports: framed window, "
+    A::size=2;A::zoom=0;
+    const auto zoomCar=carAt(course.length*.4f,0);
+    const auto wide=A::render(hud,course,1280,720,zoomCar,nullptr);
+    A::zoom=2;const auto close=A::render(hud,course,1280,720,zoomCar,nullptr);
+    if(wide==close)throw std::runtime_error("Zoom did not change the visible road");
+    const auto [cx,cy]=A::center(hud);
+    if(wide[std::size_t(cy)*1280+cx]!=close[std::size_t(cy)*1280+cx])
+        throw std::runtime_error("Zoom changed the fixed player marker");
+    cases+=2;
+    std::cout<<"PASS "<<cases<<" course map cases across three sizes, three zoom-out levels and four viewports: framed window, "
              <<"fixed player indicator, heading-up rotation, following, opponent in and out of range.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

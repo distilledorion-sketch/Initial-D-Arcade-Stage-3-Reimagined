@@ -67,6 +67,7 @@ bool updateOriginalRivalPace(OriginalRivalState& r,OriginalActorState& pub,std::
         for(unsigned region=0;region<2;++region){const auto base=0x0C271F2C+profile*24+region*12;const auto begin=signedWord(data.word(base)),end=signedWord(data.word(base+4));if(nearest>begin&&nearest<end)target*=data.scalar(base+8);}
         target*=coefficient;target*=data.scalar(0x0C27222C+(in.opponentProgress0C901644&15)*4);
     }else target*=band==1?lit(0x3F333333):lit(0x3F99999A);
+    if(in.aiDifficulty)target*=1.f+.05f*float(std::min(in.aiDifficulty,2u));
     float correction=target-r.f(68);correction/=3.f;if(correction< -1.f)correction=-1.f;else if(correction>1.f)correction=1.f;
     float speed=r.f(68)+correction;r.setf(68,speed);
     const bool deceleration=data.scalar(0x0C271CAC+profile*12)>correction;

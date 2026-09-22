@@ -17,6 +17,7 @@ struct ImportedDrivingRoad { OriginalPhysicsPath path; OriginalCollisionData col
 // invalidate four saved wheel materials. Preserve the saved actor and suffix.
 void initializeOriginalRecoveryBackup(const OriginalDriveState& drive,OriginalRecoveryState& recovery);
 struct OriginalDrivingRivalSetup {
+    std::uint32_t aiDifficulty=0; // Captured once for the next offline battle.
     //159720 stack+12; distinct from numeric race mode and profile mode.
     std::int32_t control=-1;
     std::uint32_t profileMode0C901648=0,enemyId0C9015E0=0,level0C9015D0=0;

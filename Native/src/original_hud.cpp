@@ -1,4 +1,5 @@
 #include "original_hud.h"
+#include "unity_ui_capture.h"
 #include "original_countdown_presentation.h"
 #include <algorithm>
 #include <bit>
@@ -191,6 +192,7 @@ void OriginalRaceHud::paint(std::span<std::uint32_t> argb,int width,int height,c
         // group, so widescreen must not anchor it to an edge.
         const bool centerMessage=draw.kind==OriginalHudDraw::Kind::polygon
             &&(draw.index==4||(draw.index>=182&&draw.index<=185));
+        const UnityUiHudScope hudGroup(centerMessage?(draw.index==4?9:0):timer?1:2);
         const float offsetX=!state.edgeAnchored||centerMessage?centeredX:timer?0.f:float(width)-640.f*fit;
         const float offsetY=!state.edgeAnchored||centerMessage?centeredY:timer?(state.timePanel&&!state.alternateLayout?0.f:-50.f*fit):float(height)-480.f*fit;
         if(draw.kind==OriginalHudDraw::Kind::polygon){

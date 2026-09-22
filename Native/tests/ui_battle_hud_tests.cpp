@@ -1,3 +1,4 @@
+#include "unity_ui_capture.h"
 #include "ui.h"
 #include "frontend.h"
 #include <algorithm>
@@ -23,7 +24,7 @@ void save(const std::filesystem::path& path,std::vector<std::uint32_t> pixels,in
 }
 }
 int main(int argc,char** argv)try{
-    if(argc!=3)throw std::invalid_argument("nativeRoot outputDirectory");
+    if(argc!=3&&argc!=4)throw std::invalid_argument("nativeRoot outputDirectory");
     using namespace idas3;
     const std::filesystem::path output=argv[2];std::filesystem::create_directories(output);
     constexpr int w=1280,h=720;constexpr std::size_t n=w*h;
@@ -62,6 +63,25 @@ int main(int argc,char** argv)try{
     mapCourse.left={{-5,0,0},{-5,0,1000}};mapCourse.right={{5,0,0},{5,0,1000}};mapCourse.cumulative={0,1000};
     online.course=&mapCourse;VehicleState rival=car;rival.position={0,0,25};online.rival=&rival;
     RaceClock onlineClock=race;onlineClock.sector=2;onlineClock.sectionCapacity=4;onlineClock.sectionTimes6000={6000,18000,0,0};onlineClock.elapsed6000=30000;online.race=&onlineClock;
+    if(argc>3&&std::string(argv[3])=="--group-only"){
+        Idas3UiEnable(1);
+        for(const auto viewport:std::array<std::array<int,2>,3>{{{640,480},{1280,720},{2560,1080}}})for(int mode=0;mode<3;++mode){
+            const int ww=viewport[0],hh=viewport[1];hud.resize(ww,hh);Idas3UiBeginFrame(ww,hh);
+            auto state=online;state.hudIntroFrame=240;state.onlineBattleHud.frame=240;state.battleHudFrame=240;
+            state.onlineBattleHud.active=mode==2;state.battle=mode==1;state.battleEnemy=13;state.battleProfileMode=0;
+            OriginalResultsState records;records.livePanel=true;records.edgeAnchored=true;state.results=mode==0?&records:nullptr;
+            const auto pixels=hud.paint(state);unityUiSubmit(pixels,ww,hh,false,false,false);
+            UnityUiFrame frame{sizeof(UnityUiFrame)};require(Idas3UiGetFrame(&frame)==1,"No captured HUD frame");
+            std::vector<UnityUiDraw> draws(frame.drawCount);require(Idas3UiCopyDraws(draws.data(),int(draws.size()))==int(draws.size()),"No HUD draws");
+            bool groups[8]{};
+            for(const auto& draw:draws){require((draw.flags&8)!=0,"Race HUD draw lost its HUD marker");const unsigned group=(draw.flags>>8)&15;require(group<8,"Invalid HUD group");groups[group]=true;}
+            require(groups[1]&&groups[2]&&groups[5],"Timer, speedometer or map is missing its group");
+            require(groups[mode==0?3:mode==1?6:7],"Record/Legend/online group is missing");
+            require(!groups[mode==2?6:7],"Legend and online panels share a group");
+            require(unityUiHudGroup()==0,"HUD group escaped its rendering scope");
+        }
+        std::cout<<"PASS independent HUD groups: Time Attack, Legend and online at three aspect ratios\n";return 0;
+    }
     for(const auto viewport:std::array<std::array<int,2>,3>{{{640,480},{1280,720},{800,1000}}}){
         const auto ww=viewport[0],hh=viewport[1];hud.resize(ww,hh);const float fit=std::min(ww/640.f,hh/480.f);
         for(float gap:{25.f,-25.f,0.f,.05f,-.05f}){

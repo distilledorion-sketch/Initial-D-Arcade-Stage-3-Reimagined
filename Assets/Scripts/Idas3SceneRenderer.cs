@@ -44,6 +44,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public SceneFrame CurrentFrame { get; private set; }
     public Camera MainCamera => main;
     public Camera MirrorCamera => mirror;
+    public Idas3GameOptions.Values HudOptions { get; set; } = new Idas3GameOptions.Values();
     public Rect ViewportRect { get; private set; } = new Rect(0, 0, 1, 1);
     public int ActiveMeshCount { get; private set; }
     public int UploadedVertexCount { get; private set; }
@@ -722,6 +723,11 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         camera.rect = new Rect(ViewportRect.x + c.viewport.x / width * ViewportRect.width,
             ViewportRect.y + (1 - (c.viewport.y + c.viewport.w) / height) * ViewportRect.height,
             c.viewport.z / width * ViewportRect.width, c.viewport.w / height * ViewportRect.height);
+        if(view==1){
+            var rect=camera.rect;float scale=HudOptions.HudGroupScale(4);
+            var offset=HudOptions.HudOffset(4);
+            camera.rect=new Rect(.5f+(rect.x-.5f)*scale+offset.x,1f+(rect.y-1f)*scale-offset.y,rect.width*scale,rect.height*scale);
+        }
         Buffer.BlockCopy(lightWords, view * 4 * 156 * 4, viewWordsScratch, 0, 64);
         var viewWords = viewWordsScratch;
         var matrix = NativeMatrix(viewWords, 0); var viewProjection = NativeMatrix(frameWords, view * 92);

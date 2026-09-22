@@ -146,6 +146,7 @@ def main():
     header = '#pragma once\n#include <array>\n#include <cstdint>\nnamespace idas3::original {\n'
     header += '// Exact133B00/0DDB40 counts and1911A0 factory palettes. Generated from the canonical image.\n'
     header += 'inline constexpr std::array<unsigned,35> originalCarColorCounts={' + ','.join(str(car['count']) for car in cars) + '};\n'
+    header += '// Presentation recovery only: malformed/legacy paint IDs use the same stock\n// color as the selection screen. Never modifies the stored driver profile.\ninline constexpr unsigned originalCarPresentationColor(unsigned car,unsigned color){\n    return color<originalCarColorCounts.at(car)?color:0u;\n}\n'
     header += 'inline constexpr std::array<std::array<std::uint32_t,8>,35> originalCarPaintRgb={{\n'
     for car in cars:
         header += '    {' + ','.join(f'0x{c["rgb24"]:06x}u' for c in car['colors']) + '},\n'

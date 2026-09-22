@@ -70,6 +70,11 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-bunta-difficulty-check")>=0){
+            yield return Frames(3);Check(host.Ready,"Scene initialized");
+            Check(Idas3SceneModeFlowFixture(-10)==1,"Bunta difficulty regression: "+Idas3Native.Error());
+            Finish(true,null);yield break;
+        }
         yield return Until(()=>host.Ready,600,"Game initialization");
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-performance-check")>=0){
             yield return Frames(3);frozen=true;

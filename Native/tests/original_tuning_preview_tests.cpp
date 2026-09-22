@@ -1,4 +1,6 @@
 #include "original_tuning_preview.h"
+#include "original_car_color_catalog.h"
+#include "car_catalog.h"
 #include <iostream>
 #include <stdexcept>
 using namespace idas3;
@@ -9,6 +11,22 @@ int main(int argc,char**argv)try{
     auto require=[&](bool result,const char* message){++checks;if(!result)throw std::runtime_error(message);};
     for(unsigned car=0;car<35;++car){
         auto p=makeOriginalFreshBattleProfile();p.setu(16,car);p.setu(76,5);p.setu(72,1000000);
+        for(unsigned bad:{originalCarColorCounts[car],8u,0xffffffffu})for(unsigned view=0;view<3;++view){
+            auto invalid=p;invalid.setu(64,bad);const auto saved=invalid.words;
+            OriginalTuningPreviewPresentation recovered;recovered.load(argv[1],invalid,view==1,view==2);
+            require(((recovered.appearance().word>>25)&7)==0,"Invalid saved paint did not use safe factory color");
+            require(!recovered.mesh().vertices.empty(),"Recovered results/ranking/continue car missing");
+            require(invalid.words==saved,"Paint recovery rewrote the saved driver");
+        }
+        const auto folder=std::filesystem::path(argv[1])/"data/original_models"/originalCarFolders[car];
+        auto materials=OriginalCarMaterialRebuild::load(folder/"material_layout.bin",car);
+        for(unsigned color=0;color<8;++color){
+            OriginalCarAppearanceConfig config(car);config.word=0xa0000000u|(color<<25);config.paintDirty=true;
+            const auto preserved=config.word&~(7u<<25);materials.rebuild(config,0);
+            const auto expected=color<originalCarColorCounts[car]?color:0u,rgb=originalCarPaintRgb[car][expected];
+            require(materials.state().rgb==std::array<unsigned,3>{rgb>>16,(rgb>>8)&255,rgb&255},"Palette recovery/valid color changed RGB");
+            require(((config.word>>25)&7)==expected&&(config.word&~(7u<<25))==preserved,"Paint recovery altered installed parts");
+        }
         OriginalTuningPreviewPresentation preview;preview.load(argv[1],p);
         const auto validate=[&]{const auto& mesh=preview.mesh();require(!mesh.vertices.empty(),"Preview empty");
             const auto bankSize=preview.groundTextures().size()+preview.carTextures().size()+preview.plateTextures().size()+preview.environmentTextures().size();

@@ -167,6 +167,9 @@ IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetSteeringDeadzone();
 // Invalid/nonfinite values leave the setting unchanged; uninitialized getter=-1.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSteeringSmoothing(float value);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetPerformance(int rainDetail);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapSize(int size);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty);
 IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetSteeringSmoothing();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* state);
 // Online pause requests return0; unpause is always allowed. Restart/return

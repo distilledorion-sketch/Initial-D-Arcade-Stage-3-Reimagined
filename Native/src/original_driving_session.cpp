@@ -138,6 +138,7 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
     next->selection=selection;
     const auto control=selection.rival?selection.rival->control:selection.physics.progressEnabled0C9015E4?-2:-1;
     next->selection.physics.progressEnabled0C9015E4=control==-2?1u:0u;
+    next->rivalInputs.aiDifficulty=selection.rival?std::min(selection.rival->aiDifficulty,2u):0u;
     if(selection.rival){
         next->selection.physics.vehicleMode0C9015E0=selection.rival->enemyId0C9015E0;
         next->rivalInputs.level0C9015D0=selection.rival->level0C9015D0;

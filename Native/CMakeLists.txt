@@ -962,3 +962,7 @@ if(WIN32)
   target_compile_options(course_oil_application_tests PRIVATE /W4 /fp:strict)
   target_link_libraries(course_oil_application_tests PRIVATE idas3_core idas3_native_assets idas3_original d3d11 dxgi d3dcompiler gdi32 user32 shell32 xinput9_1_0 winmm)
 endif()
+
+add_executable(rival_difficulty_tests tests/rival_difficulty_tests.cpp)
+target_link_libraries(rival_difficulty_tests PRIVATE idas3_original)
+add_test(NAME rival_difficulty COMMAND rival_difficulty_tests "${CMAKE_SOURCE_DIR}")

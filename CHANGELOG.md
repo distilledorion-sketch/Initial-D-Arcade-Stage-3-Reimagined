@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.95-community-replays.14 - September 21, 2026
+
+- Fixed post-race "Original material paint outside palette" crashes by validating saved and packed car colors before rendering. Verified Enna finish/results/Continue with invalid paint data and all 35 cars; saved profiles and upgrades are preserved.
+- Added Gameplay > AI Driver Difficulty: Normal, Hard (+5% target pace) and Expert (+10%). Saved per installation and applied at the next Legend of the Streets battle; Bunta Challenge, Time Attack and human opponents are unaffected.
+- Added a HUD category in Settings with independent minimap size (100%, 125%, 150%) and zoom-out (Original, Wider/75%, Widest/50%) controls.
+- Larger maps scale their road lines and markers while retaining the bottom-left anchor. Zoom-out reveals more road ahead without changing marker size; the original view is the maximum zoom.
+- Added independent HUD size controls (50%, 75%, 100%, 125%, 150%) for the timer/section times, complete speedometer/gear display, Time Attack records, Legend opponent portrait panel, online opponent/driver panel, rear-view mirror, Time Extended and accepting-challengers indicator. Each group retains its anchor and scales its labels, numbers and artwork together. Replaces the whole-HUD-only control.
+- Time Attack records and Legend/Online battle panels now share one saved position, including portraits, advantage and driver details.
+- Added a live HUD editor with a void background, bumper/third-person preview, mouse dragging, independent resizing, mode previews, reset, save and cancel. Countdown and finish/pass/fail/new-record announcements remain fixed.
+- Save HUD settings for racing and replay playback. Existing settings retain the original size and zoom until changed.
+
 ## 0.3.95-community-replays.13 - September 21, 2026
 
 - Added Enna Skyline to the main game, including scenery, collision data, start title and replay support. Supports downhill/uphill and dry/wet at night, using Akina handling.

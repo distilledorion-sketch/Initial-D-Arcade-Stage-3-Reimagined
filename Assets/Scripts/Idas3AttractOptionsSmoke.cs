@@ -12,6 +12,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private static bool ReportsCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-reports-check")>=0;
     private static bool PointerCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pointer-live-check")>=0;
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowFixture(int scene);
+    [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowValue(int field);
     private static string pendingRoot;
     private static Idas3AttractOptionsSmoke active;
     private Idas3SceneGame host;
@@ -320,6 +321,92 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate physical-input injection");yield return Release();
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ai-options-check")>=0){
+            Check(options.Current.aiDifficulty==0,"Default AI must remain Normal");
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=-1}).aiDifficulty==0,"Negative AI setting");
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=99}).aiDifficulty==2,"AI setting cap");
+            menu.OpenAttractOptions();menu.SelectTab(2);for(int i=0;i<9;++i)menu.Navigate(1);
+            menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==1,"Controller did not choose Hard");
+            menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==2,"Controller did not choose Expert");
+            Check(options.Current.aiDifficulty==0,"Unapplied difficulty leaked");menu.Navigate(1);menu.Navigate(1);menu.Activate();menu.Navigate(-1);menu.Navigate(-1);
+            Check(options.Current.aiDifficulty==2&&Idas3SceneModeFlowValue(34)==2,"Difficulty not applied to native owner");
+            var reloaded=new Idas3GameOptions(new OptionsTestPlatform());reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
+            Check(reloaded.Current.aiDifficulty==2,"Difficulty did not persist");
+            yield return Frames(3);
+            observations.Add("AI capture: open="+menu.IsOpen+" attract="+menu.AttractOptions+" updates="+(menu.Updates!=null&&menu.Updates.WindowVisible)+" repaints="+menu.DiagnosticRepaints);
+            Check(menu.IsOpen,"AI settings closed before capture");
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ai-no-capture")<0){
+            var testCamera=host.GetComponent<Camera>();var previousTarget=testCamera.targetTexture;
+            var testTarget=new RenderTexture(Screen.width,Screen.height,24);testTarget.Create();testCamera.targetTexture=testTarget;
+            try{yield return Capture("ai-gameplay-options");}finally{testCamera.targetTexture=previousTarget;testTarget.Release();Destroy(testTarget);}
+            }
+            menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==0,"Expert should wrap to Normal");menu.Back();menu.Back();
+            Check(options.Current.aiDifficulty==2,"Cancel changed saved difficulty");Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-editor-check")>=0){
+            menu.OpenAttractOptions();menu.SelectTab(7);menu.Activate();yield return Frames(3);
+            var editor=menu.HudEditor;Check(editor!=null&&editor.IsOpen,"Live editor did not open from HUD settings");
+            Check(editor.Draft.HudGroupScale(0)==1&&editor.Draft.HudOffset(0)==Vector2.zero,"Race announcements must remain fixed");
+            var legacy=new Idas3GameOptions.Values();legacy.hudPositions[6]=new Vector2(-.1f,.15f);
+            var migrated=Idas3GameOptions.Normalize(legacy);Check(migrated.HudOffset(3)==legacy.hudPositions[6]&&migrated.HudOffset(7)==migrated.HudOffset(3),"Legacy battle position was lost");
+            legacy.hudPositions[3]=new Vector2(-.2f,.05f);migrated=Idas3GameOptions.Normalize(legacy);
+            Check(migrated.HudOffset(6)==legacy.hudPositions[3],"Existing Time Attack position must take precedence");
+            var groups=new[]{1,2,3,6,7,4,5,8,9};
+            for(int i=0;i<groups.Length;++i){
+                editor.SelectGroup(i);editor.Refresh();Check(editor.Bounds(groups[i],out var bounds)&&bounds.width>5&&bounds.height>5,"Missing draggable preview group "+groups[i]);
+                var before=editor.Draft.Clone();editor.MoveSelected((new Vector2(Screen.width*.5f,Screen.height*.5f)-bounds.center)*.2f);
+                Check(editor.Draft.HudOffset(groups[i])!=before.HudOffset(groups[i]),"Drag did not move group "+groups[i]);
+                for(int other=1;other<10;++other)if(Idas3GameOptions.Values.HudPositionGroup(other)!=Idas3GameOptions.Values.HudPositionGroup(groups[i]))Check(editor.Draft.HudOffset(other)==before.HudOffset(other),"Drag moved an unrelated group");
+                Check(editor.Draft.HudOffset(3)==editor.Draft.HudOffset(6)&&editor.Draft.HudOffset(3)==editor.Draft.HudOffset(7),"Time Attack and battle panels must share a position");
+                Check(options.Current.HudOffset(groups[i])==Vector2.zero,"Preview changed saved layout before Save");
+                editor.ResizeSelected(1);editor.Refresh();
+            }
+            editor.SetThirdPerson(false);yield return editor.Capture(Path.Combine(root,"editor-bumper.png"));
+            editor.SetThirdPerson(true);Check(editor.ThirdPerson,"Third-person preview switch failed");yield return editor.Capture(Path.Combine(root,"editor-third-person.png"));
+            foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1920,800)}){yield return Resize(size.x,size.y,false);yield return Frames(2);yield return editor.Capture(Path.Combine(root,"editor-"+size.x+".png"));}
+            yield return Resize(1200,720,false);
+            editor.SelectGroup(2);editor.Refresh();yield return editor.Capture(Path.Combine(root,"shared-time-attack.png"));
+            editor.SelectGroup(3);editor.Refresh();yield return editor.Capture(Path.Combine(root,"shared-legend.png"));
+            editor.SelectGroup(4);editor.Refresh();yield return editor.Capture(Path.Combine(root,"shared-online.png"));
+            var expected=editor.Draft.Clone();editor.Close(true);Check(!editor.IsOpen&&menu.IsOpen,"Save did not return to HUD settings");
+            for(int i=0;i<groups.Length;++i)Check(options.Current.HudOffset(groups[i])==expected.HudOffset(groups[i]),"Saved HUD position mismatch");
+            var reloaded=new Idas3GameOptions(new OptionsTestPlatform());reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
+            Check(Idas3GameOptions.Equivalent(reloaded.Current,options.Current),"HUD layout did not survive reload");
+            menu.OpenHudEditor();yield return Frames(2);editor=menu.HudEditor;editor.SelectGroup(0);editor.ResetSelected();editor.Close(false);
+            Check(options.Current.HudOffset(1)==expected.HudOffset(1),"Cancel saved the reset layout");
+            Check(options.Draft.HudOffset(1)==expected.HudOffset(1),"Cancel changed the pending draft");
+            menu.OpenHudEditor();yield return Frames(2);editor=menu.HudEditor;editor.SelectGroup(3);editor.ResetSelected();
+            Check(editor.Draft.HudOffset(3)==Vector2.zero&&editor.Draft.HudOffset(6)==Vector2.zero&&editor.Draft.HudOffset(7)==Vector2.zero,"Reset must reset the shared panel position");
+            Check(editor.Draft.HudOffset(2)==expected.HudOffset(2),"Panel reset moved speedometer");editor.Close(false);
+            menu.SetOpen(false);Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-options-check")>=0){
+            Check(options.Current.minimapSize==0&&options.Current.minimapZoom==2,"Existing/default settings must retain original map");
+            var oldHud=new Idas3GameOptions.Values();JsonUtility.FromJsonOverwrite("{\"version\":1,\"minimapSize\":1}",oldHud);Check(oldHud.minimapZoom==2&&oldHud.hudTimerSize==2&&oldHud.hudSpeedometerSize==2&&oldHud.hudOnlineSize==2,"Old settings must retain original zoom and independent HUD sizes");
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapZoom=-1}).minimapZoom==0,"Negative zoom not clamped");
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapZoom=99}).minimapZoom==2,"Previous zoom-in setting must return to original");
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=-1}).minimapSize==0,"Negative size not clamped");
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=99}).minimapSize==2,"Oversize not clamped");
+            menu.OpenAttractOptions();menu.SelectTab(7);Check(menu.SelectedTab==7,"HUD category unavailable");menu.Navigate(1);
+            menu.NavigateHorizontal(1);Check(options.Draft.minimapSize==1&&options.HasUnsavedChanges,"125% selection not dirty");
+            menu.Activate();Check(options.Draft.minimapSize==2,"Confirm did not select 150%");
+            menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==1,"Right should zoom out to wider");menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==0,"Zoom out did not select 50%");
+            var fields=new[]{"hudTimerSize","hudSpeedometerSize","hudRecordsSize","hudLegendSize","hudOnlineSize","hudMirrorSize","hudTimeExtensionSize","hudChallengersSize"};
+            for(int row=0;row<fields.Length;++row){
+                menu.Navigate(1);menu.NavigateHorizontal(1);
+                for(int other=0;other<fields.Length;++other){
+                    var field=typeof(Idas3GameOptions.Values).GetField(fields[other]);
+                    Check((int)field.GetValue(options.Draft)==(other<=row?3:2),"HUD row changed a different group: "+fields[other]);
+                }
+            }
+            menu.Navigate(1);menu.Navigate(1);menu.Activate();Check(options.Current.minimapSize==2&&options.Current.minimapZoom==0,"HUD Apply lost map settings");
+            var hudReloaded=new Idas3GameOptions(new OptionsTestPlatform());hudReloaded.Initialize(Path.GetDirectoryName(options.FilePath));
+            foreach(string name in fields)Check((int)typeof(Idas3GameOptions.Values).GetField(name).GetValue(hudReloaded.Current)==3,"Independent HUD setting did not survive reload: "+name);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-options-no-capture")<0)yield return Capture("hud-settings");
+            menu.SelectTab(7);menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapSize==0,"Size did not wrap to original");
+            menu.NavigateHorizontal(-1);Check(options.Draft.minimapSize==2,"Reverse size selection failed");
+            menu.SetOpen(false);Finish(true,null);yield break;
+        }
         if(PointerCheck){yield return PointerRegression();yield break;}
         if(OptionsExitCheck){yield return OptionsExitRegression();yield break;}
         if(ReportsCheck){yield return ReportsRegression();yield break;}

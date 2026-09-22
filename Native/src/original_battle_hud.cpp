@@ -1,4 +1,5 @@
 #include "original_battle_hud.h"
+#include "unity_ui_capture.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -96,6 +97,7 @@ void OriginalBattleHudAssets::paintGame2d(std::span<std::uint32_t> argb,int widt
     // retain the source drawList order separately for instruction comparison.
     std::stable_sort(prepared.begin(),prepared.end(),[](const auto& a,const auto& b){return a.depth<b.depth;});
     for(const auto& item:prepared){
+        const UnityUiHudScope hudGroup(item.centered?4:unityUiHudGroup());
         SpritePlacement placement;placement.scale=100.f*fit;placement.invertY=true;placement.authoredHeight=0;
         placement.offsetX=edgeAnchored&&!item.centered?float(width)-640.f*fit:(float(width)-640.f*fit)*.5f;
         placement.offsetY=edgeAnchored&&!item.centered?0.f:(float(height)-480.f*fit)*.5f;

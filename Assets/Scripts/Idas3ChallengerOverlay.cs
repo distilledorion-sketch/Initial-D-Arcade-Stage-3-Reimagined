@@ -80,12 +80,20 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
         // 194 source pixels from the top; the dial begins 161 from the bottom.
         // Both HUD groups scale by fit and anchor to opposite viewport edges.
         float fit=canvas.scaleFactor;
-        float panelBottom=194f*fit, dialTop=height-161f*fit;
+        var options=host.GameOptions?.Current;
+        float panelScale=options?.HudGroupScale((host.Status.flags&8192u)!=0?6:3)??1f;
+        float dialScale=options?.HudGroupScale(2)??1f;
+        float panelBottom=194f*fit*panelScale, dialTop=height-161f*fit*dialScale;
         float centerY=(panelBottom+dialTop)*.5f, centerX=width-80f*fit;
         float safeLeft=(width-640f*fit)*.5f, safeTop=(height-480f*fit)*.5f;
+        // The independent badge stays in the gap between the resized groups.
+        float hudScale=options?.HudGroupScale(8)??1f;
+        centerX=width-80f*fit*Mathf.Max(panelScale,dialScale,hudScale);
+        var offset=options?.HudOffset(8)??Vector2.zero;centerX+=width*offset.x;centerY+=height*offset.y;
+        badge.rectTransform.localScale=Vector3.one*hudScale;
         badge.rectTransform.anchoredPosition=new Vector2(
-            (centerX-safeLeft)/fit-badge.rectTransform.sizeDelta.x*.5f,
-            -(centerY-safeTop)/fit+badge.rectTransform.sizeDelta.y*.5f);
+            (centerX-safeLeft)/fit-badge.rectTransform.sizeDelta.x*.5f*hudScale,
+            -(centerY-safeTop)/fit+badge.rectTransform.sizeDelta.y*.5f*hudScale);
         overlayCamera.enabled=Active||SearchingVisible;canvas.enabled=overlayCamera.enabled;
         shade.gameObject.SetActive(Active);bandImage.gameObject.SetActive(Active);badge.gameObject.SetActive(SearchingVisible);
         if(Active){

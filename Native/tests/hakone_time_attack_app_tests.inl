@@ -16,7 +16,13 @@ void runHakoneTimeAttackTests(App& app,const fs::path& pack){
         app.frontend.gameMode=original::OriginalGameMode::TimeAttack;app.frontend.course=int(id);app.courseIndex=3;
         app.reverse=app.frontend.reverse=bool(scenario&1);app.wet=app.frontend.wet=bool(scenario&2);app.night=app.frontend.night=bool(scenario&4);
         app.start();
-        check(app.originalSession.selection().physics.conditionCode==((id==10?2u:0u)+(scenario&1)),"Imported handling: Usui for Sadamine, Myogi for Hakone");
+        if(fs::is_regular_file(output/"PALETTE_RECOVERY_TEST.txt")){
+            // The race/showroom already tolerates a legacy invalid stored color.
+            // Results, upgrades, ranking and Continue must tolerate it too.
+            const auto invalid=original::originalCarColorCounts.at(unsigned(app.frontend.car));
+            app.battleProfile.setu(64,invalid);app.frontend.battleProfile.setu(64,invalid);
+        }
+        check(app.originalSession.selection().physics.conditionCode==((id==11?6u:id==10?2u:0u)+(scenario&1)),"Imported handling: Akina for Enna, Usui for Sadamine, Myogi for Hakone");
         for(unsigned i=0;i<600&&app.race.phase==RacePhase::Countdown;++i)app.simulate({});
         check(app.race.phase==RacePhase::Running,"Countdown starts Hakone");
     };

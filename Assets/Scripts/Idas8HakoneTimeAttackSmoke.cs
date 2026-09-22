@@ -17,6 +17,7 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         if(at+1>=args.Length)throw new ArgumentException("Supply a new Hakone TA diagnostic directory");
         output=Path.GetFullPath(args[at+1]);if(Directory.Exists(output))throw new IOException("Diagnostic directory must be new");
         Directory.CreateDirectory(output);saves=Path.Combine(output,"userdata");Directory.CreateDirectory(saves);
+        if(Array.IndexOf(args,"-idas3-palette-recovery-check")>=0)File.WriteAllText(Path.Combine(output,"PALETTE_RECOVERY_TEST.txt"),"Invalid paint regression in isolated profiles only");
         File.WriteAllText(Path.Combine(output,"HAKONE_TA_TEST.txt"),"Private Hakone Time Attack test saves");return true;
     }
     public static void Attach(Idas3SceneGame host){if(output==null)return;active=host.gameObject.AddComponent<Idas8HakoneTimeAttackSmoke>();active.host=host;host.DiagnosticFocusOverride=true;active.StartCoroutine(active.Guard(active.Run()));}

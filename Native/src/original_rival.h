@@ -31,6 +31,7 @@ private:
     std::vector<std::byte> bytes_;
 };
 struct OriginalRivalPaceInputs {
+    std::uint32_t aiDifficulty=0; // Optional host difficulty; zero retains original arithmetic.
     std::uint32_t condition0C9015CC=0,profile0CAA9868=0;
     std::uint32_t level0C9015D0=0,opponentProgress0C901644=0;
     std::array<std::uint32_t,8> progress0C901604{};

@@ -57,6 +57,9 @@ internal static class Idas3Native
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern float Idas3SceneGetSteeringDeadzone();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetSteeringSmoothing(float value);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetPerformance(int rainDetail);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetMapSize(int size);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetMapZoom(int zoom);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetAiDifficulty(int difficulty);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern float Idas3SceneGetSteeringSmoothing();
     [StructLayout(LayoutKind.Sequential, Pack=8)]
     internal struct WheelState {
