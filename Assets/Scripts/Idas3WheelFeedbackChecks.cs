@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using System.Threading;
 
 // Fake output boundary only. These checks never load/acquire a physical wheel.
 //
@@ -15,9 +16,9 @@ internal static class Idas3WheelFeedbackChecks
     private sealed class Backend : Idas3WheelFeedback.IBackend {
         public List<Idas3WheelFeedback.DeviceChoice> devices=new List<Idas3WheelFeedback.DeviceChoice>{
             new Idas3WheelFeedback.DeviceChoice{id="test-wheel",name="Test wheel",vendorId=11,productId=22}};
-        public int sends,stops,shutdowns;public string lastDevice;public bool fail,discoveryFailure;
+        public int sends,stops,shutdowns,scans;public string lastDevice;public bool fail,discoveryFailure;
         public Idas3WheelFeedback.CabinetRequest last;
-        public List<Idas3WheelFeedback.DeviceChoice> Discover(){if(discoveryFailure)throw new InvalidOperationException("Discovery failed");return new List<Idas3WheelFeedback.DeviceChoice>(devices);}
+        public List<Idas3WheelFeedback.DeviceChoice> Discover(){++scans;if(discoveryFailure)throw new InvalidOperationException("Discovery failed");return new List<Idas3WheelFeedback.DeviceChoice>(devices);}
         public bool Send(string id,Idas3WheelFeedback.CabinetRequest request){++sends;lastDevice=id;last=request;return !fail;}
         public void Stop(){++stops;}public void Shutdown(){++shutdowns;}public string Status=>"Mock driver unavailable";
     }
@@ -92,15 +93,58 @@ internal static class Idas3WheelFeedbackChecks
         var scanFailure=new Backend();using(var output=new Idas3WheelFeedback(scanFailure)){
             output.Update(settings,input,state,7,true,0);Check(scanFailure.sends==1,"Discovery regression did not start output");
             scanFailure.discoveryFailure=true;state.simulationTicks++;output.Update(settings,input,state,7,true,2.1);
+            Check(scanFailure.scans==1&&scanFailure.sends==2,"Active race unnecessarily enumerated wheel drivers");
+            output.Stop();output.RefreshDevices();
             Check(scanFailure.stops==1&&output.Choices.Count==1,"Failed discovery retained a feedback device");
-            for(int i=1;i<15;++i){state.simulationTicks++;output.Update(settings,input,state,7,true,2.1+i*.1);Check(scanFailure.sends==1,"Failed discovery resumed stale device output");}
+            for(int i=1;i<15;++i){state.simulationTicks++;output.Update(settings,input,state,7,true,2.1+i*.1);Check(scanFailure.sends==2,"Failed discovery resumed stale device output");}
             scanFailure.discoveryFailure=false;state.simulationTicks++;output.Update(settings,input,state,7,true,4.2);
-            Check(scanFailure.sends==2,"Successful rediscovery did not recover output");
+            Check(scanFailure.sends==3,"Successful rediscovery did not recover output");
         }
+        QueuedChecks(Check);
         var diagnostic=new Backend();using(var output=new Idas3WheelFeedback(diagnostic,true)){
             output.Update(settings,input,state,7,true,0);Check(diagnostic.sends==0,"Automated diagnostic enabled physical output");
         }
         File.WriteAllText(Path.Combine(root,"wheel-feedback-model-report.json"),JsonUtility.ToJson(new Report{
-            passed=true,physicalOutputSent=false,checks=checks,scope="Managed wheel owner with a fake output backend: telemetry units, clamps and refusals at the native boundary, lifecycle, stale ticks, device identity, no fallback, retry and diagnostic guards. The force model itself is the ported cabinet board and is covered by original_ffb and original_ffb_owner; no physical wheel verification."},true));
+            passed=true,physicalOutputSent=false,checks=checks,scope="Managed wheel owner and queued worker with fake drivers: blocked discovery does not stall caller updates, newest-only mailbox, stop cancellation, stale-request expiry, worker shutdown, no periodic scan during healthy output, telemetry validation, lifecycle, identity and retry guards. No physical wheel or hardware FPS verification."},true));
     }
+    private sealed class SlowBackend : Idas3WheelFeedback.IBackend {
+        internal readonly ManualResetEvent entered=new ManualResetEvent(false),release=new ManualResetEvent(false),stopped=new ManualResetEvent(false);
+        internal int sends,shutdowns,driverThread;internal float last;
+        public List<Idas3WheelFeedback.DeviceChoice> Discover(){entered.Set();release.WaitOne();return new List<Idas3WheelFeedback.DeviceChoice>();}
+        public bool Send(string id,Idas3WheelFeedback.CabinetRequest request){driverThread=Thread.CurrentThread.ManagedThreadId;Interlocked.Increment(ref sends);last=request.steering;return true;}
+        public void Stop()=>stopped.Set();public void Shutdown()=>Interlocked.Increment(ref shutdowns);public string Status=>"Test";
+    }
+    private static void QueuedChecks(Action<bool,string> check){
+        var slow=new SlowBackend();var output=new Idas3WheelFeedback.QueuedBackend(slow);
+        try{
+            output.Discover();check(slow.entered.WaitOne(2000),"Worker discovery never started");
+            var watch=System.Diagnostics.Stopwatch.StartNew();
+            for(int i=0;i<600;++i)check(output.Send("test",new Idas3WheelFeedback.CabinetRequest{steering=i/600f}),"Mailbox rejected healthy request");
+            output.Stop();string status=output.Status;
+            check(watch.ElapsedMilliseconds<100,"Blocked discovery stalled render-thread calls");
+            slow.release.Set();check(slow.stopped.WaitOne(2000),"Worker did not prioritize stop");
+            check(slow.sends==0,"Stop allowed queued steering to play");
+            output.Send("test",new Idas3WheelFeedback.CabinetRequest{steering=.75f});
+            check(SpinWait.SpinUntil(()=>Volatile.Read(ref slow.sends)>0,2000),"Fresh request did not reach driver");
+            check(slow.driverThread!=Thread.CurrentThread.ManagedThreadId,"Driver ran on caller thread");
+        }finally{slow.release.Set();output.Shutdown();check(output.WaitForShutdown(2000),"Worker did not shut down");}
+        check(slow.shutdowns==1,"Driver shutdown count");
+        foreach(bool stale in new[]{false,true}){
+            var driver=new SlowBackend();var queue=new Idas3WheelFeedback.QueuedBackend(driver);
+            try{
+                queue.Discover();check(driver.entered.WaitOne(2000),"Slow discovery did not start");
+                for(int i=0;i<100;++i)queue.Send("test",new Idas3WheelFeedback.CabinetRequest{steering=i});
+                if(stale)Thread.Sleep(150);
+                driver.release.Set();
+                check(SpinWait.SpinUntil(()=>Volatile.Read(ref driver.sends)>0||driver.stopped.WaitOne(0),2000),"Mailbox work did not complete");
+            }finally{driver.release.Set();queue.Shutdown();check(queue.WaitForShutdown(2000),"Mailbox worker did not stop");}
+            check(stale?driver.sends==0:driver.sends==1&&driver.last==99,stale?"Stale queued force reached driver":"Mailbox replayed obsolete force requests");
+        }
+    }
+#if UNITY_EDITOR
+    public static void RunBatch(){
+        const string path="Verification/wheel-effects-20260921/managed";
+        Directory.CreateDirectory(path);Run(path);Debug.Log("PASS wheel feedback worker checks");
+    }
+#endif
 }

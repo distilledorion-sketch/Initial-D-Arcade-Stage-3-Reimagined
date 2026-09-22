@@ -105,6 +105,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         for(int i=0;i<materials.Length;i++) {
             var s=data.materials[i]; var m=new Material(shader){name=s.name}; materials[i]=m;
             m.EnableKeyword("IDAS_IMPORTED_COURSE");
+            m.SetFloat("_ImportedSponsorSigns",LoadedCourse=="SADAMINE"&&s.name=="makersign_daydry"?1:0);
             // Repeated cutout trees share meshes/materials. Instance their
             // world transforms; blended road shadows retain their draw order.
             m.enableInstancing=s.kind=="tree"&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-imported-instancing-off")<0;
@@ -135,6 +136,10 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 }
                 int[] indices=new int[nt]; for(int i=0;i<nt;i++) { indices[i]=r.ReadInt32(); if(indices[i]<0||indices[i]>=nv) throw new InvalidDataException("Vertex index"); }
                 Vector2[] treeFaces=null;
+                // The atlas also contains ordinary scenery: tag only sponsor
+                // logo triangles for readable lettering on both panel faces.
+                if(LoadedCourse=="SADAMINE"&&data.materials[mat].name=="makersign_daydry")
+                    treeFaces=SponsorFaceTags(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,Path.GetFileName(root)=="night_wet"?.25f:0);
                 if(data.materials[mat].kind=="tree"){
                     treeFaces=PrepareTreeFaces(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,out int paired);
                     PairedTreeTriangles+=paired;
@@ -180,6 +185,33 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             m.SetVector("_ImportedSunDirection",sun); m.SetColor("_ImportedFogColor",fog);
             m.SetVector("_ImportedFogRange",new Vector4(85,1/Mathf.Max(.00001f,profile.distanceScale),0,0));
         }
+    }
+    internal static Vector2[] SponsorFaceTags(ref Vector3[] vertices,ref Vector3[] normals,ref Vector2[] uv,ref Vector2[] uv2,ref Color32[] colors,ref int[] indices,float atlasOffset){
+        var points=new List<Vector3>(vertices);var ns=new List<Vector3>(normals);
+        var ts=new List<Vector2>(uv);var ts2=new List<Vector2>(uv2);var cs=new List<Color32>(colors);
+        var tags=new List<Vector2>(new Vector2[vertices.Length]);
+        var copies=new Dictionary<(int,int),int>();
+        for(int i=0;i<indices.Length;i+=3){
+            var a=uv[indices[i]];var b=uv[indices[i+1]];var c=uv[indices[i+2]];
+            int column=Mathf.FloorToInt(((a.x+b.x+c.x)/3-atlasOffset)*8),row=Mathf.FloorToInt((a.y+b.y+c.y)/3*16);
+            if(column<0||column>1||row<0||row>3||(column==1&&row==3))continue;
+            float left=atlasOffset+column/8f,right=atlasOffset+(column+1)/8f,top=row/16f,bottom=(row+1)/16f;
+            float minU=Mathf.Min(a.x,b.x,c.x),maxU=Mathf.Max(a.x,b.x,c.x);
+            float minV=Mathf.Min(a.y,b.y,c.y),maxV=Mathf.Max(a.y,b.y,c.y);
+            if(minU<left-.00001f||maxU>right+.00001f||minV<top-.00001f||maxV>bottom+.00001f||maxU-minU<.001f||maxV-minV<.001f)continue;
+            for(int k=0;k<3;k++){
+                int source=indices[i+k];var key=(source,column);
+                if(!copies.TryGetValue(key,out int copy)){
+                    copy=points.Count;copies.Add(key,copy);
+                    points.Add(vertices[source]);ns.Add(normals[source]);ts.Add(uv[source]);ts2.Add(uv2[source]);cs.Add(colors[source]);
+                    tags.Add(new Vector2(0,left+right));
+                }
+                indices[i+k]=copy;
+            }
+        }
+        if(copies.Count==0)return null;
+        vertices=points.ToArray();normals=ns.ToArray();uv=ts.ToArray();uv2=ts2.ToArray();colors=cs.ToArray();
+        return tags.ToArray();
     }
     static int ComparePosition(Vector3 a,Vector3 b){int n=a.x.CompareTo(b.x);if(n==0)n=a.y.CompareTo(b.y);return n!=0?n:a.z.CompareTo(b.z);}
     static (Vector3,Vector3,Vector3) FaceKey(Vector3 a,Vector3 b,Vector3 c,out int side){

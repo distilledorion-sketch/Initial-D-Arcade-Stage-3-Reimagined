@@ -8,6 +8,8 @@ namespace idas3 {
 struct OriginalEngineSoundSelection {unsigned family=0;int level=0;};
 //067A00: profile tuning bytes select the sound level and the special AE86 bank.
 OriginalEngineSoundSelection selectOriginalEngineSound(const original::OriginalBattleProfile& profile);
+// Shared by solo/replay playback and rollback simulation. Applies installed-part audio gates.
+original::OriginalEngineConfiguration configureProfileEngineSound(const original::OriginalBattleProfile& profile);
 struct OriginalEngineBankSelection {unsigned bank=0,instrument=0,effect=0;};
 struct OriginalEngineBankSelections {
     std::array<std::array<OriginalEngineBankSelection,2>,36> families{};

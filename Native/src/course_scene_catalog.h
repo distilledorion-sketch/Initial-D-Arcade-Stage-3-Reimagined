@@ -15,6 +15,7 @@ public:
     NativeTextureBank textures,backgroundTextures;
     const NativeAssembly& assemblyForPathIndex(std::size_t originalForwardPathIndex)const;
     NativeAssembly backgroundAssembly(Vec3 cameraWorld)const;
+    std::span<const NativeAssembly> assemblies()const{return assemblies_;}
     std::size_t assemblyCount()const{return assemblies_.size();}
     std::span<const Vec3> lampPositions()const{return lampPositions_;}
 private:

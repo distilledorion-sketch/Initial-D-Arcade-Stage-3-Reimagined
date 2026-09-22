@@ -16,6 +16,7 @@
    }
    #if defined(IDAS_IMPORTED_COURSE)
    Texture2D _ImportedShadowTex; SamplerState sampler_ImportedShadowTex;
+   float _ImportedSponsorSigns;
    float _ImportedCoverage,_ImportedCutoff,_ImportedHasShadow,_ImportedSky,_ImportedNight;
    float4 _ImportedSunDirection,_ImportedFogColor,_ImportedFogRange;
    #endif
@@ -126,9 +127,9 @@ float sourceFogCoefficient(float reciprocalDepth){
  return lerp(float(pair>>8),float(pair&255),fraction)/255.0;
 }
 struct V{float3 p:POSITION;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD0;float4 offsetColor:TEXCOORD1;float2 treeFace:TEXCOORD2;UNITY_VERTEX_INPUT_INSTANCE_ID};
-struct P{float4 p:SV_POSITION;float3 world:TEXCOORD0;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD1;float4 offsetColor:COLOR1;noperspective float reciprocalDepth:TEXCOORD2;float treeFace:TEXCOORD3;};
+struct P{float4 p:SV_POSITION;float3 world:TEXCOORD0;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD1;float4 offsetColor:COLOR1;noperspective float reciprocalDepth:TEXCOORD2;float treeFace:TEXCOORD3;float sponsorAxis:TEXCOORD4;};
 Texture2D _MainTex;SamplerState sampler_MainTex;
-P mainVS(V v){UNITY_SETUP_INSTANCE_ID(v);P o;o.treeFace=v.treeFace.x;
+P mainVS(V v){UNITY_SETUP_INSTANCE_ID(v);P o;o.treeFace=v.treeFace.x;o.sponsorAxis=v.treeFace.y;
 #if defined(IDAS_IMPORTED_COURSE)
  o.world=mul(unity_ObjectToWorld,float4(v.p,1)).xyz;
  // Imported geometry shares the D3 camera's clip/depth convention with cars.
@@ -231,6 +232,9 @@ void showroomGeometry(triangle P input[3],inout TriangleStream<P> stream){
 }
 float4 mainPS(P v):SV_TARGET{
 #if defined(IDAS_IMPORTED_COURSE)
+ // Sponsor panels are two-sided. Only tagged logo atlas tiles may reflect;
+ // the screen-space U direction keeps lettering readable from either side.
+ if(_ImportedSponsorSigns!=0&&v.sponsorAxis>0&&ddx(v.uv.x)<0)v.uv.x=v.sponsorAxis-v.uv.x;
  float4 color=_MainTex.Sample(sampler_MainTex,v.uv);
  if(_ImportedCoverage!=0){
   // Derivative-scaled coverage stays approximately one pixel wide while the

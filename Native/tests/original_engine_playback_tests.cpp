@@ -103,6 +103,9 @@ int main(int argc,char** argv)try{
         OriginalEnginePlayback native(argv[1]);native.select(p);const auto selected=selectOriginalEngineSound(p);
         m.write32(0xca9b52c,selected.family);m.write32(0xca9b530,selected.family);m.write32(0xca9b534,unsigned(selected.level));
         RefCpu cfg(m);cfg.r[15]=stack+0xf000;cfg.pr=stop;instructions+=cfg.run(0xc0c3c60,stop,500);
+        // Game-profile correction: Levin A Step 2 has no turbo installed.
+        // Raw 0C3C60 parity remains covered by original_engine_control_tests.
+        if(car==1&&upgrade==2){m.write8(0xca9b538,0);m.write8(0xca9b539,0);}
         RefCpu reset(m);instructions+=reset.run(0xc0c4114,0xc0c4160,200);
         m.write32(0xc31de44,owner);m.write8(0xc31de55,0);m.write8(0xc31de54,0);m.write32(0xc900954,actor);
         m.write32(owner+8,owner+20);m.write32(owner+12,2);

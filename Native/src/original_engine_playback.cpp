@@ -13,6 +13,17 @@ OriginalEngineSoundSelection selectOriginalEngineSound(const original::OriginalB
     else result.level=p.byte(162)?1:0;
     return result;
 }
+original::OriginalEngineConfiguration configureProfileEngineSound(const original::OriginalBattleProfile& profile){
+    const auto selection=selectOriginalEngineSound(profile);
+    auto config=original::configureOriginalEngine(selection.family,selection.level,profile.byte(152),profile.byte(162),profile.byte(166));
+    // The source sound-level threshold enables Levin A boost at Step 2,
+    // but its authored tuning table installs the turbo at Step 3 (60000).
+    // Correct that mismatch at the game-profile boundary, leaving the
+    // reference controller and every other car/package unchanged.
+    if(profile.u(16)==1&&profile.byte(152)==0&&profile.byte(164)<3)
+        config.auxiliaryLoop=config.releaseCue=false;
+    return config;
+}
 OriginalEngineBankSelections OriginalEngineBankSelections::load(const std::filesystem::path& root){
     std::ifstream f(root/"data/original_audio/continuous/selections.bin",std::ios::binary);
     const auto word=[&](){std::array<unsigned char,4>b{};if(!f.read(reinterpret_cast<char*>(b.data()),4))throw std::runtime_error("Missing/truncated engine bank selections");return unsigned(b[0])|(unsigned(b[1])<<8)|(unsigned(b[2])<<16)|(unsigned(b[3])<<24);};
@@ -42,7 +53,7 @@ std::shared_ptr<const OriginalIcsBank> OriginalEnginePlayback::bank(unsigned ind
 }
 void OriginalEnginePlayback::select(const original::OriginalBattleProfile& profile){
     const auto selection=selectOriginalEngineSound(profile);
-    configuration_=original::configureOriginalEngine(selection.family,selection.level,profile.byte(152),profile.byte(162),profile.byte(166));
+    configuration_=configureProfileEngineSound(profile);
     const auto& firstGroup=selections_.families[selection.family][0];
     initialization_={{firstGroup.bank,selections_.auxiliary.bank},firstGroup.effect};
     player_.reset();controls_={};original::resetOriginalEngineControl(state_);

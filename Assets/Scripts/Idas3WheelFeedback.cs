@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 
 // Windows wheel output is separate from device input and source physics.
 //
@@ -117,7 +118,7 @@ public sealed class Idas3WheelFeedback : IDisposable
     private double tickChangedAt,nextScan,retryAt,lastSendAt;
     public IReadOnlyList<DeviceChoice> Choices=>choices;
     public string StatusText {get;private set;}="Force feedback is off.";
-    public Idas3WheelFeedback(bool disableOutput=false):this(new NativeBackend(),disableOutput){}
+    public Idas3WheelFeedback(bool disableOutput=false):this(disableOutput?(IBackend)new NativeBackend():new QueuedBackend(new NativeBackend()),disableOutput){}
     internal Idas3WheelFeedback(IBackend backend,bool disableOutput=false){
         this.backend=backend??throw new ArgumentNullException(nameof(backend));this.disableOutput=disableOutput;
         choices.Add(new DeviceChoice{id="",name="AUTOMATIC (ACTIVE WHEEL)"});
@@ -152,7 +153,10 @@ public sealed class Idas3WheelFeedback : IDisposable
         if(disableOutput){Stop();StatusText="Hardware output is disabled during automated testing.";return;}
         if(!allowed||!input.connected||state.size!=40||state.version!=1||(state.flags&1)==0){Stop();StatusText="Feedback rests in menus, while paused or unfocused, and outside driving.";return;}
         if(double.IsNaN(now)||double.IsInfinity(now)){Stop();return;}
-        if(now>=nextScan){RefreshDevices();nextScan=now+2;}
+        // Device enumeration opens drivers and can stall for many milliseconds.
+        // A healthy active wheel needs no repeated inventory scan. Disconnects
+        // still fail through Send; idle/retry discovery can then recover it.
+        if(!sending&&now>=nextScan){RefreshDevices();nextScan=now+2;}
         string selected=Resolve(settings.wheelFeedbackDevice,input);
         if(selected==null){Stop();return;}
         if(desiredDevice!=selected){Stop();desiredDevice=selected;retryAt=0;}
@@ -176,4 +180,70 @@ public sealed class Idas3WheelFeedback : IDisposable
         sending=false;sendingDevice=null;
     }
     public void Dispose(){if(disposed)return;Stop();try{backend.Shutdown();}catch(Exception){}disposed=true;}
+
+    // All driver calls have one owner outside the render thread. This mailbox
+    // keeps only the newest request; it never synthesizes or repeats telemetry.
+    // The native backend still checks foreground ownership and uses 100 ms
+    // effects. Stop discards queued output and takes priority over discovery.
+    internal sealed class QueuedBackend : IBackend {
+        private readonly IBackend driver;
+        private readonly object gate=new object();
+        private readonly AutoResetEvent wake=new AutoResetEvent(false);
+        private readonly Thread worker;
+        private List<DeviceChoice> devices=new List<DeviceChoice>();
+        private bool discover,stop,shutdown,pending,failed;
+        private string id,status="Discovering wheel feedback devices…";
+        private CabinetRequest request;
+        private long queuedAt;
+        internal QueuedBackend(IBackend driver){
+            this.driver=driver;
+            worker=new Thread(Run){IsBackground=true,Name="Wheel feedback output"};
+            worker.Start();
+        }
+        public List<DeviceChoice> Discover(){lock(gate){
+            if(!shutdown){discover=true;wake.Set();}
+            return new List<DeviceChoice>(devices);
+        }}
+        public bool Send(string device,CabinetRequest value){lock(gate){
+            if(shutdown)return false;
+            if(failed){failed=false;return false;}
+            id=device;request=value;queuedAt=System.Diagnostics.Stopwatch.GetTimestamp();pending=true;wake.Set();return true;
+        }}
+        public void Stop(){lock(gate){if(shutdown)return;pending=false;stop=true;wake.Set();}}
+        public void Shutdown(){lock(gate){if(shutdown)return;pending=false;shutdown=true;wake.Set();}}
+        public string Status {get{lock(gate)return status;}}
+        internal bool WaitForShutdown(int milliseconds)=>worker.Join(milliseconds);
+        private void Run(){
+            try{while(true){
+                wake.WaitOne();
+                while(true){
+                    int command;string device=null;CabinetRequest value=default;long stamp=0;
+                    lock(gate){
+                        if(shutdown)command=3;
+                        else if(stop){stop=false;command=2;}
+                        else if(pending){pending=false;device=id;value=request;stamp=queuedAt;command=1;}
+                        else if(discover){discover=false;command=0;}
+                        else break;
+                    }
+                    if(command==3)return;
+                    try{
+                        if(command==2)driver.Stop();
+                        else if(command==0){var found=driver.Discover();string message=driver.Status;lock(gate){devices=found;status=message;}}
+                        else {
+                            double age=(System.Diagnostics.Stopwatch.GetTimestamp()-stamp)/(double)System.Diagnostics.Stopwatch.Frequency;
+                            if(age>.1){driver.Stop();continue;}
+                            bool ok=driver.Send(device,value);
+                            // Read driver status before taking the mailbox lock:
+                            // even a slow native status call cannot block Update.
+                            string message=ok?null:driver.Status;
+                            if(!ok){driver.Stop();lock(gate){failed=true;pending=false;status=message;}}
+                        }
+                    }catch(Exception error){
+                        try{driver.Stop();}catch(Exception){}
+                        lock(gate){failed=true;pending=false;devices.Clear();status="Wheel feedback unavailable: "+error.Message;}
+                    }
+                }
+            }}finally{try{driver.Stop();}catch(Exception){}try{driver.Shutdown();}catch(Exception){}wake.Dispose();}
+        }
+    }
 }

@@ -9,6 +9,10 @@ using UnityEngine;
 public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
     private static bool MenuHighlightCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-highlight-check")>=0;
     private static bool MenuPresentationCheck => MenuHighlightCheck || Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-presentation-check")>=0;
+    private bool headlightsCheck;
+    private KeyCode headlightKey;
+    private ushort headlightPad;
+    private Idas3ControlBindings headlightBindings;
     private ulong lastHighlightHash;
     private static bool LoadingTransitionCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-loading-transition-check")>=0;
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowFixture(int scene);
@@ -48,6 +52,10 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame){
         if(active==null)return true;if(active.finished||active.frozen)return false;
         frame=new Idas3Native.FrameInput{size=(uint)Marshal.SizeOf<Idas3Native.FrameInput>(),flags=1,deltaSeconds=1.0/60};
+        if(active.headlightsCheck){
+            active.headlightBindings.Poll(k=>k==active.headlightKey,new Idas3ControlBindings.PadState{connected=true,buttons=active.headlightPad},Time.realtimeSinceStartupAsDouble);
+            active.headlightBindings.ApplyDriving(ref frame);
+        }
         ++active.submittedFrames;
         if(active.padPulse!=0){frame.padConnected=1;frame.padButtons=active.padPulse;active.padPulse=0;}return true;
     }
@@ -70,6 +78,54 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-headlight-toggle-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            headlightsCheck=true;headlightBindings=new Idas3ControlBindings();headlightBindings.Initialize(Path.Combine(root,"binding-test"));
+            for(int fixture=240;fixture<=242;++fixture){
+                Check(Idas3SceneModeFlowFixture(fixture)==1,"Headlight race fixture");yield return Frames(65);
+                Check(Idas3SceneModeFlowValue(36)==1,"Night race starts with headlights on");yield return Capture("headlights-"+fixture+"-on");
+                headlightKey=KeyCode.H;yield return Frames(65);
+                Check(Idas3SceneModeFlowValue(36)==0,"Held H switches lights off once");
+                if(fixture!=241)Check(Idas3SceneModeFlowValue(37)==0,"Pop-up headlights close");
+                yield return Capture("headlights-"+fixture+"-off");headlightKey=KeyCode.None;yield return Frames(3);
+                headlightPad=0x80;yield return Frames(65);
+                Check(Idas3SceneModeFlowValue(36)==1,"Right-stick click switches lights back on once");
+                yield return Capture("headlights-"+fixture+"-restored");headlightPad=0;yield return Frames(3);
+            }
+            Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-signs-enna-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            frozen=true;Check(Idas3SceneModeFlowFixture(208)==1,"Enna selection");yield return Capture("enna-course");
+            for(int fixture=230;fixture<=237;++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Sadamine sponsor fixture: "+Idas3Native.Error());
+                typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
+                yield return Frames(3);yield return Capture("sadamine-"+fixture);
+            }
+            Finish(true,null);yield break;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-map-weather-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");
+            yield return Frames(3); // Imported pack registration completes after diagnostic attachment.
+            bool baseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-weather-baseline")>=0;
+            if(baseline)File.WriteAllText(Path.Combine(root,"UNSHELTERED_BASELINE.txt"),"Diagnostic emitter without shelter");
+            frozen=true;Check(Idas3SceneModeFlowFixture(207)==1,"Sadamine selection");yield return Capture("sadamine-course");
+            for(int fixture=210;fixture<=(baseline?213:225);++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Tunnel fixture: "+Idas3Native.Error());
+                yield return Capture("tsuchisaka-"+fixture);
+            }
+            Finish(true,null);yield break;
+        }
+
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-akagi-intro-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");
+            for(int fixture=200;fixture<=205;++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Akagi intro fixture: "+Idas3Native.Error());
+                yield return Capture("akagi-"+fixture);
+            }
+            frozen=true;Check(Idas3SceneModeFlowFixture(206)==1,"All original course starting cells: "+Idas3Native.Error());
+            Finish(true,null);yield break;
+        }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-bunta-difficulty-check")>=0){
             yield return Frames(3);Check(host.Ready,"Scene initialized");
             Check(Idas3SceneModeFlowFixture(-10)==1,"Bunta difficulty regression: "+Idas3Native.Error());

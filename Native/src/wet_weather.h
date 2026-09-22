@@ -1,5 +1,6 @@
 #pragma once
 #include "math_types.h"
+#include "weather_shelter.h"
 #include <array>
 #include <cstdint>
 
@@ -54,7 +55,7 @@ public:
             }
         }
     }
-    void build(Vec3 eye,Vec3 target,bool enabled,unsigned stride=1) {
+    void build(Vec3 eye,Vec3 target,bool enabled,unsigned stride=1,const WeatherShelter* shelter=nullptr) {
         count=0;if(!enabled)return;
         stride=std::clamp(stride,1u,4u);
         const auto view=normalized(target-eye);
@@ -74,6 +75,7 @@ public:
                 const Vec3 p{eye.x+wrap(hash(i*3+1)*20.f+time*.45f+std::sin(time*.7f+phase)*.4f-eye.x,20.f)-10.f,
                     eye.y+wrap(hash(i*3+2)*10.f-time*(1.1f+hash(i+2001)*.7f)-eye.y,10.f)-5.f,
                     eye.z+wrap(hash(i*3+3)*24.f+time*.18f+std::cos(time*.5f+phase)*.4f-eye.z,24.f)-12.f};
+                if(shelter&&shelter->covered(p))continue;
                 const float depth=std::abs(dot(p-eye,view));
                 if(depth<.6f)continue;
                 const float size=.025f+hash(i+3001)*.035f;
@@ -84,6 +86,8 @@ public:
             const Vec3 p{eye.x+wrap(origin.x+time*.8f-eye.x,28.f)-14.f,
                 eye.y+wrap(origin.y-time*24.f-eye.y,16.f)-8.f,
                 eye.z+wrap(origin.z+time*.3f-eye.z,36.f)-18.f};
+            // Test the bottom of the streak so it cannot cross a ceiling.
+            if(shelter&&shelter->covered(p-Vec3{0,.9f,0}))continue;
             const auto d=p-eye;const float depth=std::abs(dot(d,view));
             if(depth<1.5f)continue;
             const float fade=std::clamp((depth-1.5f)/3.f,0.f,1.f);

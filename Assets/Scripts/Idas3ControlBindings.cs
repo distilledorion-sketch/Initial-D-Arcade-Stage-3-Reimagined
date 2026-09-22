@@ -8,7 +8,7 @@ using UnityEngine;
 // steering response, dead zones, pedal curves and physics remain native.
 public sealed class Idas3ControlBindings
 {
-    public enum ActionId { Accelerate, Brake, SteerLeft, SteerRight, ShiftUp, ShiftDown, Camera, Pause, Online }
+    public enum ActionId { Accelerate, Brake, SteerLeft, SteerRight, ShiftUp, ShiftDown, Camera, Pause, Online, Headlights }
     public enum Slot { Primary, Secondary, Extra, Controller }
     public enum PadInput
     {
@@ -36,7 +36,7 @@ public sealed class Idas3ControlBindings
     }
     [Serializable] public sealed class Values
     {
-        public int version = 2;
+        public int version = 3;
         public Binding[] actions;
         public ControllerProfile[] controllerProfiles;
         public Values Clone()
@@ -55,10 +55,10 @@ public sealed class Idas3ControlBindings
         public short thumbLX, thumbLY, thumbRX, thumbRY;
     }
 
-    private static readonly string[] ActionNames = { "Accelerate", "Brake", "Steer left", "Steer right", "Shift up", "Shift down", "Change camera", "Pause", "Online menu" };
+    private static readonly string[] ActionNames = { "Accelerate", "Brake", "Steer left", "Steer right", "Shift up", "Shift down", "Change camera", "Pause", "Online menu", "Toggle headlights" };
     private static readonly KeyCode[] PollKeys = CreatePollKeys();
     private static readonly HashSet<KeyCode> ValidKeys = new HashSet<KeyCode>(PollKeys);
-    private readonly bool[] heldKeys = new bool[512], keyboardActions = new bool[9];
+    private readonly bool[] heldKeys = new bool[512], keyboardActions = new bool[10];
     private Values current, draft;
     private PadState pad;
     private string file;
@@ -92,7 +92,7 @@ public sealed class Idas3ControlBindings
 
     public static Values Defaults()
     {
-        var value = new Values { actions = new Binding[9] };
+        var value = new Values { actions = new Binding[10] };
         value.actions[0] = new Binding { key1 = KeyCode.W, key2 = KeyCode.UpArrow, pad = PadInput.RightTrigger };
         value.actions[1] = new Binding { key1 = KeyCode.S, key2 = KeyCode.DownArrow, key3 = KeyCode.Space, pad = PadInput.LeftTrigger };
         value.actions[2] = new Binding { key1 = KeyCode.A, key2 = KeyCode.LeftArrow, pad = PadInput.LeftStickLeft };
@@ -102,6 +102,7 @@ public sealed class Idas3ControlBindings
         value.actions[6] = new Binding { key1 = KeyCode.C, pad = PadInput.Y };
         value.actions[7] = new Binding { key1 = KeyCode.Escape, pad = PadInput.Start };
         value.actions[8] = new Binding { key1 = KeyCode.F1, pad = PadInput.Back };
+        value.actions[9] = new Binding { key1 = KeyCode.H, pad = PadInput.RightThumb };
         return value;
     }
     public void Initialize(string saveRoot)
@@ -123,7 +124,7 @@ public sealed class Idas3ControlBindings
         savedProfiles.Clear();activeProfileKey=LegacyProfile;genericProfile=false;
         savedProfiles.Add(LegacyProfile,new ControllerProfile{key=LegacyProfile,label="Default controller",actions=CloneActions(current.actions)});
         if(current.controllerProfiles!=null)foreach(var profile in current.controllerProfiles)savedProfiles.Add(profile.key,profile.Clone());
-        current.version=2;current.controllerProfiles=null;
+        current.version=3;current.controllerProfiles=null;
         draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); IsCapturing = captureArmed = releaseBlocked = false;
         controls.Clear();restValues.Clear();awaitingProfileSample=false;LastNotice=null;
         Array.Clear(heldKeys, 0, heldKeys.Length); Array.Clear(keyboardActions, 0, keyboardActions.Length); pad = default;
@@ -133,8 +134,29 @@ public sealed class Idas3ControlBindings
     {
         if (new FileInfo(path).Length > 262144) throw new InvalidDataException("Controls file is too large.");
         var value = JsonUtility.FromJson<Values>(File.ReadAllText(path));
+        MigrateHeadlights(value);
         if (!Validate(value, out string error)) throw new InvalidDataException(error);
         return value;
+    }
+    private static void MigrateHeadlights(Values value){
+        if(value==null||(value.version!=1&&value.version!=2))return;
+        Binding[] Upgrade(Binding[] old,bool controllerOnly){
+            if(old==null||old.Length!=9)return old;
+            var result=new Binding[10];Array.Copy(old,result,9);
+            var added=new Binding{key1=controllerOnly?KeyCode.None:KeyCode.H,pad=PadInput.RightThumb};
+            foreach(var existing in old){
+                if(existing==null)continue;
+                if(existing.key1==KeyCode.H||existing.key2==KeyCode.H||existing.key3==KeyCode.H)added.key1=KeyCode.None;
+                if(existing.pad==PadInput.RightThumb||existing.controlPath=="rightStickPress")added.pad=PadInput.None;
+            }
+            result[9]=added;return result;
+        }
+        value.actions=Upgrade(value.actions,false);
+        if(value.controllerProfiles!=null)foreach(var profile in value.controllerProfiles){
+            if(profile==null)continue;profile.actions=Upgrade(profile.actions,true);
+            if(profile.generic&&profile.actions!=null&&profile.actions.Length==10)ClearController(profile.actions[9]);
+        }
+        value.version=3;
     }
     public void BeginEdit() { EnsureInitialized(); CancelCapture(); draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); LastError = null; CaptureError = null;LastNotice=null; }
     public void CancelEdit(bool waitForRelease = true) { EnsureInitialized(); CancelCapture(); draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); LastError = null;LastNotice=null; releaseBlocked = waitForRelease; }
@@ -171,10 +193,10 @@ public sealed class Idas3ControlBindings
     private static Dictionary<string,ControllerProfile> CloneProfiles(Dictionary<string,ControllerProfile> value)
     { var result=new Dictionary<string,ControllerProfile>(StringComparer.Ordinal);foreach(var pair in value)result.Add(pair.Key,pair.Value.Clone());return result; }
     private static Values Compose(Binding[] keys,Binding[] controller)
-    { var value=new Values{actions=CloneActions(controller)};for(int i=0;i<9;++i){value.actions[i].key1=keys[i].key1;value.actions[i].key2=keys[i].key2;value.actions[i].key3=keys[i].key3;}return value; }
+    { var value=new Values{actions=CloneActions(controller)};for(int i=0;i<10;++i){value.actions[i].key1=keys[i].key1;value.actions[i].key2=keys[i].key2;value.actions[i].key3=keys[i].key3;}return value; }
     private void StoreDraftProfile() { if(draftProfiles!=null&&draft!=null)draftProfiles[activeProfileKey].actions=CloneActions(draft.actions); }
     private static bool ProfilesEquivalent(Dictionary<string,ControllerProfile> a,Dictionary<string,ControllerProfile> b)
-    { if(a.Count!=b.Count)return false;foreach(var pair in a){if(!b.TryGetValue(pair.Key,out var other))return false;for(int i=0;i<9;++i)if(!SameController(pair.Value.actions[i],other.actions[i]))return false;}return true; }
+    { if(a.Count!=b.Count)return false;foreach(var pair in a){if(!b.TryGetValue(pair.Key,out var other))return false;for(int i=0;i<10;++i)if(!SameController(pair.Value.actions[i],other.actions[i]))return false;}return true; }
     private Values PackDraft()
     {
         StoreDraftProfile();var value=Compose(draft.actions,draftProfiles[LegacyProfile].actions);
@@ -237,7 +259,7 @@ public sealed class Idas3ControlBindings
     private bool SetController(ActionId action,Binding binding)
     {
         var candidate=draft.Clone();var previous=candidate.actions[(int)action].Clone();string notice=null;
-        if(ControllerIdentity(binding)!=null)for(int i=0;i<9;++i)
+        if(ControllerIdentity(binding)!=null)for(int i=0;i<10;++i)
             if(i!=(int)action&&ControllerIdentity(candidate.actions[i])==ControllerIdentity(binding))
             {CopyController(previous,candidate.actions[i]);notice="Swapped "+ActionName(action)+" with "+ActionName((ActionId)i)+".";break;}
         CopyController(binding,candidate.actions[(int)action]);
@@ -294,7 +316,7 @@ public sealed class Idas3ControlBindings
         controls.Clear();if(rawControls!=null)foreach(var control in rawControls)
             if(control!=null&&!string.IsNullOrEmpty(control.path)&&Finite(control.value)&&Finite(control.minimum)&&Finite(control.maximum)&&control.maximum>control.minimum)controls[control.path]=control;
         if(awaitingProfileSample){SnapshotRest(true);awaitingProfileSample=false;}
-        for (int i = 0; i < 9; ++i)
+        for (int i = 0; i < 10; ++i)
         { var binding = current.actions[i]; keyboardActions[i] = Held(binding.key1) || Held(binding.key2) || Held(binding.key3); }
         bool anyHeld = AnyInputHeld();
         if (IsCapturing)
@@ -364,7 +386,7 @@ public sealed class Idas3ControlBindings
         // Remove all old action aliases before placing the mapped actions.
         // Unrelated native shortcuts and menu keys retain their existing bits.
         foreach (int key in DrivingKeys) ClearKey(ref frame, key);
-        for (int i = 0; i < 9; ++i)
+        for (int i = 0; i < 10; ++i)
         {
             var binding = current.actions[i];
             ClearBoundShortcut(ref frame, binding.key1); ClearBoundShortcut(ref frame, binding.key2); ClearBoundShortcut(ref frame, binding.key3);
@@ -376,6 +398,7 @@ public sealed class Idas3ControlBindings
         if (SuppressInput) return;
         int[] output = CanonicalKeys;
         for (int i = 0; i < 7; ++i) if (keyboardActions[i]) frame.SetKey(output[i]);
+        if(ActionHeld(ActionId.Headlights))frame.SetKey(72);
         if (!pad.connected&&controls.Count==0) return;
         frame.padConnected = 1;
         frame.rightTrigger = Pedal(current.actions[0]); frame.leftTrigger = Pedal(current.actions[1]);
@@ -430,7 +453,7 @@ public sealed class Idas3ControlBindings
             default:return null;
         }
     }
-    private static readonly int[] DrivingKeys = { 87, 83, 65, 68, 38, 40, 37, 39, 32, 69, 81, 67 };
+    private static readonly int[] DrivingKeys = { 87, 83, 65, 68, 38, 40, 37, 39, 32, 69, 81, 67, 72 };
     private static readonly int[] CanonicalKeys = { 87, 83, 65, 68, 69, 81, 67 };
     private static void ClearBoundShortcut(ref Idas3Native.FrameInput frame, KeyCode key)
     {
@@ -567,10 +590,10 @@ public sealed class Idas3ControlBindings
     public static bool Validate(Values value, out string error)
     {
         error = null;
-        if (value == null || (value.version != 1&&value.version!=2) || value.actions == null || value.actions.Length != 9)
+        if (value == null || (value.version != 1&&value.version!=2&&value.version!=3) || value.actions == null || value.actions.Length != 10)
         { error = "Unsupported controls format."; return false; }
         var keys = new Dictionary<KeyCode, ActionId>(); var pads = new Dictionary<string, ActionId>(StringComparer.Ordinal);
-        for (int i = 0; i < 9; ++i)
+        for (int i = 0; i < 10; ++i)
         {
             var binding = value.actions[i]; var action = (ActionId)i;
             if (binding == null) { error = "Missing binding for " + ActionName(action) + "."; return false; }
@@ -605,7 +628,7 @@ public sealed class Idas3ControlBindings
         }
         if(value.controllerProfiles!=null)
         {
-            if(value.version!=2||value.controllerProfiles.Length>64){error="Unsupported controller profile list.";return false;}
+            if((value.version!=2&&value.version!=3)||value.controllerProfiles.Length>64){error="Unsupported controller profile list.";return false;}
             var profileKeys=new HashSet<string>(StringComparer.Ordinal);
             foreach(var profile in value.controllerProfiles)
             {
@@ -629,7 +652,7 @@ public sealed class Idas3ControlBindings
     }
     private static void SetKey(Binding binding, Slot slot, KeyCode key)
     { if (slot == Slot.Primary) binding.key1 = key; else if (slot == Slot.Secondary) binding.key2 = key; else binding.key3 = key; }
-    private static void CheckAction(ActionId action) { if ((int)action < 0 || (int)action >= 9) throw new ArgumentOutOfRangeException(nameof(action)); }
+    private static void CheckAction(ActionId action) { if ((int)action < 0 || (int)action >= 10) throw new ArgumentOutOfRangeException(nameof(action)); }
     private static void CheckSlot(Slot slot) { if ((int)slot < 0 || (int)slot > 3) throw new ArgumentOutOfRangeException(nameof(slot)); }
     private void EnsureInitialized() { if (current == null || file == null) throw new InvalidOperationException("Controls have not been initialized."); }
     private static KeyCode[] CreatePollKeys()

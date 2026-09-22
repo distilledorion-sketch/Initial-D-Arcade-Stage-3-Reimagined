@@ -1,4 +1,11 @@
-0.3.95-community-replays.14
+0.3.95-community-replays.15
+Fixed numeric driver names on the community website and in replay filenames. Leaderboard labels now distinguish the Sileighty, Evo V and Evo VI TME.
+Settings > Controls > Toggle headlights: press H or click the controller's right stick during a race to switch headlights off/on. Select APPLY after rebinding. Existing custom controls are preserved; assign a free button if your old bindings already used H/right-stick click. Wheels can bind their own button.
+Corrected Enna Skyline's course-selection map orientation and Sadamine's mirrored sponsor banners in every weather and lighting variant.
+Corrected Sadamine's course-selection map orientation and rain appearing inside Tsuchisaka's tunnel. Exterior rain and wet-road tire spray remain visible.
+AE86 Levin Tune A turbo audio now starts at Step 3; Step 5 retains continuous boost audio without turbo release sounds. Applies to races, online and replays.
+Fixed missing road and incorrect scenery during Akagi uphill race intros; scenery now loads from the actual starting grid before the camera showcase.
+Wheel feedback driver calls now run outside the game thread. Healthy active feedback no longer scans all devices every two seconds.
 
 POST-RACE PAINT RECOVERY
 Fixed the "Original material paint outside palette" crash after races. Invalid saved paint values use the default factory color for previews; existing driver saves and upgrades are preserved.

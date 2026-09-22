@@ -173,7 +173,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>tab==7?11:tab==6?4:tab==5?2:tab==0||tab==4?4:tab==2?10:tab==1?8:bindings!=null?9+BindingFirstSelection-1:0;
+    private int Rows=>tab==7?11:tab==6?4:tab==5?2:tab==0||tab==4?4:tab==2?10:tab==1?8:bindings!=null?10+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -218,7 +218,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     public void BeginBindingCapture(Idas3ControlBindings.ActionId action,Idas3ControlBindings.Slot slot){
         if(bindings==null||BindingInputBlocked)return;
-        if((int)action<0||(int)action>=9||(int)slot<0||(int)slot>=4)return;
+        if((int)action<0||(int)action>=10||(int)slot<0||(int)slot>=4)return;
         if(slot==Idas3ControlBindings.Slot.Controller&&controllerDevices!=null&&controllerDevices.Controls.Count==0){notice="No controller active. Connect one or choose a connected device above.";return;}
         if(!IsOpen||!showOptions||tab!=3)SelectTab(3);
         selection=(int)action+BindingFirstSelection;bindingColumn=(int)slot;captureAction=action;captureSlot=slot;notice="";
@@ -576,16 +576,16 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             string active=controllerDevices.Controls.Count>0?(controllerDevices.UsingFallback?"TEMPORARY DEVICE  /  ":"ACTIVE  /  ")+controllerDevices.ActiveName:controllerDevices.SelectedKey=="keyboard"?"Keyboard only. Select a controller above to edit its bindings.":"Controller disconnected. Keyboard controls remain available.";
             Text(new Rect(288,218,694,22),active,small);
         }
-        float headerY=deviceControls?241:192,firstY=deviceControls?270:220,rowHeight=deviceControls?28:32;
+        float headerY=deviceControls?241:192,firstY=deviceControls?270:220,rowHeight=deviceControls?25:29;
         Text(new Rect(288,headerY,169,23),"ACTION",small);
         string[] columns={"KEYBOARD 1","KEYBOARD 2","KEYBOARD 3","CONTROLLER"};
         for(int col=0;col<4;++col)if(Button(new Rect(col==3?804:462+col*114,headerY,col==3?180:110,24),columns[col],bindingColumn==col,true,false,bindingButton))SelectBindingColumn(col);
-        for(int row=0;row<9;++row){
+        for(int row=0;row<10;++row){
             float y=firstY+row*rowHeight;var action=(Idas3ControlBindings.ActionId)row;
             Text(new Rect(288,y+5,169,23),Idas3ControlBindings.ActionName(action),small,selection==row+BindingFirstSelection?Color.white:Muted);
             for(int col=0;col<4;++col){
                 var slot=(Idas3ControlBindings.Slot)col;
-                var cell=new Rect(col==3?804:462+col*114,y,col==3?180:110,deviceControls?25:28);
+                var cell=new Rect(col==3?804:462+col*114,y,col==3?180:110,deviceControls?23:26);
                 if(Button(cell,bindings.BindingName(action,slot),selection==row+BindingFirstSelection&&bindingColumn==col,!deviceControls||col!=3||controllerDevices.Controls.Count>0,false,bindingButton))OpenBindingChoice(action,slot);
             }
         }

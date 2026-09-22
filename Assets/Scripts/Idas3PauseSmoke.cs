@@ -28,6 +28,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         public uint nativeFlags;public double elapsed;public bool menuOpen,applicationFocused;
     }
     [Serializable] private class Report {
+        public bool screenshotsSkipped=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0;
         public string schema="idas3-pause-options-smoke-v1",error,scope;
         public bool passed,online,shutdownComplete;public int checks;public double seconds;
         public Observation[] observations;public string[] captures;public Idas3GameOptions.Values options;
@@ -190,8 +191,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
             Check(Mathf.Abs(options.Draft.SteeringDeadzone-expectedDeadzone)<.000001f,"Gameplay deadzone row did not adjust by one percent");
             Check(Idas3Native.Idas3SceneGetSteeringDeadzone()==nativeBefore,"Draft steering deadzone applied before APPLY");
             yield return Frames(2);yield return Capture("gameplay-response-"+expected);
-            // Gameplay now has a sixth row (steering smoothing) before its footer.
-            menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);menu.Activate();yield return Frames(3);
+            // Ten Gameplay rows: advance from deadzone (5) to APPLY (12).
+            for(int row=5;row<12;++row)menu.Navigate(1);menu.Activate();yield return Frames(3);
             Check(options.LastError==null&&options.Current.controllerResponse==expected&&!options.HasUnsavedChanges,"Menu APPLY failed for controller response "+expected);
             Check(Idas3Native.Idas3SceneGetControllerResponse()==expected,"Native response did not change through menu APPLY: "+expected);
             Check(Mathf.Abs(Idas3Native.Idas3SceneGetSteeringDeadzone()-expectedDeadzone)<.000001f,"Native deadzone did not change through menu APPLY");
@@ -270,7 +271,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
             if(expected==1){menu.NavigateHorizontal(1);Check(options.Draft.steeringSmoothing==1,"Smoothing slider escaped its upper bound");}
             Check(options.HasUnsavedChanges&&options.Current.steeringSmoothing==previous&&Idas3Native.Idas3SceneGetSteeringSmoothing()==previous,"Smoothing draft changed native/current values before APPLY");
             if(expected==.37f||expected==0){yield return Frames(2);yield return Capture(expected==0?"gameplay-smoothing-off":"gameplay-smoothing");}
-            menu.Navigate(1);menu.Navigate(1);menu.Activate();yield return Frames(3);
+            for(int row=6;row<12;++row)menu.Navigate(1);menu.Activate();yield return Frames(3);
             Check(options.LastError==null&&!options.HasUnsavedChanges&&Mathf.Abs(options.Current.steeringSmoothing-expected)<.000001f,"Smoothing menu APPLY failed");
             Check(Mathf.Abs(Idas3Native.Idas3SceneGetSteeringSmoothing()-expected)<.000001f,"Smoothing menu APPLY did not update native value");
             var saved=JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath));
@@ -307,8 +308,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
 
         Check(!options.Current.wheelForceFeedback,"Live diagnostic must leave wheel feedback disabled");
         menu.SelectTab(4);Check(menu.SelectedTab==4,"Wheel tab is unreachable");
-        menu.Back();menu.NavigateHorizontal(1);Check(menu.SelectedTab==0,"Wheel-to-audio tab wrap failed");
-        menu.NavigateHorizontal(-1);Check(menu.SelectedTab==4,"Audio-to-wheel tab wrap failed");menu.Activate();
+        menu.Back();menu.NavigateHorizontal(1);Check(menu.SelectedTab==5,"Wheel-to-records category navigation failed");
+        menu.NavigateHorizontal(-1);Check(menu.SelectedTab==4,"Records-to-wheel category navigation failed");menu.Activate();
         menu.NavigateHorizontal(1);Check(options.Draft.wheelForceFeedback&&!options.Current.wheelForceFeedback,"Wheel enable toggle did not remain a draft");
         menu.NavigateHorizontal(-1);Check(!options.Draft.wheelForceFeedback,"Could not leave live wheel feedback disabled");
         menu.Navigate(1);menu.NavigateHorizontal(1);string device=options.Draft.wheelFeedbackDevice;
@@ -348,6 +349,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(session.RemoteSnapshotsReceived>received+15&&session.SnapshotsSent>sent+15,"Snapshot exchange stopped while options open/unfocused");Observe(name+"-after",session);
     }
     private IEnumerator Capture(string name){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0)yield break;
         bool displayConfirmation=options.DisplayConfirmationPending;
         var camera=host.GetComponent<Camera>();var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();var previous=camera.targetTexture;
         var target=new RenderTexture(Screen.width,Screen.height,24,RenderTextureFormat.ARGB32){name="Actual pause OnGUI capture",antiAliasing=1};

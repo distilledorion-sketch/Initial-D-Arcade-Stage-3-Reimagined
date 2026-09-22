@@ -332,7 +332,7 @@ int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* values,int count,int e
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
-        if(!r.sceneMode||!r.app||r.app->multiplayer.active||r.app->saveRoot.filename()!="userdata"||
+        if(!r.sceneMode||!r.app||(r.app->multiplayer.active&&(scene<200||scene>206))||r.app->saveRoot.filename()!="userdata"||
            !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_MODE_FLOW_TEST.txt"))
             throw std::logic_error("Mode-flow fixtures require a private diagnostic directory");
         if(scene==-1)return runModeFlowAppTests(*r.app)==0?1:0;
@@ -416,6 +416,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 23:return a.fullTuneActive;case 24:return int(a.resultVisit.tuning.kind);
     case 25:return int(a.battleProfile.u(72));case 26:return int(a.resultVisit.child.phase);
     case 27:return a.frontend.inputReady();case 28:return a.activeSaveSlot;case 29:return a.fullTuneSelecting;
+    case 36:return a.playerProjectedHeadlight.enabled();
+    case 37:return a.carPresentation.headlightState().visible;
     case 34:return a.aiDifficulty;
     case 35:return a.originalSession.ready()&&a.originalSession.rivalActive()?int(a.originalSession.rivalPaceInputs().aiDifficulty):0;
     case 32:return int(a.recording.frames.size());case 33:return int(a.rivalRecording.frames.size());

@@ -134,6 +134,7 @@ struct App {
     WetWeather wetWeather;
     int performanceRainDetail=0;
     int aiDifficulty=0;
+    WeatherShelter weatherShelter;
     NativeTextureBank rainTextures,rainmarkTextures;
     std::uint32_t rainTextureBase=0,rainmarkTextureBase=0;
     fs::path root;
@@ -933,6 +934,8 @@ struct App {
           courseMeshCache.invalidate();
           if(wantCatalog){
             courseScene=OriginalCourseScene::load(root,sceneId(),night,reverse,wantWetScene);
+            if(courseIndex==7)weatherShelter.build(courseScene.model,courseScene.assemblies());
+            else weatherShelter.clear();
             originalCourseModel=std::move(courseScene.model);originalCourseTextures=std::move(courseScene.textures);
             originalBackgroundModel=std::move(courseScene.backgroundModel);originalBackgroundTextures=std::move(courseScene.backgroundTextures);
           }else{
@@ -1127,6 +1130,10 @@ struct App {
             const auto startProjection=course.project(vehicle.position);trackStart=startProjection.sample.distance;
             segment=startProjection.segment;progress=trackStart;
             originalCoordinate={importedCourse?importedCourse->rules(reverse).startIndex:original::originalRaceRuleRow(original::originalRaceRuleRowIndex(condition,numericMode)).startIndex,0};
+            // The showcase draws before the first driving tick can publish
+            // this index. Use the actual grid's course cell from the outset;
+            // zero can select scenery beyond the road (Akagi uphill starts266).
+            courseLightPathIndex=originalCoordinate.index;
             rivalCoordinate=originalCoordinate;
             if(battle){
                 if(bunta)originalRace.resetBunta(root,{condition,2,wet?1u:0u},originalCoordinate,spawn.position);
@@ -1184,6 +1191,12 @@ struct App {
         // These screen owners consume their own input. In particular, Start
         // skips a rival intro without also backing out of the hidden menu.
         if(legendVisitActive||preRaceDialogueActive||loadingActive||extraModeVisitActive())return;
+        if(!menu&&!paused&&!replayPlaybackActive&&race.phase==RacePhase::Running&&originalHandling&&input.key('H')){
+            const auto& actor=presentedSession().actor();
+            const bool on=!playerProjectedHeadlight.enabled();
+            playerProjectedHeadlight.request(on,presentedSession().collision(),playerBody.query(),{actor.f(0),actor.f(4),actor.f(8)});
+            composeRaceCarLights();status(on?"Headlights on":"Headlights off");
+        }
         if(multiplayer.active){
             // Network host owns leave/restart/room input; native commands may
             // not launch a single-player race or a post-result owner here.
@@ -2884,7 +2897,7 @@ struct App {
             if(rivalVisible&&!multiplayer.active&&!replayPlaybackActive)bindContacts(weatherCars[1],presentedSession().rivalRoadContact().surfaces0CAA9764,weatherCars[1].position-rivalVehicle.position);
         }
         wetWeather.advance(dt,weatherVisible,paused&&!multiplayer.active,weatherCars,snowWeather);
-        wetWeather.build(camera,target,weatherVisible,performanceRainDetail==1?4u:1u);
+        wetWeather.build(camera,target,weatherVisible,performanceRainDetail==1?4u:1u,courseIndex==7&&!importedCourse?&weatherShelter:nullptr);
         for(unsigned i=0;i<wetWeather.count;++i){
             const auto& q=wetWeather.quads[i];
             // Original rain material: translucent list, source alpha blending.

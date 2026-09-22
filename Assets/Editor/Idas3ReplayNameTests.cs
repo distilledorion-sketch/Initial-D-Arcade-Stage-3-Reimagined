@@ -4,7 +4,20 @@ using System.Linq;
 using UnityEngine;
 public static class Idas3ReplayNameTests
 {
+    public static void CheckDigitNames(){
+        // Original glyph table uses 1..9,0, not 0..9.
+        int[] glyphs={197,188,189,190,191,192,193,194,195,196};
+        var m=new Idas3ReplayData.Details{condition=6,mode=0};
+        for(int digit=0;digit<10;digit++){
+            m.nameGlyphs=new[]{164,179,glyphs[digit],184,221};
+            if(Idas3ReplayLibrary.FileStem(m)!="cr"+digit+"w_akina_dh_day_dry_tat")throw new Exception("Replay numeric glyph "+digit);
+        }
+        Directory.CreateDirectory("Verification/name-digits-20260922");
+        File.WriteAllText("Verification/name-digits-20260922/replay-digit-checks.txt","PASS all 10 original numeric glyphs in mixed replay filenames\n");
+    }
+    public static void BuildDigitVerified(){CheckDigitNames();Idas3HudSizeBuild.Build();}
     public static void Run(){
+        CheckDigitNames();
         int checks=0;void Check(bool ok,string why){if(!ok)throw new Exception(why);checks++;}
         var m=new Idas3ReplayData.Details{playerName="Chris",opponentName="Tak",condition=6,night=1,weather=1,mode=2};
         Check(Idas3ReplayLibrary.FileStem(m)=="chris_vs_tak_akina_dh_night_wet_lots","Requested Legend naming");

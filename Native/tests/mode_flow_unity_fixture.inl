@@ -2,6 +2,102 @@
 // separate regression in mode_flow_app_tests.inl; these select authored scenes
 // quickly for Unity rendering and controller-route verification.
 void prepareModeFlowFixture(App& app,unsigned scene){
+    if(scene>=240&&scene<=242){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        app.validationMode=true;app.replayPlaybackActive=false;app.paused=false;
+        app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.course=app.courseIndex=scene==242?11:3;app.frontend.reverse=app.reverse=false;
+        app.frontend.night=app.night=true;app.frontend.wet=app.wet=false;
+        app.frontend.car=scene==241?19:0;app.start();
+        app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;app.menu=false;
+        app.race.phase=RacePhase::Running;
+        app.race.remaining6000=120*6000;app.drivingView=OriginalDrivingView::Chase;
+        app.input={};return;
+    }
+    if(scene==207||scene==208){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        app.validationMode=true;app.menu=true;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.course=scene==208?11:10;app.frontend.stage=FrontendStage::Course;app.frontend.reverse=false;
+        app.frontend.advance(120);app.input={};return;
+    }
+    if(scene>=230&&scene<=237){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        const unsigned variant=(scene-230)/2;
+        app.validationMode=true;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.course=app.courseIndex=10;app.frontend.reverse=app.reverse=(scene&1)!=0;
+        app.frontend.night=app.night=variant>=2;app.frontend.wet=app.wet=(variant&1)!=0;
+        app.frontend.car=0;app.start();app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
+        app.menu=false;app.paused=true;app.replayPlaybackActive=true;app.drivingView=OriginalDrivingView::Chase;
+        const unsigned index=app.reverse?unsigned(app.course.points.size()-1)-3420:175;
+        const auto sample=app.course.sample(app.course.cumulative[index]);
+        app.vehicle.position=sample.center;app.vehicle.yaw=std::atan2(sample.tangent.x,sample.tangent.z);app.vehicle.speed=0;
+        app.previous=app.vehicle;app.progress=sample.distance;app.cameraReady=false;
+        app.race.phase=RacePhase::Running;app.race.elapsed6000=0;app.race.remaining6000=120*6000;
+        app.input={};return;
+    }
+    if(scene>=210&&scene<=225){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        const unsigned variant=(scene-210)/4,shot=(scene-210)%4;
+        app.validationMode=true;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.course=app.courseIndex=7;app.frontend.reverse=app.reverse=(variant&1)!=0;
+        app.frontend.night=app.night=(variant&2)!=0;app.frontend.wet=app.wet=true;
+        app.frontend.car=0;app.start();app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
+        if(fs::is_regular_file(app.saveRoot.parent_path()/"UNSHELTERED_BASELINE.txt"))app.weatherShelter.clear();
+        app.menu=false;app.paused=true;app.replayPlaybackActive=true;app.drivingView=OriginalDrivingView::Bumper;
+        const unsigned forwardIndices[]{2380,2416,2488,2560};
+        const unsigned index=app.reverse?unsigned(app.course.points.size()-1)-forwardIndices[shot]:forwardIndices[shot];
+        const auto sample=app.course.sample(app.course.cumulative[index]);
+        app.vehicle.position=sample.center;app.vehicle.yaw=std::atan2(sample.tangent.x,sample.tangent.z);app.vehicle.speed=30;
+        app.previous=app.vehicle;app.progress=sample.distance;app.cameraReady=false;
+        app.courseLightPathIndex=int(index);app.race.phase=RacePhase::Running;app.race.elapsed6000=70*6000;app.race.remaining6000=120*6000;
+        std::array<WetWeather::Car,2> cars{{{app.vehicle.position,app.vehicle.yaw,30,true},{}}};
+        app.wetWeather.reset();app.wetWeather.advance(.2,true,false,cars);
+        app.input={};return;
+    }
+
+    if(scene==206){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        app.validationMode=true;app.paused=false;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.car=0;app.frontend.battleProfile=original::makeOriginalFreshBattleProfile();
+        std::ofstream log(app.saveRoot.parent_path()/"course-start-cells.txt");
+        for(unsigned condition=0;condition<18;++condition){
+            app.frontend.course=app.courseIndex=int(condition/2);app.frontend.reverse=app.reverse=(condition%2)!=0;
+            app.frontend.wet=app.wet=false;app.frontend.night=app.night=false;app.start();
+            if(app.courseLightPathIndex!=app.originalCoordinate.index)throw std::runtime_error("Intro course cell did not initialize from grid");
+            const auto cell=app.courseLightPathIndex;app.simulate({});
+            if(app.courseLightPathIndex!=cell)throw std::runtime_error("First driving tick changes the initial scenery cell");
+            log<<condition<<','<<cell<<'\n';
+        }
+        log<<"PASS 18 original course/direction starts retain their initial scenery cell across the first driving tick.\n";
+        return;
+    }
+    if(scene>=200&&scene<=205){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        app.validationMode=false;app.paused=false;
+        app.loadingActive=app.preRaceDialogueActive=app.legendVisitActive=app.timeAttackVisitActive=app.buntaVisitActive=false;
+        app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.car=0;app.frontend.course=app.courseIndex=2;
+        app.frontend.reverse=app.reverse=true;app.frontend.wet=app.wet=false;app.frontend.night=app.night=false;
+        app.frontend.battleProfile=original::makeOriginalFreshBattleProfile();
+        if(scene>=202){
+            const Idas3MultiplayerConfig config{sizeof(config),1,2,1,0,0,0,23,(scene-202)/2,1};
+            app.startMultiplayer(config);app.multiplayer.localName="CAMERA TEST";app.multiplayer.remoteName="OPPONENT";
+            app.beginVsBanner();
+        }else app.start();
+        if(app.courseLightPathIndex!=app.originalCoordinate.index)throw std::runtime_error("Akagi intro loaded the wrong scenery cell");
+        std::ofstream log(app.saveRoot.parent_path()/("camera-"+std::to_string(scene)+".csv"));
+        log<<"tick,shot,x,y,z,road_y,clearance\n";
+        for(unsigned tick=0;tick<(scene%2?180u:60u);++tick){
+            app.advanceStartPresentation(1.0/60.0);
+            const auto& frame=app.startShowcaseCamera.frame();auto query=app.playerBody.query();
+            for(unsigned axis=0;axis<3;++axis)query.setf(32+axis*4,frame.eye[axis]);
+            original::OriginalTriangleSearchTrace trace;original::OriginalSurfaceScratch surface;
+            const bool hit=original::queryOriginalCollisionSurface(app.presentedSession().collision(),query,trace,surface);
+            log<<tick<<','<<app.vsShot<<','<<frame.eye[0]<<','<<frame.eye[1]<<','<<frame.eye[2]<<','<<(hit?query.f(16):0)<<','<<(hit?frame.eye[1]-query.f(16):999)<<'\n';
+        }
+        if(!app.vsActive)throw std::runtime_error("Akagi camera fixture lost showcase");
+        app.paused=true;app.input={};return;
+    }
     if(scene==146){
         const auto check=[](bool ok,const char* why){if(!ok)throw std::runtime_error(why);};
         app.validationMode=true;app.returnToCourseSelection(true);

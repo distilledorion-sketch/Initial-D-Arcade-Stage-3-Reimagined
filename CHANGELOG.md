@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.95-community-replays.15 - September 22, 2026
+
+- Fixed numeric driver-name glyphs on the community website and in replay filename generation. The original digit order is 1–9, then 0.
+- Corrected the leaderboard car labels for the Sileighty, Lancer Evo V and Evo VI TME while retaining their existing car IDs and records.
+
+- Added a rebindable Toggle headlights action in Settings > Controls: H on keyboard and right-stick click on standard controllers. Existing bindings migrate without replacing assigned controls; wheels can bind their own button. Verified projected lights and popup headlights off/on on original and imported courses.
+
+- Corrected Enna Skyline's mirrored course-selection route, keeping direction labels readable and attached to their endpoints.
+- Fixed mirrored Sadamine sponsor banners from either viewing side across day/night and dry/wet conditions. The correction is limited to sponsor logos and preserves the surrounding scenery.
+
+- Corrected the horizontally mirrored Sadamine route outline on the course-selection screen while keeping the direction labels readable.
+- Rain now respects the Tsuchisaka tunnel roof. Exterior rain and wet-road tire spray remain visible; verified day/night, both directions and both rain-detail settings.
+
+- Corrected AE86 Levin Tune A turbo audio to start with the Step 3 installation, instead of Step 2. Shared by race, online and replay audio. Step 5 retains its continuous boost loop without turbo release cues; sustained rendered audio passed silence and clipping checks.
+
+- Fixed missing road and incorrect scenery during Akagi uphill race intros by initializing scenery from the actual starting grid before the first driving tick. Camera movement is unchanged. Verified Time Attack, both online grid slots and initial scenery cells for all 18 original course/direction combinations.
+
+- Moved wheel feedback driver calls off the game thread and stopped repeated device discovery during healthy race output. Only the latest fresh force request is sent; pause/focus loss/disconnect cancels queued output. The original force model and finite native effects are unchanged. Verified with simulated slow drivers; physical-wheel FPS verification remains pending.
+
 ## 0.3.95-community-replays.14 - September 21, 2026
 
 - Fixed post-race "Original material paint outside palette" crashes by validating saved and packed car colors before rendering. Verified Enna finish/results/Continue with invalid paint data and all 35 cars; saved profiles and upgrades are preserved.

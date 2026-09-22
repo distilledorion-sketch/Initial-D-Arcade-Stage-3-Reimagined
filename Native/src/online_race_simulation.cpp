@@ -80,8 +80,7 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
         s.state.coordinates[slot]={setup.imported?setup.imported->rules(reverse).startIndex:originalRaceRuleRow(originalRaceRuleRowIndex(setup.condition,2)).startIndex,0};
         if(setup.imported)setup.imported->resetRules(s.rules[slot],reverse,{actor.f(0),actor.f(4),actor.f(8)});
         else s.rules[slot].reset(root,{setup.condition,2,setup.wet?1u:0u},s.state.coordinates[slot],{actor.f(0),actor.f(4),actor.f(8)});
-        const auto sound=selectOriginalEngineSound(profile);
-        s.engines[slot]=configureOriginalEngine(sound.family,sound.level,profile.byte(152),profile.byte(162),profile.byte(166));
+        s.engines[slot]=configureProfileEngineSound(profile);
         resetOriginalEngineControl(s.state.sound[slot].engine);
         resetOriginalTireAudio(s.state.sound[slot].tire);
     }
