@@ -78,6 +78,28 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            bool baseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-baseline")>=0;
+            for(int fixture=284;fixture<=299;++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Enna gate fixture");
+                typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
+                yield return Frames(3);
+                var course=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();
+                Check(course!=null&&course.Loaded,"Enna course loaded");course.VerifyPresentation();
+                int paired=0;
+                foreach(var renderer in course.GetComponentsInChildren<MeshRenderer>()){
+                    var material=renderer.sharedMaterial;
+                    if(material==null||!material.name.StartsWith("Enna ")||!IdasSpecialStageEnnaCourse.IsPairedGateTexture(material.name.Substring(5)))continue;
+                    paired++;
+                    Check(material.shader.name==Resources.Load<Shader>(baseline?"Idas3SceneDirect":"Idas3Scene").name,"Gate face selection shader");
+                }
+                Check(paired==10,"All active start and finish paired gate skins present");
+                yield return Capture("enna-gates-"+fixture);
+            }
+            Finish(true,null);yield break;
+        }
+
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hakone-signs-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
             bool startPoles=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hakone-start-check")>=0;

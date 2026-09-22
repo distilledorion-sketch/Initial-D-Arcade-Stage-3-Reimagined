@@ -2,6 +2,21 @@
 // separate regression in mode_flow_app_tests.inl; these select authored scenes
 // quickly for Unity rendering and controller-route verification.
 void prepareModeFlowFixture(App& app,unsigned scene){
+    if(scene>=284&&scene<=299){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        const unsigned variant=(scene-284)/4,shot=(scene-284)%4;
+        app.validationMode=true;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
+        app.frontend.course=app.courseIndex=11;app.frontend.reverse=app.reverse=(variant&1)!=0;
+        app.frontend.night=app.night=true;app.frontend.wet=app.wet=(variant&2)!=0;
+        app.frontend.car=0;app.start();app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
+        app.menu=false;app.paused=true;app.replayPlaybackActive=true;app.drivingView=OriginalDrivingView::Bumper;
+        const auto index=unsigned(app.importedCourse->rules(app.reverse).startIndex);
+        const auto sample=app.course.sample(app.course.cumulative[index]-10.f+float(shot)*8.f);
+        app.vehicle.position=sample.center;app.vehicle.yaw=std::atan2(sample.tangent.x,sample.tangent.z)+(shot==3?3.14159265f:0.f);
+        app.vehicle.speed=0;app.previous=app.vehicle;app.progress=sample.distance;app.cameraReady=false;
+        app.race.phase=RacePhase::Running;app.race.elapsed6000=0;app.race.remaining6000=120*6000;
+        app.input={};return;
+    }
     if(scene>=250&&scene<=253){
         if(app.multiplayer.active)app.leaveMultiplayer();
         app.validationMode=true;app.replayPlaybackActive=false;app.paused=false;

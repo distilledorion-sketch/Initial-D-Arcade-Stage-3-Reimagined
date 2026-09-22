@@ -1,9 +1,14 @@
 # Changelog
 
+## 0.3.95-community-replays.23 - September 22, 2026
+
+- Fixed flickering Enna Skyline start/finish banner poles by drawing only the facing side of overlapping support surfaces.
+- Covers downhill and uphill in dry and wet conditions, including views from behind the banners.
+
 ## 0.3.95-community-replays.22 - September 22, 2026
 
 - Fixed mirrored sponsor logos on Hakone in both directions and day/night, dry/wet conditions.
-- Fixed flickering start-banner poles and overlapping START/FINISH graphics by selecting the correct downhill or uphill scenery.
+- Fixed Hakone flickering start-banner poles and overlapping START/FINISH graphics by selecting the correct downhill or uphill scenery.
 - Preserved the existing Sadamine sign correction and the surrounding scenery, road markings, lighting and geometry.
 
 

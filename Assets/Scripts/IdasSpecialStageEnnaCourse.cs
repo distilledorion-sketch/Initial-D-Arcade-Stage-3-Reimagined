@@ -56,6 +56,14 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
     static Vector3 Vec(BinaryReader r){var v=new Vector3(r.ReadSingle(),r.ReadSingle(),r.ReadSingle());Require(float.IsFinite(v.x)&&float.IsFinite(v.y)&&float.IsFinite(v.z),"Non-finite Enna geometry");return v;}
     static Vector3 Vec(float[] p){Require(p!=null&&p.Length==3,"Enna placement");return new Vector3(p[0],p[1],p[2]);}
     static string Str(BinaryReader r){int n=r.ReadInt32();Require(n>0&&n<=64,"Enna model name");return Encoding.UTF8.GetString(r.ReadBytes(n));}
+    // These authored gate skins share a plane with an oppositely wound skin.
+    // Select the facing side in world space, as for the paired guardrails;
+    // depth offsets cannot reliably separate the two triangulations.
+    internal static bool IsPairedGateTexture(string name)=>
+        name=="IONA_NIT231_004"||name=="IONA_NIT231_006"||name=="IONA_NIT231_007"||
+        name=="IONA_NIT231_008"||name=="IONA_NIT231_009"||name=="IONA_NIT241_005";
+    static bool IsPairedTexture(Manifest manifest,string name)=>IsPairedGateTexture(name)||
+        (manifest.oneSidedTextures!=null&&Array.IndexOf(manifest.oneSidedTextures,name)>=0);
     void Load(){
         var root=Path.Combine(Application.streamingAssetsPath,"ENNA");
         var manifest=JsonUtility.FromJson<Manifest>(File.ReadAllText(Path.Combine(root,"manifest.json")));
@@ -67,15 +75,16 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         Require(lighting.fogEnd>lighting.fogStart&&lighting.fogStart>=0,"Enna fog range");
         var shader=Resources.Load<Shader>("Idas3Scene");Require(shader!=null&&shader.isSupported,"D3 scene shader unavailable");
         var directShader=Resources.Load<Shader>("Idas3SceneDirect");Require(directShader!=null&&directShader.isSupported,"Direct D3 scene shader unavailable");
+        bool gateBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-baseline")>=0;
         bool geometryBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-geometry-stage-baseline")>=0;
         foreach(var name in manifest.textureNames){
             Require(Path.GetFileName(name)==name,"Enna texture name");
             var texture=new Texture2D(2,2,TextureFormat.RGBA32,true);textures.Add(texture);
             Require(texture.LoadImage(File.ReadAllBytes(Path.Combine(root,"textures",name+".png"))),"Enna texture decode");
             texture.name=name;texture.filterMode=FilterMode.Trilinear;texture.anisoLevel=8;
-            // Only the authored paired guardrail faces need geometry-stage
+            // Authored paired guardrail and gate faces need geometry-stage
             // rejection. All other imported vertices pass through unchanged.
-            bool paired=manifest.oneSidedTextures!=null&&Array.IndexOf(manifest.oneSidedTextures,name)>=0;
+            bool paired=IsPairedTexture(manifest,name)&&!(gateBaseline&&IsPairedGateTexture(name));
             var material=new Material(geometryBaseline||paired?shader:directShader){name="Enna "+name,mainTexture=texture,renderQueue=900,enableInstancing=true};materials.Add(material);
             material.EnableKeyword("IDAS_IMPORTED_COURSE");material.SetFloat("_ImportedNight",1);material.SetFloat("_ImportedCutoff",.3f);
             material.SetFloat("_ImportedPs2Lighting",1);
@@ -107,10 +116,10 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
                     // aliasing texture UVs as paired-leaf rejection flags.
                     mesh.normals=new Vector3[nv];mesh.uv2=new Vector2[nv];
                     var faceFlags=new Vector2[nv];
-                    // Red and grey faces share the same guardrail plane.
+                    // Paired guardrail and gate skins share the same plane.
                     // Reuse the D3 imported-face rejection in world space so
                     // both main and mirror cameras draw only the facing side.
-                    if(manifest.oneSidedTextures!=null&&Array.IndexOf(manifest.oneSidedTextures,manifest.textureNames[material])>=0)
+                    if(IsPairedTexture(manifest,manifest.textureNames[material])&&!(gateBaseline&&IsPairedGateTexture(manifest.textureNames[material])))
                         for(int v=0;v<nv;++v)faceFlags[v]=Vector2.right;
                     mesh.uv3=faceFlags;
                     mesh.triangles=indices;mesh.RecalculateBounds();mesh.UploadMeshData(true);
