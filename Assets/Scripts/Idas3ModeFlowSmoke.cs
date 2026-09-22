@@ -78,6 +78,20 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-selection-defaults-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            int[] stages={7,8,9,9,7,8,7,8},conditions={0,0,0,7,6,4,4,4};
+            for(int fixture=300;fixture<=307;++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Selection defaults fixture");
+                typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
+                yield return Frames(3);
+                Check(Idas3SceneModeFlowValue(5)==stages[fixture-300],"Expected course setup screen");
+                Check(Idas3SceneModeFlowValue(41)==conditions[fixture-300],"Left defaults, explicit choices and forced conditions");
+                yield return Capture("selection-"+fixture);
+            }
+            Finish(true,null);yield break;
+        }
+
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
             bool baseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-baseline")>=0;

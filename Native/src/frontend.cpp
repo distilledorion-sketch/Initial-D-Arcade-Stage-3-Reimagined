@@ -607,6 +607,13 @@ void Frontend::advance(double seconds) {
             else if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::LegendOfTheStreets){
                 rivalChoice=int(original::originalLegendChoices(battleProfile,unsigned(course)).selected);selectRival();stage=FrontendStage::Rival;carFrame=0;
             }
+            else if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::TimeAttack){
+                // Start a fresh setup on the left choices. Saved race flags and
+                // browsing Snow must not preselect the next course's conditions.
+                // Later pages keep any choices the driver explicitly changes.
+                reverse=false;wet=course==8;night=course==4||course==8||course==ennaCourse;
+                stage=FrontendStage::Route;
+            }
             // Original1387A0/1387BC force night and finish the TA setup here.
             // Snow has independent snow and wet flags in the original physics.
             else if((course==4||course==ennaCourse) && stage==FrontendStage::Weather){night=true;startRequested=true;}

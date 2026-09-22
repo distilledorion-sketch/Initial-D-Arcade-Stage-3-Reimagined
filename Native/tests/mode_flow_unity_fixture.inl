@@ -2,6 +2,24 @@
 // separate regression in mode_flow_app_tests.inl; these select authored scenes
 // quickly for Unity rendering and controller-route verification.
 void prepareModeFlowFixture(App& app,unsigned scene){
+    if(scene>=300&&scene<=307){
+        if(app.multiplayer.active)app.leaveMultiplayer();
+        app.validationMode=true;app.menu=true;app.paused=false;app.replayPlaybackActive=false;
+        app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
+        auto& f=app.frontend;f.gameMode=original::OriginalGameMode::TimeAttack;
+        f.stage=FrontendStage::Course;f.course=scene>=306?11:scene==305?4:scene==304?8:3;
+        f.reverse=f.wet=f.night=true;f.advance(0);f.confirm();f.advance(31./60.);
+        if(scene==301||scene==302||scene==303||scene==305||scene==307){
+            if(scene==303)f.change(1);
+            f.confirm();f.advance(31./60.);
+        }
+        if(scene==302||scene==303){
+            if(scene==303)f.change(1);
+            f.confirm();f.advance(31./60.);
+            if(scene==303)f.change(1);
+        }
+        f.advance(12./60.);app.input={};return;
+    }
     if(scene>=284&&scene<=299){
         if(app.multiplayer.active)app.leaveMultiplayer();
         const unsigned variant=(scene-284)/4,shot=(scene-284)%4;

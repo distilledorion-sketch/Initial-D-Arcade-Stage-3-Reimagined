@@ -427,6 +427,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 23:return a.fullTuneActive;case 24:return int(a.resultVisit.tuning.kind);
     case 25:return int(a.battleProfile.u(72));case 26:return int(a.resultVisit.child.phase);
     case 27:return a.frontend.inputReady();case 28:return a.activeSaveSlot;case 29:return a.fullTuneSelecting;
+    case 41:return unsigned(a.frontend.reverse)|(unsigned(a.frontend.wet)<<1)|(unsigned(a.frontend.night)<<2);
     case 40:return int(a.smokeTextureBase);
     case 38:return int(a.drivingEffects.markCount());
     case 39:return int(a.drivingEffects.smokeCount());

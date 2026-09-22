@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.95-community-replays.24 - September 22, 2026
+
+- New Time Attack course setups default to the left route, Dry and Day where available, instead of inheriting previous race conditions.
+- Browsing Akina Snow no longer makes a subsequently selected course default to Wet/Night.
+- Manual choices remain selected when moving between condition screens. Happogahara and Enna remain night-only; Akina Snow keeps its required snow/night conditions.
+
 ## 0.3.95-community-replays.23 - September 22, 2026
 
 - Fixed flickering Enna Skyline start/finish banner poles by drawing only the facing side of overlapping support surfaces.

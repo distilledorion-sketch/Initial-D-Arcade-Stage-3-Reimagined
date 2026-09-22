@@ -128,9 +128,42 @@ int main(int argc,char**argv) {
             const auto selected=original::originalBattleSelection(expected);
             require(bunta.reverse==bool(selected.direction) && bunta.night==bool(selected.night) && bunta.wet==bool(selected.weather),"Bunta host course conditions disagree with the original profile");
         }
-        for(int forcedCourse:{4,8}) {
+        // A new TA setup must not inherit the last race or Snow's forced flags.
+        for(int course=0;course<9;++course)for(unsigned stale=0;stale<8;++stale){
+            Frontend defaults;defaults.gameMode=original::OriginalGameMode::TimeAttack;
+            defaults.stage=FrontendStage::Course;defaults.course=course;
+            defaults.reverse=(stale&1)!=0;defaults.wet=(stale&2)!=0;defaults.night=(stale&4)!=0;
+            defaults.confirm();defaults.advance(31./60.);
+            require(defaults.stage==FrontendStage::Route&&!defaults.reverse,"New TA course did not default to its left route");
+            require(defaults.wet==(course==8)&&defaults.night==(course==4||course==8),"New TA course inherited stale weather/time");
+            // User choices survive subsequent pages and backing up within setup.
+            defaults.change(1);defaults.confirm();defaults.advance(31./60.);
+            require(defaults.reverse,"Explicit right route was reset");
+            if(course==8)continue;
+            require(defaults.stage==FrontendStage::Weather&&!defaults.wet,"Weather did not start on Dry");
+            defaults.change(1);defaults.confirm();defaults.advance(31./60.);
+            require(defaults.reverse&&defaults.wet,"Explicit route/weather was reset");
+            if(course==4)continue;
+            require(defaults.stage==FrontendStage::Time&&!defaults.night,"Time did not start on Day");
+            defaults.change(1);defaults.back();defaults.advance(0);
+            require(defaults.stage==FrontendStage::Weather&&defaults.wet,"Back lost explicit wet selection");
+            defaults.confirm();defaults.advance(31./60.);
+            require(defaults.stage==FrontendStage::Time&&defaults.night,"Back/forward lost explicit night selection");
+            defaults.confirm();defaults.advance(47./60.);
+            require(defaults.takeStartRequest()&&defaults.reverse&&defaults.wet&&defaults.night,"Manual setup did not reach race intact");
+            defaults.stage=FrontendStage::Course;defaults.confirm();defaults.advance(31./60.);
+            require(!defaults.reverse&&!defaults.wet&&!defaults.night,"New visit inherited the prior race's conditions");
+        }
+        {
+            Frontend snow;snow.stage=FrontendStage::Course;snow.course=5;
+            snow.advance(0);snow.change(1);require(snow.course==8&&snow.wet&&snow.night,"Snow browsing reproduction missing");
+            snow.change(-1);require(snow.course==5,"Could not browse back from Snow");
+            snow.confirm();snow.advance(31./60.);
+            require(!snow.reverse&&!snow.wet&&!snow.night,"Snow browsing contaminated another course's defaults");
+        }
+        for(int forcedCourse:{4,8,Frontend::ennaCourse}) {
             Frontend restricted;restricted.course=forcedCourse;restricted.night=false;
-            restricted.stage=forcedCourse==4?FrontendStage::Weather:FrontendStage::Route;
+            restricted.stage=forcedCourse==8?FrontendStage::Route:FrontendStage::Weather;
             require(!restricted.confirm() && restricted.confirmationInProgress(),"Restricted TA course skipped its confirmation");
             restricted.advance(31./60.);
             require(!restricted.takeStartRequest() && restricted.confirmationInProgress(),"Restricted TA course skipped its source exit phase");
@@ -428,6 +461,9 @@ int main(int argc,char**argv) {
                 hakone.reverse=(scenario&1)!=0;hakone.wet=(scenario&2)!=0;hakone.night=(scenario&4)!=0;
                 for(auto stage:{FrontendStage::Course,FrontendStage::Route,FrontendStage::Weather,FrontendStage::Time}){
                     hakone.advance(1);require(hakone.stage==stage,"Hakone source selection transition failed");
+                    if(stage==FrontendStage::Route&&bool(scenario&1)!=hakone.reverse)hakone.change(1);
+                    if(stage==FrontendStage::Weather&&bool(scenario&2)!=hakone.wet)hakone.change(1);
+                    if(stage==FrontendStage::Time&&bool(scenario&4)!=hakone.night)hakone.change(1);
                     if(scenario==0)saveBitmap(std::filesystem::path(argv[2])/("hakone-menu-"+std::to_string(int(stage))+".bmp"),hakone.paint(1280,720),1280,720);
                     else hakone.paint(640,480);
                     hakone.confirm();hakone.advance(1);
