@@ -22,6 +22,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     Manifest data; Vector3[][] roads; Material[] materials;
     readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
     readonly List<Transform> skies=new List<Transform>();
+    readonly List<(MeshRenderer renderer,bool uphill)> directionalScenery=new List<(MeshRenderer,bool)>();
     Camera view; string root,variant; bool reverse,visible=true; Idas3SceneGame host;
     uint SceneFlags => Idas3ReplayViewer.Instance != null ? Idas3ReplayViewer.Instance.Status.flags : host.Status.flags;
     public string LoadedVariant => variant;
@@ -45,7 +46,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         if(wanted!=variant||LoadedCourse!=CourseName(SceneFlags)){
             try{LoadVariant(wanted);}catch(Exception e){Debug.LogException(e);enabled=false;Application.Quit(1);return;}
         }
-        bool backwards=(SceneFlags&32768u)!=0;if(backwards!=reverse){reverse=backwards;lightingProfile=-1;}
+        bool backwards=(SceneFlags&32768u)!=0;if(backwards!=reverse){reverse=backwards;lightingProfile=-1;UpdateDirection();}
         var cameraPosition=view.transform.position;
         foreach(var sky in skies)sky.position=cameraPosition;
         int nearest=0;float best=float.MaxValue;
@@ -67,7 +68,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         if(sourceMeshes!=null)foreach(var mesh in sourceMeshes)Destroy(mesh);
         if(materials!=null)foreach(var material in materials)Destroy(material);
         foreach(var texture in textures.Values)Destroy(texture);
-        PairedTreeTriangles=0;textures.Clear();scenery.Clear();skies.Clear();sourceMeshes=null;materials=null;
+        PairedTreeTriangles=0;textures.Clear();scenery.Clear();skies.Clear();directionalScenery.Clear();sourceMeshes=null;materials=null;
     }
     void OnDestroy(){ClearScene();}
     static void Magic(BinaryReader r,string expected) {
@@ -105,7 +106,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         for(int i=0;i<materials.Length;i++) {
             var s=data.materials[i]; var m=new Material(shader){name=s.name}; materials[i]=m;
             m.EnableKeyword("IDAS_IMPORTED_COURSE");
-            m.SetFloat("_ImportedSponsorSigns",LoadedCourse=="SADAMINE"&&s.name=="makersign_daydry"?1:0);
+            m.SetFloat("_ImportedSponsorSigns",IsSponsorMaterial(LoadedCourse,s.name)?1:0);
             // Repeated cutout trees share meshes/materials. Instance their
             // world transforms; blended road shadows retain their draw order.
             m.enableInstancing=s.kind=="tree"&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-imported-instancing-off")<0;
@@ -138,8 +139,8 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 Vector2[] treeFaces=null;
                 // The atlas also contains ordinary scenery: tag only sponsor
                 // logo triangles for readable lettering on both panel faces.
-                if(LoadedCourse=="SADAMINE"&&data.materials[mat].name=="makersign_daydry")
-                    treeFaces=SponsorFaceTags(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,Path.GetFileName(root)=="night_wet"?.25f:0);
+                if(IsSponsorMaterial(LoadedCourse,data.materials[mat].name))
+                    treeFaces=SponsorFaceTags(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,LoadedCourse=="SADAMINE"&&Path.GetFileName(root)=="night_wet"?.25f:0,LoadedCourse=="HAKONE");
                 if(data.materials[mat].kind=="tree"){
                     treeFaces=PrepareTreeFaces(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,out int paired);
                     PairedTreeTriangles+=paired;
@@ -151,6 +152,8 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 var go=new GameObject(materials[mat].name+" "+shape); go.transform.SetParent(transform,false);
                 go.AddComponent<MeshFilter>().sharedMesh=mesh;
                 var renderer=go.AddComponent<MeshRenderer>(); renderer.sharedMaterial=materials[mat]; renderer.shadowCastingMode=ShadowCastingMode.Off; renderer.receiveShadows=false;
+                int direction=SceneryDirection(LoadedCourse,data.materials[mat].name);
+                if(direction!=0){bool uphill=direction>0;directionalScenery.Add((renderer,uphill));renderer.enabled=uphill==((SceneFlags&32768u)!=0);}
                 if(data.materials[mat].sky) { skies.Add(go.transform); go.transform.localScale=Vector3.one*2000; }
             }
             if(r.BaseStream.Position!=r.BaseStream.Length) throw new InvalidDataException("Trailing scene data");
@@ -172,6 +175,13 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         }
         Debug.Log("HAKONE scenery placements: "+scenery.Count);
     }
+    internal static int SceneryDirection(string course,string material){
+        if(course!="HAKONE")return 0;
+        if(material=="downhill_O_barricade_panel_mat2"||material=="downhill_O_barricade_panel")return -1;
+        if(material=="hillclimb_O_barricade_panel_mat1"||material=="hillclimb_O_barricade_panel")return 1;
+        return 0;
+    }
+    void UpdateDirection(){foreach(var item in directionalScenery)item.renderer.enabled=item.uphill==reverse;}
     void UpdateLighting(float pathPoint) {
         int selected=0;
         foreach(var e in data.lightingEvents[reverse?1:0].points) if(pathPoint>=e.point) selected=e.profile;
@@ -186,16 +196,18 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             m.SetVector("_ImportedFogRange",new Vector4(85,1/Mathf.Max(.00001f,profile.distanceScale),0,0));
         }
     }
-    internal static Vector2[] SponsorFaceTags(ref Vector3[] vertices,ref Vector3[] normals,ref Vector2[] uv,ref Vector2[] uv2,ref Color32[] colors,ref int[] indices,float atlasOffset){
+    internal static bool IsSponsorMaterial(string course,string material)=>course=="SADAMINE"?material=="makersign_daydry":course=="HAKONE"&&(material=="makersign_O_barricade_panel_mat3"||material=="makersign_sign"||material=="makersign_adboard"||material=="makersign_O_barricade_panel");
+    internal static Vector2[] SponsorFaceTags(ref Vector3[] vertices,ref Vector3[] normals,ref Vector2[] uv,ref Vector2[] uv2,ref Color32[] colors,ref int[] indices,float atlasOffset,bool rotated=false){
         var points=new List<Vector3>(vertices);var ns=new List<Vector3>(normals);
         var ts=new List<Vector2>(uv);var ts2=new List<Vector2>(uv2);var cs=new List<Color32>(colors);
         var tags=new List<Vector2>(new Vector2[vertices.Length]);
         var copies=new Dictionary<(int,int),int>();
         for(int i=0;i<indices.Length;i+=3){
             var a=uv[indices[i]];var b=uv[indices[i+1]];var c=uv[indices[i+2]];
-            int column=Mathf.FloorToInt(((a.x+b.x+c.x)/3-atlasOffset)*8),row=Mathf.FloorToInt((a.y+b.y+c.y)/3*16);
-            if(column<0||column>1||row<0||row>3||(column==1&&row==3))continue;
-            float left=atlasOffset+column/8f,right=atlasOffset+(column+1)/8f,top=row/16f,bottom=(row+1)/16f;
+            float columns=rotated?16:8,rows=rotated?4:16;
+            int column=Mathf.FloorToInt(((a.x+b.x+c.x)/3-atlasOffset)*columns),row=Mathf.FloorToInt((a.y+b.y+c.y)/3*rows);
+            if(column<0||column>(rotated?6:1)||row<0||row>(rotated?0:3)||(!rotated&&column==1&&row==3))continue;
+            float left=atlasOffset+column/columns,right=atlasOffset+(column+1)/columns,top=row/rows,bottom=(row+1)/rows;
             float minU=Mathf.Min(a.x,b.x,c.x),maxU=Mathf.Max(a.x,b.x,c.x);
             float minV=Mathf.Min(a.y,b.y,c.y),maxV=Mathf.Max(a.y,b.y,c.y);
             if(minU<left-.00001f||maxU>right+.00001f||minV<top-.00001f||maxV>bottom+.00001f||maxU-minU<.001f||maxV-minV<.001f)continue;
@@ -204,7 +216,9 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 if(!copies.TryGetValue(key,out int copy)){
                     copy=points.Count;copies.Add(key,copy);
                     points.Add(vertices[source]);ns.Add(normals[source]);ts.Add(uv[source]);ts2.Add(uv2[source]);cs.Add(colors[source]);
-                    tags.Add(new Vector2(0,left+right));
+                    // Negative axis marks Hakone's logos, rotated in the atlas:
+                    // their horizontal lettering runs toward decreasing V.
+                    tags.Add(new Vector2(0,rotated?-(top+bottom):left+right));
                 }
                 indices[i+k]=copy;
             }

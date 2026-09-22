@@ -78,6 +78,31 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hakone-signs-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
+            bool startPoles=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hakone-start-check")>=0;
+            int first=startPoles?268:Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hakone-straight-check")>=0?276:260;
+            for(int fixture=first;fixture<=first+7;++fixture){
+                frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Hakone sponsor fixture: "+Idas3Native.Error());
+                typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
+                yield return Frames(3);
+                int downhill=0,uphill=0;
+                foreach(var renderer in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)){
+                    if(renderer.sharedMaterial==null)continue;
+                    int direction=Idas8HakoneCourse.SceneryDirection("HAKONE",renderer.sharedMaterial.name);
+                    if(direction==0)continue;
+                    if(direction>0)uphill++;else downhill++;
+                    Check(renderer.enabled==((direction>0)==((fixture&1)!=0)),"Exactly one directional gate/scenery version is rendered");
+                }
+                Check(downhill>0&&uphill>0,"Both authored directional groups are present");
+                if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-signs-baseline")>=0){
+                    foreach(var renderer in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))foreach(var material in renderer.sharedMaterials)
+                        if(material!=null&&material.IsKeywordEnabled("IDAS_IMPORTED_COURSE"))material.SetFloat("_ImportedSponsorSigns",0);
+                }
+                yield return Capture("hakone-"+fixture);
+            }
+            Finish(true,null);yield break;
+        }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);frozen=true;
             for(int fixture=250;fixture<=253;++fixture){

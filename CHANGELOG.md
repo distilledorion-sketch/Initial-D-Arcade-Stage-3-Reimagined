@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.22 - September 22, 2026
+
+- Fixed mirrored sponsor logos on Hakone in both directions and day/night, dry/wet conditions.
+- Fixed flickering start-banner poles and overlapping START/FINISH graphics by selecting the correct downhill or uphill scenery.
+- Preserved the existing Sadamine sign correction and the surrounding scenery, road markings, lighting and geometry.
+
+
 ## 0.3.95-community-replays.21 - September 22, 2026
 
 - Added Online, Queuing and Racing counts to the community leaderboard website.

@@ -49,15 +49,16 @@ void prepareModeFlowFixture(App& app,unsigned scene){
         app.frontend.course=scene==208?11:10;app.frontend.stage=FrontendStage::Course;app.frontend.reverse=false;
         app.frontend.advance(120);app.input={};return;
     }
-    if(scene>=230&&scene<=237){
+    if((scene>=230&&scene<=237)||(scene>=260&&scene<=283)){
         if(app.multiplayer.active)app.leaveMultiplayer();
-        const unsigned variant=(scene-230)/2;
+        const bool hakone=scene>=260;
+        const unsigned variant=hakone?((scene-260)%8)/2:(scene-230)/2;
         app.validationMode=true;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
-        app.frontend.course=app.courseIndex=10;app.frontend.reverse=app.reverse=(scene&1)!=0;
+        app.frontend.course=app.courseIndex=hakone?9:10;app.frontend.reverse=app.reverse=(scene&1)!=0;
         app.frontend.night=app.night=variant>=2;app.frontend.wet=app.wet=(variant&1)!=0;
         app.frontend.car=0;app.start();app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
         app.menu=false;app.paused=true;app.replayPlaybackActive=true;app.drivingView=OriginalDrivingView::Chase;
-        const unsigned index=app.reverse?unsigned(app.course.points.size()-1)-3420:175;
+        const unsigned index=scene>=276?(app.reverse?unsigned(app.course.points.size()-1)-880:850):scene>=268?unsigned(app.importedCourse->rules(app.reverse).startIndex)-10:hakone?(app.reverse?unsigned(app.course.points.size()-1)-790:740):(app.reverse?unsigned(app.course.points.size()-1)-3420:175);
         const auto sample=app.course.sample(app.course.cumulative[index]);
         app.vehicle.position=sample.center;app.vehicle.yaw=std::atan2(sample.tangent.x,sample.tangent.z);app.vehicle.speed=0;
         app.previous=app.vehicle;app.progress=sample.distance;app.cameraReady=false;

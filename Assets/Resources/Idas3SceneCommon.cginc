@@ -235,6 +235,8 @@ float4 mainPS(P v):SV_TARGET{
  // Sponsor panels are two-sided. Only tagged logo atlas tiles may reflect;
  // the screen-space U direction keeps lettering readable from either side.
  if(_ImportedSponsorSigns!=0&&v.sponsorAxis>0&&ddx(v.uv.x)<0)v.uv.x=v.sponsorAxis-v.uv.x;
+ // Hakone packs the lettering along decreasing V instead of increasing U.
+ if(_ImportedSponsorSigns!=0&&v.sponsorAxis<0&&ddx(v.uv.y)>0)v.uv.y=-v.sponsorAxis-v.uv.y;
  float4 color=_MainTex.Sample(sampler_MainTex,v.uv);
  if(_ImportedCoverage!=0){
   // Derivative-scaled coverage stays approximately one pixel wide while the
