@@ -106,6 +106,7 @@ namespace Idas3.Multiplayer
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerEnableAuthorityRules(ulong race,int remoteAutomatic,int boost,int collisions);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerAuthorityPacket([Out] byte[] bytes,uint capacity);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerAuthorityReceive([In] byte[] bytes,uint count);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerSetRemoteHeadlights(ulong sequence,uint enabled);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerAuthorityStatus(ref Idas3AuthorityStatus status);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerGetRemoteSnapshot(ref Idas3CarSnapshot snapshot);
 

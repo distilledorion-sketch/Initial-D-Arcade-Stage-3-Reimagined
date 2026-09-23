@@ -1,7 +1,11 @@
-0.3.95-community-replays.26
-STEAM AND WINDOWS UPDATE FIXES
+0.3.95-community-replays.27
+ONLINE HEADLIGHTS AND PATCH INSTALLATION
+Opponent headlights now reflect each driver's independent off/on selection, including pop-up lamp animations. Repeated absolute updates recover from packet loss, and stale updates cannot undo a newer selection. Both online players need this version.
+Update installation performs less repeated integrity and folder-resolution work while preserving final file verification, damaged-file detection and rollback. These improvements take effect after .27 is installed; the first update into .27 still uses your previous updater. Changed-file patches are provided from versions .20 through .26.
+
+FIXES INCLUDED FROM .26
 Fixed Steam hosting, room searches, joining and Quick Match reporting that the game build could not be identified. Full code, physics and course compatibility checks are preserved. Both online players need this version.
-Fixed the Windows updater incorrectly treating short folder names (such as NAME~1) as links. If an older updater still reports "An update path resolves through a link", close the game and extract the full Windows game ZIP over the existing installation, replacing game files once. Personal saves, settings, replays and custom music are preserved. Smaller changed-file updates are provided for versions .20 through .25.
+Fixed the Windows updater incorrectly treating short folder names (such as NAME~1) as links. If an older updater still reports "An update path resolves through a link", close the game and extract the full Windows game ZIP over the existing installation, replacing game files once. Personal saves, settings, replays and custom music are preserved.
 
 COURSES ADDED IN .25: Momiji Line, Myogi (Special Stage) and Usui (Special Stage) are available in Time Attack and online battles, with downhill/uphill, dry/wet and night scenery. Their handling comes from Akagi, Shomaru and Happogahara respectively. Each has separate personal records, leaderboard boards and replay support. The existing Myogi and Usui courses remain available.
 Fixed the Usui (Special Stage) forest wall, corrected the orientation and labels of the Special Stage menu maps, and corrected course names in pause menus and Discord activity. Existing leaderboard times and replays are preserved.

@@ -10,6 +10,8 @@ std::array<std::uint64_t,2> authorityFinishFrame{},authorityFinishTicks{};
 std::array<bool,2> authorityFinished{},authorityTimeUp{};
 bool authorityStalled=false;
 int authorityConfirmedWinner=-3;
+std::uint64_t authorityRemoteHeadlightSequence=0;
+bool authorityRemoteHeadlights=false;
 
 const original::OriginalDrivingSession& presentedSession()const {
     return authorityRace?authorityRace->car(multiplayer.config.localSlot):originalSession;
@@ -19,6 +21,7 @@ void clearAuthority(){
     authorityVisualOffset={};authorityYawOffset={};authorityFinishFrame={};authorityFinishTicks={};
     authorityRemoteCorrectionVelocity={};authorityRemoteYawVelocity=0;
     authorityFinished={};authorityTimeUp={};authorityStalled=false;authorityConfirmedWinner=-3;
+    authorityRemoteHeadlightSequence=0;authorityRemoteHeadlights=false;
 }
 void confirmedAuthorityFrame(const original::OnlineRaceFrame& frame){
     const auto local=multiplayer.config.localSlot;
@@ -49,7 +52,8 @@ void enableAuthority(std::uint64_t raceId,bool remoteAutomatic,bool boost,bool c
     const auto local=multiplayer.config.localSlot;
     setup.profiles[local]=battleProfile;setup.profiles[1-local]=multiplayer.remoteProfile;
     setup.automatic[local]=automatic;setup.automatic[1-local]=remoteAutomatic;archiveOpponentAutomatic=remoteAutomatic;
-    clearAuthority();authorityRace=std::make_unique<original::OnlineRaceSimulation>(root,setup);
+    clearAuthority();authorityRemoteHeadlights=night;
+    authorityRace=std::make_unique<original::OnlineRaceSimulation>(root,setup);
     authorityLink=std::make_unique<original::OnlineRaceLink>(*authorityRace,raceId,local==0,
         [this](const auto& frame,auto){confirmedAuthorityFrame(frame);});
     originalSession.setEngineOutput({});
@@ -60,7 +64,7 @@ void projectAuthorityRemote(bool advance=false){
     const auto oldVehicle=rivalVehicle;const auto oldBody=rivalBodyWorld;const auto oldWheels=rivalWheels;
     const float oldPitch=rivalPitch,oldRoll=rivalRoll;
     const auto remote=1-multiplayer.config.localSlot;const auto& car=authorityRace->car(remote);const auto& actor=car.actor();
-    auto& pose=multiplayer.remote;pose={sizeof(pose),1};pose.flags=Idas3MpActive|(multiplayer.waiting?Idas3MpWaiting:0)|(night?Idas3MpHeadlights:0);
+    auto& pose=multiplayer.remote;pose={sizeof(pose),1};pose.flags=Idas3MpActive|(multiplayer.waiting?Idas3MpWaiting:0)|(authorityRemoteHeadlights?Idas3MpHeadlights:0);
     if(authorityFinished[remote])pose.flags|=Idas3MpFinished;
     if(authorityTimeUp[remote])pose.flags|=Idas3MpTimeUp;
     if(car.vehicle().controls.brake>.05f)pose.flags|=Idas3MpBrake;
@@ -80,6 +84,22 @@ void projectAuthorityRemote(bool advance=false){
     // Authority poses are fixed-step samples, unlike the already-interpolated
     // legacy network snapshots. Retain the previous sample for render interpolation.
     if(advance){previousRival=oldVehicle;previousRivalBodyWorld=oldBody;previousRivalWheels=oldWheels;previousRivalPitch=oldPitch;previousRivalRoll=oldRoll;}
+}
+void setAuthorityRemoteHeadlights(std::uint64_t sequence,std::uint32_t enabled){
+    if(!authorityRace||!multiplayer.active||multiplayer.disconnected)
+        throw std::logic_error("Connected authority race required for opponent headlights");
+    if(!sequence||enabled>1)throw std::invalid_argument("Invalid opponent headlight state");
+    // Absolute state is repeated with input packets. Reordering and duplicate
+    // delivery cannot undo a newer toggle, even while physics is stalled.
+    if(sequence<=authorityRemoteHeadlightSequence)return;
+    const auto& actor=renderedRivalActor();
+    rivalProjectedHeadlight.request(enabled!=0,presentedSession().collision(),rivalBody.query(),
+        {std::bit_cast<float>(actor[0]),std::bit_cast<float>(actor[1]),std::bit_cast<float>(actor[2])});
+    authorityRemoteHeadlightSequence=sequence;authorityRemoteHeadlights=enabled!=0;
+    multiplayer.remote.flags=(multiplayer.remote.flags&~Idas3MpHeadlights)|(enabled?Idas3MpHeadlights:0);
+    // Only presentation changes here. The normal source animation advances
+    // pop-up lamps; no peer pose or lighting input enters rollback physics.
+    composeRaceCarLights();
 }
 void receiveAuthority(std::span<const std::uint8_t> packet){
     if(!authorityLink)throw std::logic_error("No authority race");

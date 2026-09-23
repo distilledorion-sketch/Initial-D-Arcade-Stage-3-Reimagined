@@ -243,8 +243,14 @@ public sealed class Idas3Updates : MonoBehaviour
         int parentId;long parentTime;
         using(var current=System.Diagnostics.Process.GetCurrentProcess()){parentId=current.Id;parentTime=current.StartTime.ToUniversalTime().ToFileTimeUtc();}
         Message="Checking game files and preparing the update…";
-        var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,sessionFolder,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json)));
-        while(!preparation.IsCompleted)yield return null;
+        int checkedFiles=0,totalFiles=0;
+        var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,sessionFolder,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json),
+            (done,total)=>{System.Threading.Interlocked.Exchange(ref totalFiles,total);System.Threading.Interlocked.Exchange(ref checkedFiles,done);}));
+        while(!preparation.IsCompleted){
+            int total=System.Threading.Volatile.Read(ref totalFiles),done=System.Threading.Volatile.Read(ref checkedFiles);
+            if(total>0)Message="Checking game files… "+done.ToString("N0")+" / "+total.ToString("N0");
+            yield return null;
+        }
         string planPath;
         try{planPath=preparation.GetAwaiter().GetResult();}catch(Idas3UpdateStaging.PatchRejectedException error){throw new PatchUnavailableException(error.Message);}
         var start=new System.Diagnostics.ProcessStartInfo(helper){

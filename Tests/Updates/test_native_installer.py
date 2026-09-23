@@ -45,7 +45,13 @@ def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,ta
                 assert (session/'ready').exists(),(name,(session/'error.txt').read_text() if (session/'error.txt').exists() else '')
                 assert parent.poll() is None
                 assert (game/'UnityPlayer.dll').read_bytes()==original['UnityPlayer.dll'],'Wrote before process exit'
-                if concurrent:original['UnityPlayer.dll']=b'concurrent edit';(game/'UnityPlayer.dll').write_bytes(original['UnityPlayer.dll'])
+                if concurrent:
+                    changed=concurrent if isinstance(concurrent,str) else 'UnityPlayer.dll'
+                    previous=(game/changed).stat()
+                    original[changed]=b'X'*len(original[changed]);(game/changed).write_bytes(original[changed])
+                    # Metadata alone cannot prove integrity. The final pass must
+                    # detect retained-file edits even with size/timestamps restored.
+                    os.utime(game/changed,ns=(previous.st_atime_ns,previous.st_mtime_ns))
                 (game/'release-parent').write_text('exit');parent.wait(timeout=10)
             stdout,stderr=proc.communicate(timeout=30);code=proc.returncode;output=stderr.decode(errors='replace')
             if (session/'error.txt').exists():output+=(session/'error.txt').read_text()
@@ -76,5 +82,6 @@ case('symlink',mutate=lambda x:x+[(link,b'../escape')])
 case('tampered-stage',tamper=True)
 case('rollback-locked',locked=True)
 case('concurrent',concurrent=True)
+case('concurrent-retained-same-metadata',concurrent='InitialDUnity_Data/StreamingAssets/retained.bin')
 case('process-handoff-restart',restart=True,good=True)
 (proof/'native-windows-report.json').write_text(json.dumps(dict(passed=True,tests=results,fixture=str(base)),indent=2))

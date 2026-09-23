@@ -212,6 +212,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerEnableAuthority(uint64_t
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerEnableAuthorityRules(uint64_t race,int remoteAutomatic,int boost,int collisions);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityPacket(uint8_t* bytes,uint32_t capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityReceive(const uint8_t* bytes,uint32_t count);
+// Sequenced presentation state only; does not modify authority simulation.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetRemoteHeadlights(uint64_t sequence,uint32_t enabled);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityStatus(Idas3AuthorityStatus* status);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetRemoteSnapshot(Idas3MultiplayerSnapshot* snapshot);
 // Neutral terminal finish; keeps MP ownership until Leave. Repeated calls are

@@ -38,7 +38,7 @@ public static class Idas3UpdateStaging {
     public static string Hash(string path){using(var input=File.OpenRead(path))using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(input)).Replace("-","").ToLowerInvariant();}
     private static void PutString(BinaryWriter writer,string value){writer.Write(value.Length);writer.Write(Encoding.Unicode.GetBytes(value));}
     private static byte[] Digest(string value){var bytes=new byte[32];if(value!=null)for(int i=0;i<32;i++)bytes[i]=Convert.ToByte(value.Substring(i*2,2),16);return bytes;}
-    public static string Prepare(string root,string session,string archive,string digest,bool patch,string baseVersion,string targetVersion,int parentId,long parentFileTime,Func<string,Patch> parse){
+    public static string Prepare(string root,string session,string archive,string digest,bool patch,string baseVersion,string targetVersion,int parentId,long parentFileTime,Func<string,Patch> parse,Action<int,int> progress=null){
         root=Path.GetFullPath(root);session=Path.GetFullPath(session);NoLinks(root);NoLinks(session);
         if(!File.Exists(Path.Combine(root,"InitialDUnity.exe")))throw new IOException("Game executable is missing.");
         if(!string.Equals(Path.GetFullPath(archive),Inside(session,"game.zip"),StringComparison.OrdinalIgnoreCase)||!Regex.IsMatch(digest??"",@"\A[0-9a-f]{64}\z")||Hash(archive)!=digest)throw new IOException("Update archive verification failed.");
@@ -69,11 +69,13 @@ public static class Idas3UpdateStaging {
                 if(patch&&(!inventory.ContainsKey(name)||!inventory[name].included||inventory[name].size!=entry.Length))throw new PatchRejectedException("Unexpected patch payload.");
             }
             foreach(string required in Required)if(patch?!inventory.ContainsKey(required):!entries.ContainsKey(required))throw new IOException("Incomplete game package.");
+            int completed=0,total=patch?inventory.Count:entries.Count;if(progress!=null)progress(completed,total);
             if(patch)foreach(var file in inventory.Values){
                 if(file.included){if(!entries.ContainsKey(file.path))throw new PatchRejectedException("Missing patch payload.");continue;}
                 string dest=Inside(root,file.path);NoLinks(dest);
                 if(!File.Exists(dest)||new FileInfo(dest).Length!=file.size||Hash(dest)!=file.sha256)throw new PatchRejectedException("Existing files need a full download.");
                 records.Add(new Record{path=file.path,oldHash=file.sha256,newHash=file.sha256,size=file.size});
+                if(progress!=null)progress(++completed,total);
             }
             long existing=0;foreach(string name in entries.Keys){string path=Inside(root,name);if(File.Exists(path))existing=checked(existing+new FileInfo(path).Length);}
             var tempDrive=new DriveInfo(Path.GetPathRoot(session));var targetDrive=new DriveInfo(Path.GetPathRoot(root));
@@ -87,6 +89,7 @@ public static class Idas3UpdateStaging {
                 string next=Hash(staged),old=File.Exists(dest)?Hash(dest):null;
                 if(patch&&next!=inventory[name].sha256)throw new PatchRejectedException("Patch payload hash mismatch.");
                 records.Add(new Record{path=name,oldHash=old,newHash=next,size=pair.Value.Length,changed=old!=next});
+                if(progress!=null)progress(++completed,total);
             }
         }
         string plan=Inside(session,"install.plan");

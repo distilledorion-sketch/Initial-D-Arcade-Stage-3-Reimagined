@@ -37,31 +37,42 @@ static fs::path inside(const fs::path& root,const fs::path& relative){
 static void noLinks(fs::path p){
     // Wine exposes DOS drive mappings as reparse points. Validate every path
     // below the drive root, while allowing the drive mapping itself.
+    fs::path existing;
     for(p=fullPath(p);!p.empty();){if(p==p.root_path())break;DWORD a=GetFileAttributesW(p.c_str());
         if(a!=INVALID_FILE_ATTRIBUTES){
             if(a&FILE_ATTRIBUTE_REPARSE_POINT)throw std::runtime_error("Update folders cannot contain links: "+p.u8string());
-            Handle check(CreateFileW(p.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS,nullptr));
-            require(check.h!=INVALID_HANDLE_VALUE,"Cannot inspect final update path.");
-            std::vector<wchar_t> resolved(32768);DWORD length=GetFinalPathNameByHandleW(check.h,resolved.data(),static_cast<DWORD>(resolved.size()),FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
-            require(length>0&&length<resolved.size(),"Cannot resolve final update path.");
-            require(lower(comparablePath(std::wstring(resolved.data(),length)).wstring())==lower(longPath(p).wstring()),"An update path resolves through a link.");
+            if(existing.empty())existing=p;
         }
         else require(GetLastError()==ERROR_FILE_NOT_FOUND||GetLastError()==ERROR_PATH_NOT_FOUND,"Cannot inspect an update path.");
         auto parent=p.parent_path();if(parent==p)break;p=parent;
     }
+    // Resolving the closest existing path resolves all of its ancestors too.
+    // Do not reopen and resolve the same directories for every ancestor/file.
+    if(!existing.empty()){
+        Handle check(CreateFileW(existing.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS,nullptr));
+        require(check.h!=INVALID_HANDLE_VALUE,"Cannot inspect final update path.");
+        std::vector<wchar_t> resolved(32768);DWORD length=GetFinalPathNameByHandleW(check.h,resolved.data(),static_cast<DWORD>(resolved.size()),FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
+        require(length>0&&length<resolved.size(),"Cannot resolve final update path.");
+        require(lower(comparablePath(std::wstring(resolved.data(),length)).wstring())==lower(longPath(existing).wstring()),"An update path resolves through a link.");
+    }
 }
+struct HashWorkspace{
+    BCRYPT_ALG_HANDLE algorithm=nullptr;
+    std::vector<unsigned char> buffer=std::vector<unsigned char>(256*1024);
+    HashWorkspace(){require(BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0,"SHA256 unavailable.");}
+    ~HashWorkspace(){BCryptCloseAlgorithmProvider(algorithm,0);}
+};
 static Digest hash(const fs::path& path){
     Handle file(CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr));
     require(file.h!=INVALID_HANDLE_VALUE,"Cannot read a game file.");
-    BCRYPT_ALG_HANDLE alg=nullptr;BCRYPT_HASH_HANDLE h=nullptr;
-    require(BCryptOpenAlgorithmProvider(&alg,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0,"SHA256 unavailable.");
-    Digest result{};std::vector<unsigned char> buffer(256*1024);
+    static HashWorkspace workspace;
+    BCRYPT_HASH_HANDLE h=nullptr;Digest result{};auto& buffer=workspace.buffer;
     try{
-        require(BCryptCreateHash(alg,&h,nullptr,0,nullptr,0,0)>=0,"Cannot create SHA256 hash.");
+        require(BCryptCreateHash(workspace.algorithm,&h,nullptr,0,nullptr,0,0)>=0,"Cannot create SHA256 hash.");
         DWORD size=0;while(true){require(ReadFile(file.h,buffer.data(),static_cast<DWORD>(buffer.size()),&size,nullptr)!=0,"Cannot read game data.");if(!size)break;require(BCryptHashData(h,buffer.data(),size,0)>=0,"Cannot hash game data.");}
         require(BCryptFinishHash(h,result.data(),32,0)>=0,"Cannot finish SHA256 hash.");
-    }catch(...){if(h)BCryptDestroyHash(h);BCryptCloseAlgorithmProvider(alg,0);throw;}
-    BCryptDestroyHash(h);BCryptCloseAlgorithmProvider(alg,0);return result;
+    }catch(...){if(h)BCryptDestroyHash(h);throw;}
+    BCryptDestroyHash(h);return result;
 }
 static bool oneOf(const std::wstring& s,std::initializer_list<const wchar_t*> values){for(auto v:values)if(s==lower(v))return true;return false;}
 static fs::path safeName(std::wstring s){
@@ -118,7 +129,10 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
         require(input.peek()==std::char_traits<char>::eof(),"Trailing plan data.");std::sort(names.begin(),names.end());require(std::adjacent_find(names.begin(),names.end())==names.end(),"Duplicate game path.");
         for(auto name:{L"initialdunity.exe",L"unityplayer.dll",L"initialdunity_data\\globalgamemanagers",L"initialdunity_data\\managed\\assembly-csharp.dll"})require(std::binary_search(names.begin(),names.end(),name),"Incomplete game inventory.");
         if(!test)noOtherGame(game,pid);
-        for(const auto& r:records){verifyOld(r);if(!r.changed)continue;noLinks(r.stage);noLinks(r.backup);require(fs::file_size(r.stage)==r.size&&hash(r.stage)==r.next,"Staged game file failed verification.");if(r.existed){fs::create_directories(r.backup.parent_path());require(CopyFileW(r.dest.c_str(),r.backup.c_str(),TRUE)!=0,"Cannot back up game file.");require(hash(r.backup)==r.old,"Backup verification failed.");}}
+        // Managed preparation already hashes retained files. Verify every file
+        // again after the game exits, before any write; preflight only needs
+        // changed files for the verified backups. Avoid a third full-game read.
+        for(const auto& r:records){if(!r.changed)continue;verifyOld(r);noLinks(r.stage);noLinks(r.backup);require(fs::file_size(r.stage)==r.size&&hash(r.stage)==r.next,"Staged game file failed verification.");if(r.existed){fs::create_directories(r.backup.parent_path());require(CopyFileW(r.dest.c_str(),r.backup.c_str(),TRUE)!=0,"Cannot back up game file.");require(hash(r.backup)==r.old,"Backup verification failed.");}}
         write(session/L"ready","Prepared");ready=true;
         if(parent.h)require(WaitForSingleObject(parent.h,5*60*1000)==WAIT_OBJECT_0,"The game did not close; no files were replaced.");
         if(!test)noOtherGame(game,0);

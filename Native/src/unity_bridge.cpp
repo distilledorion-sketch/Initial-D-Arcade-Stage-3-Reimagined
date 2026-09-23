@@ -1250,6 +1250,12 @@ int IDAS3_UNITY_CALL Idas3MultiplayerAuthorityReceive(const uint8_t* bytes,uint3
         r.app->receiveAuthority({bytes,count});return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
+int IDAS3_UNITY_CALL Idas3MultiplayerSetRemoteHeadlights(uint64_t sequence,uint32_t enabled){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{if(!r.sceneMode||!r.app)throw std::logic_error("Multiplayer scene is not initialized");
+        r.app->setAuthorityRemoteHeadlights(sequence,enabled);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
 // Read-only, opt-in presentation diagnostic. No simulation or save mutation.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerMotionSample(double* values,uint32_t count){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

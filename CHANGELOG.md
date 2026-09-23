@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.95-community-replays.27 - September 22, 2026
+
+- Fixed online opponents' headlights staying on at night, or off during the day, regardless of the driver's toggle. Both drivers' lights and pop-up lamp animations now follow their independent selections.
+- Headlight updates repeat the current state and ignore older packets, so a dropped or reordered update cannot leave the opponent displaying an old setting. Driving physics and race verification are unchanged.
+- Reduced redundant integrity scans and repeated folder-resolution work when applying updates. Final file verification, link checks, rollback and damaged-file detection remain in place.
+- Update preparation now shows a checked-file count so verification progress remains visible.
+- Both online players need this version. Changed-file patches are provided from `.20` through `.26`; personal saves, settings, replays and custom music are preserved.
+- Installer improvements apply after `.27` is installed. Installing this update still uses the updater bundled with the previous build.
+
 ## 0.3.95-community-replays.26 - September 22, 2026
 
 - Fixed Steam hosting, room searches, joining and Quick Match rejecting builds with the new Special Stage maps because their combined build identifier exceeded the lobby key limit. Lobby keys now hash the complete identity; peer handshakes still verify code, physics and every course fingerprint. Incomplete identities are not cached, and test lobbies remain isolated.

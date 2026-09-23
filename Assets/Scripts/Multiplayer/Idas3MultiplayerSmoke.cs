@@ -194,7 +194,7 @@ namespace Idas3.Multiplayer
             uint word=key<32?frame.key0:key<64?frame.key1:key<96?frame.key2:frame.key3;
             return (word&(1u<<(key&31)))!=0;
         }
-        private static readonly int[] DrivingDiagnosticKeys={87,83,65,68,69,81,67};
+        private static readonly int[] DrivingDiagnosticKeys={87,83,65,68,69,81,67,72};
         internal static bool PrepareFrame(ref Idas3Native.FrameInput frame)
         {
             if(active==null)return true;
@@ -440,6 +440,12 @@ namespace Idas3.Multiplayer
                 yield return Until(()=>session.RemoteSavedCar!=null&&!session.RemoteSavedCar.Automatic&&session.CanReady,20,"Transmission choice was not synchronized");
             }
             if(courseDrawCheck)yield return CheckIndependentCoursePicks();
+            if(HeadlightsCheck){
+                Check(peerRoot.Length>0&&!steamCheck&&!courseDrawCheck,"Headlight check requires two isolated LAN peers.");
+                var choice=new Idas3RaceChoice(course,false,false,HeadlightsNight);
+                session.SetRaceOptions(choice.Course,choice.Reverse,choice.Wet,choice.Night);
+                yield return Until(()=>session.CanReady&&session.RemoteChoice.Equals(choice),20,"Headlight fixture conditions did not synchronize.");
+            }
             if(course>=9){
                 var args=Environment.GetCommandLineArgs();
                 var choice=new Idas3RaceChoice(course,Array.IndexOf(args,"-hakone-uphill")>=0,Array.IndexOf(args,"-hakone-wet")>=0,Array.IndexOf(args,"-hakone-night")>=0);
@@ -494,6 +500,7 @@ namespace Idas3.Multiplayer
             Check(!host.ControlBindings.SuppressInput,"Private neutral input did not clear the controller-change release latch.");
             Check((host.DiagnosticSubmittedInput.flags&2u)==0&&HasKey(host.DiagnosticSubmittedInput,87),"Mapped private throttle did not reach the native driving packet.");
             if(ManualCheck)yield return VerifyManualShifts();
+            if(HeadlightsCheck)yield return VerifyOpponentHeadlights();
             if(showcaseCheck||ObserveStartOnly)Check(showcaseObserver.OnlineCheckPassed,showcaseObserver.OnlineCheckError??"Online presentation check failed.");
             Check((host.Status.flags&16)!=0,"Multiplayer race did not use original handling.");
             pulse=67;yield return Frames(8);

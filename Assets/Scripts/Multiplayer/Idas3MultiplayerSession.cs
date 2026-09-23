@@ -32,7 +32,7 @@ namespace Idas3.Multiplayer
     public sealed class Idas3MultiplayerSession : IDisposable
     {
         const uint Magic = 0x504D3349;
-        const ushort Protocol = 9;
+        const ushort Protocol = 10;
         enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs }
         // Retain this diagnostic property name; shared simulation is now the
         // normal online path, including rooms with car collisions switched off.
@@ -492,9 +492,13 @@ namespace Idas3.Multiplayer
                         ulong authorityRace=r.ReadUInt64();int byteCount=r.ReadInt32();
                         Require(byteCount>=40&&byteCount<=1064,"Invalid authority packet length.");
                         var authorityBytes=r.ReadBytes(byteCount);Require(authorityBytes.Length==byteCount,"Truncated authority packet.");
+                        Require(m.Length-m.Position>=12,"Truncated opponent headlight state.");
+                        ulong headlightSequence=r.ReadUInt64();uint headlightsEnabled=r.ReadUInt32();
+                        Require(headlightSequence>0&&headlightsEnabled<=1,"Invalid opponent headlight state.");
                         if(!nativeRace||authorityRace!=raceId)break;
                         Require(ExperimentalAuthority,"Unexpected authority packet.");
                         Require(Idas3MultiplayerNative.Idas3MultiplayerAuthorityReceive(authorityBytes,(uint)authorityBytes.Length)==1,Idas3Native.Error());
+                        Require(Idas3MultiplayerNative.Idas3MultiplayerSetRemoteHeadlights(headlightSequence,headlightsEnabled)==1,Idas3Native.Error());
                         ++RemoteSnapshotsReceived;
                         break;
                     case Packet.Ping:
@@ -716,7 +720,10 @@ namespace Idas3.Multiplayer
                 authorityPacketFrame=status.frame;
                 lastPose=Now;int count=Idas3MultiplayerNative.Idas3MultiplayerAuthorityPacket(authorityPacket,(uint)authorityPacket.Length);
                 Require(count>=40&&count<=authorityPacket.Length,Idas3Native.Error());
-                Send(Packet.AuthorityInputs,w=>{w.Write(raceId);w.Write(count);w.Write(authorityPacket,0,count);},false);++SnapshotsSent;
+                // Repeat absolute lamp state with every input packet so loss cannot
+                // lose a toggle; its sequence prevents reordered packets reverting it.
+                Send(Packet.AuthorityInputs,w=>{w.Write(raceId);w.Write(count);w.Write(authorityPacket,0,count);
+                    w.Write(LocalSnapshot.sequence);w.Write((LocalSnapshot.flags&16u)!=0?1u:0u);},false);++SnapshotsSent;
             }
             var remote=new Idas3CarSnapshot{size=128,version=1};
             Require(Idas3MultiplayerNative.Idas3MultiplayerGetRemoteSnapshot(ref remote)==1,Idas3Native.Error());RemoteSnapshot=remote;
