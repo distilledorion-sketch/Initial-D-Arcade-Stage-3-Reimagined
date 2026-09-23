@@ -1,11 +1,14 @@
-0.3.95-community-replays.29
+0.3.95-community-replays.30
+FULL TUNE PACKAGE SELECTION
+Stock cars added through Change Car now get their own tuning-package choice before Full Tune applies upgrades. Existing partial and completed tunes retain their own package and parts. Choosing a package preserves the saved driver name, transmission, paint and points; Back returns to car selection without applying an unconfirmed choice.
+
 ORIGINAL GAME REQUIRED
 Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder beside InitialDUnity.exe. Use rom/gds-0033.chd, or all four files: rom/gds-0033.cue, rom/gds-0033-track1.bin, rom/gds-0033-track2.bin and rom/gds-0033-track3.bin. The game validates the supported dump before gameplay; renaming another file does not pass validation.
 No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
 COMMUNITY TIME ATTACK
-Only 0.3.95-community-replays.29 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times and replay downloads remain available.
-Both online players need this version. Changed-file patches are provided from .20 through .28. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
+Only 0.3.95-community-replays.30 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
+Both online players need this version. Updates use a smaller changed-file patch when available for the installed version. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
 
 FIXES INCLUDED FROM .28
 SAVE MENU, WHEEL BINDING AND RAIN TRAILS

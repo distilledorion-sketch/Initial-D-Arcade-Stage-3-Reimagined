@@ -1954,6 +1954,18 @@ struct App {
         if(menu)return true;
         return !fullTuneSelecting&&!resultVisit.initialized&&race.phase!=RacePhase::Finished;
     }
+    bool needsFullTuneCourseSelection()const{
+        const auto& profile=frontend.battleProfile;
+        // The source skips package selection for the single-route GC8V.
+        if(profile.u(16)==29)return false;
+        // Change Car can complete driver setup while leaving this model stock.
+        // A setup marker and package A (zero) do not prove a route was chosen.
+        // Only offer a route while no upgrade/part progress can be overwritten;
+        // earned points, race records, factory paint and identity are unrelated.
+        if((profile.u(1180)&0xc00u)||profile.byte(153))return false;
+        for(unsigned offset=156;offset<=166;++offset)if(profile.byte(offset))return false;
+        return true;
+    }
     void beginFullTune(){
         if(!canFullTune())throw std::logic_error("Leave online play and finish the current screen before using Full Tune");
         flushProfiles();returnToCourseSelection(true);
@@ -2194,10 +2206,15 @@ struct App {
             // a new model stock; race progression and Full Tune apply upgrades.
             if(!finishSavedCarSelection())frontend.stage=FrontendStage::Car;
         }
-        // Keep the normal make/car confirmation animation. Established cars
-        // can then bypass setup; fresh cars retain transmission/package/name.
+        // Driver setup and tuning progress are distinct: a saved stock car
+        // still needs its own package choice before Full Tune applies parts.
+        // Previously upgraded cars keep their route; fresh drivers retain
+        // the original transmission/package/name setup sequence.
         if(fullTuneSelecting&&previousStage==FrontendStage::Car&&frontend.stage==FrontendStage::Transmission&&
-            !original::originalDriverSetupRequested(frontend.battleProfile))frontend.stage=FrontendStage::Mode;
+            !original::originalDriverSetupRequested(frontend.battleProfile)){
+            if(needsFullTuneCourseSelection())frontend.selectSavedCarTuningCourse();
+            else frontend.stage=FrontendStage::Mode;
+        }
         renderer.courseFog=nullptr;renderer.courseLighting=nullptr;renderer.playerLighting=nullptr;renderer.rivalLighting=nullptr;
         if(frontend.stage!=FrontendStage::TuningCourse)tuningCoursePreviewActive=false;
         if(frontend.stage!=FrontendStage::Car&&frontend.stage!=FrontendStage::Transmission&&frontend.stage!=FrontendStage::Name)driverEntryPreviewActive=false;

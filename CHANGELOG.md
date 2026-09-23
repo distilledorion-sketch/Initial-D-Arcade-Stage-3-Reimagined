@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.30 - September 23, 2026
+
+- Fixed Full Tune skipping the tuning-package choice for stock cars added through Change Car. Each stock car can now choose its own package before upgrades are applied.
+- Existing partial and completed tunes keep their package, parts and progress. Saved names, transmission, paint and points are preserved while choosing a package.
+- Back returns to car selection without applying an unconfirmed package. Restarting selection cannot skip a new driver's setup.
+- Community Time Attack submissions require exactly `.30`; complete a new run after updating. Existing published times, replay downloads and the current season are preserved. Both online players need this version.
+
 ## 0.3.95-community-replays.29 - September 23, 2026
 
 - Require the original GDS-0033 disc before starting the game, including replay viewing and the legacy host. Startup verifies the complete supported CHD or CUE/BIN contents; renamed, missing, incomplete or damaged files do not unlock the game.

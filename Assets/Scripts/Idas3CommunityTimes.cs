@@ -16,7 +16,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
-    public const string RequiredSubmissionBuild="0.3.95-community-replays.29";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.30";
     public const int FirstReplaySeason=2;
     [Serializable] public sealed class Run {
         public string id,ruleset,build;

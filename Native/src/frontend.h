@@ -97,6 +97,9 @@ public:
     // Loading another native car profile keeps source per-screen selection
     // state separate from persistent progress and saved appearance.
     void driverProfileLoaded();
+    // Full Tune may choose a stock saved car's package without repeating its
+    // driver name or transmission setup. Confirmation returns to Mode.
+    void selectSavedCarTuningCourse();
     void setNameSteering(float steering);
     const original::OriginalNameEntryState& nameEntryState()const{return nameState;}
     const OriginalNameEntryPresentation& nameEntryPresentation()const{return *namePresentation;}
@@ -191,6 +194,7 @@ private:
     NativeSpriteBank creditSprites;
     bool hasTitleExtension=false;
     bool startRequested=false;
+    bool savedCarTuningCourse=false;
     original::OriginalModeMenu modeMenu;
     original::OriginalModeMenuState modeState;
     original::OriginalModeMenuTransition modeTransition;

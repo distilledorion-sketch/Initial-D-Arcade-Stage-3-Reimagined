@@ -84,7 +84,7 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
     menuFont=MenuFont::load(rootPath);
     namePresentation.reset();nameState={};nameInput={};menuCueIds.clear();driverProfileCommit=false;
     tuningData.reset();tuningPresentation.reset();tuningCourseMenu={};tuningCourseSelected=0;tuningCourseConfirmPending=false;
-    nameCommittedForVisit=driverSetupCompleted=false;
+    nameCommittedForVisit=driverSetupCompleted=savedCarTuningCourse=false;
     banks.clear(); previousKey.clear(); previousMotionKey.clear(); pixels.clear(); staticPixels.clear();
     displayPixels.clear();previousModePaintKey.clear();displayedCanvas=nullptr;
     canvasRevision=displayedRevision=0;displayedWidth=displayedHeight=0;
@@ -219,7 +219,10 @@ bool Frontend::back() {
     if(stage==FrontendStage::Title) return false;
     if(stage==FrontendStage::Name){if(inputReady())nameInput.backPressed=true;return true;}
     // Main12AD80 has confirm/timeout input, no cancel branch.
-    if(stage==FrontendStage::TuningCourse)return true;
+    if(stage==FrontendStage::TuningCourse){
+        if(savedCarTuningCourse){savedCarTuningCourse=false;stage=FrontendStage::Car;synchronizeStage();}
+        return true;
+    }
     if(stage==FrontendStage::SaveSelect){
         if(saveDeleteRequested>=0)return true;
         if(saveDeleteOpen){saveDeleteOpen=false;saveDeleteSelected=0;saveDeleteFailed=false;previousKey.clear();return true;}
@@ -241,6 +244,9 @@ bool Frontend::back() {
     if(stage==FrontendStage::Rival){stage=FrontendStage::Course;return true;}
     if(course==8&&stage==FrontendStage::Time){stage=FrontendStage::Route;return true;}
     stage=FrontendStage(int(stage)-1); return true;
+}
+void Frontend::selectSavedCarTuningCourse(){
+    savedCarTuningCourse=true;stage=FrontendStage::TuningCourse;synchronizeStage();
 }
 void Frontend::initializeColorSelection(){
     const auto roster=carsForMake(make);const auto found=std::find(roster.begin(),roster.end(),car);
@@ -397,6 +403,7 @@ void Frontend::synchronizeStage(){
     synchronizeSelectionMusicStage();
     if(stageInitialized&&observedStage==stage)return;
     observedStage=stage;stageInitialized=true;carFrame=0;carConfirmationFrame=-1;selectionExitFrame=-1;
+    if(stage!=FrontendStage::TuningCourse)savedCarTuningCourse=false;
     buntaBadgeCourse=-1;buntaBadgeFrame=0;
     makerConfirmPending=false;frameRemainder=0;
     carConfirmPending=carCancelPending=false;
@@ -602,7 +609,8 @@ void Frontend::advance(double seconds) {
             if(events.profileCommitted)driverProfileCommit=true;
             if(events.parentRequested){
                 const auto command=tuningCourseMenu.parentEvent64;
-                if(command&1u)stage=FrontendStage::Name;
+                if(savedCarTuningCourse){savedCarTuningCourse=false;stage=FrontendStage::Mode;}
+                else if(command&1u)stage=FrontendStage::Name;
                 else if(command==0x08020004u)stage=FrontendStage::Mode;
                 else throw std::logic_error("Unsupported original tuning-course parent route");
                 synchronizeStage();return true;

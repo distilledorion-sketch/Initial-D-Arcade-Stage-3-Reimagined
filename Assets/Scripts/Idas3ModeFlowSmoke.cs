@@ -70,7 +70,45 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             yield return Capture(stage==2?"full-tune-select-make":"full-tune-select-car");
             yield return Pad(0x1000);
         }
+        yield return Until(()=>Idas3SceneModeFlowValue(23)==1||(Idas3SceneModeFlowValue(5)==12&&Idas3SceneModeFlowValue(27)==1),300,"Saved car opens upgrades or its stock tuning-route choice");
+        if(Idas3SceneModeFlowValue(5)==12){
+            yield return Capture("full-tune-stock-route");yield return Pad(0x1000);
+        }
         yield return Until(()=>Idas3SceneModeFlowValue(23)==1,300,"Established car skips setup and enters upgrades");
+    }
+    private IEnumerator SelectFullTuneSavedCar(int car){
+        Check(Idas3SceneModeFlowValue(5)==1,"Full Tune opens save selection");yield return Pad(0x1000);
+        yield return Until(()=>Idas3SceneModeFlowValue(5)==2&&Idas3SceneModeFlowValue(27)==1,300,"Full Tune opens manufacturer selection");
+        yield return Pad(0x1000);
+        yield return Until(()=>Idas3SceneModeFlowValue(5)==3&&Idas3SceneModeFlowValue(27)==1,300,"Full Tune opens saved car selection");
+        for(int i=0;i<35&&Idas3SceneModeFlowValue(43)!=car;++i)yield return Pad(8);
+        Check(Idas3SceneModeFlowValue(43)==car,"Select the independent saved car");yield return Pad(0x1000);
+    }
+    private IEnumerator PerCarFullTune(){
+        yield return Until(()=>host.Ready,600,"Scene initialized");
+        yield return Fixture(350);yield return Fixture(365);
+        foreach(int car in new[]{2,3}){
+            if(car==3)yield return Fixture(369);
+            yield return SelectFullTuneSavedCar(car);
+            yield return Until(()=>Idas3SceneModeFlowValue(5)==12&&Idas3SceneModeFlowValue(27)==1,300,"Stock saved car gets an independent tuning route");
+            yield return Fixture(366);yield return Capture("car-"+car+"-choose-route");
+            yield return Pad(8);yield return Pad(0x2000);
+            yield return Until(()=>Idas3SceneModeFlowValue(5)==3&&Idas3SceneModeFlowValue(27)==1,100,"Cancelling route selection returns to cars");
+            yield return Fixture(366);yield return Pad(0x1000);
+            yield return Until(()=>Idas3SceneModeFlowValue(5)==12&&Idas3SceneModeFlowValue(27)==1,300,"Cancelled stock route can be selected again");
+            yield return Fixture(366);yield return Pad(8);yield return Capture("car-"+car+"-route-b");yield return Pad(0x1000);
+            for(int frame=0;frame<300&&Idas3SceneModeFlowValue(23)!=1;++frame){
+                Check(Idas3SceneModeFlowValue(5)!=11&&Idas3SceneModeFlowValue(5)!=4,"Saved driver bypasses name and transmission setup");yield return null;
+            }
+            Check(Idas3SceneModeFlowValue(23)==1,"Selected route starts Full Tune");
+            frozen=true;Check(Idas3SceneModeFlowFixture(367)==1,"Independent B route upgrades persist and all other cars remain unchanged");frozen=false;
+            yield return Frames(3);yield return Capture("car-"+car+"-tuned-mode");
+            Check(Idas3Native.Idas3SceneFullTune()==1,"Reopen Full Tune for established B car");yield return Frames(3);
+            yield return SelectFullTuneSavedCar(car);
+            yield return Until(()=>Idas3SceneModeFlowValue(29)==0,300,"Previously tuned car bypasses route selection");
+            frozen=true;Check(Idas3SceneModeFlowFixture(368)==1,"Previously tuned B route and fitted parts remain intact");frozen=false;
+        }
+        Finish(true,null);
     }
     private IEnumerator SaveClick(float x,float y){
         float scale=Math.Min(Screen.width/640f,Screen.height/480f);
@@ -275,6 +313,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0){yield return PerCarFullTune();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0){yield return SaveLastUsedLevel();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0){yield return SaveChange();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0){
@@ -572,13 +611,13 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
             Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
-            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.28","0.3.95-community-replays.30","0.3.96","0.4.0","0.3.95-community-replays.029","0.3.95-community-replays.29 ",null}){
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.29","0.3.95-community-replays.31","0.3.96","0.4.0","0.3.95-community-replays.030","0.3.95-community-replays.30 ",null}){
                 var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
                 Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
             }
-            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.28";
+            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.29";
             previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
-            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.30";
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.31";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
@@ -991,7 +1030,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0?
+            "Full Tune route selection through actual controller frames for a second stock car created by Change Car and a legacy stock save. Route cancellation, independent B selection, skipped driver setup, persisted upgrades, repeat tuning and untouched first-car A tuning/other saves are verified. Mandatory upgrades use controlled native fixture ticks; no ordinary saves or physical controller hardware are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0?
             "Save menu last-used-car preview and model-keyed online aura level through actual Unity pointer/controller selection. Continue, Change Car, cancelled previews, stock level 1, unreadable history shown as unknown without rewriting it, another save, malformed native level arrays and post-race remembering helper persistence are checked. The helper is invoked directly instead of driving a race; only isolated diagnostic saves and online history are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0?
             "Save-file Continue/Change Car/Delete Save actions through the actual pointer export and controller frame path, all 35 cars across every manufacturer, existing tuning retention, stock and never-saved cars remaining untuned, skipped name/transmission/tuning-package entry, back/cancel with unchanged profiles, empty-slot setup and persisted driver identity. Delete defaults to No; explicit Yes removes the entire selected save, cancel/blocked inputs preserve all files, another save stays byte-identical, and deleted profiles stay absent on subsequent frames and fresh setup. Actual Unity captures with isolated fixture saves; no ordinary saves changed.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?
             "Pause headers through real native race fixtures and Unity menus for every imported course in both directions, followed by an original course; online/wet identity flags checked without a network peer. Isolated saves.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0?

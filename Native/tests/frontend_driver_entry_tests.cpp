@@ -39,6 +39,46 @@ void finishImportedName(Frontend& f,bool visual){
     check(f.takeDriverProfileCommit()&&!f.takeDriverProfileCommit(),"final flags need a distinct profile save");
     check((f.battleProfile.u(1180)&3u)==1u,"source setup flag did not become accepted flag");
 }
+void savedCarPackageSelection(Frontend& f){
+    f.takeDriverProfileCommit();f.takeDriverSetupCompleted();
+    f.car=1;f.make=6;f.automatic=false;
+    auto saved=makeOriginalFreshBattleProfile();saved.setu(16,1);saved.setu(1180,0x81);
+    saved.setu(64,1);saved.setu(68,1);saved.setu(72,134567);saved.setu(76,5);
+    for(unsigned i=0;i<5;++i)saved.setu(44+4*i,17+i);
+    f.battleProfile=saved;f.selectSavedCarTuningCourse();tick(f,8);
+    check(f.inputReady()&&f.tuningCourseState().selected496==0,"saved stock package A is initially highlighted");
+    f.change(1);tick(f);
+    check(f.tuningCourseState().selected496==1&&f.battleProfile.byte(152)==0,"saved package B preview committed early");
+    check(!f.takeDriverProfileCommit()&&!f.takeDriverSetupCompleted(),"saved package preview emitted a save event");
+    f.confirm();tick(f,137);
+    check(f.stage==FrontendStage::TuningCourse,"saved package skipped source confirmation animation");tick(f);
+    check(f.stage==FrontendStage::Mode,"saved package selection repeated name or transmission setup");
+    check(f.takeDriverProfileCommit()&&!f.takeDriverProfileCommit(),"saved package confirmation must emit exactly one profile commit");
+    check(!f.takeDriverSetupCompleted(),"saved package selection repeated driver setup completion");
+    auto selected=saved;selected.setByte(152,1);selected.setu(1176,f.battleProfile.u(1176));
+    check(f.battleProfile.words==selected.words&&!f.automatic,"saved package changed identity, transmission, paint, points or progress");
+
+    // Browsing another route and backing out must leave the actual saved
+    // package intact. The source screen owns only its selection timer here.
+    saved.setByte(152,1);f.battleProfile=saved;f.selectSavedCarTuningCourse();tick(f,8);
+    check(f.tuningCourseState().selected496==1,"saved package B was not highlighted on reentry");
+    f.change(-1);tick(f);const auto beforeBack=f.battleProfile.words;
+    check(f.tuningCourseState().selected496==0&&f.battleProfile.byte(152)==1,"saved package preview replaced stored route before Back");
+    f.back();check(f.stage==FrontendStage::Car&&f.battleProfile.words==beforeBack,"saved package Back changed profile or missed car selection");
+    check(!f.takeDriverProfileCommit()&&!f.takeDriverSetupCompleted(),"saved package Back emitted a persistence event");
+    saved.setu(1176,f.battleProfile.u(1176));
+    check(f.battleProfile.words==saved.words,"cancelled saved package preview changed persistent profile fields");
+
+    // Restarting Full Tune through options can interrupt this screen without
+    // Back. Its special return route must not leak into a fresh driver's setup.
+    f.selectSavedCarTuningCourse();tick(f,8);
+    f.stage=FrontendStage::SaveSelect;f.advance(0);
+    check(!f.takeDriverProfileCommit(),"interrupted package screen emitted a commit");
+    f.battleProfile=makeOriginalFreshBattleProfile();f.battleProfile.setu(16,1);
+    requestOriginalDriverSetup(f.battleProfile);
+    finishTransmission(f);finishPackage(f);
+    check(f.stage==FrontendStage::Name&&!f.takeDriverSetupCompleted(),"interrupted saved package route skipped fresh driver name entry");
+}
 }
 int main(int argc,char** argv)try{
     if(argc!=2)throw std::invalid_argument("Usage: frontend_driver_entry_tests game_root");
@@ -79,6 +119,7 @@ int main(int argc,char** argv)try{
     tick(f,16+4879+51);check(f.stage==FrontendStage::Mode&&f.takeDriverSetupCompleted(),"source name timeout completion");
     check(f.battleProfile.u(76)>0&&f.battleProfile.u(76)<=5,"source name timeout default length");
     check(!f.takeDriverSetupCompleted(),"timeout completion replayed");
-    std::cout<<"PASS frontend driver setup: "<<checks<<" checks;35 migrated/reloaded cars, fresh input, source timeouts and inert repaint. No saved-driver writes.\n";return 0;
+    savedCarPackageSelection(f);
+    std::cout<<"PASS frontend driver setup: "<<checks<<" checks;35 migrated/reloaded cars, fresh input, source timeouts, saved-car package selection/cancel/interruption and inert repaint. No saved-driver writes.\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 

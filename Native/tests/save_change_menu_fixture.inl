@@ -6,6 +6,9 @@ struct SaveChangeFixtureState {
     std::map<std::string,std::vector<char>> lastUsedFiles,lastUsedOtherFiles;
     LocalSaveSlots::Slot lastUsedSlot{};
     original::OriginalBattleProfile first{},fitted{},stock{};
+    original::OriginalBattleProfile fullTuneLevin{},fullTuneCandidateBefore{},fullTuneCandidateAfter{};
+    std::map<std::string,std::vector<char>> fullTuneOtherSlot;
+    unsigned fullTuneCandidate=2;
     bool seeded=false;
 };
 SaveChangeFixtureState saveChangeFixture;
@@ -90,7 +93,7 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
         saveChangeCheck(app.profiles.save(8,other)&&app.driverSetup.markComplete(8)&&app.saveSlots.adopt(1,other),"Could not write second isolated slot");
         reopen();saveChangeFixture.files=saveChangeFiles(app);saveChangeFixture.seeded=true;return;
     }
-    saveChangeCheck(saveChangeFixture.seeded,"Save-change fixture was not seeded");
+    saveChangeCheck(saveChangeFixture.seeded||scene==365,"Save-change fixture was not seeded");
     if(scene==351){reopen();return;}
     if(scene==353){
         saveChangeCheck(app.frontend.stage==FrontendStage::SaveSelect,"Cancellation failed to return to Save Select");
@@ -189,6 +192,144 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
         saveChangeCheck(saveChangeFiles(app)==saveChangeFixture.lastUsedFiles,"Cancelled browsing changed any per-car profile");
         saveChangeCheck(saveDeleteFiles(app,1)==saveChangeFixture.lastUsedOtherFiles,"Cancelled browsing changed another save");
         return;
+    }
+    if(scene==365){
+        // Reproduce the report through the actual Change Car commit. The
+        // driver's first Levin already uses A; the next car has never had a
+        // tuning-course choice, despite being ready to drive from this save.
+        prepareSaveChangeMenuFixture(app,350);
+        app.useSaveSlot(0);
+        auto levin=saveChangeFixture.stock;levin.setByte(152,0);
+        unsigned steps=0;
+        while(!(levin.u(1180)&0x400)&&steps++<128)original::applyOriginalTuningCommand(levin,*app.tuningTables,1);
+        while(!(levin.u(1180)&0x800)&&steps++<256)original::applyOriginalTuningCommand(levin,*app.tuningTables,2);
+        saveChangeCheck((levin.u(1180)&0xc00)==0xc00,"Levin A regression seed did not finish mandatory tuning");
+        saveChangeCheck(app.profiles.save(1,levin)&&app.driverSetup.markComplete(1)&&app.saveSlots.adopt(0,levin),"Could not save the first Levin's A tune");
+        saveChangeFixture.fullTuneLevin=levin;
+        saveChangeFixture.fullTuneCandidate=2;
+        saveChangeCheck(app.profiles.load(2).origin==LocalDriverProfiles::Origin::Fresh,"Full Tune regression needs an unused second car");
+        app.openSaveFile(0,true);
+        app.frontend.car=2;app.frontend.make=App::originalCarMake(2);app.loadedProfileCar=-1;
+        app.loadSelectedProfile();app.frontend.stage=FrontendStage::Transmission;
+        saveChangeCheck(app.finishSavedCarSelection(),"Change Car failed to create the independent stock car");
+        saveChangeCheck(app.frontend.stage==FrontendStage::Mode&&!app.fullTuneActive,"Choosing a fresh car unexpectedly entered upgrades");
+        const auto stock=app.profiles.load(2);
+        saveChangeCheck(stock.origin==LocalDriverProfiles::Origin::Saved&&saveChangeNameIntact(stock.profile),"Changed car lost the driver's name");
+        saveChangeCheck((stock.profile.u(1180)&0xc00)==0&&stock.profile.u(68)==levin.u(68),"Changed car inherited upgrades or lost transmission");
+        for(unsigned offset=152;offset<168;++offset)
+            saveChangeCheck(stock.profile.byte(offset)==original::makeOriginalFreshBattleProfile().byte(offset),"Changed car inherited the first car's tuning");
+        saveChangeFixture.fullTuneCandidateBefore=stock.profile;
+        saveChangeFixture.fullTuneOtherSlot=saveDeleteFiles(app,1);
+        app.beginFullTune();
+        saveChangeCheck(app.fullTuneSelecting&&app.frontend.stage==FrontendStage::SaveSelect,"Independent route regression did not open Full Tune save selection");
+        return;
+    }
+    if(scene==366){
+        const auto car=saveChangeFixture.fullTuneCandidate;
+        saveChangeCheck(app.fullTuneSelecting&&!app.fullTuneActive&&app.activeSaveSlot==0&&unsigned(app.frontend.car)==car,
+            "Stock car began Full Tune before selecting its own tuning route");
+        // Also call after previewing B and cancelling back to Car. A cancelled
+        // visit must leave the stored A/default route and all progress intact.
+        const bool cancelled=app.frontend.stage==FrontendStage::Car;
+        saveChangeCheck((cancelled||app.frontend.stage==FrontendStage::TuningCourse)&&app.frontend.inputReady(),
+            "Stock car skipped its independent tuning-course choice or failed to cancel");
+        if(!cancelled)saveChangeCheck(app.frontend.tuningCourseState().count504>1,"Regression car does not offer an independent non-A route");
+        saveChangeCheck(saveChangeNameIntact(app.frontend.battleProfile),"Route selection replaced the saved driver's name");
+        for(unsigned offset:{64u,68u,72u})saveChangeCheck(app.frontend.battleProfile.u(offset)==saveChangeFixture.fullTuneCandidateBefore.u(offset),
+            "Entering route selection changed paint, transmission or earned points");
+        const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));
+        const auto saved=profiles.load(car).profile;
+        for(unsigned offset=152;offset<168;++offset)saveChangeCheck(saved.byte(offset)==saveChangeFixture.fullTuneCandidateBefore.byte(offset),
+            "Browsing or cancelling the new route saved tuning changes");
+        for(unsigned offset:{64u,68u,72u})saveChangeCheck(saved.u(offset)==saveChangeFixture.fullTuneCandidateBefore.u(offset),
+            "Browsing or cancelling the new route saved paint, transmission or points");
+        saveChangeCheck(profiles.load(1).profile.words==saveChangeFixture.fullTuneLevin.words,"Choosing another car's route changed the Levin A profile");
+        saveChangeCheck(profiles.load(0).profile.words==saveChangeFixture.first.words&&profiles.load(22).profile.words==saveChangeFixture.fitted.words,
+            "Choosing another car's route changed an established car");
+        saveChangeCheck(saveDeleteFiles(app,1)==saveChangeFixture.fullTuneOtherSlot,"Choosing a route changed another driver's save");
+        return;
+    }
+    if(scene==367){
+        const auto car=saveChangeFixture.fullTuneCandidate;
+        saveChangeCheck(app.fullTuneActive&&app.activeSaveSlot==0&&unsigned(app.frontend.car)==car&&app.battleProfile.byte(152)==1,
+            "The second car did not start upgrades using its independently selected B route");
+        saveChangeCheck(saveChangeNameIntact(app.battleProfile),"Confirming the car's own route changed driver identity");
+        unsigned visits=0;
+        while(app.fullTuneActive&&visits++<256){
+            unsigned frames=0;
+            while(!app.resultAnimationFrame.finished&&frames++<10000){
+                app.resultSelectionAxis=1;app.resultConfirmPending=frames==20;app.advanceResultVisit();
+            }
+            saveChangeCheck(frames<10000,"Independent route upgrade visit stalled");
+            saveChangeCheck(app.render(0),"Independent route upgrade render failed");
+        }
+        saveChangeCheck(!app.fullTuneActive&&app.menu&&app.frontend.stage==FrontendStage::Mode,"Independent car tuning did not finish at Mode");
+        const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));const auto saved=profiles.load(car);
+        saveChangeCheck(saved.origin==LocalDriverProfiles::Origin::Saved&&saved.profile.byte(152)==1&&(saved.profile.u(1180)&0xc00)==0xc00,
+            "The selected B route or mandatory upgrades did not persist per car");
+        saveChangeCheck(saveChangeNameIntact(saved.profile),"Finished tuning changed the driver's name");
+        for(unsigned offset:{64u,68u})saveChangeCheck(saved.profile.u(offset)==saveChangeFixture.fullTuneCandidateBefore.u(offset),
+            "Full Tune changed the selected car's paint or transmission");
+        saveChangeCheck(profiles.load(1).profile.words==saveChangeFixture.fullTuneLevin.words,"Full Tune on a second car changed the Levin A route or progress");
+        saveChangeCheck(profiles.load(0).profile.words==saveChangeFixture.first.words&&profiles.load(22).profile.words==saveChangeFixture.fitted.words,
+            "Full Tune changed another established car's route or progress");
+        saveChangeCheck(saveDeleteFiles(app,1)==saveChangeFixture.fullTuneOtherSlot,"Full Tune changed another driver's save");
+        saveChangeFixture.fullTuneCandidateAfter=saved.profile;
+        return;
+    }
+    if(scene==368){
+        const auto car=saveChangeFixture.fullTuneCandidate;
+        saveChangeCheck(!app.fullTuneSelecting&&app.activeSaveSlot==0&&unsigned(app.frontend.car)==car&&app.frontend.stage!=FrontendStage::TuningCourse,
+            "An already tuned car requested another route choice");
+        saveChangeCheck(app.fullTuneActive||(app.menu&&app.frontend.stage==FrontendStage::Mode),"Established car did not enter or finish Full Tune");
+        for(unsigned offset:{152u,153u,156u,157u,158u,159u,160u,161u,162u,163u,164u,165u,166u})saveChangeCheck(app.battleProfile.byte(offset)==saveChangeFixture.fullTuneCandidateAfter.byte(offset),
+            "Revisiting the tuned car replaced its route or existing upgrades");
+        saveChangeCheck((app.battleProfile.u(1180)&0xc00)==0xc00&&saveChangeNameIntact(app.battleProfile),"Revisiting the tuned car lost progress or driver identity");
+        if(app.fullTuneActive)app.finishFullTune();
+        const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));
+        const auto saved=profiles.load(car).profile;
+        for(unsigned offset:{152u,153u,156u,157u,158u,159u,160u,161u,162u,163u,164u,165u,166u})saveChangeCheck(saved.byte(offset)==saveChangeFixture.fullTuneCandidateAfter.byte(offset),
+            "Revisiting Full Tune failed to retain the saved route and parts");
+        saveChangeCheck(profiles.load(1).profile.words==saveChangeFixture.fullTuneLevin.words&&profiles.load(0).profile.words==saveChangeFixture.first.words&&
+            profiles.load(22).profile.words==saveChangeFixture.fitted.words,"Revisiting Full Tune changed an unselected car");
+        saveChangeCheck(saveDeleteFiles(app,1)==saveChangeFixture.fullTuneOtherSlot,"Revisiting Full Tune changed another driver's save");
+        return;
+    }
+    if(scene==369){
+        // Old releases wrote Complete for a stock Change Car profile. Import
+        // that observable state without using the updated Change Car owner.
+        app.useSaveSlot(0);saveChangeFixture.fullTuneCandidate=3;
+        auto stock=original::makeOriginalFreshBattleProfile();stock.setu(16,3);stock.setu(68,1);stock.setu(72,54321);
+        original::applyOriginalAcceptedCardFlag(stock);original::finishOriginalDriverSetupFlag(stock);app.applySaveDriverName(stock);
+        // Earned race data and cosmetics do not answer the package question;
+        // even one installed upgrade does. These cases protect migrated saves
+        // without requiring every old release to have written new metadata.
+        stock.setu(64,1);app.frontend.battleProfile=stock;
+        saveChangeCheck(app.needsFullTuneCourseSelection(),"Legacy stock car's paint, transmission, name or earned points hid route selection");
+        for(unsigned offset:{176u,1080u,1184u}){
+            app.frontend.battleProfile=stock;app.frontend.battleProfile.setu(offset,12345);
+            saveChangeCheck(app.needsFullTuneCourseSelection(),"Stock car's race history suppressed route selection");
+        }
+        for(unsigned offset:{153u,156u,157u,158u,159u,160u,161u,162u,163u,164u,165u,166u}){
+            app.frontend.battleProfile=stock;app.frontend.battleProfile.setByte(152,1);app.frontend.battleProfile.setByte(offset,1);
+            const auto before=app.frontend.battleProfile.words;
+            saveChangeCheck(!app.needsFullTuneCourseSelection(),"A partially tuned car was offered a destructive replacement route");
+            saveChangeCheck(app.frontend.battleProfile.words==before,"Checking a partial tune changed its route or progress");
+        }
+        for(unsigned flags:{0x400u,0x800u,0xc00u}){
+            app.frontend.battleProfile=stock;app.frontend.battleProfile.setu(1180,stock.u(1180)|flags);
+            saveChangeCheck(!app.needsFullTuneCourseSelection(),"Existing completed tuning was offered another route");
+        }
+        app.frontend.battleProfile=stock;app.frontend.battleProfile.setu(16,29);
+        saveChangeCheck(!app.needsFullTuneCourseSelection(),"Single-route car was offered a nonexistent package choice");
+        // The car selector uses its own remembered paint while browsing. Seed
+        // its default for this route test; paint1 is covered by the predicate
+        // checks above and the frontend route-only preservation test.
+        stock.setu(64,0);
+        saveChangeCheck(app.profiles.save(3,stock)&&app.driverSetup.markComplete(3)&&app.saveSlots.adopt(0,stock),"Could not seed legacy stock car with completed driver setup");
+        saveChangeFixture.fullTuneCandidateBefore=stock;
+        app.frontend.car=3;app.loadedProfileCar=-1;app.loadSelectedProfile();app.frontend.stage=FrontendStage::Mode;
+        app.beginFullTune();return;
     }
     throw std::invalid_argument("Unknown save-change menu fixture");
 }
