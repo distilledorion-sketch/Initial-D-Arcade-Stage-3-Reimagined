@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.26 - September 22, 2026
+
+- Fixed Steam hosting, room searches, joining and Quick Match rejecting builds with the new Special Stage maps because their combined build identifier exceeded the lobby key limit. Lobby keys now hash the complete identity; peer handshakes still verify code, physics and every course fingerprint. Incomplete identities are not cached, and test lobbies remain isolated.
+- Fixed the Windows updater incorrectly rejecting ordinary short folder names (such as `NAME~1`) as links. Installation and temporary folders are checked using their expanded names, while actual junctions and symbolic links remain blocked.
+- Both online players need this version. Smaller changed-file updates are available from versions `.20` through `.25`; existing saves, settings, replays and custom music are preserved.
+- If an older updater still reports "An update path resolves through a link", close the game and extract the full Windows ZIP over the existing installation, replacing game files once to receive the fix.
+
 ## 0.3.95-community-replays.25 - September 22, 2026
 
 - Added Momiji Line and the longer Myogi and Usui layouts from Special Stage, using their extracted roads, collision, scenery, trees, spectators and checkpoints.

@@ -14,12 +14,13 @@ The updater accepts only a smaller, fully uploaded patch whose name matches both
 
 The installer does not remove unlisted files or include personal data. Existing saves, options, recordings and custom music are preserved. Publish patches for all supported base versions; a version without a matching patch uses the full ZIP. Pre-.19 clients need one full update because their updater cannot read patches.
 
-The production updater stages ZIPs inside Unity and uses the bundled static native helper from `Tools/Updater`. Build the helper with `Tools/Build-UpdateInstaller.cmd` before building Unity. It needs neither PowerShell nor an external .NET installation. Wine drive mappings are allowed; links below drive roots are rejected.
+The production updater stages ZIPs inside Unity and uses the bundled static native helper from `Tools/Updater`. Build the helper with `Tools/Build-UpdateInstaller.cmd` before building Unity. It needs neither PowerShell nor an external .NET installation. Wine drive mappings are allowed; links below drive roots are rejected. Windows DOS 8.3 paths are expanded before final-path comparison, so short names in TEMP or installation folders are not mistaken for links.
 
 Validation:
 
 ```powershell
 python -X utf8 Tests/Updates/test_native_installer.py
+python -X utf8 Tests/Updates/test_native_paths.py
 python -X utf8 Tests/Updates/test_patch.py
 wsl -d Ubuntu -- xvfb-run -a python3 /path/to/repo/Tests/Updates/test_wine_installer.py
 ```

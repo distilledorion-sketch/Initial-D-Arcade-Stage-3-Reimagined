@@ -16,6 +16,20 @@ struct Handle{HANDLE h=INVALID_HANDLE_VALUE;explicit Handle(HANDLE v):h(v){}~Han
 static void require(bool ok,const char* reason){if(!ok)throw std::runtime_error(reason);}
 static std::wstring lower(std::wstring s){std::transform(s.begin(),s.end(),s.begin(),[](wchar_t c){return static_cast<wchar_t>(towlower(c));});return s;}
 static fs::path fullPath(const fs::path& p){return fs::absolute(p).lexically_normal();}
+static fs::path comparablePath(std::wstring value){
+    auto prefix=lower(value);
+    if(prefix.rfind(L"\\\\?\\unc\\",0)==0)value=L"\\\\"+value.substr(8);
+    else if(prefix.rfind(L"\\\\?\\",0)==0)value=value.substr(4);
+    return fullPath(value);
+}
+static fs::path longPath(const fs::path& p){
+    // Expand DOS 8.3 names without resolving junctions or symbolic links.
+    // TEMP and user profiles can use short names even for ordinary folders.
+    std::vector<wchar_t> expanded(32768);
+    DWORD length=GetLongPathNameW(p.c_str(),expanded.data(),static_cast<DWORD>(expanded.size()));
+    require(length>0&&length<expanded.size(),"Cannot expand an update path.");
+    return comparablePath(std::wstring(expanded.data(),length));
+}
 static fs::path inside(const fs::path& root,const fs::path& relative){
     auto p=fullPath(root/relative);auto prefix=lower(fullPath(root).wstring()+L"\\");
     require(lower(p.wstring()).rfind(prefix,0)==0,"An update path escaped its folder.");return p;
@@ -30,8 +44,7 @@ static void noLinks(fs::path p){
             require(check.h!=INVALID_HANDLE_VALUE,"Cannot inspect final update path.");
             std::vector<wchar_t> resolved(32768);DWORD length=GetFinalPathNameByHandleW(check.h,resolved.data(),static_cast<DWORD>(resolved.size()),FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
             require(length>0&&length<resolved.size(),"Cannot resolve final update path.");
-            std::wstring final(resolved.data(),length);if(final.rfind(L"\\\\?\\",0)==0)final=final.substr(4);
-            require(lower(fullPath(final).wstring())==lower(p.wstring()),"An update path resolves through a link.");
+            require(lower(comparablePath(std::wstring(resolved.data(),length)).wstring())==lower(longPath(p).wstring()),"An update path resolves through a link.");
         }
         else require(GetLastError()==ERROR_FILE_NOT_FOUND||GetLastError()==ERROR_PATH_NOT_FOUND,"Cannot inspect an update path.");
         auto parent=p.parent_path();if(parent==p)break;p=parent;
@@ -75,7 +88,7 @@ static void noOtherGame(const fs::path& game,DWORD parent){
     Handle snapshot(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0));require(snapshot.h!=INVALID_HANDLE_VALUE,"Cannot check running games.");PROCESSENTRY32W entry{};entry.dwSize=sizeof entry;
     if(Process32FirstW(snapshot.h,&entry))do{if(entry.th32ProcessID==parent||_wcsicmp(entry.szExeFile,L"InitialDUnity.exe"))continue;
         Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,entry.th32ProcessID));if(!process.h)continue;
-        wchar_t path[32768];DWORD length=32768;if(QueryFullProcessImageNameW(process.h,0,path,&length))require(lower(fullPath(path).wstring())!=lower(fullPath(game).wstring()),"Another copy of this game is running.");
+        wchar_t path[32768];DWORD length=32768;if(QueryFullProcessImageNameW(process.h,0,path,&length))require(lower(longPath(path).wstring())!=lower(longPath(game).wstring()),"Another copy of this game is running.");
     }while(Process32NextW(snapshot.h,&entry));
 }
 static void restart(const fs::path& root){
@@ -89,9 +102,10 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
     try{
         require(argv&&(argc==2||argc==3),"Invalid installer arguments.");test=argc==3&&std::wstring(argv[2])==L"--test";require(argc!=3||test,"Invalid test option.");
         auto plan=fullPath(argv[1]);session=plan.parent_path();require(plan.filename()==L"install.plan","Invalid install plan filename.");noLinks(session);noLinks(plan);require(fs::file_size(plan)<=64*1024*1024,"Install plan too large.");
+        plan=longPath(plan);session=plan.parent_path();
         std::ifstream input(plan,std::ios::binary);char magic[8];input.read(magic,8);require(std::string(magic,8)=="IDUPD002","Invalid install plan.");
-        root=fullPath(readString(input));noLinks(root);auto game=root/L"InitialDUnity.exe";require(fs::is_regular_file(game),"Game executable missing.");
-        require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&root!=session,"Installer must be outside the game folder.");
+        root=fullPath(readString(input));noLinks(root);root=longPath(root);auto game=root/L"InitialDUnity.exe";require(fs::is_regular_file(game),"Game executable missing.");
+        require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&lower(root.wstring())!=lower(session.wstring()),"Installer must be outside the game folder.");
         auto pid=read<uint32_t>(input);auto stamp=read<uint64_t>(input);auto count=read<uint32_t>(input);require(count>0&&count<=100000,"Invalid file count.");
         if(test)require(fs::is_regular_file(root.parent_path()/L"ISOLATED_UPDATE_TEST.txt"),"Tests require an isolated fixture.");else require(pid>0,"Game process missing.");
         Handle parent(pid?OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid):nullptr);

@@ -237,7 +237,7 @@ namespace Idas3.Multiplayer
         {
             if(DisconnectedFinish)return;
             if (transport == null) SetTransport(TransportIndex == 0 ? (IIdas3Transport)new Idas3SteamTransport() : new Idas3TcpTransport());
-            if (transport is IIdas3MatchmakingTransport matchmaking) matchmaking.BuildCompatibility=Compatibility()+matchmakingTestScope;
+            if (transport is IIdas3MatchmakingTransport matchmaking) matchmaking.BuildCompatibility=Idas3BuildCompatibility.ForMatchmaking(Compatibility())+matchmakingTestScope;
             if (!Available) { ClearError(); transport.Initialize(); }
         }
         void SetTransport(IIdas3Transport next)
@@ -352,14 +352,16 @@ namespace Idas3.Multiplayer
         {
             if (compatibility!=null) return compatibility;
             string path=Path.Combine(Application.dataPath,"Plugins/x86_64/Idas3Unity.dll");
+            string complete;
             using(var hash=SHA256.Create()) {
-                using(var file=File.OpenRead(path)) compatibility="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
-                using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) compatibility+="-"+Convert.ToBase64String(hash.ComputeHash(file));
+                using(var file=File.OpenRead(path)) complete="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
+                using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) complete+="-"+Convert.ToBase64String(hash.ComputeHash(file));
             }
             for(int course=11;course<Idas3CourseCatalog.Count;++course)
-                compatibility+="-"+course+"-"+SpecialStageFingerprint(Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12);
-            compatibility+=ExperimentalAuthority?"-authority1":"-pose1";
-            return compatibility;
+                complete+="-"+course+"-"+SpecialStageFingerprint(Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12);
+            complete+=ExperimentalAuthority?"-authority1":"-pose1";
+            // Never cache an incomplete identity when reading a course fails.
+            return compatibility=complete;
         }
         internal static string EnnaFingerprint(string folder)=>SpecialStageFingerprint(folder,"enna",false);
         internal static string SpecialStageFingerprint(string folder,string slug,bool scaledTimers)

@@ -374,7 +374,7 @@ namespace Idas3.Multiplayer
 
         private bool CanStart()
         {
-            if (string.IsNullOrWhiteSpace(buildCompatibility) || buildCompatibility.Length > 256 || buildCompatibility.IndexOf('\0') >= 0) {
+            if (!Idas3BuildCompatibility.IsValidMatchmakingKey(buildCompatibility)) {
                 Fail("The game build could not be identified. Restart the game and try again."); return false;
             }
             if (!Available && !Initialize()) return false;

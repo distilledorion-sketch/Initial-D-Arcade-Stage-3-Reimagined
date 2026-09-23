@@ -15,9 +15,11 @@ JOIN DISCORD: https://discord.gg/mJCZ5AvBb
 
 The download includes the runtime assets. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Current release:** `0.3.95-community-replays.25` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.26` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `0.3.95-community-replays.25` adds the three Special Stage layouts below, with leaderboard and replay support, corrected menu maps and pause-screen names, and the Usui scenery fix.
+**Latest update:** `0.3.95-community-replays.26` fixes Steam hosting, room searches, joining and Quick Match failing to identify the game build, and Windows updates incorrectly rejecting short folder names as links. Both online players need this version.
+
+If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates offer smaller patches from versions `.20` through `.25`.
 
 Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcade Stage 3**, the game logo, and your current race, menu, or replay activity. Toggle it under **Options > Gameplay > Discord Rich Presence**.
 
