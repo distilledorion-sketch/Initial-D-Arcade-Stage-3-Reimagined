@@ -6,15 +6,22 @@ csc=Path(os.environ['SystemRoot'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe
 r=subprocess.run([str(csc),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll',str(root/'Assets/Scripts/Idas3UpdateStaging.cs'),str(root/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True);assert r.returncode==0,r.stdout+r.stderr
 base=root/'Tests/Updates'/('installer-native-'+uuid.uuid4().hex);base.mkdir()
 required={'InitialDUnity.exe':b'new exe','UnityPlayer.dll':b'new dll','InitialDUnity_Data/globalgamemanagers':b'new version','InitialDUnity_Data/Managed/Assembly-CSharp.dll':b'new scripts'}
+rom_files={
+    'rom/README.txt':b'local ROM instructions',
+    'rom/gds-0033.chd':b'private CHD fixture; not a valid dump',
+    'rom/gds-0033.cue':b'private CUE fixture',
+    **{f'rom/gds-0033-track{i}.bin':f'private track {i} fixture'.encode() for i in range(1,4)},
+}
 results=[]
 def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,tamper=False,concurrent=False,restart=False,good=False,bad_hash=False):
     folder=base/name;game=folder/'game space 日本';session=folder/'session space';game.mkdir(parents=True);session.mkdir();(folder/'ISOLATED_UPDATE_TEST.txt').write_text('Disposable native installer fixture')
-    original={**{k:b'old '+v for k,v in required.items()},'InitialDUnity_Data/StreamingAssets/retained.bin':b'unchanged scenery','userdata/card.json':b'save','custom-music/song.mp3':b'music','replays/test.idreplay':b'replay'}
+    original={**{k:b'old '+v for k,v in required.items()},'InitialDUnity_Data/StreamingAssets/retained.bin':b'unchanged scenery','userdata/card.json':b'save','custom-music/song.mp3':b'music','replays/test.idreplay':b'replay',**rom_files}
     target={**required,'InitialDUnity_Data/StreamingAssets/retained.bin':b'unchanged scenery','READ ME.txt':b'new readme'}
     if restart or concurrent:original['InitialDUnity.exe']=child.read_bytes();target['InitialDUnity.exe']=child.read_bytes()
     if damage:original['InitialDUnity_Data/StreamingAssets/retained.bin']=b'corrupt'
     if missing:original.pop('InitialDUnity_Data/StreamingAssets/retained.bin')
     for n,v in original.items():p=game/n;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(v)
+    rom_times={name:(game/name).stat().st_mtime_ns for name in rom_files}
     entries=list(target.items())
     if patch:
         files=[dict(path=n,sha256=hashlib.sha256(v).hexdigest(),size=len(v),included=n!='InitialDUnity_Data/StreamingAssets/retained.bin') for n,v in target.items()]
@@ -58,6 +65,7 @@ def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,ta
         assert (code==0)==good,(name,code,output)
         expected={**original,**target} if good else original
         for n,v in expected.items():assert (game/n).read_bytes()==v,(name,n)
+        for n,stamp in rom_times.items():assert (game/n).stat().st_mtime_ns==stamp,(name,'ROM timestamp changed',n)
         if not good:assert not (game/'READ ME.txt').exists(),name
         if restart:
             deadline=time.time()+10
@@ -74,6 +82,10 @@ case('damaged-retained',patch=True,damage=True)
 case('missing-retained',patch=True,missing=True)
 case('traversal',mutate=lambda x:x+[('../escape',b'bad')])
 case('private',mutate=lambda x:x+[('InitialDUnity_Data/userdata/save',b'bad')])
+case('rom-payload',mutate=lambda x:x+[('rom/gds-0033.chd',b'must not replace private ROM')])
+case('rom-readme-entry',mutate=lambda x:x+[('rom/README.txt',b'old installers reject ROM instructions in ZIPs')])
+case('rom-directory-entry',mutate=lambda x:x+[('rom/',b'')])
+case('patch-rom-payload',patch=True,mutate=lambda x:x+[('rom/gds-0033.chd',b'must not replace private ROM')])
 case('duplicate',mutate=lambda x:x+[('initialdunity.exe',b'bad')])
 case('reserved',mutate=lambda x:x+[('InitialDUnity_Data/NUL',b'bad')])
 case('incomplete',mutate=lambda x:[e for e in x if e[0]!='UnityPlayer.dll'])

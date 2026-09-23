@@ -13,6 +13,10 @@ def inventory(z):
     for i in z.infolist():
         name=i.filename;parts=name.split('/')
         if i.is_dir(): continue
+        # Builds contain setup instructions, but update ZIPs must omit the ROM
+        # directory for older installers. Never open or hash a user's dump.
+        if name=='rom/README.txt': continue
+        assert not any(p.lower()=='rom' for p in parts), 'Original ROM files must not enter release packages: '+name
         assert not any(p.lower() in PRIVATE or p in ('','.','..') or p.endswith((' ','.')) or re.search(r'[\\<>:"|?*\x00]',p) or re.match(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)',p,re.I) for p in parts),name
         assert parts[0] in {'InitialDUnity_Data','MonoBleedingEdge','D3D12'} if len(parts)>1 else name in {'InitialDUnity.exe','UnityPlayer.dll','UnityCrashHandler64.exe','dstorage.dll','dstoragecore.dll','steam_appid.txt','READ ME.txt','Replay Viewer.cmd','MULTIPLAYER TEST.txt'},name
         assert len(name)<=220 and name.lower() not in folded and not (i.external_attr&0x400) and ((i.external_attr>>16)&0xf000)!=0xa000,name

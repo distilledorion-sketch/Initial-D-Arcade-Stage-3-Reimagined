@@ -1,4 +1,13 @@
-0.3.95-community-replays.28
+0.3.95-community-replays.29
+ORIGINAL GAME REQUIRED
+Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder beside InitialDUnity.exe. Use rom/gds-0033.chd, or all four files: rom/gds-0033.cue, rom/gds-0033-track1.bin, rom/gds-0033-track2.bin and rom/gds-0033-track3.bin. The game validates the supported dump before gameplay; renaming another file does not pass validation.
+No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
+
+COMMUNITY TIME ATTACK
+Only 0.3.95-community-replays.29 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times and replay downloads remain available.
+Both online players need this version. Changed-file patches are provided from .20 through .28. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
+
+FIXES INCLUDED FROM .28
 SAVE MENU, WHEEL BINDING AND RAIN TRAILS
 Save selection now has a car preview and Continue, Change Car and Delete Save actions. Change Car keeps your driver name and goes from make/car selection straight to mode selection. All 35 cars are available; each car keeps its own tuning and earned progress within the selected save. New cars start stock, and Full Tune remains available in the pause menu.
 Slots show the last-used car and its online aura level instead of Wins. Delete Save asks "Are you sure?" and starts on No; select Yes explicitly to delete that save.

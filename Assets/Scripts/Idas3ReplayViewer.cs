@@ -14,6 +14,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     public static Idas3ReplayViewer Instance { get; private set; }
     internal Idas3Native.Status Status { get; private set; }
     public Camera View { get; private set; }
+    internal bool BootInitialized => startupInitialized;
     internal Idas3ReplayData.Details PresenceMetadata => browsing ? null : replay?.Metadata;
     internal bool PresenceEnabled => audioOptions.discordPresence;
     Idas3SceneRenderer scene;
@@ -23,7 +24,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     Idas3GameOptions.Values audioOptions=new Idas3GameOptions.Values();
     double audioSeconds=double.NaN;
     bool audioWasPlaying;
-    bool initialized, playing;
+    bool initialized, playing, startupInitialized;
     double seconds, lastUpdateAt;
     float rate = 1, orbit;
     int cameraMode;
@@ -73,6 +74,12 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        if (Idas3RomGate.Verified && Idas3Updates.StartupFinished) InitializeViewer();
+    }
+    void InitializeViewer()
+    {
+        if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished || startupInitialized) return;
+        startupInitialized = true;
         foreach (var camera in FindObjectsByType<Camera>(FindObjectsSortMode.None)) camera.enabled = false;
         View = gameObject.AddComponent<Camera>(); View.clearFlags = CameraClearFlags.SolidColor; View.backgroundColor = Color.black;
         scene = gameObject.AddComponent<Idas3SceneRenderer>(); scene.Initialize(View);
@@ -95,6 +102,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     }
     void Open(string path)
     {
+        if (!Idas3RomGate.Verified || !startupInitialized) return;
         SilenceAudio();
         playing = false;
         try
@@ -225,6 +233,11 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     }
     void Update()
     {
+        if (!startupInitialized)
+        {
+            if (Idas3RomGate.Verified && Idas3Updates.StartupFinished) InitializeViewer();
+            return;
+        }
         if (picker != null && picker.IsCompleted)
         {
             try { string path = picker.GetAwaiter().GetResult(); if (path != null) Open(path); else playing = resumeAfterPicker; }
@@ -275,6 +288,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     static string Clock(double value) => string.Format("{0}:{1:00.000}", (int)value / 60, value % 60);
     void OnGUI()
     {
+        if (!startupInitialized || !Idas3RomGate.Verified) return;
         // Update already routes keyboard/gamepad actions. Do not let IMGUI
         // also submit whichever button last received keyboard focus.
         if(Event.current.type==EventType.KeyDown||Event.current.type==EventType.KeyUp)Event.current.Use();

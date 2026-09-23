@@ -1,13 +1,7 @@
 export const COURSES=['Myogi','Usui','Akagi','Akina','Happogahara','Irohazaka','Shomaru','Tsuchisaka','Akina Snow','Hakone','Sadamine','Enna Skyline','Myogi (Special Stage)','Usui (Special Stage)','Momiji Line'];
-export const MIN_CLIENT_BUILD='0.3.95-community-replays.1';
-export function supportedBuild(build,minimum=MIN_CLIENT_BUILD){
- const parse=value=>typeof value==='string'&&/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([a-z][a-z0-9-]*)\.(0|[1-9]\d*))?$/.exec(value);
- const a=parse(build),b=parse(minimum);if(!a||!b)return false;
- for(const i of [1,2,3,5])if((a[i]!==undefined&&!Number.isSafeInteger(Number(a[i])))||(b[i]!==undefined&&!Number.isSafeInteger(Number(b[i]))))return false;
- for(let i=1;i<=3;i++){if(Number(a[i])!==Number(b[i]))return Number(a[i])>Number(b[i]);}
- if(!a[4])return true;
- if(!b[4]||a[4]!==b[4])return false;
- return Number(a[5])>=Number(b[5]);
+export const REQUIRED_CLIENT_BUILD='0.3.95-community-replays.29';
+export function supportedBuild(build,required=REQUIRED_CLIENT_BUILD){
+ return typeof required==='string'&&/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-[a-z][a-z0-9-]*\.(0|[1-9]\d*)$/.test(required)&&build===required;
 }
 export function validateRun(x,ruleset){
  if(x&&((x.mode??0)!==0||(x.outcome??0)!==0||(x.opponentBytes??0)!==0))throw new Error('Invalid Time Attack submission: personal battle or incomplete replay.');

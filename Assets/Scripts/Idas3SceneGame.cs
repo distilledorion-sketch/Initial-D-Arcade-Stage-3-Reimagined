@@ -110,9 +110,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
         new GameObject("Initial D — Unity scene").AddComponent<Idas3SceneGame>();
     }
 
-    private void Awake(){if(Idas3Updates.StartupFinished)InitializeGame();}
+    private void Awake(){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();}
     private void InitializeGame()
     {
+        if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished) return;
         if (Idas3ReplayViewer.Requested) { enabled = false; return; }
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-legacy-host") >= 0) { enabled = false; return; }
         if (instance != null && instance != this) { Destroy(gameObject); return; }
@@ -141,7 +142,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             bool importedCourse=File.Exists(Path.Combine(pack,"menu.idastex"));
             if(importedTest&&!Application.isEditor)assets=File.ReadAllText(Path.Combine(Application.streamingAssetsPath,"d3-assets.txt")).Trim();
             if(importedTest)saves=Path.Combine(Application.persistentDataPath,"hakone-race-test");
-            bool diagnostic = Idas3SceneSmoke.Configure(this, ref saves);
+            bool diagnostic = Idas3RomGateSmoke.Configure(ref saves);
+            diagnostic = Idas3SceneSmoke.Configure(this, ref saves) || diagnostic;
             diagnostic = Idas8HakoneTimeAttackSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3MultiplayerSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3MultiplayerPresentationSmoke.Configure(ref saves) || diagnostic;
@@ -314,7 +316,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private void Update()
     {
-        if(!ready&&!stopping&&failure==null){if(Idas3Updates.StartupFinished)InitializeGame();return;}
+        if(!ready&&!stopping&&failure==null){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();return;}
         if (!ready || stopping || failure != null) return;
         if(pauseMenu!=null&&pauseMenu.Updates!=null&&pauseMenu.Updates.WindowVisible)return;
         try

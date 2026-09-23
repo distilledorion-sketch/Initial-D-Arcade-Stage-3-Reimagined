@@ -16,6 +16,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.29";
     public const int FirstReplaySeason=2;
     [Serializable] public sealed class Run {
         public string id,ruleset,build;
@@ -112,7 +113,10 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         for(int i=1;i<=3;i++)if(av[i]!=bv[i])return av[i]>bv[i];
         return !a.Groups[4].Success||(a.Groups[4].Value==b.Groups[4].Value&&av[5]>=bv[5]);
     }
-    public static bool Uploadable(Run r)=>Valid(r)&&r.imported==0&&r.replayVersion==2&&r.ruleset==Ruleset&&r.epoch>=FirstReplaySeason&&SupportedBuild(r.build)&&Guid.TryParseExact(r.id,"D",out _);
+    // Historical posted results keep the compatibility floor above. Only newly
+    // submitted runs use this exact release policy, including restored queues.
+    public static bool SubmissionBuild(string build)=>string.Equals(build,RequiredSubmissionBuild,StringComparison.Ordinal);
+    public static bool Uploadable(Run r)=>Valid(r)&&r.imported==0&&r.replayVersion==2&&r.ruleset==Ruleset&&r.epoch>=FirstReplaySeason&&SubmissionBuild(r.build)&&Guid.TryParseExact(r.id,"D",out _);
     public static bool Valid(Run r){
         if(r==null||r.condition<0||r.condition>=Idas3CourseCatalog.ConditionCount||r.weather<0||r.weather>1||r.car<0||r.car>34||r.ticks6000<60000||r.ticks6000>=10800000||r.nameGlyphs==null||r.nameGlyphs.Length!=5||r.splits==null||r.splits.Length!=4||r.imported<0||r.imported>1||r.manual<(r.imported==1?-1:0)||r.manual>1||r.night<(r.imported==1?-1:0)||r.night>1||r.points<(r.imported==1?-1:0)||r.points>999999)return false;
         foreach(int n in r.nameGlyphs)if(n<0||n>221)return false;
@@ -158,7 +162,8 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
                 if(length>0){
                     if(enabled){var run=JsonUtility.FromJson<Run>(Encoding.UTF8.GetString(finishBuffer,0,length));if(Valid(run)){
                         run.id=Guid.NewGuid().ToString();run.ruleset=Ruleset;run.build=Application.version;run.epoch=snapshot?.epoch??FirstReplaySeason;
-                        if(QueueFinish(run,Encoding.UTF8.GetString(finishBuffer,0,length)))length=0;
+                        if(!SubmissionBuild(run.build))status="Only game build "+RequiredSubmissionBuild+" can share Time Attack runs.";
+                        else if(QueueFinish(run,Encoding.UTF8.GetString(finishBuffer,0,length)))length=0;
                     }else status="This run could not be shared: checkpoint validation failed.";}
                     if(length>0)Idas3SharedAckFinish();
                 }

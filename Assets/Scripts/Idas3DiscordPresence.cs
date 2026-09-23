@@ -44,6 +44,7 @@ public sealed class Idas3DiscordPresence : MonoBehaviour
     }
     void Update()
     {
+        if(!Idas3RomGate.Verified){Disconnect();return;}
         double now=Time.realtimeSinceStartupAsDouble;
         if(now<nextSample)return;nextSample=now+1;
         try

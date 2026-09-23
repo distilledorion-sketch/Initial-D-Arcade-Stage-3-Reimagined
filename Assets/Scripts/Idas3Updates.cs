@@ -54,7 +54,13 @@ public sealed class Idas3Updates : MonoBehaviour
         bool startupTest=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-startup-check")>=0&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-attract-options-smoke")>=0;
         foreach(string arg in Environment.GetCommandLineArgs())if(!startupTest&&(arg.StartsWith("-idas3-",StringComparison.Ordinal)||arg.StartsWith("-hakone-",StringComparison.Ordinal)))return;
         var go=new GameObject("Game updates");DontDestroyOnLoad(go);
-        Instance=go.AddComponent<Idas3Updates>();Instance.Initialize(true);
+        Instance=go.AddComponent<Idas3Updates>();StartupFinished=false;
+        Instance.StartCoroutine(Instance.StartAfterRomCheck());
+    }
+
+    private IEnumerator StartAfterRomCheck(){
+        while(!Idas3RomGate.Verified)yield return null;
+        Initialize(true);
     }
 
     [Serializable] internal sealed class Release {

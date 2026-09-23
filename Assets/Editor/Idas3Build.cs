@@ -11,6 +11,20 @@ using Debug = UnityEngine.Debug;
 [InitializeOnLoad]
 public static class Idas3Build
 {
+    [UnityEditor.Callbacks.PostProcessBuild(100)]
+    private static void StageRomInstructions(BuildTarget target,string outputPath)
+    {
+        if(target!=BuildTarget.StandaloneWindows64)return;
+        string folder=Path.Combine(Path.GetDirectoryName(Path.GetFullPath(outputPath)),"rom");
+        string readme=Path.Combine(folder,"README.txt");
+        if((Directory.Exists(folder)&&(File.GetAttributes(folder)&FileAttributes.ReparsePoint)!=0)||
+           (File.Exists(readme)&&(File.GetAttributes(readme)&FileAttributes.ReparsePoint)!=0))
+            throw new IOException("ROM instructions cannot be staged through a link.");
+        Directory.CreateDirectory(folder);
+        // Stage only our instructions. A local original dump is never read or copied.
+        File.WriteAllText(readme,Idas3RomValidation.ReadmeText,new System.Text.UTF8Encoding(false));
+    }
+
     static Idas3Build()
     {
         EditorApplication.delayCall += () => {
@@ -33,7 +47,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.28";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.29";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;

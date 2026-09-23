@@ -11,15 +11,18 @@ JOIN DISCORD: https://discord.gg/mJCZ5AvBb
 
 1. Download the Windows game ZIP from **Releases**.
 2. Extract the entire archive into a folder.
-3. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
+3. Put your original **Initial D Arcade Stage 3 GDS-0033** dump in a `rom` folder beside `InitialDUnity.exe`.
+4. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
 
-The download includes the runtime assets. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
+Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-track1.bin`, `rom/gds-0033-track2.bin` and `rom/gds-0033-track3.bin`. The game validates the supported dump before gameplay; a filename alone is insufficient. It creates `rom/README.txt` on first launch when needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
-**Current release:** `0.3.95-community-replays.28` · **Platform:** Windows x64 / Direct3D 11
+The download includes the runtime assets but no original ROM. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Latest update:** `0.3.95-community-replays.28` redesigns save selection with per-car tuning, Continue/Change Car, last-used car and aura level, and a delete confirmation that defaults to No. It also fixes HID wheel/pedal rebinding getting stuck and aligns rain tire trails with the road. Both online players need this version.
+**Current release:** `0.3.95-community-replays.29` · **Platform:** Windows x64 / Direct3D 11
 
-If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates offer smaller patches from versions `.20` through `.27`. Installer speed improvements take effect once `.27` or newer is installed; the first update from an older version still uses your previous updater.
+**Latest update:** `0.3.95-community-replays.29` requires a verified original GDS-0033 dump before startup. Only this version can submit new community Time Attack runs; existing published times and replay downloads remain available. Both online players need this version.
+
+If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates offer smaller patches from versions `.20` through `.28`. Installer speed improvements take effect once `.27` or newer is installed; the first update from an older version still uses your previous updater.
 
 Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcade Stage 3**, the game logo, and your current race, menu, or replay activity. Toggle it under **Options > Gameplay > Discord Rich Presence**.
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.95-community-replays.29 - September 23, 2026
+
+- Require the original GDS-0033 disc before starting the game, including replay viewing and the legacy host. Startup verifies the complete supported CHD or CUE/BIN contents; renamed, missing, incomplete or damaged files do not unlock the game.
+- Added a `rom` folder beside the executable with setup instructions and a blocking ROM screen offering Check Again, Open ROM Folder and Quit. Updates and Full Repair preserve locally supplied ROM files, which are excluded from release payloads.
+- Community Time Attack submissions now require exactly `0.3.95-community-replays.29`. Older queued runs cannot be submitted after updating; complete a new Time Attack on this build. Previously published times and replay downloads remain available.
+- Both online players need this version. Changed-file patches are provided from `.20` through `.28`; saves, settings, replays, custom music and locally supplied ROMs are preserved.
+
 ## 0.3.95-community-replays.28 - September 23, 2026
 
 - Redesigned save selection with compact pause-menu styling, a car preview, and Continue, Change Car and Delete Save actions.

@@ -565,27 +565,36 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-policy-check")>=0){
             yield return Frames(3);frozen=true;
-            var fresh=new Idas3CommunityTimes.Run{id=Guid.NewGuid().ToString(),ruleset=Idas3CommunityTimes.Ruleset,build=Application.version,epoch=2,replayVersion=2,condition=0,weather=0,car=0,ticks6000=60000,nameGlyphs=new[]{181,166,180,181,220},splits=new[]{20000,40000,60000,0}};
+            var fresh=new Idas3CommunityTimes.Run{id=Guid.NewGuid().ToString(),ruleset=Idas3CommunityTimes.Ruleset,build=Application.version,epoch=2,replayVersion=2,condition=0,weather=0,car=0,ticks6000=120000,nameGlyphs=new[]{181,166,180,181,220},splits=new[]{40000,80000,120000,0}};
             var old=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));old.id=Guid.NewGuid().ToString();old.replayVersion=1;
             var imported=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));imported.id=Guid.NewGuid().ToString();imported.imported=1;
             Check(Idas3CommunityTimes.Uploadable(fresh)&&!Idas3CommunityTimes.Uploadable(old)&&!Idas3CommunityTimes.Uploadable(imported),"Only fresh replay-backed runs are uploadable");
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
-            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.94-player-replays.4";
+            Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.28","0.3.95-community-replays.30","0.3.96","0.4.0","0.3.95-community-replays.029","0.3.95-community-replays.29 ",null}){
+                var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
+                Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
+            }
+            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.28";
+            previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.30";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
+            previousBuild.replayAvailable=true;
+            Check(Idas3CommunityTimes.UsableCommunitySnapshot(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,epoch=2,entries=new[]{previousBuild}}),"Posted scores from the preceding release remain usable community records");
             string community=Path.Combine(root,"community");Directory.CreateDirectory(community);
-            File.WriteAllText(Path.Combine(community,"pending.json"),"{\"runs\":["+JsonUtility.ToJson(old)+","+JsonUtility.ToJson(imported)+","+JsonUtility.ToJson(previousBuild)+","+JsonUtility.ToJson(previousSeason)+","+JsonUtility.ToJson(fresh)+"]}");
-            byte[] replay=new byte[96+600*160];
-            foreach(var item in new[]{(0,0x32524449),(4,60000),(8,600),(12,60),(16,96),(20,160),(24,1),(28,12)})Array.Copy(BitConverter.GetBytes(item.Item2),0,replay,item.Item1,4);
-            for(int i=0;i<600;i++){Array.Copy(BitConverter.GetBytes(i+1),0,replay,96+160*i,4);Array.Copy(BitConverter.GetBytes((i+1)*100),0,replay,192+160*i,4);Array.Copy(BitConverter.GetBytes(4),0,replay,220+160*i,4);}
+            File.WriteAllText(Path.Combine(community,"pending.json"),"{\"runs\":["+JsonUtility.ToJson(old)+","+JsonUtility.ToJson(imported)+","+JsonUtility.ToJson(previousBuild)+","+JsonUtility.ToJson(futureBuild)+","+JsonUtility.ToJson(previousSeason)+","+JsonUtility.ToJson(fresh)+"]}");
+            int replayFrames=fresh.ticks6000/100;byte[] replay=new byte[96+replayFrames*160];
+            foreach(var item in new[]{(0,0x32524449),(4,fresh.ticks6000),(8,replayFrames),(12,60),(16,96),(20,160),(24,1),(28,12)})Array.Copy(BitConverter.GetBytes(item.Item2),0,replay,item.Item1,4);
+            for(int i=0;i<replayFrames;i++){Array.Copy(BitConverter.GetBytes(i+1),0,replay,96+160*i,4);Array.Copy(BitConverter.GetBytes((i+1)*100),0,replay,192+160*i,4);Array.Copy(BitConverter.GetBytes(4),0,replay,220+160*i,4);}
             replay=Idas3ReplayCodec.Encode(replay);
             File.WriteAllBytes(Path.Combine(community,fresh.id+".idr"),replay);
             host.GameOptions.Current.communityTimes=true;
-            var client=host.gameObject.AddComponent<Idas3CommunityTimes>();client.Initialize(host,host.GameOptions,host.PauseMenu,community);client.StopAllCoroutines();
-            Check(client.PendingCount==1,"Upgrade discards legacy/imported upload queue entries");
-            string saved=File.ReadAllText(Path.Combine(community,"pending.json"));Check(saved.Contains(fresh.id)&&!saved.Contains(old.id)&&!saved.Contains(imported.id),"Queue migration is persisted");
+            var client=host.gameObject.AddComponent<Idas3CommunityTimes>();client.Initialize(host,host.GameOptions,host.PauseMenu,community,true);client.StopAllCoroutines();
+            Check(client.PendingCount==1,"Faster old-release time is discarded without blocking the current-release queue");
+            string saved=File.ReadAllText(Path.Combine(community,"pending.json"));Check(saved.Contains(fresh.id)&&!saved.Contains(old.id)&&!saved.Contains(imported.id)&&!saved.Contains(previousBuild.id)&&!saved.Contains(futureBuild.id),"Queue migration keeps only the exact-release run");
             Check(File.Exists(Path.Combine(community,fresh.id+".idr")),"Eligible queued replay is preserved");
             var menu=host.PauseMenu;menu.OpenAttractOptions();menu.SelectTab(5);menu.Navigate(1);Check(menu.DiagnosticSelection==2,"Controller reaches rankings");
             menu.Navigate(1);Check(menu.DiagnosticSelection==3,"Controller reaches Reset after the two Records options");menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==5,"Controller reaches Back without an import row");

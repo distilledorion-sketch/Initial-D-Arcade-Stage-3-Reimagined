@@ -13,7 +13,7 @@ git clone https://github.com/distilledorion-sketch/Initial-D-Arcade-Stage-3-Reim
 cd Initial-D-Arcade-Stage-3-Reimagined
 ```
 
-The full runtime data is included. Allow disk space for the checkout, Git objects, Unity's Library cache and the built player. Steamworks.NET is included as a local Unity package with its existing license.
+The full runtime data is included. An original Initial D Arcade Stage 3 **GDS-0033** dump is required to play and is not included or copied by the build. Allow disk space for the checkout, Git objects, Unity's Library cache and the built player. Steamworks.NET is included as a local Unity package with its existing license.
 
 ## Native plugin
 
@@ -28,6 +28,10 @@ cmake --build Native/build-unity-d --target Idas3WheelFeedback
 ## Unity player
 
 Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all six imported courses beside the player.
+
+Windows builds also create `Builds/Current/rom/README.txt` with the same instructions shown by the startup validator. Place your original dump beside those instructions as either `rom/gds-0033.chd` or the complete set `rom/gds-0033.cue`, `rom/gds-0033-track1.bin`, `rom/gds-0033-track2.bin` and `rom/gds-0033-track3.bin`. Startup validates the dump before gameplay. Building does not need a ROM, inspect existing ROMs or copy them from the checkout or another installation.
+
+Release ZIPs must exclude every `rom/` entry, including the instructions and empty directory entries. First launch creates the folder and instructions locally. This keeps updates compatible with previous installers, whose archive allowlists reject the `rom` directory. Never include or hash players' dumps when packaging a release. See [release patch packaging](Tools/Update-Patches.md).
 
 `Open in Unity.cmd` opens the project for editing. The main scene is `Assets/Scenes/InitialDUnityScene.unity`.
 

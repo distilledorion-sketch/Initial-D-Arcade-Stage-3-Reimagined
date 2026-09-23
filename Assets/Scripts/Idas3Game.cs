@@ -27,6 +27,7 @@ public sealed class Idas3Game : MonoBehaviour
     internal string SmokeFailure => failure;
     internal bool SmokeStopped => !initialized && shutdownToken == 0;
     internal Texture2D SmokeTexture => gameTexture;
+    internal bool BootInitialized => initialized;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -41,6 +42,12 @@ public sealed class Idas3Game : MonoBehaviour
 
     private void Awake()
     {
+        if (Idas3RomGate.Verified && Idas3Updates.StartupFinished) InitializeGame();
+    }
+
+    private void InitializeGame()
+    {
+        if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished) return;
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;
         DontDestroyOnLoad(gameObject);
@@ -68,6 +75,7 @@ public sealed class Idas3Game : MonoBehaviour
                 ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native"))
                 : Path.Combine(Application.streamingAssetsPath, "IDAS3");
             saveRoot = Path.Combine(Application.persistentDataPath, "userdata");
+            Idas3RomGateSmoke.Configure(ref saveRoot);
             Idas3Smoke.Configure(this, ref saveRoot);
             Directory.CreateDirectory(saveRoot);
             if (!Directory.Exists(Path.Combine(assetRoot, "data/original_physics")))
@@ -100,6 +108,11 @@ public sealed class Idas3Game : MonoBehaviour
 
     private void Update()
     {
+        if (!initialized && !stopping && failure == null)
+        {
+            if (Idas3RomGate.Verified && Idas3Updates.StartupFinished) InitializeGame();
+            return;
+        }
         if (!initialized || stopping || failure != null) return;
         var status = Idas3Native.ReadStatus();
         if (status.state == 2) { Fail(Idas3Native.Error()); return; }

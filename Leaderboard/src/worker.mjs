@@ -1,5 +1,5 @@
 import html from './index.html';
-import {COURSES,validateRun,publicRun,rankedSql,sha,token,sameSecret,MIN_CLIENT_BUILD,supportedBuild} from './core.mjs';
+import {COURSES,validateRun,publicRun,rankedSql,sha,token,sameSecret,REQUIRED_CLIENT_BUILD,supportedBuild} from './core.mjs';
 import {MAX_REPLAY,validateReplay,replayCsv,decodeReplay,compressReplay} from './replay.mjs';
 const now=()=>Math.floor(Date.now()/1000);
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'};
@@ -39,7 +39,7 @@ async function downloadReplay(env,run,asPackage){
 async function handle(request,env){
  const url=new URL(request.url),path=url.pathname;
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
- if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET});
+ if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD});
  const ip=request.headers.get('CF-Connecting-IP')||'local';
  if(path==='/api/v1/activity'&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'activity-read:'+ip);
@@ -125,10 +125,10 @@ async function handle(request,env){
    payload=JSON.parse(new TextDecoder().decode(data.subarray(4,4+size)));replay=data.slice(4+size);
   }
   const x=validateRun(payload,env.RULESET);
-  const minimumBuild=env.MIN_CLIENT_BUILD||MIN_CLIENT_BUILD;
+  const requiredBuild=env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD;
   // Permanent rejection lets updated clients discard ineligible old queued
   // races instead of retrying them forever and blocking new finishes.
-  if(!supportedBuild(x.build,minimumBuild))return json({error:`This run requires game build ${minimumBuild} or newer. Update and complete a new Time Attack.`,code:'client_build_too_old',minimumBuild},409);
+  if(!supportedBuild(x.build,requiredBuild))return json({error:`Only game build ${requiredBuild} can submit times. Install that build and complete a new Time Attack.`,code:'client_build_required',requiredBuild,permanent:true},409);
   const rawReplay=await decodeReplay(replay);validateReplay(rawReplay,x);replayHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',rawReplay)),v=>v.toString(16).padStart(2,'0')).join('');
   if(new DataView(replay.buffer,replay.byteOffset,replay.byteLength).getUint32(0,true)!==0x32474449)replay=await compressReplay(rawReplay);
   const existing=await env.DB.prepare('SELECT * FROM runs WHERE id=?').bind(x.id).first();
@@ -168,7 +168,7 @@ async function handle(request,env){
   if(url.searchParams.get('ruleset')!==env.RULESET)return json({error:'Update the game to use this leaderboard.'},409);
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   const rows=(await env.DB.prepare(rankedSql).bind(env.RULESET,epoch,url.searchParams.get('imports')==='1'?1:0).all()).results;
-  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,entries:rows.map(publicRun)});
+  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,entries:rows.map(publicRun)});
  }
  return json({error:'Not found.'},404);
 }
