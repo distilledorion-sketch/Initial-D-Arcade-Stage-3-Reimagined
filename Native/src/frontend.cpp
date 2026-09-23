@@ -150,7 +150,10 @@ void Frontend::change(int delta) {
     // original cabinet wheel repeat timing are not asserted by this function.
     switch(stage) {
     case FrontendStage::SaveSelect:
-        saveSelected=int(wrapped(saveSelected+delta,int(saveFiles.size())));
+        if(saveDeleteRequested>=0)break;
+        if(saveDeleteOpen)saveDeleteSelected=wrapped(saveDeleteSelected+delta,2);
+        else if(saveActionsOpen)saveActionSelected=wrapped(saveActionSelected+delta,3);
+        else saveSelected=int(wrapped(saveSelected+delta,int(saveFiles.size())));
         ++canvasRevision;previousKey.clear();
         break;
     case FrontendStage::Make: {
@@ -217,10 +220,22 @@ bool Frontend::back() {
     if(stage==FrontendStage::Name){if(inputReady())nameInput.backPressed=true;return true;}
     // Main12AD80 has confirm/timeout input, no cancel branch.
     if(stage==FrontendStage::TuningCourse)return true;
-    if(stage==FrontendStage::SaveSelect){stage=FrontendStage::Title;synchronizeStage();return true;}
+    if(stage==FrontendStage::SaveSelect){
+        if(saveDeleteRequested>=0)return true;
+        if(saveDeleteOpen){saveDeleteOpen=false;saveDeleteSelected=0;saveDeleteFailed=false;previousKey.clear();return true;}
+        if(saveActionsOpen){saveActionsOpen=false;previousKey.clear();return true;}
+        stage=FrontendStage::Title;savedDriverSelected=false;synchronizeStage();return true;
+    }
+    if((stage==FrontendStage::Make&&changingSavedCar)||(stage==FrontendStage::Mode&&savedDriverSelected)){
+        changingSavedCar=false;stage=FrontendStage::SaveSelect;saveActionsOpen=saveActionsEnabled;saveActionSelected=0;
+        synchronizeStage();return true;
+    }
     if(stage==FrontendStage::Mode){stage=FrontendStage::Transmission;return true;}
     if(stage==FrontendStage::Car){
-        if(inputReady()&&!(carTransition.profileFlags1180&8u)){carCancelPending=true;carConfirmationFrame=0;}
+        if(inputReady()&&(changingSavedCar||!(carTransition.profileFlags1180&8u))){
+            if(changingSavedCar)carTransition.profileFlags1180&=~8u;
+            carCancelPending=true;carConfirmationFrame=0;
+        }
         return true;
     }
     if(stage==FrontendStage::Rival){stage=FrontendStage::Course;return true;}
@@ -244,7 +259,7 @@ void Frontend::driverProfileLoaded(){
     // At entry the source seeds the saved color. While browsing, its own
     // remembered colors determine the preview independently of card progress.
     if(stage==FrontendStage::Car&&stageInitialized&&observedStage==stage){
-        if(carTransition.phase456==0)initializeColorSelection();
+        if(carTransition.phase456==0||changingSavedCar)initializeColorSelection();
         carTransition.profileFlags1180=battleProfile.u(1180);
     }
     if(stage==FrontendStage::Transmission&&stageInitialized&&observedStage==stage&&transmissionTransition.phase476==0){
@@ -253,6 +268,7 @@ void Frontend::driverProfileLoaded(){
     }
 }
 void Frontend::changeColor(int delta){
+    if(stage==FrontendStage::SaveSelect){change(-delta);return;}
     if(stage==FrontendStage::Name){if(inputReady()&&delta)nameInput.rowJump=delta>0?-1:1;return;}
     synchronizeStage();if(stage!=FrontendStage::Car||!inputReady()||!delta)return;
     pendingColorButtons|=delta>0?0x20:0x10;
@@ -266,7 +282,20 @@ bool Frontend::confirm() {
     if(!inputReady())return false;
     if(startRequested)return false;
     if(stage==FrontendStage::Title){titleConfirmPending=true;return false;}
-    if(stage==FrontendStage::SaveSelect){saveFileChosen=true;return false;}
+    if(stage==FrontendStage::SaveSelect){
+        if(saveFileChosen||saveCarChangeRequested||saveDeleteRequested>=0)return false;
+        if(saveDeleteOpen){
+            if(saveDeleteSelected==1&&saveFiles.at(std::size_t(saveSelected)).used)saveDeleteRequested=saveSelected;
+            else {saveDeleteOpen=false;saveDeleteSelected=0;saveDeleteFailed=false;}
+            previousKey.clear();return false;
+        }
+        if(saveActionsEnabled&&saveFiles.at(std::size_t(saveSelected)).used){
+            if(!saveActionsOpen){saveActionsOpen=true;saveActionSelected=0;previousKey.clear();return false;}
+            if(saveActionSelected==1){saveCarChangeRequested=true;return false;}
+            if(saveActionSelected==2){saveDeleteOpen=true;saveDeleteSelected=0;saveDeleteFailed=false;previousKey.clear();return false;}
+        }
+        saveFileChosen=true;return false;
+    }
     if(stage==FrontendStage::Name){nameInput.confirmPressed=true;return false;}
     if(stage==FrontendStage::TuningCourse){tuningCourseConfirmPending=true;carConfirmationFrame=0;return false;}
     if(stage==FrontendStage::Transmission){transmissionConfirmPending=true;carConfirmationFrame=0;return false;}
@@ -280,6 +309,48 @@ bool Frontend::confirm() {
         makerConfirmPending=true;carConfirmationFrame=0;return false;
     }
     stage=FrontendStage(int(stage)+1); return false;
+}
+bool Frontend::clickSaveMenu(float x,float y){
+    if(stage!=FrontendStage::SaveSelect||!std::isfinite(x)||!std::isfinite(y))return false;
+    if(saveFileChosen||saveCarChangeRequested||saveDeleteRequested>=0)return true;
+    if(saveDeleteOpen){
+        if(y>=270&&y<306){
+            if(x>=180&&x<308){saveDeleteSelected=0;confirm();}
+            else if(x>=332&&x<460){saveDeleteSelected=1;confirm();}
+        }
+        return true;
+    }
+    for(int slot=0;slot<int(saveFiles.size());++slot){
+        const int top=110+slot*59;
+        if(x>=42&&x<294&&y>=top&&y<top+50){
+            saveSelected=slot;saveActionsOpen=false;saveActionSelected=0;
+            previousKey.clear();confirm();return true;
+        }
+    }
+    if(saveActionsOpen&&y>=365&&y<395){
+        if(x>=326&&x<449){saveActionSelected=0;previousKey.clear();confirm();}
+        else if(x>=459&&x<582){saveActionSelected=1;previousKey.clear();confirm();}
+    }
+    if(saveActionsOpen&&x>=326&&x<582&&y>=399&&y<425){
+        saveActionSelected=2;previousKey.clear();confirm();
+    }
+    return true;
+}
+bool Frontend::hoverSaveMenu(float x,float y){
+    if(stage!=FrontendStage::SaveSelect||!std::isfinite(x)||!std::isfinite(y))return false;
+    if(saveDeleteOpen&&saveDeleteRequested<0&&y>=270&&y<306){
+        const int selected=x>=180&&x<308?0:x>=332&&x<460?1:-1;
+        if(selected>=0&&selected!=saveDeleteSelected){saveDeleteSelected=selected;previousKey.clear();}
+    }
+    return true;
+}
+void Frontend::finishSaveDeletion(bool success){
+    saveDeleteRequested=-1;saveDeleteSelected=0;saveDeleteFailed=!success;
+    if(success){
+        saveFiles.at(std::size_t(saveSelected))={};saveDeleteOpen=false;saveActionsOpen=false;
+        saveActionSelected=0;savedDriverSelected=false;changingSavedCar=false;
+    }
+    previousKey.clear();
 }
 void Frontend::selectRival(){
     battleProfile.setu(0,0);battleProfile.setu(16,unsigned(car));battleProfile.setu(4,unsigned(course));
@@ -471,6 +542,7 @@ void Frontend::advance(double seconds) {
             carConfirmationFrame=makerTransition.phase448>=2?int(makerTransition.frame444):-1;
             if(events.parentRequested){
                 battleProfile.setu(1176,makerTransition.sharedCountdown1176);battleProfile.setu(1180,makerTransition.profileFlags1180);
+                if(changingSavedCar)saveCarPreviewReset=true;
                 stage=FrontendStage::Car;synchronizeStage();return true;
             }
             return false;
@@ -927,174 +999,107 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
         tuningPresentation->paintCanvas(pixels,width,height,tuningCourseMenu,battleProfile.u(1176));return pixels;
     }
     if(stage==FrontendStage::SaveSelect){
-        const std::vector<int> key{int(stage),saveSelected,int(saveFileCarLive)};
+        const std::vector<int> key{int(stage),saveSelected,int(saveFileCarLive),int(saveActionsOpen),saveActionSelected,
+            int(saveDeleteOpen),saveDeleteSelected,int(saveDeleteFailed),int(saveFiles.at(std::size_t(saveSelected)).level)};
         if(key==previousKey)return pixels;previousKey=key;++canvasRevision;
-        pixels.assign(std::size_t(width)*height,0xff000000u);unityUiClear(pixels.data(),width,height,0xff0e1a36u);
-        // Unity's UI is a triangle list; a raw pixel write never reaches it, so
-        // every rectangle on this screen goes through the same primitive the
-        // race map uses.
+        constexpr std::uint32_t ink=0xff0b0c0fu,panel=0xff16181du,raised=0xff22242au;
+        constexpr std::uint32_t edge=0xff41444cu,red=0xffde2331u,white=0xfff4f4f6u,muted=0xffa4a6afu;
+        pixels.assign(std::size_t(width)*height,0xff050607u);unityUiClear(pixels.data(),width,height,0xff050607u);
+        // All backing geometry also reaches Unity's captured triangle list.
         const auto fill=[&](int x,int y,int w,int h,std::uint32_t argb){
             if(unityUiEnabled()){
-                unityUiSolid(pixels.data(),width,height,float(x),float(y),float(w),float(h),argb);
-                return;
+                unityUiSolid(pixels.data(),width,height,float(x),float(y),float(w),float(h),argb);return;
             }
             for(int yy=std::max(0,y);yy<std::min(height,y+h);++yy)
                 for(int xx=std::max(0,x);xx<std::min(width,x+w);++xx)
                     pixels[std::size_t(yy)*width+xx]=argb;
         };
-        // A leaning plate, the way the selection screens draw theirs. Under the
-        // host this is what it actually is -- a parallelogram, two triangles --
-        // rather than one thin rectangle per scanline.
-        const auto leaned=[&](int x,int y,int w,int h,float slant,std::uint32_t argb){
-            if(unityUiEnabled()){
-                static const NativeImage white{1,1,{0xffffffffu}};
-                const float lean=slant*float(h-1);
-                const UnityUiVertex a{float(x)+lean,float(y),0,0,argb,0},
-                                    b{float(x+w)+lean,float(y),0,0,argb,0},
-                                    c{float(x),float(y+h),0,0,argb,0},
-                                    d{float(x+w),float(y+h),0,0,argb,0};
-                constexpr std::uint32_t tsp=(4u<<29)|(5u<<26)|(1u<<20)|(3u<<6);
-                unityUiTriangle(pixels.data(),width,height,white,a,b,c,1,tsp,true,0);
-                unityUiTriangle(pixels.data(),width,height,white,c,b,d,1,tsp,true,0);
-                return;
-            }
-            for(int row=0;row<h;++row){
-                const int shift=int(slant*float(h-1-row));
-                fill(x+shift,y+row,w,1,argb);
-            }
+        const auto frame=[&](int x,int y,int w,int h,std::uint32_t argb){
+            fill(x,y,w,1,argb);fill(x,y+h-1,w,1,argb);fill(x,y,1,h,argb);fill(x+w-1,y,1,h,argb);
         };
-        // Every caption on this screen goes through the baked menu face, with
-        // the dark outline the source captions carry.
-        const auto text=[&](std::string_view value,float tx,float ty,float size,
-                std::uint32_t argb,float outline){
-            menuFont.paint(pixels,width,height,value,tx,ty,size,argb,0xff060a12u,outline);
+        const auto text=[&](std::string_view value,float x,float y,float size,std::uint32_t color,float maxWidth=1000.f){
+            const float measured=menuFont.width(value,size);
+            if(measured>maxWidth)size*=maxWidth/measured;
+            menuFont.paint(pixels,width,height,value,x,y,size,color);
         };
-        const auto& common=bank("v3sS00common");
-        const auto& cars=bank("v3sS05cars");
-        // The menu sheets store their chrome upside down; the cabinet flips V
-        // when it draws them and compositeImage does not, so flip a copy.
-        // Kept in a map so each flipped copy has one address for the life of the
-        // frontend; a temporary would be registered and then reused underneath.
-        const auto flipped=[&](const NativeImage& source)->const NativeImage&{
-            const auto found=saveFlipped.find(&source);
-            if(found!=saveFlipped.end())return found->second;
-            NativeImage out{source.width,source.height,{}};
-            out.argb.resize(source.argb.size());
-            for(std::uint32_t y=0;y<source.height;++y)
-                std::copy_n(source.argb.begin()+std::size_t(source.height-1-y)*source.width,
-                            source.width,out.argb.begin()+std::size_t(y)*source.width);
-            return saveFlipped.emplace(&source,std::move(out)).first->second;
-        };
-        // A list scrolls up and down, but the sheet holds its arrow pointing
-        // sideways, so it is turned a quarter and mirrored for the lower one.
-        const auto turn=[](const NativeImage& source,bool downward){
-            NativeImage out{source.height,source.width,{}};
-            out.argb.resize(source.argb.size());
-            for(std::uint32_t y=0;y<out.height;++y)
-                for(std::uint32_t x=0;x<out.width;++x){
-                    const std::uint32_t sx=downward?y:source.width-1-y;
-                    const std::uint32_t sy=downward?source.height-1-x:x;
-                    out.argb[std::size_t(y)*out.width+x]=source.argb[std::size_t(sy)*source.width+sx];
-                }
-            return out;
-        };
-        const auto image=[&](const NativeTextureBank& source,std::uint32_t index,
-                float x,float y,float w,float h,float opacity=1.f){
-            if(index<source.size())compositeImage(pixels,width,height,flipped(source.at(index)),x,y,w,h,opacity);
-        };
-        // Blue gradient ground, as the source selection screens use.
-        for(int y=0;y<height;++y){
-            const float t=float(y)/float(height);
-            const auto channel=[&](unsigned top,unsigned bottom){return unsigned(float(top)+(float(bottom)-float(top))*t);};
-            fill(0,y,width,1,0xff000000u|(channel(26,14)<<16)|(channel(48,26)<<8)|channel(92,54));
-        }
-        image(common.textures,11,0,40,float(width),190,.75f);      // the header glow
-        image(common.textures,12,0,30,float(width),34);            // the angled header bar, red
-        text("SELECT A SAVE FILE",28,32,23,0xffeef2f0u,2.f);
-        text("5 FILES",452,40,14,0xffffcf3fu,1.f);
-        constexpr int top=92,rowHeight=52,pitch=58,plateWidth=470;
-        constexpr float slant=.16f;
-        const int lean=int(slant*float(rowHeight));
-        for(unsigned i=0;i<saveFiles.size();++i){
-            const auto& file=saveFiles[i];
-            const bool on=int(i)==saveSelected;
-            const int y=top+int(i)*pitch;
-            const int plateX=30-lean;
-            leaned(plateX,y,plateWidth,rowHeight,slant,on?0xff1e3a74u:0xff121822u);
-            // An unlit plate carries the list sheet's own hatching. It goes
-            // through the image path so it reaches Unity's triangle list; the
-            // plate's lean is carried by the border and the fill behind it.
-            if(!on&&4<cars.textures.size())
-                image(cars.textures,4,float(plateX+lean/2),float(y),float(plateWidth),float(rowHeight));
-            // The plate's border, and the lit bar down its leading edge.
-            const auto edge=on?0xff607a96u:0xff2c3a4cu;
-            leaned(plateX,y,5,rowHeight,slant,on?0xffffa828u:0xff34424fu);
-            leaned(plateX+plateWidth-1,y,1,rowHeight,slant,edge);
-            fill(plateX+lean,y,plateWidth,1,edge);
-            fill(plateX,y+rowHeight-1,plateWidth,1,edge);
-            const std::string number=std::string(1,char('0'+(i+1)/10))+char('0'+(i+1)%10);
-            text(number,46,y+8,30,file.used?0xffffcf3fu:0xff566270u,2.f);
-            if(!file.used){
-                text("NO DATA",90,y+14,20,0xff60707eu,2.f);
-                continue;
-            }
-            text(file.name,90,y+4,21,0xffeef2f0u,2.f);
-            text(file.car,90,y+28,15,0xff96a6b2u,1.f);
-            text(std::to_string(file.wins)+" WINS",278,y+6,12,0xffffa828u,1.f);
-            text(file.grade,278,y+28,13,0xff80b0dcu,1.f);
-            text("TIME",376,y+6,11,0xff96a6b2u,1.f);
-            text(formatPlayTime(file.playedSeconds),376,y+18,19,0xffeef2f0u,2.f);
-            if(!file.lastPlayed.empty())text(file.lastPlayed,376,y+40,10,0xff6e7e8eu,1.f);
-        }
-        // The car the file holds, on the right, capped like the source panels.
-        constexpr int panelX=496,panelY=92,panelW=125,panelH=281;
-        fill(panelX,panelY,panelW,panelH,0xff0a1224u);
-        fill(panelX,panelY,panelW,1,0xff3c526eu);fill(panelX,panelY+panelH-1,panelW,1,0xff3c526eu);
-        fill(panelX,panelY,1,panelH,0xff3c526eu);fill(panelX+panelW-1,panelY,1,panelH,0xff3c526eu);
-        image(common.textures,12,float(panelX),float(panelY),float(panelW-1),16);
-        text("CAR IN FILE",panelX+8,panelY+2,11,0xffeef2f0u,1.f);
+        const auto number=[](unsigned value){return (value<10?std::string("0"):std::string())+std::to_string(value);};
         const auto& chosen=saveFiles[std::size_t(std::clamp(saveSelected,0,int(saveFiles.size())-1))];
-        if(chosen.used){
-            // The panel names the chassis large and the model under it, the way
-            // the source's own car panels are set.
-            const auto space=chosen.car.find(' ');
-            text(chosen.car.substr(0,space),panelX+8,panelY+30,17,0xffeef2f0u,2.f);
-            if(space!=std::string::npos)
-                text(chosen.car.substr(space+1),panelX+8,panelY+52,13,0xff96a6b2u,1.f);
-            const int boxX=panelX+8,boxY=panelY+80,boxW=panelW-17,boxH=88;
-            fill(boxX,boxY,boxW,boxH,0xff101a2cu);
-            fill(boxX,boxY,boxW,1,0xff30425au);fill(boxX,boxY+boxH-1,boxW,1,0xff30425au);
-            fill(boxX,boxY,1,boxH,0xff30425au);fill(boxX+boxW-1,boxY,1,boxH,0xff30425au);
-            if(!saveFileCarLive)text("CAR VIEW",panelX+26,panelY+118,12,0xff5c6c7eu,1.f);
-            const std::pair<const char*,std::string> rows[]{
-                {"PLAYED",formatPlayTime(chosen.playedSeconds)},
-                {"WINS",std::to_string(chosen.wins)},
-                {"LAST",chosen.lastPlayed.empty()?std::string("----/--/--"):chosen.lastPlayed}};
-            for(int k=0;k<3;++k){
-                text(rows[k].first,panelX+8,panelY+182+k*30,10,0xff96a6b2u,1.f);
-                text(rows[k].second,panelX+8,panelY+194+k*30,15,0xffeef2f0u,1.f);
-            }
-        }else text("EMPTY",panelX+20,panelY+120,18,0xff60707eu,2.f);
-        if(10<common.textures.size()){
-            if(saveArrowUp.argb.empty()){
-                const auto& arrow=flipped(common.textures.at(10));
-                saveArrowUp=turn(arrow,false);
-                saveArrowDown=turn(arrow,true);
-            }
-            compositeImage(pixels,width,height,saveArrowUp,250,74,20,26);
-            compositeImage(pixels,width,height,saveArrowDown,250,396,20,26);
+        const auto used=std::count_if(saveFiles.begin(),saveFiles.end(),[](const auto& file){return file.used;});
+
+        fill(24,18,592,446,ink);frame(24,18,592,446,edge);fill(24,18,592,3,red);
+        text("SAVE SELECT",42,31,30,white);
+        text("INITIAL D / SELECT A DRIVER",43,73,11,muted);
+        const auto count=std::to_string(used)+" / "+std::to_string(saveFiles.size())+" USED";
+        text(count,596-menuFont.width(count,12),43,12,muted);
+        fill(25,96,590,1,edge);
+
+        constexpr int listX=42,listY=110,listW=252,rowH=50,pitch=59;
+        for(unsigned i=0;i<saveFiles.size();++i){
+            const auto& file=saveFiles[i];const bool selected=int(i)==saveSelected;
+            const int y=listY+int(i)*pitch;
+            fill(listX,y,listW,rowH,selected?raised:panel);
+            frame(listX,y,listW,rowH,selected?red:edge);
+            if(selected)fill(listX,y,3,rowH,red);
+            text(number(i+1),listX+13,float(y+13),20,selected?white:muted);
+            if(file.used&&paintSaveName&&std::any_of(file.name.begin(),file.name.end(),[](unsigned char c){return c>=128;}))
+                paintSaveName(pixels,width,height,file.name,listX+50,float(y+9),20,listW-64);
+            else text(file.used?file.name:"NEW DRIVER",listX+50,float(y+5),20,file.used?white:muted,listW-64);
+            text(file.used?file.car:"EMPTY SLOT",listX+51,float(y+30),11,muted,listW-65);
         }
-        // The control strip: a white key box with the action beside it.
-        fill(0,436,width,height-436,0xff080e1cu);
-        fill(0,436,width,1,0xff466080u);
-        float x=28;
+
+        fill(310,110,288,316,panel);fill(310,110,3,43,red);
+        text(chosen.used?"LAST USED CAR":"FILE "+number(unsigned(saveSelected+1)),326,119,10,muted);
+        if(chosen.used){
+            text(chosen.car,326,135,21,white,256);
+            text(chosen.grade,326,163,11,muted,256);
+            const auto& box=saveCarViewport;
+            fill(box[0]-1,box[1]-1,box[2]+2,box[3]+2,ink);
+            frame(box[0]-1,box[1]-1,box[2]+2,box[3]+2,edge);
+            if(!saveFileCarLive)text("CAR PREVIEW",392,235,12,muted);
+            text("PLAY TIME",326,saveActionsOpen?312:317,10,muted);
+            text(formatPlayTime(chosen.playedSeconds),326,saveActionsOpen?325:332,saveActionsOpen?17:20,white,155);
+            fill(498,saveActionsOpen?312:320,1,saveActionsOpen?29:35,edge);
+            text("LEVEL",516,saveActionsOpen?312:317,10,muted);
+            text(chosen.level?std::to_string(chosen.level):"--",516,saveActionsOpen?325:332,saveActionsOpen?17:20,white,66);
+            if(!saveActionsOpen)fill(326,366,256,1,edge);
+            text("LAST PLAYED",326,saveActionsOpen?348:377,10,muted);
+            const auto date=chosen.lastPlayed.empty()?std::string("----/--/--"):chosen.lastPlayed;
+            text(date,582-menuFont.width(date,12),saveActionsOpen?346:374,12,white);
+            if(saveActionsOpen){
+                for(int action=0;action<2;++action){
+                    const int x=326+action*133;const bool selected=saveActionSelected==action;
+                    fill(x,365,123,30,selected?red:raised);frame(x,365,123,30,selected?white:edge);
+                    const std::string_view label=action==0?"CONTINUE":"CHANGE CAR";
+                    text(label,x+(123-menuFont.width(label,13))*.5f,373,13,white);
+                }
+                const bool selected=saveActionSelected==2;
+                fill(326,399,256,26,selected?red:raised);frame(326,399,256,26,selected?white:edge);
+                text("DELETE SAVE",454-menuFont.width("DELETE SAVE",12)*.5f,406,12,white);
+            }
+        }else{
+            frame(433,196,42,42,edge);fill(443,216,22,2,muted);fill(453,206,2,22,muted);
+            text("NEW DRIVER",380,258,22,white);
+            text("EMPTY SLOT",419,291,11,muted);
+        }
+        fill(42,440,556,1,edge);
+        float x=43;
         for(const auto& [keyName,action]:std::initializer_list<std::pair<const char*,const char*>>{
-                {"Steering","SELECT"},{"Accel.","OK"},{"Brake","BACK"}}){
-            const float boxWidth=menuFont.width(keyName,13)+14.f;
-            fill(int(x),449,int(boxWidth),21,0xffeef2f0u);
-            menuFont.paint(pixels,width,height,keyName,x+7,452,13,0xff0c121cu);
-            text(action,x+boxWidth+10,450,15,0xffffa828u,1.f);
-            x+=boxWidth+22.f+menuFont.width(action,15);
+                {"ARROWS / STEERING","SELECT"},{"ACCEL.","CONFIRM"},{"BRAKE","BACK"}}){
+            text(keyName,x,451,11,white);x+=menuFont.width(keyName,11)+7;
+            text(action,x,451,11,muted);x+=menuFont.width(action,11)+25;
+        }
+        if(saveDeleteOpen){
+            fill(154,162,332,166,ink);frame(154,162,332,166,edge);fill(154,162,332,3,red);
+            text("ARE YOU SURE?",320-menuFont.width("ARE YOU SURE?",25)*.5f,186,25,white);
+            const auto label="DELETE SAVE "+number(unsigned(saveSelected+1));
+            text(label,320-menuFont.width(label,12)*.5f,224,12,muted);
+            if(saveDeleteFailed)text("COULD NOT DELETE SAVE",320-menuFont.width("COULD NOT DELETE SAVE",10)*.5f,249,10,red);
+            for(int choice=0;choice<2;++choice){
+                const int buttonX=180+choice*152;const bool selected=saveDeleteSelected==choice;
+                fill(buttonX,270,128,36,selected?red:raised);frame(buttonX,270,128,36,selected?white:edge);
+                const std::string_view label=choice==0?"NO":"YES";
+                text(label,buttonX+(128-menuFont.width(label,17))*.5f,280,17,white);
+            }
         }
         return pixels;
     }

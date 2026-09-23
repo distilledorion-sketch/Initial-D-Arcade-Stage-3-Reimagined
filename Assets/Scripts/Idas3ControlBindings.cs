@@ -68,7 +68,7 @@ public sealed class Idas3ControlBindings
     private readonly Dictionary<string,float> restValues = new Dictionary<string,float>(StringComparer.Ordinal);
     private string activeProfileKey=LegacyProfile;
     private bool genericProfile, awaitingProfileSample;
-    private bool releaseBlocked, captureArmed;
+    private bool releaseBlocked, captureArmed, releaseKeyboardOnly;
     private ActionId captureAction;
     private Slot captureSlot;
     private double captureDeadline;
@@ -84,9 +84,11 @@ public sealed class Idas3ControlBindings
     public string CapturePrompt { get; private set; } = "";
     public string CaptureError { get; private set; }
     public bool SuppressInput => IsCapturing || releaseBlocked;
-    public bool PauseHeld => !SuppressInput && (Held(KeyCode.Escape) || ActionHeld(ActionId.Pause) || (pad.buttons&0x10)!=0);
-    public bool OnlineHeld => !SuppressInput && (Held(KeyCode.F1) || ActionHeld(ActionId.Online) ||
-        (current.actions[8].pad==PadInput.None&&string.IsNullOrEmpty(current.actions[8].controlPath)&&(pad.buttons&0x20)!=0));
+    internal bool RawPauseHeld => Held(KeyCode.Escape) || ActionHeld(ActionId.Pause) || (pad.buttons&0x10)!=0;
+    internal bool RawOnlineHeld => Held(KeyCode.F1) || ActionHeld(ActionId.Online) ||
+        (current.actions[8].pad==PadInput.None&&string.IsNullOrEmpty(current.actions[8].controlPath)&&(pad.buttons&0x20)!=0);
+    public bool PauseHeld => !SuppressInput && RawPauseHeld;
+    public bool OnlineHeld => !SuppressInput && RawOnlineHeld;
     public bool ViewChangeHeld => !SuppressInput && ActionHeld(ActionId.Camera);
     public event System.Action Changed;
 
@@ -125,7 +127,7 @@ public sealed class Idas3ControlBindings
         savedProfiles.Add(LegacyProfile,new ControllerProfile{key=LegacyProfile,label="Default controller",actions=CloneActions(current.actions)});
         if(current.controllerProfiles!=null)foreach(var profile in current.controllerProfiles)savedProfiles.Add(profile.key,profile.Clone());
         current.version=3;current.controllerProfiles=null;
-        draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); IsCapturing = captureArmed = releaseBlocked = false;
+        draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); IsCapturing = captureArmed = releaseBlocked = releaseKeyboardOnly = false;
         controls.Clear();restValues.Clear();awaitingProfileSample=false;LastNotice=null;
         Array.Clear(heldKeys, 0, heldKeys.Length); Array.Clear(keyboardActions, 0, keyboardActions.Length); pad = default;
         CapturePrompt = ""; CaptureError = null; Changed?.Invoke();
@@ -159,7 +161,7 @@ public sealed class Idas3ControlBindings
         value.version=3;
     }
     public void BeginEdit() { EnsureInitialized(); CancelCapture(); draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); LastError = null; CaptureError = null;LastNotice=null; }
-    public void CancelEdit(bool waitForRelease = true) { EnsureInitialized(); CancelCapture(); draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); LastError = null;LastNotice=null; releaseBlocked = waitForRelease; }
+    public void CancelEdit(bool waitForRelease = true) { EnsureInitialized(); CancelCapture(); draftProfiles=CloneProfiles(savedProfiles);draft = current.Clone(); LastError = null;LastNotice=null; releaseBlocked = waitForRelease;releaseKeyboardOnly=false; }
     public void ResetDraft() { EnsureInitialized(); CancelCapture(); draft = Defaults();if(genericProfile)foreach(var b in draft.actions)ClearController(b); LastError = null; CaptureError = null;LastNotice=null; releaseBlocked=false; }
     public void SelectControllerProfile(string key,string label,bool useGenericDefaults=false)
     {
@@ -304,8 +306,12 @@ public sealed class Idas3ControlBindings
     {
         if (!IsCapturing) return;
         IsCapturing = captureArmed = false; CapturePrompt = ""; CaptureError = null; BlockUntilRelease();
+        // Cancellation must remain usable even when a wheel reports a held
+        // selector button or an axis that never returns to neutral. Keep the
+        // cancel key/mouse press guarded, not the unrelated controller state.
+        releaseKeyboardOnly = true;
     }
-    private void BlockUntilRelease() { releaseBlocked = true; }
+    private void BlockUntilRelease() { releaseBlocked = true; releaseKeyboardOnly = false; }
     // Called once by the host, from raw hardware. Menu widgets and native input
     // consume the same sample; capture never polls hardware independently.
     public void Poll(Func<KeyCode, bool> keyHeld, PadState rawPad, double now,IReadOnlyList<Idas3ControllerControl> rawControls=null)
@@ -321,6 +327,9 @@ public sealed class Idas3ControlBindings
         bool anyHeld = AnyInputHeld();
         if (IsCapturing)
         {
+            // Escape must work before arming too (for example a latched HID
+            // button can otherwise hold the release prompt open indefinitely).
+            if (Held(KeyCode.Escape)) { CancelCapture(); return; }
             if (double.IsNaN(now) || double.IsInfinity(now) || now >= captureDeadline)
             { CancelCapture(); CaptureError = "No control selected. Try again."; return; }
             if (!captureArmed)
@@ -331,7 +340,6 @@ public sealed class Idas3ControlBindings
                 if (arm) { captureArmed = true;SnapshotRest(); CapturePrompt = captureSlot == Slot.Controller ? "Press a button or move one axis/pedal. Escape cancels." : "Press a key. Escape cancels."; }
                 return;
             }
-            if (Held(KeyCode.Escape)) { CancelCapture(); return; }
             bool attempted = false, accepted = false;
             if (captureSlot == Slot.Controller)
             {
@@ -354,12 +362,15 @@ public sealed class Idas3ControlBindings
             }
             return;
         }
-        if (releaseBlocked && !anyHeld) releaseBlocked = false;
+        if (releaseBlocked && !(releaseKeyboardOnly ? KeysHeld() : anyHeld)) releaseBlocked = false;
     }
 
-    internal void ApplyMenu(ref Idas3Native.FrameInput frame, bool genericDevice)
+    internal void ApplyMenu(ref Idas3Native.FrameInput frame, bool genericDevice, bool preserveHeldEdges=false)
     {
-        if(SuppressInput)return;
+        if(SuppressInput&&!preserveHeldEdges)return;
+        // The host neutralizes blocked packets after retaining menu edges.
+        // Populate held actions even during capture so cancelling cannot turn
+        // an already-held pedal/button into a fresh menu confirmation.
         // Wheels/HID devices use their saved pedal/steering/paddle bindings
         // in every menu too. Standard pads retain their D-pad, stick and A/B.
         if(genericDevice){
@@ -491,7 +502,8 @@ public sealed class Idas3ControlBindings
             Math.Abs((int)pad.thumbLX) > 8000 || Math.Abs((int)pad.thumbLY) > 8000 || Math.Abs((int)pad.thumbRX) > 8000 || Math.Abs((int)pad.thumbRY) > 8000);
     }
     private bool ButtonsOrKeysHeld()
-    { foreach(var key in PollKeys)if(Held(key))return true;foreach(var control in controls.Values)if(control.button&&control.value>.5f)return true;return pad.connected&&pad.buttons!=0; }
+    { if(KeysHeld())return true;foreach(var control in controls.Values)if(control.button&&control.value>.5f)return true;return pad.connected&&pad.buttons!=0; }
+    private bool KeysHeld() { foreach(var key in PollKeys)if(Held(key))return true;return false; }
     private void SnapshotRest(bool preferBoundRest=false)
     {
         restValues.Clear();foreach(var pair in controls)

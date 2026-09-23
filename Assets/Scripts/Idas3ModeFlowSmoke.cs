@@ -72,12 +72,211 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         }
         yield return Until(()=>Idas3SceneModeFlowValue(23)==1,300,"Established car skips setup and enters upgrades");
     }
+    private IEnumerator SaveClick(float x,float y){
+        float scale=Math.Min(Screen.width/640f,Screen.height/480f);
+        float left=(Screen.width-640f*scale)*.5f,top=(Screen.height-480f*scale)*.5f;
+        Check(Idas3Native.Idas3SceneSaveMenuPointer(left+x*scale,top+y*scale,Screen.width,Screen.height,1)==1,"Save menu owns its pointer click");
+        yield return Frames(3);
+    }
+    private IEnumerator SaveHover(float x,float y){
+        float scale=Math.Min(Screen.width/640f,Screen.height/480f);
+        float left=(Screen.width-640f*scale)*.5f,top=(Screen.height-480f*scale)*.5f;
+        Check(Idas3Native.Idas3SceneSaveMenuPointer(left+x*scale,top+y*scale,Screen.width,Screen.height,2)==1,"Save menu owns its pointer hover");
+        yield return Frames(3);
+    }
+    private IEnumerator SaveStage(int stage,string message){
+        for(int i=0;i<350;++i){
+            int current=Idas3SceneModeFlowValue(5);
+            Check(current!=11&&current!=4&&current!=12,"Changing a saved car skips name, transmission and tuning-package entry");
+            if(current==stage&&Idas3SceneModeFlowValue(27)==1)break;
+            yield return null;
+        }
+        Check(Idas3SceneModeFlowValue(5)==stage&&Idas3SceneModeFlowValue(27)==1,message);
+    }
+    private IEnumerator SaveChooseMake(int make){
+        yield return SaveStage(2,"Change Car reaches manufacturer selection");
+        for(int i=0;i<7&&Idas3SceneModeFlowValue(44)!=make;++i)yield return Pad(8);
+        Check(Idas3SceneModeFlowValue(44)==make,"Select requested manufacturer");
+        yield return Capture("change-car-make-"+make);yield return Pad(0x1000);
+        yield return SaveStage(3,"Selected manufacturer opens its cars without name entry");
+    }
+    private IEnumerator SaveChooseCar(int car){
+        for(int i=0;i<35&&Idas3SceneModeFlowValue(43)!=car;++i)yield return Pad(8);
+        Check(Idas3SceneModeFlowValue(43)==car,"Select requested saved-driver car");
+        Check(Idas3SceneModeFlowValue(48)==1,"Car preview keeps the selected driver's name");
+        yield return Capture("change-car-model-"+car);
+    }
+    private IEnumerator SaveCheckAllCarRosters(){
+        // Every manufacturer retains its complete catalog, including cars that
+        // have never been saved and stock cars without fitted parts.
+        int[][] rosters={new[]{16,15,17,18},new[]{22,23,24,34,25,26},new[]{19,20,32,33,21},
+            new[]{7,8,31,9,10,11,12,13,14},new[]{27,28,29},new[]{30},new[]{0,1,2,3,4,5,6}};
+        var allCars=new HashSet<int>();
+        for(int make=0;make<rosters.Length;++make){
+            yield return SaveChooseMake(make);
+            var visited=new HashSet<int>();
+            int first=Idas3SceneModeFlowValue(43);
+            for(int i=0;i<rosters[make].Length;++i){
+                int car=Idas3SceneModeFlowValue(43);
+                Check(Array.IndexOf(rosters[make],car)>=0&&visited.Add(car),"Manufacturer exposes each original car exactly once");
+                Check(Idas3SceneModeFlowValue(48)==1,"Every car preview retains the existing driver name");
+                allCars.Add(car);yield return Pad(8);
+            }
+            Check(Idas3SceneModeFlowValue(43)==first,"Complete manufacturer roster wraps to its first car");
+            yield return Pad(0x2000);yield return SaveStage(2,"Catalog browsing returns to manufacturer selection");
+        }
+        Check(allCars.Count==35,"Change Car allows all 35 cars");
+    }
+    private IEnumerator SaveChange(){
+        yield return Until(()=>host.Ready,600,"Scene initialized");yield return Fixture(350);
+        Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==0,"Occupied saves open in the file list");
+        yield return Capture("save-file-list");
+        yield return SaveClick(305,380);
+        Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==0,"Blank panel click does not continue a save");
+        yield return SaveClick(150,130);
+        Check(Idas3SceneModeFlowValue(42)==1,"Clicking a save opens its right-hand actions");
+        yield return Capture("save-continue");yield return Pad(2);
+        Check(Idas3SceneModeFlowValue(50)==1,"Controller selects Change Car");
+        yield return Capture("save-change-car");yield return Pad(0x2000);
+        Check(Idas3SceneModeFlowValue(42)==0&&Idas3SceneModeFlowValue(5)==1,"Back closes the action panel first");
+        yield return SaveClick(150,130);yield return SaveClick(380,380);
+        yield return SaveStage(5,"Continue reaches mode selection directly");
+        Check(Idas3SceneModeFlowValue(43)==0&&Idas3SceneModeFlowValue(48)==1,"Continue keeps the current saved car and driver");
+        Check(Idas3SceneModeFlowValue(51)==0,"Continue restores the saved manual transmission");
+        yield return Pad(0x2000);yield return Frames(3);
+        Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==1,"Back from mode returns to save actions");
+
+        // Browse every car, including an absent profile, then cancel before a
+        // durable selection. No driver profile should be created by browsing.
+        yield return SaveClick(520,380);yield return SaveCheckAllCarRosters();
+        yield return SaveChooseMake(6);yield return SaveChooseCar(2);
+        yield return Pad(0x2000);yield return SaveStage(2,"Back from a saved-driver car returns to its make");
+        yield return Pad(0x2000);yield return Frames(3);
+        Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==1,"Cancelling car change returns to save actions");
+        Check(Idas3SceneModeFlowFixture(353)==1,"Browsing and cancelling leave all saved profiles unchanged");
+
+        yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
+        yield return Pad(0x1000);yield return SaveStage(5,"Previously tuned car goes straight to mode selection");
+        Check(Idas3SceneModeFlowFixture(352)==1,"Changing to an existing car preserves its saved tuning, parts, and driver name");
+        Check(Idas3SceneModeFlowValue(51)==0,"Changed saved car retains its manual transmission");
+        yield return Capture("existing-car-select-mode");
+        yield return Fixture(351);yield return SaveClick(150,130);yield return SaveClick(520,380);
+        yield return SaveChooseMake(6);yield return SaveChooseCar(1);yield return Pad(0x1000);
+        yield return SaveStage(5,"Existing stock car goes directly to mode selection");
+        Check(Idas3SceneModeFlowFixture(354)==1,"Existing stock car stays stock with its saved paint, points and driver name");
+        Check(Idas3SceneModeFlowValue(51)==0,"Existing stock car retains its saved manual transmission");
+        yield return Capture("stock-car-select-mode");
+        yield return Fixture(351);yield return SaveClick(150,130);yield return SaveClick(520,380);
+        yield return SaveChooseMake(6);yield return SaveChooseCar(2);yield return Pad(0x1000);
+        yield return SaveStage(5,"Never-saved car goes directly to mode selection");
+        Check(Idas3SceneModeFlowFixture(356)==1,"Never-saved car stays stock and persists with the existing driver name");
+        Check(Idas3SceneModeFlowValue(51)==0,"Never-saved car inherits the driver's manual transmission");
+        yield return Capture("fresh-car-select-mode");
+        yield return Fixture(351);yield return Pad(1);yield return Capture("save-empty-slot");
+        yield return SaveClick(150,366);yield return Frames(8);
+        Check(Idas3SceneModeFlowValue(5)==2&&!Convert.ToBoolean(Idas3SceneModeFlowValue(46)),"Empty slot retains normal new-driver setup");
+        yield return Fixture(351);yield return Fixture(357);
+        yield return SaveClick(150,130);yield return SaveClick(400,410);
+        Check(Idas3SceneModeFlowValue(52)==1&&Idas3SceneModeFlowValue(53)==0&&Idas3SceneModeFlowValue(54)==0,"Delete confirmation opens with No selected");
+        yield return Capture("save-delete-no");yield return Pad(0x1000);
+        Check(Idas3SceneModeFlowValue(52)==0&&Idas3SceneModeFlowValue(42)==1,"Default No closes the confirmation and keeps save actions open");
+        Check(Idas3SceneModeFlowFixture(358)==1,"Confirming default No preserves every file in both saves");
+        yield return SaveClick(400,410);yield return Pad(2);
+        Check(Idas3SceneModeFlowValue(52)==1&&Idas3SceneModeFlowValue(53)==1,"Yes requires an explicit selection");
+        yield return Capture("save-delete-yes");yield return Pad(0x2000);
+        Check(Idas3SceneModeFlowValue(52)==0&&Idas3SceneModeFlowValue(42)==1,"Back cancels deletion even when Yes is selected");
+        Check(Idas3SceneModeFlowFixture(358)==1,"Back preserves all per-car profiles and the other save");
+        yield return SaveClick(400,410);
+        Check(Idas3SceneModeFlowValue(52)==1&&Idas3SceneModeFlowValue(53)==0,"Reopening the confirmation resets its selection to No");
+        yield return SaveClick(150,189);yield return SaveClick(380,380);yield return SaveClick(320,250);
+        Check(Idas3SceneModeFlowValue(52)==1&&Idas3SceneModeFlowValue(5)==1,"Delete confirmation blocks underlying save rows and Continue");
+        Check(Idas3SceneModeFlowFixture(358)==1,"Blocked modal clicks do not alter either save");
+        yield return SaveHover(390,288);
+        Check(Idas3SceneModeFlowValue(52)==1&&Idas3SceneModeFlowValue(53)==1,"Manually hovering Yes changes only the highlight");
+        Check(Idas3SceneModeFlowFixture(358)==1,"Hovering Yes cannot delete or modify either save");
+        yield return Capture("save-delete-pointer-yes");yield return SaveHover(240,288);
+        Check(Idas3SceneModeFlowValue(53)==0,"Hovering No restores the safe highlight");
+        yield return SaveClick(240,288);
+        Check(Idas3SceneModeFlowValue(52)==0,"Clicking No cancels deletion");
+        Check(Idas3SceneModeFlowFixture(358)==1,"Pointer No preserves the selected save");
+        yield return SaveClick(400,410);yield return SaveClick(390,288);
+        Check(Idas3SceneModeFlowValue(52)==0&&Idas3SceneModeFlowValue(42)==0&&Idas3SceneModeFlowValue(54)==0&&Idas3SceneModeFlowValue(5)==1,"Explicit Yes deletes the selected save and returns to the list");
+        Check(Idas3SceneModeFlowValue(28)==-1,"Deleted save is no longer the active profile store");
+        Check(Idas3SceneModeFlowFixture(359)==1,"Deletion removes every selected-save file and leaves the other save byte-identical");
+        yield return Capture("save-deleted-slot");yield return Frames(120);
+        Check(Idas3SceneModeFlowFixture(359)==1,"Further menu frames do not recreate the deleted save");
+        yield return SaveClick(150,130);yield return SaveStage(2,"Deleted slot can begin a fresh driver");
+        Check(Idas3SceneModeFlowValue(28)==0&&Idas3SceneModeFlowValue(46)==0,"The deleted slot starts ordinary setup rather than restoring its old driver");
+        Check(Idas3SceneModeFlowFixture(359)==1,"Entering fresh setup does not restore deleted profiles or alter the other save");
+        Finish(true,null);
+    }
+    private IEnumerator SaveLevel(int car,int level,string message){
+        yield return Until(()=>Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(56)==car&&
+            Idas3SceneModeFlowValue(43)==car&&Idas3SceneModeFlowValue(55)==level,120,message);
+    }
+    private IEnumerator SaveLastUsedLevel(){
+        yield return Until(()=>host.Ready,600,"Scene initialized");
+        string saveRoot=Path.Combine(root,"userdata");
+        Idas3.Multiplayer.Idas3MultiplayerRecords.SeedSaveMenuDiagnostic(saveRoot,0,
+            new Idas3.Multiplayer.Idas3BattleRecord{battles=40,wins=30,level=12,streak=2});
+        Idas3.Multiplayer.Idas3MultiplayerRecords.SeedSaveMenuDiagnostic(saveRoot,22,
+            new Idas3.Multiplayer.Idas3BattleRecord{battles=90,wins=70,level=27,streak=4});
+        Idas3.Multiplayer.Idas3MultiplayerRecords.SeedSaveMenuDiagnostic(saveRoot,8,
+            new Idas3.Multiplayer.Idas3BattleRecord{battles=20,wins=12,level=6,streak=1});
+        string damagedPath=Path.Combine(saveRoot,"online_records_v1","car_02.json");
+        const string damagedRecord="{\"state\":null,\"sha256\":\"invalid\"}";
+        File.WriteAllText(damagedPath,damagedRecord);
+        yield return Fixture(350);yield return SaveLevel(0,12,"Save details show the remembered car and its aura level");
+        yield return Capture("save-last-car-level-12");
+        var invalidLevels=new uint[35];invalidLevels[0]=99;
+        Check(Idas3Native.Idas3SceneSetSaveCarLevels(invalidLevels,34)==0&&Idas3SceneModeFlowValue(55)==12,"Malformed level count is rejected without changing the displayed level");
+        invalidLevels[34]=100;
+        Check(Idas3Native.Idas3SceneSetSaveCarLevels(invalidLevels,35)==0&&Idas3SceneModeFlowValue(55)==12,"Out-of-range level array is rejected atomically");
+        Check(Idas3Native.Idas3SceneSetSaveCarLevels(null,35)==0&&Idas3SceneModeFlowValue(55)==12,"Null level array is rejected without changing saved-car details");
+        yield return SaveClick(150,189);yield return SaveLevel(8,6,"Another save shows its own remembered car and level");
+        yield return Capture("save-other-car-level-6");
+        yield return SaveClick(150,130);yield return SaveClick(380,380);
+        yield return SaveStage(5,"Continue opens mode selection with the remembered car");
+        Check(Idas3SceneModeFlowValue(43)==0,"Continue uses the car shown in save details");
+        yield return Pad(0x2000);yield return SaveLevel(0,12,"Returning from Continue preserves the remembered car and level");
+        yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
+        yield return Pad(0x1000);yield return SaveStage(5,"Selecting an owned car reaches mode selection");
+        yield return Pad(0x2000);yield return SaveLevel(22,27,"Changing cars updates the remembered car and its aura level");
+        Check(Idas3SceneModeFlowFixture(362)==1,"Changed remembered car retains its saved parts and tuning");
+        yield return Capture("save-last-car-level-27");
+        yield return SaveClick(520,380);yield return SaveChooseMake(6);yield return SaveChooseCar(0);
+        yield return Pad(0x2000);yield return SaveStage(2,"Cancelling a preview returns to manufacturer selection");
+        yield return Pad(0x2000);yield return SaveLevel(22,27,"Cancelled browsing restores the remembered car and level");
+        Check(Idas3SceneModeFlowFixture(364)==1,"Cancelled browsing preserves the remembered car and all profile files");
+        yield return SaveClick(520,380);yield return SaveChooseMake(6);yield return SaveChooseCar(1);
+        yield return Pad(0x1000);yield return SaveStage(5,"Stock car reaches mode selection");
+        yield return Pad(0x2000);yield return SaveLevel(1,1,"A car with no online history shows the fresh aura level");
+        Check(Idas3SceneModeFlowFixture(363)==1,"Stock remembered car remains stock and keeps its own tuning points");
+        yield return Capture("save-last-car-level-1");
+        yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
+        yield return Pad(0x2000);yield return SaveStage(2,"Stock-car browsing can be cancelled");
+        yield return Pad(0x2000);yield return SaveLevel(1,1,"Cancelled browsing does not replace the stock remembered car");
+        Check(Idas3SceneModeFlowFixture(364)==1,"Cancelling a second car preview preserves the saved choice and other drivers");
+        yield return Fixture(360);yield return SaveLevel(22,27,"The post-race helper persists the actual raced car for next menu entry");
+        Check(Idas3SceneModeFlowFixture(361)==1,"Fresh storage reload retains the last raced car without touching tuning or another save");
+        yield return Capture("save-last-raced-car-level-27");
+        yield return SaveClick(150,130);yield return SaveClick(520,380);
+        yield return SaveChooseMake(6);yield return SaveChooseCar(2);
+        yield return Pad(0x1000);yield return SaveStage(5,"Car with unreadable online history can still be selected normally");
+        yield return Pad(0x2000);yield return SaveLevel(2,0,"Unreadable aura history displays an unknown level instead of inventing progression");
+        Check(File.ReadAllText(damagedPath)==damagedRecord,"Unreadable aura history is preserved unchanged");
+        yield return Capture("save-last-car-level-unavailable");
+        yield return SaveClick(150,189);yield return SaveLevel(8,6,"Other save keeps its remembered car and aura level after changes");
+        Finish(true,null);
+    }
     private sealed class PerformancePlatform : Idas3GameOptions.IPlatform {
         public int Width=>1280;public int Height=>720;public int DisplayMode=>0;public double Now=>0;
         public Idas3GameOptions.ResolutionChoice[] Resolutions=>Array.Empty<Idas3GameOptions.ResolutionChoice>();
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0){yield return SaveLastUsedLevel();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0){yield return SaveChange();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-release-presence-check")>=0)Idas3DiscordChecks.Run(Check);
@@ -783,7 +982,9 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0?
+            "Save menu last-used-car preview and model-keyed online aura level through actual Unity pointer/controller selection. Continue, Change Car, cancelled previews, stock level 1, unreadable history shown as unknown without rewriting it, another save, malformed native level arrays and post-race remembering helper persistence are checked. The helper is invoked directly instead of driving a race; only isolated diagnostic saves and online history are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0?
+            "Save-file Continue/Change Car/Delete Save actions through the actual pointer export and controller frame path, all 35 cars across every manufacturer, existing tuning retention, stock and never-saved cars remaining untuned, skipped name/transmission/tuning-package entry, back/cancel with unchanged profiles, empty-slot setup and persisted driver identity. Delete defaults to No; explicit Yes removes the entire selected save, cancel/blocked inputs preserve all files, another save stays byte-identical, and deleted profiles stay absent on subsequent frames and fresh setup. Actual Unity captures with isolated fixture saves; no ordinary saves changed.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?
             "Pause headers through real native race fixtures and Unity menus for every imported course in both directions, followed by an original course; online/wet identity flags checked without a network peer. Isolated saves.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0?
             "Controlled Akina/Enna before/after race captures, recovered smoke texture binding and full GPU alpha boundary, plus1800 frames of original driving with real slip/road contacts and unchanged320-word physics state. No physical input device or network peer used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-performance-options-check")>=0?
             "Performance options migration, persistence, display rollback, controller navigation, imported foliage LOD and native mirror/weather geometry with unchanged race ticks/car/profile/driving RNG/wet state. Isolated fixtures, not a low-end hardware FPS benchmark.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-import-times-check")>=0?

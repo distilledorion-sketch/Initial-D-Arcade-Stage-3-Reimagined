@@ -73,6 +73,10 @@ public:
     int activeVsChunk() const { return setup_.showVersus ? vsChunk_ : -1; }
     const std::string& displayName(unsigned side) const;
     std::string profileDisplayName(const original::OriginalBattleProfile&) const;
+    // Static source name glyphs for compact host menus. Coordinates and size
+    // are target pixels; no VS animation or banner state is changed.
+    void paintDisplayName(std::span<std::uint32_t> target,int width,int height,
+        const std::string& utf8,float x,float y,float size,float maxWidth) const;
     static const char* rivalDisplayName(unsigned enemy);
     const std::string& displayBattleRecord(unsigned side) const;
     // Logical640x480 bounds and the exact name-motion opacity used to paint.

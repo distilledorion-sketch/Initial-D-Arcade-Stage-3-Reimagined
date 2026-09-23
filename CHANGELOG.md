@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.95-community-replays.28 - September 23, 2026
+
+- Redesigned save selection with compact pause-menu styling, a car preview, and Continue, Change Car and Delete Save actions.
+- Change Car goes directly through make and car selection to mode selection, retaining the driver's name. All 35 cars are available, with each car's parts, tuning and earned tuning progress kept independently within each save. Previously unused cars begin stock; the existing Full Tune option remains available in the pause menu.
+- Save slots show the last-used car. Level replaces Wins and uses that car model's existing online aura progression; unreadable history displays an unknown level rather than resetting records.
+- Added an "Are you sure?" delete confirmation that starts on No. Only explicitly choosing Yes deletes the selected save.
+- Corrected saved-driver name display, including numeric and Japanese glyphs.
+- Fixed undescribed controls inherited by Unity's generic HID joystick layouts interfering with wheel and pedal rebinding. Escape now works before capture arms, and cancellation or timeout cannot leave the menu disabled by a held controller input. Held shortcuts do not activate another screen when capture ends.
+- Rain tire trails now follow rear-tire road contacts, surface slope and travel direction, and remain fixed on the road while fading. Snow powder and tunnel rain sheltering retain their behavior.
+- Both online players need this version. Changed-file patches are provided from `.20` through `.27`; existing saves, settings, replays, custom music and leaderboard times are preserved unless a save is explicitly deleted.
+
 ## 0.3.95-community-replays.27 - September 22, 2026
 
 - Fixed online opponents' headlights staying on at night, or off during the day, regardless of the driver's toggle. Both drivers' lights and pop-up lamp animations now follow their independent selections.

@@ -130,6 +130,9 @@ void prepareModeFlowFixture(App& app,unsigned scene){
         app.previous=app.vehicle;app.progress=sample.distance;app.cameraReady=false;
         app.courseLightPathIndex=int(index);app.race.phase=RacePhase::Running;app.race.elapsed6000=70*6000;app.race.remaining6000=120*6000;
         std::array<WetWeather::Car,2> cars{{{app.vehicle.position,app.vehicle.yaw,30,true},{}}};
+        const auto across=normalized(sample.right-sample.left),normal=normalized(cross(sample.tangent,across));
+        cars[0].contactsValid=true;cars[0].rearNormals={normal,normal};
+        cars[0].rearContacts={sample.center-sample.tangent*1.25f-across*.72f,sample.center-sample.tangent*1.25f+across*.72f};
         app.wetWeather.reset();app.wetWeather.advance(.2,true,false,cars);
         app.input={};return;
     }

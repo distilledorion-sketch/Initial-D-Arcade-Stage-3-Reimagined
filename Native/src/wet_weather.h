@@ -12,8 +12,12 @@ namespace idas3 {
 class WetWeather {
 public:
     static constexpr unsigned rainCount=256,sprayCapacity=96;
-    struct Car { Vec3 position{};float yaw=0,speed=0;bool visible=false;std::array<Vec3,2> rearContacts{};bool contactsValid=false; };
-    struct Spray { Vec3 position{},velocity{},direction{};float age=0,life=0,size=0,extent=0; };
+    struct Car {
+        Vec3 position{};float yaw=0,speed=0;bool visible=false;
+        std::array<Vec3,2> rearContacts{};bool contactsValid=false;
+        std::array<Vec3,2> rearNormals{{{0,1,0},{0,1,0}}};
+    };
+    struct Spray { Vec3 position{},velocity{},direction{};float age=0,life=0,size=0,extent=0;Vec3 normal{0,1,0}; };
     struct Quad { Vec3 center{},across{},up{};float alpha=0;unsigned texture=0;bool waterTrail=false; };
     std::array<Quad,rainCount+sprayCapacity> quads{};
     unsigned count=0;
@@ -21,23 +25,49 @@ public:
     void advance(double dt,bool enabled,bool paused,const std::array<Car,2>& cars,bool snow=false) {
         if(!enabled){if(ticks||count)reset();return;}
         if(snowMode!=snow){reset();snowMode=snow;}
-        if(paused)return;
+        if(paused||!std::isfinite(dt))return;
         remainder+=std::clamp(dt,0.,.25);
         while(remainder+1e-9>=1./60.) {
             remainder-=1./60.;++ticks;
             for(auto& p:spray)if(p.life>0) {
                 p.age+=1.f/60.f;
                 if(p.age>=p.life){p.life=0;continue;}
-                p.position+=p.velocity*(1.f/60.f);p.velocity*=.975f;
-                if(snowMode)p.velocity.y-=.45f/60.f;
+                // Rainmarks are deposited on the road. Only snow powder has
+                // airborne motion after leaving the tire.
+                if(snowMode){p.position+=p.velocity*(1.f/60.f);p.velocity*=.975f;p.velocity.y-=.45f/60.f;}
             }
             for(unsigned c=0;c<2;++c) {
                 const auto& car=cars[c];
                 // Clear trails across respawns/remote teleports. Do not connect
                 // the old location to a new starting grid or another course.
-                if(!car.visible||(seen[c]&&length(car.position-last[c])>25.f))
+                if(!car.visible||(seen[c]&&length(car.position-last[c])>25.f)){
                     for(unsigned i=c*48;i<(c+1)*48;++i)spray[i].life=0;
+                    contactSeen[c]=false;
+                }
                 last[c]=car.position;seen[c]=car.visible;
+                if(!snowMode){
+                    // No horizontal fallback under airborne/missing contacts.
+                    // Both tires must have a trustworthy road plane, retaining
+                    // complete source left/right pairs at every detail level.
+                    bool valid=car.contactsValid&&finite(car.position)&&std::isfinite(car.yaw)&&std::isfinite(car.speed);
+                    for(unsigned side=0;side<2;++side)
+                        valid=valid&&finite(car.rearContacts[side])&&finite(car.rearNormals[side])&&
+                            length(car.rearNormals[side])>.5f&&normalized(car.rearNormals[side]).y>.2f;
+                    if(!valid){contactSeen[c]=false;continue;}
+                    for(unsigned side=0;side<2;++side){
+                        const auto normal=normalized(car.rearNormals[side]);
+                        const auto motion=car.rearContacts[side]-lastContacts[c][side];
+                        const auto tangent=motion-normal*dot(motion,normal);
+                        if(contactSeen[c]&&length(tangent)>.001f&&length(motion)<25.f)
+                            directions[c][side]=normalized(tangent);
+                        else if(!contactSeen[c])directions[c][side]=forward(car.yaw);
+                        auto along=directions[c][side]-normal*dot(directions[c][side],normal);
+                        if(length(along)<.001f)along=forward(car.yaw)-normal*dot(forward(car.yaw),normal);
+                        directions[c][side]=normalized(along);
+                        lastContacts[c][side]=car.rearContacts[side];
+                    }
+                    contactSeen[c]=true;
+                }
                 if(!car.visible||car.speed<(snowMode?.8f:2.f)||ticks%3!=0)continue;
                 const float strength=std::clamp((car.speed-2.f)/24.f,0.f,1.f);
                 for(int side:{-1,1}) {
@@ -50,6 +80,11 @@ public:
                     if(snowMode){
                         p.velocity=f*(car.speed*.05f)+r*(float(side)*(.4f+random()*.5f))+Vec3{0,.65f+random()*.35f,0};
                         p.life=.45f+strength*.25f;p.size=.16f+strength*.18f;
+                    }else{
+                        const unsigned wheel=side<0?0:1;
+                        p.normal=normalized(car.rearNormals[wheel]);
+                        p.position=car.rearContacts[wheel]+p.normal*.012f;
+                        p.velocity={};p.direction=directions[c][wheel];
                     }
                 }
             }
@@ -101,19 +136,18 @@ public:
         std::sort(order.begin(),order.begin()+active,[&](unsigned a,unsigned b){return dot(spray[a].position-eye,view)>dot(spray[b].position-eye,view);});
         for(unsigned j=0;j<active;++j) {
             const auto& p=spray[order[j]];const float t=p.age/p.life;
-            const float size=p.size*(1.f+t*.65f);
             if(length(p.position-eye)<.6f)continue;
             if(snowMode){
                 const float powderSize=p.size*(1.f+t*1.8f);
                 quads[count++]={p.position,horizontal*powderSize,vertical*powderSize,.65f*(1.f-t),7};
                 continue;
             }
-            // Long, low water trails follow the rear wheel direction instead of
-            // camera-facing powder puffs. The source rainmark single-track
-            // texture is applied independently to each actual tire contact.
-            quads[count++]={p.position-p.direction*p.extent+Vec3{0,.20f+t*.18f,0},
-                cross(Vec3{0,1,0},p.direction)*size,
-                p.direction*p.extent+Vec3{0,-.20f,0},.7f*(1.f-t),1,true};
+            // The whole rainmark lies on the sampled tire contact plane. Its
+            // travel tangent includes a slide across the road, independent of
+            // body yaw, camera, later steering and particle age.
+            quads[count++]={p.position-p.direction*p.extent,
+                cross(p.normal,p.direction)*p.size,
+                p.direction*p.extent,.7f*(1.f-t),1,true};
         }
     }
     unsigned liveSpray()const {unsigned n=0;for(const auto& p:spray)if(p.life>0)++n;return n;}
@@ -122,8 +156,11 @@ private:
     std::array<Spray,sprayCapacity> spray{};
     std::array<unsigned,2> cursor{};
     std::array<Vec3,2> last{};std::array<bool,2> seen{};
+    std::array<std::array<Vec3,2>,2> lastContacts{},directions{};
+    std::array<bool,2> contactSeen{};
     std::uint64_t ticks=0;double remainder=0;std::uint32_t seed=0x73821u;
     bool snowMode=false;
+    static bool finite(Vec3 p){return std::isfinite(p.x)&&std::isfinite(p.y)&&std::isfinite(p.z);}
     static float wrap(float v,float span){return v-std::floor(v/span)*span;}
     static float hash(std::uint32_t x){x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;x^=x>>16;return float(x&0xffffffu)/16777216.f;}
     float random(){seed=seed*1664525u+1013904223u;return float(seed>>8)/16777216.f;}

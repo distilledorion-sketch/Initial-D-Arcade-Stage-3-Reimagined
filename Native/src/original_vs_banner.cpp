@@ -447,6 +447,26 @@ void OriginalVsBanner::paintChunk(std::span<std::uint32_t> target, int width, in
                                model_.chunks.at(std::size_t(chunk)), placement);
 }
 
+void OriginalVsBanner::paintDisplayName(std::span<std::uint32_t> target,int width,int height,
+        const std::string& utf8,float x,float y,float size,float maxWidth) const {
+    if(!loaded_||width<=0||height<=0||size<=0||maxWidth<=0)return;
+    const auto name=encodeUtf8(utf8);
+    if(name.empty())return;
+    size=std::min(size,maxWidth/float(name.size()));
+    for(const auto index:name){
+        const auto glyph=nameIndices_[index];
+        if(glyph!=0xffff){
+            // The recovered atlas has inverted V, as in paintNames below.
+            OriginalSprite sprite;sprite.vertices={OriginalSpriteVertex{x,y,0,0,1,0xffffffff,0},
+                {x,y+size,0,0,0,0xffffffff,0},{x+size,y,0,1,1,0xffffffff,0},
+                {x+size,y+size,0,1,0,0xffffffff,0}};
+            SpritePlacement placement;placement.scale=1;placement.opacity=1;
+            compositeOriginalSprite(target,width,height,nameFont_.at(glyph),sprite,placement);
+        }
+        x+=size;
+    }
+}
+
 void OriginalVsBanner::paintNames(std::span<std::uint32_t> target,int width,int height) const {
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     for(unsigned line=0;line<3;++line){

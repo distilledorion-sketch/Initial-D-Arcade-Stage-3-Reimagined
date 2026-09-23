@@ -137,6 +137,20 @@ namespace Idas3.Multiplayer
             }finally{if(File.Exists(temporary))File.Delete(temporary);}
         }
 
+        internal static void SeedSaveMenuDiagnostic(string saveRoot,int car,Idas3BattleRecord record,uint xp=0)
+        {
+            var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-mode-flow-smoke");
+            string absolute=Path.GetFullPath(saveRoot),parent=Path.GetDirectoryName(absolute);
+            if(at<0||at+1>=args.Length||Array.IndexOf(args,"-idas3-save-level-check")<0||
+                !string.Equals(absolute,Path.Combine(Path.GetFullPath(args[at+1]),"userdata"),StringComparison.OrdinalIgnoreCase)||
+                !File.Exists(Path.Combine(parent,"ISOLATED_MODE_FLOW_TEST.txt")))
+                throw new InvalidOperationException("Save menu record seeding requires the explicit isolated save-level diagnostic.");
+            Validate(record);if(xp>99)throw new ArgumentOutOfRangeException(nameof(xp));
+            var store=new Idas3MultiplayerRecords(absolute);string file=store.FilePath(car);
+            if(File.Exists(file)||File.Exists(file+".previous"))throw new IOException("Diagnostic online history already exists.");
+            store.Write(car,new State{car=car,record=record,experience=xp},false);
+        }
+
         internal static void SeedDiagnostic(string saveRoot,int car,Idas3BattleRecord record,uint experience=0)
         {
             var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-multiplayer-smoke");

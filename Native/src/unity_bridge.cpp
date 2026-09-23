@@ -18,6 +18,7 @@
 #include "../tests/shared_import_app_tests.inl"
 #include "../tests/performance_options_app_tests.inl"
 #include "../tests/mode_flow_unity_fixture.inl"
+#include "../tests/save_change_menu_fixture.inl"
 #include <mutex>
 #include <condition_variable>
 #include <map>
@@ -370,7 +371,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
             log<<"PASS "<<cases<<" Bunta races: Normal, Hard and Expert produce identical speed and movement at two challenge levels on two courses. Original AI pace retained.\n";
             return 1;
         }
-        prepareModeFlowFixture(*r.app,unsigned(scene));
+        if(scene>=350&&scene<=369)prepareSaveChangeMenuFixture(*r.app,unsigned(scene));
+        else prepareModeFlowFixture(*r.app,unsigned(scene));
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
         if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);
         if(scene>=250&&scene<=253){std::ofstream out(r.app->saveRoot.parent_path()/("effect-ranges-"+std::to_string(scene)+".txt"));
@@ -427,6 +429,22 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 23:return a.fullTuneActive;case 24:return int(a.resultVisit.tuning.kind);
     case 25:return int(a.battleProfile.u(72));case 26:return int(a.resultVisit.child.phase);
     case 27:return a.frontend.inputReady();case 28:return a.activeSaveSlot;case 29:return a.fullTuneSelecting;
+    case 42:return a.frontend.saveActionsOpen;
+    case 43:return a.frontend.car;
+    case 44:return a.frontend.make;
+    case 45:return a.activeSaveSlot>=0?int(a.saveSlots.at(unsigned(a.activeSaveSlot)).car):-1;
+    case 46:return a.frontend.changingSavedCar;
+    case 47:return int(a.frontend.battleProfile.byte(164));
+    case 48:return saveChangeNameIntact(a.frontend.battleProfile);
+    case 49:return a.frontend.changingSavedCar&&a.frontend.stage==FrontendStage::TuningCourse;
+    case 50:return a.frontend.saveActionSelected;
+    case 51:return a.frontend.automatic;
+    case 52:return a.frontend.saveDeleteOpen;
+    case 53:return a.frontend.saveDeleteSelected;
+    case 54:return a.frontend.saveDeleteFailed;
+    case 55:return int(a.frontend.saveFiles.at(std::size_t(a.frontend.saveSelected)).level);
+    case 56:return int(a.saveSlots.at(unsigned(a.frontend.saveSelected)).car);
+    case 57:{int count=0;for(unsigned i=0;i<a.wetWeather.count;++i)if(a.wetWeather.quads[i].waterTrail)++count;return count;}
     case 41:return unsigned(a.frontend.reverse)|(unsigned(a.frontend.wet)<<1)|(unsigned(a.frontend.night)<<2);
     case 40:return int(a.smokeTextureBase);
     case 38:return int(a.drivingEffects.markCount());
@@ -674,6 +692,38 @@ int IDAS3_UNITY_CALL Idas3SceneStep(const Idas3UnityInput* input){
         frame(r,*input);publish(r,0);return 1;
     }catch(const std::exception& e){try{destroyApp(r,false);publish(r,0);}catch(...){}unityError(e.what(),true);return 0;}
     catch(...){try{destroyApp(r,false);publish(r,0);}catch(...){}unityError("Unknown Unity scene step error",true);return 0;}
+}
+int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int height,int click){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!r.app->menu||r.app->frontend.stage!=FrontendStage::SaveSelect)return 0;
+    try{
+    auto& app=*r.app;
+    if(click&&width>0&&height>0&&std::isfinite(x)&&std::isfinite(y)&&!app.paused){
+        const float fit=std::min(width/640.f,height/480.f);
+        const int drawWidth=std::max(1,int(640.f*fit)),drawHeight=std::max(1,int(480.f*fit));
+        const int left=(width-drawWidth)/2,top=(height-drawHeight)/2;
+        auto& f=app.frontend;
+        const auto selection=[&]{return std::array<int,8>{f.saveSelected,int(f.saveActionsOpen),f.saveActionSelected,
+            int(f.saveFileChosen),int(f.saveCarChangeRequested),int(f.saveDeleteOpen),f.saveDeleteSelected,f.saveDeleteRequested};};
+        const auto before=selection();
+        if(click==2)f.hoverSaveMenu((x-left)*640.f/drawWidth,(y-top)*480.f/drawHeight);
+        else if(click==1)f.clickSaveMenu((x-left)*640.f/drawWidth,(y-top)*480.f/drawHeight);
+        if(click==1&&selection()!=before)app.audio.playMenuCue(OriginalMenuCue::Confirm);
+    }
+    }catch(const std::exception& e){unityError(e.what());}
+    catch(...){unityError("Unknown save menu pointer error");}
+    return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!levels||count!=35)return 0;
+    for(int car=0;car<count;++car)if(levels[car]>99)return 0;
+    auto& app=*r.app;std::copy_n(levels,count,app.saveCarLevels.begin());
+    for(unsigned slot=0;slot<LocalSaveSlots::count;++slot){
+        auto& summary=app.frontend.saveFiles[slot];
+        summary.level=summary.used?app.saveCarLevels.at(app.saveSlots.at(slot).car):0;
+    }
+    return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneShutdown(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
@@ -1212,6 +1262,8 @@ int IDAS3_UNITY_CALL Idas3MultiplayerStartSaved(const Idas3MultiplayerConfig* co
         r.app->startMultiplayer(request,&player,&opponent);
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
         if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);
+        const auto selected=decodeOnlineCarSelection(selection);
+        if(selected.slot>=0)r.app->rememberSaveCar(selected.slot,request.localCar);
         publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown saved car start error");return 0;}

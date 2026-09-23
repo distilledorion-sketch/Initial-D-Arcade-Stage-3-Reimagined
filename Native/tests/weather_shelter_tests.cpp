@@ -16,7 +16,13 @@ int main(int argc,char** argv)try{
   std::cout<<night<<','<<reverse<<": ceiling triangles="<<s.size()<<" covered route points="<<covered<<'/'<<course.points.size()<<'\n';
 
   if(covered!=145||!s.covered(course.points[2488]+Vec3{0,1,0})||s.covered(course.points[2380]+Vec3{0,1,0})||s.covered(course.points[2600]+Vec3{0,1,0}))throw std::runtime_error("Tunnel interior/portal coverage changed");
-  WetWeather weather;const auto position=course.points[2488];std::array<WetWeather::Car,2> cars{{{position,0,30,true},{}}};weather.advance(.2,true,false,cars);
+  WetWeather weather;const auto position=course.points[2488];
+  const auto sample=course.sample(course.cumulative[2488]);
+  const auto across=normalized(sample.right-sample.left),normal=normalized(cross(sample.tangent,across));
+  std::array<WetWeather::Car,2> cars{{{position,std::atan2(sample.tangent.x,sample.tangent.z),30,true},{}}};
+  cars[0].contactsValid=true;cars[0].rearNormals={normal,normal};
+  cars[0].rearContacts={position-sample.tangent*1.25f-across*.72f,position-sample.tangent*1.25f+across*.72f};
+  weather.advance(.2,true,false,cars);
   for(unsigned stride:{1u,4u}){
     weather.build(position+Vec3{0,1,0},position+Vec3{0,1,10},true,stride,&s);unsigned spray=0;
     for(unsigned i=0;i<weather.count;++i){const auto& q=weather.quads[i];if(q.waterTrail)++spray;else if(s.covered(q.center-Vec3{0,.9f,0}))throw std::runtime_error("Rain emitted under tunnel roof");}

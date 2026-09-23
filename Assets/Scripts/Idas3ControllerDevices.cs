@@ -32,7 +32,7 @@ public sealed class Idas3ControllerDevices : IDisposable
         public string profile, model;
         public InputDevice unity;
         public int slot = -1;
-        public bool generic, seen, firstValues = true;
+        public bool generic, seen, firstValues = true, descriptorControls;
         public uint vendorId,productId;
         public readonly List<Idas3ControllerControl> controls = new List<Idas3ControllerControl>();
         public readonly List<AxisControl> axes = new List<AxisControl>();
@@ -41,6 +41,7 @@ public sealed class Idas3ControllerDevices : IDisposable
     }
     private readonly Func<double> now;
     private readonly Idas3GamepadInput.ReadXInput readXInput;
+    private readonly Func<InputDevice,bool> discoveryFilter;
     private readonly List<Device> devices = new List<Device>();
     private readonly Dictionary<int, Device> unityDevices = new Dictionary<int, Device>();
     private readonly Device[] xbox = new Device[4];
@@ -73,8 +74,12 @@ public sealed class Idas3ControllerDevices : IDisposable
     public Idas3ControllerDevices() : this(() => Time.realtimeSinceStartupAsDouble, Idas3Native.ReadGamepad) { }
     // The production discovery/selection logic also accepts an isolated XInput
     // reader for bounded tests; no platform calls need to be imitated in tests.
-    internal Idas3ControllerDevices(Func<double> time, Idas3GamepadInput.ReadXInput reader)
-    { now = time ?? throw new ArgumentNullException(nameof(time)); readXInput = reader ?? throw new ArgumentNullException(nameof(reader)); }
+    internal Idas3ControllerDevices(Func<double> time, Idas3GamepadInput.ReadXInput reader, Func<InputDevice,bool> filter = null)
+    {
+        now = time ?? throw new ArgumentNullException(nameof(time));
+        readXInput = reader ?? throw new ArgumentNullException(nameof(reader));
+        discoveryFilter = filter;
+    }
 
     public void Initialize(string saveRoot)
     {
@@ -217,7 +222,7 @@ public sealed class Idas3ControllerDevices : IDisposable
         var newlyConnected = new List<Device>();
         foreach (var input in InputSystem.devices)
         {
-            if (!input.added || !input.enabled || !GamingDevice(input)) continue;
+            if (!input.added || !input.enabled || (discoveryFilter != null && !discoveryFilter(input)) || !GamingDevice(input)) continue;
             // Windows Input System mirrors the same XInput ports. The native
             // API is authoritative for these four pads and preserves every bit.
             if (rawConnected && (input is XInputControllerWindows || string.Equals(input.description.interfaceName, "XInput", StringComparison.OrdinalIgnoreCase))) continue;
@@ -284,10 +289,13 @@ public sealed class Idas3ControllerDevices : IDisposable
         string label = string.IsNullOrWhiteSpace(description.product) ? input.displayName : description.product;
         if (string.IsNullOrWhiteSpace(label)) label = input.layout;
         device.choice.label = label + (device.generic ? " (joystick/HID)" : " (gamepad)") + " — device " + input.deviceId;
+        var elements = AutoHidInputElements(input);
+        device.descriptorControls = elements != null;
         foreach (var control in input.allControls)
         {
             if (!(control is AxisControl axis) || control.noisy || control.synthetic) continue;
             string path = control.path.Substring(input.path.Length + 1);
+            if (elements != null && !DescribedHidControl(input, axis, path, elements)) continue;
             bool trigger = input is Gamepad && (path == "leftTrigger" || path == "rightTrigger");
             bool button = axis is ButtonControl && !trigger;
             float minimum = button || trigger ? 0 : -1, maximum = 1;
@@ -298,6 +306,73 @@ public sealed class Idas3ControllerDevices : IDisposable
             device.axes.Add(axis);
         }
         device.activityBaseline = new float[device.controls.Count]; return device;
+    }
+    private static HID.HIDElementDescriptor[] AutoHidInputElements(InputDevice input)
+    {
+        // Unity's generated HID joystick layout inherits a default trigger
+        // and stick even when an axis-only pedal descriptor has no buttons.
+        // Explicit layouts may intentionally remap report fields; leave those
+        // and specialized gamepad layouts under their own control definitions.
+        if (input is Gamepad || !input.layout.StartsWith("HID::", StringComparison.Ordinal) ||
+            !string.Equals(input.description.interfaceName, "HID", StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrEmpty(input.description.capabilities)) return null;
+        try { return HID.HIDDeviceDescriptor.FromJson(input.description.capabilities).elements; }
+        catch (Exception) { return null; }
+    }
+    private static bool HidAxisUsage(int usage)
+    {
+        switch ((HID.GenericDesktop)usage)
+        {
+            case HID.GenericDesktop.X: case HID.GenericDesktop.Y: case HID.GenericDesktop.Z:
+            case HID.GenericDesktop.Rx: case HID.GenericDesktop.Ry: case HID.GenericDesktop.Rz:
+            case HID.GenericDesktop.Vx: case HID.GenericDesktop.Vy: case HID.GenericDesktop.Vz:
+            case HID.GenericDesktop.Vbrx: case HID.GenericDesktop.Vbry: case HID.GenericDesktop.Vbrz:
+            case HID.GenericDesktop.Slider: case HID.GenericDesktop.Dial: case HID.GenericDesktop.Wheel: return true;
+            default: return false;
+        }
+    }
+    private static bool DescribedHidControl(InputDevice input, AxisControl control, string path, HID.HIDElementDescriptor[] elements)
+    {
+        // Input control offsets include the device's global state-buffer
+        // offset; descriptor offsets are relative to its input report. Report
+        // IDs are already included in the descriptor's reportOffsetInBits.
+        long offset = ((long)control.stateBlock.byteOffset - input.stateBlock.byteOffset) * 8 + control.stateBlock.bitOffset;
+        long size = control.stateBlock.sizeInBits;
+        if (offset < 0 || size <= 0) return false;
+        bool button = control is ButtonControl;
+        foreach (var element in elements)
+        {
+            if (element.reportType != HID.HIDReportType.Input || element.isConstant ||
+                element.reportOffsetInBits < 0 || element.reportSizeInBits <= 0) continue;
+            long start = element.reportOffsetInBits, end = start + element.reportSizeInBits;
+            if (element.usagePage == HID.UsagePage.GenericDesktop && element.usage == (int)HID.GenericDesktop.HatSwitch)
+            {
+                // A real hat is one descriptor field shared by four decoded
+                // directional buttons. Its synthetic X/Y are skipped above.
+                if (button && control.parent is DpadControl && offset >= start && offset + size <= end) return true;
+                continue;
+            }
+            if (offset != start || size != element.reportSizeInBits) continue;
+            if (element.usagePage == HID.UsagePage.Button)
+            {
+                if (button && (path != "trigger" || element.usage == 1)) return true;
+                continue;
+            }
+            if (element.usagePage != HID.UsagePage.GenericDesktop) continue;
+            if (!button && HidAxisUsage(element.usage))
+            {
+                if (path == "stick/x" && element.usage != (int)HID.GenericDesktop.X) continue;
+                if (path == "stick/y" && element.usage != (int)HID.GenericDesktop.Y) continue;
+                return true;
+            }
+            if (button && path != "trigger") switch ((HID.GenericDesktop)element.usage)
+            {
+                case HID.GenericDesktop.Select: case HID.GenericDesktop.Start:
+                case HID.GenericDesktop.DpadUp: case HID.GenericDesktop.DpadDown:
+                case HID.GenericDesktop.DpadLeft: case HID.GenericDesktop.DpadRight: return true;
+            }
+        }
+        return false;
     }
     private static void AddStandardControls(Device device)
     {
@@ -326,7 +401,9 @@ public sealed class Idas3ControllerDevices : IDisposable
         }
         if (device.unity is Gamepad gamepad) { device.pad = Idas3GamepadInput.ReadUnityPad(gamepad); return; }
         var state = new Idas3ControlBindings.PadState { connected = true };
-        if (device.unity is Joystick joystick)
+        // Descriptor-filtered HIDs must not reintroduce an inherited trigger
+        // or stick via Joystick's convenience properties below.
+        if (!device.descriptorControls && device.unity is Joystick joystick)
         {
             if (joystick.stick != null) { var stick = joystick.stick.ReadUnprocessedValue(); state.thumbLX = Stick(stick.x); state.thumbLY = Stick(stick.y); }
             if (joystick.trigger != null && joystick.trigger.isPressed) state.buttons |= 0x1000;
@@ -334,19 +411,29 @@ public sealed class Idas3ControllerDevices : IDisposable
             { var hat = joystick.hatswitch.ReadUnprocessedValue(); if (hat.y > .5f) state.buttons |= 1; if (hat.y < -.5f) state.buttons |= 2; if (hat.x < -.5f) state.buttons |= 4; if (hat.x > .5f) state.buttons |= 8; }
         }
         int ordinal = 0;
-        foreach (var control in device.controls)
+        for (int i = 0; i < device.controls.Count; ++i)
         {
+            var control = device.controls[i];
             if (control.path == "stick/x") state.thumbLX = Stick(control.value);
             if (control.path == "stick/y") state.thumbLY = Stick(control.value);
             if (!control.button) continue;
-            if (control.path == "dpad/up" && control.value > .5f) state.buttons |= 1;
-            else if (control.path == "dpad/down" && control.value > .5f) state.buttons |= 2;
-            else if (control.path == "dpad/left" && control.value > .5f) state.buttons |= 4;
-            else if (control.path == "dpad/right" && control.value > .5f) state.buttons |= 8;
-            else if (control.path == "start" && control.value > .5f) state.buttons |= 0x10;
-            else if (control.path == "select" && control.value > .5f) state.buttons |= 0x20;
-            else if (control.path == "start" || control.path == "select") continue;
-            else if (!control.path.StartsWith("dpad/", StringComparison.Ordinal))
+            string path = control.path;
+            if (device.descriptorControls)
+            {
+                if (device.axes[i].parent is DpadControl) path = "dpad/" + device.axes[i].name;
+                else if (path == "dpadUp") path = "dpad/up";
+                else if (path == "dpadDown") path = "dpad/down";
+                else if (path == "dpadLeft") path = "dpad/left";
+                else if (path == "dpadRight") path = "dpad/right";
+            }
+            if (path == "dpad/up" && control.value > .5f) state.buttons |= 1;
+            else if (path == "dpad/down" && control.value > .5f) state.buttons |= 2;
+            else if (path == "dpad/left" && control.value > .5f) state.buttons |= 4;
+            else if (path == "dpad/right" && control.value > .5f) state.buttons |= 8;
+            else if (path == "start" && control.value > .5f) state.buttons |= 0x10;
+            else if (path == "select" && control.value > .5f) state.buttons |= 0x20;
+            else if (path == "start" || path == "select") continue;
+            else if (!path.StartsWith("dpad/", StringComparison.Ordinal))
             { if (control.value > .5f && ordinal < 2) state.buttons |= ordinal == 0 ? (ushort)0x1000 : (ushort)0x2000; ++ordinal; }
         }
         device.pad = state;

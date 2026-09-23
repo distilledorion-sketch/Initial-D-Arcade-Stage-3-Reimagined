@@ -3,10 +3,55 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 namespace idas3 {
 namespace {
 constexpr const char* header = "idas3-save-slot-v1";
+
+bool plainSaveEntry(const std::filesystem::path& entry) {
+    std::error_code ec;
+    const auto status = std::filesystem::symlink_status(entry, ec);
+    if (ec || (!std::filesystem::is_directory(status) && !std::filesystem::is_regular_file(status)))
+        return false;
+#if defined(_WIN32)
+    // Junctions and other reparse points are not all reported as symlinks.
+    const auto attributes = GetFileAttributesW(entry.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES || (attributes & FILE_ATTRIBUTE_REPARSE_POINT))
+        return false;
+#endif
+    return true;
+}
+
+bool plainSaveTree(const std::filesystem::path& directory) {
+    if (!plainSaveEntry(directory)) return false;
+    std::error_code ec;
+    if (!std::filesystem::is_directory(directory, ec) || ec) return false;
+    std::filesystem::recursive_directory_iterator current(directory, ec), end;
+    if (ec) return false;
+    for (; current != end; current.increment(ec)) {
+        if (ec || !plainSaveEntry(current->path())) return false;
+    }
+    return !ec;
+}
+
+bool preventLegacyImport(const std::filesystem::path& root) {
+    const auto marker = root / ".no-legacy-import";
+    std::error_code ec;
+    const auto status = std::filesystem::symlink_status(marker, ec);
+    if (status.type() != std::filesystem::file_type::not_found)
+        return !ec && std::filesystem::is_regular_file(status) && plainSaveEntry(marker);
+    std::ofstream out(marker, std::ios::trunc);
+    if (!out) return false;
+    out << "A save was explicitly deleted. Do not import legacy drivers again.\n";
+    out.close();
+    return !out.fail();
+}
 }
 
 LocalSaveSlots::LocalSaveSlots(std::filesystem::path directory) : directory_(std::move(directory)) {
@@ -84,6 +129,56 @@ bool LocalSaveSlots::write(unsigned slot, const Slot& value) {
     }
     slots_[slot] = value;
     slots_[slot].used = true;
+    return true;
+}
+
+bool LocalSaveSlots::erase(unsigned slot) {
+    if (slot >= count || directory_.empty()) return false;
+    std::error_code ec;
+    // Anchor all deletion paths to one resolved save root, then address only
+    // the fixed slot child. Never traverse links inside that child.
+    const auto root = std::filesystem::canonical(directory_, ec);
+    if (ec || !std::filesystem::is_directory(root, ec) || ec) return false;
+    const auto selected = root / ("slot_" + std::to_string(slot + 1));
+    if (selected.parent_path() != root) return false;
+    const auto status = std::filesystem::symlink_status(selected, ec);
+    if (status.type() == std::filesystem::file_type::not_found) {
+        if (!preventLegacyImport(root)) return false;
+        slots_[slot] = {};
+        return true;
+    }
+    if (ec || !plainSaveTree(selected)) return false;
+
+    std::filesystem::path staging;
+    const auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+    for (unsigned attempt = 0; attempt < 16; ++attempt) {
+        const auto candidate = root / (".deleted-slot-" + std::to_string(slot + 1) + "-" +
+            std::to_string(stamp) + "-" + std::to_string(attempt));
+        ec.clear();
+        if (std::filesystem::create_directory(candidate, ec)) {
+            staging = candidate;
+            break;
+        }
+        if (ec) return false;
+    }
+    if (staging.empty()) return false;
+    if (!preventLegacyImport(root)) {
+        std::filesystem::remove(staging, ec);
+        return false;
+    }
+
+    // Detaching the whole directory is the commit. In particular, a failed
+    // rename leaves every car, record, setup marker and manifest untouched.
+    std::filesystem::rename(selected, staging / "save", ec);
+    if (ec) {
+        std::filesystem::remove(staging, ec);
+        return false;
+    }
+    slots_[slot] = {};
+    // A locked file can delay physical cleanup. Keep any leftovers under the
+    // non-slot name rather than restoring a partly deleted active driver.
+    if (staging.parent_path() == root && plainSaveTree(staging))
+        std::filesystem::remove_all(staging, ec);
     return true;
 }
 

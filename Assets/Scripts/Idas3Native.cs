@@ -4,6 +4,10 @@ using System.Text;
 
 internal static class Idas3Native
 {
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int Idas3SceneSaveMenuPointer(float x, float y, int width, int height, int click);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int Idas3SceneSetSaveCarLevels([In] uint[] levels, int count);
     private const string Library = "Idas3Unity";
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneShowImportedCourseMenu([MarshalAs(UnmanagedType.LPUTF8Str)] string root);
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneRegisterImportedCourse([MarshalAs(UnmanagedType.LPUTF8Str)] string root);

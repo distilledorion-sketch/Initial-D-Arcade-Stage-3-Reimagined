@@ -84,7 +84,7 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
         physicalPad=new Idas3ControlBindings.PadState{connected=true};bindings.BeginEdit();bindings.ResetDraft();
         Check(bindings.ApplyDraft(),"Could not restore diagnostic controls after menu isolation");yield return Frames(4);pulse=116;
         yield return Until(()=>((host.Status.flags&1)==0)&&host.Status.simulationTicks>240,40,"Race did not start");
-        VerifyXInputDiscovery();VerifySteeringAxisPairs();
+        VerifyXInputDiscovery();VerifySteeringAxisPairs();VerifyCaptureRecovery();
         yield return Frames(5);
         physicalPad=new Idas3ControlBindings.PadState{connected=true,buttons=0x10};yield return Frames(12);
         Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Holding controller Start must leave offline pause open");
@@ -221,6 +221,96 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
                 // physical stick supplied by a generic device adapter.
                 packet=Read(mapper,sample,new[]{axes[i]});Check(packet.thumbLX==customX[i]&&packet.thumbLY==0,"Missing custom perpendicular axis fell back to left-stick Y");
             }
+        }
+    }
+    private void VerifyCaptureRecovery()
+    {
+        var connected=new Idas3ControlBindings.PadState{connected=true};
+        Idas3ControlBindings Generic(string name,out List<Idas3ControllerControl> controls,bool held=true)
+        {
+            controls=new List<Idas3ControllerControl>{
+                new Idas3ControllerControl{path="wheel/selector",button=true,minimum=0,maximum=1,value=held?1:0},
+                new Idas3ControllerControl{path="wheel/gas",minimum=-1,maximum=1,value=held?-.6f:1},
+                new Idas3ControllerControl{path="wheel/clutch",minimum=-1,maximum=1,value=1}};
+            var mapper=new Idas3ControlBindings();mapper.Initialize(Path.Combine(root,"capture-recovery",name));
+            mapper.SelectControllerProfile("capture-recovery-wheel","Private capture recovery wheel",true);
+            Check(mapper.TrySetDraftControl(Idas3ControlBindings.ActionId.Accelerate,controls[1],-1,1)&&mapper.ApplyDraft(),
+                "Could not seed the generic pedal for capture recovery "+name);
+            mapper.Poll(_=>false,connected,0,controls);return mapper;
+        }
+        void HeldMenuEdge(Idas3ControlBindings mapper,string reason)
+        {
+            var menuPacket=new Idas3Native.FrameInput();mapper.ApplyMenu(ref menuPacket,true,true);
+            Check((menuPacket.key0&(1u<<13))!=0,reason+": suppressed capture lost the already-held pedal's menu edge");
+            var drivingPacket=new Idas3Native.FrameInput();mapper.ApplyDriving(ref drivingPacket);
+            Check(drivingPacket.rightTrigger==0&&drivingPacket.leftTrigger==0&&drivingPacket.thumbLX==0,
+                reason+": capture suppression leaked driving input");
+        }
+
+        var escape=Generic("escape",out var escapeControls);
+        string escapeDraft=JsonUtility.ToJson(escape.Draft),escapeFile=File.ReadAllText(escape.FilePath);
+        escape.BeginCapture(Idas3ControlBindings.ActionId.Brake,Idas3ControlBindings.Slot.Controller,10);
+        escape.Poll(_=>false,connected,10.1,escapeControls);
+        Check(escape.IsCapturing&&escape.SuppressInput,"A latched selector did not leave capture waiting for release");
+        HeldMenuEdge(escape,"Pre-arm capture");
+        escape.Poll(key=>key==KeyCode.Escape,connected,10.2,escapeControls);
+        Check(!escape.IsCapturing&&escape.SuppressInput,"Escape did not cancel before capture could arm, or lost its release guard");
+        escape.Poll(key=>key==KeyCode.Escape,connected,10.3,escapeControls);
+        Check(escape.SuppressInput&&!escape.PauseHeld,"Held cancel Escape escaped the capture release guard");
+        HeldMenuEdge(escape,"Cancelled capture");
+        escape.Poll(_=>false,connected,10.4,escapeControls);
+        Check(!escape.SuppressInput,"A stuck selector or nonneutral pedal blocked recovery after Escape was released");
+        Check(JsonUtility.ToJson(escape.Draft)==escapeDraft&&File.ReadAllText(escape.FilePath)==escapeFile,
+            "Escape cancellation changed a binding or its saved file");
+
+        var timeout=Generic("timeout",out var timeoutControls);
+        string timeoutDraft=JsonUtility.ToJson(timeout.Draft);
+        timeout.BeginCapture(Idas3ControlBindings.ActionId.Brake,Idas3ControlBindings.Slot.Controller,20);
+        timeout.Poll(_=>false,connected,20.1,timeoutControls);
+        Check(timeout.IsCapturing,"Timeout fixture did not remain in pre-arm capture");
+        timeout.Poll(_=>false,connected,35.1,timeoutControls);
+        Check(!timeout.IsCapturing&&timeout.SuppressInput&&!string.IsNullOrEmpty(timeout.CaptureError),
+            "Pre-arm timeout failed to cancel with its normal message/release guard");
+        timeout.Poll(_=>false,connected,35.2,timeoutControls);
+        Check(!timeout.SuppressInput&&JsonUtility.ToJson(timeout.Draft)==timeoutDraft,
+            "Stuck controller inputs prevented timeout recovery or changed the draft");
+
+        var cancelled=Generic("explicit-cancel",out var cancelControls);
+        string cancelDraft=JsonUtility.ToJson(cancelled.Draft);
+        cancelled.BeginCapture(Idas3ControlBindings.ActionId.Brake,Idas3ControlBindings.Slot.Controller,40);
+        cancelled.Poll(key=>key==KeyCode.Mouse0,connected,40.1,cancelControls);cancelled.CancelCapture();
+        Check(!cancelled.IsCapturing&&cancelled.SuppressInput,"Explicit CancelCapture failed to stop capture");
+        cancelled.Poll(key=>key==KeyCode.Mouse0,connected,40.2,cancelControls);
+        Check(cancelled.SuppressInput,"Explicit cancellation did not guard the held mouse button");
+        cancelled.Poll(_=>false,connected,40.3,cancelControls);
+        Check(!cancelled.SuppressInput&&JsonUtility.ToJson(cancelled.Draft)==cancelDraft,
+            "Explicit cancellation still waited for stuck controller inputs or changed the draft");
+
+        // Accepted bindings retain the stronger release guard; cancellation
+        // recovery must not turn a held captured control into immediate input.
+        var keyboard=Generic("accepted-keyboard",out var keyControls,false);
+        keyboard.BeginCapture(Idas3ControlBindings.ActionId.Headlights,Idas3ControlBindings.Slot.Primary,100);
+        keyboard.Poll(_=>false,connected,100.1,keyControls);
+        keyboard.Poll(key=>key==KeyCode.L,connected,100.2,keyControls);
+        Check(!keyboard.IsCapturing&&keyboard.SuppressInput&&keyboard.Draft.actions[9].key1==KeyCode.L,
+            "Keyboard capture did not accept its key with a release guard");
+        keyboard.CancelCapture();keyboard.Poll(key=>key==KeyCode.L,connected,100.3,keyControls);
+        Check(keyboard.SuppressInput,"CancelCapture weakened an already accepted keyboard release guard");
+        keyboard.Poll(_=>false,connected,100.4,keyControls);
+        Check(!keyboard.SuppressInput,"Accepted keyboard binding did not unblock after key release");
+
+        foreach(bool button in new[]{true,false})
+        {
+            var mapper=Generic(button?"accepted-button":"accepted-pedal",out var controls,false);
+            int index=button?0:2;mapper.BeginCapture(Idas3ControlBindings.ActionId.Brake,Idas3ControlBindings.Slot.Controller,200);
+            mapper.Poll(_=>false,connected,200.1,controls);controls[index].value=button?1:-.6f;
+            mapper.Poll(_=>false,connected,200.2,controls);
+            Check(!mapper.IsCapturing&&mapper.SuppressInput&&mapper.Draft.actions[1].controlPath==controls[index].path,
+                "Generic "+(button?"button":"pedal")+" capture did not retain its accepted control");
+            mapper.CancelCapture();mapper.Poll(_=>false,connected,200.3,controls);
+            Check(mapper.SuppressInput,"Accepted controller capture unblocked before its control returned to rest");
+            controls[index].value=button?0:1;mapper.Poll(_=>false,connected,200.4,controls);
+            Check(!mapper.SuppressInput,"Accepted controller capture did not recover after release");
         }
     }
     private void VerifyXInputDiscovery()

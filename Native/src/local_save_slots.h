@@ -6,9 +6,9 @@
 #include <string>
 
 namespace idas3 {
-// Five independent save files. A file holds one car and its own driver profile
-// store, so progress, parts and balance never cross between files: the whole
-// per-car profile directory is scoped to the slot rather than shared.
+// Five independent drivers. A file remembers its active car and owns a
+// per-car profile store, so progress, parts and balance remain separate for
+// each car and never cross between driver slots.
 class LocalSaveSlots {
 public:
     static constexpr unsigned count = 5;
@@ -33,6 +33,10 @@ public:
     std::filesystem::path profileDirectory(unsigned slot) const;
     std::filesystem::path path(unsigned slot) const;
     bool write(unsigned slot, const Slot& value);
+    // Deletes this driver's complete per-car store. A successful directory
+    // rename commits deletion; failed cleanup cannot expose a partial save.
+    // Linked entries are refused and invalid slots return false.
+    bool erase(unsigned slot);
     // Records what a finished driver setup chose, leaving play time alone.
     bool adopt(unsigned slot, const original::OriginalBattleProfile& profile);
     // Adds elapsed play time and refreshes the last-played date.

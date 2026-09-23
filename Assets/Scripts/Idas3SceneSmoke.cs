@@ -68,7 +68,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public uint nativeVertexCount, nativeRangeCount;
         public int[] sourceListCounts, sourceDepthCompareCounts;
         public int sourceTranslucentDepthWriteRanges;
-        public int snowFlakes,snowPowder;
+        public int snowFlakes,snowPowder,rainTrails;
         public bool mirrorEnabled;
         public Vector3 mirrorPosition, mirrorTarget;
         public RivalStatus rival;
@@ -342,6 +342,11 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
                         Check(record.snowPowder>0,"Moving car submitted no tire snow powder.");
                     bool reduced=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-weather-reduced")>=0;
                     Check(record.snowFlakes+record.snowPowder<=(reduced?88:352),"Snow exceeded its particle budget.");
+                }
+                if(depthCheck&&s.course!=8&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-depth-wet")>=0){
+                    record.rainTrails=Idas3SceneModeFlowValue(57);
+                    if(name=="depth-driving-00"&&s.speedMetresPerSecond>2)
+                        Check(record.rainTrails>0,"Moving wet car submitted no road-contact tire trails.");
                 }
                 if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-depth-dump")>=0&&
                     (name=="depth-driving-11"||name=="depth-camera-static")){

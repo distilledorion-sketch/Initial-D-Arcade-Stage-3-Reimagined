@@ -118,6 +118,15 @@ IDAS3_UNITY_EXPORT uint32_t IDAS3_UNITY_CALL Idas3UnityVersion(void);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneInitialize(
     const char* assetRootUtf8,const char* saveRootUtf8,int width,int height);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStep(const Idas3UnityInput* input);
+// Save menu hit testing in top-left window pixels. click=0 queries ownership;
+// click=1 routes a press and click=2 a moved pointer through the centered
+// 640x480 canvas. Hover only changes the delete confirmation selection. The host must
+// gate presses on focus/modal input and suppress mouse-to-confirm translation.
+// Returns 1 while the save menu owns pointer input, including background clicks.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int height,int click);
+// Read-only menu projection of the same per-model battle levels used for aura.
+// Exactly 35 values: 1..99 for a valid record, 0 when unavailable.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneShutdown(void);
 // Read-only replay presentation. Start requires separate replay-viewer-session storage.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weather,int night,int car,int manual);

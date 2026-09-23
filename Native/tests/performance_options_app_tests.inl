@@ -6,6 +6,8 @@ int runPerformanceOptionsAppTests(App& app){
     app.validationMode=true;
     WetWeather weather;std::array<WetWeather::Car,2> cars{};
     cars[0].visible=true;cars[0].speed=20;
+    cars[0].contactsValid=true;cars[0].rearNormals={Vec3{0,1,0},Vec3{0,1,0}};
+    cars[0].rearContacts={Vec3{-.72f,0,-1.25f},Vec3{.72f,0,-1.25f}};
     for(int i=0;i<24;++i)weather.advance(1./60.,true,false,cars);
     weather.build({0,2,-10},{0,1,0},true);unsigned fullSpray=0;
     for(unsigned i=0;i<weather.count;++i)if(weather.quads[i].waterTrail)++fullSpray;

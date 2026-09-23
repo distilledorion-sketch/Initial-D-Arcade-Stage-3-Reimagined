@@ -21,8 +21,132 @@ void saveBitmap(const std::filesystem::path& path,const std::vector<std::uint32_
     for(auto pixel:pixels)u32(pixel);
     require(bool(out),"Unable to save original menu preview");
 }
+void verifySaveActions() {
+    Frontend saves;saves.stage=FrontendStage::SaveSelect;
+    saves.saveFiles[0]={true,"CHRIS","AE86 TRUENO","B1","2026/09/23",3661,9};
+    saves.saveFiles[2]={true,"REN","FD3S RX-7","A3","2026/09/22",7200,12};
+    saves.battleProfile.setu(72,50000);
+    const auto originalProfile=saves.battleProfile.words;
+    const auto originalCar=saves.car;
+    auto noRequest=[&]{return !saves.takeSaveFileChosen()&&!saves.takeSaveCarChangeRequested()&&saves.takeSaveDeleteRequested()<0;};
+    auto unchanged=[&]{return saves.battleProfile.words==originalProfile&&saves.car==originalCar&&
+        saves.saveFiles[0].name=="CHRIS"&&saves.saveFiles[0].playedSeconds==3661&&saves.saveFiles[0].level==9&&
+        saves.saveFiles[2].name=="REN"&&saves.saveFiles[2].car=="FD3S RX-7";};
+    require(saves.saveActionsEnabled,"Saved-driver actions must be enabled by default");
+    saves.confirm();
+    require(saves.saveActionsOpen&&saves.saveActionSelected==0&&noRequest(),"Selecting an occupied save must first offer its actions with Continue selected");
+    saves.changeColor(-1);
+    require(saves.saveActionSelected==1&&saves.saveSelected==0&&noRequest(),"Down in save actions must select Change Car without changing the driver");
+    saves.change(0);require(saves.saveActionSelected==1,"Neutral action input changed the choice");
+    saves.change(1);require(saves.saveActionSelected==2,"Save actions must include Delete Save as their third choice");
+    saves.change(1);require(saves.saveActionSelected==0,"Save actions must wrap back to Continue");
+    saves.change(-1);require(saves.saveActionSelected==2,"Reverse save-action navigation must wrap to Delete Save");
+    require(saves.back()&&!saves.saveActionsOpen&&saves.stage==FrontendStage::SaveSelect&&noRequest(),"Back must close actions before leaving the save list");
+    require(unchanged(),"Browsing save actions modified saved driver data");
+    saves.confirm();saves.confirm();
+    require(saves.takeSaveFileChosen()&&!saves.takeSaveCarChangeRequested(),"Continue must emit only the selected-save request");
+    require(noRequest(),"Continue was emitted twice");
+    saves.saveActionsOpen=false;saves.confirm();saves.change(1);saves.confirm();
+    require(saves.takeSaveCarChangeRequested()&&!saves.takeSaveFileChosen(),"Change Car must emit only its own request");
+    require(noRequest(),"Change Car was emitted twice");
+    require(unchanged(),"Choosing a save action modified its profile before the host handled it");
+
+    saves.saveActionsOpen=false;saves.saveSelected=1;saves.confirm();
+    require(saves.takeSaveFileChosen()&&!saves.saveActionsOpen&&!saves.takeSaveCarChangeRequested(),"An empty slot must enter new-driver setup directly");
+    require(noRequest(),"Empty-slot selection was emitted twice");
+    saves.saveSelected=0;saves.saveActionsEnabled=false;saves.confirm();
+    require(saves.takeSaveFileChosen()&&!saves.saveActionsOpen&&!saves.takeSaveCarChangeRequested(),"Full Tune must retain its direct save selection");
+    require(noRequest(),"Direct Full Tune selection was emitted twice");
+
+    saves.saveActionsEnabled=true;
+    require(saves.clickSaveMenu(150,130)&&saves.saveActionsOpen&&saves.saveSelected==0&&noRequest(),"Clicking an occupied row must open its actions");
+    saves.clickSaveMenu(150,248);
+    require(saves.saveSelected==2&&saves.saveActionsOpen&&saves.saveActionSelected==0&&noRequest(),"Clicking another occupied row must retarget actions without continuing");
+    for(auto point:std::array<std::array<float,2>,5>{{{305,380},{453,380},{400,350},{400,430},{150,165}}})
+        require(saves.clickSaveMenu(point[0],point[1])&&noRequest(),"Blank space in the save screen must not activate an action");
+    require(saves.saveSelected==2&&saves.saveActionsOpen&&unchanged(),"Pointer browsing changed selected save data");
+    saves.clickSaveMenu(380,380);saves.clickSaveMenu(520,380);
+    require(saves.takeSaveFileChosen()&&!saves.takeSaveCarChangeRequested()&&noRequest(),"Continue click must emit one request even if another click arrives before the host consumes it");
+    saves.clickSaveMenu(150,130);saves.clickSaveMenu(520,380);saves.clickSaveMenu(380,380);
+    require(saves.takeSaveCarChangeRequested()&&!saves.takeSaveFileChosen()&&noRequest(),"Change Car click must emit one request even if another click arrives before the host consumes it");
+    saves.clickSaveMenu(150,189);
+    require(saves.saveSelected==1&&saves.takeSaveFileChosen()&&!saves.saveActionsOpen&&noRequest(),"Clicking an empty row must start new-driver selection directly");
+    saves.stage=FrontendStage::Make;
+    require(!saves.clickSaveMenu(150,130)&&noRequest(),"Save pointer targets must not run on other screens");
+
+    Frontend returning;returning.stage=FrontendStage::Mode;returning.savedDriverSelected=true;
+    returning.advance(16./60.);returning.back();
+    require(returning.stage==FrontendStage::SaveSelect&&returning.saveActionsOpen&&returning.saveActionSelected==0,"Back from a saved driver's mode menu must return to save actions");
+    require(!returning.takeSaveFileChosen()&&!returning.takeSaveCarChangeRequested(),"Returning to save actions must not activate a choice");
+    returning.stage=FrontendStage::Make;returning.changingSavedCar=true;returning.advance(8./60.);returning.back();
+    require(returning.stage==FrontendStage::SaveSelect&&returning.saveActionsOpen,"Cancelling Change Car at the make menu must return to save actions");
+    require(!returning.changingSavedCar,"Cancelling Change Car must close the preview-only session");
+
+    Frontend cancel;cancel.stage=FrontendStage::Car;cancel.changingSavedCar=true;
+    cancel.battleProfile.setu(1180,cancel.battleProfile.u(1180)|8u);cancel.advance(8./60.);
+    require(cancel.back()&&cancel.confirmationInProgress(),"Change Car must allow cancelling a card-locked car selection");
+    cancel.advance(17./60.);
+    require(cancel.stage==FrontendStage::Make,"Cancelling Change Car must complete the original return-to-make fade");
+    Frontend paint;paint.stage=FrontendStage::Car;paint.make=6;paint.car=0;paint.changingSavedCar=true;
+    paint.battleProfile.setu(64,2);paint.advance(8./60.);
+    require(paint.selectedColor()==2,"Change Car must begin with the saved factory paint");
+    paint.change(1);paint.battleProfile.setu(64,1);paint.driverProfileLoaded();paint.advance(1./60.);
+    require(paint.car==1&&paint.selectedColor()==1,"Browsing a saved alternate car must restore its own saved paint");
+    paint.change(-1);paint.battleProfile.setu(64,2);paint.driverProfileLoaded();paint.advance(1./60.);
+    require(paint.car==0&&paint.selectedColor()==2,"Returning to the first saved car must restore its paint instead of a preview color");
+}
+void verifySaveDeletion() {
+    Frontend saves;saves.stage=FrontendStage::SaveSelect;
+    saves.saveFiles[0]={true,"CHRIS","AE86 TRUENO","B1","2026/09/23",3661,9};
+    saves.saveFiles[2]={true,"REN","FD3S RX-7","A3","2026/09/22",7200,12};
+    const auto profile=saves.battleProfile.words;
+    auto noRequest=[&]{return !saves.takeSaveFileChosen()&&!saves.takeSaveCarChangeRequested()&&saves.takeSaveDeleteRequested()<0;};
+    auto openDelete=[&]{
+        saves.clickSaveMenu(150,130);saves.clickSaveMenu(400,410);
+        require(saves.saveDeleteOpen&&saves.saveDeleteSelected==0&&!saves.saveDeleteFailed&&noRequest(),"Delete Save must open a confirmation with No selected and no pending deletion");
+    };
+    openDelete();
+    saves.change(0);require(saves.saveDeleteSelected==0,"Neutral input must keep the safe No selection");
+    saves.confirm();
+    require(!saves.saveDeleteOpen&&saves.saveActionsOpen&&saves.saveFiles[0].used&&noRequest(),"Confirming default No must cancel deletion without closing save actions");
+    openDelete();saves.confirm();
+    require(!saves.saveDeleteOpen&&noRequest(),"Repeated confirmation of default No must never delete a save");
+    openDelete();saves.change(1);
+    require(saves.saveDeleteSelected==1&&saves.saveSelected==0&&noRequest(),"Explicit navigation may select Yes but must not delete before confirmation");
+    require(saves.back()&&!saves.saveDeleteOpen&&saves.saveActionsOpen&&noRequest(),"Back must cancel even when Yes was selected");
+    openDelete();saves.change(-1);require(saves.saveDeleteSelected==1,"Reverse navigation must explicitly select Yes");
+    saves.change(-1);require(saves.saveDeleteSelected==0,"Confirmation selection must wrap between No and Yes");
+    saves.hoverSaveMenu(390,288);
+    require(saves.saveDeleteSelected==1&&noRequest(),"Hovering Yes must highlight it without requesting deletion");
+    saves.hoverSaveMenu(240,288);
+    require(saves.saveDeleteSelected==0&&noRequest(),"Hovering No must restore its safe highlight");
+    saves.hoverSaveMenu(150,248);
+    require(saves.saveDeleteSelected==0&&saves.saveSelected==0,"Hovering an underlying save must not change the confirmation target");
+    for(auto point:std::array<std::array<float,2>,4>{{{150,248},{520,380},{400,410},{320,250}}})
+        require(saves.clickSaveMenu(point[0],point[1])&&saves.saveDeleteOpen&&saves.saveSelected==0&&noRequest(),"The delete modal must block underlying rows, actions and blank clicks");
+    saves.clickSaveMenu(240,288);
+    require(!saves.saveDeleteOpen&&saves.saveActionsOpen&&noRequest(),"Clicking No must cancel without deleting");
+    openDelete();saves.clickSaveMenu(390,288);saves.clickSaveMenu(390,288);
+    require(saves.takeSaveDeleteRequested()==0&&!saves.takeSaveFileChosen()&&!saves.takeSaveCarChangeRequested(),"Explicit Yes must request deletion of the confirmed slot only");
+    require(saves.takeSaveDeleteRequested()==-1,"Delete requests must be consumed once");
+    saves.finishSaveDeletion(false);
+    require(saves.saveDeleteOpen&&saves.saveDeleteFailed&&saves.saveDeleteSelected==0&&saves.saveFiles[0].used&&noRequest(),"A failed delete must retain the save and return confirmation focus to No");
+    saves.confirm();require(!saves.saveDeleteOpen&&noRequest(),"No must still cancel after a failed delete");
+    openDelete();saves.change(1);saves.confirm();
+    require(saves.takeSaveDeleteRequested()==0,"A new explicit confirmation must allow retrying deletion");
+    saves.finishSaveDeletion(true);
+    require(!saves.saveDeleteOpen&&!saves.saveActionsOpen&&!saves.saveFiles[0].used&&saves.stage==FrontendStage::SaveSelect&&noRequest(),"Successful deletion must show the selected slot as empty and close its actions");
+    require(saves.saveFiles[2].used&&saves.saveFiles[2].name=="REN"&&saves.saveFiles[2].car=="FD3S RX-7"&&saves.saveFiles[2].playedSeconds==7200&&saves.saveFiles[2].level==12,"Deleting a slot must leave other summaries unchanged");
+    require(saves.battleProfile.words==profile,"Deletion UI must leave profile mutation to the host");
+    saves.clickSaveMenu(400,410);
+    require(!saves.saveDeleteOpen&&noRequest(),"An empty slot must not expose Delete Save");
+    saves.stage=FrontendStage::Make;saves.hoverSaveMenu(390,288);
+    require(!saves.clickSaveMenu(390,288)&&noRequest(),"Confirmation pointer targets must not run on another screen");
+}
 int main(int argc,char**argv) {
     try {
+        verifySaveActions();
+        verifySaveDeletion();
         Frontend menu;
         require(!menu.back(),"Back on title should report exit");
         std::set<int> allCars,allChunks;
@@ -60,6 +184,15 @@ int main(int argc,char**argv) {
                 require(!menu.takeSaveFileChosen(),"A file reported itself chosen before any confirmation");
                 menu.change(1);require(menu.saveSelected==1,"The file list did not move");
                 menu.change(-1);require(menu.saveSelected==0,"The file list did not move back");
+                const auto savedProfile=menu.battleProfile.words;
+                const auto savedCar=menu.car;
+                menu.changeColor(1);require(menu.saveSelected==4,"Up must wrap from the first save to the last");
+                menu.changeColor(-1);require(menu.saveSelected==0,"Down must wrap from the last save to the first");
+                menu.changeColor(-1);require(menu.saveSelected==1,"Down must select the following save");
+                menu.changeColor(1);require(menu.saveSelected==0,"Up must select the preceding save");
+                menu.changeColor(0);require(menu.saveSelected==0,"Neutral vertical input changed the save selection");
+                require(menu.stage==FrontendStage::SaveSelect&&!menu.takeSaveFileChosen(),"Browsing saves must not confirm a file or leave the list");
+                require(menu.car==savedCar&&menu.battleProfile.words==savedProfile,"Vertical save navigation changed the selected car or its saved profile");
                 menu.confirm();require(menu.takeSaveFileChosen(),"Confirming a file raised no choice");
                 require(!menu.takeSaveFileChosen(),"The file choice was reported twice");
                 require(menu.back(),"Backing out of the file screen was refused");
@@ -230,6 +363,35 @@ int main(int argc,char**argv) {
             require(records.courseRecordTimes()[2]==1300000,"Snow menu did not read its forced wet partition");
         }
         if(argc>1) {
+            {
+                Frontend saves;saves.initialize(argv[1]);saves.stage=FrontendStage::SaveSelect;
+                saves.saveFiles[0]={true,"CHRIS","AE86 TRUENO","B1","2026/09/23",3661,9};
+                saves.saveFiles[1]={true,"REN","FD3S RX-7","A3","2026/09/22",7200,12};
+                const auto levelNine=saves.paint(1280,720);
+                saves.saveFiles[0].level=27;const auto levelTwentySeven=saves.paint(1280,720);
+                require(levelNine!=levelTwentySeven,"Refreshing the saved car's battle level must redraw the details panel");
+                saves.saveFiles[0].level=0;const auto levelUnavailable=saves.paint(1280,720);
+                require(levelUnavailable!=levelNine&&levelUnavailable!=levelTwentySeven,"Unavailable battle level must have its own visible placeholder");
+                saves.saveFiles[0].level=9;
+                const auto list=saves.paint(1280,720);saves.confirm();
+                const auto continuing=saves.paint(1280,720);
+                require(list!=continuing,"Opening save actions did not redraw the save panel");
+                saves.change(1);const auto changing=saves.paint(1280,720);
+                require(changing!=continuing,"Changing save action did not move its visible highlight");
+                saves.change(1);const auto deleting=saves.paint(1280,720);
+                require(deleting!=changing,"Delete Save must have its own visible action highlight");
+                saves.confirm();const auto deleteNo=saves.paint(1280,720);
+                require(deleteNo!=deleting,"Delete Save must visibly open its confirmation box");
+                saves.hoverSaveMenu(390,288);const auto deleteYes=saves.paint(1280,720);
+                require(deleteYes!=deleteNo,"Hovering Yes must visibly move the confirmation highlight");
+                saves.back();
+                saves.back();require(saves.paint(1280,720)==list,"Closing save actions did not restore the save list presentation");
+                if(argc>2){const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
+                    saveBitmap(out/"save-continue.bmp",continuing,1280,720);
+                    saveBitmap(out/"save-change-car.bmp",changing,1280,720);
+                    saveBitmap(out/"save-delete-no.bmp",deleteNo,1280,720);
+                    saveBitmap(out/"save-delete-yes.bmp",deleteYes,1280,720);}
+            }
             {
                 Frontend records;records.initialize(argv[1]);records.stage=FrontendStage::Course;
                 TimeAttackBest best{1000000,1100000};records.timeAttackBest=[&](unsigned,unsigned,unsigned){return best;};

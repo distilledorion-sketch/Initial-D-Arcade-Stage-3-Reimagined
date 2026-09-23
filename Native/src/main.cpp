@@ -196,6 +196,7 @@ struct App {
     // Five save files. The chosen one scopes the per-car profile and setup
     // stores, so a file's car, parts, balance and progress belong to it alone.
     LocalSaveSlots saveSlots{fs::path{}};
+    std::array<unsigned,35> saveCarLevels{};
     int activeSaveSlot=-1;
     bool saveFilesShown=false;
     double saveSlotSeconds=0;
@@ -203,7 +204,9 @@ struct App {
     bool nameTablesLoaded=false;
     std::array<std::optional<original::OriginalBattleProfile>,35> pendingProfiles;
     std::array<bool,35> pendingSetupCompletion{};
-    int loadedProfileCar=-1;bool battleProgressApplied=false;
+    int loadedProfileCar=-1;
+    unsigned savedDriverTransmission=0;
+    bool battleProgressApplied=false;
     original::OriginalLegendResult battleResult=original::OriginalLegendResult::NotLegend;
     original::OriginalLegendPoints battlePoints{};float settledBattleAdvantage=0;
     original::OriginalBuntaPoints buntaPoints{};
@@ -488,7 +491,7 @@ struct App {
     // existing install still reads its old profiles.
     // The panel box on the file screen, in source-canvas pixels. frontend.cpp
     // draws its frame at the same place.
-    static constexpr int savePanelBox[4]={505,173,107,86};
+    static constexpr auto savePanelBox=Frontend::saveCarViewport;
     int browsedSaveSlot=-2;
     bool legacyDriversChecked=false;
     bool browsingSaveFiles=false;
@@ -529,7 +532,7 @@ struct App {
         legacyDriversChecked=true;
         const auto legacy=userdataRoot()/"driver_profiles_v1";
         std::error_code ec;
-        if(saveSlots.used()||!fs::exists(legacy,ec))return;
+        if(saveSlots.used()||fs::exists(userdataRoot()/"saves"/".no-legacy-import",ec)||!fs::exists(legacy,ec))return;
         const LocalDriverProfiles old(legacy);
         const LocalDriverSetup oldSetup(legacy);
         unsigned slot=0,adopted=0;
@@ -559,6 +562,11 @@ struct App {
     }
     void refreshSaveFiles(){
         if(!nameTablesLoaded){nameTables=original::OriginalNameEntryTables::load(root);nameTablesLoaded=true;}
+        if(!vsBannerLoaded&&OriginalVsBanner::available(root)){vsBanner.load(root);vsBannerLoaded=true;}
+        frontend.paintSaveName=[this](std::span<std::uint32_t> pixels,int width,int height,
+                const std::string& name,float x,float y,float size,float maxWidth){
+            vsBanner.paintDisplayName(pixels,width,height,name,x,y,size,maxWidth);
+        };
         adoptLegacyDrivers();
         saveSlots.reload();
         for(unsigned i=0;i<LocalSaveSlots::count;++i){
@@ -567,25 +575,90 @@ struct App {
             summary={};
             summary.used=slot.used;
             if(!slot.used)continue;
-            summary.playedSeconds=slot.playedSeconds;summary.wins=slot.wins;summary.lastPlayed=slot.lastPlayed;
-            summary.name=nameTables.encodedName(slot.nameGlyphs,slot.nameLength);
+            summary.playedSeconds=slot.playedSeconds;summary.level=saveCarLevels.at(slot.car);summary.lastPlayed=slot.lastPlayed;
+            // Reuse the VS decoder so full-width Latin letters and digits
+            // keep their real values. Non-ASCII names use the source glyph
+            // bank through paintSaveName, leaving stored names untouched.
+            auto nameProfile=original::makeOriginalFreshBattleProfile();
+            nameProfile.setu(76,slot.nameLength);
+            for(unsigned glyph=0;glyph<5;++glyph)nameProfile.setu(44+4*glyph,slot.nameGlyphs[glyph]);
+            summary.name=slot.nameLength?vsBanner.profileDisplayName(nameProfile):std::string{};
             if(summary.name.empty())summary.name="NO NAME";
             summary.car=originalCarName(slot.car);
             summary.grade=originalCarGrade(slot.car);
         }
     }
     // A chosen file either starts a driver's setup or resumes one already made.
-    void openSaveFile(int slot){
+    bool rememberSaveCar(int slot,unsigned car){
+        if(slot<0||slot>=int(LocalSaveSlots::count)||car>=35)return false;
+        auto file=saveSlots.at(unsigned(slot));
+        if(!file.used)return false;
+        if(file.car==car&&file.lastPlayed==LocalSaveSlots::today())return true;
+        file.car=car;file.lastPlayed=LocalSaveSlots::today();
+        if(!saveSlots.write(unsigned(slot),file)){
+            status("The last-used car could not be saved.");return false;
+        }
+        saveFilesShown=false;return true;
+    }
+    void openSaveFile(int slot,bool changeCar=false){
         browsingSaveFiles=false;useSaveSlot(slot);
         const auto& file=saveSlots.at(unsigned(slot));
+        frontend.saveActionsOpen=false;
+        frontend.saveDeleteOpen=false;frontend.saveDeleteFailed=false;frontend.saveDeleteRequested=-1;
+        frontend.savedDriverSelected=file.used&&!fullTuneSelecting;
+        frontend.changingSavedCar=file.used&&changeCar&&!fullTuneSelecting;
         if(!file.used){
             frontend.stage=FrontendStage::Make;
             return;
         }
         frontend.car=int(file.car);
         frontend.make=originalCarMake(file.car);
+        savedDriverTransmission=0;
         loadSelectedProfile();
-        frontend.stage=fullTuneSelecting?FrontendStage::Make:FrontendStage::Mode;
+        savedDriverTransmission=frontend.battleProfile.u(68);
+        frontend.automatic=savedDriverTransmission==0;
+        frontend.stage=fullTuneSelecting||frontend.changingSavedCar?FrontendStage::Make:FrontendStage::Mode;
+    }
+    void applySaveDriverName(original::OriginalBattleProfile& profile)const{
+        if(activeSaveSlot<0)return;
+        const auto& file=saveSlots.at(unsigned(activeSaveSlot));
+        profile.setu(76,file.nameLength);
+        for(unsigned i=0;i<5;++i)profile.setu(44+4*i,i<file.nameLength?file.nameGlyphs[i]:220);
+    }
+    void deleteSaveFile(int slot){
+        if(frontend.stage!=FrontendStage::SaveSelect||fullTuneSelecting||slot<0||
+           slot>=int(LocalSaveSlots::count)||slot!=frontend.saveSelected)return;
+        const bool erased=saveSlots.erase(unsigned(slot));
+        frontend.finishSaveDeletion(erased);
+        if(!erased)return;
+        // Release every pending write and preview reference before the empty
+        // slot can be opened again; old car data must never recreate the save.
+        pendingSetupCompletion={};useSaveSlot(-1);
+        browsingSaveFiles=false;browsedSaveSlot=-2;
+        frontend.battleProfile=original::makeOriginalFreshBattleProfile();
+        battleProfile=frontend.battleProfile;loadedCar=-1;menuTexturesLoaded=false;
+        frontend.saveFileCarLive=false;refreshSaveFiles();
+    }
+    bool finishSavedCarSelection(){
+        if(!frontend.changingSavedCar||activeSaveSlot<0)return false;
+        auto& selected=frontend.battleProfile;
+        applySaveDriverName(selected);
+        original::finishOriginalDriverSetupFlag(selected);
+        selected.setByte(1192,0);
+        const auto car=unsigned(frontend.car);
+        // Keep an unsuccessful choice in this selection session rather than
+        // queueing it in a store that may be rebound when the player backs out.
+        if(!profiles.save(car,selected)||!driverSetup.markComplete(car)){
+            status("The selected car could not be saved. Please try again.");return false;
+        }
+        if(!saveSlots.adopt(unsigned(activeSaveSlot),selected)){
+            status("The selected car could not be saved. Please try again.");return false;
+        }
+        personalRecordProfiles[car]=selected;personalRecordsDirty=true;
+        frontend.automatic=selected.u(68)==0;
+        frontend.changingSavedCar=false;
+        frontend.stage=FrontendStage::Mode;
+        return true;
     }
     void loadSelectedProfile(){
         if(multiplayer.active||validationMode||loadedProfileCar==frontend.car)return;
@@ -609,7 +682,8 @@ struct App {
         // still visit setup once; a nonempty name chooses the source import
         // editor only, and never substitutes for a completion marker.
         const auto setup=driverSetup.load(car);
-        if(hasStoredProfile&&setup.status==LocalDriverSetup::Status::Complete&&!original::originalDriverSetupRequested(frontend.battleProfile)){
+        const bool selectedProfileReady=hasStoredProfile&&setup.status==LocalDriverSetup::Status::Complete&&!original::originalDriverSetupRequested(frontend.battleProfile);
+        if(selectedProfileReady){
             original::finishOriginalDriverSetupFlag(frontend.battleProfile);
             frontend.battleProfile.setByte(1192,0);
         }else{
@@ -621,7 +695,11 @@ struct App {
         // Persist an unfinished replacement before a stale completion marker
         // can be observed on another launch. A marker alone cannot make a
         // missing/corrupt driver's fresh fallback into an established driver.
-        if(frontend.battleProfile.words!=loadedWords){pendingProfiles[car]=frontend.battleProfile;flushProfiles();}
+        if(frontend.changingSavedCar){
+            applySaveDriverName(frontend.battleProfile);
+            if(!hasStoredProfile)frontend.battleProfile.setu(68,savedDriverTransmission);
+        }
+        else if(frontend.battleProfile.words!=loadedWords){pendingProfiles[car]=frontend.battleProfile;flushProfiles();}
         frontend.driverProfileLoaded();
     }
     void loadDriverEntryEnvironment(){
@@ -1184,6 +1262,8 @@ struct App {
         if(!validationMode&&!originalHandling)status("Development handling - original contact not available for this selection");
         if(!loadingActive&&!multiplayer.active&&!importedCourse)beginVsBanner();
         updateAudioScene();
+        if(!multiplayer.active&&!validationMode&&!replayPlaybackActive&&activeSaveSlot>=0)
+            rememberSaveCar(activeSaveSlot,unsigned(frontend.car));
     }
     void saveSettings(){if(multiplayer.active)return;flushProfiles();std::ofstream out(userdataRoot()/"settings.txt");out<<courseIndex<<' '<<profile<<' '<<reverse<<' '<<wet<<' '<<night<<' '<<automatic<<' '<<audio.enabled<<' '<<audio.musicTrack<<'\n';std::ofstream native(userdataRoot()/"native_selection.txt");native<<frontend.make<<' '<<frontend.car<<'\n';}
     void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");useSaveSlot(-1);records.load(userdataRoot()/"time_attack_records_v1.csv");frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
@@ -1237,7 +1317,7 @@ struct App {
                 menuDirection=0;menuRepeatWait=0;
             }else if(!direction){menuDirection=0;menuRepeatWait=0;}
             else if(direction!=menuDirection){change(direction);menuDirection=direction;menuRepeatWait=.32;}
-            else {menuRepeatWait-=std::min(dt,.1);if(menuRepeatWait<=0){change(direction);menuRepeatWait+=.12;}}
+            else if(!frontend.saveDeleteOpen){menuRepeatWait-=std::min(dt,.1);if(menuRepeatWait<=0){change(direction);menuRepeatWait+=.12;}}
             if((input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_B)||(frontend.stage==FrontendStage::Name&&input.key(VK_BACK)))&&!frontend.confirmationInProgress()){
                 const bool sourceEntry=frontend.stage==FrontendStage::Name||frontend.stage==FrontendStage::TuningCourse;
                 if(!frontend.back())running=false;else if(!sourceEntry)audio.playMenuCue(OriginalMenuCue::Back);
@@ -1248,7 +1328,7 @@ struct App {
                 if(frontend.inputReady()&&frontend.stage!=FrontendStage::Name&&frontend.stage!=FrontendStage::TuningCourse)audio.playMenuCue(frontend.unsupportedModeSelected()?OriginalMenuCue::Back:OriginalMenuCue::Confirm);
                 launch=frontend.confirm();menuRepeatWait=.32;
             }
-            if(input.key(VK_F5)){audio.playMenuCue(OriginalMenuCue::Confirm);frontend.gameMode=original::OriginalGameMode::TimeAttack;frontend.course=3;frontend.reverse=false;frontend.wet=false;launch=true;}
+            if(input.key(VK_F5)&&!frontend.saveDeleteOpen){audio.playMenuCue(OriginalMenuCue::Confirm);frontend.gameMode=original::OriginalGameMode::TimeAttack;frontend.course=3;frontend.reverse=false;frontend.wet=false;launch=true;}
             courseIndex=Frontend::isImportedCourse(frontend.course)?3:frontend.course;automatic=frontend.automatic;reverse=frontend.reverse;wet=frontend.wet;night=frontend.night;
             if(launch)start();
         }else{
@@ -1878,6 +1958,9 @@ struct App {
         if(!canFullTune())throw std::logic_error("Leave online play and finish the current screen before using Full Tune");
         flushProfiles();returnToCourseSelection(true);
         fullTuneSelecting=true;frontend.stage=FrontendStage::SaveSelect;
+        frontend.saveActionsEnabled=false;frontend.saveActionsOpen=false;
+        frontend.saveDeleteOpen=false;frontend.saveDeleteFailed=false;frontend.saveDeleteRequested=-1;
+        frontend.changingSavedCar=frontend.savedDriverSelected=false;
         frontend.saveSelected=activeSaveSlot>=0?activeSaveSlot:0;
         saveFilesShown=false;browsedSaveSlot=-2;menuTexturesLoaded=false;
     }
@@ -1998,7 +2081,7 @@ struct App {
         renderer.vehicleLights=false;renderer.opponentLights=false;renderer.courseLampPositions.clear();
         hud.resize(renderer.width,renderer.height);
         Mesh mesh;
-        if(file.used){
+        if(file.used&&!frontend.saveDeleteOpen){
             showroomStage=frontend.stage;
             menuClock.advance(dt,[&]{showroom.advanceTicks();});
             frontend.liveCarPreview=true;
@@ -2023,15 +2106,25 @@ struct App {
             const float aspect=float(savePanelBox[2])/float(savePanelBox[3]);
             renderer.projectionAspect=aspect;
             renderer.verticalFieldOfView=pose.verticalFieldOfView;
-            // The showroom sets its car off to one side to leave room for that
-            // screen's captions. The panel is a small box, so it looks straight
-            // at the car and closes in until the body fills the frame.
-            const Vec3 focus{pose.carPosition.x,pose.carPosition.y+.28f,pose.carPosition.z};
-            Vec3 back{pose.eye.x-focus.x,pose.eye.y-focus.y,pose.eye.z-focus.z};
-            const float span=std::sqrt(back.x*back.x+back.y*back.y+back.z*back.z);
-            const float reach=2.62f/(std::tan(pose.verticalFieldOfView*.5f)*aspect);
-            back={back.x/span*reach,back.y/span*reach,back.z/span*reach};
-            const Vec3 eye{focus.x+back.x,focus.y+back.y,focus.z+back.z};
+            // Fit the actual saved assembly, including fitted parts, inside the
+            // preview. A width-only distance crops cars in a wider, shorter box.
+            Vec3 lo=pose.carPosition,hi=lo;
+            if(!mesh.vertices.empty())lo=hi=mesh.vertices.front().position;
+            for(const auto& vertex:mesh.vertices){const auto p=vertex.position;
+                lo={std::min(lo.x,p.x),std::min(lo.y,p.y),std::min(lo.z,p.z)};
+                hi={std::max(hi.x,p.x),std::max(hi.y,p.y),std::max(hi.z,p.z)};
+            }
+            const Vec3 focus=(lo+hi)*.5f;
+            const Vec3 back=normalized(pose.eye+Vec3{0,1,0}-pose.carPosition);
+            const Vec3 side=normalized(cross(Vec3{0,1,0},back)),up=cross(back,side);
+            const float halfHeight=std::tan(pose.verticalFieldOfView*.5f)*.86f;
+            float reach=1.f;
+            for(const auto& vertex:mesh.vertices){const auto offset=vertex.position-focus;
+                const float depth=dot(offset,back);
+                reach=std::max({reach,depth+std::abs(dot(offset,side))/(halfHeight*aspect),
+                    depth+std::abs(dot(offset,up))/halfHeight,depth+renderer.nearClip*1.1f});
+            }
+            const Vec3 eye=focus+back*reach;
             const auto& canvas=frontend.paint(renderer.width,renderer.height);
             const bool drawn=renderer.draw(mesh,eye,focus,false,false,canvas.data(),true,&showroomLighting);
             renderer.sceneViewport={};renderer.projectionAspect=0;
@@ -2084,9 +2177,23 @@ struct App {
                 result->load(directory,data);return result;
             });
         }
+        frontend.saveActionsEnabled=!fullTuneSelecting;
+        // A change-car visit previews profiles without writing them. Load the
+        // selected candidate before its confirmation owner can leave Car.
+        if(frontend.takeSaveCarPreviewReset())loadedProfileCar=-1;
+        if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
         const auto previousColor=frontend.selectedColor();
         const auto previousStage=frontend.stage;
         frontend.advance(dt);
+        if(frontend.takeSaveCarPreviewReset()){
+            loadedProfileCar=-1;
+            if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
+        }
+        if(frontend.changingSavedCar&&previousStage==FrontendStage::Car&&frontend.stage==FrontendStage::Transmission){
+            // Every model can be selected. Preserve its saved setup, or keep
+            // a new model stock; race progression and Full Tune apply upgrades.
+            if(!finishSavedCarSelection())frontend.stage=FrontendStage::Car;
+        }
         // Keep the normal make/car confirmation animation. Established cars
         // can then bypass setup; fresh cars retain transmission/package/name.
         if(fullTuneSelecting&&previousStage==FrontendStage::Car&&frontend.stage==FrontendStage::Transmission&&
@@ -2125,6 +2232,11 @@ struct App {
             openSaveFile(frontend.saveSelected);
             if(!validationMode)audio.playMenuCue(OriginalMenuCue::Confirm);
         }
+        if(frontend.takeSaveCarChangeRequested()){
+            openSaveFile(frontend.saveSelected,true);
+            if(!validationMode)audio.playMenuCue(OriginalMenuCue::Confirm);
+        }
+        if(const int slot=frontend.takeSaveDeleteRequested();slot>=0)deleteSaveFile(slot);
         // Time on a file counts while it is open, whatever the player is doing.
         if(activeSaveSlot>=0&&!validationMode&&frontend.stage!=FrontendStage::SaveSelect){
             saveSlotSeconds+=dt;
@@ -2913,7 +3025,18 @@ struct App {
         std::array<WetWeather::Car,2> weatherCars{{
             {drawCar.position,drawCar.yaw,std::abs(drawCar.speed),true},
             {lerp(previousRival.position,rivalVehicle.position,poseAlpha),lerpAngle(previousRival.yaw,rivalVehicle.yaw,poseAlpha),std::abs(rivalVehicle.speed),rivalVisible}}};
-        if(weatherVisible&&originalHandling&&!replayPlaybackActive&&presentedSession().ready()){
+        if(weatherVisible&&!snowWeather){
+            // Reuse the wheel/road queries for every rendered actor, including
+            // remote and replay cars. Body yaw cannot describe a banked road.
+            for(unsigned c=0;c<weatherCars.size();++c){
+                weatherCars[c].contactsValid=effectCars[c].visible&&effectCars[c].grounded;
+                for(unsigned i=0;i<2;++i){
+                    weatherCars[c].rearContacts[i]=effectCars[c].points[i+2];
+                    weatherCars[c].rearNormals[i]=effectCars[c].normals[i+2];
+                }
+            }
+        }
+        if(weatherVisible&&snowWeather&&originalHandling&&!replayPlaybackActive&&presentedSession().ready()){
             const auto bindContacts=[&](WetWeather::Car& car,const auto& contacts,Vec3 offset){
                 car.contactsValid=true;
                 for(unsigned i=0;i<2;++i){const auto& contact=contacts[i+2];
@@ -3043,7 +3166,21 @@ LRESULT CALLBACK windowProc(HWND h,UINT msg,WPARAM w,LPARAM l){
     if(msg==WM_ACTIVATEAPP){current->active=w!=0;if(current->multiplayer.active)current->paused=false;else if(!w&&!current->menu){current->paused=true;current->clock.reset();}return 0;}
     if(msg==WM_SIZE){if(w!=SIZE_MINIMIZED){current->pendingWidth=LOWORD(l);current->pendingHeight=HIWORD(l);current->resizePending=true;}return 0;}
     if(msg==WM_GETMINMAXINFO){auto* info=reinterpret_cast<MINMAXINFO*>(l);info->ptMinTrackSize={960,580};return 0;}
-    if(msg==WM_LBUTTONDOWN&&current->menu){float x=GET_X_LPARAM(l)*1280.f/std::max(1,current->renderer.width),y=GET_Y_LPARAM(l)*720.f/std::max(1,current->renderer.height);if(current->frontend.stage==FrontendStage::Title&&x>=194&&x<=804&&y>=649&&y<=690)current->mouseStart=true;return 0;}
+    if((msg==WM_LBUTTONDOWN||msg==WM_MOUSEMOVE)&&current->menu){
+        const int width=std::max(1,current->renderer.width),height=std::max(1,current->renderer.height);
+        if(current->frontend.stage==FrontendStage::SaveSelect){
+            const float fit=std::min(width/640.f,height/480.f);
+            const int drawWidth=int(640*fit),drawHeight=int(480*fit);
+            const float x=(GET_X_LPARAM(l)-(width-drawWidth)/2)*640.f/std::max(1,drawWidth);
+            const float y=(GET_Y_LPARAM(l)-(height-drawHeight)/2)*480.f/std::max(1,drawHeight);
+            if(msg==WM_LBUTTONDOWN)current->frontend.clickSaveMenu(x,y);
+            else current->frontend.hoverSaveMenu(x,y);
+        }else if(msg==WM_LBUTTONDOWN){
+            const float x=GET_X_LPARAM(l)*1280.f/width,y=GET_Y_LPARAM(l)*720.f/height;
+            if(current->frontend.stage==FrontendStage::Title&&x>=194&&x<=804&&y>=649&&y<=690)current->mouseStart=true;
+        }
+        return 0;
+    }
     return DefWindowProcW(h,msg,w,l);
 }
 int runFactoryPaintPreview(App& app,const fs::path& output){

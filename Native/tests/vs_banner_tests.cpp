@@ -132,6 +132,24 @@ int main(int argc, char** argv) try {
     OriginalVsBanner banner;
     banner.load(root);
 
+    // Save selection reuses the source name atlas independently of the
+    // animated VS owner, including Japanese and the nonsequential digit zero.
+    original::OriginalBattleProfile nameProfile{};
+    nameProfile.words[76/4]=1;nameProfile.words[44/4]=197;
+    check(banner.profileDisplayName(nameProfile)=="0","Saved zero glyph decoded as another digit");
+    std::vector<std::uint32_t> japanese(640*480),substitute(640*480),repeat(640*480);
+    const auto nameTick=banner.sourceTick();
+    banner.paintDisplayName(japanese,640,480,"\xe3\x82\xb1\xe3\x82\xa4",42,51,20,30);
+    banner.paintDisplayName(substitute,640,480,"??",42,51,20,30);
+    banner.paintDisplayName(repeat,640,480,"\xe3\x82\xb1\xe3\x82\xa4",42,51,20,30);
+    check(std::any_of(japanese.begin(),japanese.end(),[](auto p){return p!=0;}),"Saved Japanese name rendered blank");
+    check(japanese!=substitute,"Saved Japanese name was replaced with question marks");
+    check(japanese==repeat&&banner.sourceTick()==nameTick,"Static saved name rendering mutated banner state");
+    bool outsideNameBounds=false;
+    for(int y=0;y<480;++y)for(int x=0;x<640;++x)
+        if(japanese[std::size_t(y)*640+x]&&(x<42||x>=72||y<51||y>=66))outsideNameBounds=true;
+    check(!outsideNameBounds,"Saved name exceeded its fitted menu bounds");
+
     // The selection is the whole component: every word is its own authored
     // chunk, so getting the banner right is getting these numbers right. Each
     // was read by rendering the chunk on its own.

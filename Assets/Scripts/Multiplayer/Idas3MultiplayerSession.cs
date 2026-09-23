@@ -122,6 +122,7 @@ namespace Idas3.Multiplayer
         Idas3BattleRecord remoteRecord=Idas3BattleRecord.Fresh;
         bool recordCommitted;
         public Idas3BattleRecord LocalRecord => records.Read(LocalCar);
+        public Idas3BattleRecord ReadCarBattleRecord(int car) => records.Read(car);
         public Idas3BattleRecord RemoteRecord => remoteRecord;
         public Idas3BattleRecord RaceLocalRecord { get; private set; }
         public Idas3BattleRecord RaceRemoteRecord { get; private set; }

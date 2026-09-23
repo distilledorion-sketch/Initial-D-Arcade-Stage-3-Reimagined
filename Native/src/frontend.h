@@ -45,33 +45,43 @@ public:
     bool liveCarPreview = false;
     original::OriginalGameMode gameMode=original::OriginalGameMode::TimeAttack;
     original::OriginalBattleProfile battleProfile=original::makeOriginalFreshBattleProfile();
-    // One save file per slot, each holding a single car. The host fills these
+    // One driver per slot, with a remembered active car. The host fills these
     // in from the slot store; the menu only displays and chooses.
     struct SaveFileSummary {
         bool used=false;
         std::string name,car,grade,lastPlayed;
         std::uint64_t playedSeconds=0;
-        unsigned wins=0;
+        unsigned level=0; // Exact battle level used by aura; zero means unavailable.
     };
     std::array<SaveFileSummary,5> saveFiles{};
     // Set while the host is drawing the highlighted file's own car into the
     // panel's box; the box is then left clear for it.
     bool saveFileCarLive=false;
-    // The host registers a UI texture by the address of its pixels, so a
-    // flipped or rotated copy built on the stack is cached under an address
-    // that is reused the moment it dies -- the up and down arrows are the same
-    // size and collided, drawing the same way. These keep one lasting copy each.
-    std::map<const NativeImage*,NativeImage> saveFlipped;
-    NativeImage saveArrowUp,saveArrowDown;
+    // Shared by the menu backing and live showroom camera, in canvas pixels.
+    static constexpr std::array<int,4> saveCarViewport{326,181,256,126};
+    // Non-ASCII driver names use the recovered alphabet rather than the UI face.
+    std::function<void(std::span<std::uint32_t>,int,int,const std::string&,float,float,float,float)> paintSaveName;
     MenuFont menuFont;
     // In-memory host lookup; menu painting never reads save files.
     std::function<TimeAttackBest(unsigned,unsigned,unsigned)> timeAttackBest;
     std::function<TimeAttackEntry(unsigned,unsigned,unsigned)> importedPersonalBest;
     std::array<std::uint32_t,3> courseRecordTimes()const;
     int saveSelected=0;
+    bool saveActionsEnabled=true,saveActionsOpen=false;
+    int saveActionSelected=0;
+    bool saveDeleteOpen=false,saveDeleteFailed=false;
+    int saveDeleteSelected=0; // No is always the initial choice; Yes requires navigation.
+    int saveDeleteRequested=-1;
+    bool changingSavedCar=false,savedDriverSelected=false;
+    bool clickSaveMenu(float x,float y);
+    bool hoverSaveMenu(float x,float y);
+    void finishSaveDeletion(bool success);
+    int takeSaveDeleteRequested(){const int result=saveDeleteRequested;saveDeleteRequested=-1;return result;}
     // Set once when a file is confirmed; the host decides whether that means
     // a fresh setup or straight to the mode menu.
     bool takeSaveFileChosen(){const bool result=saveFileChosen;saveFileChosen=false;return result;}
+    bool takeSaveCarChangeRequested(){const bool result=saveCarChangeRequested;saveCarChangeRequested=false;return result;}
+    bool takeSaveCarPreviewReset(){const bool result=saveCarPreviewReset;saveCarPreviewReset=false;return result;}
     int rivalChoice=0;
     original::OriginalBuntaEligibility buntaEligibility()const {return original::originalBuntaEligibility(battleProfile);}
     bool unsupportedModeSelected()const {return stage==FrontendStage::Mode && gameMode==original::OriginalGameMode::BuntaChallenge && buntaEligibility()!=original::OriginalBuntaEligibility::Eligible;}
@@ -101,6 +111,8 @@ public:
     bool confirm();
     bool takeStartRequest(){const bool result=startRequested;startRequested=false;return result;}
     bool saveFileChosen=false;
+    bool saveCarChangeRequested=false;
+    bool saveCarPreviewReset=false;
     bool showingGasstand()const{return stage==FrontendStage::Title&&attractChildId==11;}
     unsigned attractChild()const{return attractChildId;}
     // Source gear/view edges, consumed once at the next original60Hz tick.

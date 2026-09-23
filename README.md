@@ -15,11 +15,11 @@ JOIN DISCORD: https://discord.gg/mJCZ5AvBb
 
 The download includes the runtime assets. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Current release:** `0.3.95-community-replays.27` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.28` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `0.3.95-community-replays.27` fixes opponent headlights staying on after the other driver turns them off, and reduces repeated work when applying updates. Both online players need this version.
+**Latest update:** `0.3.95-community-replays.28` redesigns save selection with per-car tuning, Continue/Change Car, last-used car and aura level, and a delete confirmation that defaults to No. It also fixes HID wheel/pedal rebinding getting stuck and aligns rain tire trails with the road. Both online players need this version.
 
-If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates offer smaller patches from versions `.20` through `.26`. Installer speed improvements take effect once `.27` is installed; the update into `.27` still uses your previous updater.
+If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates offer smaller patches from versions `.20` through `.27`. Installer speed improvements take effect once `.27` or newer is installed; the first update from an older version still uses your previous updater.
 
 Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcade Stage 3**, the game logo, and your current race, menu, or replay activity. Toggle it under **Options > Gameplay > Discord Rich Presence**.
 

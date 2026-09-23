@@ -28,7 +28,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3PauseMenu pauseMenu;
     private Idas3ReplayLibrary replayLibrary;
     private Idas3ControlBindings controlBindings;
-    private readonly Idas3ControllerDevices controllerDevices = new Idas3ControllerDevices();
+    private Idas3ControllerDevices controllerDevices = new Idas3ControllerDevices();
     private Idas3WheelFeedback wheelFeedback;
     internal Idas3ControllerDevices ControllerDevices => controllerDevices;
     internal Idas3ControlBindings ControlBindings => controlBindings;
@@ -41,6 +41,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private readonly Idas3MenuPointer pausePointer=new Idas3MenuPointer();
     private float musicHoldSeconds;
     private bool musicReleaseBlocked;
+    private bool savePointerReleaseBlocked;
+    private Vector3 previousSavePointer;
+    private bool savePointerTracked;
+    private bool saveCarLevelsLoaded, saveCarLevelsWarned;
     private int musicPickerContext, musicNavigationAxis;
     private double nextMusicNavigation;
     private float attractOptionsHoldSeconds;
@@ -145,7 +149,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             diagnostic = Idas3PreRaceSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3ModeFlowSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3ControlsSmoke.Configure(ref saves) || diagnostic;
-            diagnostic = Idas3ControllerDevicesSmoke.Configure(ref saves) || diagnostic;
+            bool controllerDeviceDiagnostic = Idas3ControllerDevicesSmoke.Configure(ref saves);
+            diagnostic = controllerDeviceDiagnostic || diagnostic;
+            if (controllerDeviceDiagnostic) controllerDevices = Idas3ControllerDevicesSmoke.CreateProvider();
             diagnostic = Idas3OnlineControllerSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3RaceMusicSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3AttractOptionsSmoke.Configure(ref saves) || diagnostic;
@@ -339,6 +345,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             };
             // A waiting room must not capture the original offline menus.
             bool networkRoom = multiplayer.IsRacing || multiplayer.ChallengerPending;
+            bool saveMenuOwnsPointer = Idas3Native.Idas3SceneSaveMenuPointer(0, 0, Screen.width, Screen.height, 0) == 1;
+            SyncSaveCarLevels(saveMenuOwnsPointer);
             var physicalPad = new Idas3ControlBindings.PadState();
             if (Focused)
             {
@@ -347,7 +355,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 // Managed menus hit-test the pointer themselves. Translating
                 // their click to Enter activates the controller selection first.
                 Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0),
-                    !networkRoom&&!pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput);
+                    !networkRoom&&!pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&
+                    !saveMenuOwnsPointer&&!savePointerReleaseBlocked);
                 controllerDevices.TryRead(out physicalPad);
             }
             Func<KeyCode,bool> physicalKey = Focused ? Input.GetKey : NoKeyHeld;
@@ -372,7 +381,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             else controlBindings.Poll(physicalKey, physicalPad, Time.realtimeSinceStartupAsDouble,
                 diagnosticPad ? null : controllerDevices.Controls);
             bool bindingInputBlocked = controlBindings.SuppressInput || controlBindings.IsCapturing;
-            multiplayerMenu.ProcessControlInput(controlBindings.OnlineHeld, controlBindings.PauseHeld,
+            multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld,
                 bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || musicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active);
             if (multiplayerMenu.IsOpen && pauseMenu.IsOpen)
             {
@@ -387,7 +396,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             bool drivingBindings = (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 0 && Status.racePhase < 3;
             if (drivingBindings && !pauseMenu.IsOpen && !multiplayerMenu.BlocksGameInput)
                 controlBindings.ApplyDriving(ref frame);
-            else controlBindings.ApplyMenu(ref frame,controllerDevices.ActiveIsGeneric);
+            else controlBindings.ApplyMenu(ref frame,controllerDevices.ActiveIsGeneric,true);
             if (!Idas3SceneSmoke.PrepareFrame(ref frame)) return;
             if (!Idas3MultiplayerSmoke.PrepareFrame(ref frame)) return;
             if (!Idas3PauseSmoke.PrepareFrame(ref frame)) return;
@@ -400,7 +409,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (!Idas3AttractOptionsSmoke.PrepareFrame(ref frame)) return;
             // Start belongs to the original frontend until a host modal or race owns it.
             // Translating it to Escape on Title used to request application exit.
-            if (controlBindings.PauseHeld && ((Status.flags & 1u) == 0 || pauseMenu.IsOpen || multiplayerMenu.IsOpen || raceMusicMenu.IsOpen)) frame.SetKey(27);
+            if (controlBindings.RawPauseHeld && ((Status.flags & 1u) == 0 || pauseMenu.IsOpen || multiplayerMenu.IsOpen || raceMusicMenu.IsOpen)) frame.SetKey(27);
             multiplayerMenu.ProcessResultsInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
                 controlBindings.PauseHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
                 !Focused || bindingInputBlocked);
@@ -411,11 +420,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (disconnectedFinish && !multiplayer.DisconnectedFinish) musicReleaseBlocked = true;
             bool musicInputBlocked = UpdateRaceMusic(ref frame, bindingInputBlocked);
             bool attractInputBlocked = UpdateAttractOptions(ref frame, bindingInputBlocked || musicInputBlocked);
+            bool savePointerBlocked = RouteSaveMenuPointer(frame, saveMenuOwnsPointer,
+                bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active || networkRoom);
             if (diagnosticFocusOverride.HasValue) frame.flags = (frame.flags & ~1u) | (diagnosticFocusOverride.Value ? 1u : 0u);
-            if (bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active)
+            if (bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active || savePointerBlocked)
             {
-                NeutralizeControls(ref frame);
                 previousMenuInput = frame;
+                NeutralizeControls(ref frame);
                 menuNavigationAxis = 0;
             }
             else RoutePauseInput(ref frame);
@@ -823,6 +834,66 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private static bool MenuNavigationHeld(Idas3Native.FrameInput frame) =>
         Held(frame,13)||Held(frame,8)||Held(frame,27)||Held(frame,37)||Held(frame,38)||Held(frame,39)||Held(frame,40)||
         (frame.padButtons&0x301Fu)!=0||Math.Abs(frame.thumbLX)>16000||Math.Abs(frame.thumbLY)>16000;
+    private void SyncSaveCarLevels(bool ownsPointer)
+    {
+        if(!ownsPointer){saveCarLevelsLoaded=false;return;}
+        if(saveCarLevelsLoaded||multiplayer==null)return;
+        var levels=new uint[35];
+        for(int car=0;car<levels.Length;++car)
+        {
+            try{levels[car]=multiplayer.ReadCarBattleRecord(car).level;}
+            catch(Exception error)when(error is IOException||error is InvalidDataException||error is UnauthorizedAccessException||error is ArgumentException)
+            {
+                // Unknown history stays unknown. Reading the save menu must
+                // never reset or overwrite a damaged online record.
+                levels[car]=0;
+                if(!saveCarLevelsWarned)
+                {
+                    saveCarLevelsWarned=true;
+                    Debug.LogWarning("Saved car level could not be read for "+Idas3MultiplayerSession.CarNames[car]+": "+error.Message);
+                }
+            }
+        }
+        if(Idas3Native.Idas3SceneSetSaveCarLevels(levels,levels.Length)!=1&&!saveCarLevelsWarned)
+        {
+            saveCarLevelsWarned=true;
+            Debug.LogWarning("Save menu car levels could not be refreshed: "+Idas3Native.Error());
+        }
+        // Refresh on the next entry, including after an online race changes
+        // the same records used by its car's aura.
+        saveCarLevelsLoaded=true;
+    }
+    private bool RouteSaveMenuPointer(Idas3Native.FrameInput frame, bool ownsPointer, bool inputBlocked)
+    {
+        bool allowed = Focused && !inputBlocked && !pauseMenu.BlocksGameInput && !multiplayerMenu.BlocksGameInput;
+        bool mouseHeld = !diagnosticMode && Input.GetMouseButton(0);
+        if(allowed&&ownsPointer&&!diagnosticMode)
+        {
+            var point=Input.mousePosition;
+            // A stationary cursor must not override the default No or a
+            // controller choice when the confirmation first appears.
+            if(savePointerTracked&&point!=previousSavePointer)
+                Idas3Native.Idas3SceneSaveMenuPointer(point.x,Screen.height-point.y,Screen.width,Screen.height,2);
+            previousSavePointer=point;savePointerTracked=true;
+        }
+        else savePointerTracked=false;
+        if (allowed && ownsPointer && mouseHeld)
+        {
+            savePointerReleaseBlocked = true;
+            if (Input.GetMouseButtonDown(0))
+            {
+                var point = Input.mousePosition;
+                Idas3Native.Idas3SceneSaveMenuPointer(point.x, Screen.height - point.y, Screen.width, Screen.height, 1);
+            }
+        }
+        if (!savePointerReleaseBlocked) return false;
+        // A click may leave SaveSelect. Keep blocking its held mouse/controller
+        // input until release so it cannot also confirm the following screen.
+        bool navigationHeld = MenuNavigationHeld(frame) || Held(frame, 65) || Held(frame, 68) ||
+            Held(frame, 69) || Held(frame, 81) || (frame.padButtons & 0xC000u) != 0;
+        if (allowed && !mouseHeld && !navigationHeld) savePointerReleaseBlocked = false;
+        return true;
+    }
     private void RoutePauseInput(ref Idas3Native.FrameInput frame)
     {
         var raw = frame;
