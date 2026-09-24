@@ -1,4 +1,5 @@
 #include "original_time_attack_visit.h"
+#include "course.h"
 #include "unity_ui_capture.h"
 #include <algorithm>
 #include <fstream>
@@ -18,11 +19,69 @@ void picture(const std::filesystem::path& path,const OriginalTimeAttackVisit& vi
     for(auto c:pixels){const char bytes[]{char(c>>16),char(c>>8),char(c)};out.write(bytes,3);}
     require(bool(out),"Write isolated visual fixture");
 }
+void mapArtworkAndTrace(const std::filesystem::path& root,const std::filesystem::path& out){
+    unsigned mismatchedPages=0;
+    // Use the authored road centreline in each race direction as a reproducible
+    // telemetry fixture. These are renderer checks, not simulated race results.
+    for(unsigned condition:{12u,13u,14u,15u}){
+        const unsigned course=condition/2,direction=condition&1;
+        const std::string name=course==6?"syomaru":"tuchizaka";
+        const auto path=Course::load(root/"data/courses",course==6?"n_sy":"k_tu","",direction!=0);
+        const auto& rules=originalRaceRuleRow(originalRaceRuleRowIndex(condition,2));
+        OriginalTimeAttackTelemetry recorder;
+        const auto period=unsigned(path.points.size()-1);
+        for(unsigned raw=0;raw<=unsigned(rules.goalIndex);++raw){
+            const auto& p=path.points[(unsigned(rules.startIndex)+raw)%period];
+            const auto progress=recorder.recordProgress(course,direction,raw,raw*100);
+            recorder.recordDrivingPoint({p.x,p.y,p.z},progress,1,0);
+        }
+        OriginalTimeAttackVisit::Setup setup;setup.condition=condition;
+        setup.telemetry=recorder.snapshot(course,{},{},{});
+        OriginalTimeAttackVisit trace,artwork;trace.load(root);artwork.load(root);
+        trace.beginLecture(setup);setup.telemetry.valid=false;artwork.beginLecture(setup);
+        for(unsigned i=0;i<16;++i){trace.advance({});artwork.advance({});}
+        const auto base=root/"data/original_assets/time_attack"/("lecmap_"+name);
+        const auto model=NativeModel::load(base/("lecmap_"+name+".idasmesh"));
+        const auto textures=NativeTextureBank::load(base/"textures/textures.idastex");
+        // Source338798/3387BC select the overview and three section textures.
+        // Extra bank artwork is never a fifth telemetry view.
+        const std::array<unsigned,4> expectedChunks=course==6?
+            std::array<unsigned,4>{4,0,1,2}:std::array<unsigned,4>{4,0,1,3};
+        for(unsigned page=0;page<4;++page){
+            const auto label=name+"-"+(direction?"inbound":"outbound")+"-map"+std::to_string(page);
+            picture(out/(label+".ppm"),trace);
+            std::vector<std::uint32_t> expected(640*480),actual(640*480,0xff000000u);
+            SpritePlacement placement;placement.scale=100;placement.invertY=true;
+            placement.authoredHeight=0;placement.offsetY=24;
+            compositeOriginalMenuChunk(expected,640,480,textures,model.chunks[expectedChunks[page]],placement);
+            artwork.paint(actual,640,480);
+            unsigned roadPixels=0,matchedPixels=0;
+            for(unsigned y=200;y<430;++y)for(unsigned x=200;x<430;++x){
+                const auto index=y*640+x,pixel=expected[index];
+                if((pixel>>24)!=255||(pixel&0x00ffffffu)==0)continue;
+                ++roadPixels;if(actual[index]==pixel)++matchedPixels;
+            }
+            require(roadPixels>100,"Expected map fixture contains visible authored road pixels");
+            if(matchedPixels*100<roadPixels*99){
+                ++mismatchedPages;std::cerr<<label<<": only "<<matchedPixels<<'/'<<roadPixels<<" road pixels match the selected telemetry view\n";
+            }
+            std::vector<std::uint32_t> withTrace(640*480,0xff000000u);trace.paint(withTrace,640,480);
+            unsigned blue=0;
+            for(unsigned y=200;y<430;++y)for(unsigned x=200;x<430;++x)
+                if(withTrace[y*640+x]==0xff00aaffu&&actual[y*640+x]!=0xff00aaffu)++blue;
+            require(blue>20,"Every overview/section view draws its recorded trace");
+            trace.advance({false,false,false,false,true});artwork.advance({false,false,false,false,true});
+        }
+        require(trace.mapIndex()==0&&artwork.mapIndex()==0,"Three sections wrap to overview without exposing unused bank artwork");
+    }
+    require(mismatchedPages==0,"Tsuchisaka/Shomaru artwork must match the full/section telemetry page in both directions");
+}
 }
 int main(int argc,char** argv){try{
     require(argc==3,"Arguments: native root, isolated output folder");
     const std::filesystem::path root=argv[1],out=argv[2];std::filesystem::create_directories(out);
     OriginalTimeAttackVisit visit;require(OriginalTimeAttackVisit::available(root),"Extracted original visit assets available");visit.load(root);
+    mapArtworkAndTrace(root,out);
     require(originalTimeAttackStartIntervalText(0)=="--","Zero start interval remains unavailable dashes");
     require(originalTimeAttackStartIntervalText(4321)=="0.720"&&originalTimeAttackStartIntervalText(5999)=="0.999"&&originalTimeAttackStartIntervalText(6000)=="1.000","Start interval preserves source6000Hz millisecond truncation");
     require(originalTimeAttackCountdownDraws(799).size()==1&&originalTimeAttackCountdownDraws(800).size()==2,"Lecture timer uses original80ticks per displayedunit");
@@ -109,10 +168,10 @@ int main(int argc,char** argv){try{
     require(loaded.save(legacy),"Legacy saves migrate atomically");
     {std::ofstream f(file);f<<"condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night\n6,0,0,987654,999,0,0,0,0,0,0\n";}
     require(!loaded.load(file)&&loaded.entries()[0].ticks6000==999999,"Bad glyph rejected without discarding live records");
-    // A bank can contain five artwork pages while telemetry has four slots.
-    // Exercise real rendering (including valid telemetry) through every page,
+    // Some banks have unused chunks beyond their four logical map views.
+    // Exercise real rendering (including valid telemetry) through every view,
     // both directions, repeated wraps, and a fresh visit after each course.
-    const unsigned pageCounts[]{2,4,4,4,4,4,5,5,4};
+    const unsigned pageCounts[]{2,4,4,4,4,4,4,4,4};
     std::vector<std::uint32_t> pixels(640*480);
     for(unsigned condition=0;condition<18;++condition){
         auto cycle=setup;cycle.condition=condition;cycle.resultStatus=0;
@@ -121,7 +180,7 @@ int main(int argc,char** argv){try{
         const auto pages=pageCounts[condition/2];
         std::cout<<"Cycling condition "<<condition<<", "<<pages<<" pages"<<std::endl;
         for(unsigned step=0;step<pages*3;++step){
-            require(visit.mapIndex()==step%pages,"All original artwork pages remain selectable across repeated wraps");
+            require(visit.mapIndex()==step%pages,"All original map views remain selectable across repeated wraps");
             visit.paint(pixels,640,480);
             require(visit.phase()==1,"Map cycling preserves active analysis");
             visit.advance({false,false,false,false,true});

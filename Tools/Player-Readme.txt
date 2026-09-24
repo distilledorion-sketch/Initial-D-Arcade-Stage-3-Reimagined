@@ -1,4 +1,4 @@
-0.3.95-community-replays.31
+0.3.95-community-replays.32
 TRANSMISSION SELECTION AND CUSTOM MUSIC
 Continue and Change Car now offer Automatic or Manual before mode selection. Each car remembers its confirmed transmission while keeping its tune, parts and progress. Back cancels an unconfirmed choice.
 Select BGM now has DELETE for custom songs, with confirmation starting on No. Place MP3, OGG or WAV files in Custom Music beside the EXE, then open Select BGM. The folder is created on first launch. Deleting removes the library entry and its managed music file; originals imported from outside this folder remain untouched.
@@ -11,7 +11,7 @@ Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder b
 No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
 COMMUNITY TIME ATTACK
-Only 0.3.95-community-replays.31 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
+Only 0.3.95-community-replays.32 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
 Both online players need this version. Updates use a smaller changed-file patch when available for the installed version. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
 
 FIXES INCLUDED FROM .28
@@ -50,7 +50,8 @@ AI DRIVER DIFFICULTY
 Settings > Gameplay > AI Driver Difficulty: Normal keeps the original pace; Hard adds 5% and Expert adds 10% to AI target pace. APPLY saves the setting for the next Legend of the Streets battle. Bunta Challenge, player handling, Time Attack and online human opponents are unchanged.
 
 HUD OPTIONS
-Settings > HUD > OPEN LIVE HUD EDITOR: Switch between bumper and third-person previews, drag HUD groups with the mouse, and resize with the mouse wheel or + / - buttons. Includes Time Extended, timer/sections, speedometer/gear, Time Attack records, Legend and Online opponent panels, mirror, minimap and Accepting Challengers. Time Attack records and both Legend/Online opponent panels share one position; moving any of them moves all three. Save & return applies the layout; Cancel discards edits. Countdown and finish/pass/fail/new-record announcements stay fixed. Minimap Zoom Out remains in HUD settings.
+Settings > HUD > Customize includes meter styles and 280 hanging ornaments/keychains. Select ORNAMENT for an animated preview, then Apply to save or Cancel to discard. Ornaments work with the Original HUD and custom meters; Off removes them. During races the chain flexes, road bumps produce bounce, and the pendant swings and twists independently. Use EDIT LAYOUT inside Customize to drag the meter and keychain separately, resize them, or reset their positions. Choose Done to return, then Apply to save; Cancel discards the customization. The entire ornament freezes while paused. Ornaments and tachometer needles blend between simulation updates for smooth motion above 60 FPS.
+Settings > HUD > EDIT HUD LAYOUT: Switch between bumper and third-person previews, drag HUD groups with the mouse, and use the SIZE slider for precise sizing. The percentage readout shows the exact size; the mouse wheel, + / - buttons and controller adjustments change it by 1%. Sizes stop at the limits instead of wrapping. Includes Time Extended, timer/sections, speedometer/gear, Time Attack records, Legend and Online opponent panels, mirror, minimap and Accepting Challengers. Time Attack records and both Legend/Online opponent panels share one position; moving any of them moves all three. Save & return applies the layout; Cancel discards edits. Countdown and finish/pass/fail/new-record announcements stay fixed. Minimap Zoom Out remains in HUD settings.
 
 TODAY'S UPDATE - SEPTEMBER 21, 2026
 Enna Skyline is included in the main game and online course selection: downhill/uphill, dry/wet, night scenery and Akina handling. Enna Time Attack boards and replay downloads are available on the community leaderboard.
@@ -277,7 +278,7 @@ W or Up: accelerate
 S, Down, or Space: brake
 A/D or Left/Right: steer
 Q/E: manual gears
-C: bumper / chase camera (bumper is the default)
+C: bumper / chase / natural camera (bumper is the default)
 F11: fullscreen at the display resolution / return to window
 Escape or controller Start: pause / online race menu
 Backspace or controller B in the pause menu: back
@@ -325,6 +326,10 @@ display, and optional background mute. Choose APPLY to save changes.
 Display changes revert after 15 seconds unless you choose KEEP CHANGES.
 Navigate with arrows and Enter/Escape, controller D-pad and A/B, or mouse.
 Settings are saved to game-options.json beside the existing scene saves.
+
+Gameplay > DEFAULT CAMERA offers BUMPER, CHASE and NATURAL. Natural adds
+smooth following and turns, a steady horizon, and gentle speed-based framing.
+Choose APPLY to save your default; View Change cycles cameras during a race.
 
 Gameplay includes STEERING SMOOTHING beside STEERING DEADZONE. At 0% the
 current steering response is preserved; higher values soften sudden steering

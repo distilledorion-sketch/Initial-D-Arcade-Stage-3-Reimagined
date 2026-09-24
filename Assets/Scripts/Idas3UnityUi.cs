@@ -44,12 +44,19 @@ public sealed class Idas3UnityUi : MonoBehaviour
     readonly List<MaterialPropertyBlock> drawProperties = new List<MaterialPropertyBlock>();
     MaterialPropertyBlock fadeProperties;
     Idas3SceneRenderer sceneRenderer;
+    Idas3ArcadeHud arcadeHud;
+    Idas3OrnamentRenderer ornament;
+    public bool OrnamentVisible {get;private set;}
+    internal Idas3OrnamentRenderer OrnamentRenderer=>ornament;
+    internal bool ArcadePreview {get;set;}
+    internal bool ArcadeMeterVisible {get;private set;}
+    internal float ArcadeDriftLampOpacity=>ArcadeMeterVisible?arcadeHud.DriftLampOpacity:0;
     bool performanceBaseline;
     uint lastUnresolved;
     public int DrawCount { get; private set; }
     internal int HudVertexCount { get; private set; }
     public Idas3GameOptions.Values HudOptionsOverride { get; set; }
-    readonly Rect[] hudBounds=new Rect[10];readonly bool[] hudVisible=new bool[10];
+    readonly Rect[] hudBounds=new Rect[Idas3GameOptions.Values.HudLayoutGroupCount];readonly bool[] hudVisible=new bool[Idas3GameOptions.Values.HudLayoutGroupCount];
     internal bool HudBounds(int group,out Rect bounds){bounds=hudBounds[group];return hudVisible[group];}
     public uint UnresolvedSurfaces { get; private set; }
     public int SourceTextureCount => textures.Count;
@@ -172,11 +179,32 @@ public sealed class Idas3UnityUi : MonoBehaviour
             draws[i]=d;
         }
         mesh.Clear(); mesh.SetVertices(positions); mesh.SetUVs(0, uv); mesh.SetColors(colors); mesh.SetUVs(1, offsets);
+        ArcadeMeterVisible=false;
+        ReleaseOriginalMeter(layout);
+        if(layout!=null&&layout.hudMeterStyle>0&&hudVisible[2]&&Idas3ArcadeMeterCatalog.IsAvailable(layout.hudMeterStyle)){
+            Idas3ArcadeHud.Telemetry telemetry;
+            bool live=ArcadePreview;
+            if(ArcadePreview)telemetry=Idas3ArcadeHud.Demo(Time.unscaledTime);
+            else live=Idas3ArcadeHud.Read(out telemetry);
+            if(live){
+                if(arcadeHud==null)arcadeHud=new Idas3ArcadeHud();
+                arcadeHud.Build(layout,telemetry,frame.width,frame.height,Time.unscaledTime,ArcadePreview,out hudBounds[2]);
+                ArcadeMeterVisible=true;
+            }
+        }
+        OrnamentVisible=false;
+        if(layout==null||layout.hudOrnamentId==0){ornament?.Dispose();ornament=null;}
+        else if(hudVisible[2]){
+            if(ornament==null)ornament=new Idas3OrnamentRenderer();
+            OrnamentVisible=ArcadePreview?ornament.RenderPreview(layout.hudOrnamentId,Time.unscaledTime)!=null:ornament.UpdateLive(layout.hudOrnamentId,out _);
+            if(OrnamentVisible){hudBounds[10]=Idas3OrnamentRenderer.ScreenBounds(frame.width,frame.height,layout);hudVisible[10]=true;}
+        }else ornament?.Suspend();
         var batches = performanceBaseline ? new List<Draw>() : reusableBatches;
         batches.Clear();
         for (int i = 0; i < frame.drawCount; ++i) {
             var d = draws[i];
             if (d.first + d.count > frame.vertexCount || d.texture >= frame.textureCount) throw new InvalidOperationException("UI draw outside source frame");
+            if(ArcadeMeterVisible&&(d.flags&8)!=0&&((d.flags>>8)&15)==2)continue;
             if (batches.Count != 0 && SameBatch(batches[batches.Count - 1], d)) { var merged = batches[batches.Count - 1]; merged.count += d.count; batches[batches.Count - 1] = merged; }
             else batches.Add(d);
         }
@@ -201,6 +229,8 @@ public sealed class Idas3UnityUi : MonoBehaviour
             command.DrawMesh(mesh, Matrix4x4.identity, GetMaterial(d), i, 0, properties);
         }
         mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 100000);
+        if(ArcadeMeterVisible)arcadeHud.Render(foreground,frame.width,frame.height);
+        if(OrnamentVisible)ornament.Render(foreground,frame.width,frame.height,layout);
         var renderer = performanceBaseline ? GetComponent<Idas3SceneRenderer>() : sceneRenderer;
         uint fade = renderer ? renderer.CurrentFrame.screenFadeArgb : 0;
         if ((fade >> 24) != 0) {
@@ -210,7 +240,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         }
         backgroundCamera.targetTexture = foregroundCamera.targetTexture = source.targetTexture;
         backgroundCamera.rect = foregroundCamera.rect = renderer ? renderer.ViewportRect : new Rect(0,0,1,1);
-        DrawCount = batches.Count; UnresolvedSurfaces = frame.unresolvedSurfaces;
+        DrawCount = batches.Count+(ArcadeMeterVisible?arcadeHud.SpriteCount:0); UnresolvedSurfaces = frame.unresolvedSurfaces;
         if (UnresolvedSurfaces != 0 && lastUnresolved != UnresolvedSurfaces) Debug.LogError("Original UI capture missed " + UnresolvedSurfaces + " surfaces; no framebuffer fallback is used.");
         lastUnresolved = UnresolvedSurfaces;
     }
@@ -252,9 +282,14 @@ public sealed class Idas3UnityUi : MonoBehaviour
         background?.Release(); foreground?.Release(); background = foreground = null;
         if (backgroundCamera) Destroy(backgroundCamera.gameObject); if (foregroundCamera) Destroy(foregroundCamera.gameObject);
         if (mesh) Destroy(mesh); if (fadeMesh) Destroy(fadeMesh); if (fadeMaterial) Destroy(fadeMaterial);
+        arcadeHud?.Dispose();arcadeHud=null;
+        ornament?.Dispose();ornament=null;OrnamentVisible=false;
         foreach (var material in materials.Values) Destroy(material); materials.Clear();
         foreach (var texture in textures) Destroy(texture); textures.Clear(); source = null;
     }
     void OnDestroy() => Shutdown();
+    internal void ReleaseOriginalMeter(Idas3GameOptions.Values layout){
+        if(layout!=null&&layout.hudMeterStyle==0){arcadeHud?.Dispose();arcadeHud=null;ArcadeMeterVisible=false;}
+    }
 }
 

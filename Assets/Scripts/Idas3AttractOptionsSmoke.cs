@@ -26,8 +26,10 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private short steeringAxis;
     private static bool OptionsExitCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-options-exit-check")>=0;
     private static bool UpdatesCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-check")>=0;
+    private static bool HudCustomizationCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-customization-check")>=0;
     private int pulse,checks;
     private double began;
+    private double presentationDelta;
     private readonly List<string> captures=new List<string>();
     private readonly List<CaptureDimensions> captureDimensions=new List<CaptureDimensions>();
     private readonly List<string> observations=new List<string>();
@@ -69,6 +71,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private bool KeyHeld(KeyCode key)=>(physicalKey!=KeyCode.None&&key==physicalKey)||(heldAccelerator&&key==KeyCode.W)||(heldSteering&&key==KeyCode.D);
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame){
         if(active==null)return true;if(active.finished)return false;
+        if(active.presentationDelta>0)frame.deltaSeconds=active.presentationDelta;
         if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}return true;
     }
     private void Check(bool ok,string message){++checks;if(!ok)throw new InvalidOperationException(message+" stage="+host.Status.frontendStage+" flags="+host.Status.flags);}
@@ -83,7 +86,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             if(failure!=null){Finish(false,failure.ToString());yield break;}if(value is IEnumerator child)stack.Push(child);else yield return value;
         }
     }
-    private void Update(){if(!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-began>(ReportsCheck||PointerCheck?300:45)))Finish(false,host.Failure??"Attract options diagnostic timeout.");}
+    private void Update(){if(!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-began>(ReportsCheck||PointerCheck||HudCustomizationCheck?300:45)))Finish(false,host.Failure??"Attract options diagnostic timeout.");}
     private IEnumerator PointerRegression(){
         padConnected=true;yield return Release();menu.OpenAttractOptions();menu.SelectTab(2);
         int camera=options.Draft.defaultCamera;bool fps=options.Draft.showFps;
@@ -243,7 +246,8 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(clean,"Conquered animation escaped its original screen aperture");
         }
         File.WriteAllBytes(Path.Combine(root,name+".png"),picture.EncodeToPNG());captures.Add(name+".png");
-        camera.targetTexture=previous;Destroy(picture);target.Release();Destroy(target);
+        camera.targetTexture=previous;host.GetComponent<Idas3SceneRenderer>().ApplyFrame();host.GetComponent<Idas3UnityUi>().ApplyFrame();
+        Destroy(picture);target.Release();Destroy(target);
     }
     private float NativeMaster(){var value=new Idas3Native.Options{size=(uint)Marshal.SizeOf<Idas3Native.Options>()};Check(Idas3Native.Idas3SceneGetOptions(ref value)==1,"Native options unavailable");return value.masterGain;}
     private void CheckClosed(string message){
@@ -303,7 +307,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             typeof(Idas3Updates).GetField("downloadUrl",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).SetValue(updates,
                 Idas3Updates.RepositoryUrl+"/releases/download/v0.3.95-community-replays.5/SHA256SUMS.txt");
             updates.Activate();updates.AcceptUpdate();
-            Check(updates.State==Idas3Updates.CheckState.Downloading,"Confirmed update starts file download");
+            Check(updates.State==Idas3Updates.CheckState.Preparing||updates.State==Idas3Updates.CheckState.Downloading,"Confirmed update starts cache preparation or file download");
             yield return Until(()=>updates.State==Idas3Updates.CheckState.Unavailable,40,"Invalid update did not report an error");
             Check(updates.Message.Contains("archive")||updates.Message.Contains("Central Directory"),"Downloaded/checksummed data reached ZIP validation: "+updates.Message);
             Check(Convert.ToBase64String(before)==Convert.ToBase64String(File.ReadAllBytes(executable)),"Invalid archive leaves installed executable intact");
@@ -368,9 +372,356 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         Check(!menu.IsOpen&&!menu.AttractPromptVisible,"Update notice stays out of gameplay");
         Finish(true,null);
     }
+    private IEnumerator BrowseHudPickerTo(int style){
+        var customization=menu.HudCustomization;
+        Check(customization!=null&&customization.PickerOpen,"Meter picker is open before browsing");
+        int count=Idas3ArcadeMeterCatalog.Count;
+        for(int step=0;step<count&&customization.Draft.hudMeterStyle!=style;++step){
+            menu.Navigate(1);yield return Frames(1);
+        }
+        Check(customization.Draft.hudMeterStyle==style&&customization.PickerIndex==Idas3ArcadeMeterCatalog.IndexOfStyle(style),"Picker navigation reaches saved style "+style);
+    }
+    private void SelectHudCustomizationRow(int row){
+        var panel=menu.HudCustomization;
+        Check(panel!=null&&panel.IsOpen&&!panel.PickerOpen,"HUD customization actions are available");
+        for(int step=0;step<12&&panel.SelectedRow!=row;++step)menu.Navigate(1);
+        Check(panel.SelectedRow==row,"HUD customization navigation reaches action "+row);
+    }
+    private void CheckHudPreviewPixels(string name){
+        var image=new Texture2D(2,2,TextureFormat.RGB24,false);
+        try{
+            Check(image.LoadImage(File.ReadAllBytes(Path.Combine(root,name+".png"))),"HUD preview capture can be decoded");
+            float scale=Mathf.Min(1.5f,Mathf.Min(image.width/1072f,image.height/704f));
+            float originX=(image.width-1040*scale)*.5f,originY=(image.height-680*scale)*.5f;
+            int left=Mathf.CeilToInt(originX+404*scale),right=Mathf.FloorToInt(originX+988*scale);
+            int top=Mathf.CeilToInt(originY+192*scale),bottom=Mathf.FloorToInt(originY+460*scale),visible=0;
+            for(int y=top;y<bottom;++y)for(int x=left;x<right;++x){
+                Color32 pixel=image.GetPixel(x,image.height-1-y);
+                if(pixel.r>48||pixel.g>48||pixel.b>48)++visible;
+            }
+            Check(visible>(right-left)*(bottom-top)/200,"Selected artwork appears inside the actual OnGUI preview: "+name);
+        }finally{Destroy(image);}
+    }
+    private IEnumerator HudCatalogPickerRegression(){
+        int count=Idas3ArcadeMeterCatalog.Count;
+        Check(count==88,"Meter picker contains Original plus all 87 recovered meters");
+        var seen=new HashSet<int>();
+        for(int index=0;index<count;++index)Check(seen.Add(Idas3ArcadeMeterCatalog.StyleAt(index)),"Meter picker saved IDs are unique");
+        const int analogStyle=3,characterStyle=51;
+        int lastStyle=Idas3ArcadeMeterCatalog.StyleAt(count-1);
+        Check(lastStyle==91&&Idas3ArcadeMeterCatalog.SourceId(lastStyle)==89,"Last picker entry retains recovered source ID 89");
+        menu.Activate();yield return Frames(2);menu.Activate();
+        var customization=menu.HudCustomization;
+        Check(customization.PickerOpen&&customization.PickerIndex==1&&customization.PickerScroll==0,"Picker opens on saved Stuttgart within the initial rows");
+        yield return Capture("meter-picker-initial");
+        yield return BrowseHudPickerTo(analogStyle);menu.Activate();yield return Frames(2);
+        Check(!customization.PickerOpen&&options.Current.hudMeterStyle==1,"Imported analog preview leaves saved Stuttgart unchanged");
+        yield return Capture("imported-analog-customization");CheckHudPreviewPixels("imported-analog-customization");
+        menu.Activate();yield return BrowseHudPickerTo(characterStyle);
+        Check(customization.PickerScroll>0&&customization.PickerIndex>=customization.PickerScroll&&customization.PickerIndex<customization.PickerScroll+9,"Browsing reveals selected meter in scrolled picker");
+        yield return Capture("meter-picker-scrolled");menu.Activate();yield return Frames(2);
+        yield return Capture("imported-character-customization");CheckHudPreviewPixels("imported-character-customization");
+        menu.Activate();yield return BrowseHudPickerTo(lastStyle);
+        Check(customization.PickerIndex==count-1&&Mathf.Approximately(customization.PickerScroll,count-9),"Last catalog entry scrolls into the final viewport");
+        yield return Capture("meter-picker-last");menu.Activate();
+        SelectHudCustomizationRow(6);menu.Activate();yield return Frames(3);
+        Check(!menu.CustomizingHud&&options.Current.hudMeterStyle==lastStyle,"Apply persists the high saved meter ID from the picker");
+        var reload=new Idas3GameOptions(new OptionsTestPlatform());reload.Initialize(Path.GetDirectoryName(options.FilePath));
+        Check(reload.Current.hudMeterStyle==lastStyle,"High meter ID survives options reload");
+        string saved=File.ReadAllText(options.FilePath);
+        menu.Activate();yield return Frames(2);menu.Activate();
+        Check(customization.PickerIndex==count-1,"Reopened picker locates the saved high meter ID");
+        menu.Navigate(1);
+        Check(customization.PickerIndex==0&&customization.Draft.hudMeterStyle==0&&customization.PickerScroll==0,"Picker wraps from last meter to Original");
+        menu.Back();Check(menu.CustomizingHud&&!customization.PickerOpen,"Back dismisses picker before cancelling customization");
+        menu.Back();yield return Frames(3);
+        Check(!menu.CustomizingHud&&options.Current.hudMeterStyle==lastStyle&&File.ReadAllText(options.FilePath)==saved,"Cancel restores prior high meter appearance and saved file");
+        menu.Activate();yield return Frames(2);menu.Activate();yield return BrowseHudPickerTo(1);menu.Activate();
+        SelectHudCustomizationRow(6);menu.Activate();yield return Frames(3);
+        Check(options.Current.hudMeterStyle==1&&options.Current.hudNameplateStyle==1,"Picker restores Stuttgart for existing layout and live telemetry checks");
+        observations.Add("Actual OnGUI catalog picker: 88 unique styles, initial/scrolled/final rows, Infinity and Reimu previews, high style91 Apply/reload, wrap to Original, Cancel preservation, Stuttgart restored.");
+    }
+    private IEnumerator BrowseOrnamentPickerTo(int id){
+        var customization=menu.HudCustomization;
+        Check(customization!=null&&customization.OrnamentPicker,"Ornament picker is open before browsing");
+        int count=Idas3OrnamentCatalog.Count,target=Idas3OrnamentCatalog.IndexOf(id);
+        int forward=(target-customization.PickerIndex+count)%count,backward=(customization.PickerIndex-target+count)%count;
+        int direction=forward<=backward?1:-1;
+        for(int step=0;step<count&&customization.Draft.hudOrnamentId!=id;++step){menu.Navigate(direction);yield return Frames(1);}
+        Check(customization.Draft.hudOrnamentId==id&&customization.PickerIndex==target,"Ornament navigation reaches recovered item "+id);
+    }
+    private IEnumerator OrnamentPickerRegression(){
+        int count=Idas3OrnamentCatalog.Count,firstId=Idas3OrnamentCatalog.IdAt(1),lastId=Idas3OrnamentCatalog.IdAt(count-1);
+        Check(count==281&&Idas3OrnamentCatalog.IdAt(0)==0,"Ornament picker contains Off and all 280 recovered models");
+        Check(options.Current.hudOrnamentId==0&&!Idas3OrnamentRenderer.PreviewLoaded,"Ornaments are opt-in with no idle preview renderer");
+        menu.Activate();menu.NavigateHorizontal(-1);menu.Navigate(1);menu.Activate();
+        var customization=menu.HudCustomization;
+        Check(customization.OrnamentPicker&&customization.PickerIndex==0&&customization.Draft.hudMeterStyle==0,"Original HUD retains access to the ornament picker");
+        yield return Capture("ornament-picker-initial");
+        yield return BrowseOrnamentPickerTo(firstId);menu.Activate();yield return Frames(2);
+        yield return Capture("ornament-ae86-preview");CheckHudPreviewPixels("ornament-ae86-preview");
+        Check(Idas3OrnamentRenderer.PreviewLoaded&&Idas3OrnamentRenderer.ResidentTextureCount>0,"The private ornament preview loads recovered model resources");
+        Check(options.Current.hudMeterStyle==1&&options.Current.hudOrnamentId==0,"Preview does not change saved meter or ornament");
+        menu.Activate();yield return BrowseOrnamentPickerTo(Idas3OrnamentCatalog.IdAt(12));
+        Check(customization.PickerScroll>0&&customization.PickerIndex>=customization.PickerScroll&&customization.PickerIndex<customization.PickerScroll+9,"Scrolled ornament picker keeps the selected model visible");
+        yield return Capture("ornament-picker-scrolled");
+        yield return BrowseOrnamentPickerTo(lastId);
+        Check(customization.PickerIndex==count-1&&Mathf.Approximately(customization.PickerScroll,count-9),"Final ornament is visible in the final scrollbar viewport");
+        yield return Capture("ornament-picker-last");CheckHudPreviewPixels("ornament-picker-last");
+        menu.Activate();SelectHudCustomizationRow(6);menu.Activate();yield return Frames(3);
+        Check(!menu.CustomizingHud&&options.Current.hudOrnamentId==lastId&&options.Current.hudMeterStyle==0,"Apply saves the final ornament with the original HUD");
+        Check(!Idas3OrnamentRenderer.PreviewLoaded&&!host.GetComponent<Idas3UnityUi>().OrnamentVisible,"Closing the picker releases its renderer and the ornament stays out of attract screens");
+        var reload=new Idas3GameOptions(new OptionsTestPlatform());reload.Initialize(Path.GetDirectoryName(options.FilePath));
+        Check(reload.Current.hudOrnamentId==lastId&&reload.Current.hudMeterStyle==0,"Ornament and original meter selections survive reload");
+        string saved=File.ReadAllText(options.FilePath);
+        menu.Activate();menu.Navigate(1);menu.Activate();
+        Check(customization.OrnamentPicker&&customization.PickerIndex==count-1,"Reopened ornament picker locates the saved final entry");
+        menu.Navigate(1);yield return Frames(2);
+        Check(customization.PickerIndex==0&&customization.Draft.hudOrnamentId==0&&customization.PickerScroll==0,"Ornaments wrap through Off");
+        yield return Capture("ornament-off-preview");
+        Check(!Idas3OrnamentRenderer.PreviewLoaded,"Off releases the private preview model");
+        menu.Back();Check(menu.CustomizingHud&&!customization.PickerOpen&&customization.SelectedRow==4,"Back closes the ornament picker and returns to its row");
+        menu.Back();yield return Frames(2);
+        Check(!menu.CustomizingHud&&options.Current.hudOrnamentId==lastId&&File.ReadAllText(options.FilePath)==saved,"Cancel preserves the saved ornament and settings file");
+        menu.Activate();menu.NavigateHorizontal(1);for(int row=0;row<4;++row)menu.Navigate(1);menu.Activate();
+        yield return BrowseOrnamentPickerTo(firstId);menu.Activate();SelectHudCustomizationRow(6);menu.Activate();yield return Frames(3);
+        Check(options.Current.hudMeterStyle==1&&options.Current.hudNameplateStyle==1&&options.Current.hudOrnamentId==firstId,"Ornament selection preserves meter options and restores Stuttgart for live checks");
+        observations.Add("Actual OnGUI ornament picker: 281 entries including Off, initial/scrolled/final screenshots, AE86 recovered model preview, Original HUD compatibility, high-ID Apply/reload, Off resource release, Cancel preservation and first ornament selected for live driving.");
+    }
+    private IEnumerator HudPlacementRegression(){
+        var baseline=options.Current.Clone();string saved=File.ReadAllText(options.FilePath);
+        menu.Activate();SelectHudCustomizationRow(8);yield return Capture("customization-edit-layout");menu.Activate();yield return Frames(2);
+        var editor=menu.HudEditor;
+        Check(editor!=null&&editor.IsOpen&&menu.CustomizingHud,"Edit Layout opens inside the customization transaction");
+        // Exercise the actual preview geometry, not just the saved percentages.
+        int[] resizeGroups={1,2,3,6,7,4,5,8,9,10};
+        var initialLayout=editor.Draft.Clone();
+        for(int index=0;index<resizeGroups.Length;++index){
+            int group=resizeGroups[index];editor.SelectGroup(index);editor.SetSelectedSizePercent(112);editor.Refresh();
+            Check(editor.Bounds(group,out var beforeFine),"Missing preview bounds for fine sizing group "+group);
+            var beforeOffset=editor.Draft.HudOffset(group);var otherSizes=editor.Draft.Clone();
+            editor.ResizeSelected(1);editor.Refresh();
+            Check(editor.Draft.HudSizePercent(group)==113&&editor.Bounds(group,out var afterFine)&&Mathf.Abs(afterFine.width/beforeFine.width-113f/112f)<.003f,"A fine adjustment did not produce proportional geometry for group "+group);
+            Check(editor.Draft.HudOffset(group)==beforeOffset,"Resizing changed the saved position");
+            foreach(int other in resizeGroups)if(other!=group)Check(editor.Draft.HudSizePercent(other)==otherSizes.HudSizePercent(other),"Resizing changed another HUD group");
+            editor.SetSelectedSizePercent(150);editor.ResizeSelected(1);
+            Check(editor.Draft.HudSizePercent(group)==150,"Upper size limit wrapped to the minimum");
+            editor.SetSelectedSizePercent(group==5?100:50);editor.ResizeSelected(-1);
+            Check(editor.Draft.HudSizePercent(group)==(group==5?100:50),"Lower size limit wrapped to the maximum");
+        }
+        // Minimap presets are baked into native geometry. Fine resizing must
+        // also work for old 125% and 150% saves without applying size twice.
+        editor.SelectGroup(6);
+        for(int preset=0;preset<3;++preset){
+            editor.Draft.minimapSize=preset;editor.Draft.hudSizePercent[5]=0;editor.Refresh();
+            Check(editor.Bounds(5,out var originalMap),"Missing legacy minimap bounds");
+            editor.SetSelectedSizePercent(137);editor.Refresh();
+            Check(editor.Bounds(5,out var resizedMap)&&Mathf.Abs(resizedMap.width/originalMap.width-137f/(100+25*preset))<.003f,"Fine minimap sizing double-scaled its legacy preset");
+        }
+        Idas3GameOptions.CopyHudLayout(initialLayout,editor.Draft);editor.SelectGroup(1);editor.Refresh();
+        bool meterReady=editor.Bounds(2,out var meterBefore),chainReady=editor.Bounds(10,out var chainBefore);
+        Check(meterReady&&chainReady,"Both custom meter and keychain have draggable preview bounds at attract");
+        editor.SelectGroup(1);editor.MoveSelected(new Vector2(-90,-30));editor.ResizeSelected(1);editor.Refresh();
+        Check(editor.Draft.HudSizePercent(2)==baseline.HudSizePercent(2)+1,"Meter resizing still jumps by a preset");
+        editor.SetSelectedSizePercent(113);editor.Refresh();
+        var meterOffset=editor.Draft.HudOffset(2);
+        Check(editor.Draft.HudOffset(10)==baseline.HudOffset(10),"Moving the meter does not move the keychain");
+        editor.SelectGroup(9);editor.MoveSelected(new Vector2(-180,85));editor.ResizeSelected(1);editor.Refresh();
+        Check(editor.Draft.HudSizePercent(10)==baseline.HudSizePercent(10)+1,"Keychain resizing still jumps by a preset");
+        editor.SetSelectedSizePercent(117);editor.Refresh();
+        Check(editor.Draft.HudOffset(2)==meterOffset&&editor.Bounds(10,out var chainAfter)&&chainAfter.x<chainBefore.x&&chainAfter.y>chainBefore.y&&chainAfter.width>chainBefore.width,"Keychain moves and resizes independently of the tachometer");
+        var moved=editor.Draft.Clone();
+        yield return editor.Capture(Path.Combine(root,"hud-layout-meter-keychain.png"));
+        editor.Close(true);yield return Frames(2);
+        Check(menu.CustomizingHud&&!menu.EditingLayout&&File.ReadAllText(options.FilePath)==saved&&Idas3GameOptions.Equivalent(options.Current,baseline),"Nested Done leaves the save file and live options unchanged");
+        Check(menu.HudCustomization.Draft.HudOffset(10)==moved.HudOffset(10)&&menu.HudCustomization.Draft.HudSizePercent(10)==117,"Nested Done returns exact keychain size to the customization draft");
+        menu.Back();yield return Frames(2);
+        Check(!menu.CustomizingHud&&File.ReadAllText(options.FilePath)==saved,"Outer Cancel discards both placement changes");
+
+        menu.Activate();SelectHudCustomizationRow(8);menu.Activate();yield return Frames(2);editor=menu.HudEditor;
+        editor.SelectGroup(9);editor.Refresh();var beforeKeyboard=editor.Draft.HudOffset(10);
+        menu.Navigate(1);menu.NavigateHorizontal(-1);editor.Refresh();
+        Check(editor.Draft.HudOffset(10).x<beforeKeyboard.x,"Keyboard/controller Move X changes keychain position");
+        menu.SetWheelNavigation(true);menu.NavigateHorizontal(1);menu.Activate();menu.NavigateHorizontal(1);menu.Activate();menu.SetWheelNavigation(false);editor.Refresh();
+        Check(editor.Draft.HudOffset(10).y>beforeKeyboard.y,"Wheel steering and confirm can move the keychain vertically");
+        menu.Navigate(1);menu.NavigateHorizontal(1);
+        Check(editor.Draft.HudSizePercent(10)==baseline.HudSizePercent(10)+1,"Controller resize must advance by one percent");
+        menu.SetWheelNavigation(true);menu.Activate();menu.NavigateHorizontal(-1);menu.Activate();menu.SetWheelNavigation(false);
+        Check(editor.Draft.HudSizePercent(10)==baseline.HudSizePercent(10),"Wheel resize must decrease by one percent");
+        editor.ResetSelected();editor.Refresh();
+        Check(editor.Draft.HudOffset(10)==Vector2.zero&&editor.Draft.HudSizePercent(10)==100,"Reset selected restores keychain defaults");
+        editor.MoveSelected(new Vector2(-180,85));editor.SetSelectedSizePercent(117);editor.Refresh();
+        editor.SelectGroup(1);editor.MoveSelected(new Vector2(-90,-30));editor.SetSelectedSizePercent(113);editor.Refresh();
+        moved=editor.Draft.Clone();editor.Close(true);yield return Frames(2);SelectHudCustomizationRow(6);menu.Activate();yield return Frames(2);
+        Check(!menu.CustomizingHud&&options.Current.HudOffset(2)==moved.HudOffset(2)&&options.Current.HudOffset(10)==moved.HudOffset(10)&&options.Current.HudSizePercent(10)==117&&options.Current.HudSizePercent(2)==113,"Apply saves both independent positions and precise sizes");
+        var reload=new Idas3GameOptions(new OptionsTestPlatform());reload.Initialize(Path.GetDirectoryName(options.FilePath));
+        Check(reload.Current.HudOffset(2)==moved.HudOffset(2)&&reload.Current.HudOffset(10)==moved.HudOffset(10)&&reload.Current.HudSizePercent(10)==117&&reload.Current.HudSizePercent(2)==113,"Meter and keychain exact sizes survive restart");
+
+        menu.Activate();SelectHudCustomizationRow(4);menu.NavigateHorizontal(-1);SelectHudCustomizationRow(8);menu.Activate();yield return Frames(2);editor=menu.HudEditor;
+        Check(!editor.Bounds(10,out _)&&editor.Bounds(2,out _),"Keychain Off removes its layout target without hiding the meter");
+        menu.Back();menu.Back();yield return Frames(2);
+        Check(options.Current.hudOrnamentId==baseline.hudOrnamentId,"Cancelling nested Off preview keeps the saved keychain");
+        observations.Add("Nested Edit Layout: custom meter and keychain preview/move/resize independently; keyboard/controller and wheel movement, reset, Done versus Apply, outer Cancel, Off and restart persistence verified.");
+        observations.Add("Fine resize: all ten editable HUD groups change proportionally by 1%, retain independent offsets and sizes, and clamp without wrapping. Precise 113% meter and 117% keychain survive Apply and restart. Minimap legacy 100/125/150% presets resize without double scaling.");
+    }
+    private void CheckOrnamentRenderPixels(Idas3OrnamentRenderer renderer){
+        var target=renderer.Output as RenderTexture;
+        Check(target!=null&&target.IsCreated()&&renderer.PartCount>0,"Selected ornament has genuine mesh parts and a rendered viewport");
+        var previous=RenderTexture.active;var image=new Texture2D(target.width,target.height,TextureFormat.RGBA32,false);
+        try{
+            RenderTexture.active=target;image.ReadPixels(new Rect(0,0,target.width,target.height),0,0);image.Apply();
+            int opaque=0,transparent=0;
+            foreach(var pixel in image.GetPixels32()){if(pixel.a>32)++opaque;else ++transparent;}
+            Check(opaque>target.width*target.height/1000&&transparent>target.width*target.height/2,"Recovered ornament geometry is visible against a transparent viewport");
+        }finally{RenderTexture.active=previous;Destroy(image);}
+    }
+    private IEnumerator OrnamentLiveRegression(Idas3UnityUi ui){
+        int id=options.Current.hudOrnamentId;
+        Check(id!=0&&ui.OrnamentVisible&&ui.OrnamentRenderer!=null&&ui.OrnamentRenderer.SelectedId==id,"Saved ornament appears during a live race");
+        Check(Idas3OrnamentRenderer.Read(out var first)&&(first.flags&1)!=0&&first.simulationTicks>0,"Ornament consumes active native car-motion telemetry");
+        Check(Idas3OrnamentRenderer.Read(out var repeat)&&repeat.simulationTicks==first.simulationTicks&&repeat.flags==first.flags&&repeat.car==first.car&&repeat.x==first.x&&repeat.y==first.y&&repeat.z==first.z&&repeat.yaw==first.yaw,"Repeated ornament telemetry reads do not mutate the simulation tick or vehicle pose");
+        CheckOrnamentRenderPixels(ui.OrnamentRenderer);
+        var bounds=Idas3OrnamentRenderer.ScreenBounds(Screen.width,Screen.height);
+        Check(bounds.y<=0&&bounds.yMax<Screen.height*.4f&&bounds.xMin>0&&bounds.xMax<Screen.width,"The default ornament anchor remains at the screen top");
+        var placed=Idas3OrnamentRenderer.ScreenBounds(Screen.width,Screen.height,options.Current);
+        Check(ui.HudBounds(10,out var liveBounds)&&Vector2.Distance(liveBounds.position,placed.position)<.01f&&Mathf.Abs(liveBounds.width-placed.width)<.01f,"Live keychain render uses the saved position and size");
+        options.BeginEdit();options.Draft.hudMeterStyle=0;Check(options.ApplyDraft(),"Original HUD can be selected while keeping the ornament");yield return Frames(3);
+        Check(!ui.ArcadeMeterVisible&&ui.OrnamentVisible&&ui.HudBounds(2,out var original)&&original.width>10,"Original instruments and ornament coexist");
+        yield return SceneCapture("ornament-original-hud-live");
+        float maximumSwing=Quaternion.Angle(Quaternion.identity,ui.OrnamentRenderer.Swing);
+        float maximumCurve=0;var chainStart=ui.OrnamentRenderer.ChainAttachment;
+        heldSteering=true;
+        try{
+            for(int frame=0;frame<45;++frame){yield return null;float angle=Quaternion.Angle(Quaternion.identity,ui.OrnamentRenderer.Swing);Check(!float.IsNaN(angle)&&!float.IsInfinity(angle),"Live ornament swing is finite");maximumSwing=Mathf.Max(maximumSwing,angle);
+                var chain=ui.OrnamentRenderer.Motion;var start=chain.ChainPoint(0);var axis=(chain.AttachmentPosition-start).normalized;
+                for(int node=1;node<Idas3OrnamentMotion.ChainNodeCount-1;++node){var delta=chain.ChainPoint(node)-start;maximumCurve=Mathf.Max(maximumCurve,(delta-axis*Vector3.Dot(delta,axis)).magnitude);}
+            }
+        }finally{heldSteering=false;}
+        Check(Idas3OrnamentRenderer.Read(out var after)&&after.simulationTicks>first.simulationTicks,"Native ornament telemetry advances with driving");
+        Check((new Vector3(after.x,after.y,after.z)-new Vector3(first.x,first.y,first.z)).sqrMagnitude>.0001f,"Ornament telemetry tracks the moving car position");
+        Check(maximumSwing>.05f&&maximumSwing<40f,"The hanging model responds to driving with bounded swing");
+        Check(maximumCurve>.0001f,"Live car motion bends the chain instead of rotating one rigid assembly");
+        Check(Vector3.Distance(chainStart,ui.OrnamentRenderer.ChainAttachment)>.0001f,"The actual skinned attachment moves with the chain");
+        yield return HighFrameRateHudRegression(ui);
+        yield return SceneCapture("ornament-driving-swing");
+        menu.SetOpen(true);yield return Frames(3);
+        bool readPaused=Idas3OrnamentRenderer.Read(out var paused);
+        Check(menu.IsOpen&&readPaused&&(paused.flags&2)!=0,"Normal race pause is reflected in ornament telemetry");
+        var pausedSwing=ui.OrnamentRenderer.Swing;var pausedAttachment=ui.OrnamentRenderer.ChainAttachment;var pausedRevision=ui.OrnamentRenderer.Motion.Revision;yield return Frames(12);
+        Check(Idas3OrnamentRenderer.Read(out var pausedAgain)&&pausedAgain.simulationTicks==paused.simulationTicks&&pausedAgain.x==paused.x&&pausedAgain.y==paused.y&&pausedAgain.z==paused.z&&pausedAgain.yaw==paused.yaw,"Paused vehicle tick and pose remain fixed");
+        Check(Quaternion.Angle(pausedSwing,ui.OrnamentRenderer.Swing)<.001f,"The ornament pose freezes while the race is paused");
+        Check(ui.OrnamentRenderer.Motion.Revision==pausedRevision&&Vector3.Distance(pausedAttachment,ui.OrnamentRenderer.ChainAttachment)<.000001f,"Pause freezes chain joints and their actual skinned attachment");
+        menu.Back();yield return Frames(6);
+        Check(!menu.IsOpen&&Idas3OrnamentRenderer.Read(out var resumed)&&(resumed.flags&2)==0&&resumed.simulationTicks>paused.simulationTicks,"Normal Resume restarts ornament telemetry without a new selection");
+        options.BeginEdit();options.Draft.hudMeterStyle=1;Check(options.ApplyDraft(),"Custom meter can be restored alongside the ornament");yield return Frames(3);
+        Check(ui.ArcadeMeterVisible&&ui.OrnamentVisible,"Imported meter and ornament render together");
+        yield return SceneCapture("ornament-stuttgart-live");
+        options.BeginEdit();options.Draft.hudOrnamentId=0;Check(options.ApplyDraft(),"Ornament can be disabled during a live race");yield return Frames(3);
+        Check(!ui.OrnamentVisible&&Idas3OrnamentRenderer.ResidentTextureCount==0&&!Idas3OrnamentRenderer.PreviewLoaded,"Turning the ornament off hides it and releases its textures");
+        yield return SceneCapture("ornament-off-live");
+        observations.Add("Native car-motion telemetry is read-only and advances during actual driving; normal Pause freezes tick, car pose and ornament swing, and Resume restarts sampling; selected recovered meshes render with transparency at the screen top, Original and Stuttgart HUD coexist, steering/acceleration produce finite bounded swing (max "+maximumSwing.ToString("F2")+" degrees), and Off releases live resources. Hanging orientation is recorded in full-screen captures for visual review.");
+    }
+    private IEnumerator HighFrameRateHudRegression(Idas3UnityUi ui){
+        var rows=new List<string>{"fps,frame,tick,alpha,rpm,rawRpm,chainX,chainY"};
+        bool originalSteering=heldSteering;heldSteering=true;
+        try{
+            foreach(int fps in new[]{30,60,120,144,240}){
+                presentationDelta=1.0/fps;
+                int duplicateTicks=0,movingSubframes=0,tachoSubframes=0;
+                ulong previousTick=ulong.MaxValue;Vector3 previousEnd=Vector3.zero;float previousRpm=0;
+                for(int frame=0;frame<48;++frame){
+                    yield return null;
+                    Check(Idas3OrnamentRenderer.ReadTiming(out var timing)&&(timing.flags&1)!=0,"Live presentation timing is available");
+                    Check(timing.alpha>=0&&timing.alpha<=1,"Native interpolation phase is bounded");
+                    Check(Idas3ArcadeHud.Read(out var meter),"Interpolated tachometer telemetry is available");
+                    var end=ui.OrnamentRenderer.ChainAttachment;
+                    if(timing.simulationTicks==previousTick){
+                        ++duplicateTicks;
+                        if(Vector3.Distance(end,previousEnd)>.0000001f)++movingSubframes;
+                        if(Mathf.Abs(meter.rpm-previousRpm)>.0001f)++tachoSubframes;
+                    }
+                    rows.Add(string.Format(System.Globalization.CultureInfo.InvariantCulture,"{0},{1},{2},{3:F6},{4:F4},{5:F4},{6:F7},{7:F7}",fps,frame,timing.simulationTicks,timing.alpha,meter.rpm,host.Status.rpm,end.x,end.y));
+                    previousTick=timing.simulationTicks;previousEnd=end;previousRpm=meter.rpm;
+                }
+                if(fps>60){
+                    Check(duplicateTicks>0,"High-FPS frames occur between native ticks at "+fps);
+                    Check(movingSubframes>0,"Rendered chain moves between native ticks at "+fps);
+                    Check(tachoSubframes>0,"RPM presentation moves between native ticks at "+fps);
+                }
+            }
+        }finally{presentationDelta=0;heldSteering=originalSteering;File.WriteAllLines(Path.Combine(root,"hud-subframes.csv"),rows);}
+        observations.Add("30/60/120/144/240 FPS input cadence: actual native render phase, tachometer RPM and skinned ornament attachment sampled. At each cadence above60, RPM and chain movement change on rendered frames with no new simulation tick.");
+    }
+    private IEnumerator HudCustomizationRegression(){
+        Check(options.Current.hudMeterStyle==0,"Original HUD is the default");
+        Check(Idas3ArcadeHud.Available,"All matching meter resources are bundled");
+        Check(Idas3ArcadeHud.TachMaximum(7800)==8000&&Idas3ArcadeHud.TachMaximum(8500)==9000&&Idas3ArcadeHud.TachMaximum(9500)==10000&&Idas3ArcadeHud.TachMaximum(11000)==13000,"Tach scales match car RPM ranges");
+        menu.OpenAttractOptions();menu.SelectTab(7);yield return Capture("hud-settings");
+        menu.Activate();Check(menu.CustomizingHud,"Customize opens from HUD category");
+        menu.NavigateHorizontal(1);menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);menu.Activate();
+        Check(options.Current.hudMeterStyle==0,"Live preview does not apply appearance");
+        yield return Capture("stuttgart-customization");
+        menu.Back();Check(options.Current.hudMeterStyle==0&&!menu.CustomizingHud,"Cancel preserves original appearance");
+        menu.Activate();menu.NavigateHorizontal(1);for(int i=0;i<3;i++)menu.Navigate(1);menu.Activate();
+        SelectHudCustomizationRow(6);menu.Activate();
+        Check(!menu.CustomizingHud&&options.Current.hudMeterStyle==1&&options.Current.hudNameplateStyle==1,"Apply commits custom meter and nameplate");
+        var reload=new Idas3GameOptions(new OptionsTestPlatform());reload.Initialize(Path.GetDirectoryName(options.FilePath));
+        Check(reload.Current.hudMeterStyle==1&&reload.Current.hudNameplateStyle==1,"Appearance survives reload");
+        yield return HudCatalogPickerRegression();
+        yield return OrnamentPickerRegression();
+        yield return HudPlacementRegression();
+        menu.Navigate(1);menu.Activate();var editor=menu.HudEditor;
+        Check(editor!=null&&editor.IsOpen,"Layout editor remains available");editor.SelectGroup(1);editor.Refresh();
+        Check(editor.Bounds(2,out var before)&&before.width>250,"Custom meter has draggable layout bounds");
+        var timer=editor.Draft.HudOffset(1);editor.MoveSelected(new Vector2(-90,-30));editor.ResizeSelected(1);editor.Refresh();
+        Check(editor.Bounds(2,out var after)&&after.width>before.width&&editor.Draft.HudOffset(1)==timer,"Move and resize change only the meter group");
+        yield return editor.Capture(Path.Combine(root,"stuttgart-layout.png"));editor.Close(false);
+        foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1920,800)}){
+            yield return Resize(size.x,size.y,false);menu.OpenHudCustomization();yield return Capture("customization-"+size.x);
+            SelectHudCustomizationRow(8);menu.Activate();yield return Frames(2);editor=menu.HudEditor;editor.SelectGroup(9);editor.Refresh();
+            Check(editor.Bounds(10,out var keychainRect)&&keychainRect.xMin>=0&&keychainRect.xMax<=Screen.width+.01f&&keychainRect.yMax<=Screen.height+.01f,"Keychain remains reachable after aspect ratio change");
+            yield return editor.Capture(Path.Combine(root,"hud-layout-"+size.x+".png"));editor.Close(false);menu.Back();
+        }
+        yield return Resize(1200,720,false);menu.SetOpen(false);yield return Release();
+        pulse=13;yield return Until(()=>host.Status.frontendStage!=0,8,"Game can start after HUD settings");
+        pulse=116;yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1u)==0,35,"Quick race started for live meter");
+        heldAccelerator=true;yield return Frames(90);
+        var ui=host.GetComponent<Idas3UnityUi>();Check(ui.ArcadeMeterVisible,"Custom meter replaces original instrument group in race");
+        Check(Idas3ArcadeHud.Read(out var telemetry)&&telemetry.gear>=1&&telemetry.gear<=6&&telemetry.throttle>.5f,"Native gear and pedal telemetry follows driving");
+        Check(!float.IsNaN(telemetry.rpm)&&telemetry.rpm>=0&&Mathf.Abs(telemetry.speedKmh-host.Status.speedMetresPerSecond*3.6f)<5&&Mathf.Abs(telemetry.rpm-host.Status.rpm)<2500,"Interpolated speed and RPM remain close to live simulation, including gear changes");
+        yield return SceneCapture("stuttgart-live-race");
+        yield return OrnamentLiveRegression(ui);
+        foreach(int style in new[]{3,51}){
+            options.BeginEdit();options.Draft.hudMeterStyle=style;Check(options.ApplyDraft(),"Imported meter can be selected during a live race");yield return Frames(3);
+            bool importedLive=Idas3ArcadeHud.Read(out var importedTelemetry);
+            Check(ui.ArcadeMeterVisible&&importedLive&&(importedTelemetry.flags&1)!=0&&importedTelemetry.throttle>.5f,"Imported meter uses active native race telemetry");
+            // Presentation can be up to one tick behind current physics. The
+            // exact endpoint/bounds equivalence is checked by the native live
+            // regression; this verifies catalog changes retain live sampling.
+            Check(!float.IsNaN(importedTelemetry.rpm)&&importedTelemetry.rpm>=0&&Mathf.Abs(importedTelemetry.speedKmh-host.Status.speedMetresPerSecond*3.6f)<5&&Mathf.Abs(importedTelemetry.rpm-host.Status.rpm)<2500,"Imported meter interpolation stays close to the live vehicle after changing style");
+            yield return SceneCapture(style==3?"imported-live-race-infinity":"imported-live-race-reimu");
+        }
+        options.BeginEdit();options.Draft.hudMeterStyle=1;Check(options.ApplyDraft(),"Stuttgart is restored after imported live examples");yield return Frames(2);heldAccelerator=false;
+        options.BeginEdit();options.Draft.hudShiftLights=false;options.Draft.hudPedalIndicators=false;options.Draft.hudNameplateStyle=0;Check(options.ApplyDraft(),"Optional indicators can be disabled");yield return Frames(2);
+        yield return SceneCapture("stuttgart-minimal-race");
+        options.BeginEdit();options.Draft.hudMeterStyle=0;Check(options.ApplyDraft(),"Original meter can be restored");yield return Frames(2);
+        Check(!ui.ArcadeMeterVisible&&ui.HudBounds(2,out var original)&&original.width>10,"Original meter is restored without restarting");
+        yield return SceneCapture("original-restored-race");
+        int beforeTeardown=Idas3ImportedMeter.ResidentTextureCount;
+        var teardownHost=new GameObject("HUD preview teardown smoke");
+        var teardownOptions=new Idas3GameOptions(new OptionsTestPlatform());teardownOptions.Initialize(Path.Combine(root,"preview-teardown-settings"));teardownOptions.Draft.hudMeterStyle=3;
+        var teardownMenu=teardownHost.AddComponent<Idas3PauseMenu>();teardownMenu.Initialize(teardownOptions);
+        var teardownPanel=teardownHost.AddComponent<Idas3HudCustomization>();teardownPanel.Open(teardownOptions,teardownMenu);
+        Check(Idas3ArcadeHud.PreparePreview(teardownPanel.Draft,.125f)&&Idas3ImportedMeter.ResidentTextureCount>beforeTeardown,"Player teardown fixture acquires imported preview textures");
+        yield return Frames(1);Destroy(teardownHost);yield return Frames(2);
+        Check(Idas3ArcadeHud.PreviewSpriteCount==0&&Idas3ImportedMeter.ResidentTextureCount==beforeTeardown,"Actual Play Mode OnDestroy releases imported preview resources");
+        observations.Add("Source meter31 Stuttgart artwork, dynamic tach scale, live vehicle telemetry, optional pedal/shift/nameplate controls, private Apply/Cancel/reload, layout and small/ultrawide captures.");
+        Finish(true,null);
+    }
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate physical-input injection");yield return Release();
+        if(HudCustomizationCheck){yield return HudCustomizationRegression();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ai-options-check")>=0){
             Check(options.Current.aiDifficulty==0,"Default AI must remain Normal");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=-1}).aiDifficulty==0,"Negative AI setting");
@@ -394,7 +745,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(options.Current.aiDifficulty==2,"Cancel changed saved difficulty");Finish(true,null);yield break;
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-editor-check")>=0){
-            menu.OpenAttractOptions();menu.SelectTab(7);menu.Activate();yield return Frames(3);
+            menu.OpenAttractOptions();menu.SelectTab(7);menu.Navigate(1);menu.Activate();yield return Frames(3);
             var editor=menu.HudEditor;Check(editor!=null&&editor.IsOpen,"Live editor did not open from HUD settings");
             Check(editor.Draft.HudGroupScale(0)==1&&editor.Draft.HudOffset(0)==Vector2.zero,"Race announcements must remain fixed");
             var legacy=new Idas3GameOptions.Values();legacy.hudPositions[6]=new Vector2(-.1f,.15f);
@@ -437,24 +788,25 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapZoom=99}).minimapZoom==2,"Previous zoom-in setting must return to original");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=-1}).minimapSize==0,"Negative size not clamped");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=99}).minimapSize==2,"Oversize not clamped");
-            menu.OpenAttractOptions();menu.SelectTab(7);Check(menu.SelectedTab==7,"HUD category unavailable");menu.Navigate(1);
-            menu.NavigateHorizontal(1);Check(options.Draft.minimapSize==1&&options.HasUnsavedChanges,"125% selection not dirty");
-            menu.Activate();Check(options.Draft.minimapSize==2,"Confirm did not select 150%");
+            menu.OpenAttractOptions();menu.SelectTab(7);Check(menu.SelectedTab==7,"HUD category unavailable");menu.Navigate(1);menu.Navigate(1);
+            menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==101&&options.HasUnsavedChanges,"101% selection not dirty");
+            menu.Activate();Check(options.Draft.HudSizePercent(5)==102,"Confirm did not advance by one percent");
             menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==1,"Right should zoom out to wider");menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==0,"Zoom out did not select 50%");
-            var fields=new[]{"hudTimerSize","hudSpeedometerSize","hudRecordsSize","hudLegendSize","hudOnlineSize","hudMirrorSize","hudTimeExtensionSize","hudChallengersSize"};
-            for(int row=0;row<fields.Length;++row){
+            var sizeGroups=new[]{1,2,3,6,7,4,9,8};
+            for(int row=0;row<sizeGroups.Length;++row){
                 menu.Navigate(1);menu.NavigateHorizontal(1);
-                for(int other=0;other<fields.Length;++other){
-                    var field=typeof(Idas3GameOptions.Values).GetField(fields[other]);
-                    Check((int)field.GetValue(options.Draft)==(other<=row?3:2),"HUD row changed a different group: "+fields[other]);
+                for(int other=0;other<sizeGroups.Length;++other){
+                    Check(options.Draft.HudSizePercent(sizeGroups[other])==(other<=row?101:100),"HUD row changed a different group: "+sizeGroups[other]);
                 }
             }
-            menu.Navigate(1);menu.Navigate(1);menu.Activate();Check(options.Current.minimapSize==2&&options.Current.minimapZoom==0,"HUD Apply lost map settings");
+            menu.Navigate(1);menu.Navigate(1);menu.Activate();Check(options.Current.HudSizePercent(5)==102&&options.Current.minimapZoom==0,"HUD Apply lost map settings");
             var hudReloaded=new Idas3GameOptions(new OptionsTestPlatform());hudReloaded.Initialize(Path.GetDirectoryName(options.FilePath));
-            foreach(string name in fields)Check((int)typeof(Idas3GameOptions.Values).GetField(name).GetValue(hudReloaded.Current)==3,"Independent HUD setting did not survive reload: "+name);
+            foreach(int group in sizeGroups)Check(hudReloaded.Current.HudSizePercent(group)==101,"Independent HUD setting did not survive reload: "+group);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-options-no-capture")<0)yield return Capture("hud-settings");
-            menu.SelectTab(7);menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapSize==0,"Size did not wrap to original");
-            menu.NavigateHorizontal(-1);Check(options.Draft.minimapSize==2,"Reverse size selection failed");
+            menu.SelectTab(7);menu.Navigate(1);menu.Navigate(1);
+            options.Draft.SetHudSizePercent(5,150);menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==150,"Size wrapped at the upper bound");
+            menu.NavigateHorizontal(-1);Check(options.Draft.HudSizePercent(5)==149,"Reverse size selection did not decrease one percent");
+            options.Draft.SetHudSizePercent(5,100);menu.NavigateHorizontal(-1);Check(options.Draft.HudSizePercent(5)==100,"Size wrapped at the lower bound");
             menu.SetOpen(false);Finish(true,null);yield break;
         }
         if(PointerCheck){yield return PointerRegression();yield break;}
@@ -587,6 +939,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,finalFrontendStage=finalStage,options=options.Current,
             captures=captures.ToArray(),captureDimensions=captureDimensions.ToArray(),observations=observations.ToArray(),scope=ReportsCheck?"Private-save native/Unity regression: repeated synthetic controller Start, race pause/resume with continuously held keyboard/trigger/rebound A acceleration and steering, original live TA HUD capture, controlled-position finish gates and natural timeout; physical controllers not tested.":"Actual original attract frontend and managed options with private saves. Prompt captures request 640x480, 1024x768, 1280x720 and 1920x800 and report actual dimensions before restoring 1200x720. Synthetic physical keyboard/controller input traverses normal bindings and hold routing, including remapped confirm-button conflict and focus interruption. Apply, Back and persistence use normal options owners. Captures use actual OnGUI Repaint; no guest runtime, race fixture, native pause, or hardware force output."};
         if(PointerCheck)report.scope="Actual Unity settings, local lobby, and music chooser; real OS mouse clicks while a synthetic connected controller highlights a different control. Private saves; no physical controller hardware validation.";
+        if(HudCustomizationCheck)report.scope="Standalone player with private saves: actual OnGUI 88-meter and 281-entry ornament pickers, initial/scrolled/final rows, recovered artwork/3D preview pixel checks, high-ID Apply/reload and Cancel, Original HUD compatibility, Stuttgart layout move/resize, small/ultrawide captures, and live native quick-race telemetry. Actual ornament mesh parts, transparent render target, screen-top bounds, movement-responsive swing, and Off resource release are checked. Programmatic normal menu navigation and synthetic keyboard driving; no physical controller or every-car validation.";
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Gameplay captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Update / Full Repair / Later, same-version repair and patch/full fallback state transitions with controlled transfer failures, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";

@@ -178,7 +178,9 @@ void OriginalTimeAttackVisit::advance(const Input& input){
         case 1:
             if(input.nextMap&&std::int32_t(setup_.resultStatus)<=1){
                 const auto course=setup_.condition/2;
-                const auto parts=setup_.customMaps.empty()?maps_[course==8?3:course].model.chunks.size():setup_.customMaps.size();
+                // The source cycles three section selectors, not every chunk
+                // in the artwork bank. Myogi reuses one close-up for each lap.
+                const auto parts=setup_.customMaps.empty()?(course==0?2u:4u):setup_.customMaps.size();
                 if(parts)mapIndex_=unsigned((mapIndex_+1)%parts);
             }
             if(input.confirm||input.skip||timerTicks_==0){phase_=2;}break;
@@ -233,7 +235,15 @@ void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int w
     c.chunk(lecture_.model,lecture_.textures,21,0,24);
     const auto course=setup_.condition/2;
     if(setup_.customMaps.empty()){
-        const auto& map=maps_[course==8?3:course];c.chunk(map.model,map.textures,mapIndex_,0,24);
+        const auto& map=maps_[course==8?3:course];
+        // mapIndex_ describes the telemetry view: overview, then close-ups.
+        // Source338798/3387BC select overview4 and sections0,1,2 for Shomaru,
+        // but overview4 and sections0,1,3 for Tsuchisaka. Unused bank chunks
+        // are not map views; asset order is not driving/marker cache order.
+        constexpr std::array<unsigned,4> tsuchisakaPages{4,0,1,3};
+        const auto artworkIndex=course==7?tsuchisakaPages[mapIndex_]:
+            course==6?(mapIndex_==0?4u:mapIndex_-1):mapIndex_;
+        c.chunk(map.model,map.textures,artworkIndex,0,24);
     }else{
         c.rectangle(195,195,240,240,0xff202c39);
         const auto& page=setup_.customMaps.at(mapIndex_);
@@ -242,9 +252,8 @@ void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int w
         for(const auto& p:page.walls)c.chunk(lecture_.model,lecture_.textures,15,p[0],p[1],.65f,.65f);
         for(const auto& p:page.ditches)c.chunk(lecture_.model,lecture_.textures,27,p[0],p[1],.65f,.65f);
     }
-    // Artwork banks are not telemetry arrays: Shomaru and Tsuchisaka each
-    // have five pages, while the recovered driving/marker cache has four.
-    // Keep every artwork page reachable, but only draw available telemetry.
+    // Logical map views share the driving/marker cache order, independently
+    // of the course bank's artwork chunk numbers.
     if(setup_.customMaps.empty()&&setup_.telemetry.valid&&mapIndex_<drivingLines_.size()){
         for(const auto& line:drivingLines_.at(mapIndex_))
             c.line(line.from[0],line.from[1],line.to[0],line.to[1],line.color,1.25f);

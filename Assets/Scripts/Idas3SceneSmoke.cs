@@ -70,6 +70,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public int sourceTranslucentDepthWriteRanges;
         public int snowFlakes,snowPowder,rainTrails;
         public bool mirrorEnabled;
+        public int mainViewExcludedRanges,mainViewExcludedVertices,mirrorViewExcludedRanges,mirrorViewExcludedVertices;
         public Vector3 mirrorPosition, mirrorTarget;
         public RivalStatus rival;
     }
@@ -111,6 +112,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     [Serializable] private struct PerfSample {
         public int index,unityFrame,meshes,uiDraws,uploadedVertices,geometryUploads,materialUpdates;
         public int depthCandidates,depthDraws,depthRebuilds;
+        public int mainViewExcludedRanges,mainViewExcludedVertices,mirrorViewExcludedRanges,mirrorViewExcludedVertices;
         public long drawCalls,batches,setPassCalls;
         public double sceneRenderMs;
         public uint ranges,vertices;
@@ -381,8 +383,11 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         }
         if(world){
             Check(record.meshRenderers>0,"No Unity mesh renderers exist.");Check(record.textures>1,"No scene textures imported.");
+            var scene=host.GetComponent<Idas3SceneRenderer>();scene.VerifyViewCulling(Check);
+            record.mainViewExcludedRanges=scene.MainViewExcludedRanges;record.mainViewExcludedVertices=scene.MainViewExcludedVertices;
+            record.mirrorViewExcludedRanges=scene.MirrorViewExcludedRanges;record.mirrorViewExcludedVertices=scene.MirrorViewExcludedVertices;
             foreach(var geometry in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)){
-                if(geometry.gameObject.layer!=30)continue; // Imported placements intentionally use local transforms.
+                if(!Idas3SceneRenderer.IsSceneGeometryLayer(geometry.gameObject.layer))continue; // Imported placements intentionally use local transforms.
                 var matrix=geometry.localToWorldMatrix;
                 for(int row=0;row<4;++row)for(int col=0;col<4;++col)
                     Check(Mathf.Abs(matrix[row,col]-(row==col?1:0))<.00001f,"Baked world geometry inherited a camera/object transform; culling will be wrong.");
@@ -1109,6 +1114,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         }
         held=87;
         for(int i=0;i<perfWarmup;++i){if(timingEnabled)FrameTimingManager.CaptureFrameTimings();yield return null;if(manualRender)perfMainCamera.Render();}
+        scene.VerifyViewCulling(Check);
         Check(host.Status.speedMetresPerSecond>1,"Performance warmup did not accelerate the original car.");
         if(captureScreens&&perfWet)yield return Capture("wet-moving-bumper",true);
         if(captureScreens&&perfLegend)yield return Capture("legend-mirror-moving",true);
@@ -1144,6 +1150,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
                 meshes=scene.ActiveMeshCount,ranges=source.rangeCount,vertices=source.vertexCount,uiDraws=ui.DrawCount,
                 uploadedVertices=scene.UploadedVertexCount,geometryUploads=scene.GeometryUploadCount,materialUpdates=scene.MaterialUpdateCount,
                 depthCandidates=scene.DepthCandidateCount,depthDraws=scene.DepthDrawCount,depthRebuilds=scene.DepthBufferRebuildCount,
+                mainViewExcludedRanges=scene.MainViewExcludedRanges,mainViewExcludedVertices=scene.MainViewExcludedVertices,
+                mirrorViewExcludedRanges=scene.MirrorViewExcludedRanges,mirrorViewExcludedVertices=scene.MirrorViewExcludedVertices,
                 drawCalls=drawCalls.Valid?drawCalls.LastValue:-1,batches=batches.Valid?batches.LastValue:-1,setPassCalls=setPass.Valid?setPass.LastValue:-1,sceneRenderMs=renderMs,
                 speed=status.speedMetresPerSecond,focused=Application.isFocused,cpuFrameMs=-1,cpuMainMs=-1,cpuRenderMs=-1,gpuMs=-1};
             if(timingEnabled&&FrameTimingManager.GetLatestTimings(1,timings)>0){
@@ -1166,6 +1174,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         }
         if(perfFullDrive){Idas3SceneCourseDriveDiagnostic(0,null,0);Array.Resize(ref samples,measuredFrames);report.samples=samples;report.sampleFrames=measuredFrames;}
         report.measuredSeconds=(previousTicks-beganTicks)/(double)System.Diagnostics.Stopwatch.Frequency;
+        scene.VerifyViewCulling(Check);
         Camera.onPostRender-=CountPerformanceRender;held=0;
         report.lastNativeFrame=host.Status.renderedFrames;report.lastSimulationTick=host.Status.simulationTicks;
         report.replayFramesAfter=Idas3SceneModeFlowValue(32);report.rivalReplayFramesAfter=Idas3SceneModeFlowValue(33);
@@ -1184,6 +1193,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             SummarizePerformance("meshes",samples,s=>s.meshes),SummarizePerformance("ranges",samples,s=>s.ranges),
             SummarizePerformance("vertices",samples,s=>s.vertices),SummarizePerformance("uploadedVertices",samples,s=>s.uploadedVertices),
             SummarizePerformance("geometryUploads",samples,s=>s.geometryUploads),SummarizePerformance("materialUpdates",samples,s=>s.materialUpdates),
+            SummarizePerformance("mainViewExcludedRanges",samples,s=>s.mainViewExcludedRanges),SummarizePerformance("mainViewExcludedVertices",samples,s=>s.mainViewExcludedVertices),
+            SummarizePerformance("mirrorViewExcludedRanges",samples,s=>s.mirrorViewExcludedRanges),SummarizePerformance("mirrorViewExcludedVertices",samples,s=>s.mirrorViewExcludedVertices),
             SummarizePerformance("uiDraws",samples,s=>s.uiDraws)};
         File.WriteAllText(Path.Combine(root,"performance.json"),JsonUtility.ToJson(report,true));
         if(manualRender)Check(perfMainRenders==measuredFrames,"Every measured frame must render exactly once");

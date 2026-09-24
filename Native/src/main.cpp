@@ -22,9 +22,12 @@
 #include "original_start_grid.h"
 #include "original_race_start.h"
 #include "chase_camera.h"
+#include "natural_chase_camera.h"
 #include "original_chase_camera.h"
 #include "car_shadow.h"
 #include "driving_effects.h"
+#include "hud_drift_indicator.h"
+#include "hud_analog_presentation.h"
 #include "car_presentation.h"
 #include "car_pose_interpolation.h"
 #include "online_visual_correction.h"
@@ -135,6 +138,12 @@ struct App {
     } multiplayer;
     WetWeather wetWeather;
     DrivingEffects drivingEffects;
+    HudDriftIndicator hudDrift;
+    original::OriginalCollisionQuery hudDriftRoadQuery{};
+    original::OriginalTriangleSearchTrace hudDriftRoadTrace{};
+    original::OriginalSurfaceScratch hudDriftRoadScratch{};
+    Vec3 hudDriftLastPosition{};
+    bool hudDriftPoseKnown=false;
     std::array<std::array<original::OriginalCollisionQuery,4>,2> effectRoadQueries{};
     bool validationHideDrivingEffects=false;
     NativeTextureBank smokeTextures;
@@ -390,6 +399,7 @@ struct App {
     bool courseModelLoaded=false,hasOriginalScenery=false,loadedNight=false,loadedReverse=false,loadedWet=false,catalogScenery=false,sceneWet=false;
     int loadedCourse=-1;
     Course course;VehicleConfig config;VehicleState vehicle{},previous{};
+    mutable HudAnalogPresentation hudAnalogPresentation;
     RaceClock race;Replay recording,best;FixedClock clock;Renderer renderer;Hud hud;EngineAudio audio;HostInput input;
     int courseIndex=3,profile=0;bool reverse=false,wet=false,night=false,automatic=true;
     bool menu=true,paused=false,active=true,debug=false,showControls=false,running=true,finishedSaved=false,validationMode=false;
@@ -405,11 +415,16 @@ struct App {
     std::size_t segment=0;double bestTime=0;std::string message;float messageSeconds=0;
     Vec3 camera{};bool cameraReady=false;
     ChaseCamera chaseCamera;
+    NaturalChaseCamera naturalCamera;
     OriginalChaseCamera originalCamera;
     OriginalChaseFrame previousCameraFrame;
     OriginalChaseCamera bumperCamera;
     OriginalChaseFrame previousBumperFrame;
     OriginalDrivingView drivingView=OriginalDrivingView::Bumper;
+    void setDrivingView(OriginalDrivingView view){
+        if(drivingView!=view){naturalCamera.reset();drivingView=view;}
+    }
+    void cycleDrivingView(){setDrivingView(OriginalDrivingView((unsigned(drivingView)+1u)%3u));}
     OriginalShowroom showroom;FixedClock menuClock;FrontendStage showroomStage=FrontendStage::Title;
     std::array<std::vector<std::uint32_t>,6> nameLayers;
     std::uint32_t namePaintFrame=~0u;int namePaintWidth=0,namePaintHeight=0;
@@ -1002,7 +1017,7 @@ struct App {
             course=Course::load(importedCourse->root,importedCourse->slug,importedCourse->name,reverse);
             hasOriginalScenery=catalogScenery=false;sceneWet=wet;courseObjects.reset();courseBillboards.reset();courseCrows.reset();
             trackStart=2;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;
-            chaseCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
+            chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
             auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));
             previous=vehicle;segment=0;progress=trackStart;steering=0;cameraReady=false;clock.reset();best=Replay{};bestTime=0;
             loadSelectedCar();texturesPending=true;return;
@@ -1042,10 +1057,42 @@ struct App {
             courseModelLoaded=true;loadedCourse=courseIndex;loadedNight=night;loadedReverse=reverse;loadedWet=wet;catalogScenery=wantCatalog;sceneWet=wantWetScene;texturesPending=true;
         }
         courseAnimation.reset(unsigned(courseIndex),night,wantWetScene);
-        trackStart=2.f;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;chaseCamera.reset();originalCamera.reset();bumperCamera.reset();
+        trackStart=2.f;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();
         configureCar();auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));previous=vehicle;segment=spawn.segmentIndex;progress=trackStart;steering=0;cameraReady=false;clock.reset();
         best=Replay{};bestTime=0;if(!multiplayer.active&&best.load(ghostPath().string())&&!best.frames.empty())bestTime=best.finishTicks6000?double(best.finishTicks6000)/6000:double(best.frames.back().tick)/60;
         loadSelectedCar();
+    }
+    void resetHudDrift(){
+        hudDrift.reset();hudDriftPoseKnown=false;
+        original::clearOriginalCollisionQuery(hudDriftRoadQuery);
+    }
+    void advanceHudDrift(){
+        HudDriftIndicator::Input sample;
+        sample.active=!menu&&!loadingActive&&!legendVisitActive&&!preRaceDialogueActive&&!extraModeVisitActive()&&
+            !replayPlaybackActive&&race.phase==RacePhase::Running&&!multiplayerDisconnected();
+        sample.paused=paused&&!multiplayer.active;
+        if(!sample.active){resetHudDrift();return;}
+        Vec3 position=vehicle.position;
+        sample.velocity=vehicle.velocity;sample.yaw=vehicle.yaw;sample.wallContact=vehicle.wallContact;
+        if(originalHandling&&presentedSession().ready()){
+            const auto& d=presentedSession().vehicle().drive;
+            position={d.f(0),d.f(4),d.f(8)};
+            // EB64..EC0A stores forward travel before wall/body pushes. Reading
+            // it avoids steering-weight proxies and online visual corrections.
+            sample.velocity={d.f(0x22C)/physicsDt,0,d.f(0x230)/physicsDt};
+            sample.yaw=d.f(0x10)+pi;
+            sample.wallContact=d.u(0x150)!=0||std::abs(d.f(0x258))+std::abs(d.f(0x25C))+
+                std::abs(d.f(0x260))+std::abs(d.f(0x264))>.01f;
+            auto& q=hudDriftRoadQuery;q.setf(32,position.x);q.setf(36,position.y);q.setf(40,position.z);
+            sample.grounded=original::queryOriginalCollisionSurface(presentedSession().collision(),q,hudDriftRoadTrace,hudDriftRoadScratch)&&
+                q.f(4)>.2f&&std::abs(position.y-q.f(16))<.3f;
+        }else{
+            const auto road=projectRacePosition(position);
+            sample.grounded=std::abs(position.y-road.sample.center.y)<.3f;
+        }
+        sample.discontinuity=hudDriftPoseKnown&&length(position-hudDriftLastPosition)>8.f;
+        if(!sample.paused){hudDriftLastPosition=position;hudDriftPoseKnown=true;}
+        hudDrift.advance(physicsDt,sample);
     }
     void projectOriginalPose(bool advance){
         const auto& source=presentedSession().vehicle();const auto& d=source.drive;
@@ -1071,6 +1118,7 @@ struct App {
         for(std::size_t i=0;i<6;++i)vehicle.steeringBasis[i]=d.f(0x1CC+i*4);
         vehicle.wallContact=d.u(0x150)!=0;vehicle.wallImpactSpeed=presentedSession().roadContact().impact0C900E60;
         if(advance){vehicle.travel+=length(vehicle.position-oldPosition);++vehicle.tick;vehicle.simulatedSeconds+=physicsDt;}
+        if(advance)advanceHudDrift();else resetHudDrift();
     }
     void advanceOriginalCamera(){
         const auto& d=presentedSession().vehicle().drive;
@@ -1090,7 +1138,22 @@ struct App {
         const auto& bumper=bumperCamera.update(cameraPosition,cameraAngles);
         if(!bumperInitialized)previousBumperFrame=bumper;
     }
+    HudAnalogSample presentedHudAnalog()const {
+        const bool interpolate=active&&!menu&&!paused&&!loadingActive&&!legendVisitActive&&
+            !preRaceDialogueActive&&!extraModeVisitActive()&&!vsActive&&!replayPlaybackActive&&
+            !multiplayerDisconnected()&&!multiplayer.waiting&&!authorityStalled&&
+            (race.phase==RacePhase::Countdown||race.phase==RacePhase::Running);
+        return hudAnalogPresentation.sample({previous.tick,previous.speed,previous.rpm},
+            {vehicle.tick,vehicle.speed,vehicle.rpm},clock.alpha(),interpolate);
+    }
+    std::uint32_t ornamentPresentationFlags()const {
+        if(menu||loadingActive||legendVisitActive||preRaceDialogueActive||extraModeVisitActive()||multiplayerDisconnected())return 0;
+        return 1u|((replayPlaybackActive||paused||!active||race.phase!=RacePhase::Running||multiplayer.waiting||authorityStalled)?2u:0u);
+    }
     void start(bool networkStart=false){
+        hudAnalogPresentation.reset();
+        resetHudDrift();
+        naturalCamera.reset();
         fullTuneActive=fullTuneSelecting=false;fullTuneOffers.clear();
         if(multiplayer.active&&!networkStart)throw std::logic_error("Online races cannot restart locally");
         if(Frontend::isImportedCourse(frontend.course)&&frontend.gameMode==original::OriginalGameMode::TimeAttack){
@@ -1288,7 +1351,7 @@ struct App {
         if(multiplayer.active){
             // Network host owns leave/restart/room input; native commands may
             // not launch a single-player race or a post-result owner here.
-            if(input.key('C')||input.button(XINPUT_GAMEPAD_Y))drivingView=drivingView==OriginalDrivingView::Bumper?OriginalDrivingView::Chase:OriginalDrivingView::Bumper;
+            if(input.key('C')||input.button(XINPUT_GAMEPAD_Y))cycleDrivingView();
             if(input.key(VK_F2))audio.enabled=!audio.enabled;
             return;
         }
@@ -1342,7 +1405,7 @@ struct App {
             if(fullTuneActive&&resultVisit.tuning.kind==original::OriginalTuningChildKind::optionalPart&&
                 !tuneLeft&&!tuneRight&&std::abs(tuneStick)<=.13f)
                 resultSelectionAxis=resultVisit.child.choice?1.f:0.f;
-            if(input.key('C')||input.button(XINPUT_GAMEPAD_Y))drivingView=drivingView==OriginalDrivingView::Bumper?OriginalDrivingView::Chase:OriginalDrivingView::Bumper;
+            if(input.key('C')||input.button(XINPUT_GAMEPAD_Y))cycleDrivingView();
             if(input.key('R')&&!fullTuneActive)start();
             if(fullTuneActive&&resultVisit.tuning.kind==original::OriginalTuningChildKind::optionalPart&&resultVisit.child.phase==0&&
                 (input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_B))){finishFullTune();return;}
@@ -1452,6 +1515,7 @@ struct App {
         if(!validationMode){pendingProfiles.at(unsigned(frontend.car))=battleProfile;flushProfiles();}
     }
     void returnToCourseSelection(bool challengerInterrupt=false){
+        resetHudDrift();
         if(importedCourse){importedCourse.reset();renderer.farClip=5000;}
         // Leaving an unfinished Legend battle is the same retirement action.
         // Completed dialogue/results still return directly to selection.
@@ -1805,6 +1869,7 @@ struct App {
         }
         auto next=projectRacePosition(vehicle.position);segment=next.segment;progress=next.sample.distance;
         if(!originalHandling)vehicle.position.y=next.sample.center.y;
+        if(!originalHandling)advanceHudDrift();
         if(originalHandling){
             const auto& originalState=originalRace.state();
             ++race.ticks;race.elapsed6000=originalRace.displayedElapsed();race.remaining6000=std::bit_cast<std::int32_t>(originalState.remaining.value);
@@ -2922,6 +2987,28 @@ struct App {
             else if(replayCameraMode==3){camera=center-forward(drawCar.yaw+replayOrbit)*8.f+Vec3{0,3.f,0};target=center;}
             else{camera=center-heading*7.f+Vec3{0,2.f,0};target=center+heading*9.f;}
             renderer.cameraUp={0,1,0};renderer.verticalFieldOfView=.95f;renderer.projectionAspect=0;renderer.nearClip=.15f;
+        }else if(drivingView==OriginalDrivingView::Natural){
+            // Read road presentation only: these local queries never change
+            // the source actor, collision state, timing or original cameras.
+            float roadPitch=0;
+            if(originalHandling&&playerBody.surfaceFound()){
+                const auto& road=playerBody.query();
+                if(road.f(4)>.2f)roadPitch=std::atan2(-dot(Vec3{road.f(0),0,road.f(8)},forward(drawCar.yaw)),road.f(4));
+            }else if(course.points.size()>1){
+                const auto road=projectRacePosition(drawCar.position).sample;
+                roadPitch=std::atan(road.grade*dot(normalized(Vec3{road.tangent.x,0,road.tangent.z}),forward(drawCar.yaw)));
+            }
+            const auto& view=naturalCamera.update(drawCar.position,drawCar.yaw,roadPitch,drawCar.speedKmh(),
+                paused||race.phase==RacePhase::Finished?0:dt);
+            camera=view.eye;target=view.target;renderer.cameraUp=view.up;
+            renderer.verticalFieldOfView=view.verticalFieldOfView;renderer.projectionAspect=0;renderer.nearClip=.15f;
+            if(originalHandling&&presentedSession().ready()){
+                auto query=playerBody.query();original::OriginalTriangleSearchTrace trace;original::OriginalSurfaceScratch scratch;
+                query.setf(32,camera.x);query.setf(36,drawCar.position.y);query.setf(40,camera.z);
+                if(original::queryOriginalCollisionSurface(presentedSession().collision(),query,trace,scratch)&&
+                    query.f(4)>.2f&&std::abs(query.f(16)-drawCar.position.y)<8.f)
+                    camera.y=std::max(camera.y,query.f(16)+.5f);
+            }
         }else if(originalHandling&&originalCamera.ready()){
             const bool bumper=drivingView==OriginalDrivingView::Bumper;
             const auto& frame=bumper?bumperCamera.frame():originalCamera.frame();
@@ -3003,7 +3090,7 @@ struct App {
         const auto bodyAngles=interpolateCarBodyAngles({previousPitch,previousRoll},{bodyPitch,bodyRoll},poseAlpha);
         const float drawPitch=bodyAngles.pitch,drawRoll=bodyAngles.roll;
         const Vec3 bodyPosition=originalHandling?lerp(previousPlayerBodyWorld,playerBodyWorld,poseAlpha):drawCar.position+Vec3{0,originalCarRideHeight(unsigned(frontend.car)),0};
-        if(menu||vsActive||drivingView==OriginalDrivingView::Chase){
+        if(menu||vsActive||drivingView!=OriginalDrivingView::Bumper){
         const auto playerRangeBegin=mesh.ranges.size();
         mesh.originalCar(originalModel,carAssembly,bodyPosition,drawCar.yaw,
             drawPitch,drawRoll,carTextureBase,carPresentation.illuminatedChunks(),true);
@@ -3091,7 +3178,10 @@ struct App {
                 {a,normal,color,0,0},{c,normal,color,1,1},{d,normal,color,0,1}});
             mesh.ranges.back().count+=6;
         }
-        UiState state;state.menu=menu;state.paused=paused;state.wet=wet;state.night=night;state.automatic=automatic;state.debug=debug;state.gamepad=input.connected;state.carProfile=profile;state.course=&course;state.car=&vehicle;state.race=&race;state.rival=(battle||multiplayer.active)?&rivalVehicle:nullptr;state.bestTime=bestTime;state.progress=progress;state.fps=renderFps;state.message=message;
+        // Smooth only the meters. The minimap, gear and every numerical owner
+        // retain the current vehicle state, and the simulation is never edited.
+        auto hudCar=vehicle;const auto analog=presentedHudAnalog();hudCar.speed=analog.speed;hudCar.rpm=analog.rpm;
+        UiState state;state.menu=menu;state.paused=paused;state.wet=wet;state.night=night;state.automatic=automatic;state.debug=debug;state.gamepad=input.connected;state.carProfile=profile;state.course=&course;state.car=&hudCar;state.race=&race;state.rival=(battle||multiplayer.active)?&rivalVehicle:nullptr;state.bestTime=bestTime;state.progress=progress;state.fps=renderFps;state.message=message;
         state.suppressPauseOverlay=managedPauseOverlay;state.multiplayer=multiplayer.active;
         state.hudIntroFrame=originalHandling&&!replayPlaybackActive?originalRaceOwnerFrame:240u;
         state.frontend=&frontend;state.originalHandling=originalHandling;state.originalWeatherScenery=!wet||sceneWet;state.snow=courseIndex==8;state.musicName=audio.musicName();hud.resize(renderer.width,renderer.height);

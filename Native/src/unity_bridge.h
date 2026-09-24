@@ -73,7 +73,7 @@ typedef struct Idas3RivalStatus {
 typedef struct Idas3Options {
     uint32_t size,version;         //sizeof=40, version1
     float masterGain,musicGain,engineGain,effectsGain;
-    uint32_t cameraView;           //0 bumper,1 chase
+    uint32_t cameraView;           //0 bumper,1 chase,2 natural (host presentation)
     uint32_t paused;               //read-only in Apply; use SetPaused
     uint32_t managedPauseOverlay;  //0 native pause panel,1 Unity overlay
     uint32_t reserved;             //must be0
@@ -85,6 +85,27 @@ typedef struct Idas3WheelState {
     float speed,steering,headingError,wallLateral,impact;
     uint32_t flags; //1 active driving,2 wall contact; steering positive right
 } Idas3WheelState;
+// Read-only signals for optional host HUD themes. Does not change simulation.
+typedef struct Idas3HudTelemetry {
+    uint32_t size,version,flags; // flags: 1 race presentation, 2 automatic, 4 night, 8 qualified drift
+    int32_t gear;
+    float speedKmh,rpm,revLimit,throttle,brake;
+    float driftOpacity; // v2: 0..1, includes the release fade; same 40-byte ABI
+} Idas3HudTelemetry;
+// Read-only local pose for cosmetic hanging accessories; no network side effects.
+typedef struct Idas3OrnamentTelemetry {
+    uint32_t size,version;
+    uint64_t simulationTicks;
+    uint32_t flags,car; // 1 race presentation, 2 frozen (pause/countdown/result)
+    float x,y,z,yaw; // world metres and radians, forward=(sin yaw,0,cos yaw)
+} Idas3OrnamentTelemetry;
+// Read-only fixed-step interpolation clock for cosmetic host presentation.
+typedef struct Idas3PresentationTiming {
+    uint32_t size,version;
+    uint64_t simulationTicks;
+    float alpha;
+    uint32_t flags; // 1 active ornament sampling, 2 frozen; alpha=1 when frozen
+} Idas3PresentationTiming;
 // Read-only pre-race presentation state; the driving ABI remains unchanged.
 typedef struct Idas3PreRaceStatus {
     uint32_t size,version;         //sizeof=104, version1
@@ -186,6 +207,10 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty);
 IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetSteeringSmoothing();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* state);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetHudTelemetry(Idas3HudTelemetry* state);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetOrnamentTelemetry(Idas3OrnamentTelemetry* state);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetPresentationTiming(Idas3PresentationTiming* state);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCopyHudDriverName(char* destination,int capacity);
 // Online pause requests return0; unpause is always allowed. Restart/return
 // reject online and inactive race owners; use MultiplayerLeave for a peer exit.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetPaused(int paused);

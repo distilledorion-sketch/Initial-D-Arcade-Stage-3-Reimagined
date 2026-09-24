@@ -89,7 +89,7 @@ static fs::path safeName(std::wstring s){
     require(parts.size()>1?oneOf(parts[0],{L"initialdunity_data",L"monobleedingedge",L"d3d12"}):oneOf(parts[0],{L"initialdunity.exe",L"unityplayer.dll",L"unitycrashhandler64.exe",L"dstorage.dll",L"dstoragecore.dll",L"steam_appid.txt",L"read me.txt",L"replay viewer.cmd",L"multiplayer test.txt"}),"Unexpected game path.");
     return fs::path(s);
 }
-static void write(const fs::path& p,const std::string& text){std::ofstream f(p,std::ios::binary|std::ios::trunc);f<<text;require(bool(f),"Cannot write update status.");}
+static void write(const fs::path& p,const std::string& text){noLinks(p);std::ofstream f(p,std::ios::binary|std::ios::trunc);f<<text;f.close();require(bool(f),"Cannot write update status.");}
 template<class T>static T read(std::ifstream& f){T value{};f.read(reinterpret_cast<char*>(&value),sizeof value);require(bool(f),"Truncated install plan.");return value;}
 static std::wstring readString(std::ifstream& f){auto n=read<uint32_t>(f);require(n>0&&n<32768,"Invalid plan string.");std::wstring value(n,L'\0');f.read(reinterpret_cast<char*>(value.data()),static_cast<std::streamsize>(n*2));require(bool(f)&&value.find(L'\0')==value.npos,"Invalid plan string.");return value;}
 struct Record{fs::path relative,dest,stage,backup;bool changed=false,existed=false;uint64_t size=0;Digest old{},next{};};
@@ -108,20 +108,44 @@ static void restart(const fs::path& root){
     require(CreateProcessW(exe.c_str(),command.data(),nullptr,nullptr,FALSE,0,nullptr,root.c_str(),&start,&p)!=0,"Update installed, but restarting the game failed. Launch it normally.");CloseHandle(p.hThread);CloseHandle(p.hProcess);
 }
 static void removeTree(const fs::path& session,const wchar_t* name){auto p=inside(session,name);noLinks(p);if(!fs::exists(p))return;for(const auto& entry:fs::recursive_directory_iterator(p))noLinks(entry.path());fs::remove_all(p);}
+static void cleanupPayloads(const fs::path& session){
+    // Each target is independent: a locked archive must not retain both copies
+    // of the extracted game too. Never follow links out of this session.
+    for(auto name:{L"stage",L"backup"})try{removeTree(session,name);}catch(...){}
+    try{auto archive=inside(session,L"game.zip");noLinks(archive);fs::remove(archive);}catch(...){}
+}
+static void result(const fs::path& session,bool committed,size_t changed,bool rollbackNeeded){
+    // Publish a complete terminal classification for the managed scavenger.
+    // A missing/partial result never authorizes deletion of recovery backups.
+    auto temporary=inside(session,L"result.json.tmp"),destination=inside(session,L"result.json");
+    write(temporary,"{\"schema\":1,\"passed\":"+std::string(committed?"true":"false")+",\"changedFiles\":"+std::to_string(changed)+",\"cleanupSafe\":"+(rollbackNeeded?"false":"true")+",\"rollbackNeeded\":"+(rollbackNeeded?"true":"false")+"}");
+    noLinks(destination);require(MoveFileExW(temporary.c_str(),destination.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)!=0,"Cannot publish update result.");
+}
 int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
-    int argc=0;auto argv=CommandLineToArgvW(GetCommandLineW(),&argc);fs::path session,root;std::vector<Record> records;std::vector<size_t> applied;bool ready=false,committed=false,test=false;
+    int argc=0;auto argv=CommandLineToArgvW(GetCommandLineW(),&argc);fs::path session,root;std::vector<Record> records;std::vector<size_t> applied;bool ready=false,committed=false,test=false,owned=false;
+    // These handles must outlive the try block, including rollback and dialogs.
+    Handle sessionLease(INVALID_HANDLE_VALUE),sessionLock(INVALID_HANDLE_VALUE),lockFile(INVALID_HANDLE_VALUE);
     try{
         require(argv&&(argc==2||argc==3),"Invalid installer arguments.");test=argc==3&&std::wstring(argv[2])==L"--test";require(argc!=3||test,"Invalid test option.");
         auto plan=fullPath(argv[1]);session=plan.parent_path();require(plan.filename()==L"install.plan","Invalid install plan filename.");noLinks(session);noLinks(plan);require(fs::file_size(plan)<=64*1024*1024,"Install plan too large.");
         plan=longPath(plan);session=plan.parent_path();
+        auto lease=inside(session,L".cleanup-lock");noLinks(lease);
+        sessionLease.h=CreateFileW(lease.c_str(),GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);require(sessionLease.h!=INVALID_HANDLE_VALUE,"Update session cleanup is running.");
+        auto installerLock=inside(session,L".install-lock");noLinks(installerLock);
+        sessionLock.h=CreateFileW(installerLock.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_ALWAYS,FILE_FLAG_DELETE_ON_CLOSE,nullptr);require(sessionLock.h!=INVALID_HANDLE_VALUE,"This update session is already running.");
+        // Re-running a crashed or completed plan must not reclassify its old
+        // rollback backup as an unused preparation that is safe to discard.
+        for(auto name:{L"ready",L"result.json",L"result.json.tmp",L"error.txt"}){auto marker=inside(session,name);noLinks(marker);require(!fs::exists(marker),"This update session has already been used.");}
         std::ifstream input(plan,std::ios::binary);char magic[8];input.read(magic,8);require(std::string(magic,8)=="IDUPD002","Invalid install plan.");
         root=fullPath(readString(input));noLinks(root);root=longPath(root);auto game=root/L"InitialDUnity.exe";require(fs::is_regular_file(game),"Game executable missing.");
-        require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&lower(root.wstring())!=lower(session.wstring()),"Installer must be outside the game folder.");
+        require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&lower(root.wstring()).rfind(lower(session.wstring()+L"\\"),0)!=0&&lower(root.wstring())!=lower(session.wstring()),"Installer and game folders must not overlap.");
+        // Only validated temporary locations may be marked safe or reclaimed.
+        owned=true;
         auto pid=read<uint32_t>(input);auto stamp=read<uint64_t>(input);auto count=read<uint32_t>(input);require(count>0&&count<=100000,"Invalid file count.");
         if(test)require(fs::is_regular_file(root.parent_path()/L"ISOLATED_UPDATE_TEST.txt"),"Tests require an isolated fixture.");else require(pid>0,"Game process missing.");
         Handle parent(pid?OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid):nullptr);
         if(pid){require(parent.h!=nullptr,"Game process unavailable.");require(creation(parent.h)==stamp,"Game process identity changed.");}
-        auto lock=root/L".update-lock";noLinks(lock);Handle lockFile(CreateFileW(lock.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_ALWAYS,FILE_FLAG_DELETE_ON_CLOSE,nullptr));require(lockFile.h!=INVALID_HANDLE_VALUE,"Another update is running.");
+        auto lock=root/L".update-lock";noLinks(lock);lockFile.h=CreateFileW(lock.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_ALWAYS,FILE_FLAG_DELETE_ON_CLOSE,nullptr);require(lockFile.h!=INVALID_HANDLE_VALUE,"Another update is running.");
         std::vector<std::wstring> names;uint64_t total=0;
         for(uint32_t i=0;i<count;++i){Record r;r.relative=safeName(readString(input));auto changed=read<uint8_t>(input),existed=read<uint8_t>(input);require(changed<=1&&existed<=1,"Invalid file flags.");r.changed=changed!=0;r.existed=existed!=0;r.size=read<uint64_t>(input);r.old=read<Digest>(input);r.next=read<Digest>(input);require(r.size<=24ULL*1024*1024*1024,"File too large.");total+=r.size;require(total<=24ULL*1024*1024*1024,"Update too large.");
             require(r.changed||(r.existed&&r.old==r.next),"Invalid retained file.");r.dest=inside(root,r.relative);r.stage=inside(session,fs::path(L"stage")/r.relative);r.backup=inside(session,fs::path(L"backup")/r.relative);names.push_back(lower(r.relative.wstring()));records.push_back(r);
@@ -138,15 +162,21 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
         if(!test)noOtherGame(game,0);
         for(const auto& r:records)verifyOld(r);
         for(size_t i=0;i<records.size();++i){auto& r=records[i];if(!r.changed)continue;noLinks(r.dest);noLinks(r.stage);require(hash(r.stage)==r.next,"Staged file changed.");fs::create_directories(r.dest.parent_path());applied.push_back(i);require(CopyFileW(r.stage.c_str(),r.dest.c_str(),FALSE)!=0,"Cannot replace a game file.");require(hash(r.dest)==r.next,"Installed file failed verification.");}
-        committed=true;write(session/L"result.json","{\"passed\":true,\"changedFiles\":"+std::to_string(applied.size())+"}");
+        committed=true;result(session,true,applied.size(),false);
+        // Restart may fail or immediately launch another cleanup pass. Reclaim
+        // payloads first, with the lease held until this helper actually exits.
+        cleanupPayloads(session);
         if(!test)restart(root);
-        // Clean only checked, uniquely-created session paths. Never remove game files here.
-        try{removeTree(session,L"stage");removeTree(session,L"backup");auto archive=inside(session,L"game.zip");noLinks(archive);fs::remove(archive);}catch(...){/* Safe to leave temporary data after a successful update. */}
         LocalFree(argv);return 0;
     }catch(const std::exception& e){
-        std::string error=e.what();if(!committed)for(auto it=applied.rbegin();it!=applied.rend();++it){auto& r=records[*it];try{noLinks(r.dest);if(r.existed){noLinks(r.backup);require(hash(r.backup)==r.old,"Invalid rollback backup.");if(!fs::exists(r.dest)||hash(r.dest)!=r.old)require(CopyFileW(r.backup.c_str(),r.dest.c_str(),FALSE)!=0,"Cannot restore game file.");require(hash(r.dest)==r.old,"Rollback hash mismatch.");}else fs::remove(r.dest);}catch(const std::exception& restore){error+=" Rollback needs attention: ";error+=restore.what();}}
-        if(!session.empty())try{write(session/L"error.txt",error);}catch(...){}
-        if(ready&&!test){MessageBoxA(nullptr,error.c_str(),"Initial D update",MB_OK|MB_ICONERROR);if(!committed)try{restart(root);}catch(...){}}
+        bool rollbackNeeded=false;
+        std::string error=e.what();if(!committed)for(auto it=applied.rbegin();it!=applied.rend();++it){auto& r=records[*it];try{noLinks(r.dest);if(r.existed){noLinks(r.backup);require(hash(r.backup)==r.old,"Invalid rollback backup.");if(!fs::exists(r.dest)||hash(r.dest)!=r.old)require(CopyFileW(r.backup.c_str(),r.dest.c_str(),FALSE)!=0,"Cannot restore game file.");require(hash(r.dest)==r.old,"Rollback hash mismatch.");}else{fs::remove(r.dest);require(!fs::exists(r.dest),"Cannot remove new game file during rollback.");}}catch(const std::exception& restore){rollbackNeeded=true;error+=" Rollback needs attention: ";error+=restore.what();}}
+        if(owned){
+            try{result(session,committed,applied.size(),rollbackNeeded);}catch(...){}
+            try{write(session/L"error.txt",error);}catch(...){}
+            if(!rollbackNeeded)cleanupPayloads(session);
+        }
+        if(ready&&!test){MessageBoxA(nullptr,error.c_str(),"Initial D update",MB_OK|MB_ICONERROR);if(!committed&&!rollbackNeeded)try{restart(root);}catch(...){}}
         if(argv)LocalFree(argv);return 1;
     }
 }

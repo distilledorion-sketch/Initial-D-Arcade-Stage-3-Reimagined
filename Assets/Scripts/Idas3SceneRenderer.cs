@@ -53,6 +53,11 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public int DepthCandidateCount => depthCandidates.Count;
     public int DepthDrawCount { get; private set; }
     public int DepthBufferRebuildCount { get; private set; }
+    // Exclusions are before frustum culling, not measured GPU draw savings.
+    public int MainViewExcludedRanges { get; private set; }
+    public int MainViewExcludedVertices { get; private set; }
+    public int MirrorViewExcludedRanges { get; private set; }
+    public int MirrorViewExcludedVertices { get; private set; }
     public int UploadedTextureCount => textureCache.Count;
     private Camera main, mirror, backdrop, canvasClear;
     private Shader sceneShader, directSceneShader, opaqueAlphaDepthShader;
@@ -64,6 +69,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     private readonly List<RangeObject> depthScratch = new List<RangeObject>();
     private readonly Vector4[] depthSidePlanes = new Vector4[4];
     private bool diagnosticDepthSubmissionBaseline;
+    private bool diagnosticViewCullingBaseline;
     private ComputeBuffer framesBuffer, lightsBuffer, fogBuffer;
     private readonly float[] frameWords = new float[184];
     private readonly int[] lightWords = new int[1248], fogWords = new int[136];
@@ -94,6 +100,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         CompareFunction.Never, CompareFunction.Greater, CompareFunction.Equal, CompareFunction.GreaterEqual,
         CompareFunction.Less, CompareFunction.NotEqual, CompareFunction.LessEqual, CompareFunction.Always };
     private const int SceneLayer = 30;
+    private const int HiddenSceneLayer = 25, MainSceneLayer = 26, MirrorSceneLayer = 27;
     private const MeshUpdateFlags UploadFlags = MeshUpdateFlags.DontRecalculateBounds | MeshUpdateFlags.DontValidateIndices;
     private static readonly VertexAttributeDescriptor[] layout = {
         new VertexAttributeDescriptor(VertexAttribute.Position, VertexAttributeFormat.Float32, 3),
@@ -125,6 +132,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         public int materialQueue;
         public bool materialConfigured, depthMaterialDirty, depthCandidate;
         public uint parentScope = uint.MaxValue;
+        public int layer = SceneLayer;
         public bool active = true;
         public Bounds bounds;
     }
@@ -150,6 +158,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         diagnosticActorCullBaseline = Array.IndexOf(arguments, "-idas3-scene-actor-cull-baseline") >= 0;
         diagnosticPerfBaseline = Array.IndexOf(arguments, "-idas3-scene-perf-baseline") >= 0;
         diagnosticDepthSubmissionBaseline = Array.IndexOf(arguments, "-idas3-depth-submission-baseline") >= 0;
+        diagnosticViewCullingBaseline = Array.IndexOf(arguments, "-idas3-scene-view-culling-baseline") >= 0;
         if (diagnosticFlipDepth || diagnosticNoCull)
             Debug.Log("IDAS3 scene diagnostics: depthTestFlip=" + diagnosticFlipDepth + ", noCull=" + diagnosticNoCull);
         sceneShader = Shader.Find("IDAS3/Original Scene Material");
@@ -171,7 +180,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         backdrop = NewCamera("Scene clear", -1000); backdrop.cullingMask = 0; backdrop.clearFlags = CameraClearFlags.SolidColor;
         canvasClear = NewCamera("Original canvas clear", -2); canvasClear.cullingMask = 0; canvasClear.clearFlags = CameraClearFlags.SolidColor;
         mirror = NewCamera("Original rear-view camera", 1);
-        main.depth = 0; ConfigureCommonCamera(main); ConfigureCommonCamera(mirror);
+        main.depth = 0; ConfigureCommonCamera(main, 1); ConfigureCommonCamera(mirror, 2);
         // The source translucent sorter lets a fully opaque texel hide every
         // farther fragment, even when its polygon is in the translucent list.
         // Establish only those fully opaque depths before scene color passes.
@@ -191,11 +200,25 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         var obj = new GameObject(name); obj.transform.SetParent(transform, false);
         var camera = obj.AddComponent<Camera>(); camera.depth = depth; return camera;
     }
-    private static void ConfigureCommonCamera(Camera camera)
+    private static int LayerForViewMask(uint viewMask)
+    {
+        switch (viewMask & 3) {
+            case 1: return MainSceneLayer;
+            case 2: return MirrorSceneLayer;
+            case 3: return SceneLayer;
+            default: return HiddenSceneLayer;
+        }
+    }
+    internal static bool IsSceneGeometryLayer(int layer) => layer == SceneLayer ||
+        layer == MainSceneLayer || layer == MirrorSceneLayer || layer == HiddenSceneLayer;
+    private static void ConfigureCommonCamera(Camera camera, uint viewBit)
     {
         // Imported scenery uses 28; challenger UI exclusively owns 29.
         // Both world cameras must see the course, including the rear-view.
-        camera.cullingMask = (1 << SceneLayer) | (1 << 28); camera.clearFlags = CameraClearFlags.SolidColor;
+        // View-only ranges used to be rejected in the fragment shader, after
+        // submission, vertex lighting and geometry processing in both views.
+        camera.cullingMask = (1 << SceneLayer) | (1 << 28) | (1 << LayerForViewMask(viewBit));
+        camera.clearFlags = CameraClearFlags.SolidColor;
         camera.allowHDR = false; camera.allowMSAA = true; camera.useOcclusionCulling = false;
     }
     private void BeforeCamera(Camera camera)
@@ -219,6 +242,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     {
         if (!initialized) throw new InvalidOperationException("Initialize the Unity scene renderer first.");
         UploadedVertexCount = GeometryUploadCount = MaterialUpdateCount = 0;
+        MainViewExcludedRanges = MainViewExcludedVertices = MirrorViewExcludedRanges = MirrorViewExcludedVertices = 0;
         var frame = new SceneFrame { size = 256 };
         if (Idas3SceneGetFrame(ref frame) != 1 || frame.version != 1) throw new InvalidOperationException("Native scene frame is unavailable.");
         if (frame.frameGeneration == 0) return;
@@ -270,6 +294,12 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 var item = diagnosticPerfBaseline || rangeCacheOff ? GetRangeObject(ActiveMeshCount) : selectedRanges[i] ?? ClaimRangeObject();
                 if(!diagnosticPerfBaseline&&!rangeCacheOff)selectedRanges[i]=item;
                 ++ActiveMeshCount;
+                int layer = diagnosticViewCullingBaseline ? SceneLayer : LayerForViewMask(range.viewMask);
+                if (item.layer != layer) { item.gameObject.layer = layer; item.layer = layer; }
+                if (!diagnosticViewCullingBaseline) {
+                    if ((range.viewMask & 1) == 0) { ++MainViewExcludedRanges; MainViewExcludedVertices += (int)range.count; }
+                    if (frame.viewCount == 2 && (range.viewMask & 2) == 0) { ++MirrorViewExcludedRanges; MirrorViewExcludedVertices += (int)range.count; }
+                }
                 int queue = 1000 + rank++;
                 CountDepthMode(range);
                 ulong geometryId = geometryIdsOff ? 0 : ((ulong*)geometryIds.ToPointer())[i];
@@ -439,6 +469,36 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             if (farthest < 0) return true;
         }
         return false;
+    }
+    // Called only by isolated smoke/performance checks, outside timed frames.
+    internal void VerifyViewCulling(Action<bool, string> check)
+    {
+        for (uint mask = 0; mask < 4; ++mask) {
+            int bit = 1 << LayerForViewMask(mask);
+            check(((main.cullingMask & bit) != 0) == ((mask & 1) != 0), "Main camera view-mask layer mismatch.");
+            check(((mirror.cullingMask & bit) != 0) == ((mask & 2) != 0), "Mirror camera view-mask layer mismatch.");
+            check(LayerForViewMask(mask | 0xfffffffcu) == LayerForViewMask(mask), "Unused view bits changed layer visibility.");
+        }
+        check((main.cullingMask & (1 << 28)) != 0 && (mirror.cullingMask & (1 << 28)) != 0,
+            "View culling excluded imported scenery.");
+        check(((main.cullingMask | mirror.cullingMask) & (1 << 29)) == 0, "World cameras include the challenger UI layer.");
+        int active = 0, mainRanges = 0, mainVertices = 0, mirrorRanges = 0, mirrorVertices = 0;
+        foreach (var item in objects) {
+            if (!item.active) continue;
+            ++active;
+            uint mask = item.materialRange.viewMask;
+            bool mainIncluded = (main.cullingMask & (1 << item.gameObject.layer)) != 0;
+            bool mirrorIncluded = (mirror.cullingMask & (1 << item.gameObject.layer)) != 0;
+            check(mainIncluded == (diagnosticViewCullingBaseline || (mask & 1) != 0), "Active range has incorrect main-view ownership.");
+            check(mirrorIncluded == (diagnosticViewCullingBaseline || (mask & 2) != 0), "Active range has incorrect mirror ownership.");
+            check(unchecked((uint)item.material.GetInteger("viewMask")) == mask, "Source shader view-mask guard changed.");
+            if (!mainIncluded) { ++mainRanges; mainVertices += item.count; }
+            if (mirror.enabled && !mirrorIncluded) { ++mirrorRanges; mirrorVertices += item.count; }
+        }
+        check(active == ActiveMeshCount, "View-culling check missed active scene ranges.");
+        check(mainRanges == MainViewExcludedRanges && mainVertices == MainViewExcludedVertices &&
+            mirrorRanges == MirrorViewExcludedRanges && mirrorVertices == MirrorViewExcludedVertices,
+            "View-culling exclusion counters differ from active renderer ownership.");
     }
     // Match exact vertex bytes before claiming any free renderer: an inserted
     // roadside range must not evict every unchanged range later in the list.

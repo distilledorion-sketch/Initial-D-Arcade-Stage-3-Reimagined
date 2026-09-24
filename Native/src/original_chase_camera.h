@@ -4,7 +4,9 @@
 #include "original_rear_view.h"
 
 namespace idas3 {
-enum class OriginalDrivingView {Bumper,Chase};
+// The recovered camera implementations remain Bumper and Chase. Natural is
+// an optional host presentation and never enters their source camera logic.
+enum class OriginalDrivingView {Bumper,Chase,Natural};
 struct OriginalChaseFrame {
     Vec3 eye{},target{},up{0,1,0};
     float verticalFieldOfView=0;

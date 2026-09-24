@@ -13,9 +13,8 @@ public sealed class Idas3HudEditor : MonoBehaviour
     [StructLayout(LayoutKind.Sequential)] struct CarTexture { public uint width,height; public ulong pixels; public IntPtr data; }
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,float seconds,int messages);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudCar(ref CarFrame frame);
-    static readonly int[] Groups={1,2,3,6,7,4,5,8,9};
-    static readonly string[] Names={"Time / sections","Speedometer / gear","Time Attack records","Legend opponent","Online opponent","Rear-view mirror","Minimap","Accepting challengers","Time Extended"};
-    static readonly string[] Fields={"hudTimerSize","hudSpeedometerSize","hudRecordsSize","hudLegendSize","hudOnlineSize","hudMirrorSize","minimapSize","hudChallengersSize","hudTimeExtensionSize"};
+    static readonly int[] Groups={1,2,3,6,7,4,5,8,9,10};
+    static readonly string[] Names={"Time / sections","Meter / gear","Time Attack records","Legend opponent","Online opponent","Rear-view mirror","Minimap","Accepting challengers","Time Extended","Keychain"};
     const int Layer=28;
     Idas3GameOptions options; Idas3PauseMenu menu;
     Idas3GameOptions.Values working;
@@ -23,23 +22,26 @@ public sealed class Idas3HudEditor : MonoBehaviour
     readonly List<UnityEngine.Object> owned=new List<UnityEngine.Object>();
     Texture2D badge; int selected,mode; bool thirdPerson,dragging;
     Vector2 lastPointer; string error="";
-    GUIStyle label,heading; Rect toolbar;
+    Action<bool,Idas3GameOptions.Values> onClosed;
+    int control;bool adjusting;
+    GUIStyle label,heading,sliderTrack,sliderThumb; Rect toolbar;
     RenderTexture diagnosticTarget;bool diagnosticReady;
     public bool IsOpen { get; private set; }
     internal Idas3GameOptions.Values Draft=>working;
     internal bool ThirdPerson=>thirdPerson;
     internal int PreviewMode=>mode;
-    public void Open(Idas3GameOptions owner,Idas3PauseMenu parent)
+    internal bool IsNested=>onClosed!=null;
+    public void Open(Idas3GameOptions owner,Idas3PauseMenu parent,Idas3GameOptions.Values initial=null,Action<bool,Idas3GameOptions.Values> closed=null,int initialGroup=0)
     {
         if(IsOpen)return;
-        options=owner;menu=parent;working=Idas3GameOptions.Normalize(owner.Draft);error="";
+        options=owner;menu=parent;working=Idas3GameOptions.Normalize(initial??owner.Draft);error="";onClosed=closed;control=0;adjusting=false;SelectGroup(initialGroup);
         try{
             preview=new GameObject("HUD layout preview");
             camera=preview.AddComponent<Camera>();camera.depth=20;camera.clearFlags=CameraClearFlags.SolidColor;
             camera.backgroundColor=new Color(.025f,.03f,.045f);camera.cullingMask=1<<Layer;
             camera.fieldOfView=55;camera.nearClipPlane=.01f;camera.farClipPlane=100;
             camera.transform.position=new Vector3(0,1.6f,-6.5f);camera.transform.LookAt(new Vector3(0,1.65f,0));
-            ui=preview.AddComponent<Idas3UnityUi>();ui.Initialize(camera);ui.HudOptionsOverride=working;
+            ui=preview.AddComponent<Idas3UnityUi>();ui.Initialize(camera);ui.HudOptionsOverride=working;ui.ArcadePreview=true;
             badge=Resources.Load<Texture2D>("Challenger/interrupt_4");
             BuildCar();car.SetActive(thirdPerson);
             IsOpen=true;Cursor.visible=true;Cursor.lockState=CursorLockMode.None;
@@ -93,6 +95,37 @@ public sealed class Idas3HudEditor : MonoBehaviour
         if(group==3)mode=0;else if(group==6)mode=1;else if(group==7)mode=2;
         dragging=false;
     }
+    // The same toolbar works with arrows, a controller, or steering and pedals.
+    // Selecting Move X / Move Y also permits one-axis wheel navigation.
+    public void Navigate(int direction)
+    {
+        if(!IsOpen||direction==0)return;
+        if(adjusting){AdjustControl(direction);return;}
+        control=(control+Math.Sign(direction)+8)%8;
+    }
+    public void NavigateHorizontal(int direction,bool wheelNavigation=false)
+    {
+        if(!IsOpen||direction==0)return;
+        if(wheelNavigation&&!adjusting){Navigate(direction);return;}
+        if(control<=3)AdjustControl(direction);else Navigate(direction);
+    }
+    void AdjustControl(int direction)
+    {
+        int step=Math.Sign(direction);
+        if(control==0)SelectGroup((selected+step+Groups.Length)%Groups.Length);
+        else if(control==1)MoveSelected(new Vector2(step*Mathf.Max(2,Screen.width*.005f),0));
+        else if(control==2)MoveSelected(new Vector2(0,step*Mathf.Max(2,Screen.height*.005f)));
+        else if(control==3)ResizeSelected(step);
+    }
+    public void Activate()
+    {
+        if(!IsOpen)return;
+        if(control<=3){adjusting=!adjusting;return;}
+        if(control==4)ResetSelected();
+        else if(control==5)CopyLayout(new Idas3GameOptions.Values(),working);
+        else Close(control==7);
+    }
+    public void Back(){if(adjusting)adjusting=false;else Close(false);}
     internal void SetThirdPerson(bool value){thirdPerson=value;if(car)car.SetActive(value);}
     Rect BadgeRect()
     {
@@ -108,31 +141,35 @@ public sealed class Idas3HudEditor : MonoBehaviour
         int group=Groups[selected];if(!Bounds(group,out var bounds))return;
         // Keep the whole group reachable even after changing aspect ratio.
         delta.x=Mathf.Clamp(delta.x,-bounds.xMin,Mathf.Max(-bounds.xMin,Screen.width-bounds.xMax));
-        delta.y=Mathf.Clamp(delta.y,-bounds.yMin,Mathf.Max(-bounds.yMin,Screen.height-bounds.yMax));
-        working.SetHudOffset(group,working.HudOffset(group)+new Vector2(delta.x/Screen.width,delta.y/Screen.height));
+        float minY=group==10?-bounds.height*(.25f/2.7f):0;
+        delta.y=Mathf.Clamp(delta.y,minY-bounds.yMin,Mathf.Max(minY-bounds.yMin,Screen.height-bounds.yMax));
+        var offset=working.HudOffset(group);
+        if(group==10){
+            // Start from the displayed position if resize or aspect changes
+            // clamped the saved offset at an edge; dragging stays responsive.
+            offset=new Vector2((bounds.x-(Screen.width*.66f-bounds.width*.5f))/Screen.width,(bounds.y-minY)/Screen.height);
+        }
+        working.SetHudOffset(group,offset+new Vector2(delta.x/Screen.width,delta.y/Screen.height));
     }
     internal void ResizeSelected(int direction)
     {
-        var field=typeof(Idas3GameOptions.Values).GetField(Fields[selected]);int value=(int)field.GetValue(working);
-        field.SetValue(working,Mathf.Clamp(value+direction,0,Groups[selected]==5?2:4));
+        if(direction!=0)SetSelectedSizePercent(working.HudSizePercent(Groups[selected])+Math.Sign(direction));
     }
-    internal void ResetSelected(){working.SetHudOffset(Groups[selected],Vector2.zero);typeof(Idas3GameOptions.Values).GetField(Fields[selected]).SetValue(working,Groups[selected]==5?0:2);}
-    static void CopyLayout(Idas3GameOptions.Values from,Idas3GameOptions.Values to)
-    {
-        foreach(string name in Fields){var field=typeof(Idas3GameOptions.Values).GetField(name);field.SetValue(to,field.GetValue(from));}
-        to.hudPositions=(Vector2[])from.hudPositions.Clone();to.minimapZoom=from.minimapZoom;
-    }
+    internal void SetSelectedSizePercent(int percent)=>working.SetHudSizePercent(Groups[selected],percent);
+    internal void ResetSelected(){working.SetHudOffset(Groups[selected],Vector2.zero);working.ResetHudSize(Groups[selected]);}
+    internal static void CopyLayout(Idas3GameOptions.Values from,Idas3GameOptions.Values to)=>Idas3GameOptions.CopyHudLayout(from,to);
     public void Close(bool save)
     {
-        if(save&&IsOpen){
+        if(save&&IsOpen&&onClosed==null){
             var pending=options.Draft.Clone();options.BeginEdit();CopyLayout(working,options.Draft);
             bool applied=options.ApplyDraft();if(applied)CopyLayout(working,pending);
             JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(pending),options.Draft);
             if(!applied){error=options.LastError;return;}
         }
-        IsOpen=false;dragging=false;
+        bool wasOpen=IsOpen;var callback=onClosed;onClosed=null;IsOpen=false;dragging=false;adjusting=false;
         if(preview){preview.SetActive(false);Destroy(preview);}if(car)Destroy(car);
         foreach(var obj in owned)if(obj)Destroy(obj);owned.Clear();preview=null;ui=null;camera=null;car=null;
+        if(wasOpen)callback?.Invoke(save,working);
     }
     void OnDestroy(){Close(false);}
     void OnGUI()
@@ -146,15 +183,23 @@ public sealed class Idas3HudEditor : MonoBehaviour
     void DrawEditor()
     {
         GUI.depth=-12000;
-        if(label==null){label=new GUIStyle(GUI.skin.label){fontSize=14,normal={textColor=Color.white}};heading=new GUIStyle(label){fontSize=17,fontStyle=FontStyle.Bold};}
+        if(label==null){
+            label=new GUIStyle(GUI.skin.label){fontSize=14,normal={textColor=Color.white}};heading=new GUIStyle(label){fontSize=17,fontStyle=FontStyle.Bold};
+            // The rail is drawn explicitly so it stays visible over every HUD
+            // background. Unity still owns slider dragging and its hot control.
+            sliderTrack=new GUIStyle{fixedHeight=24,padding=new RectOffset(),margin=new RectOffset()};
+            sliderThumb=new GUIStyle{fixedWidth=18,fixedHeight=24,padding=new RectOffset(),margin=new RectOffset()};
+            foreach(var state in new[]{sliderThumb.normal,sliderThumb.hover,sliderThumb.active,sliderThumb.focused,
+                sliderThumb.onNormal,sliderThumb.onHover,sliderThumb.onActive,sliderThumb.onFocused})state.background=Texture2D.whiteTexture;
+        }
         float toolbarScale=Mathf.Min(1f,(Screen.width-24)/930f);
-        float width=930*toolbarScale;toolbar=new Rect((Screen.width-width)*.5f,Screen.height-12-114*toolbarScale,width,114*toolbarScale);
+        float width=930*toolbarScale;toolbar=new Rect((Screen.width-width)*.5f,Screen.height-12-164*toolbarScale,width,164*toolbarScale);
         var e=Event.current;
         if(!toolbar.Contains(e.mousePosition)){
             if(e.type==EventType.MouseDown&&e.button==0){
-                for(int i=Groups.Length-1;i>=0;--i)if(Bounds(Groups[i],out var hit)&&hit.Contains(e.mousePosition)){selected=i;dragging=true;lastPointer=e.mousePosition;GUIUtility.hotControl=0;e.Use();break;}
+                for(int i=Groups.Length-1;i>=0;--i)if(Bounds(Groups[i],out var hit)&&hit.Contains(e.mousePosition)){selected=i;control=0;adjusting=false;dragging=true;lastPointer=e.mousePosition;GUIUtility.hotControl=0;e.Use();break;}
             }else if(e.type==EventType.MouseDrag&&dragging){MoveSelected(e.mousePosition-lastPointer);lastPointer=e.mousePosition;e.Use();}
-            else if(e.type==EventType.ScrollWheel){if(Bounds(Groups[selected],out var hit)&&hit.Contains(e.mousePosition)){ResizeSelected(e.delta.y<0?1:-1);e.Use();}}
+            else if(e.type==EventType.ScrollWheel){if(Bounds(Groups[selected],out var hit)&&hit.Contains(e.mousePosition)){ResizeSelected(-Math.Sign(e.delta.y));e.Use();}}
         }
         if(e.type==EventType.MouseUp)dragging=false;
         if(badge)GUI.DrawTextureWithTexCoords(BadgeRect(),badge,new Rect(0,1,1,-1));
@@ -163,28 +208,68 @@ public sealed class Idas3HudEditor : MonoBehaviour
             GUI.DrawTexture(new Rect(bounds.x,bounds.y,bounds.width,1),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(bounds.x,bounds.yMax-1,bounds.width,1),Texture2D.whiteTexture);
             GUI.DrawTexture(new Rect(bounds.x,bounds.y,1,bounds.height),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(bounds.xMax-1,bounds.y,1,bounds.height),Texture2D.whiteTexture);
         }
-        GUI.color=Color.white;GUI.Box(toolbar,"");
+        GUI.color=Color.white;Fill(toolbar,new Color32(16,18,23,255));GUI.Box(toolbar,"");
         var previousMatrix=GUI.matrix;GUI.matrix=Matrix4x4.TRS(new Vector3(toolbar.x,toolbar.y,0),Quaternion.identity,Vector3.one*toolbarScale);
         try{DrawToolbar();}finally{GUI.matrix=previousMatrix;}
     }
     void DrawToolbar()
     {
-        GUILayout.BeginArea(new Rect(12,7,906,100));
+        GUILayout.BeginArea(new Rect(12,7,906,150));
         GUILayout.BeginHorizontal();GUILayout.Label("HUD EDITOR",heading,GUILayout.Width(125));
         if(GUILayout.Toggle(!thirdPerson,"Bumper",GUI.skin.button,GUILayout.Width(90)))SetThirdPerson(false);
         if(GUILayout.Toggle(thirdPerson,"Third person",GUI.skin.button,GUILayout.Width(105)))SetThirdPerson(true);
         GUILayout.FlexibleSpace();if(GUILayout.Button("Time Attack"))mode=0;if(GUILayout.Button("Legend"))mode=1;if(GUILayout.Button("Online"))mode=2;GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();if(GUILayout.Button("<",GUILayout.Width(28)))SelectGroup((selected+Groups.Length-1)%Groups.Length);
-        GUILayout.Label(Names[selected],label,GUILayout.Width(180));if(GUILayout.Button(">",GUILayout.Width(28)))SelectGroup((selected+1)%Groups.Length);
-        if(GUILayout.Button("−",GUILayout.Width(28)))ResizeSelected(-1);
-        int size=(int)typeof(Idas3GameOptions.Values).GetField(Fields[selected]).GetValue(working);
-        GUILayout.Label((Groups[selected]==5?100+25*size:50+25*size)+"%",label,GUILayout.Width(45));
-        if(GUILayout.Button("+",GUILayout.Width(28)))ResizeSelected(1);
-        if(GUILayout.Button("Reset selected"))ResetSelected();
-        if(GUILayout.Button("Reset layout")){CopyLayout(new Idas3GameOptions.Values(),working);}
-        if(GUILayout.Button("Cancel")){Close(false);GUILayout.EndHorizontal();GUILayout.EndArea();return;}
-        if(GUILayout.Button("Save & return")){Close(true);GUILayout.EndHorizontal();GUILayout.EndArea();return;}
-        GUILayout.EndHorizontal();GUILayout.Label(string.IsNullOrEmpty(error)?(Idas3GameOptions.Values.HudPositionGroup(Groups[selected])==3?"Position shared by Time Attack, Legend and Online • Mouse wheel or + / − to resize":"Drag a highlighted group • Mouse wheel or + / − to resize • Race announcements stay fixed"):error,label);GUILayout.EndArea();
+        GUILayout.BeginHorizontal();if(ToolButton("<",0,28)){control=0;SelectGroup((selected+Groups.Length-1)%Groups.Length);}
+        GUILayout.Label(Names[selected],label,GUILayout.Width(180));if(ToolButton(">",0,28)){control=0;SelectGroup((selected+1)%Groups.Length);}
+        if(ToolButton("Move X",1,90)){adjusting=control!=1||!adjusting;control=1;}
+        if(ToolButton("Move Y",2,90)){adjusting=control!=2||!adjusting;control=2;}
+        GUILayout.FlexibleSpace();GUILayout.EndHorizontal();
+        DrawSizeSlider();
+        GUILayout.BeginHorizontal();if(ToolButton("Reset selected",4,140)){control=4;ResetSelected();}
+        if(ToolButton("Reset layout",5,130)){control=5;CopyLayout(new Idas3GameOptions.Values(),working);}
+        GUILayout.FlexibleSpace();if(ToolButton("Cancel",6,100)){Close(false);GUILayout.EndHorizontal();GUILayout.EndArea();return;}
+        if(ToolButton(IsNested?"Done":"Save & return",7,150)){Close(true);GUILayout.EndHorizontal();GUILayout.EndArea();return;}
+        GUILayout.EndHorizontal();
+        string help=Groups[selected]==10&&working.hudOrnamentId==0?"Choose an ornament in Customize HUD to position it.":adjusting?"← → / ↑ ↓  ADJUST    ENTER / A  DONE    ESC / B  BACK":
+            "Drag to move • Slider / wheel / + / − for size • ↑ ↓ SELECT   ← → CHANGE   ENTER / A EDIT   ESC / B CANCEL";
+        GUILayout.Label(string.IsNullOrEmpty(error)?help:error,label);GUILayout.EndArea();
+    }
+    void DrawSizeSlider()
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label("SIZE",label,GUILayout.Width(55));
+        if(ToolButton("−",3,28)){control=3;ResizeSelected(-1);}
+        int size=working.HudSizePercent(Groups[selected]),minimum=Groups[selected]==5?100:50;
+        var sliderRect=GUILayoutUtility.GetRect(80,24,GUILayout.ExpandWidth(true));
+        var e=Event.current;
+        bool pointer=e.type==EventType.MouseDown&&e.button==0&&sliderRect.Contains(e.mousePosition);
+        if(e.type==EventType.ScrollWheel&&sliderRect.Contains(e.mousePosition)){
+            control=3;ResizeSelected(-Math.Sign(e.delta.y));size=working.HudSizePercent(Groups[selected]);e.Use();
+        }
+        var rail=new Rect(sliderRect.x+9,sliderRect.y+9,Mathf.Max(0,sliderRect.width-18),6);
+        Fill(rail,new Color32(108,113,126,255));
+        Fill(new Rect(rail.x,rail.y,rail.width*Mathf.InverseLerp(minimum,150,size),rail.height),new Color32(222,35,49,255));
+        var before=GUI.backgroundColor;
+        GUI.backgroundColor=control==3||sliderRect.Contains(e.mousePosition)?new Color32(255,100,112,255):new Color32(225,229,237,255);
+        int next;
+        try{next=Mathf.RoundToInt(GUI.HorizontalSlider(sliderRect,size,minimum,150,sliderTrack,sliderThumb));}
+        finally{GUI.backgroundColor=before;}
+        if(pointer){control=3;adjusting=false;GUIUtility.keyboardControl=0;}
+        // Repaint and layout pass through the existing value. Only an actual
+        // slider change writes the draft; group selection and position stay put.
+        if(next!=size)SetSelectedSizePercent(next);
+        GUILayout.Label(working.HudSizePercent(Groups[selected])+"%",label,GUILayout.Width(52));
+        if(ToolButton("+",3,28)){control=3;ResizeSelected(1);}
+        GUILayout.EndHorizontal();
+    }
+    static void Fill(Rect rect,Color color)
+    {
+        var before=GUI.color;GUI.color=color;GUI.DrawTexture(rect,Texture2D.whiteTexture);GUI.color=before;
+    }
+    bool ToolButton(string text,int target,float width)
+    {
+        var before=GUI.backgroundColor;if(control==target)GUI.backgroundColor=adjusting?new Color(.25f,.8f,1):new Color(.5f,.7f,1);
+        try{return GUILayout.Button(text,GUILayout.Width(width));}finally{GUI.backgroundColor=before;}
     }
     internal IEnumerator Capture(string path)
     {

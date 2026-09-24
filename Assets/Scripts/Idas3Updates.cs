@@ -33,6 +33,11 @@ public sealed class Idas3Updates : MonoBehaviour
     private double nextCheck;
     private UnityWebRequest activeRequest;
     private string downloadUrl,downloadHash,sessionFolder;
+    private IDisposable sessionLease;
+    private Task sessionWorker;
+    private bool installerLaunched;
+    private IEnumerator pendingInstallation;
+    private static Task cacheCleanup;
     private string fullUrl,fullHash,patchUrl,patchHash;
     private long fullBytes,patchBytes;
     private bool usingPatch,repair;
@@ -51,6 +56,10 @@ public sealed class Idas3Updates : MonoBehaviour
     private static void Bootstrap(){
         Instance=null;StartupFinished=true;
         if(Application.isEditor)return;
+        bool diagnostic=false;
+        foreach(string arg in Environment.GetCommandLineArgs())
+            if((arg.StartsWith("-idas3-",StringComparison.Ordinal)&&arg!="-idas3-skip-update-once")||arg.StartsWith("-hakone-",StringComparison.Ordinal))diagnostic=true;
+        if(!diagnostic)StartCacheCleanup();
         bool startupTest=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-startup-check")>=0&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-attract-options-smoke")>=0;
         foreach(string arg in Environment.GetCommandLineArgs())if(!startupTest&&(arg.StartsWith("-idas3-",StringComparison.Ordinal)||arg.StartsWith("-hakone-",StringComparison.Ordinal)))return;
         var go=new GameObject("Game updates");DontDestroyOnLoad(go);
@@ -194,19 +203,20 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     internal sealed class PatchUnavailableException : IOException {internal PatchUnavailableException(string message):base(message){}}
     private IEnumerator GuardInstall(IEnumerator routine){
+        pendingInstallation=routine;
         while(true){
             object next=null;Exception failure=null;bool more=false;
             try{more=routine.MoveNext();if(more)next=routine.Current;}catch(Exception error){failure=error;}
             if(failure!=null){
-                (routine as IDisposable)?.Dispose();activeRequest=null;
+                (routine as IDisposable)?.Dispose();pendingInstallation=null;activeRequest=null;
                 if(usingPatch&&!cancelled&&failure is PatchUnavailableException){
                     SelectDownload(true);Message="Downloading the full update…";
-                    routine=CreateDownload();continue;
+                    routine=CreateDownload();pendingInstallation=routine;continue;
                 }
                 State=CheckState.Unavailable;Message="The update could not be applied. Your current game is unchanged. "+failure.Message;
                 yield break;
             }
-            if(!more){(routine as IDisposable)?.Dispose();yield break;}
+            if(!more){(routine as IDisposable)?.Dispose();pendingInstallation=null;yield break;}
             yield return next;
         }
     }
@@ -218,9 +228,15 @@ public sealed class Idas3Updates : MonoBehaviour
         using(var stream=new FileStream(probe,FileMode.CreateNew,FileAccess.Write,FileShare.None,1,FileOptions.DeleteOnClose)){}
         var helperAsset=Resources.Load<TextAsset>("UpdateInstaller.exe");
         if(helperAsset==null)throw new IOException("The bundled update installer is missing.");
-        sessionFolder=Path.Combine(Path.GetTempPath(),"InitialDUpdates",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(sessionFolder);
-        string archive=Path.Combine(sessionFolder,"game.zip");
-        if(new DriveInfo(Path.GetPathRoot(sessionFolder)).AvailableFreeSpace<downloadBytes+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
+        State=CheckState.Preparing;Message="Preparing update…";
+        StartCacheCleanup();
+        while(!cacheCleanup.IsCompleted)yield return null;
+        string session=Path.Combine(Idas3UpdateCache.Root,Guid.NewGuid().ToString("N"));
+        sessionFolder=session;installerLaunched=false;
+        try{
+        sessionLease=Idas3UpdateCache.AcquireLease(session);
+        string archive=Path.Combine(session,"game.zip");
+        if(new DriveInfo(Path.GetPathRoot(session)).AvailableFreeSpace<downloadBytes+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
         State=CheckState.Downloading;Message="Downloading update…";
         using(var request=UnityWebRequest.Get(downloadUrl)){
             activeRequest=request;request.downloadHandler=new DownloadHandlerFile(archive){removeFileOnAbort=true};
@@ -242,16 +258,18 @@ public sealed class Idas3Updates : MonoBehaviour
             using(var hash=SHA256.Create())using(var input=File.OpenRead(archive))
                 return string.Equals(BitConverter.ToString(hash.ComputeHash(input)).Replace("-","").ToLowerInvariant(),downloadHash,StringComparison.Ordinal);
         });
+        sessionWorker=verification;
         while(!verification.IsCompleted)yield return null;
         if(!verification.GetAwaiter().GetResult())throw new IOException("Download verification failed. Nothing was installed.");
-        string helper=Path.Combine(sessionFolder,"install.exe");
+        string helper=Path.Combine(session,"install.exe");
         File.WriteAllBytes(helper,helperAsset.bytes);
         int parentId;long parentTime;
         using(var current=System.Diagnostics.Process.GetCurrentProcess()){parentId=current.Id;parentTime=current.StartTime.ToUniversalTime().ToFileTimeUtc();}
         Message="Checking game files and preparing the update…";
         int checkedFiles=0,totalFiles=0;
-        var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,sessionFolder,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json),
+        var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,session,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json),
             (done,total)=>{System.Threading.Interlocked.Exchange(ref totalFiles,total);System.Threading.Interlocked.Exchange(ref checkedFiles,done);}));
+        sessionWorker=preparation;
         while(!preparation.IsCompleted){
             int total=System.Threading.Volatile.Read(ref totalFiles),done=System.Threading.Volatile.Read(ref checkedFiles);
             if(total>0)Message="Checking game files… "+done.ToString("N0")+" / "+total.ToString("N0");
@@ -260,15 +278,17 @@ public sealed class Idas3Updates : MonoBehaviour
         string planPath;
         try{planPath=preparation.GetAwaiter().GetResult();}catch(Idas3UpdateStaging.PatchRejectedException error){throw new PatchUnavailableException(error.Message);}
         var start=new System.Diagnostics.ProcessStartInfo(helper){
-            Arguments=Quote(planPath),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=sessionFolder
+            Arguments=Quote(planPath),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=session
         };
         installer=System.Diagnostics.Process.Start(start);
+        if(installer==null)throw new IOException("The installer could not start.");
+        installerLaunched=true;
         Message="Preparing the update. The game will restart automatically…";
         double helperStarted=Time.realtimeSinceStartupAsDouble;
-        while(!File.Exists(Path.Combine(sessionFolder,"ready"))){
+        while(!File.Exists(Path.Combine(session,"ready"))){
             if(Time.realtimeSinceStartupAsDouble-helperStarted>300){if(!installer.HasExited)installer.Kill();throw new IOException("Installer preparation timed out. The game remains open.");}
             if(installer.HasExited){
-                string error=Path.Combine(sessionFolder,"error.txt");
+                string error=Path.Combine(session,"error.txt");
                 string detail=File.Exists(error)?File.ReadAllText(error):"The installer exited before preparing the update (code "+installer.ExitCode+").";
                 throw new IOException(detail);
             }
@@ -278,6 +298,25 @@ public sealed class Idas3Updates : MonoBehaviour
         // Normal Unity shutdown flushes pending replays and saves. The helper
         // waits for this exact process to exit before changing any game files.
         Application.Quit();
+        }finally{ReleaseSession();}
+    }
+    private static void StartCacheCleanup(){
+        if(cacheCleanup==null||cacheCleanup.IsCompleted)
+            cacheCleanup=Task.Run(()=>Idas3UpdateCache.Clean(Idas3UpdateCache.Root,DateTime.UtcNow));
+    }
+    private void ReleaseSession(){
+        string session=sessionFolder;var lease=sessionLease;var worker=sessionWorker;bool launched=installerLaunched;
+        sessionFolder=null;sessionLease=null;sessionWorker=null;installerLaunched=false;
+        if(session==null)return;
+        // A cancelled/destroyed coroutine may still have a hashing/staging task.
+        // Keep its lease until that task has stopped touching the session.
+        Task.Run(async()=>{
+            try{
+                if(worker!=null)try{await worker.ConfigureAwait(false);}catch(Exception){}
+                if(!launched&&lease!=null)Idas3UpdateCache.MarkSafe(session);
+            }catch(Exception){}finally{lease?.Dispose();}
+            Idas3UpdateCache.Clean(Path.GetDirectoryName(session),DateTime.UtcNow);
+        });
     }
     private static string Quote(string value)=>"\""+value.Replace("\"","\\\"")+"\"";
     private void Update(){
@@ -345,5 +384,10 @@ public sealed class Idas3Updates : MonoBehaviour
         }
         public override void Dispose(){body.Dispose();base.Dispose();}
     }
-    private void OnDestroy(){StopAllCoroutines();if(activeRequest!=null){activeRequest.Abort();activeRequest.Dispose();activeRequest=null;}}
+    private void OnDestroy(){
+        StopAllCoroutines();
+        if(activeRequest!=null){activeRequest.Abort();activeRequest.Dispose();activeRequest=null;}
+        (pendingInstallation as IDisposable)?.Dispose();pendingInstallation=null;
+        ReleaseSession();installer?.Dispose();installer=null;
+    }
 }

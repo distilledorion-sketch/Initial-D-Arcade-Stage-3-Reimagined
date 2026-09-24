@@ -73,6 +73,7 @@ namespace Idas3.Multiplayer
         [Serializable] private class Shot {
             public string name,kind;
             public int width,height,visiblePixels,manualCameras,peerRanges,peerMainRanges,menuRepaints;
+            public int mainViewExcludedRanges,mainViewExcludedVertices,mirrorViewExcludedRanges,mirrorViewExcludedVertices;
             public bool menuOpen,screenCaptureVisible,menuHeaderVisible;
             public long snapshotsReceived,snapshotsSent;
             public Idas3CarSnapshot local,remote;
@@ -446,11 +447,16 @@ namespace Idas3.Multiplayer
                 session.SetRaceOptions(choice.Course,choice.Reverse,choice.Wet,choice.Night);
                 yield return Until(()=>session.CanReady&&session.RemoteChoice.Equals(choice),20,"Headlight fixture conditions did not synchronize.");
             }
-            if(course>=9){
+            var raceArguments=Environment.GetCommandLineArgs();
+            if(course>=9||Array.IndexOf(raceArguments,"-idas3-multiplayer-reverse")>=0||
+                Array.IndexOf(raceArguments,"-idas3-multiplayer-night")>=0||Array.IndexOf(raceArguments,"-idas3-multiplayer-wet")>=0){
                 var args=Environment.GetCommandLineArgs();
-                var choice=new Idas3RaceChoice(course,Array.IndexOf(args,"-hakone-uphill")>=0,Array.IndexOf(args,"-hakone-wet")>=0,Array.IndexOf(args,"-hakone-night")>=0);
+                var choice=new Idas3RaceChoice(course,
+                    Array.IndexOf(args,"-idas3-multiplayer-reverse")>=0||Array.IndexOf(args,"-hakone-uphill")>=0,
+                    course==8||Array.IndexOf(args,"-idas3-multiplayer-wet")>=0||Array.IndexOf(args,"-hakone-wet")>=0,
+                    Idas3CourseCatalog.RequiresNight(course)||Array.IndexOf(args,"-idas3-multiplayer-night")>=0||Array.IndexOf(args,"-hakone-night")>=0);
                 session.SetRaceOptions(choice.Course,choice.Reverse,choice.Wet,choice.Night);
-                yield return Until(()=>session.CanReady&&session.RemoteChoice.Equals(choice),20,"Hakone choices did not synchronize");
+                yield return Until(()=>session.CanReady&&session.RemoteChoice.Equals(choice),20,"Diagnostic race conditions did not synchronize");
             }
             if(musicCheck)yield return Idas3RaceMusicSmoke.VerifyLobby(host,session,root,role);
             if(showcaseCheck)yield return Idas3MultiplayerPresentationSmoke.VerifyLobby(host,session,root,role);
@@ -1102,6 +1108,7 @@ namespace Idas3.Multiplayer
             var previous=camera.targetTexture;
             var target=new RenderTexture(1200,720,24,RenderTextureFormat.ARGB32){name="Multiplayer smoke capture",antiAliasing=1};
             Check(target.Create(),"Multiplayer screenshot target failed.");camera.targetTexture=target;scene.ApplyFrame();ui.ApplyFrame();
+            scene.VerifyViewCulling(Check);
             yield return new WaitForEndOfFrame();
             var cameras=new List<Camera>();
             foreach(var item in Resources.FindObjectsOfTypeAll<Camera>())
@@ -1121,11 +1128,14 @@ namespace Idas3.Multiplayer
             Check(picture!=null&&picture.width>0,"Multiplayer screenshot returned no image.");
             int visible=0;foreach(var pixel in picture.GetPixels32())if(Mathf.Max(pixel.r,Mathf.Max(pixel.g,pixel.b))>24)++visible;
             PeerGeometry(out int peerRanges,out int peerMainRanges);
+            var scene=host.GetComponent<Idas3SceneRenderer>();
             var shot=new Shot{name=name,kind=kind,width=picture.width,height=picture.height,visiblePixels=visible,
                 screenCaptureVisible=visible>picture.width*picture.height/1000,manualCameras=cameraCount,peerRanges=peerRanges,peerMainRanges=peerMainRanges,
                 menuRepaints=menu.DiagnosticRepaints,menuHeaderVisible=menu.IsOpen&&MenuHeaderVisible(picture),
                 menuOpen=menu.IsOpen,snapshotsReceived=session.RemoteSnapshotsReceived,snapshotsSent=session.SnapshotsSent,
-                local=session.LocalSnapshot,remote=session.RemoteSnapshot};
+                local=session.LocalSnapshot,remote=session.RemoteSnapshot,
+                mainViewExcludedRanges=scene.MainViewExcludedRanges,mainViewExcludedVertices=scene.MainViewExcludedVertices,
+                mirrorViewExcludedRanges=scene.MirrorViewExcludedRanges,mirrorViewExcludedVertices=scene.MirrorViewExcludedVertices};
             File.WriteAllBytes(Path.Combine(root,name+".png"),picture.EncodeToPNG());shots.Add(shot);
             File.WriteAllText(Path.Combine(root,name+".json"),JsonUtility.ToJson(shot,true));
             if(cameraCount>0)Check(shot.screenCaptureVisible,"Multiplayer world screenshot is black.");

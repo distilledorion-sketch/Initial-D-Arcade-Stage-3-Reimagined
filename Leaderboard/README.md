@@ -27,7 +27,7 @@ The checked-in configuration has a placeholder database ID. Production credentia
 
 ## Behavior
 
-- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.31`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
+- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.32`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
 - `REQUIRED_CLIENT_BUILD` is an exact version, not a minimum. The obsolete `MIN_CLIENT_BUILD` variable is ignored. A version mismatch returns permanent HTTP 409 with `code: "client_build_required"` and `requiredBuild`; clients discard that queued run and must complete a new Time Attack in the required build.
 - `/health` and `/api/v1/snapshot` expose `requiredBuild`. Changing this upload policy does not reset the season, delete scores, filter historical builds out of rankings, or restrict existing replay downloads. No migration is needed for the version change.
 - Historical-time imports and replay-less uploads are rejected.

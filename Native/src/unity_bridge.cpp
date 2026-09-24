@@ -12,6 +12,8 @@
 #include "../tests/finish_music_app_tests.inl"
 #include "../tests/imported_car_lighting_app_tests.inl"
 #include "../tests/driving_effects_app_tests.inl"
+#include "../tests/hud_drift_app_tests.inl"
+#include "../tests/online_collision_app_tests.inl"
 #include "../tests/shared_times_app_tests.inl"
 #include "../tests/player_replays_app_tests.inl"
 #include "shared_time_import.h"
@@ -31,6 +33,9 @@ static_assert(sizeof(Idas3UnityStatus)==80);
 static_assert(sizeof(Idas3RivalStatus)==56);
 static_assert(sizeof(Idas3Options)==40);
 static_assert(sizeof(Idas3WheelState)==40);
+static_assert(sizeof(Idas3HudTelemetry)==40);
+static_assert(sizeof(Idas3OrnamentTelemetry)==40);
+static_assert(sizeof(Idas3PresentationTiming)==24);
 static_assert(sizeof(Idas3RaceMusicState)==32);
 
 namespace {
@@ -342,6 +347,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
         if(scene==-3)return runFinishMusicAppTests(*r.app)==0?1:0;
         if(scene==-4)return runImportedCarLightingAppTests(*r.app)==0?1:0;
         if(scene==-11)return runDrivingEffectsAppTests(*r.app)==0?1:0;
+        if(scene==-12)return runOnlineCollisionAppTests(*r.app)==0?1:0;
+        if(scene==-13){const auto result=runHudDriftAppTests(*r.app);publish(r,0);return result==0?1:0;}
         if(scene==-5)return runSharedTimeAppTests(*r.app)==0?1:0;
         if(scene==-6)return runSharedImportAppTests(*r.app)==0?1:0;
         if(scene==-7)return runPerformanceOptionsAppTests(*r.app)==0?1:0;
@@ -653,7 +660,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayPose(double tick,float x,floa
             a.carPresentation.restoreHeadlightState({d.lightCounter,d.lightMaximum,d.lightPhase,d.lightVisible!=0,d.lightFraction});
         }
         a.replayCameraMode=cameraMode;a.replayOrbit=orbit;
-        a.drivingView=cameraMode==1?OriginalDrivingView::Bumper:OriginalDrivingView::Chase;
+        a.setDrivingView(cameraMode==1?OriginalDrivingView::Bumper:OriginalDrivingView::Chase);
         Idas3UiBeginFrame(width,height);
         double dt=(tick-a.replayLastTick)/60.;
         if(a.replayLastTick<0||dt<0||dt>.25){a.wetWeather.reset();dt=1./60.;}
@@ -738,7 +745,7 @@ int IDAS3_UNITY_CALL Idas3SceneGetOptions(Idas3Options* options){
         if(!options||options->size!=sizeof(*options))throw std::invalid_argument("Options ABI must be40bytes");
         const auto& app=*r.app;const auto gains=app.audio.outputGains();
         *options={sizeof(*options),1,gains.master,gains.music,gains.engine,gains.effects,
-            app.drivingView==OriginalDrivingView::Bumper?0u:1u,app.paused?1u:0u,app.managedPauseOverlay?1u:0u,0};return 1;
+            std::uint32_t(app.drivingView),app.paused?1u:0u,app.managedPauseOverlay?1u:0u,0};return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown options read error");return 0;}
 }
@@ -758,7 +765,7 @@ int IDAS3_UNITY_CALL Idas3SceneGetPreRaceStatus(Idas3PreRaceStatus* status){
         status->countdownRemaining=app.originalRaceStart.remaining();status->countdownDigit=app.race.originalStartDigit;
         status->playerCar=unsigned(app.frontend.car);status->opponentCar=app.rivalVisible?unsigned(app.loadedRivalCar):~0u;
         status->opponentId=app.battle?app.battleProfile.u(24):~0u;
-        status->cameraView=app.drivingView==OriginalDrivingView::Bumper?0u:1u;
+        status->cameraView=std::uint32_t(app.drivingView);
         status->simulationTicks=r.ticks;status->ownerTicks=app.originalRaceOwnerFrame;
         status->condition=unsigned(app.courseIndex*2+int(app.reverse));
         if(const auto capture=app.renderer.sceneCapture()){
@@ -968,14 +975,14 @@ int IDAS3_UNITY_CALL Idas3SceneApplyOptions(const Idas3Options* options){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.sceneMode||!r.app)throw std::logic_error("Options require initialized Unity scene mode");
-        if(!options||options->size!=sizeof(*options)||options->version!=1||options->cameraView>1||
+        if(!options||options->size!=sizeof(*options)||options->version!=1||options->cameraView>2||
             options->paused>1||options->managedPauseOverlay>1||options->reserved)
             throw std::invalid_argument("Invalid options v1");
         auto& app=*r.app;
         // The setter validates every gain before changing anything. All later
         // assignments are bounded/nonthrowing; rejected options are atomic.
         app.audio.setOutputGains({options->masterGain,options->musicGain,options->engineGain,options->effectsGain,app.audio.outputGains().tires});
-        app.drivingView=options->cameraView==0?OriginalDrivingView::Bumper:OriginalDrivingView::Chase;
+        app.setDrivingView(OriginalDrivingView(options->cameraView));
         app.managedPauseOverlay=options->managedPauseOverlay!=0;
         publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
@@ -1113,6 +1120,51 @@ int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* out){
     out->headingError=std::remainder(d.f(0x108)-d.f(0x10),2.f*pi);
     out->wallLateral=d.f(0x258)*std::cos(app.vehicle.yaw)-d.f(0x25C)*std::sin(app.vehicle.yaw);
     out->impact=app.vehicle.wallImpactSpeed;out->flags=1|(app.vehicle.wallContact?2:0);return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneGetHudTelemetry(Idas3HudTelemetry* out){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out))return 0;
+    *out={sizeof(*out),2};const auto& app=*r.app;
+    if(app.menu||app.loadingActive||app.legendVisitActive||app.preRaceDialogueActive||app.extraModeVisitActive())return 1;
+    out->flags=1u|(app.automatic?2u:0u)|(app.night?4u:0u);
+    const auto analog=app.presentedHudAnalog();
+    out->gear=app.vehicle.gear;out->speedKmh=analog.speed*3.6f;out->rpm=analog.rpm;
+    out->revLimit=app.originalHandling&&app.presentedSession().ready()?app.presentedSession().parameters().transmission.workingBase:app.config.redlineRpm;
+    out->throttle=std::clamp(app.vehicle.throttle,0.f,1.f);out->brake=std::clamp(app.vehicle.brake,0.f,1.f);
+    if(app.race.phase==RacePhase::Running&&!app.replayPlaybackActive&&!app.multiplayerDisconnected()){
+        if(app.hudDrift.drifting())out->flags|=8u;
+        out->driftOpacity=app.hudDrift.opacity();
+    }
+    return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneCopyHudDriverName(char* destination,int capacity){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||capacity<1||!destination)return 0;
+    const auto& app=*r.app;
+    const auto name=app.multiplayer.active?app.multiplayer.localName:app.vsBanner.profileDisplayName(app.frontend.battleProfile);
+    const auto count=std::min(name.size(),std::size_t(capacity-1));std::memcpy(destination,name.data(),count);destination[count]=0;return int(count);
+}
+int IDAS3_UNITY_CALL Idas3SceneGetOrnamentTelemetry(Idas3OrnamentTelemetry* out){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out))return 0;
+    *out={sizeof(*out),1};const auto& app=*r.app;
+    out->simulationTicks=app.replayPlaybackActive?app.race.ticks:app.vehicle.tick;out->car=uint32_t(app.frontend.car);
+    out->flags=app.ornamentPresentationFlags();
+    if(!(out->flags&1u))return 1;
+    // Replay positions are interpolated against rounded source ticks, so they
+    // cannot safely provide acceleration. Keep the decoration at rest there.
+    const auto& position=app.originalHandling?app.playerBodyWorld:app.vehicle.position;
+    out->x=position.x;out->y=position.y;out->z=position.z;out->yaw=app.vehicle.yaw;
+    return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneGetPresentationTiming(Idas3PresentationTiming* out){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out))return 0;
+    *out={sizeof(*out),1};const auto& app=*r.app;
+    out->simulationTicks=app.replayPlaybackActive?app.race.ticks:app.vehicle.tick;
+    out->flags=app.ornamentPresentationFlags();
+    out->alpha=out->flags==1u?app.clock.alpha():1.f;
+    return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneSetPaused(int paused){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

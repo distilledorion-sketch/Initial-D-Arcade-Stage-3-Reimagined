@@ -3,6 +3,7 @@
 #include "imported_course.h"
 #include "original_host_input.h"
 #include "original_battle_metrics.h"
+#include "online_race_test_driver.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -24,26 +25,15 @@ OnlineRaceSetup setup(unsigned scenario){
 std::array<OriginalVehicleInputs,2> driving(const OnlineRaceSimulation& sim,std::array<OriginalHostInputState,2>& host,unsigned frame){
     std::array<OriginalVehicleInputs,2> out;
     for(unsigned slot=0;slot<2;++slot){
-        const auto& car=sim.car(slot);const auto& d=car.vehicle().drive;const auto& points=car.path().points;
-        std::size_t nearest=0;float best=1e30f;
-        for(std::size_t i=0;i<points.size();++i){float dx=points[i][0]-d.f(0),dz=points[i][2]-d.f(8),dist=dx*dx+dz*dz;if(dist<best){best=dist;nearest=i;}}
-        auto target=nearest;float length=0;const float look=std::max(10.f,d.f(0x238)*.65f);
-        while(length<look&&target+1<points.size()){float x=points[target+1][0]-points[target][0],z=points[target+1][2]-points[target][2];length+=std::sqrt(x*x+z*z);++target;}
-        const auto& p=points[target];const float wanted=std::atan2(-(p[0]-d.f(0)),-(p[2]-d.f(8)));
-        float steer=std::clamp(-std::remainder(wanted-d.f(0x10),6.28318530718f)*.85f,-.8f,.8f),gas=1,brake=0;
-        const auto cycle=(frame+slot*60)%360;
-        if(cycle>=200&&cycle<220){gas=0;brake=.7f;}
-        if(cycle>=240&&cycle<252)steer=(frame/360)%2?-.9f:.9f;
-        if(cycle>=280&&cycle<295)gas=0;
-        out[slot]=adaptOriginalHostInput(host[slot],{steer,gas,brake,frame%360==205,frame%110==90},sim.setup().automatic[slot],false,frame);
+        out[slot]=adaptOriginalHostInput(host[slot],onlineRaceTestControls(sim,slot,frame),sim.setup().automatic[slot],false,frame);
     }
     return out;
 }
-struct Baseline {std::vector<std::array<OriginalVehicleInputs,2>> inputs;std::vector<std::uint64_t> hashes;std::uint64_t contacts=0,impacts=0;};
+struct Baseline {std::vector<std::array<OriginalVehicleInputs,2>> inputs;std::vector<std::uint64_t> hashes,contactEffects;std::uint64_t contacts=0,impacts=0;};
 Baseline record(const std::filesystem::path& root,const OnlineRaceSetup& selected,unsigned frames){
     OnlineRaceSimulation sim(root,selected);std::array<OriginalHostInputState,2> inputState{};Baseline result;
     for(unsigned frame=0;frame<frames;++frame){auto input=driving(sim,inputState,frame);result.inputs.push_back(input);
-        const auto effect=sim.step(input);result.hashes.push_back(sim.digest());
+        const auto effect=sim.step(input);result.hashes.push_back(sim.digest());result.contactEffects.push_back(onlineContactEffectsDigest(effect));
         for(unsigned slot=0;slot<2;++slot){result.impacts+=effect.driving[slot].newImpactRecords.size();const auto& actor=sim.car(slot).actor();
             for(unsigned offset:{0u,4u,8u,24u,28u,32u})require(std::isfinite(actor.f(offset)),"Non-finite baseline pose");}
         require(effect.driving[0].bodyCollision.active==effect.driving[1].bodyCollision.active,"Collision active flag differs between cars");
@@ -144,6 +134,7 @@ Report run(const std::filesystem::path& root,const OnlineRaceSetup& selected,con
     OnlineRaceSimulation host(root,selected),client(root,selected);std::array<std::uint64_t,2> emitted{};
     auto output=[&](unsigned slot,const OnlineRaceFrame& effect,std::uint64_t digest){
         require(effect.frame==emitted[slot],"Confirmed effects repeated or skipped");
+        require(onlineContactEffectsDigest(effect)==baseline.contactEffects.at(effect.frame),"Confirmed collision response/audio effects changed during rollback");
         if(digest!=baseline.hashes.at(effect.frame))throw std::runtime_error("DESYNC frame="+std::to_string(effect.frame)+" peer="+std::to_string(slot)+" ping="+std::to_string(ping));
         ++emitted[slot];};
     OnlineRaceTimeline h(host,54321,true,[&](const auto& e,auto digest){output(0,e,digest);});

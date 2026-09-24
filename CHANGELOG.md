@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+## 0.3.95-community-replays.32 - September 24, 2026
+
+- HUD resizing now uses a precise percentage slider. Mouse wheel, buttons and controller adjustments change size by 1% without wrapping at the limits; existing saved sizes are preserved.
+- HUD customization now opens the layout editor directly. Custom meters and keychains can be moved and resized independently; keychain placement is saved, with separate reset and cancel controls.
+- Tachometer needles and hanging ornaments now interpolate between simulation ticks for smoother motion above 60 FPS. Original and imported meters share the same display timing; driving physics and race timing remain unchanged.
+- Hanging ornaments now use flexible chains with the recovered joint weights: metal links stay rigid while their joints bend, cord straps flex, and the pendant sways and twists independently. Road bumps and impacts produce vertical bounce that settles naturally; pausing freezes the entire assembly.
+- Added 280 recovered 3D hanging ornaments and keychains to Settings > HUD > Customize, with a scrollable picker, animated previews and an Off option. Selected accessories swing with acceleration, braking and cornering and freeze while paused; they work with both original and custom meters.
+- HUD customization now includes all 87 recovered meter styles in a scrollable picker, with live previews, per-style needles and digit layouts, and matching day/night and RPM-scale artwork. Existing Original and Stuttgart selections are preserved.
+- Added Settings > HUD > Customize with animated previews, shift warnings, pedal indicators and a driver-name plate. The original HUD remains the default; meter size and position still use the HUD layout editor.
+- The Stuttgart meter uses live speed, RPM, gear, transmission and pedal inputs, with matching day/night artwork and a tachometer scale selected for the current car's RPM range.
+- The Stuttgart DRIFT lamp now lights green during sustained sideways motion and fades as grip returns. Wall contact, airborne movement and low-speed turns do not activate it; its preview is animated in HUD customization.
+- Updates now remove completed downloads, staged files and verified rollback copies, including after a restart failure. Startup cleanup also recovers space from safe leftovers from older versions while preserving active updates and unresolved recovery backups.
+- Corrected the Time Attack analysis map artwork selection for Tsuchisaka and Shomaru so the full-route trace uses the overview artwork.
+- Exclude geometry from cameras that cannot display it before rendering, reducing unnecessary rear-view mirror submissions while preserving the mirror and existing visuals.
+- Added Natural as an optional driving camera under Settings > Gameplay > Default Camera. It smooths following and turns, keeps a steady horizon, and gently adjusts distance and field of view with speed.
+- Preserved the original Bumper and Chase cameras and the existing saved default. View Change now cycles through Bumper, Chase and Natural.
+- Community Time Attack submissions require exactly `.32`. Existing published times, replays and the current season are preserved. Both online players need this version; changed-file patches are available from `.20` through `.31`.
+
 ## 0.3.95-community-replays.31 - September 23, 2026
 
 - Added a Custom Music folder beside the game for MP3, OGG and WAV tracks, with deletion available in Select BGM. Updates preserve personal tracks and release packages exclude them.

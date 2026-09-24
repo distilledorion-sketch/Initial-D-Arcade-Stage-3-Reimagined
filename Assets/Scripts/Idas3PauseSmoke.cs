@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using UnityEngine;
 using Idas3.Multiplayer;
 
@@ -23,17 +24,27 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     private readonly List<string> captures=new List<string>();
     private readonly List<int> verifiedControllerResponses=new List<int>();
     private readonly List<float> verifiedSteeringSmoothing=new List<float>();
+    private readonly List<CameraObservation> cameraObservations=new List<CameraObservation>();
+    private string lastCameraCaptureHash;
+    private bool NaturalCameraCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-natural-camera-check")>=0;
+    private bool SceneOnlyCapture=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-scene-only-capture")>=0;
+    [Serializable] private class CameraObservation {
+        public string name,imageSha256;public uint view,playerRanges;public ulong simulationTicks;
+        public Vector3 eye,target,up;public float verticalFov;
+    }
     [Serializable] private class Observation {
         public string name;public ulong localTicks,remoteTicks;public long received,sent;
         public uint nativeFlags;public double elapsed;public bool menuOpen,applicationFocused;
     }
     [Serializable] private class Report {
         public bool screenshotsSkipped=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0;
-        public string schema="idas3-pause-options-smoke-v1",error,scope;
+        public bool optionsScreenshotsSkipped=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-scene-only-capture")>=0;
+        public string schema="idas3-pause-options-smoke-v1",applicationVersion=Application.version,error,scope;
         public bool passed,online,shutdownComplete;public int checks;public double seconds;
         public Observation[] observations;public string[] captures;public Idas3GameOptions.Values options;
         public int[] verifiedControllerResponses;
         public float[] verifiedSteeringSmoothing;
+        public CameraObservation[] cameras;
     }
     private sealed class OptionsTestPlatform : Idas3GameOptions.IPlatform {
         public int Width=>1280;public int Height=>720;public int DisplayMode=>0;public double Now=>0;
@@ -45,6 +56,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         public uint cameraView,paused,managedPauseOverlay,reserved;
     }
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneGetOptions(ref NativeOptions value);
+    [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneGetPreRaceStatus(ref Idas3PreRaceSmoke.PreRaceStatus value);
     public static bool Configure(ref string saves){
         var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-pause-smoke");if(at<0)return false;
         if(at+1>=args.Length)throw new ArgumentException("Pause diagnostic needs a new output directory.");
@@ -90,6 +102,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(options.Current.controllerResponse==0&&Idas3Native.Idas3SceneGetControllerResponse()==0,"Fresh game did not default to Flycast gamepad response");
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate injected pause controls");yield return Frames(3);driving=true;pulse=116;
         yield return Until(()=>((host.Status.flags&1)==0)&&host.Status.simulationTicks>200,35,"Offline race did not start");
+        if(NaturalCameraCheck){yield return NaturalCameraChecks();Finish(true,null);yield break;}
         var wheelState=new Idas3Native.WheelState{size=(uint)Marshal.SizeOf<Idas3Native.WheelState>()};
         Check(wheelState.size==40&&Idas3Native.Idas3SceneGetWheelState(ref wheelState)==1&&wheelState.version==1,"Wheel telemetry native ABI");
         var wheelAgain=new Idas3Native.WheelState{size=40};
@@ -108,6 +121,99 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         yield return Until(()=>host.Status.simulationTicks>frozen+20,5,"Offline race did not resume after focus recovery");
         padPulse=0x10;yield return Frames(5);Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Controller Start did not open offline pause");
         Observe("offline-start-paused");menu.SetOpen(false);host.DiagnosticFocusOverride=null;Finish(true,null);
+    }
+    private NativeOptions CameraOptions(){var value=new NativeOptions{size=(uint)Marshal.SizeOf<NativeOptions>()};Check(Idas3SceneGetOptions(ref value)==1&&value.version==1,"Camera options unavailable");return value;}
+    private static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value);
+    private static bool Finite(Vector3 value)=>Finite(value.x)&&Finite(value.y)&&Finite(value.z);
+    private Idas3PreRaceSmoke.PreRaceStatus CheckCamera(uint expected){
+        var state=new Idas3PreRaceSmoke.PreRaceStatus{size=(uint)Marshal.SizeOf<Idas3PreRaceSmoke.PreRaceStatus>()};
+        Check(Idas3SceneGetPreRaceStatus(ref state)==1&&state.version==1,"Camera scene status unavailable");
+        Check(CameraOptions().cameraView==expected&&state.cameraView==expected,"Camera mode was collapsed or did not reach the native renderer");
+        var camera=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
+        Check(Finite(camera.eye)&&Finite(camera.target)&&Finite(camera.up)&&Finite(camera.verticalFov)&&Finite(camera.aspect)&&Finite(camera.nearClip)&&Finite(camera.farClip),"Camera frame contains a nonfinite value");
+        Check((camera.target-camera.eye).sqrMagnitude>.000001f&&camera.up.sqrMagnitude>.1f&&camera.verticalFov>0&&camera.verticalFov<Mathf.PI&&camera.nearClip>0&&camera.farClip>camera.nearClip,"Camera frame has an invalid view or projection");
+        var unityCamera=host.GetComponent<Camera>();Check(Finite(unityCamera.transform.position)&&Finite(unityCamera.transform.forward)&&unityCamera.fieldOfView>0&&unityCamera.fieldOfView<179,"Unity did not receive a usable camera");
+        Check(expected==0?state.playerRanges==0:state.playerRanges>0,expected==0?"Bumper view unexpectedly draws the player car":"External camera omitted the player car");
+        return state;
+    }
+    private void RecordCamera(string name,string imageHash=null){
+        var view=CameraOptions().cameraView;var state=CheckCamera(view);var camera=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
+        cameraObservations.Add(new CameraObservation{name=name,imageSha256=imageHash,view=view,playerRanges=state.playerRanges,simulationTicks=host.Status.simulationTicks,eye=camera.eye,target=camera.target,up=camera.up,verticalFov=camera.verticalFov});
+    }
+    private void SetRuntimeCamera(uint view){
+        var value=new Idas3Native.Options{size=(uint)Marshal.SizeOf<Idas3Native.Options>()};Check(Idas3Native.Idas3SceneGetOptions(ref value)==1,"Native camera options read failed");
+        value.cameraView=view;Check(Idas3Native.Idas3SceneApplyOptions(ref value)==1,"Native camera selection failed");
+    }
+    private void CheckRestoredCamera(string name,Idas3SceneRenderer.SceneCamera expected){
+        var actual=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
+        Check((actual.eye-expected.eye).sqrMagnitude<=.00000001f,name+" eye changed after returning from Natural");
+        Check((actual.target-expected.target).sqrMagnitude<=.00000001f,name+" target changed after returning from Natural");
+        Check((actual.up-expected.up).sqrMagnitude<=.00000001f,name+" up vector changed after returning from Natural");
+        Check(Mathf.Abs(actual.verticalFov-expected.verticalFov)<=.000001f,name+" field of view changed after returning from Natural");
+        Check(Mathf.Abs(actual.nearClip-expected.nearClip)<=.000001f,name+" near clip changed after returning from Natural");
+        Check(Mathf.Abs(actual.aspect-expected.aspect)<=.000001f,name+" aspect changed after returning from Natural");
+    }
+    private IEnumerator CameraControl(uint expected,bool controller=false){
+        if(controller)padPulse=0x8000;else pulse=67;yield return Frames(6);CheckCamera(expected);
+    }
+    private IEnumerator NaturalCameraChecks(){
+        yield return Until(()=>host.Status.racePhase==2,15,"Natural camera fixture did not reach running race");
+        Check(options.Current.defaultCamera==0&&CameraOptions().cameraView==0,"Natural camera changed the established default");CheckCamera(0);
+        string bindingsBefore=JsonUtility.ToJson(host.ControlBindings.Current);
+        yield return CameraControl(1);yield return CameraControl(2,true);yield return CameraControl(0);
+        Check(options.Current.defaultCamera==0,"View Change overwrote the saved default camera");
+        pulse=27;yield return Frames(5);Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Natural camera test could not pause");
+        var originalOptions=options.Current.Clone();
+        ulong frozen=host.Status.simulationTicks;string savedBefore=File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null;
+        float pausedSpeed=host.Status.speedMetresPerSecond,pausedRpm=host.Status.rpm;
+        var originalBumper=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;RecordCamera("original-bumper-paused");
+        SetRuntimeCamera(1);yield return Frames(4);CheckCamera(1);
+        var originalChase=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;RecordCamera("original-chase-paused");
+        SetRuntimeCamera(0);yield return Frames(4);CheckCamera(0);
+        Check(host.Status.simulationTicks==frozen,"Original-camera baseline changed the paused race tick");
+        menu.SelectTab(2);menu.NavigateHorizontal(-1);
+        Check(options.Draft.defaultCamera==2&&options.Current.defaultCamera==0&&CameraOptions().cameraView==0&&options.HasUnsavedChanges,"Left from Bumper did not select an unapplied Natural draft");
+        yield return Capture("natural-camera-draft");menu.Back();menu.Back();yield return Frames(3);
+        Check(options.Current.defaultCamera==0&&options.Draft.defaultCamera==0&&CameraOptions().cameraView==0,"Cancelling Natural camera changed the active/default view");
+        Check((File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null)==savedBefore,"Cancelling Natural camera wrote the options file");
+        menu.SelectTab(2);menu.NavigateHorizontal(1);Check(options.Draft.defaultCamera==1,"Chase moved from its existing option index");menu.NavigateHorizontal(1);
+        Check(options.Draft.defaultCamera==2&&CameraOptions().cameraView==0,"Natural draft applied before the menu APPLY action");
+        for(int row=0;row<11;++row)menu.Navigate(1);menu.Activate();yield return Frames(4);
+        Check(options.LastError==null&&!options.HasUnsavedChanges&&options.Current.defaultCamera==2,"Gameplay APPLY did not save Natural camera");CheckCamera(2);
+        Check(host.Status.simulationTicks==frozen&&host.Status.speedMetresPerSecond==pausedSpeed&&host.Status.rpm==pausedRpm,"Applying Natural advanced or modified paused driving state");
+        var persisted=JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath));
+        var reloaded=new Idas3GameOptions(new OptionsTestPlatform());reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
+        Check(persisted.defaultCamera==2&&reloaded.LastError==null&&reloaded.Current.defaultCamera==2&&Idas3GameOptions.Equivalent(reloaded.Current,options.Current),"Natural camera did not persist and reload");
+        originalOptions.defaultCamera=2;Check(Idas3GameOptions.Equivalent(originalOptions,options.Current),"Applying Natural changed unrelated options");
+        Check(JsonUtility.ToJson(host.ControlBindings.Current)==bindingsBefore,"Natural camera changed driving bindings");
+        menu.SelectTab(2);yield return Capture("gameplay-natural");
+        // Both clean scene captures use exactly the same paused race state.
+        // Only the production camera option changes; the managed pause overlay
+        // is omitted from this scene-only readback so the car stays visible.
+        SetRuntimeCamera(1);yield return Frames(4);CheckCamera(1);
+        var chase=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
+        yield return CaptureCamera("chase-same-frame");string chaseHash=lastCameraCaptureHash;
+        Check(host.Status.simulationTicks==frozen,"Chase comparison capture advanced the paused race");
+        SetRuntimeCamera(2);yield return Frames(4);CheckCamera(2);
+        var natural=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
+        Check((natural.eye-chase.eye).sqrMagnitude>.000001f||(natural.target-chase.target).sqrMagnitude>.000001f||Mathf.Abs(natural.verticalFov-chase.verticalFov)>.000001f,"Natural duplicates the existing Chase view");
+        yield return CaptureCamera("natural-same-frame");
+        if(chaseHash!=null)Check(lastCameraCaptureHash!=chaseHash,"Natural and Chase captured identical scene images");
+        yield return Frames(45);var stable=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
+        Check(host.Status.simulationTicks==frozen&&(host.Status.flags&2)!=0,"Natural camera advanced the paused solver");
+        Check((stable.eye-natural.eye).sqrMagnitude<.000001f&&(stable.target-natural.target).sqrMagnitude<.000001f&&(stable.up-natural.up).sqrMagnitude<.000001f&&Mathf.Abs(stable.verticalFov-natural.verticalFov)<.000001f,"Natural camera drifts while paused");
+        SetRuntimeCamera(1);yield return Frames(4);CheckCamera(1);CheckRestoredCamera("Chase",originalChase);RecordCamera("restored-chase-paused");
+        SetRuntimeCamera(0);yield return Frames(4);CheckCamera(0);CheckRestoredCamera("Bumper",originalBumper);RecordCamera("restored-bumper-paused");
+        Check(host.Status.simulationTicks==frozen,"Restoring original cameras advanced the paused race");
+        SetRuntimeCamera(2);yield return Frames(4);CheckCamera(2);
+        var invalid=new Idas3Native.Options{size=(uint)Marshal.SizeOf<Idas3Native.Options>()};Check(Idas3Native.Idas3SceneGetOptions(ref invalid)==1,"Could not snapshot valid Natural options");invalid.cameraView=3;
+        Check(Idas3Native.Idas3SceneApplyOptions(ref invalid)!=1&&CameraOptions().cameraView==2,"Invalid camera mode was accepted or replaced Natural");
+        RecordCamera("natural-paused-stable");menu.SetOpen(false);
+        yield return Until(()=>host.Status.simulationTicks>frozen+30,5,"Natural camera race did not resume");CheckCamera(2);
+        for(int i=0;i<30;++i){yield return Frames(2);CheckCamera(2);}RecordCamera("natural-moving");
+        yield return CameraControl(0);yield return CameraControl(1);yield return CameraControl(2,true);
+        Check(options.Current.defaultCamera==2&&JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath)).defaultCamera==2,"Runtime camera cycle overwrote the Natural preference");
+        Check(JsonUtility.ToJson(host.ControlBindings.Current)==bindingsBefore,"Camera cycling changed driving bindings");Observe("natural-resumed-and-cycled");
     }
     private IEnumerator OptionsChecks(Idas3MultiplayerSession session=null){
         Idas3WheelFeedbackChecks.Run(root);
@@ -354,8 +460,35 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(session.IsRacing&&session.RaceReleased,"Online race was interrupted");Check(session.LocalSnapshot.raceTicks>local+45&&session.RemoteSnapshot.raceTicks>remote+45,"Both source clocks must advance during options/focus loss");
         Check(session.RemoteSnapshotsReceived>received+15&&session.SnapshotsSent>sent+15,"Snapshot exchange stopped while options open/unfocused");Observe(name+"-after",session);
     }
+    private IEnumerator CaptureCamera(string name){
+        lastCameraCaptureHash=null;
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0){RecordCamera(name);yield break;}
+        // Manual Camera.Render and synchronous ReadPixels work without a
+        // visible window; no IMGUI or window-present callback is needed.
+        yield return Frames(1);
+        var camera=host.GetComponent<Camera>();var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();
+        var previous=camera.targetTexture;var previousActive=RenderTexture.active;RenderTexture target=null;Texture2D image=null;
+        try{
+            target=new RenderTexture(Screen.width,Screen.height,24,RenderTextureFormat.ARGB32){name="Actual Natural camera comparison",antiAliasing=1};
+            Check(target.Create(),"Camera comparison capture target failed");camera.targetTexture=target;scene.ApplyFrame();ui.ApplyFrame();
+            var cameras=new List<Camera>();foreach(var item in Resources.FindObjectsOfTypeAll<Camera>())if(item!=null&&item.enabled&&item.gameObject.activeInHierarchy&&item.targetTexture==target)cameras.Add(item);
+            cameras.Sort((a,b)=>a.depth.CompareTo(b.depth));foreach(var item in cameras)item.Render();
+            RenderTexture.active=target;image=new Texture2D(target.width,target.height,TextureFormat.RGB24,false);image.ReadPixels(new Rect(0,0,target.width,target.height),0,0);image.Apply();
+            int visible=0;foreach(var pixel in image.GetPixels32())if(Math.Max(pixel.r,Math.Max(pixel.g,pixel.b))>24)++visible;
+            Check(visible>image.width*image.height/100,"Camera comparison capture is blank");
+            string file="camera-"+name+".png";byte[] png=image.EncodeToPNG();File.WriteAllBytes(Path.Combine(root,file),png);captures.Add(file);
+            using(var hash=SHA256.Create())lastCameraCaptureHash=BitConverter.ToString(hash.ComputeHash(png)).Replace("-","").ToLowerInvariant();
+            RecordCamera(name,lastCameraCaptureHash);
+        }finally{
+            RenderTexture.active=previousActive;camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();
+            if(image!=null)Destroy(image);if(target!=null){target.Release();Destroy(target);}
+        }
+    }
     private IEnumerator Capture(string name){
-        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0)yield break;
+        // Hidden standalone players do not receive the normal IMGUI Repaint.
+        // The explicit scene-only mode still takes CaptureCamera's real scene
+        // images and reports that menu appearance was not captured.
+        if(SceneOnlyCapture||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-no-capture")>=0)yield break;
         bool displayConfirmation=options.DisplayConfirmationPending;
         var camera=host.GetComponent<Camera>();var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();var previous=camera.targetTexture;
         var target=new RenderTexture(Screen.width,Screen.height,24,RenderTextureFormat.ARGB32){name="Actual pause OnGUI capture",antiAliasing=1};
@@ -385,7 +518,9 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     }
     private void WriteReport(bool passed,string error,bool stopped){File.WriteAllText(Path.Combine(root,online?"pause-options-report.json":"report.json"),JsonUtility.ToJson(new Report{
         passed=passed,error=error,online=online,shutdownComplete=stopped,checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,options=options.Current,
-        observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),scope="Actual game/options owners with isolated saves; keyboard/controller input traverses the normal SceneGame pause router. Controller response/deadzone checks use normal gameplay-row navigation and APPLY, native setters/getters, per-response persistence, bounds and isolated legacy JSON migration. Steering smoothing uses the sixth Gameplay slider, one-percent navigation, BACK cancellation, APPLY, native range checks, legacy-off defaults and global save/reload; online clocks and packets are checked while smoothing options remain open. Wheel rows and persistence are tested with live feedback disabled; enabled persistence uses a platform without hardware output. Focus loss uses its diagnostic override through normal managed/native gates. Options images use real OnGUI Repaint on AA1 target. Online snapshots use normal two-client LAN transport; this is not Steam internet or OS Alt-Tab event coverage."},true));}
+        observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),cameras=cameraObservations.ToArray(),scope=NaturalCameraCheck?
+        "Isolated actual Unity/native race: existing C/controller-Y view control cycles Bumper 0, Chase 1 and Natural 2; Gameplay DEFAULT CAMERA navigates, cancels, applies and reloads Natural without changing other settings or bindings. Native and Unity camera frames stay finite, external views include the player car, and Natural stays stable while paused and resumes with the race. Chase/Natural scene captures omit the managed pause overlay at one frozen simulation tick. No diagnostic camera pose or physics changes are used. "+(SceneOnlyCapture?"Scene-only capture explicitly skips menu OnGUI screenshots; menu appearance is not visually validated.":"Options captures use actual OnGUI Repaint. The no-capture flag skips all screenshot checks."):
+        "Actual game/options owners with isolated saves; keyboard/controller input traverses the normal SceneGame pause router. Controller response/deadzone checks use normal gameplay-row navigation and APPLY, native setters/getters, per-response persistence, bounds and isolated legacy JSON migration. Steering smoothing uses the sixth Gameplay slider, one-percent navigation, BACK cancellation, APPLY, native range checks, legacy-off defaults and global save/reload; online clocks and packets are checked while smoothing options remain open. Wheel rows and persistence are tested with live feedback disabled; enabled persistence uses a platform without hardware output. Focus loss uses its diagnostic override through normal managed/native gates. Options images use real OnGUI Repaint on AA1 target. Online snapshots use normal two-client LAN transport; this is not Steam internet or OS Alt-Tab event coverage."},true));}
     private void Finish(bool passed,string error){
         if(finished)return;finished=true;host.DiagnosticFocusOverride=null;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e.Message;passed=false;}

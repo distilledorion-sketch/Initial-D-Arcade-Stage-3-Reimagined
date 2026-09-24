@@ -359,6 +359,24 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-drift-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);frozen=true;
+            Check(Idas3SceneModeFlowFixture(-13)==1,"Live drift detector, contact gating and physics isolation");
+            Check(Idas3ArcadeHud.Read(out var telemetry)&&telemetry.version==2&&(telemetry.flags&8)!=0&&telemetry.driftOpacity>.99f,"Native drift telemetry reaches managed HUD");
+            Check(Idas3ArcadeHud.LampOpacity(new Idas3ArcadeHud.Telemetry{version=1,driftOpacity=1})==0,"Old telemetry cannot light drift lamp");
+            Check(Idas3ArcadeHud.LampOpacity(new Idas3ArcadeHud.Telemetry{version=2,driftOpacity=float.NaN})==0,"Invalid opacity cannot reach shader");
+            Check(Idas3ArcadeHud.LampOpacity(new Idas3ArcadeHud.Telemetry{version=2,driftOpacity=.4f})==.4f,"Release fade continues with active flag clear");
+            var options=host.GameOptions;options.BeginEdit();options.Draft.hudMeterStyle=1;Check(options.ApplyDraft(),"Enable Stuttgart meter");
+            var ui=host.GetComponent<Idas3UnityUi>();ui.ApplyFrame();
+            Check(ui.ArcadeMeterVisible&&ui.ArcadeDriftLampOpacity>.99f,"Rendered meter receives live lamp opacity");
+            yield return Capture("stuttgart-live-drift");frozen=true;
+            Check(Mathf.Abs(ui.ArcadeDriftLampOpacity-telemetry.driftOpacity)<.001f,"Paused lamp remains stable");
+            Check(VerifyDriftLampPixels(0,"lamp-off")<VerifyDriftLampPixels(.5f,"lamp-fading"),"Fade brightens the recovered lamp");
+            Check(VerifyDriftLampPixels(.5f,null)<VerifyDriftLampPixels(1,"lamp-on"),"Full lamp is brighter than half fade");
+            options.BeginEdit();options.Draft.hudMeterStyle=0;Check(options.ApplyDraft(),"Original HUD can be restored");ui.ApplyFrame();
+            Check(!ui.ArcadeMeterVisible&&ui.ArcadeDriftLampOpacity==0,"Lamp stays inside optional meter");
+            Finish(true,null);yield break;
+        }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0){yield return PerCarFullTune();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0){yield return SaveLastUsedLevel();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0){yield return SaveChange();yield break;}
@@ -657,13 +675,13 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
             Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
-            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.30","0.3.95-community-replays.32","0.3.96","0.4.0","0.3.95-community-replays.031","0.3.95-community-replays.31 ",null}){
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.31","0.3.95-community-replays.33","0.3.96","0.4.0","0.3.95-community-replays.032","0.3.95-community-replays.32 ",null}){
                 var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
                 Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
             }
-            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.30";
+            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.31";
             previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
-            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.32";
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.33";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
@@ -1020,6 +1038,25 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Frames(20);
         Check((host.GetComponent<Idas3SceneRenderer>().CurrentFrame.screenFadeArgb>>24)==0,"Next menu fades fully in "+name);
     }
+    private float VerifyDriftLampPixels(float opacity,string name){
+        var go=new GameObject("Drift lamp render check");var camera=go.AddComponent<Camera>();
+        var target=new RenderTexture(1280,720,24);target.Create();camera.targetTexture=target;
+        camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.black;camera.cullingMask=0;camera.allowHDR=false;
+        var commands=new UnityEngine.Rendering.CommandBuffer();var meter=new Idas3ArcadeHud();
+        var values=new Idas3GameOptions.Values{hudMeterStyle=1};
+        var data=new Idas3ArcadeHud.Telemetry{version=2,flags=1,gear=3,speedKmh=100,rpm=5000,revLimit=8500,driftOpacity=opacity};
+        Texture2D picture=null;
+        try{
+            meter.Build(values,data,1280,720,0,true,out var bounds);meter.Render(commands,1280,720);
+            camera.AddCommandBuffer(UnityEngine.Rendering.CameraEvent.BeforeForwardOpaque,commands);camera.Render();
+            var previous=RenderTexture.active;RenderTexture.active=target;picture=new Texture2D(1280,720,TextureFormat.RGB24,false);
+            picture.ReadPixels(new Rect(0,0,1280,720),0,0);picture.Apply();RenderTexture.active=previous;
+            float scale=bounds.width/692;int x=Mathf.RoundToInt(bounds.x+134*scale),y=719-Mathf.RoundToInt(bounds.y+110*scale);float green=0;
+            for(int dy=-40;dy<=40;++dy)for(int dx=-40;dx<=40;++dx)green+=picture.GetPixel(x+dx,y+dy).g;
+            if(name!=null){File.WriteAllBytes(Path.Combine(root,name+".png"),picture.EncodeToPNG());captures.Add(name+".png");}
+            return green;
+        }finally{camera.RemoveAllCommandBuffers();camera.targetTexture=null;commands.Dispose();meter.Dispose();if(picture)Destroy(picture);target.Release();Destroy(target);Destroy(go);}
+    }
     private IEnumerator Capture(string name,int expectedFade=-1,int width=0,int height=0){
         frozen=true;var camera=host.GetComponent<Camera>();var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();
         var previous=camera.targetTexture;var target=new RenderTexture(width>0?width:Screen.width,height>0?height:Screen.height,24,RenderTextureFormat.ARGB32){antiAliasing=1};
@@ -1076,7 +1113,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-drift-check")>=0?
+            "Original-solver drift detector calibration on FR/FF/AWD cars in dry/wet conditions, source-state preservation, native/managed lamp data, paused live race capture, additive lamp fade pixel checks and original HUD restoration. Private saves, scripted input; no live network peer or replay drift detection.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0?
             "Full Tune route selection through actual controller frames for a second stock car created by Change Car and a legacy stock save. Route cancellation, independent B selection, skipped driver setup, persisted upgrades, repeat tuning and untouched first-car A tuning/other saves are verified. Mandatory upgrades use controlled native fixture ticks; no ordinary saves or physical controller hardware are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0?
             "Save menu last-used-car preview and model-keyed online aura level through actual Unity pointer/controller selection. Continue, Change Car, cancelled previews, stock level 1, unreadable history shown as unknown without rewriting it, another save, malformed native level arrays and post-race remembering helper persistence are checked. The helper is invoked directly instead of driving a race; only isolated diagnostic saves and online history are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0?
             "Save-file Continue/Change Car/Delete Save actions through the actual pointer export and controller frame path, all 35 cars across every manufacturer, existing tuning retention, stock and never-saved cars remaining untuned, per-car Automatic/Manual confirmation and persisted defaults, skipped name/tuning-package entry, transmission preview/cancel with unchanged profiles and no early fresh-car creation, empty-slot setup and persisted driver identity. Delete defaults to No; explicit Yes removes the entire selected save, cancel/blocked inputs preserve all files, another save stays byte-identical, and deleted profiles stay absent on subsequent frames and fresh setup. Actual Unity captures with isolated fixture saves; no ordinary saves changed.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?

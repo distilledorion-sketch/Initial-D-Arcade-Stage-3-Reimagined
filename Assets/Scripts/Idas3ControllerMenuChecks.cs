@@ -29,6 +29,7 @@ public static class Idas3ControllerMenuChecks
             menu.Navigate(1);menu.Activate();menu.Back();menu.Navigate(-1);menu.Activate();Check(options.Draft.masterVolume<volume,"Switch category preserves draft");
             for(int i=0;i<6;++i)menu.Navigate(1);menu.Activate();Check(!options.HasUnsavedChanges&&options.Current.masterVolume<volume,"Apply via menu navigation");
             menu.Back();menu.Back();Check(!menu.IsOpen,"Exit settings");
+            CheckCameraOptions(Path.Combine(root,"camera-options"));
             menu.SetWheelNavigation(true);menu.OpenAttractOptions();menu.Activate();
             float music=options.Draft.musicVolume;menu.NavigateHorizontal(1);menu.Activate();Check(menu.WheelEditing,"Pedal enters wheel value edit");
             menu.NavigateHorizontal(-1);Check(options.Draft.musicVolume<music,"Wheel edits focused value");
@@ -65,6 +66,45 @@ public static class Idas3ControllerMenuChecks
             focus.Poll(0,0,false,false,false,4);focus.Poll(0,0,true,false,false,5);focus.Begin();focus.Control("replacement",default,true,true);focus.End();Check(!focus.Control("replacement",default,true,true),"Stale confirmation cannot hit replacement room/action");
             focus.Poll(0,0,false,false,true,6);focus.Poll(0,0,true,false,false,7);Check(!focus.Control("replacement",default,true,true),"Focus return requires neutral release");
             File.WriteAllText(Path.Combine(root,"result.txt"),"PASS "+checks+" checks\n");File.WriteAllText("Verification/wheel-menu-navigation-20260918/unit-result.txt","PASS "+checks+" checks; isolated preferences: "+root+"\n");Debug.Log("PASS controller menu checks "+checks);
+        }finally{UnityEngine.Object.DestroyImmediate(go);}
+    }
+    private static void CheckCameraOptions(string root){
+        var options=new Idas3GameOptions(new Platform());options.Initialize(Path.Combine(root,"new"));
+        Check(options.Current.defaultCamera==0&&options.Draft.defaultCamera==0&&!options.HasUnsavedChanges,"New preferences must keep Bumper as the default camera");
+        foreach(int camera in new[]{0,1,2}){
+            string folder=Path.Combine(root,"saved-"+camera);Directory.CreateDirectory(folder);
+            string file=Path.Combine(folder,"game-options.json");
+            string json="{\"version\":1,\"defaultCamera\":"+camera+",\"musicVolume\":0.4,\"showFps\":true}";
+            File.WriteAllText(file,json);
+            var saved=new Idas3GameOptions(new Platform());saved.Initialize(folder);
+            Check(saved.LastError==null&&saved.Current.defaultCamera==camera,"Existing camera preference changed while loading: "+camera);
+            Check(File.ReadAllText(file)==json,"Loading camera preferences rewrote the file: "+camera);
+            saved.BeginEdit();Check(saved.ApplyDraft(),"Camera preference round-trip Apply failed: "+camera);
+            var reload=new Idas3GameOptions(new Platform());reload.Initialize(folder);
+            Check(reload.Current.defaultCamera==camera&&reload.Current.musicVolume==.4f&&reload.Current.showFps,"Camera persistence changed another preference: "+camera);
+        }
+        foreach(int invalid in new[]{-1,3,int.MinValue,int.MaxValue})
+            Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{defaultCamera=invalid}).defaultCamera==0,"Invalid camera must fall back to Bumper: "+invalid);
+
+        options.BeginEdit();options.Draft.musicVolume=.35f;Check(options.ApplyDraft(),"Camera menu fixture preferences could not be saved");
+        string original=File.ReadAllText(options.FilePath);var expected=options.Current.Clone();
+        var go=new GameObject("Private camera menu checks");
+        try{
+            var menu=go.AddComponent<Idas3PauseMenu>();menu.Initialize(options);menu.OpenAttractOptions();menu.SelectTab(2);
+            foreach(int camera in new[]{1,2,0}){menu.NavigateHorizontal(1);Check(options.Draft.defaultCamera==camera,"Forward camera navigation lost an option: "+camera);}
+            foreach(int camera in new[]{2,1,0}){menu.NavigateHorizontal(-1);Check(options.Draft.defaultCamera==camera,"Reverse camera navigation lost an option: "+camera);}
+            menu.Activate();menu.Activate();Check(options.Draft.defaultCamera==2&&options.Current.defaultCamera==0&&options.HasUnsavedChanges,"Confirm should select Natural only in the draft");
+            menu.Back();menu.Back();Check(!menu.IsOpen&&options.Current.defaultCamera==0&&File.ReadAllText(options.FilePath)==original,"Back committed an unapplied camera choice");
+            menu.OpenAttractOptions();menu.SelectTab(2);menu.NavigateHorizontal(-1);
+            for(int i=0;i<11;++i)menu.Navigate(1);menu.Activate();
+            expected.defaultCamera=2;
+            Check(!options.HasUnsavedChanges&&Idas3GameOptions.Equivalent(options.Current,expected),"Camera menu Apply did not preserve all unrelated preferences");
+            var reload=new Idas3GameOptions(new Platform());reload.Initialize(Path.GetDirectoryName(options.FilePath));
+            Check(Idas3GameOptions.Equivalent(reload.Current,expected),"Natural camera did not survive a preferences reload");
+            string applied=File.ReadAllText(options.FilePath);menu.SelectTab(2);menu.NavigateHorizontal(1);
+            Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==2,"Natural should wrap to Bumper without applying it");
+            menu.Back();menu.Back();Check(options.Current.defaultCamera==2&&File.ReadAllText(options.FilePath)==applied,"Cancel overwrote the saved Natural preference");
+            options.BeginEdit();options.ResetDraft();Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==2,"Reset defaults must propose Bumper without changing the saved camera");
         }finally{UnityEngine.Object.DestroyImmediate(go);}
     }
     public static void RunPointerChecks(){
