@@ -100,6 +100,9 @@ public:
     // Full Tune may choose a stock saved car's package without repeating its
     // driver name or transmission setup. Confirmation returns to Mode.
     void selectSavedCarTuningCourse();
+    // Continue and Change Car choose transmission without repeating driver
+    // setup. The host persists the profile only after the owner completes.
+    void selectSavedCarTransmission(bool returnToCar=false);
     void setNameSteering(float steering);
     const original::OriginalNameEntryState& nameEntryState()const{return nameState;}
     const OriginalNameEntryPresentation& nameEntryPresentation()const{return *namePresentation;}
@@ -195,6 +198,7 @@ private:
     bool hasTitleExtension=false;
     bool startRequested=false;
     bool savedCarTuningCourse=false;
+    bool savedCarTransmission=false,savedTransmissionReturnToCar=false;
     original::OriginalModeMenu modeMenu;
     original::OriginalModeMenuState modeState;
     original::OriginalModeMenuTransition modeTransition;

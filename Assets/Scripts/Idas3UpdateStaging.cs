@@ -16,7 +16,7 @@ public static class Idas3UpdateStaging {
     private static readonly string[] Required={"InitialDUnity.exe","UnityPlayer.dll","InitialDUnity_Data/globalgamemanagers","InitialDUnity_Data/Managed/Assembly-CSharp.dll"};
     private static readonly HashSet<string> Roots=new HashSet<string>(new[]{"InitialDUnity_Data","MonoBleedingEdge","D3D12"},StringComparer.OrdinalIgnoreCase);
     private static readonly HashSet<string> Top=new HashSet<string>(new[]{"InitialDUnity.exe","UnityPlayer.dll","UnityCrashHandler64.exe","dstorage.dll","dstoragecore.dll","steam_appid.txt","READ ME.txt","Replay Viewer.cmd","MULTIPLAYER TEST.txt"},StringComparer.OrdinalIgnoreCase);
-    private static readonly HashSet<string> Private=new HashSet<string>(new[]{"userdata","userdata-unity-scene","community-times","replays","custom-music","ADMIN-ACCESS.txt","identity.json","game-options.json","deploy.private.json","library.json","pending.json"},StringComparer.OrdinalIgnoreCase);
+    private static readonly HashSet<string> Private=new HashSet<string>(new[]{"userdata","userdata-unity-scene","community-times","replays","custom-music","Custom Music","ADMIN-ACCESS.txt","identity.json","game-options.json","deploy.private.json","library.json","pending.json"},StringComparer.OrdinalIgnoreCase);
     public static string SafeName(string value){
         if(string.IsNullOrEmpty(value)||value.Length>220)throw new IOException("Invalid update path.");
         string name=value.Replace('\\','/');var parts=name.Split('/');

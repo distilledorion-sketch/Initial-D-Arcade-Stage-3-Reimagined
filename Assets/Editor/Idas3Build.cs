@@ -25,6 +25,20 @@ public static class Idas3Build
         File.WriteAllText(readme,Idas3RomValidation.ReadmeText,new System.Text.UTF8Encoding(false));
     }
 
+    [UnityEditor.Callbacks.PostProcessBuild(101)]
+    private static void StageCustomMusicInstructions(BuildTarget target,string outputPath)
+    {
+        if(target!=BuildTarget.StandaloneWindows64)return;
+        string folder=Path.Combine(Path.GetDirectoryName(Path.GetFullPath(outputPath)),Idas3CustomRaceMusic.FolderName);
+        string readme=Path.Combine(folder,"README.txt");
+        if((Directory.Exists(folder)&&(File.GetAttributes(folder)&FileAttributes.ReparsePoint)!=0)||
+           (File.Exists(readme)&&(File.GetAttributes(readme)&FileAttributes.ReparsePoint)!=0))
+            throw new IOException("Custom music instructions cannot be staged through a link.");
+        Directory.CreateDirectory(folder);
+        // Only our instructions are staged; never enumerate, read or copy personal tracks.
+        File.WriteAllText(readme,Idas3CustomRaceMusic.ReadmeText,new System.Text.UTF8Encoding(false));
+    }
+
     static Idas3Build()
     {
         EditorApplication.delayCall += () => {
@@ -47,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.30";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.31";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;

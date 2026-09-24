@@ -2,6 +2,10 @@
 
 Every release must retain its complete `Initial-D-Arcade-Stage-3-Reimagined-...-Windows-x64.zip` asset and SHA-256 checksum for old clients, new installations and Full Repair.
 
+Build full ZIPs with `Tools/Build-ReleasePackage.py --player Builds/Current --archive <release-Windows-x64.zip>`, or use its `collect_player_files()` in the release verification script. This collector prunes `Custom Music` and legacy `custom-music` folders before inspecting or descending into them. It excludes all their files and directory entries, including generated instructions. Build-specific smoke checks and source/binary checks still need to pass before publishing.
+
+Players can put MP3, OGG and WAV files in `Custom Music` beside the EXE. Local builds stage `Custom Music/README.txt`; downloaded builds create the folder and instructions on first launch. Release ZIPs and patch manifests must omit the entire folder so existing installers accept the update and never inspect or replace personal tracks. The updater's existing game-directory allowlist already excludes this root; no native helper change is needed. A README-only folder in a full ZIP would still break older installers' Full Repair/fallback. The patch inventory rejects both music folder names before reading file contents.
+
 Built players contain `rom/README.txt` beside the EXE. Release ZIPs must omit **all** `rom/` entries, including that README and empty directory entries; the game recreates the folder and instructions on first launch. Older managed and native installers reject the `rom` root, so including it would prevent the first update into the ROM-required build. No manual transition is needed when update ZIPs omit these entries.
 
 Only `rom/README.txt` may be excluded as a build-generated instruction file. If release input contains any other file under `rom`, stop packaging and use a clean staging folder. Do not open, hash, copy or upload those files. The patch inventory skips that exact README path and rejects other ROM paths before reading their contents; this does not remove entries from an existing full ZIP. The full-ZIP packager must perform the exclusion itself. Original ROMs must never appear in a patch manifest, including as retained files.
@@ -27,6 +31,7 @@ python -X utf8 Tests/Updates/test_native_installer.py
 python -X utf8 Tests/Updates/test_native_paths.py
 python -X utf8 Tests/Updates/test_patch.py
 python -X utf8 Tests/Updates/test_rom_package.py
+python -X utf8 Tests/Updates/test_custom_music_package.py
 wsl -d Ubuntu -- xvfb-run -a python3 /path/to/repo/Tests/Updates/test_wine_installer.py
 ```
 

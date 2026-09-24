@@ -9,6 +9,10 @@ struct SaveChangeFixtureState {
     original::OriginalBattleProfile fullTuneLevin{},fullTuneCandidateBefore{},fullTuneCandidateAfter{};
     std::map<std::string,std::vector<char>> fullTuneOtherSlot;
     unsigned fullTuneCandidate=2;
+    std::map<std::string,std::vector<char>> transmissionFiles,transmissionOtherSlot;
+    std::array<LocalDriverProfiles::Loaded,35> transmissionProfiles{};
+    LocalSaveSlots::Slot transmissionSlot{};
+    bool transmissionSnapshot=false;
     bool seeded=false;
 };
 SaveChangeFixtureState saveChangeFixture;
@@ -57,6 +61,7 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
     };
     if(scene==350){
         app.validationMode=false;
+        saveChangeFixture.transmissionSnapshot=false;
         if(!app.tuningTables)app.tuningTables=original::OriginalTuningData::load(app.root);
         const auto makeProfile=[&](unsigned car,bool fitted){
             auto p=original::makeOriginalFreshBattleProfile();p.setu(16,car);
@@ -330,6 +335,80 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
         saveChangeFixture.fullTuneCandidateBefore=stock;
         app.frontend.car=3;app.loadedProfileCar=-1;app.loadSelectedProfile();app.frontend.stage=FrontendStage::Mode;
         app.beginFullTune();return;
+    }
+    if(scene==370){
+        saveChangeCheck(app.activeSaveSlot==0,"Transmission snapshot requires the isolated saved driver");
+        const LocalSaveSlots slots(app.userdataRoot()/"saves");
+        saveChangeFixture.transmissionSlot=slots.at(0);
+        const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));
+        for(unsigned car=0;car<35;++car)saveChangeFixture.transmissionProfiles[car]=profiles.load(car);
+        saveChangeFixture.transmissionFiles=saveChangeFiles(app);
+        saveChangeFixture.transmissionOtherSlot=saveDeleteFiles(app,1);
+        saveChangeFixture.transmissionSnapshot=true;return;
+    }
+    if(scene==371||scene==375){
+        saveChangeCheck(saveChangeFixture.transmissionSnapshot,"Transmission preview was not snapshotted");
+        saveChangeCheck(saveChangeFiles(app)==saveChangeFixture.transmissionFiles,"Previewing or cancelling transmission wrote a driver profile or setup marker");
+        saveChangeCheck(saveDeleteFiles(app,1)==saveChangeFixture.transmissionOtherSlot,"Previewing or cancelling transmission modified another save");
+        const LocalSaveSlots slots(app.userdataRoot()/"saves");const auto& before=saveChangeFixture.transmissionSlot;const auto& after=slots.at(0);
+        saveChangeCheck(after.car==before.car&&after.nameGlyphs==before.nameGlyphs&&after.nameLength==before.nameLength&&after.wins==before.wins&&after.lastPlayed==before.lastPlayed,
+            "Unconfirmed transmission changed the remembered car, identity or progression");
+        if(scene==375){
+            const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));
+            saveChangeCheck(profiles.load(2).origin==LocalDriverProfiles::Origin::Fresh,"Unconfirmed fresh-car transmission created a driver profile");
+            saveChangeCheck(LocalDriverSetup(app.saveSlots.profileDirectory(0)).load(2).status==LocalDriverSetup::Status::Missing,
+                "Unconfirmed fresh-car transmission marked the car configured");
+        }
+        return;
+    }
+    if(scene==372||scene==373){
+        saveChangeCheck(saveChangeFixture.transmissionSnapshot,"Transmission commit was not snapshotted");
+        saveChangeCheck(app.frontend.stage==FrontendStage::Mode&&app.activeSaveSlot==0,"Transmission confirmation did not reach mode selection");
+        const unsigned car=unsigned(app.frontend.car),transmission=scene==372?0u:1u;
+        const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));const auto saved=profiles.load(car);
+        saveChangeCheck(saved.origin==LocalDriverProfiles::Origin::Saved&&saved.profile.u(68)==transmission,
+            "Confirmed Automatic or Manual selection was not persisted for the selected car");
+        saveChangeCheck(app.frontend.automatic==(transmission==0)&&app.frontend.battleProfile.u(68)==transmission,
+            "Confirmed transmission and the live selected-car profile disagree");
+        auto expected=saveChangeFixture.transmissionProfiles.at(car).profile;
+        original::applyOriginalAcceptedCardFlag(expected);original::finishOriginalDriverSetupFlag(expected);expected.setByte(1192,0);
+        const auto& identity=saveChangeFixture.transmissionSlot;
+        expected.setu(76,identity.nameLength);
+        for(unsigned i=0;i<5;++i)expected.setu(44+4*i,i<identity.nameLength?identity.nameGlyphs[i]:220);
+        expected.setu(68,transmission);
+        if(car!=identity.car){
+            // Confirming Change Car records its manufacturer-local roster
+            // index. Continue must preserve the stored index without rewriting it.
+            const auto roster=Frontend::carsForMake(App::originalCarMake(car));
+            const auto found=std::find(roster.begin(),roster.end(),int(car));
+            saveChangeCheck(found!=roster.end(),"Confirmed car is missing from its manufacturer roster");
+            expected.setu(1168,unsigned(found-roster.begin()));
+        }
+        // The original transmission owner banks its menu countdown when it
+        // exits. Identity, paint, points, records and tuning stay independent.
+        expected.setu(1176,saved.profile.u(1176));
+        for(std::size_t i=0;i<expected.words.size();++i)
+            if(saved.profile.words[i]!=expected.words[i])throw std::runtime_error("Transmission confirmation changed unrelated selected-car progress, paint, points or tuning at offset "+
+                std::to_string(i*4)+" (expected "+std::to_string(expected.words[i])+", got "+std::to_string(saved.profile.words[i])+")");
+        const auto prefix=fs::relative(profiles.path(car).parent_path(),app.userdataRoot()/"saves").generic_string()+"/"+profiles.path(car).stem().string()+".";
+        auto beforeFiles=saveChangeFixture.transmissionFiles,afterFiles=saveChangeFiles(app);
+        const auto removeSelected=[&](auto& files){for(auto i=files.begin();i!=files.end();)if(i->first.starts_with(prefix))i=files.erase(i);else ++i;};
+        removeSelected(beforeFiles);removeSelected(afterFiles);
+        saveChangeCheck(beforeFiles==afterFiles,"Confirming transmission modified an unselected car's files");
+        saveChangeCheck(saveDeleteFiles(app,1)==saveChangeFixture.transmissionOtherSlot,"Confirming transmission modified another saved driver");
+        const LocalSaveSlots slots(app.userdataRoot()/"saves");const auto& slot=slots.at(0);
+        saveChangeCheck(slot.car==car&&slot.nameGlyphs==identity.nameGlyphs&&slot.nameLength==identity.nameLength&&slot.wins==identity.wins,
+            "Confirmed transmission lost the selected car or changed driver identity and wins");
+        return;
+    }
+    if(scene==374){
+        saveChangeCheck(app.frontend.stage==FrontendStage::SaveSelect,"Transmission baseline refresh requires Save Select");
+        const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));
+        const auto saved=profiles.load(0);
+        saveChangeCheck(saved.origin==LocalDriverProfiles::Origin::Saved&&saved.profile.u(68)==1,"Continue regression did not restore the original Manual selection");
+        auto expected=saveChangeFixture.first;expected.setu(1176,saved.profile.u(1176));
+        saveChangeCheck(saved.profile.words==expected.words,"Continue changed the original car beyond its transmission and menu timer");
+        saveChangeFixture.first=saved.profile;saveChangeFixture.files=saveChangeFiles(app);return;
     }
     throw std::invalid_argument("Unknown save-change menu fixture");
 }

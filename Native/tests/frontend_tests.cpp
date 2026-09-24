@@ -76,7 +76,9 @@ void verifySaveActions() {
 
     Frontend returning;returning.stage=FrontendStage::Mode;returning.savedDriverSelected=true;
     returning.advance(16./60.);returning.back();
-    require(returning.stage==FrontendStage::SaveSelect&&returning.saveActionsOpen&&returning.saveActionSelected==0,"Back from a saved driver's mode menu must return to save actions");
+    require(returning.stage==FrontendStage::Transmission,"Back from a saved driver's mode menu must reopen transmission selection");
+    returning.advance(16./60.);returning.back();
+    require(returning.stage==FrontendStage::SaveSelect&&returning.saveActionsOpen&&returning.saveActionSelected==0,"Back from a continued driver's transmission menu must return to save actions");
     require(!returning.takeSaveFileChosen()&&!returning.takeSaveCarChangeRequested(),"Returning to save actions must not activate a choice");
     returning.stage=FrontendStage::Make;returning.changingSavedCar=true;returning.advance(8./60.);returning.back();
     require(returning.stage==FrontendStage::SaveSelect&&returning.saveActionsOpen,"Cancelling Change Car at the make menu must return to save actions");

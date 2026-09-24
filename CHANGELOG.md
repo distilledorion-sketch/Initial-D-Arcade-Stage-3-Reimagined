@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.95-community-replays.31 - September 23, 2026
+
+- Added a Custom Music folder beside the game for MP3, OGG and WAV tracks, with deletion available in Select BGM. Updates preserve personal tracks and release packages exclude them.
+- Continue and Change Car now offer Automatic or Manual before mode selection, starting on that car's saved transmission. Confirming stores the choice for that car while preserving its name, parts, tuning and progress.
+- Back cancels an unconfirmed transmission choice; new cars are saved only after confirmation. Back from mode selection lets players revisit Automatic/Manual.
+- Deleting a custom song asks for confirmation with No selected by default. Original files imported from outside the Custom Music folder stay untouched.
+- Community Time Attack submissions require exactly `.31`. Existing published times, replays and the current season are preserved. Both online players need this version; changed-file patches are available from `.20` through `.30`.
+
 ## 0.3.95-community-replays.30 - September 23, 2026
 
 - Fixed Full Tune skipping the tuning-package choice for stock cars added through Change Car. Each stock car can now choose its own package before upgrades are applied.

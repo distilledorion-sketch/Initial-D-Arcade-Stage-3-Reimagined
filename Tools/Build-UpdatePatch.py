@@ -6,12 +6,15 @@ from pathlib import Path
 import argparse, hashlib, json, re, zipfile
 
 REQUIRED={'InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data/globalgamemanagers','InitialDUnity_Data/Managed/Assembly-CSharp.dll'}
-PRIVATE={'userdata','userdata-unity-scene','community-times','replays','custom-music','admin-access.txt','identity.json','game-options.json','deploy.private.json','library.json','pending.json'}
+PRIVATE={'userdata','userdata-unity-scene','community-times','replays','custom-music','custom music','admin-access.txt','identity.json','game-options.json','deploy.private.json','library.json','pending.json'}
 
 def inventory(z):
     result={};folded=set()
     for i in z.infolist():
         name=i.filename;parts=name.split('/')
+        # Personal music and its generated README must never enter a full ZIP,
+        # payload or retained-file manifest, even as an empty directory entry.
+        assert not any(p.lower() in {'custom music','custom-music'} for p in parts), 'Personal music must not enter release packages: '+name
         if i.is_dir(): continue
         # Builds contain setup instructions, but update ZIPs must omit the ROM
         # directory for older installers. Never open or hash a user's dump.

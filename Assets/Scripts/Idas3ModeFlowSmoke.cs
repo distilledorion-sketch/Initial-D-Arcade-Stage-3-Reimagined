@@ -125,11 +125,28 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
     private IEnumerator SaveStage(int stage,string message){
         for(int i=0;i<350;++i){
             int current=Idas3SceneModeFlowValue(5);
-            Check(current!=11&&current!=4&&current!=12,"Changing a saved car skips name, transmission and tuning-package entry");
+            Check(current!=11&&current!=12,"Saved-driver selection skips name and tuning-package entry");
             if(current==stage&&Idas3SceneModeFlowValue(27)==1)break;
             yield return null;
         }
         Check(Idas3SceneModeFlowValue(5)==stage&&Idas3SceneModeFlowValue(27)==1,message);
+    }
+    private IEnumerator SaveTransmissionToMode(bool automatic,string message){
+        yield return SaveStage(4,"Saved driver chooses Automatic or Manual before mode selection");
+        if((Idas3SceneModeFlowValue(51)==1)!=automatic)yield return Pad(8);
+        Check((Idas3SceneModeFlowValue(51)==1)==automatic,"Select the requested saved-car transmission");
+        yield return Pad(0x1000);yield return SaveStage(5,message);
+    }
+    private IEnumerator SaveBackToFiles(){
+        yield return Pad(0x2000);yield return SaveStage(4,"Back from mode reopens transmission selection");
+        yield return Pad(0x2000);yield return SaveStage(1,"Back from transmission returns to save actions");
+        Check(Idas3SceneModeFlowValue(42)==1,"Returning from a confirmed saved car keeps its save actions open");
+    }
+    private IEnumerator SaveCancelCarTransmission(){
+        yield return Pad(0x2000);yield return SaveStage(3,"Unconfirmed Change Car transmission returns to car selection");
+        yield return Pad(0x2000);yield return SaveStage(2,"Cancelling the candidate car returns to manufacturer selection");
+        yield return Pad(0x2000);yield return SaveStage(1,"Cancelling the manufacturer returns to save actions");
+        Check(Idas3SceneModeFlowValue(42)==1,"Cancelled Change Car keeps the existing save actions open");
     }
     private IEnumerator SaveChooseMake(int make){
         yield return SaveStage(2,"Change Car reaches manufacturer selection");
@@ -166,7 +183,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         Check(allCars.Count==35,"Change Car allows all 35 cars");
     }
     private IEnumerator SaveChange(){
-        yield return Until(()=>host.Ready,600,"Scene initialized");yield return Fixture(350);
+        yield return Until(()=>host.Ready,600,"Scene initialized");yield return Fixture(350);yield return Fixture(370);
         Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==0,"Occupied saves open in the file list");
         yield return Capture("save-file-list");
         yield return SaveClick(305,380);
@@ -178,11 +195,23 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Capture("save-change-car");yield return Pad(0x2000);
         Check(Idas3SceneModeFlowValue(42)==0&&Idas3SceneModeFlowValue(5)==1,"Back closes the action panel first");
         yield return SaveClick(150,130);yield return SaveClick(380,380);
-        yield return SaveStage(5,"Continue reaches mode selection directly");
+        yield return SaveStage(4,"Continue opens transmission selection");
         Check(Idas3SceneModeFlowValue(43)==0&&Idas3SceneModeFlowValue(48)==1,"Continue keeps the current saved car and driver");
         Check(Idas3SceneModeFlowValue(51)==0,"Continue restores the saved manual transmission");
-        yield return Pad(0x2000);yield return Frames(3);
-        Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==1,"Back from mode returns to save actions");
+        yield return Capture("continue-choose-manual");
+        yield return Pad(8);yield return Capture("continue-choose-automatic");yield return Fixture(371);
+        yield return Pad(0x2000);yield return SaveStage(1,"Cancelling Continue transmission returns to save actions");
+        yield return Fixture(371);yield return SaveClick(380,380);yield return SaveStage(4,"Continue transmission can be reopened");
+        Check(Idas3SceneModeFlowValue(51)==0,"Cancelled Automatic preview does not replace the saved Manual default");
+        yield return SaveTransmissionToMode(true,"Continue confirms Automatic and reaches mode selection");yield return Fixture(372);
+        yield return Pad(0x2000);yield return SaveStage(4,"Mode Back reopens Continue transmission");
+        Check(Idas3SceneModeFlowValue(51)==1,"Reopened transmission defaults to the confirmed Automatic setting");
+        yield return Fixture(370);yield return Pad(8);yield return Fixture(371);
+        yield return Pad(0x2000);yield return SaveStage(1,"Cancel a Manual preview without replacing Automatic");yield return Fixture(371);
+        yield return SaveClick(380,380);yield return SaveStage(4,"Continue reloads the persisted Automatic setting");
+        Check(Idas3SceneModeFlowValue(51)==1,"Cancelled Manual preview does not replace saved Automatic");
+        yield return Capture("continue-saved-automatic");yield return SaveTransmissionToMode(false,"Continue can change back to Manual");yield return Fixture(373);
+        yield return SaveBackToFiles();yield return Fixture(374);
 
         // Browse every car, including an absent profile, then cancel before a
         // durable selection. No driver profile should be created by browsing.
@@ -193,20 +222,37 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==1,"Cancelling car change returns to save actions");
         Check(Idas3SceneModeFlowFixture(353)==1,"Browsing and cancelling leave all saved profiles unchanged");
 
-        yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
-        yield return Pad(0x1000);yield return SaveStage(5,"Previously tuned car goes straight to mode selection");
+        yield return Fixture(370);yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
+        yield return Pad(0x1000);yield return SaveStage(4,"Previously tuned car opens its own transmission choice");
+        Check(Idas3SceneModeFlowValue(51)==0,"Existing candidate defaults to its saved Manual transmission");
+        yield return Pad(8);yield return Capture("change-car-choose-automatic");yield return Fixture(371);
+        yield return SaveCancelCarTransmission();yield return Fixture(371);
+        yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);yield return Pad(0x1000);
+        yield return SaveStage(4,"Cancelled existing car can be selected again");
+        Check(Idas3SceneModeFlowValue(51)==0,"Cancelled candidate Automatic setting was not persisted");
+        yield return SaveTransmissionToMode(true,"Changed car confirms Automatic and reaches mode selection");yield return Fixture(372);
+        yield return Pad(0x2000);yield return SaveStage(4,"Changed car mode reopens its persisted transmission");
+        Check(Idas3SceneModeFlowValue(51)==1,"Changed car reopens with Automatic selected");
+        yield return SaveTransmissionToMode(false,"Changed car can restore Manual without repeating manufacturer or name");yield return Fixture(373);
         Check(Idas3SceneModeFlowFixture(352)==1,"Changing to an existing car preserves its saved tuning, parts, and driver name");
         Check(Idas3SceneModeFlowValue(51)==0,"Changed saved car retains its manual transmission");
         yield return Capture("existing-car-select-mode");
         yield return Fixture(351);yield return SaveClick(150,130);yield return SaveClick(520,380);
         yield return SaveChooseMake(6);yield return SaveChooseCar(1);yield return Pad(0x1000);
-        yield return SaveStage(5,"Existing stock car goes directly to mode selection");
+        yield return SaveTransmissionToMode(false,"Existing stock car reaches mode selection after transmission confirmation");
         Check(Idas3SceneModeFlowFixture(354)==1,"Existing stock car stays stock with its saved paint, points and driver name");
         Check(Idas3SceneModeFlowValue(51)==0,"Existing stock car retains its saved manual transmission");
         yield return Capture("stock-car-select-mode");
-        yield return Fixture(351);yield return SaveClick(150,130);yield return SaveClick(520,380);
+        yield return Fixture(351);yield return SaveClick(150,130);yield return Fixture(370);yield return SaveClick(520,380);
         yield return SaveChooseMake(6);yield return SaveChooseCar(2);yield return Pad(0x1000);
-        yield return SaveStage(5,"Never-saved car goes directly to mode selection");
+        yield return SaveStage(4,"Never-saved car offers transmission before creating its profile");
+        Check(Idas3SceneModeFlowValue(51)==0,"Fresh candidate initially inherits the driver's Manual transmission");
+        yield return Pad(8);yield return Fixture(375);yield return Fixture(371);
+        yield return SaveCancelCarTransmission();yield return Fixture(375);yield return Fixture(371);
+        yield return SaveClick(520,380);yield return SaveChooseMake(6);yield return SaveChooseCar(2);yield return Pad(0x1000);
+        yield return SaveStage(4,"Cancelled fresh car still offers its first transmission choice");
+        Check(Idas3SceneModeFlowValue(51)==0,"Cancelled fresh-car Automatic preview does not survive reopening");
+        yield return Capture("fresh-car-choose-manual");yield return SaveTransmissionToMode(false,"Never-saved car is committed only after transmission confirmation");yield return Fixture(373);
         Check(Idas3SceneModeFlowFixture(356)==1,"Never-saved car stays stock and persists with the existing driver name");
         Check(Idas3SceneModeFlowValue(51)==0,"Never-saved car inherits the driver's manual transmission");
         yield return Capture("fresh-car-select-mode");
@@ -274,12 +320,12 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return SaveClick(150,189);yield return SaveLevel(8,6,"Another save shows its own remembered car and level");
         yield return Capture("save-other-car-level-6");
         yield return SaveClick(150,130);yield return SaveClick(380,380);
-        yield return SaveStage(5,"Continue opens mode selection with the remembered car");
+        yield return SaveTransmissionToMode(false,"Continue opens mode selection with the remembered car after transmission confirmation");
         Check(Idas3SceneModeFlowValue(43)==0,"Continue uses the car shown in save details");
-        yield return Pad(0x2000);yield return SaveLevel(0,12,"Returning from Continue preserves the remembered car and level");
+        yield return SaveBackToFiles();yield return SaveLevel(0,12,"Returning from Continue preserves the remembered car and level");yield return Fixture(374);
         yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
-        yield return Pad(0x1000);yield return SaveStage(5,"Selecting an owned car reaches mode selection");
-        yield return Pad(0x2000);yield return SaveLevel(22,27,"Changing cars updates the remembered car and its aura level");
+        yield return Pad(0x1000);yield return SaveTransmissionToMode(false,"Selecting an owned car reaches mode selection after its transmission choice");
+        yield return SaveBackToFiles();yield return SaveLevel(22,27,"Changing cars updates the remembered car and its aura level");
         Check(Idas3SceneModeFlowFixture(362)==1,"Changed remembered car retains its saved parts and tuning");
         yield return Capture("save-last-car-level-27");
         yield return SaveClick(520,380);yield return SaveChooseMake(6);yield return SaveChooseCar(0);
@@ -287,8 +333,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Pad(0x2000);yield return SaveLevel(22,27,"Cancelled browsing restores the remembered car and level");
         Check(Idas3SceneModeFlowFixture(364)==1,"Cancelled browsing preserves the remembered car and all profile files");
         yield return SaveClick(520,380);yield return SaveChooseMake(6);yield return SaveChooseCar(1);
-        yield return Pad(0x1000);yield return SaveStage(5,"Stock car reaches mode selection");
-        yield return Pad(0x2000);yield return SaveLevel(1,1,"A car with no online history shows the fresh aura level");
+        yield return Pad(0x1000);yield return SaveTransmissionToMode(false,"Stock car reaches mode selection after its transmission choice");
+        yield return SaveBackToFiles();yield return SaveLevel(1,1,"A car with no online history shows the fresh aura level");
         Check(Idas3SceneModeFlowFixture(363)==1,"Stock remembered car remains stock and keeps its own tuning points");
         yield return Capture("save-last-car-level-1");
         yield return SaveClick(520,380);yield return SaveChooseMake(1);yield return SaveChooseCar(22);
@@ -300,8 +346,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Capture("save-last-raced-car-level-27");
         yield return SaveClick(150,130);yield return SaveClick(520,380);
         yield return SaveChooseMake(6);yield return SaveChooseCar(2);
-        yield return Pad(0x1000);yield return SaveStage(5,"Car with unreadable online history can still be selected normally");
-        yield return Pad(0x2000);yield return SaveLevel(2,0,"Unreadable aura history displays an unknown level instead of inventing progression");
+        yield return Pad(0x1000);yield return SaveTransmissionToMode(false,"Car with unreadable online history can still be selected normally");
+        yield return SaveBackToFiles();yield return SaveLevel(2,0,"Unreadable aura history displays an unknown level instead of inventing progression");
         Check(File.ReadAllText(damagedPath)==damagedRecord,"Unreadable aura history is preserved unchanged");
         yield return Capture("save-last-car-level-unavailable");
         yield return SaveClick(150,189);yield return SaveLevel(8,6,"Other save keeps its remembered car and aura level after changes");
@@ -611,13 +657,13 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
             Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
-            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.29","0.3.95-community-replays.31","0.3.96","0.4.0","0.3.95-community-replays.030","0.3.95-community-replays.30 ",null}){
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.30","0.3.95-community-replays.32","0.3.96","0.4.0","0.3.95-community-replays.031","0.3.95-community-replays.31 ",null}){
                 var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
                 Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
             }
-            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.29";
+            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.30";
             previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
-            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.31";
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.32";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
@@ -1033,7 +1079,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0?
             "Full Tune route selection through actual controller frames for a second stock car created by Change Car and a legacy stock save. Route cancellation, independent B selection, skipped driver setup, persisted upgrades, repeat tuning and untouched first-car A tuning/other saves are verified. Mandatory upgrades use controlled native fixture ticks; no ordinary saves or physical controller hardware are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0?
             "Save menu last-used-car preview and model-keyed online aura level through actual Unity pointer/controller selection. Continue, Change Car, cancelled previews, stock level 1, unreadable history shown as unknown without rewriting it, another save, malformed native level arrays and post-race remembering helper persistence are checked. The helper is invoked directly instead of driving a race; only isolated diagnostic saves and online history are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0?
-            "Save-file Continue/Change Car/Delete Save actions through the actual pointer export and controller frame path, all 35 cars across every manufacturer, existing tuning retention, stock and never-saved cars remaining untuned, skipped name/transmission/tuning-package entry, back/cancel with unchanged profiles, empty-slot setup and persisted driver identity. Delete defaults to No; explicit Yes removes the entire selected save, cancel/blocked inputs preserve all files, another save stays byte-identical, and deleted profiles stay absent on subsequent frames and fresh setup. Actual Unity captures with isolated fixture saves; no ordinary saves changed.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?
+            "Save-file Continue/Change Car/Delete Save actions through the actual pointer export and controller frame path, all 35 cars across every manufacturer, existing tuning retention, stock and never-saved cars remaining untuned, per-car Automatic/Manual confirmation and persisted defaults, skipped name/tuning-package entry, transmission preview/cancel with unchanged profiles and no early fresh-car creation, empty-slot setup and persisted driver identity. Delete defaults to No; explicit Yes removes the entire selected save, cancel/blocked inputs preserve all files, another save stays byte-identical, and deleted profiles stay absent on subsequent frames and fresh setup. Actual Unity captures with isolated fixture saves; no ordinary saves changed.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0?
             "Pause headers through real native race fixtures and Unity menus for every imported course in both directions, followed by an original course; online/wet identity flags checked without a network peer. Isolated saves.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-driving-effects-check")>=0?
             "Controlled Akina/Enna before/after race captures, recovered smoke texture binding and full GPU alpha boundary, plus1800 frames of original driving with real slip/road contacts and unchanged320-word physics state. No physical input device or network peer used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-performance-options-check")>=0?
             "Performance options migration, persistence, display rollback, controller navigation, imported foliage LOD and native mirror/weather geometry with unchanged race ticks/car/profile/driving RNG/wet state. Isolated fixtures, not a low-end hardware FPS benchmark.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-import-times-check")>=0?

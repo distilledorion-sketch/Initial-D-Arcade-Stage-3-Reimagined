@@ -24,14 +24,21 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     private Entry[] entries=Array.Empty<Entry>();
     private readonly List<int> visible=new List<int>();
     private int selectedId=-1,selection,firstRow,stageFilter,blockThroughFrame=-1;
+    private int deleteId=-1;
+    private bool deleteYes;
+    private string deleteTitle="";
     private bool showHint,previousCursorVisible;
     internal bool WheelNavigation {get;set;}
     private CursorLockMode previousCursorLock;
     private float holdProgress;
     private string viewChangeLabel="VIEW CHANGE",notice="";
-    private GUIStyle titleStyle,label,small,artistStyle,button,stageButton,numberStyle;
+    private GUIStyle titleStyle,label,small,artistStyle,button,stageButton,numberStyle,confirmationStyle,songStyle;
     private RenderTexture diagnosticTarget;
     public bool IsOpen {get;private set;}
+    public bool Busy {get;set;}
+    public bool DeleteConfirmationOpen=>deleteId>=1000;
+    public bool DeleteYesSelected=>DeleteConfirmationOpen&&deleteYes;
+    public int DeleteTrackId=>deleteId;
     public bool BlocksGameInput=>IsOpen||Time.frameCount<=blockThroughFrame;
     public bool HintVisible=>showHint&&!IsOpen;
     public float HoldProgress=>holdProgress;
@@ -40,6 +47,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     public int StageFilter=>stageFilter;
     public int VisibleTrackCount=>visible.Count;
     public event Action<int> Selected;
+    public event Action<int> DeleteRequested;
     public event Action<bool> OpenChanged;
     public bool DiagnosticCaptureReady {get;private set;}
     public int DiagnosticRepaints {get;private set;}
@@ -52,7 +60,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         foreach(var entry in catalog)
             if(!ids.Add(entry.id)||entry.stage<0||entry.stage>=StageLabels.Length||string.IsNullOrWhiteSpace(entry.title))
                 throw new ArgumentException("The race music catalog contains an invalid or duplicate entry.",nameof(catalog));
-        entries=(Entry[])catalog.Clone();selectedId=currentId;stageFilter=0;RebuildList(true);
+        CancelDelete();entries=(Entry[])catalog.Clone();selectedId=ids.Contains(currentId)?currentId:entries[0].id;stageFilter=0;RebuildList(true);
     }
     public void SetContext(bool showOpponentHint,float progress,string controlLabel)
     {
@@ -71,7 +79,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     {
         if(open==IsOpen)return;
         if(open&&entries.Length==0)return;
-        blockThroughFrame=Time.frameCount+1;IsOpen=open;notice="";
+        blockThroughFrame=Time.frameCount+1;IsOpen=open;notice="";CancelDelete();
         if(open){
             previousCursorVisible=Cursor.visible;previousCursorLock=Cursor.lockState;
             Cursor.lockState=CursorLockMode.None;Cursor.visible=true;
@@ -81,12 +89,15 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     }
     public void Navigate(int delta)
     {
-        if(!IsOpen||delta==0||visible.Count==0)return;
+        if(!IsOpen||Busy||delta==0)return;
+        if(DeleteConfirmationOpen){deleteYes=!deleteYes;return;}
+        if(visible.Count==0)return;
         selection=Wrap(selection+Math.Sign(delta),visible.Count);EnsureVisible();notice="";
     }
     public void NavigateHorizontal(int stageDelta)
     {
-        if(!IsOpen||stageDelta==0)return;
+        if(!IsOpen||Busy||stageDelta==0)return;
+        if(DeleteConfirmationOpen){deleteYes=!deleteYes;return;}
         ChangeStage(StageIds[Wrap(Array.IndexOf(StageIds,stageFilter)+Math.Sign(stageDelta),StageIds.Length)]);
     }
     internal void NavigateDevice(int horizontal,int vertical,bool wheel){
@@ -96,11 +107,22 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     }
     public void Activate()
     {
-        if(!IsOpen||visible.Count==0)return;
+        if(!IsOpen||Busy)return;
+        if(DeleteConfirmationOpen){
+            int id=deleteId;bool confirmed=deleteYes;CancelDelete();
+            if(confirmed)DeleteRequested?.Invoke(id);
+            return;
+        }
+        if(visible.Count==0)return;
         // The host closes only after its native selection setter succeeds.
         Selected?.Invoke(entries[visible[selection]].id);
     }
-    public void Back(){if(IsOpen)SetOpen(false);}
+    public void RequestDelete(){
+        if(!IsOpen||Busy||DeleteConfirmationOpen||HighlightedTrackId<1000)return;
+        deleteId=HighlightedTrackId;deleteTitle=entries[visible[selection]].title;deleteYes=false;
+    }
+    private void CancelDelete(){deleteId=-1;deleteYes=false;deleteTitle="";}
+    public void Back(){if(DeleteConfirmationOpen)CancelDelete();else if(IsOpen)SetOpen(false);}
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void ChangeStage(int stage)
     {
@@ -140,6 +162,8 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         button=new GUIStyle(label){fontSize=15,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
         stageButton=new GUIStyle(button){fontSize=14,wordWrap=false};
         numberStyle=new GUIStyle(label){fontSize=12,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
+        confirmationStyle=new GUIStyle(label){fontSize=26,fontStyle=FontStyle.Bold};
+        songStyle=new GUIStyle(label){fontSize=17,wordWrap=true};
     }
     private static void Fill(Rect rect,Color color)
     {
@@ -156,8 +180,9 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     }
     private bool Button(Rect rect,string text,bool active=false,GUIStyle style=null)
     {
-        bool hover=rect.Contains(Event.current.mousePosition);Fill(rect,active?Yellow:hover?Blue:Panel);Frame(rect,active?Yellow:Edge);
-        Text(rect,text,style??button,active?Ink:White);return GUI.Button(rect,GUIContent.none,GUIStyle.none);
+        bool enabled=GUI.enabled,hover=enabled&&rect.Contains(Event.current.mousePosition);
+        Fill(rect,active&&enabled?Yellow:hover?Blue:Panel);Frame(rect,active&&enabled?Yellow:Edge);
+        Text(rect,text,style??button,!enabled?Muted:active?Ink:White);return GUI.Button(rect,GUIContent.none,GUIStyle.none);
     }
     private static Rect SafeRect()
     {
@@ -205,6 +230,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         Fill(new Rect(0,66,Width-136,2),White);
         Text(new Rect(25,9,590,48),"Select BGM",titleStyle);
         Text(new Rect(596,24,175,24),"RACE MUSIC",button,Yellow);
+        bool beforeEnabled=GUI.enabled;GUI.enabled=beforeEnabled&&!Busy&&!DeleteConfirmationOpen;
         float tabWidth=(Width-44-4*(StageLabels.Length-1))/(StageLabels.Length+.8f),tabX=22;
         DiagnosticStageLabelsFit=true;
         for(int i=0;i<StageLabels.Length;++i){
@@ -215,7 +241,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
             DiagnosticStageLabelsFit&=measured.x<=rect.width-10&&measured.y<=rect.height&&rect.xMin>=22&&rect.xMax<=Width-21.9f;
             if(Button(rect,StageLabels[i],stageFilter==StageIds[i],stageButton))ChangeStage(StageIds[i]);
         }
-        if(Event.current.type==EventType.ScrollWheel&&new Rect(20,134,760,384).Contains(Event.current.mousePosition)){
+        if(GUI.enabled&&Event.current.type==EventType.ScrollWheel&&new Rect(20,134,760,384).Contains(Event.current.mousePosition)){
             Navigate(Event.current.delta.y>=0?1:-1);Event.current.Use();
         }
         for(int row=0;row<VisibleRows&&firstRow+row<visible.Count;++row)DrawRow(firstRow+row,row);
@@ -226,10 +252,29 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
             Fill(new Rect(783,134+offset,3,thumb),Yellow);
         }
         Fill(new Rect(22,527,756,1),Edge);
-        Text(new Rect(24,535,557,20),string.IsNullOrEmpty(notice)?"Your choice plays during the race. Each driver chooses their own music.":notice,small,string.IsNullOrEmpty(notice)?Muted:Yellow);
+        bool canDelete=HighlightedTrackId>=1000;
+        Text(new Rect(24,535,canDelete?472:557,20),string.IsNullOrEmpty(notice)?"Your choice plays during the race. Each driver chooses their own music.":notice,small,string.IsNullOrEmpty(notice)?Muted:Yellow);
+        if(canDelete&&Button(new Rect(506,539,84,34),"DELETE"))RequestDelete();
+        GUI.enabled=beforeEnabled&&!Busy&&!DeleteConfirmationOpen;
         if(Button(new Rect(600,539,83,34),"SELECT",true))Activate();
+        GUI.enabled=beforeEnabled&&!DeleteConfirmationOpen;
         if(Button(new Rect(693,539,84,34),"BACK"))Back();
-        Text(new Rect(24,562,565,20),WheelNavigation?"STEERING SELECT    ACCEL CONFIRM    BRAKE BACK":"↑ ↓ SELECT    ← → STAGE    ENTER / A OK    ESC / B BACK",small,Muted);
+        GUI.enabled=beforeEnabled;
+        string controls=WheelNavigation?"STEERING SELECT    ACCEL CONFIRM    BRAKE BACK":"↑ ↓ SELECT    ← → STAGE    ENTER / A OK    ESC / B BACK";
+        if(canDelete)controls+="    DEL / X DELETE";
+        Text(new Rect(24,562,565,20),controls,small,Muted);
+        if(DeleteConfirmationOpen)DrawDeleteConfirmation();
+    }
+    private void DrawDeleteConfirmation(){
+        Fill(new Rect(1,68,Width-2,Height-69),new Color(0,0,0,.72f));
+        const float x=158,y=193,width=484,height=204;
+        Fill(new Rect(x,y,width,height),Ink);Frame(new Rect(x,y,width,height),White);
+        Text(new Rect(x+22,y+18,width-44,36),"Delete song?",confirmationStyle);
+        Text(new Rect(x+22,y+62,width-44,46),deleteTitle,songStyle,Muted);
+        bool beforeEnabled=GUI.enabled;GUI.enabled=beforeEnabled&&!Busy;
+        if(Button(new Rect(x+126,y+140,104,40),"NO",!deleteYes)){deleteYes=false;Activate();}
+        if(Button(new Rect(x+244,y+140,104,40),"YES",deleteYes)){deleteYes=true;Activate();}
+        GUI.enabled=beforeEnabled;
     }
     private void DrawRow(int index,int row)
     {

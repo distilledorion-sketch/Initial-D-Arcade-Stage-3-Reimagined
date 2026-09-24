@@ -85,6 +85,7 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
     namePresentation.reset();nameState={};nameInput={};menuCueIds.clear();driverProfileCommit=false;
     tuningData.reset();tuningPresentation.reset();tuningCourseMenu={};tuningCourseSelected=0;tuningCourseConfirmPending=false;
     nameCommittedForVisit=driverSetupCompleted=savedCarTuningCourse=false;
+    savedCarTransmission=savedTransmissionReturnToCar=false;
     banks.clear(); previousKey.clear(); previousMotionKey.clear(); pixels.clear(); staticPixels.clear();
     displayPixels.clear();previousModePaintKey.clear();displayedCanvas=nullptr;
     canvasRevision=displayedRevision=0;displayedWidth=displayedHeight=0;
@@ -223,13 +224,23 @@ bool Frontend::back() {
         if(savedCarTuningCourse){savedCarTuningCourse=false;stage=FrontendStage::Car;synchronizeStage();}
         return true;
     }
+    if(stage==FrontendStage::Transmission&&savedCarTransmission){
+        automatic=battleProfile.u(68)==0;
+        if(savedTransmissionReturnToCar){stage=FrontendStage::Car;saveCarPreviewReset=true;}
+        else{
+            changingSavedCar=false;stage=FrontendStage::SaveSelect;
+            saveActionsOpen=saveActionsEnabled;saveActionSelected=0;
+        }
+        synchronizeStage();return true;
+    }
     if(stage==FrontendStage::SaveSelect){
         if(saveDeleteRequested>=0)return true;
         if(saveDeleteOpen){saveDeleteOpen=false;saveDeleteSelected=0;saveDeleteFailed=false;previousKey.clear();return true;}
         if(saveActionsOpen){saveActionsOpen=false;previousKey.clear();return true;}
         stage=FrontendStage::Title;savedDriverSelected=false;synchronizeStage();return true;
     }
-    if((stage==FrontendStage::Make&&changingSavedCar)||(stage==FrontendStage::Mode&&savedDriverSelected)){
+    if(stage==FrontendStage::Mode&&savedDriverSelected){selectSavedCarTransmission();return true;}
+    if(stage==FrontendStage::Make&&changingSavedCar){
         changingSavedCar=false;stage=FrontendStage::SaveSelect;saveActionsOpen=saveActionsEnabled;saveActionSelected=0;
         synchronizeStage();return true;
     }
@@ -247,6 +258,13 @@ bool Frontend::back() {
 }
 void Frontend::selectSavedCarTuningCourse(){
     savedCarTuningCourse=true;stage=FrontendStage::TuningCourse;synchronizeStage();
+}
+void Frontend::selectSavedCarTransmission(bool returnToCar){
+    if(stage==FrontendStage::Transmission&&(savedCarTransmission||confirmationInProgress()))return;
+    savedCarTransmission=true;savedTransmissionReturnToCar=returnToCar;
+    // Car's source owner may already have entered Transmission this frame.
+    // Initialize again with this visit's saved-profile routing and selection.
+    stage=FrontendStage::Transmission;stageInitialized=false;synchronizeStage();
 }
 void Frontend::initializeColorSelection(){
     const auto roster=carsForMake(make);const auto found=std::find(roster.begin(),roster.end(),car);
@@ -404,6 +422,7 @@ void Frontend::synchronizeStage(){
     if(stageInitialized&&observedStage==stage)return;
     observedStage=stage;stageInitialized=true;carFrame=0;carConfirmationFrame=-1;selectionExitFrame=-1;
     if(stage!=FrontendStage::TuningCourse)savedCarTuningCourse=false;
+    if(stage!=FrontendStage::Transmission)savedCarTransmission=savedTransmissionReturnToCar=false;
     buntaBadgeCourse=-1;buntaBadgeFrame=0;
     makerConfirmPending=false;frameRemainder=0;
     carConfirmPending=carCancelPending=false;
@@ -430,6 +449,7 @@ void Frontend::synchronizeStage(){
     if(stage==FrontendStage::Transmission){
         transmissionTransition={};transmissionTransition.sharedCountdown1176=battleProfile.u(1176)?battleProfile.u(1176):2479;
         transmissionTransition.profileFlags1180=battleProfile.u(1180);transmissionTransition.profileCar16=unsigned(car);
+        if(savedCarTransmission)transmissionTransition.profileFlags1180&=~2u;
         transmissionTransition.profileTransmission68=battleProfile.u(68);
         transmissionTransition.profileByte1192=battleProfile.byte(1192);transmissionTransition.profileByte152=battleProfile.byte(152);
         transmissionTransition.previousScreen76=0x0602;transmissionTransition.alternateScreen80=0x0802;
@@ -584,14 +604,18 @@ void Frontend::advance(double seconds) {
         if(stage==FrontendStage::Transmission){
             const auto events=original::tickOriginalTransmissionMenuTransition(transmissionTransition,{transmissionConfirmPending,automatic?0u:1u});
             transmissionConfirmPending=false;
-            if(events.selectionCommitted)battleProfile.setu(68,transmissionTransition.profileTransmission68);
-            if(events.profileByte152Cleared)battleProfile.setByte(152,transmissionTransition.profileByte152);
+            if(events.selectionCommitted&&!savedCarTransmission)battleProfile.setu(68,transmissionTransition.profileTransmission68);
+            if(events.profileByte152Cleared&&!savedCarTransmission)battleProfile.setByte(152,transmissionTransition.profileByte152);
             if(events.confirmationPhaseWritten)transmissionConfirmationPhase=events.confirmationPhase;
             carConfirmationFrame=transmissionTransition.phase476>=2?int(transmissionTransition.frame452):-1;
             if(events.parentRequested){
                 battleProfile.setu(1176,transmissionTransition.sharedCountdown1176);
                 const auto command=transmissionTransition.parentEvent64;
-                if(command==8||command==0x08020004u)stage=FrontendStage::Mode;
+                if(savedCarTransmission){
+                    battleProfile.setu(68,transmissionTransition.profileTransmission68);
+                    driverProfileCommit=true;stage=FrontendStage::Mode;
+                }
+                else if(command==8||command==0x08020004u)stage=FrontendStage::Mode;
                 else if(command==0x06020004u)stage=FrontendStage::Name;
                 else if(command&1u)stage=FrontendStage::TuningCourse;
                 else throw std::logic_error("Unsupported original transmission parent route");

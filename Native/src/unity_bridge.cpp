@@ -371,7 +371,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
             log<<"PASS "<<cases<<" Bunta races: Normal, Hard and Expert produce identical speed and movement at two challenge levels on two courses. Original AI pace retained.\n";
             return 1;
         }
-        if(scene>=350&&scene<=369)prepareSaveChangeMenuFixture(*r.app,unsigned(scene));
+        if(scene>=350&&scene<=375)prepareSaveChangeMenuFixture(*r.app,unsigned(scene));
         else prepareModeFlowFixture(*r.app,unsigned(scene));
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
         if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);

@@ -1,5 +1,9 @@
-0.3.95-community-replays.30
-FULL TUNE PACKAGE SELECTION
+0.3.95-community-replays.31
+TRANSMISSION SELECTION AND CUSTOM MUSIC
+Continue and Change Car now offer Automatic or Manual before mode selection. Each car remembers its confirmed transmission while keeping its tune, parts and progress. Back cancels an unconfirmed choice.
+Select BGM now has DELETE for custom songs, with confirmation starting on No. Place MP3, OGG or WAV files in Custom Music beside the EXE, then open Select BGM. The folder is created on first launch. Deleting removes the library entry and its managed music file; originals imported from outside this folder remain untouched.
+
+FULL TUNE PACKAGE SELECTION FROM .30
 Stock cars added through Change Car now get their own tuning-package choice before Full Tune applies upgrades. Existing partial and completed tunes retain their own package and parts. Choosing a package preserves the saved driver name, transmission, paint and points; Back returns to car selection without applying an unconfirmed choice.
 
 ORIGINAL GAME REQUIRED
@@ -7,7 +11,7 @@ Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder b
 No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
 COMMUNITY TIME ATTACK
-Only 0.3.95-community-replays.30 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
+Only 0.3.95-community-replays.31 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
 Both online players need this version. Updates use a smaller changed-file patch when available for the installed version. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
 
 FIXES INCLUDED FROM .28
@@ -281,6 +285,8 @@ R: restart
 F5: quick Akina Time Attack
 
 RACE MUSIC
+Put MP3, OGG and WAV files in Custom Music beside InitialDUnity.exe; the game
+creates this folder on first launch. Select or delete custom tracks in Select BGM.
 On opponent selection, hold View Change (C / controller Y by default) to
 open Select BGM. The bottom hint follows your custom camera bindings.
 Choose a track, use the Stage 1/2/3/4/5/6/7/8 filters, then confirm with Enter/A or

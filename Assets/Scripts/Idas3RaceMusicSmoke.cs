@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using UnityEngine;
 using Idas3.Multiplayer;
 
@@ -16,7 +17,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     private string root;
     private KeyCode physicalKey;
     private short physicalThumbX;
-    private uint padPulse;
+    private uint padPulse,padHeld;
     private int pulse,checks;
     private bool finished,ownsPlayer;
     private double started;
@@ -50,7 +51,10 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     {if(active==null||active.finished)return false;key=active.KeyHeld;pad=new Idas3ControlBindings.PadState{connected=active.physicalThumbX!=0,thumbLX=active.physicalThumbX};return true;}
     private bool KeyHeld(KeyCode key)=>physicalKey!=KeyCode.None&&key==physicalKey;
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame)
-    {if(active==null)return true;if(active.finished)return !active.ownsPlayer;if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}if(active.padPulse!=0){frame.padConnected=1;frame.padButtons=active.padPulse;active.padPulse=0;}if(active.physicalThumbX!=0){frame.padConnected=1;frame.thumbLX=active.physicalThumbX;}return true;}
+    {if(active==null)return true;if(active.finished)return !active.ownsPlayer;if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}
+        // Reserved menu keys bypass driving bindings in the real host too.
+        if(active.physicalKey==KeyCode.Return)frame.SetKey(13);else if(active.physicalKey==KeyCode.Escape)frame.SetKey(27);else if(active.physicalKey==KeyCode.Delete)frame.SetKey(46);
+        if((active.padPulse|active.padHeld)!=0){frame.padConnected=1;frame.padButtons=active.padPulse|active.padHeld;active.padPulse=0;}if(active.physicalThumbX!=0){frame.padConnected=1;frame.thumbLX=active.physicalThumbX;}return true;}
     private void Check(bool ok,string reason){++checks;if(!ok)throw new InvalidOperationException(reason);}
     private IEnumerator Frames(int count){for(int i=0;i<count;++i)yield return null;}
     private IEnumerator Until(Func<bool> condition,double seconds,string reason){double end=Time.realtimeSinceStartupAsDouble+seconds;while(!condition()&&Time.realtimeSinceStartupAsDouble<end)yield return null;Check(condition(),reason);}
@@ -105,25 +109,130 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         yield return CheckCountdownAudio(116,"singleplayer");Finish(true,null);
     }
     private bool ReturnCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-return-check")>=0;
+    [Serializable] private sealed class CustomSongSnapshot {public string file,title,sourceFile;public int rate,channels,samples;}
+    [Serializable] private sealed class CustomLibrarySnapshot {public string selected;public List<CustomSongSnapshot> songs;}
+    private CustomLibrarySnapshot ReadCustomLibrary()=>JsonUtility.FromJson<CustomLibrarySnapshot>(File.ReadAllText(Path.Combine(root,"userdata","custom-music","library.json")));
+    private int CustomId(string title){var songs=ReadCustomLibrary().songs;int index=songs.FindIndex(song=>song.title==title);Check(index>=0,"Custom song absent from persisted library: "+title);return Idas3CustomRaceMusic.FirstId+index;}
+    private CustomSongSnapshot CustomSong(string title){var song=ReadCustomLibrary().songs.Find(item=>item.title==title);Check(song!=null,"Custom song metadata absent: "+title);return song;}
+    private static string MusicHash(string path){using(var hash=SHA256.Create())using(var input=File.OpenRead(path))return Convert.ToBase64String(hash.ComputeHash(input));}
+    private static void WriteBusyMusicWave(string path,int frequency=997){
+        const int rate=16000,frames=4000;using(var output=new BinaryWriter(File.Create(path))){
+            output.Write(new[]{(byte)'R',(byte)'I',(byte)'F',(byte)'F'});output.Write(36+frames*2);output.Write(new[]{(byte)'W',(byte)'A',(byte)'V',(byte)'E'});
+            output.Write(new[]{(byte)'f',(byte)'m',(byte)'t',(byte)' '});output.Write(16);output.Write((short)1);output.Write((short)1);output.Write(rate);output.Write(rate*2);output.Write((short)2);output.Write((short)16);
+            output.Write(new[]{(byte)'d',(byte)'a',(byte)'t',(byte)'a'});output.Write(frames*2);for(int i=0;i<frames;++i)output.Write((short)(5000*Math.Sin(i*2*Math.PI*frequency/rate)));
+        }
+    }
+    private static Dictionary<string,string> MusicFiles(string directory){var files=new Dictionary<string,string>(StringComparer.Ordinal);foreach(string file in Directory.GetFiles(directory,"*",SearchOption.AllDirectories))files.Add(file.Substring(directory.Length),MusicHash(file));return files;}
+    private void CheckMusicFiles(string directory,Dictionary<string,string> expected,string reason){var current=MusicFiles(directory);Check(current.Count==expected.Count,reason+" (file count)");foreach(var item in expected)Check(current.TryGetValue(item.Key,out string digest)&&digest==item.Value,reason+" ("+item.Key+")");}
+    private IEnumerator MusicIdle(){yield return Until(()=>!host.CustomMusic.Busy,70,"Custom music operation did not finish");yield return Frames(2);Check(!host.RaceMusicMenu.Busy,"Music menu stayed busy after library operation");}
+    private IEnumerator RestoreCustomLibrary(int expectedId){
+        var restored=host.gameObject.AddComponent<Idas3CustomRaceMusic>();
+        try{restored.Initialize(Path.Combine(root,"userdata"),host.RaceMusicMenu,host.RaceMusic,host.CustomMusic.FolderPath);Check(restored.SelectedId==expectedId&&restored.LastError==null,"Custom selection did not survive library reload");}
+        finally{Destroy(restored);}
+        yield return Frames(2);
+    }
+    private void CheckCustomGone(CustomSongSnapshot song){
+        Check(!File.Exists(Path.Combine(root,"userdata","custom-music",song.file)),"Deleted song's decoded audio remains");
+        Check(!string.IsNullOrEmpty(song.sourceFile)&&!File.Exists(Path.Combine(host.CustomMusic.FolderPath,song.sourceFile)),"Deleted managed source remains available to be reimported");
+        Check(!ReadCustomLibrary().songs.Exists(item=>item.file==song.file),"Deleted song remains in persisted library");
+    }
     private IEnumerator CheckCustomMusic(){
-        var menu=host.RaceMusicMenu;menu.NavigateHorizontal(-1);Check(menu.StageFilter==9&&menu.HighlightedTrackId==Idas3CustomRaceMusic.AddId,"Controller reaches custom import action");
+        var menu=host.RaceMusicMenu;var library=host.CustomMusic;yield return MusicIdle();menu.NavigateHorizontal(-1);Check(menu.StageFilter==9&&menu.HighlightedTrackId==Idas3CustomRaceMusic.AddId,"Controller reaches custom import action");
+        string musicFolder=Path.GetFullPath(library.FolderPath),expectedFolder=Path.GetFullPath(Path.Combine(root,"Custom Music"));
+        Check(string.Equals(musicFolder,expectedFolder,StringComparison.OrdinalIgnoreCase),"Custom music diagnostic did not isolate the folder from real player music");
+        Check(Directory.Exists(musicFolder),"Custom Music folder was not created");
+        menu.RequestDelete();Check(!menu.DeleteConfirmationOpen&&!library.Delete(Idas3CustomRaceMusic.AddId,0),"Add Music can be deleted");
+        StageFilter(3);HighlightTrack(1);menu.RequestDelete();Check(!menu.DeleteConfirmationOpen&&!library.Delete(1,0),"Built-in music can be deleted");menu.ShowCustom();
         int activeTrack=host.RaceMusic.State.activeIndex;
         string fixtureRoot=Path.Combine(Path.GetDirectoryName(root),"fixtures");
-        foreach(string ext in new[]{"wav","mp3","ogg"}){
-            yield return host.CustomMusic.ImportFile(Path.Combine(fixtureRoot,"Custom test."+ext));
-            Check(host.CustomMusic.LastError==null,"Custom import failed: "+ext+" "+host.CustomMusic.LastError);
+        string outside=Path.Combine(root,"external-originals");Directory.CreateDirectory(outside);
+        foreach(string ext in new[]{"mp3","ogg"})File.Copy(Path.Combine(fixtureRoot,"Custom test."+ext),Path.Combine(outside,"Imported "+ext.ToUpperInvariant()+"."+ext));
+        var originals=MusicFiles(outside);
+        string folderSongPath=Path.Combine(musicFolder,"Folder auto.wav");File.Copy(Path.Combine(fixtureRoot,"Custom test.wav"),folderSongPath);string folderSongHash=MusicHash(folderSongPath);
+        // Dropped songs are found through the production picker-open refresh.
+        menu.Back();yield return Frames(5);yield return Hold(KeyCode.L,.85);Check(menu.IsOpen,"Folder scan could not reopen picker");yield return MusicIdle();menu.ShowCustom();
+        Check(menu.VisibleTrackCount==2&&CustomId("Folder auto")==Idas3CustomRaceMusic.FirstId,"Picker opening did not import the dropped WAV");
+        Check(MusicHash(folderSongPath)==folderSongHash,"Folder import modified the source audio");
+        string decodedFolder=Path.Combine(root,"userdata","custom-music");var folderScanSources=MusicFiles(musicFolder);var folderScanLibrary=MusicFiles(decodedFolder);
+        library.RefreshFolder();yield return MusicIdle();Check(menu.VisibleTrackCount==2,"Repeated folder scan duplicated a song");
+        CheckMusicFiles(musicFolder,folderScanSources,"Repeated scan changed managed sources");CheckMusicFiles(decodedFolder,folderScanLibrary,"Repeated scan changed the decoded library");
+        var beforeReplacement=CustomSong("Folder auto");string previousPcmHash=MusicHash(Path.Combine(decodedFolder,beforeReplacement.file));
+        HighlightTrack(CustomId("Folder auto"));menu.Activate();yield return Frames(3);host.RaceMusic.Refresh();
+        Check(!menu.IsOpen&&library.SelectedTitle=="Folder auto"&&host.RaceMusic.State.selectedIndex==-2,"Folder song could not be selected before replacement");
+        yield return Hold(KeyCode.L,.85);Check(menu.IsOpen,"Selected folder song could not reopen picker");yield return MusicIdle();menu.ShowCustom();
+        WriteBusyMusicWave(folderSongPath,631);library.RefreshFolder();yield return MusicIdle();host.RaceMusic.Refresh();
+        var replacement=CustomSong("Folder auto");
+        Check(menu.VisibleTrackCount==2&&library.SelectedId==Idas3CustomRaceMusic.FirstId&&library.SelectedTitle=="Folder auto"&&host.RaceMusic.State.selectedIndex==-2,"Replacing a selected folder song duplicated it or lost the selection");
+        Check(replacement.file!=beforeReplacement.file&&replacement.sourceFile==beforeReplacement.sourceFile&&replacement.rate==16000&&replacement.channels==1&&replacement.samples==4000,"Selected folder replacement did not persist the new PCM metadata");
+        Check(MusicHash(Path.Combine(decodedFolder,replacement.file))!=previousPcmHash&&!File.Exists(Path.Combine(decodedFolder,beforeReplacement.file)),"Selected folder replacement retained the old PCM cache");
+        Check(MusicHash(Path.Combine(fixtureRoot,"Custom test.wav"))==folderSongHash,"Replacing the managed source modified the external WAV fixture");
+        menu.Back();yield return Frames(5);yield return Hold(KeyCode.L,.85);Check(menu.IsOpen,"Replaced folder song could not reopen picker");yield return MusicIdle();menu.ShowCustom();
+        Check(menu.VisibleTrackCount==2&&menu.SelectedTrackId==Idas3CustomRaceMusic.FirstId&&library.SelectedTitle=="Folder auto"&&host.RaceMusic.State.selectedIndex==-2,"Reopening the picker lost the replaced song selection");
+        foreach(string ext in new[]{"mp3","ogg"}){
+            yield return library.ImportFile(Path.Combine(outside,"Imported "+ext.ToUpperInvariant()+"."+ext));yield return MusicIdle();
+            Check(library.LastError==null,"Custom import failed: "+ext+" "+library.LastError);
+            var song=CustomSong("Imported "+ext.ToUpperInvariant());Check(!string.IsNullOrEmpty(song.sourceFile),"Imported song has no managed source");
+            Check(MusicHash(Path.Combine(musicFolder,song.sourceFile))==MusicHash(Path.Combine(outside,"Imported "+ext.ToUpperInvariant()+"."+ext)),"Imported managed copy differs from external original");
         }
         Check(menu.VisibleTrackCount==4,"Custom tab has importer and three local tracks");
-        yield return host.CustomMusic.ImportFile(Path.Combine(fixtureRoot,"invalid.wav"));
-        Check(host.CustomMusic.LastError!=null&&menu.VisibleTrackCount==4,"Malformed file changed library");
-        for(int i=0;i<3;i++)menu.Navigate(1);Check(menu.HighlightedTrackId==Idas3CustomRaceMusic.FirstId+2,"Controller can select imported OGG");
+        var validSources=MusicFiles(musicFolder);var validLibrary=MusicFiles(decodedFolder);
+        yield return library.ImportFile(Path.Combine(fixtureRoot,"invalid.wav"));yield return MusicIdle();
+        Check(library.LastError!=null&&menu.VisibleTrackCount==4,"Malformed file changed library");
+        CheckMusicFiles(musicFolder,validSources,"Malformed import changed managed sources");CheckMusicFiles(decodedFolder,validLibrary,"Malformed import changed decoded library");
+        CheckMusicFiles(outside,originals,"Import modified external original files");
+        HighlightTrack(CustomId("Imported OGG"));
         menu.Activate();yield return Frames(3);host.RaceMusic.Refresh();
-        Check(!menu.IsOpen&&host.RaceMusic.State.selectedIndex==-2&&host.CustomMusic.SelectedTitle=="Custom test","Custom selection committed");
+        Check(!menu.IsOpen&&host.RaceMusic.State.selectedIndex==-2&&library.SelectedTitle=="Imported OGG","Custom selection committed");
         Check(host.RaceMusic.State.activeIndex==activeTrack,"Selecting custom music changed menu audio");
-        // Recreate the library to prove persistence independently of its memory.
-        var restored=host.gameObject.AddComponent<Idas3CustomRaceMusic>();restored.Initialize(Path.Combine(root,"userdata"),menu,host.RaceMusic);
-        Check(restored.SelectedId==Idas3CustomRaceMusic.FirstId+2&&restored.LastError==null,"Custom selection did not survive reload");Destroy(restored);
-        yield return Hold(KeyCode.L,.85);Check(menu.IsOpen,"Custom selection could not reopen picker");menu.ShowCustom();yield return Capture("custom-music-picker");
+        yield return RestoreCustomLibrary(CustomId("Imported OGG"));
+        yield return Hold(KeyCode.L,.85);Check(menu.IsOpen,"Custom selection could not reopen picker");yield return MusicIdle();menu.ShowCustom();
+        HighlightTrack(CustomId("Folder auto"));var noSources=MusicFiles(musicFolder);var noLibrary=MusicFiles(decodedFolder);
+        int deleteEvents=0;Action<int> onDelete=id=>++deleteEvents;menu.DeleteRequested+=onDelete;
+        int highlighted=menu.HighlightedTrackId,stage=menu.StageFilter;
+        yield return Hold(KeyCode.Delete,.3);Check(menu.DeleteConfirmationOpen&&!menu.DeleteYesSelected&&menu.DeleteTrackId==highlighted,"Held Delete shortcut did not open exactly one dialog defaulting to No");
+        yield return Capture("custom-delete-no");
+        menu.Navigate(1);Check(menu.DeleteYesSelected&&menu.HighlightedTrackId==highlighted&&menu.StageFilter==stage,"Delete navigation leaked into the underlying song list");
+        menu.NavigateHorizontal(-1);Check(!menu.DeleteYesSelected&&menu.HighlightedTrackId==highlighted&&menu.StageFilter==stage,"Delete horizontal navigation changed the underlying stage");
+        yield return Hold(KeyCode.Return,.12);Check(!menu.DeleteConfirmationOpen&&menu.IsOpen&&host.Status.frontendStage==10,"Confirming No closed the picker or confirmed the opponent underneath");
+        Check(deleteEvents==0,"No dispatched a deletion");
+        padHeld=0x4000;yield return Frames(5);Check(menu.DeleteConfirmationOpen&&!menu.DeleteYesSelected,"Controller X did not open deletion on No");
+        menu.NavigateHorizontal(1);Check(menu.DeleteYesSelected,"Delete Yes could not be highlighted");menu.Back();yield return Delay(.2);
+        Check(!menu.DeleteConfirmationOpen&&menu.IsOpen,"Back closed the picker instead of cancelling deletion");
+        padHeld=0;yield return Frames(5);
+        menu.RequestDelete();Check(!menu.DeleteYesSelected,"Reopening deletion retained Yes");yield return Hold(KeyCode.Escape,.12);
+        Check(!menu.DeleteConfirmationOpen&&menu.IsOpen&&host.Status.frontendStage==10&&deleteEvents==0,"Escape cancelled through the delete modal into the game");
+        CheckMusicFiles(musicFolder,noSources,"Cancelled deletion modified managed sources");CheckMusicFiles(decodedFolder,noLibrary,"Cancelled deletion modified the decoded library");
+        menu.RequestDelete();menu.NavigateHorizontal(1);yield return RestoreCustomLibrary(CustomId("Imported OGG"));
+        Check(!menu.DeleteConfirmationOpen&&menu.IsOpen&&deleteEvents==0,"Catalog replacement retained a stale deletion target");HighlightTrack(CustomId("Folder auto"));
+        // Begin a real asynchronous import, then exercise the same public
+        // operations while the decoder owns the library.
+        string busySource=Path.Combine(outside,"Busy import.wav");WriteBusyMusicWave(busySource);originals=MusicFiles(outside);
+        library.StartCoroutine(library.ImportFile(busySource));Check(library.Busy&&menu.Busy,"Asynchronous import did not block conflicting music actions");
+        menu.RequestDelete();menu.Navigate(1);menu.NavigateHorizontal(1);menu.Activate();
+        Check(!menu.DeleteConfirmationOpen&&menu.IsOpen&&menu.HighlightedTrackId==highlighted&&menu.StageFilter==stage,"Busy import allowed picker navigation, activation or deletion");
+        Check(!library.Delete(highlighted,0),"Busy import permitted deletion of an existing song");
+        yield return MusicIdle();Check(menu.VisibleTrackCount==5&&CustomId("Busy import")>=Idas3CustomRaceMusic.FirstId,"Busy-state import did not finish");
+        CustomSongSnapshot folderSong=CustomSong("Folder auto"),selectedSong=CustomSong("Imported OGG"),survivor=CustomSong("Imported MP3");
+        string survivorPcmHash=MusicHash(Path.Combine(decodedFolder,survivor.file)),survivorSourceHash=MusicHash(Path.Combine(musicFolder,survivor.sourceFile));
+        HighlightTrack(CustomId("Folder auto"));menu.RequestDelete();Check(!menu.DeleteYesSelected,"Unselected deletion did not start on No");
+        yield return PadHorizontal(1);Check(menu.DeleteYesSelected,"Controller could not explicitly select Yes");yield return Hold(KeyCode.Return,.12);host.RaceMusic.Refresh();
+        Check(menu.IsOpen&&!menu.DeleteConfirmationOpen&&deleteEvents==1&&menu.VisibleTrackCount==4,"Explicit Yes did not delete exactly one unselected song");CheckCustomGone(folderSong);
+        Check(library.SelectedTitle=="Imported OGG"&&library.SelectedId==CustomId("Imported OGG")&&host.RaceMusic.State.selectedIndex==-2,"Deleting another song lost or misindexed the selected song");
+        HighlightTrack(CustomId("Imported OGG"));menu.RequestDelete();Check(!menu.DeleteYesSelected,"Selected-song deletion did not start on No");
+        yield return PadHorizontal(1);Check(menu.DeleteYesSelected,"Controller could not confirm selected-song deletion");yield return Capture("custom-delete-yes");yield return Hold(KeyCode.Return,.12);host.RaceMusic.Refresh();
+        Check(menu.IsOpen&&!menu.DeleteConfirmationOpen&&deleteEvents==2&&menu.VisibleTrackCount==3,"Selected-song deletion did not remove exactly one song");CheckCustomGone(selectedSong);
+        Check(host.RaceMusic.State.selectedIndex==-1&&library.SelectedId==-1&&string.IsNullOrEmpty(ReadCustomLibrary().selected),"Deleting the selected custom song did not persist native game-default music");
+        Check(host.RaceMusic.State.activeIndex==activeTrack,"Deleting custom music interrupted current menu audio");
+        Check(MusicHash(Path.Combine(decodedFolder,survivor.file))==survivorPcmHash&&MusicHash(Path.Combine(musicFolder,survivor.sourceFile))==survivorSourceHash,"Deleting another song modified the surviving custom track");
+        CheckMusicFiles(outside,originals,"Deleting imported songs modified external original files");
+        var deletedSources=MusicFiles(musicFolder);var deletedLibrary=MusicFiles(decodedFolder);
+        yield return RestoreCustomLibrary(-1);library.RefreshFolder();yield return MusicIdle();
+        Check(menu.VisibleTrackCount==3&&host.RaceMusic.State.selectedIndex==-1,"Deleted music returned after reload and folder refresh");CheckCustomGone(folderSong);CheckCustomGone(selectedSong);
+        CheckMusicFiles(musicFolder,deletedSources,"Reload or rescan changed surviving managed sources");CheckMusicFiles(decodedFolder,deletedLibrary,"Reload or rescan resurrected deleted music");
+        yield return Capture("custom-music-after-delete");menu.DeleteRequested-=onDelete;
+        HighlightTrack(CustomId("Imported MP3"));menu.Activate();yield return Frames(3);host.RaceMusic.Refresh();
+        Check(!menu.IsOpen&&host.RaceMusic.State.selectedIndex==-2&&library.SelectedTitle=="Imported MP3","Surviving custom song could not be selected after deletion");
+        yield return Hold(KeyCode.L,.85);Check(menu.IsOpen,"Surviving custom selection could not reopen picker");yield return MusicIdle();menu.ShowCustom();yield return Capture("custom-music-picker");
         Check(menu.DiagnosticStageLabelsFit,"Ten music tabs overlap");menu.Back();yield return Frames(5);
         yield return Pulse(13);double deadline=Time.realtimeSinceStartupAsDouble+45;
         for(int frame=0;ReadPresentation().phase==0&&Time.realtimeSinceStartupAsDouble<deadline;++frame){if(frame%12==0)padPulse=0x10;yield return null;}
@@ -335,7 +444,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     }
     private void Finish(bool passed,string error)
     {
-        if(finished)return;finished=true;physicalKey=KeyCode.None;physicalThumbX=0;host.DiagnosticFocusOverride=null;bool stopped=false;
+        if(finished)return;finished=true;physicalKey=KeyCode.None;physicalThumbX=0;padHeld=0;host.DiagnosticFocusOverride=null;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){passed=false;error=(error??"")+e;}
         WriteReport("report.json",passed&&stopped,error,stopped);Debug.Log((passed?"PASS":"FAIL")+" race music "+error);
 #if UNITY_EDITOR

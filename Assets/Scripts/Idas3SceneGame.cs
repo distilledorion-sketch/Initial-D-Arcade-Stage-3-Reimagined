@@ -226,8 +226,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             raceMusicMenu = gameObject.AddComponent<Idas3RaceMusicMenu>();
             raceMusicMenu.Initialize(raceMusic.Entries, raceMusic.State.selectedIndex);
             CustomMusic=gameObject.AddComponent<Idas3CustomRaceMusic>();
-            CustomMusic.Initialize(saves,raceMusicMenu,raceMusic);
+            CustomMusic.Initialize(saves,raceMusicMenu,raceMusic,diagnosticMode?Path.Combine(Path.GetDirectoryName(saves),Idas3CustomRaceMusic.FolderName):null);
             raceMusicMenu.Selected += SelectRaceMusic;
+            raceMusicMenu.DeleteRequested += DeleteRaceMusic;
             raceMusicMenu.OpenChanged += MusicVisibilityChanged;
             multiplayerMenu.MusicSelectionRequested += () => OpenRaceMusic(1);
             multiplayer.RaceDisconnected += ShowDisconnectedFinish;
@@ -289,9 +290,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
         KeyCode.Backspace,KeyCode.Return,KeyCode.Escape,KeyCode.Space,
         KeyCode.LeftArrow,KeyCode.UpArrow,KeyCode.RightArrow,KeyCode.DownArrow,
         KeyCode.A,KeyCode.C,KeyCode.D,KeyCode.E,KeyCode.Q,KeyCode.R,KeyCode.S,KeyCode.W,
-        KeyCode.F1,KeyCode.F2,KeyCode.F3,KeyCode.F5
+        KeyCode.F1,KeyCode.F2,KeyCode.F3,KeyCode.F5,KeyCode.Delete
     };
-    private static readonly int[] virtualKeys = {8,13,27,32,37,38,39,40,65,67,68,69,81,82,83,87,112,113,114,116};
+    private static readonly int[] virtualKeys = {8,13,27,32,37,38,39,40,65,67,68,69,81,82,83,87,112,113,114,116,46};
 
     private void MatchOutputResolution()
     {
@@ -607,6 +608,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         raceMusicMenu.SetSelected(CustomMusic.SelectedId);
         raceMusicMenu.SetOpen(true);
         raceMusicMenu.SetNotice(context == 1 ? "Your choice plays on your game only." : "Choose the music for your next race.");
+        CustomMusic.RefreshFolder(context);raceMusicMenu.Busy=CustomMusic.Busy;
     }
     private void SelectRaceMusic(int id)
     {
@@ -621,6 +623,17 @@ public sealed class Idas3SceneGame : MonoBehaviour
         raceMusicMenu.SetSelected(CustomMusic.SelectedId);
         raceMusicMenu.SetOpen(false);
     }
+    private void DeleteRaceMusic(int id)
+    {
+        if(!ready||stopping||!raceMusicMenu.IsOpen||CustomMusic.Busy||id<Idas3CustomRaceMusic.FirstId)return;
+        raceMusic.Refresh();
+        if(musicPickerContext==1?!MusicLobbyAllowed:!MusicOpponentAllowed){raceMusicMenu.SetOpen(false);return;}
+        bool deleted=CustomMusic.Delete(id,musicPickerContext);
+        raceMusicMenu.Busy=CustomMusic.Busy;
+        raceMusicMenu.SetSelected(CustomMusic.SelectedId);
+        raceMusicMenu.SetNotice(deleted?"Song deleted.":CustomMusic.LastError??"The song could not be deleted.");
+        musicReleaseBlocked=true;musicNavigationAxis=0;previousMusicInput=default;
+    }
     private void MusicVisibilityChanged(bool open)
     {
         multiplayerMenu.InputCovered = open;
@@ -631,11 +644,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private bool MusicControlsHeld(Idas3Native.FrameInput raw) =>
         controlBindings.ViewChangeHeld || controlBindings.PauseHeld || controlBindings.OnlineHeld ||
-        Held(raw, 13) || Held(raw, 8) || Held(raw, 27) ||
-        (raw.padButtons & 0x3010u) != 0 || Input.GetMouseButton(0);
+        Held(raw, 13) || Held(raw, 8) || Held(raw, 27) || Held(raw,46) ||
+        (raw.padButtons & 0x7010u) != 0 || Input.GetMouseButton(0);
     private bool UpdateRaceMusic(ref Idas3Native.FrameInput frame, bool bindingBlocked)
     {
         raceMusicMenu.WheelNavigation=controllerDevices.ActiveIsGeneric;
+        raceMusicMenu.Busy=CustomMusic.Busy;
         raceMusic.Refresh();
         bool opponent = MusicOpponentAllowed, lobby = MusicLobbyAllowed;
         multiplayerMenu.RaceHudActive = (Status.flags & 1u) == 0;
@@ -661,7 +675,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         }
         if (raceMusicMenu.IsOpen)
         {
-            if(musicPointer.BlockNavigation(Idas3MenuPointer.Active,MenuNavigationHeld(raw))){
+            if(musicPointer.BlockNavigation(Idas3MenuPointer.Active,MenuNavigationHeld(raw)||Held(raw,46)||(raw.padButtons&0x4000u)!=0)){
                 previousMusicInput=raw;NeutralizeControls(ref frame);
                 raceMusicMenu.SetContext(opponent,0,hint);return true;
             }
@@ -669,6 +683,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             uint buttons = raw.padButtons & ~previousMusicInput.padButtons;
             if (pressed(27) || pressed(8) || (buttons & 0x2000) != 0) raceMusicMenu.Back();
             else if (pressed(13) || (buttons & 0x1000) != 0) raceMusicMenu.Activate();
+            else if (pressed(46) || (buttons & 0x4000) != 0) raceMusicMenu.RequestDelete();
             else
             {
                 int vertical = (Held(raw, 40) || (raw.padButtons & 2) != 0 || raw.thumbLY < -16000 ? 1 : 0)

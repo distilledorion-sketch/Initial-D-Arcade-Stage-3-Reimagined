@@ -79,6 +79,73 @@ void savedCarPackageSelection(Frontend& f){
     finishTransmission(f);finishPackage(f);
     check(f.stage==FrontendStage::Name&&!f.takeDriverSetupCompleted(),"interrupted saved package route skipped fresh driver name entry");
 }
+OriginalBattleProfile savedTransmissionProfile(unsigned car,unsigned transmission){
+    auto p=makeOriginalFreshBattleProfile();p.setu(16,car);p.setu(68,transmission);
+    // The live setup request is intentionally set: a Change Car preview may
+    // still need the host's completion marker, without repeating source setup.
+    p.setu(1180,0xc83);p.setu(64,car==29?0:1);p.setu(72,134567);p.setu(76,5);
+    for(unsigned i=0;i<5;++i)p.setu(44+4*i,17+i);
+    p.setByte(152,car==29?0:1);p.setByte(153,3);p.setByte(154,2);p.setByte(155,4);
+    p.setByte(156,1);p.setByte(157,2);p.setByte(164,40);p.setByte(165,2);p.setByte(166,1);
+    return p;
+}
+void savedTransmissionSelection(Frontend& f,const std::filesystem::path& root){
+    f.takeDriverProfileCommit();f.takeDriverSetupCompleted();f.takeSaveCarPreviewReset();
+    f.savedDriverSelected=true;f.changingSavedCar=false;f.saveFiles[0].used=true;
+    // Both AT->MT and MT->AT must preserve every saved field, on every model.
+    // In particular the single-route car29 must not clear its tuning state.
+    for(unsigned car=0;car<35;++car)for(unsigned transmission=0;transmission<2;++transmission){
+        f.car=int(car);const auto before=savedTransmissionProfile(car,transmission);
+        f.battleProfile=before;f.automatic=transmission!=0;f.selectSavedCarTransmission();
+        check(f.stage==FrontendStage::Transmission&&f.automatic==(transmission==0),"saved transmission did not seed stored selection");
+        tick(f,16);check(f.inputReady(),"saved transmission fade did not finish");
+        f.change(1);tick(f);
+        check(f.automatic==(transmission!=0)&&f.battleProfile.words==before.words,"saved transmission browsing changed profile or missed selection");
+        check(!f.takeDriverProfileCommit(),"saved transmission browsing emitted commit");
+        f.selectSavedCarTransmission(true);
+        check(f.inputReady()&&f.automatic==(transmission!=0),"repeated saved transmission entry reset selection or owner");
+        f.confirm();tick(f);
+        check(f.battleProfile.words==before.words&&!f.takeDriverProfileCommit(),"saved transmission committed before animation completed");
+        f.selectSavedCarTransmission(true);f.confirm();f.back();f.change(1);
+        check(f.confirmationInProgress()&&f.automatic==(transmission!=0),"repeated input interrupted saved transmission confirmation");
+        tick(f,140);check(f.stage==FrontendStage::Transmission&&!f.takeDriverProfileCommit(),"saved transmission exited early");tick(f);
+        check(f.stage==FrontendStage::Mode&&f.automatic==(transmission!=0),"saved transmission repeated package/name entry");
+        auto expected=before;expected.setu(68,1-transmission);expected.setu(1176,f.battleProfile.u(1176));
+        check(f.battleProfile.words==expected.words,"saved transmission changed name, tuning, points, paint or setup flags");
+        check(f.takeDriverProfileCommit()&&!f.takeDriverProfileCommit()&&!f.takeDriverSetupCompleted(),"saved transmission commit was missing, duplicated or completed setup");
+        f.back();check(f.stage==FrontendStage::Transmission&&f.automatic==(transmission!=0),"Mode Back did not reopen accepted saved transmission");
+        tick(f,16);f.change(1);const auto accepted=f.battleProfile.words;f.back();
+        check(f.stage==FrontendStage::SaveSelect&&f.saveActionsOpen&&f.saveActionSelected==0,"Continue transmission Back did not restore save actions");
+        check(f.battleProfile.words==accepted&&f.automatic==(transmission!=0)&&!f.takeDriverProfileCommit(),"Continue transmission Back persisted preview");
+        check(!f.takeSaveCarPreviewReset(),"Continue cancellation requested a Change Car preview reset");
+    }
+
+    f.car=1;f.make=6;f.changingSavedCar=true;f.battleProfile=savedTransmissionProfile(1,1);
+    const auto pending=f.battleProfile.words;f.selectSavedCarTransmission(true);tick(f,16);f.change(1);f.back();
+    check(f.stage==FrontendStage::Car&&f.changingSavedCar&&!f.automatic,"Change Car transmission Back did not resume manual car preview");
+    check(f.takeSaveCarPreviewReset()&&!f.takeSaveCarPreviewReset(),"Change Car Back must reset preview exactly once");
+    check(f.battleProfile.words==pending&&!f.takeDriverProfileCommit(),"Change Car transmission Back changed the candidate profile");
+
+    // Once a Change Car choice has committed, the host clears its preview
+    // session. Revisiting transmission from Mode returns to the save actions.
+    f.selectSavedCarTransmission(true);tick(f,16);f.confirm();tick(f,142);
+    check(f.stage==FrontendStage::Mode&&f.takeDriverProfileCommit(),"unchanged saved transmission confirmation did not finish");
+    f.changingSavedCar=false;f.back();tick(f,16);f.back();
+    check(f.stage==FrontendStage::SaveSelect&&f.saveActionsOpen&&!f.takeSaveCarPreviewReset(),"accepted Change Car retained its old cancellation destination");
+
+    // Abandoning this screen through another owner must not suppress the
+    // normal transmission->package->name route on subsequent fresh setup.
+    f.selectSavedCarTransmission();tick(f,16);f.change(1);f.confirm();tick(f);
+    const auto interrupted=f.battleProfile.words;f.stage=FrontendStage::SaveSelect;f.advance(0);
+    check(f.battleProfile.words==interrupted&&!f.takeDriverProfileCommit(),"interrupted saved transmission committed a pending selection");
+    f.savedDriverSelected=false;f.battleProfile=makeOriginalFreshBattleProfile();f.battleProfile.setu(16,1);
+    requestOriginalDriverSetup(f.battleProfile);finishTransmission(f);finishPackage(f);
+    check(f.stage==FrontendStage::Name&&!f.takeDriverSetupCompleted(),"saved transmission owner leaked into fresh driver setup");
+
+    f.selectSavedCarTransmission(true);f.initialize(root);
+    f.battleProfile=makeOriginalFreshBattleProfile();f.battleProfile.setu(16,1);requestOriginalDriverSetup(f.battleProfile);
+    finishTransmission(f);check(f.stage==FrontendStage::TuningCourse&&!f.takeDriverProfileCommit(),"reinitialization retained saved transmission routing");
+}
 }
 int main(int argc,char** argv)try{
     if(argc!=2)throw std::invalid_argument("Usage: frontend_driver_entry_tests game_root");
@@ -120,6 +187,7 @@ int main(int argc,char** argv)try{
     check(f.battleProfile.u(76)>0&&f.battleProfile.u(76)<=5,"source name timeout default length");
     check(!f.takeDriverSetupCompleted(),"timeout completion replayed");
     savedCarPackageSelection(f);
-    std::cout<<"PASS frontend driver setup: "<<checks<<" checks;35 migrated/reloaded cars, fresh input, source timeouts, saved-car package selection/cancel/interruption and inert repaint. No saved-driver writes.\n";return 0;
+    savedTransmissionSelection(f,argv[1]);
+    std::cout<<"PASS frontend driver setup: "<<checks<<" checks;35 migrated/reloaded cars, AT/MT saved-car choices, fresh input, source timeouts, saved package/transmission cancellation and interruption, inert repaint. No saved-driver writes.\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
 

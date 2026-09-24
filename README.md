@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Current release:** `0.3.95-community-replays.30` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.31` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `0.3.95-community-replays.30` fixes Full Tune skipping package selection for stock cars added through Change Car. Each stock car can choose its own package; existing tunes and parts are preserved, and Back cancels an unconfirmed choice. A verified original GDS-0033 dump is still required. Only this version can submit new community Time Attack runs; existing published times and replay downloads remain available. Both online players need this version.
+**Latest update:** `0.3.95-community-replays.31` restores Automatic/Manual selection when continuing a save or changing cars, remembering each car's confirmed choice and preserving its tune and progress. Select BGM now supports deleting custom songs with confirmation, and the Custom Music folder beside the executable imports MP3, OGG and WAV tracks when the selector opens. A verified original GDS-0033 dump is still required. Only this version can submit new community Time Attack runs; existing published times and replay downloads remain available. Both online players need this version.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use a smaller changed-file patch when one is available for the installed version. Installer speed improvements take effect once `.27` or newer is installed; the first update from an older version still uses your previous updater.
 
@@ -37,7 +37,7 @@ Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcad
 - Personal saves, progression, tuning and a Full Tune option.
 - Community Time Attack rankings with downloadable driving replays.
 - Local replay library, camera controls, online opponent POV and replay engine audio.
-- Custom race music: import MP3, OGG and WAV files in Select BGM.
+- Custom race music: put MP3, OGG and WAV files in `Custom Music` beside the game, or import them in Select BGM. Select BGM also lets you delete custom tracks.
 - Graphics presets, lower output resolutions and adjustable effects/scenery detail.
 
 This project is a work in progress. Rendering fidelity, performance and multiplayer behavior continue to receive fixes; hardware and course combinations vary.

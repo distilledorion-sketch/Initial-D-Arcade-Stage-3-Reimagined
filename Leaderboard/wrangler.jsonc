@@ -8,7 +8,7 @@
   },
   "vars": {
     "RULESET": "d3-community-v1",
-    "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.30"
+    "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.31"
   },
   "rules": [
     {

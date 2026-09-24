@@ -617,7 +617,8 @@ struct App {
         loadSelectedProfile();
         savedDriverTransmission=frontend.battleProfile.u(68);
         frontend.automatic=savedDriverTransmission==0;
-        frontend.stage=fullTuneSelecting||frontend.changingSavedCar?FrontendStage::Make:FrontendStage::Mode;
+        if(fullTuneSelecting||frontend.changingSavedCar)frontend.stage=FrontendStage::Make;
+        else frontend.selectSavedCarTransmission();
     }
     void applySaveDriverName(original::OriginalBattleProfile& profile)const{
         if(activeSaveSlot<0)return;
@@ -2202,9 +2203,19 @@ struct App {
             if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
         }
         if(frontend.changingSavedCar&&previousStage==FrontendStage::Car&&frontend.stage==FrontendStage::Transmission){
-            // Every model can be selected. Preserve its saved setup, or keep
-            // a new model stock; race progression and Full Tune apply upgrades.
-            if(!finishSavedCarSelection())frontend.stage=FrontendStage::Car;
+            // Keep the candidate as a preview until its transmission is
+            // confirmed. Cancelling here must not create or replace a car.
+            frontend.selectSavedCarTransmission(true);
+        }
+        if(frontend.changingSavedCar&&previousStage==FrontendStage::Transmission&&frontend.stage==FrontendStage::Mode){
+            // Every model remains available, with its own saved parts and
+            // progress. New models stay stock until earned or requested tuning.
+            // This path owns the write; do not enqueue a duplicate commit.
+            frontend.takeDriverProfileCommit();
+            if(!finishSavedCarSelection()){
+                loadedProfileCar=-1;frontend.stage=FrontendStage::Car;
+                loadSelectedProfile();
+            }
         }
         // Driver setup and tuning progress are distinct: a saved stock car
         // still needs its own package choice before Full Tune applies parts.
