@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.33 - September 24, 2026
+
+- Corrected the frame and needle alignment of all six Miku meters, including the Silhouette styles.
+- Restored missing meter effects, including gear-change flashes, rolling digits, lightning, rotating frames, glow masks and LED sequences.
+- Audio-reactive meters now follow the game audio and custom music through a 32-band spectrum.
+- Fixed Future-style needle trails so they follow the moving RPM and speed needles.
+- Restored Halloween lantern movement when entering and leaving a drift, and corrected night artwork for meters with a single day/night RPM face set.
+- Restored authored glow colors and opacity, correcting the washed-out Steampunk lighting while keeping its electrical effects visible.
+- Meter effects use consistent presentation timing across frame rates and freeze while paused. Replay effects follow playback speed and reset cleanly when seeking or switching drivers.
+- Community Time Attack submissions require exactly `.33`. Existing scores, replays and the current season are preserved. Both online players need this version; changed-file patches are available from `.20` through `.32`.
+
 ## 0.3.95-community-replays.32 - September 24, 2026
 
 - HUD resizing now uses a precise percentage slider. Mouse wheel, buttons and controller adjustments change size by 1% without wrapping at the limits; existing saved sizes are preserved.

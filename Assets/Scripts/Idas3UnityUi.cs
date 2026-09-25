@@ -45,6 +45,8 @@ public sealed class Idas3UnityUi : MonoBehaviour
     MaterialPropertyBlock fadeProperties;
     Idas3SceneRenderer sceneRenderer;
     Idas3ArcadeHud arcadeHud;
+    readonly Idas3MeterPresentationClock meterClock=new Idas3MeterPresentationClock();
+    bool meterWasPreview;
     Idas3OrnamentRenderer ornament;
     public bool OrnamentVisible {get;private set;}
     internal Idas3OrnamentRenderer OrnamentRenderer=>ornament;
@@ -187,11 +189,26 @@ public sealed class Idas3UnityUi : MonoBehaviour
             if(ArcadePreview)telemetry=Idas3ArcadeHud.Demo(Time.unscaledTime);
             else live=Idas3ArcadeHud.Read(out telemetry);
             if(live){
+                float seconds;
+                bool reset=meterWasPreview!=ArcadePreview;
+                meterWasPreview=ArcadePreview;
+                if(ArcadePreview){meterClock.Reset();seconds=Time.unscaledTime;}
+                else if(Idas3ReplayViewer.Instance!=null&&Idas3ReplayViewer.Instance.TryGetHudTiming(out double replaySeconds,out uint replayRevision)){
+                    seconds=meterClock.UpdateReplay(replaySeconds,replayRevision,out bool rebased);
+                    reset|=rebased;
+                }
+                else{
+                    bool sampled=Idas3OrnamentRenderer.ReadTiming(out var timing);
+                    seconds=meterClock.Update(timing.simulationTicks,timing.alpha,sampled?timing.flags:0,out bool rebased);
+                    reset|=rebased;
+                }
+                if(reset){arcadeHud?.Dispose();arcadeHud=null;}
                 if(arcadeHud==null)arcadeHud=new Idas3ArcadeHud();
-                arcadeHud.Build(layout,telemetry,frame.width,frame.height,Time.unscaledTime,ArcadePreview,out hudBounds[2]);
+                arcadeHud.Build(layout,telemetry,frame.width,frame.height,seconds,ArcadePreview,out hudBounds[2]);
                 ArcadeMeterVisible=true;
             }
         }
+        if(!ArcadeMeterVisible){meterClock.Reset();meterWasPreview=false;}
         OrnamentVisible=false;
         if(layout==null||layout.hudOrnamentId==0){ornament?.Dispose();ornament=null;}
         else if(hudVisible[2]){
@@ -282,7 +299,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         background?.Release(); foreground?.Release(); background = foreground = null;
         if (backgroundCamera) Destroy(backgroundCamera.gameObject); if (foregroundCamera) Destroy(foregroundCamera.gameObject);
         if (mesh) Destroy(mesh); if (fadeMesh) Destroy(fadeMesh); if (fadeMaterial) Destroy(fadeMaterial);
-        arcadeHud?.Dispose();arcadeHud=null;
+        arcadeHud?.Dispose();arcadeHud=null;meterClock.Reset();meterWasPreview=false;
         ornament?.Dispose();ornament=null;OrnamentVisible=false;
         foreach (var material in materials.Values) Destroy(material); materials.Clear();
         foreach (var texture in textures) Destroy(texture); textures.Clear(); source = null;

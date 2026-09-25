@@ -26,6 +26,12 @@ public sealed class Idas3ArcadeHud : IDisposable
         public bool transformed,clipped;public Matrix4x4 transform;public Rect clip;
         public int gaugeMode;public Vector4 gauge;
         public Texture mask;public Matrix4x4 maskTransform;public Vector4 radial;
+        // XY scroll, Z rotation in turns, W repeat (otherwise transparent outside).
+        public Vector4 sampleMotion;
+        public int materialEffect;
+        public Texture effectTex1,effectTex2,effectTex3;
+        public Vector4 effectParams,effectParams2;
+        public Color effectColor1,effectColor2,effectColor3;
     }
     static readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
     static readonly List<Sprite> previewSprites=new List<Sprite>(64);
@@ -42,6 +48,9 @@ public sealed class Idas3ArcadeHud : IDisposable
     readonly byte[] nameBytes=new byte[128];
     Mesh mesh;Material material,additiveMaterial;
     readonly Idas3ImportedMeter imported=new Idas3ImportedMeter();
+    // Per-renderer deterministic input for GPU verification; live rendering
+    // leaves this null and reads the game's PCM spectrum.
+    internal float[] AudioBandsOverride {get;set;}
     string driverName="PLAYER";float nextNameRefresh;
     internal int SpriteCount=>sprites.Count;
     internal float DriftLampOpacity {get;private set;}
@@ -96,7 +105,7 @@ public sealed class Idas3ArcadeHud : IDisposable
                 list.Add(new Sprite{texture=Texture("Nameplate"),rect=new Rect(content.center.x-133.5f,content.y-48,267,44),uv=new Rect(0,0,1,1),color=Color.white,fill=-1});}
             return;
         }
-        renderer.Dispose();
+        if(options.hudMeterStyle==0)renderer.Dispose();
         float limit=Mathf.Max(1000,Safe(t.revLimit,8500)),rpm=Mathf.Max(0,Safe(t.rpm)),speed=Mathf.Max(0,Safe(t.speedKmh));
         int max=TachMaximum(limit);string face=max==8000?"01":max==9000?"03":max==10000?"05":"08";
         string day=(t.flags&4)!=0?"B":"A";
@@ -114,6 +123,14 @@ public sealed class Idas3ArcadeHud : IDisposable
         Add(list,"BaseFrame",-1,2,636,300);
         int gear=Mathf.Clamp(t.gear,0,6),kmh=Mathf.Clamp(Mathf.FloorToInt(speed),0,999);
         Add(list,"ShiftNum",-108,115,44,48,0,null,-1,DigitUv(gear));
+        if(options.hudMeterStyle==1){
+            // Preserve Stuttgart's established layout while adding its authored
+            // gear flash. The recovered canvas has equal extra side margins.
+            var source=Idas3ArcadeMeterCatalog.Get(1);int first=list.Count;
+            renderer.Compose(list,source,options,t,seconds,true);
+            if(source!=null)for(int i=first;i<list.Count;++i){var flash=list[i];
+                flash.transform=Matrix4x4.Translate(new Vector3((692-source.width)*.5f,0,0))*flash.transform;list[i]=flash;}
+        }
         if(kmh>=100)Add(list,"SpdNum01",-47,107,32,44,0,null,-1,DigitUv(kmh/100));
         if(kmh>=10)Add(list,"SpdNum01",-10,107,32,44,0,null,-1,DigitUv(kmh/10%10));
         Add(list,"SpdNum01",27,107,32,44,0,null,-1,DigitUv(kmh%10));
@@ -156,6 +173,7 @@ public sealed class Idas3ArcadeHud : IDisposable
         points.Add(new Vector3(bounds.x+point.x*scale,bounds.y+(point.y+shift)*scale,0));colors.Add(item.color);
     }
     internal void Build(Idas3GameOptions.Values options,Telemetry data,float width,float height,float seconds,bool preview,out Rect bounds){
+        imported.AudioBandsOverride=AudioBandsOverride;
         Compose(sprites,options,data,seconds,imported);DriftLampOpacity=available?LampOpacity(data):0;bounds=MeterBounds(width,height,options);
         DriftLampSpriteCount=options.hudMeterStyle>1?imported.DriftSpriteCount:DriftLampOpacity>0?3:0;
         if(DriftLampSpriteCount==0)DriftLampOpacity=0;
@@ -191,6 +209,13 @@ public sealed class Idas3ArcadeHud : IDisposable
         }
     }
     static void SetImportedProperties(MaterialPropertyBlock p,Sprite item){
+        p.SetFloat("_MaterialEffect",item.materialEffect);
+        p.SetTexture("_EffectTex1",item.effectTex1?item.effectTex1:Texture2D.whiteTexture);
+        p.SetTexture("_EffectTex2",item.effectTex2?item.effectTex2:Texture2D.whiteTexture);
+        p.SetTexture("_EffectTex3",item.effectTex3?item.effectTex3:Texture2D.whiteTexture);
+        p.SetVector("_EffectParams",item.effectParams);p.SetVector("_EffectParams2",item.effectParams2);
+        p.SetColor("_EffectColor1",item.effectColor1);p.SetColor("_EffectColor2",item.effectColor2);p.SetColor("_EffectColor3",item.effectColor3);
+        p.SetVector("_SampleMotion",item.sampleMotion);
         p.SetTexture("_MaskTex",item.mask?item.mask:Texture2D.whiteTexture);p.SetFloat("_MaskEnabled",item.mask?1:0);p.SetVector("_Radial",item.radial);
         p.SetVector("_MaskTransform0",new Vector4(item.maskTransform.m00,item.maskTransform.m01,item.maskTransform.m03,0));
         p.SetVector("_MaskTransform1",new Vector4(item.maskTransform.m10,item.maskTransform.m11,item.maskTransform.m13,0));
@@ -246,6 +271,13 @@ public sealed class Idas3ArcadeHud : IDisposable
             additivePreview=new Material(shader){hideFlags=HideFlags.DontSave};additivePreview.SetInt("_DstBlend",(int)BlendMode.One);}}
         var previewMaterial=item.additive?additivePreview:radialPreview;
         if(!previewMaterial)return;previewMaterial.SetFloat("_Fill",item.fill);previewMaterial.SetFloat("_Brake",item.brake?1:0);
+        previewMaterial.SetFloat("_MaterialEffect",item.materialEffect);
+        previewMaterial.SetTexture("_EffectTex1",item.effectTex1?item.effectTex1:Texture2D.whiteTexture);
+        previewMaterial.SetTexture("_EffectTex2",item.effectTex2?item.effectTex2:Texture2D.whiteTexture);
+        previewMaterial.SetTexture("_EffectTex3",item.effectTex3?item.effectTex3:Texture2D.whiteTexture);
+        previewMaterial.SetVector("_EffectParams",item.effectParams);previewMaterial.SetVector("_EffectParams2",item.effectParams2);
+        previewMaterial.SetColor("_EffectColor1",item.effectColor1);previewMaterial.SetColor("_EffectColor2",item.effectColor2);previewMaterial.SetColor("_EffectColor3",item.effectColor3);
+        previewMaterial.SetVector("_SampleMotion",item.sampleMotion);
         previewMaterial.SetTexture("_MaskTex",item.mask?item.mask:Texture2D.whiteTexture);previewMaterial.SetFloat("_MaskEnabled",item.mask?1:0);previewMaterial.SetVector("_Radial",item.radial);
         previewMaterial.SetVector("_MaskTransform0",new Vector4(item.maskTransform.m00,item.maskTransform.m01,item.maskTransform.m03,0));
         previewMaterial.SetVector("_MaskTransform1",new Vector4(item.maskTransform.m10,item.maskTransform.m11,item.maskTransform.m13,0));

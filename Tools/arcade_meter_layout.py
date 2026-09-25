@@ -196,8 +196,15 @@ class _Layout:
     def panel_rect(self, slot, desired, width, height):
         p = slot.get("properties", {})
         l, t, r, b = margin(p.get("Padding"))
-        x, w = align_axis(width, desired[0], l, r, p.get("HorizontalAlignment", "HAlign_Fill"))
-        y, h = align_axis(height, desired[1], t, b, p.get("VerticalAlignment", "VAlign_Fill"))
+        # UOverlaySlot's native constructor defaults to Left/Top. Cooked
+        # properties omit those default values; treating their absence as Fill
+        # stretches Miku's authored outer rings. Other slot classes retain their
+        # own existing defaults, and explicit Overlay Fill stays Fill.
+        overlay = slot["class"].endswith(".OverlaySlot")
+        horizontal = "HAlign_Left" if overlay else "HAlign_Fill"
+        vertical = "VAlign_Top" if overlay else "VAlign_Fill"
+        x, w = align_axis(width, desired[0], l, r, p.get("HorizontalAlignment", horizontal))
+        y, h = align_axis(height, desired[1], t, b, p.get("VerticalAlignment", vertical))
         return x, y, w, h
 
     def arrange(self, node, width, height):
@@ -359,9 +366,24 @@ def verify_audit(audit_root):
         assert all(abs(actual[i]-offset[i]) < 1e-4 for i in range(2)), (name, actual, offset)
     for id_, size in ((38, (576, 370)), (66, (576, 380)), (67, (613, 350)), (76, (576, 370))):
         assert (results[id_]["width"], results[id_]["height"]) == size, (id_, results[id_]["width"], results[id_]["height"])
+    # These source outer frames omit OverlaySlot alignment. Their native
+    # Left/Top defaults preserve the authored brush, unlike a Fill fallback.
+    miku_frames = {}
+    for id_ in range(68, 74):
+        frame_name = "DIVAMeterFrame" if id_ < 71 else "Baseframe"
+        frame = next(layer for layer in results[id_]["layers"] if layer["name"] == frame_name)
+        assert "HorizontalAlignment" not in frame["slotProperties"]
+        assert "VerticalAlignment" not in frame["slotProperties"]
+        expected_size = (512, 340) if id_ < 71 else (400, 400)
+        expected_center = (296, 196) if id_ < 71 else (220, 202)
+        center = point(frame["transform"], frame["width"]/2, frame["height"]/2)
+        assert (frame["width"], frame["height"]) == expected_size, (id_, frame_name)
+        assert all(abs(center[i]-expected_center[i]) < 1e-4 for i in range(2)), (id_, center)
+        miku_frames[id_] = {"size": expected_size, "center": center}
     assert len(results) == 87 and not {16, 33, 59}.intersection(results)
     return {"meters": len(results), "images": sum(len(r["layers"]) for r in results.values()),
             "meter31CentersRelativeToBase": {name: [centers[name][i]-origin[i] for i in range(2)] for name in expected},
+            "mikuAuthoredFrames": miku_frames,
             "warningCount": sum(len(r["warnings"]) for r in results.values())}
 
 

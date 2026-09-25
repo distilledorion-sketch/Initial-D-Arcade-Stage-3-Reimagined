@@ -12,7 +12,8 @@ Shader "Idas3/Arcade HUD Preview" {
   struct fragdata {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;float4 color:COLOR;};
   fragdata vert(app i){fragdata o;o.pos=UnityObjectToClipPos(i.vertex);o.uv=i.uv;o.color=i.color;return o;}
   float4 frag(fragdata i):SV_Target {
-   float4 result=tex2D(_MainTex,i.uv)*i.color;
+   float sampleVisible;float2 sampleUv=ImportedMeterSampleUv(i.uv,sampleVisible);
+   float4 result=ImportedMeterEffect(i.uv,tex2D(_MainTex,sampleUv)*i.color,i.color);result.a*=sampleVisible;
    if(_Fill>=0){float2 d=i.uv-.5;float phase=frac(atan2(d.y,d.x)/6.2831853-.25);
     float arc=_Brake>.5?(.375-phase)/.25:(phase-.625)/.25;float aa=max(fwidth(arc),.002);
     result.a*=step(.0001,_Fill)*(1-smoothstep(_Fill-aa,_Fill+aa,arc));}

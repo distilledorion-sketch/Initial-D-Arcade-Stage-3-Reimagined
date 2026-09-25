@@ -40,6 +40,7 @@ public sealed class Idas3UnityAudio : MonoBehaviour
     private AudioSource output;
     private AudioClip stream;
     private GameObject ownedListenerObject;
+    private Idas3MeterAudioSpectrum meterSpectrum;
     private int reading, restartRequested, callbackFailed;
     private long callbackCalls, callbackRequested, callbackReturned;
     private int callbackMinimum = int.MaxValue, callbackMaximum, callbackLast;
@@ -83,6 +84,7 @@ public sealed class Idas3UnityAudio : MonoBehaviour
         Volatile.Write(ref callbackFailed, 0);
         Idas3UnitySetAudioRunning(1); // initialize permanent ring before callback.
         Volatile.Write(ref deviceSampleRate, AudioSettings.outputSampleRate);
+        meterSpectrum=Idas3MeterAudioSpectrum.Start(deviceSampleRate);
         // A tiny silent carrier keeps AudioSource playback/lifecycle explicit.
         // Its DSP block is replaced below. A streaming PCMReader requests large
         // read-ahead bursts, unsuitable for a low-latency real-time producer.
@@ -109,6 +111,7 @@ public sealed class Idas3UnityAudio : MonoBehaviour
         {
             Interlocked.Add(ref callbackReturned, Idas3UnityReadAudioDevice(data, frames, channels, Volatile.Read(ref deviceSampleRate)));
             for (int i = frames * channels; i < data.Length; ++i) data[i] = 0;
+            meterSpectrum?.Capture(data,channels);
         }
         catch (Exception)
         {
@@ -126,6 +129,7 @@ public sealed class Idas3UnityAudio : MonoBehaviour
     }
     private void Update()
     {
+        if(initialized)meterSpectrum?.Pump(output!=null&&!output.mute?output.volume*AudioListener.volume:0);
         if (Interlocked.Exchange(ref callbackFailed, 0) != 0)
         {
             Debug.LogError("Initial D Unity audio callback failed; output stopped. Check the native plugin and its audio exports.");
@@ -143,6 +147,7 @@ public sealed class Idas3UnityAudio : MonoBehaviour
     public void StopOutput()
     {
         Volatile.Write(ref reading, 0);
+        meterSpectrum?.Stop();meterSpectrum=null;
         AudioSettings.OnAudioConfigurationChanged -= AudioConfigurationChanged;
         if (!initialized && stream == null) return;
         Idas3UnitySetAudioRunning(0);

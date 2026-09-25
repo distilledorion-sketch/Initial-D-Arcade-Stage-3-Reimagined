@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE = Path("D:/Initial D games/Extracted HUD Assets - The Arcade S3")
 GUID_NAMESPACE = uuid.UUID("7f75e250-9db1-4f2d-a979-691106676671")
 FRAME_MAXIMUMS = {1: 8000, 2: 8000, 3: 9000, 4: 9000, 5: 10000, 6: 10000, 7: 10000, 8: 13000}
+DEFAULT_MOVIE_TICKS_PER_SECOND = 24000
 
 
 def read_json(path):
@@ -46,6 +47,21 @@ def rgba(value, fallback=(1, 1, 1, 1)):
     if isinstance(value, dict):
         return list(value.get("values", [value.get(k, fallback[i]) for i, k in enumerate("RGBA")]))
     return list(fallback)
+
+
+def brush_tint(brush):
+    """Keep Slate brush tint separate from the animated widget color.
+
+    SImage multiplies brush tint after ColorAndOpacity. Foreground styles need
+    the owning Slate style and cannot be recovered from a local SpecifiedColor.
+    """
+    tint = fields(brush.get("TintColor"))
+    if not tint:
+        return {}
+    rule = str(tint.get("ColorUseRule", "UseColor_Specified"))
+    if rule.endswith("UseColor_Specified") and "SpecifiedColor" in tint:
+        return {"brushColor": rgba(tint["SpecifiedColor"])}
+    return {"brushColorUseRule": rule}
 
 
 def stable_guid(path):
@@ -163,13 +179,42 @@ class Importer:
             return {"texture": self.texture(reference), "material": "", "materialParent": "", "parameters": [], "textureBindings": [], "vectorParameters": [], "additive": False}, None
         effective = m.get("effectiveParameters", {})
         bindings = [{"name": key, "texture": self.texture(value.get("value"))} for key, value in effective.get("texture", {}).items() if value.get("value")]
+        parent = m.get("parentChain", [reference])[-1]
+        # These materials use fixed TextureSample expressions, not texture
+        # parameters. Recover their semantic frame bindings through inheritance
+        # without allowing a master default to replace an instance override.
+        fixed_samples = {}
+        if parent.endswith("/M_MeterRotation.M_MeterRotation"):
+            fixed_samples = {"T_meter_71_frame01": "Texture01", "T_meter_71_frame02": "Texture02"}
+        elif parent.endswith("/M_Meter76_EffRotation.M_Meter76_EffRotation"):
+            fixed_samples = {"T_Meter76_ShiftEff_Grow": "Texture01", "T_Meter76_ShiftEff_Line": "Texture02"}
+        elif parent.endswith("/M_Aura2.M_Aura2"):
+            fixed_samples = {"T_aura2_img_01": "AuraNoise01", "T_aura2_img_02": "AuraNoise02"}
+        elif parent.endswith("/M_AudioCapture.M_AudioCapture"):
+            fixed_samples = {"ef_mask_noise_016": "AudioNoise"}
+        elif parent.endswith("/M_Meter75_LedMotion.M_Meter75_LedMotion"):
+            fixed_samples = {"T_Meter75_LED_Effect_01": "LedEffect01", "T_Meter75_LED_Effect_02": "LedEffect02"}
+        bound_names = {b["name"] for b in bindings}
+        for material_ref in m.get("parentChain", [reference]):
+            for expression in self.materials.get(material_ref, {}).get("expressions", []):
+                if expression.get("class") != "MaterialExpressionTextureSample":
+                    continue
+                texture_ref = expression.get("properties", {}).get("Texture", "")
+                name = fixed_samples.get(texture_ref.rsplit(".", 1)[-1])
+                if name and name not in bound_names:
+                    bindings.append({"name": name, "texture": self.texture(texture_ref)})
+                    bound_names.add(name)
         by_name = {b["name"]: b["texture"] for b in bindings}
         primary = next((by_name[n] for n in ("Texture", "BaseTex", "Texture01", "Tex_Base00", "Color_Texture", "Mask_01") if by_name.get(n)), "")
         if not primary:
             primary = next((b["texture"] for b in bindings if b["texture"]), "")
+        # These source materials generate pixels rather than sampling a base
+        # image. Use the recovered neutral texture as the shader's carrier;
+        # live audio/procedural shape supplies opacity, never a dummy image.
+        if "M_Add_Ball" in parent or parent.endswith("/M_AudioCapture.M_AudioCapture"):
+            primary = self.texture("/Game/IND/UI/MasterMaterial/T_DummyWhite.T_DummyWhite")
         parameters = [{"name": key, "value": value["value"]} for key, value in effective.get("scalar", {}).items() if isinstance(value.get("value"), (int, float))]
         vectors = [{"name": key, "values": rgba(value["value"], (0, 0, 0, 0))} for key, value in effective.get("vector", {}).items() if value.get("value") is not None]
-        parent = m.get("parentChain", [reference])[-1]
         flags = m.get("blendAndDomainEvidence", [])
         additive = any(item.get("BlendMode") == "BLEND_Additive" for item in flags)
         return {"texture": primary, "material": reference, "materialParent": parent,
@@ -225,6 +270,7 @@ class Importer:
     def curves(self, detail):
         result = collections.defaultdict(list)
         sections = {s["object"]: s for s in detail["sections"]}
+        movie_scenes = {s["object"]: s for s in detail.get("movieScenes", [])}
         for animation in detail["animations"]:
             animation_times = [time for binding in animation.get("trackBindings", [])
                 for reference in binding.get("sections", [])
@@ -232,6 +278,18 @@ class Importer:
                 for time in (channel.get("times") or {}).get("values", [])]
             animation_start = min(animation_times, default=0)
             animation_end = max(animation_times, default=0)
+            movie = movie_scenes.get(animation.get("properties", {}).get("MovieScene"), {}).get("properties", {})
+            resolution = fields(movie.get("TickResolution"))
+            numerator, denominator = resolution.get("Numerator", 0), resolution.get("Denominator", 1)
+            recovered_resolution = (isinstance(numerator, (int, float)) and isinstance(denominator, (int, float))
+                and math.isfinite(numerator) and math.isfinite(denominator) and numerator > 0 and denominator > 0)
+            ticks_per_second = numerator / denominator if recovered_resolution else DEFAULT_MOVIE_TICKS_PER_SECOND
+            playback = movie.get("PlaybackRange", {})
+            playback_start = playback.get("lowerFrame", animation_start)
+            playback_end = playback.get("upperFrame", animation_end)
+            if not (isinstance(playback_start, (int, float)) and isinstance(playback_end, (int, float))
+                    and math.isfinite(playback_start) and math.isfinite(playback_end) and playback_end > playback_start):
+                playback_start, playback_end = animation_start, animation_end
             # Slot names repeat in different panels. Animation GUIDs retain the
             # owning widget name, including the clipped pedal gauges in meter76.
             owner_by_guid = {item.get("AnimationGuid", {}).get("serializedHex"): item.get("WidgetName", "")
@@ -265,6 +323,8 @@ class Importer:
                             continue
                         record = {"animation": animation["name"], "parameter": parameter, "property": prop,
                             "animationStart": animation_start, "animationEnd": animation_end,
+                            "playbackStart": playback_start, "playbackEnd": playback_end,
+                            "ticksPerSecond": ticks_per_second, "tickResolutionRecovered": recovered_resolution,
                             "times": times, "values": values, "defaultValue": default if isinstance(default, (int, float)) else 0,
                             "hasDefault": default is not None, "sourceOffset": section["serialOffsetInUexp"], "owner": None}
                         result[target].append(record)
@@ -277,6 +337,8 @@ class Importer:
             return "rpm" + str(10 ** (int(name[-1]) - 1))
         if name == "GearRate01":
             return "gear"
+        if any(token in name for token in ("GearRateEffect", "GearRate01_Blur", "GearRate_Roll")):
+            return "gearRoll" if "GearRate_Roll" in name else "gearEffect"
         if name == "CarMode":
             return "transmission"
         if "Drift" in name and "Corner" not in name:
@@ -331,7 +393,14 @@ class Importer:
             props = item["imageProperties"]
             brush = fields(props.get("Brush"))
             source_resource = brush.get("ResourceObject", "")
-            mat, material = self.material(source_resource)
+            runtime_resource = source_resource
+            if result["id"] in (71, 72, 73) and name == "CenterPin":
+                # Each cooked constructor registers this image through
+                # Setup_AddDayChangeTexture_SoftRef with Meter00 A/B. Meter49
+                # is only the uninitialized template brush. The generic day/
+                # night resolver below then retains the proven B alternative.
+                runtime_resource = "/Game/IND/UI/Race/Meter/00/Texture/T_Meter00_PointRmp_A.T_Meter00_PointRmp_A"
+            mat, material = self.material(runtime_resource)
             curves = [dict(c) for c in all_curves.get(name, [])]
             ancestors = item.get("parentGroups", [])
             for group in ancestors:
@@ -385,6 +454,11 @@ class Importer:
                 "atlasCols": cols, "atlasRows": rows, "digitOffset": 0,
                 "uv": uv, "curves": curves, "parents": [self.owner(g) for g in ancestors], "retainers": inherited_retainer,
                 "disabledReason": "", "sourceResource": source_resource, "sourceWidget": item.get("source", "")}
+            if runtime_resource != source_resource:
+                layer["runtimeResource"] = runtime_resource
+            layer.update(brush_tint(brush))
+            if "brushColorUseRule" in layer:
+                result["limitations"].append("%s: brush %s requires inherited Slate style; no local tint is inferred." % (name, layer["brushColorUseRule"]))
             layer.update(self.transform_baseline(props))
             layer["switchers"] = item.get("switchers", [])
             layer["textureVariants"], layer["nightTexture"] = self.variants(layer["texture"], role)
@@ -393,17 +467,15 @@ class Importer:
                 layer["angleMin"], layer["angleMax"] = rotation["values"][0], rotation["values"][-1]
             if "CornerSpeed" in name or any("CornerSpeed" in g["name"] for g in ancestors):
                 layer["disabledReason"] = "Corner-entry/exit speed telemetry is not available in this port."
-            elif "AudioVisualizer" in name or "AudioCapture" in mat["materialParent"]:
-                layer["disabledReason"] = "Audio-spectrum render target requires live FFT and capture; no fabricated animation."
             elif role == "drift" and (any(c in name for c in ("Blue", "Orange", "Red"))
                     or any(g["name"] in ("Blue", "Orange", "Red") for g in ancestors)):
                 layer["disabledReason"] = "Only the source green drift color is enabled; severity colors are not inferred."
-            elif "GearRateEffect" in name or "GearRate01_Blur" in name or "GearRate_Roll" in name or "SpeedRateEffect" in name:
-                layer["disabledReason"] = "Transient gear/speed event effect requires source event state; retained but not fabricated."
+            elif "SpeedRateEffect" in name:
+                layer["disabledReason"] = "Speed event trigger is not recovered; retained but not fabricated."
+            elif role in ("gearEffect", "gearRoll") and not any("Gear_Change" in c["animation"] and c["values"] for c in curves):
+                layer["disabledReason"] = "Gear event effect has no recovered gear-change curve."
             elif not layer["texture"]:
                 layer["disabledReason"] = "No resolved texture: layout-only widget or opaque procedural material."
-            elif "Add_Ball" in mat["materialParent"]:
-                layer["disabledReason"] = "Procedural source material has no retained executable graph."
             if material and any(key in mat["materialParent"] for key in ("Homography", "AudioCapture", "Aura2", "UVScroll", "EffRotation", "LedMotion")):
                 result["limitations"].append("%s: cooked %s effect graph is not fully reconstructable." % (name, mat["materialParent"].split("/")[-1]))
             result["layers"].append(layer)
@@ -439,6 +511,9 @@ class Importer:
             "notes": ["Only registry-selected generated widget trees are imported; legacy unsuffixed00-15 are excluded.",
                 "Copied original converted PNG and HDR bytes are SHA256-verified. No contact sheets or generated artwork.",
                 "Source color/visibility/animation channels are preserved; stripped shader operators and unavailable event inputs remain limitations.",
+                "MovieScene PlaybackRange supplies event and loop duration. Missing TickResolution uses Unreal Engine 4's default 24000 ticks/second, not the display frame rate; tickResolutionRecovered marks the evidence per curve.",
+                "Float-channel interpolation and tangent data were retained only by hash in the source audit. Key values are preserved; runtime interpolation remains linear rather than claiming source spline fidelity.",
+                "Meter71-73 and76 fixed texture samples are recovered from inherited material expressions; material-family adapters do not reproduce all stripped shader operations.",
                 "Frame indices01/02=8000,03/04=9000,05/06/07=10000,08=13000 follow recovered scale families; per-car red-zone selection remains a port choice."]}
         write_json(self.verification / "import-manifest.json", report)
         print(json.dumps({k: report[k] for k in ("meterCount", "pngCount", "hdrCount", "textureBytes", "unresolvedTextureReferences")}))

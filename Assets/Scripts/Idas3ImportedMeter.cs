@@ -12,6 +12,16 @@ internal sealed class Idas3ImportedMeter : IDisposable
     sealed class LoadedTexture {public Texture2D value;public int users;}
     static readonly Dictionary<string,LoadedTexture> pool=new Dictionary<string,LoadedTexture>();
     readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
+    readonly Idas3MeterAnimationState animationState=new Idas3MeterAnimationState();
+    readonly Idas3MeterMaterialAnimation materialAnimation=new Idas3MeterMaterialAnimation();
+    readonly Idas3MeterNeedleTrails needleTrails=new Idas3MeterNeedleTrails();
+    readonly Idas3HalloweenLanternAnimation lanternAnimation=new Idas3HalloweenLanternAnimation();
+    readonly float[] audioBands=new float[Idas3MeterAudioSpectrum.BandCount];
+    readonly Color32[] audioPixels=new Color32[Idas3MeterAudioSpectrum.BandCount];
+    Texture2D audioTexture;
+    float audioTime,audioEnergy;
+    long audioRevision=-1;
+    internal float[] AudioBandsOverride {get;set;}
     Meter current;
     internal int DriftSpriteCount {get;private set;}
     internal static int ResidentTextureCount=>pool.Count;
@@ -31,7 +41,22 @@ internal sealed class Idas3ImportedMeter : IDisposable
             if(!pair.Value||!pool.TryGetValue(pair.Key,out var entry))continue;
             if(--entry.users==0){pool.Remove(pair.Key);Resources.UnloadAsset(entry.value);}
         }
-        textures.Clear();current=null;
+        textures.Clear();current=null;animationState.Reset();materialAnimation.Reset();needleTrails.Reset();lanternAnimation.Reset();
+        if(audioTexture){if(Application.isPlaying)UnityEngine.Object.Destroy(audioTexture);else UnityEngine.Object.DestroyImmediate(audioTexture);}
+        audioTexture=null;audioEnergy=0;audioRevision=-1;audioTime=0;
+    }
+    void UpdateAudio(float seconds){
+        bool sample=AudioBandsOverride!=null||!audioTexture||
+            (seconds!=audioTime&&audioRevision!=Idas3MeterAudioSpectrum.Revision)||
+            (audioEnergy>0&&Idas3MeterAudioSpectrum.IsSilent);
+        audioTime=seconds;if(!sample)return;
+        if(AudioBandsOverride!=null){for(int i=0;i<audioBands.Length;++i)audioBands[i]=i<AudioBandsOverride.Length?AudioBandsOverride[i]:0;}
+        else Idas3MeterAudioSpectrum.CopyBands(audioBands);
+        audioEnergy=0;
+        for(int i=0;i<audioBands.Length;++i){float value=Mathf.Clamp01(Safe(audioBands[i]));audioEnergy=Mathf.Max(audioEnergy,value);
+            byte level=(byte)Mathf.RoundToInt(value*255);audioPixels[i]=new Color32(level,level,level,255);}
+        if(!audioTexture)audioTexture=new Texture2D(audioBands.Length,1,TextureFormat.RGBA32,false,true){name="Live meter spectrum",filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp,hideFlags=HideFlags.HideAndDontSave};
+        audioTexture.SetPixels32(audioPixels);audioTexture.Apply(false,false);audioRevision=Idas3MeterAudioSpectrum.Revision;
     }
     internal static Matrix4x4 Matrix(float[] values,float x=0,float y=0){
         var result=Matrix4x4.identity;
@@ -58,6 +83,14 @@ internal sealed class Idas3ImportedMeter : IDisposable
         return fallback;
     }
     static Color Tint(float[] value)=>value!=null&&value.Length>=4?new Color(Safe(value[0],1),Safe(value[1],1),Safe(value[2],1),Safe(value[3],1)):Color.white;
+    static Color MaterialColor(Layer layer,string name,Color fallback){
+        if(layer.vectorParameters!=null)foreach(var value in layer.vectorParameters)if(value.name==name)return Tint(value.values);
+        return fallback;
+    }
+    Texture2D BoundTexture(Layer layer,string name){
+        if(layer.textureBindings!=null)foreach(var binding in layer.textureBindings)if(binding.name==name)return Texture(binding.texture);
+        return null;
+    }
     static bool Contains(string value,string part)=>value!=null&&value.IndexOf(part,StringComparison.OrdinalIgnoreCase)>=0;
     static float AnimationProgress(string name,Idas3ArcadeHud.Telemetry t,float seconds){
         if(Contains(name,"CenterPin"))return Mathf.Clamp01(Safe(t.rpm)/Idas3ArcadeHud.TachMaximum(t.revLimit));
@@ -66,25 +99,28 @@ internal sealed class Idas3ImportedMeter : IDisposable
         if(Contains(name,"Brake"))return Mathf.Clamp01(Safe(t.brake));
         if(Contains(name,"Drift"))return Idas3ArcadeHud.LampOpacity(t);
         if(Contains(name,"Rev"))return Mathf.InverseLerp(t.revLimit*.92f,t.revLimit,t.rpm);
-        if(Contains(name,"LED"))return Mathf.Repeat(seconds,.8f)/.8f;
         return 0;
     }
-    static string SelectTexture(Layer layer,Idas3ArcadeHud.Telemetry t){
+    internal static string SelectTexture(Layer layer,Idas3ArcadeHud.Telemetry t){
         string chosen=(t.flags&4)!=0&&!string.IsNullOrEmpty(layer.nightTexture)?layer.nightTexture:layer.texture;
         int max=Idas3ArcadeHud.TachMaximum(t.revLimit),score=-1;
         bool night=(t.flags&4)!=0,automatic=(t.flags&2)!=0;
         if(layer.textureVariants!=null)foreach(var v in layer.textureVariants){
-            if(string.IsNullOrEmpty(v.texture)||(!string.IsNullOrEmpty(v.day)&&v.day!=(night?"B":"A"))||
+            if(string.IsNullOrEmpty(v.texture)||
                 (!string.IsNullOrEmpty(v.state)&&v.state!=(automatic?"automatic":"manual")))continue;
             if(v.maxRpm>0&&v.maxRpm!=max)continue;
-            int value=(v.maxRpm>0?4:0)+(!string.IsNullOrEmpty(v.day)?2:0)+(!string.IsNullOrEmpty(v.state)?1:0);
+            // Some source sets (including Halloween) supply only A frames.
+            // Keep the matching RPM scale at night instead of falling back to
+            // the serialized 8,000 face; prefer the requested light variant
+            // whenever the matching scale has one.
+            int value=(v.maxRpm>0?4:0)+(v.day==(night?"B":"A")?2:0)+(!string.IsNullOrEmpty(v.state)?1:0);
             if(value>score){score=value;chosen=v.texture;}
         }
         return chosen;
     }
     static int Digit(string role,Idas3ArcadeHud.Telemetry t){
         int speed=Mathf.Clamp(Mathf.FloorToInt(Safe(t.speedKmh)),0,999),rpm=Mathf.Clamp(Mathf.FloorToInt(Safe(t.rpm)),0,19999);
-        switch(role){case "gear":return Mathf.Clamp(t.gear,0,6);case "speed100":return speed>=100?speed/100:10;
+        switch(role){case "gear":case "gearEffect":return Mathf.Clamp(t.gear,0,6);case "speed100":return speed>=100?speed/100:10;
             case "speed10":return speed>=10?speed/10%10:10;case "speed1":return speed%10;
             case "rpm10000":return rpm>=10000?rpm/10000%10:10;case "rpm1000":return rpm/1000%10;case "rpm100":return rpm/100%10;case "rpm10":return rpm/10%10;case "rpm1":return rpm%10;default:return -1;}
     }
@@ -99,13 +135,17 @@ internal sealed class Idas3ImportedMeter : IDisposable
     }
     static TransformState Initial(Layer l)=>new TransformState{x=l.translationX,y=l.translationY,angle=l.angle,sx=l.scaleX,sy=l.scaleY,shx=l.shearX,shy=l.shearY,opacity=l.ownOpacity,colorAlpha=1,width=l.width,height=l.height,visible=!Contains(l.visibility,"Hidden")&&!Contains(l.visibility,"Collapsed")};
     static TransformState Initial(Idas3ArcadeMeterCatalog.Owner o)=>new TransformState{x=o.translationX,y=o.translationY,angle=o.angle,sx=o.scaleX,sy=o.scaleY,shx=o.shearX,shy=o.shearY,opacity=o.opacity,colorAlpha=o.colorAlpha,width=o.width,height=o.height,visible=true};
-    static bool Active(Curve c){
-        if(Contains(c.animation,"Corner")||Contains(c.animation,"LowLamp")||Contains(c.animation,"Gear_Change"))return false;
+    bool Progress(Curve c,Idas3ArcadeHud.Telemetry data,float seconds,out float progress){
+        progress=0;
+        if(lanternAnimation.TryProgress(c,out progress))return true;
+        if(Contains(c.animation,"Gear_Change"))return animationState.TryProgress(c,out progress);
+        if(Contains(c.animation,"LED"))return false; // Authored LED programs use the material clock.
+        if(Contains(c.animation,"Corner")||Contains(c.animation,"LowLamp"))return false;
         // The duplicated brake animation is an unused copy of the accelerator
         // sweep, conflicting with the canonical left-hand brake mask.
         if(c.animation=="Anim_BrakePin_2_INST")return false;
         if((Contains(c.animation,"DriftLamp")||Contains(c.animation,"RevLamp"))&&!Contains(c.animation,"Stay"))return false;
-        return true;
+        progress=AnimationProgress(c.animation,data,seconds);return true;
     }
     static void Apply(ref TransformState s,string property,float value){
         switch(property){case "Rotation":s.angle=value;break;case "Translation.X":s.x=value;break;case "Translation.Y":s.y=value;break;
@@ -121,18 +161,35 @@ internal sealed class Idas3ImportedMeter : IDisposable
     static Rect Intersect(Rect a,Rect b){float x=Mathf.Max(a.xMin,b.xMin),y=Mathf.Max(a.yMin,b.yMin);
         return new Rect(x,y,Mathf.Max(0,Mathf.Min(a.xMax,b.xMax)-x),Mathf.Max(0,Mathf.Min(a.yMax,b.yMax)-y));}
 
-    internal void Compose(List<Idas3ArcadeHud.Sprite> result,Meter meter,Idas3GameOptions.Values options,Idas3ArcadeHud.Telemetry data,float seconds){
+    internal void Compose(List<Idas3ArcadeHud.Sprite> result,Meter meter,Idas3GameOptions.Values options,Idas3ArcadeHud.Telemetry data,float seconds,bool gearEffectsOnly=false){
         if(current!=meter){Dispose();current=meter;}
+        animationState.Update(meter,data,seconds);materialAnimation.Update(meter,data,seconds);needleTrails.Update(meter,data,seconds);lanternAnimation.Update(meter,data,seconds);seconds=Safe(seconds);
         DriftSpriteCount=0;
         if(meter==null)return;
+        if(meter.id==68||meter.id==69||meter.id==70||meter.id==74)UpdateAudio(seconds);
         foreach(var layer in meter.layers){
             if(layer==null||layer.role=="disabled"||!string.IsNullOrEmpty(layer.disabledReason)||layer.width<=0||layer.height<=0)continue;
             bool selected=true;
+            bool led=Idas3MeterMaterialAnimation.IsLed(layer);
             if(layer.switchers!=null)foreach(var choice in layer.switchers)
+                if(led&&choice.name=="LED_Top")continue;
+                else
                 if(choice.index!=(choice.name=="DriftLampColor"?1:choice.activeIndex)){selected=false;break;}
             if(!selected)continue;
+            Rect ledUv=default;
+            if(led&&!materialAnimation.TryLed(layer,out ledUv))continue;
             string role=layer.role??"static";
-            if((role=="accel"||role=="brake")&&!options.hudPedalIndicators)continue;
+            if(gearEffectsOnly&&role!="gearEffect"&&role!="gearRoll")continue;
+            if(role=="gearEffect"||role=="gearRoll"){
+                bool playing=false;
+                if(layer.curves!=null)foreach(var curve in layer.curves)
+                    if(Contains(curve.animation,"Gear_Change")&&animationState.TryProgress(curve,out _)){playing=true;break;}
+                if(!playing)continue;
+            }
+            // Steampunk's coil decoration reacts to pedals but is not itself
+            // a pedal readout. Hiding readouts must not remove its lightning.
+            bool pedalDecoration=meter.id==66&&layer.name.StartsWith("coil_",StringComparison.Ordinal);
+            if((role=="accel"||role=="brake")&&!options.hudPedalIndicators&&!pedalDecoration)continue;
             if(role=="low")continue; // No recovered low-rev activation rule.
             float opacity=1;
             if(role=="drift")opacity=Idas3ArcadeHud.LampOpacity(data);
@@ -152,13 +209,14 @@ internal sealed class Idas3ImportedMeter : IDisposable
             var matrix=Matrix(layer.transform,layer.x,layer.y);
             var initial=Initial(layer);var state=initial;
             float percentage=Scalar(layer,"Percentage",1),start=Scalar(layer,"StartPosition",0),width=Scalar(layer,"Width",1);
+            float scrollU=Scalar(layer,"U Scroll",0),scrollV=Scalar(layer,"V Scroll",0),animatedIndex=-1;
             bool animatedRotation=false,animatedPercentage=false,animatedMaterial=false,clipped=false;
             Rect clip=default;float ancestorAlpha=1;
             if(layer.parents!=null)foreach(var owner in layer.parents){
                 var original=Initial(owner);var changed=original;
                 if(layer.curves!=null)foreach(var curve in layer.curves){
-                    if(curve.owner?.name!=owner.name||!Active(curve))continue;
-                    Apply(ref changed,curve.property,Evaluate(curve,AnimationProgress(curve.animation,data,seconds)));
+                    if(curve.owner?.name!=owner.name||!Progress(curve,data,seconds,out float progress))continue;
+                    Apply(ref changed,curve.property,Evaluate(curve,progress));
                 }
                 ancestorAlpha*=changed.opacity*changed.colorAlpha;
                 var origin=Matrix(owner.transform);
@@ -168,15 +226,21 @@ internal sealed class Idas3ImportedMeter : IDisposable
             }
             if(!clipped&&layer.clipRect!=null&&layer.clipRect.Length==4){clip=new Rect(layer.clipRect[0],layer.clipRect[1],layer.clipRect[2],layer.clipRect[3]);clipped=true;}
             if(layer.curves!=null)foreach(var curve in layer.curves){
-                if(!Active(curve)||curve.owner!=null&&!string.IsNullOrEmpty(curve.owner.name)&&curve.owner.name!=layer.name)continue;
-                float value=Evaluate(curve,AnimationProgress(curve.animation,data,seconds));
+                if(curve.owner!=null&&!string.IsNullOrEmpty(curve.owner.name)&&curve.owner.name!=layer.name||!Progress(curve,data,seconds,out float progress))continue;
+                float value=Evaluate(curve,progress);
                 Apply(ref state,curve.property,value);
                 if(curve.property=="Rotation")animatedRotation=true;
                 switch(curve.property){case "Color.R":color.r=value;break;case "Color.G":color.g=value;break;case "Color.B":color.b=value;break;case "Color.A":color.a=value;state.colorAlpha=1;break;}
                 if(curve.parameter=="Percentage"){percentage=value;animatedPercentage=true;animatedMaterial=true;}
                 else if(curve.parameter=="StartPosition"){start=value;animatedMaterial=true;}
                 else if(curve.parameter=="Width"){width=value;animatedMaterial=true;}
+                else if(curve.parameter=="U Scroll")scrollU=value;
+                else if(curve.parameter=="V Scroll")scrollV=value;
+                else if(curve.parameter=="Index")animatedIndex=value;
             }
+            // Numbered Future trails are driven by the owning needle's history
+            // in the source widget, not by standalone animation tracks.
+            if(needleTrails.TryRotation(layer,out float trailAngle)){state.angle=trailAngle;animatedRotation=true;}
             if(!animatedRotation&&layer.angleMin!=layer.angleMax){
                 float phase=role=="rpm"?data.rpm/Idas3ArcadeHud.TachMaximum(data.revLimit):role=="speed"?data.speedKmh/240:role=="accel"?data.throttle:role=="brake"?data.brake:0;
                 state.angle=Mathf.Lerp(layer.angleMin,layer.angleMax,Mathf.Clamp01(phase));
@@ -184,11 +248,34 @@ internal sealed class Idas3ImportedMeter : IDisposable
             color.a*=state.opacity*ancestorAlpha;
             // These source widgets start hidden and are revealed by source events.
             // Native drift opacity/current rev warning supply those events here.
-            if(role=="drift"||role=="rev"){state.visible=true;color.a=opacity;}
+            if(role=="drift"||role=="rev"){
+                state.visible=true;
+                // Steampunk's Stay curves already reveal its lamp group and
+                // set its light intensity. Activation must preserve that alpha,
+                // including its disabled negative-opacity white overlay.
+                color.a=meter.id==66?Mathf.Clamp01(color.a)*opacity:opacity;
+            }
+            // Slate multiplies the brush tint after the animated widget color.
+            // Keeping it separate preserves Steampunk's orange glass/glows and
+            // source alpha even when a Color track supplies a white highlight.
+            color*=Tint(layer.brushColor);
+            // Reconstruct the stripped blink operator using its retained range
+            // and rate. Authored artwork and additive blending remain intact.
+            if(Contains(layer.materialParent,"M_Blink_Add01."))
+                color.a*=Mathf.Clamp01(Scalar(layer,"Position",0)+Scalar(layer,"Amplitude",1)*Mathf.Sin(seconds*Scalar(layer,"BlinkSpeed",.5f)*Mathf.PI*2))*Scalar(layer,"BlinkOpacity",1);
             if(!state.visible||color.a<=0)continue;
             matrix*=initial.Local(layer.width*layer.pivotX,layer.height*layer.pivotY).inverse*state.Local(layer.width*layer.pivotX,layer.height*layer.pivotY);
             var uv=layer.uv!=null&&layer.uv.Length==4?new Rect(layer.uv[0],layer.uv[1],layer.uv[2],layer.uv[3]):new Rect(0,0,1,1);
+            if(led)uv=ledUv;
             int digit=Digit(role,data);
+            if(role=="gearRoll"&&animatedIndex>=0)digit=Mathf.FloorToInt(animatedIndex);
+            if(Contains(layer.materialParent,"FlipBook_Loop")){
+                int cells=Math.Max(1,layer.atlasCols*layer.atlasRows);
+                // The source retains FlipBook and Speed but strips the time
+                // operator. Interpret Speed as cycles per second, independent
+                // of render FPS, rather than displaying only its first cell.
+                digit=Mathf.Min(cells-1,Mathf.FloorToInt(Mathf.Repeat(seconds*Scalar(layer,"Speed",1),1)*cells));
+            }
             if(digit>=0){
                 int columns=Math.Max(1,layer.atlasCols),rows=Math.Max(1,layer.atlasRows),index=digit+layer.digitOffset;
                 if(index<0||index>=columns*rows)continue;
@@ -225,8 +312,42 @@ internal sealed class Idas3ImportedMeter : IDisposable
             if(Contains(layer.materialParent,"CircleGaugeGradation"))
                 radial=new Vector4(Scalar(layer,"MaskRadius",.5f),Scalar(layer,"MaskDensity",8),Scalar(layer,"OpacityIntensity",1),0);
             if(role=="drift")++DriftSpriteCount;
-            result.Add(new Idas3ArcadeHud.Sprite{texture=texture,rect=new Rect(0,0,layer.width,layer.height),uv=uv,color=color,fill=-1,additive=additive,
-                transformed=true,transform=matrix,gaugeMode=gaugeMode,gauge=gauge,clipped=clipped,clip=clip,mask=mask,maskTransform=maskTransform,radial=radial});
+            var sprite=new Idas3ArcadeHud.Sprite{texture=texture,rect=new Rect(0,0,layer.width,layer.height),uv=uv,color=color,fill=-1,additive=additive,
+                transformed=true,transform=matrix,gaugeMode=gaugeMode,gauge=gauge,clipped=clipped,clip=clip,mask=mask,maskTransform=maskTransform,radial=radial};
+            if(Contains(layer.materialParent,"M_Add_Ball")){
+                sprite.materialEffect=1;
+                sprite.effectParams=new Vector4(Scalar(layer,"S Radius",.2f),Scalar(layer,"M Radius",.3f),Scalar(layer,"L Radius",.5f),Scalar(layer,"Diamond",5));
+                float strength=1;
+                if(Contains(layer.materialParent,"Ball_Blink"))strength=(.55f+.45f*Mathf.Sin(seconds*Scalar(layer,"Speed",3)*Mathf.PI*2))*(.8f+.2f*Mathf.Sin(seconds*Scalar(layer,"Speed_2",.1f)*Mathf.PI*2));
+                if(Contains(layer.name,"Visualizerbase"))strength*=audioEnergy*.4f;
+                sprite.effectParams2=new Vector4(Scalar(layer,"S Density",.6f),Scalar(layer,"M Density",.5f),Scalar(layer,"L Density",.6f),strength);
+            }else if(Contains(layer.materialParent,"M_Aura2.")){
+                sprite.materialEffect=2;sprite.effectTex1=BoundTexture(layer,"Mask_02");sprite.effectTex2=BoundTexture(layer,"AuraNoise01");sprite.effectTex3=BoundTexture(layer,"AuraNoise02");
+                sprite.effectParams=new Vector4(seconds*Scalar(layer,"Speed",1),Scalar(layer,"TexRotateSine",.3f),Scalar(layer,"ColorSine",.05f),0);
+                sprite.effectColor1=MaterialColor(layer,"BaseColor",Color.red);sprite.effectColor2=MaterialColor(layer,"LightColor",Color.red);sprite.effectColor3=MaterialColor(layer,"HighLight",Color.yellow);
+            }else if(Contains(layer.materialParent,"M_AudioCapture.")){
+                sprite.materialEffect=3;sprite.effectTex1=audioTexture;sprite.effectTex2=BoundTexture(layer,"AudioNoise");
+                sprite.effectColor1=MaterialColor(layer,"Color1",Color.cyan);sprite.effectColor2=MaterialColor(layer,"Color2",Color.green);
+            }else if(led){sprite.materialEffect=4;sprite.effectTex1=BoundTexture(layer,"LedEffect01");sprite.effectTex2=BoundTexture(layer,"LedEffect02");}
+            if(Contains(layer.materialParent,"M_UVScroll."))sprite.sampleMotion=new Vector4(scrollU,-scrollV,0,1);
+            if(Contains(layer.materialParent,"MeterRotation")||Contains(layer.materialParent,"EffRotation")){
+                // The recovered materials contain two fixed/parameterized
+                // textures. Recompose both, with their authored tint and rate.
+                // This is a translucent reconstruction, not the stripped graph.
+                var first=BoundTexture(layer,"Texture01");var second=BoundTexture(layer,"Texture02");
+                if(first)sprite.texture=first;
+                sprite.color=color*MaterialColor(layer,"Color1",Color.white);
+                sprite.sampleMotion=new Vector4(0,0,materialAnimation.Rotation(layer,"frame01speed",Scalar(layer,"frame01speed",0)),0);
+                result.Add(sprite);
+                if(second){
+                    sprite.texture=second;
+                    var tint=Contains(layer.materialParent,"EffRotation")?
+                        Color.Lerp(MaterialColor(layer,"Color2-1",Color.white),MaterialColor(layer,"Color2-2",Color.white),.5f):MaterialColor(layer,"Color2",Color.white);
+                    sprite.color=color*tint;
+                    sprite.sampleMotion=new Vector4(0,0,materialAnimation.Rotation(layer,"frame02speed",Scalar(layer,"frame02speed",Scalar(layer,"frame01speed",0))),0);
+                    result.Add(sprite);
+                }
+            }else result.Add(sprite);
         }
     }
     static int floatModulo(int value,int divisor)=>value%divisor;

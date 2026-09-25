@@ -19,7 +19,7 @@ public static class Idas3ArcadeMeterCatalog
         public float x,y,width,height,pivotX=.5f,pivotY=.5f,angle,angleMin,angleMax;
         public float opacity=1;
         public float ownOpacity=1,translationX,translationY,scaleX=1,scaleY=1,shearX,shearY;
-        public float[] transform,color,uv,clipRect;
+        public float[] transform,color,brushColor,uv,clipRect;
         public bool additive;
         public int atlasCols=1,atlasRows=1,digitOffset;
         public Variant[] textureVariants=Array.Empty<Variant>();
@@ -46,6 +46,8 @@ public static class Idas3ArcadeMeterCatalog
         public float[] times,values;
         public float defaultValue;
         public float animationStart,animationEnd;
+        public float playbackStart,playbackEnd,ticksPerSecond=24000;
+        public bool tickResolutionRecovered;
         public Owner owner;
     }
     [Serializable] public sealed class Owner {

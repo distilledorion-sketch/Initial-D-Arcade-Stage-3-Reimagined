@@ -107,7 +107,7 @@ public static class Idas3MeterCatalogChecks
                 if(layer.width==0||layer.height==0)++result.zeroAreaLayers;
                 if(layer.role=="gear"||layer.role=="rpm"||layer.role=="speed"||(layer.role??"").StartsWith("speed",StringComparison.Ordinal)||(layer.role??"").StartsWith("rpm",StringComparison.Ordinal))
                     Require(layer.width>0&&layer.height>0,label+" is a zero-area core meter layer");
-                Numbers(layer.transform,label+" transform",6);Numbers(layer.color,label+" color",4);Numbers(layer.uv,label+" UV",4);Numbers(layer.clipRect,label+" clip",4);
+                Numbers(layer.transform,label+" transform",6);Numbers(layer.color,label+" color",4);Numbers(layer.brushColor,label+" brush color",4);Numbers(layer.uv,label+" UV",4);Numbers(layer.clipRect,label+" clip",4);
                 Require(layer.atlasCols>0&&layer.atlasRows>0,label+" has an invalid atlas");
                 Texture(layer.texture,label,true);Texture(layer.nightTexture,label);
                 if(layer.textureBindings!=null)foreach(var binding in layer.textureBindings){Require(binding!=null,label+" has a null texture binding");Texture(binding.texture,label+" material binding");}

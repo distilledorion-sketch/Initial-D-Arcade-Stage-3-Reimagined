@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Current release:** `0.3.95-community-replays.32` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.33` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `0.3.95-community-replays.32` adds 87 custom meter styles and 280 hanging ornaments, with flexible chains, smoother motion above 60 FPS, independent HUD placement and precise 1% size sliders. It also adds the optional Natural camera, cleans up completed update files, and corrects Time Attack analysis maps. A verified original GDS-0033 dump is still required. Only this version can submit new community Time Attack runs; existing published times and replay downloads remain available. Both online players need this version.
+**Latest update:** `0.3.95-community-replays.33` corrects Miku meter alignment, restores missing tachometer effects and Halloween lantern animation, and fixes washed-out Steampunk glow colors. Audio-reactive meters follow game audio and custom music; needle trails and replay animation timing are corrected. A verified original GDS-0033 dump is still required. Only this version can submit new community Time Attack runs; existing published times and replay downloads remain available. Both online players need this version.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use a smaller changed-file patch when one is available for the installed version. Installer speed improvements take effect once `.27` or newer is installed; the first update from an older version still uses your previous updater.
 

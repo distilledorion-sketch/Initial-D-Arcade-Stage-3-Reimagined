@@ -8,6 +8,13 @@ public static class Idas3MeterCatalogBuild
     public static void VerifyOnly(){
         Idas3MeterLayoutBounds.RecalculateForVerification();
         Idas3HudCustomizationChecks.Run();
+        Debug.Log(Idas3MeterAnimationStateChecks.RunChecks());
+        Debug.Log(Idas3MeterPresentationClockChecks.RunChecks());
+        Debug.Log(Idas3MeterAudioSpectrumChecks.RunChecks());
+        Debug.Log(Idas3MeterMaterialAnimationChecks.RunChecks());
+        Debug.Log(Idas3MeterNeedleTrailChecks.RunChecks());
+        Debug.Log(Idas3HalloweenMeterChecks.RunChecks());
+        Debug.Log(Idas3HalloweenLanternChecks.RunChecks());
         foreach(string name in new[]{"ArcadeHud","ArcadeHudPreview"}){
             var shader=Resources.Load<Shader>(name);
             if(shader==null)throw new InvalidOperationException("HUD shader resource is missing: "+name);
@@ -19,6 +26,12 @@ public static class Idas3MeterCatalogBuild
             }
         }
         string output=Idas3MeterCatalogChecks.Run();
+        Idas3MeterEffectsChecks.Run();
+        Idas3MeterRemainingEffectsChecks.Run();
+        Idas3MeterAlignmentChecks.Run();
+        Idas3MikuMeterChecks.Run();
+        Idas3HalloweenMeterGpuChecks.Run();
+        Idas3SteampunkLightingChecks.Run();
         const string bakedPath="Assets/Resources/ArcadeHud/Catalog/layout-bounds.json";
         File.WriteAllText(bakedPath,Idas3MeterLayoutBounds.ExportVerifiedBake());
         AssetDatabase.ImportAsset(bakedPath,ImportAssetOptions.ForceSynchronousImport|ImportAssetOptions.ForceUpdate);

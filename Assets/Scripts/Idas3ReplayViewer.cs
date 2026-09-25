@@ -26,6 +26,14 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     bool audioWasPlaying;
     bool initialized, playing, startupInitialized;
     double seconds, lastUpdateAt;
+    uint hudTimingRevision;
+    internal bool TryGetHudTiming(out double position,out uint revision){
+        position=seconds;revision=hudTimingRevision;return initialized&&replay!=null;
+    }
+    void Seek(double position){
+        seconds=Math.Max(0,Math.Min(replay.Duration,position));
+        unchecked{++hudTimingRevision;}
+    }
     float rate = 1, orbit;
     int cameraMode;
     string message, filename;
@@ -137,6 +145,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     void ConfigurePerspective()
     {
         SilenceAudio();audioSeconds=double.NaN;
+        unchecked{++hudTimingRevision;}
         var chosen=Viewed;var m=chosen.Metadata;
         if(Idas3ReplayStart(m.condition,m.weather,m.night,m.car,m.manual)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if(chosen.Detailed&&Idas3ReplayAppearance(chosen.Appearance,chosen.Appearance.Length)!=1)throw new InvalidOperationException(Idas3Native.Error());
@@ -257,10 +266,10 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             if (keyboard?.hKey.wasPressedThisFrame == true || pad?.selectButton.wasPressedThisFrame == true) controlsVisible = !controlsVisible;
             if (picker == null && (keyboard?.spaceKey.wasPressedThisFrame == true || pad?.buttonSouth.wasPressedThisFrame == true || pad?.startButton.wasPressedThisFrame == true)) TogglePlay();
             if (keyboard?.cKey.wasPressedThisFrame == true || pad?.buttonNorth.wasPressedThisFrame == true) cameraMode = (cameraMode + 1) % 4;
-            if (keyboard?.leftArrowKey.wasPressedThisFrame == true || pad?.dpad.left.wasPressedThisFrame == true) seconds = Math.Max(0, seconds - 5);
-            if (keyboard?.rightArrowKey.wasPressedThisFrame == true || pad?.dpad.right.wasPressedThisFrame == true) seconds = Math.Min(replay.Duration, seconds + 5);
-            if (keyboard?.homeKey.wasPressedThisFrame == true) seconds = 0;
-            if (keyboard?.endKey.wasPressedThisFrame == true) { seconds = replay.Duration; playing = false; }
+            if (keyboard?.leftArrowKey.wasPressedThisFrame == true || pad?.dpad.left.wasPressedThisFrame == true) Seek(seconds - 5);
+            if (keyboard?.rightArrowKey.wasPressedThisFrame == true || pad?.dpad.right.wasPressedThisFrame == true) Seek(seconds + 5);
+            if (keyboard?.homeKey.wasPressedThisFrame == true) Seek(0);
+            if (keyboard?.endKey.wasPressedThisFrame == true) { Seek(replay.Duration); playing = false; }
             orbit += (pad?.rightStick.x.ReadValue() ?? 0) * delta;
             if (keyboard?.qKey.isPressed == true) orbit -= delta;
             if (keyboard?.eKey.isPressed == true) orbit += delta;
@@ -284,7 +293,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             throw new InvalidOperationException(Idas3Native.Error());
         audioWasPlaying=audible;audioSeconds=seconds;
     }
-    void TogglePlay() { if (!playing && seconds >= replay.Duration) seconds = 0; playing = !playing;if(!playing)SilenceAudio(); }
+    void TogglePlay() { if (!playing && seconds >= replay.Duration) Seek(0); playing = !playing;if(!playing)SilenceAudio(); }
     static string Clock(double value) => string.Format("{0}:{1:00.000}", (int)value / 60, value % 60);
     void OnGUI()
     {
@@ -316,13 +325,16 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         GUILayout.BeginArea(new Rect(panelX, height - 125, panelWidth, 113), GUI.skin.box);
         GUILayout.BeginHorizontal();
         if (GUILayout.Button(playing ? "Pause" : "Play", GUILayout.Width(75))) TogglePlay();
-        if (GUILayout.Button("|<", GUILayout.Width(40))) seconds = 0;
-        if (GUILayout.Button("−5s", GUILayout.Width(50))) seconds = Math.Max(0, seconds - 5);
-        if (GUILayout.Button("+5s", GUILayout.Width(50))) seconds = Math.Min(replay.Duration, seconds + 5);
+        if (GUILayout.Button("|<", GUILayout.Width(40))) Seek(0);
+        if (GUILayout.Button("−5s", GUILayout.Width(50))) Seek(seconds - 5);
+        if (GUILayout.Button("+5s", GUILayout.Width(50))) Seek(seconds + 5);
         GUILayout.Label(Clock(seconds) + " / " + Clock(replay.Duration), GUILayout.Width(175));
         GUILayout.FlexibleSpace(); if (GUILayout.Button("Camera: " + Cameras[cameraMode], GUILayout.Width(150))) cameraMode = (cameraMode + 1) % 4;
         GUILayout.EndHorizontal();
-        seconds = GUILayout.HorizontalSlider((float)seconds, 0, (float)replay.Duration);
+        float slider=GUILayout.HorizontalSlider((float)seconds,0,(float)replay.Duration);
+        // A repaint returns the same float even while the playback clock keeps
+        // double precision. Only user movement is a seek, not float rounding.
+        if(slider!=(float)seconds)Seek(slider);
         GUILayout.BeginHorizontal();
         foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (GUILayout.Button(speed + "×", GUILayout.Width(45))) rate = speed; } GUI.color = Color.white;
         GUILayout.Label(CanSwitchPov?"Space/A: pause   C/Y: camera":"Space/A: pause   C/Y: camera   Q/E: orbit");
@@ -362,9 +374,9 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         bool railSweep=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-rail-sweep")>=0;
         if (proofFrame % 40 == 1) {
             int sample=proofFrame/40;
-            seconds = replay.Duration * (courseSweep ? Math.Min(1,sample/4*.2) : Math.Min(1,sample*.5));
+            Seek(replay.Duration * (courseSweep ? Math.Min(1,sample/4*.2) : Math.Min(1,sample*.5)));
             cameraMode = courseSweep ? sample%4 : proofFrame >= 120 ? 3 : 0;
-            if(railSweep){seconds=.75+sample*.03;cameraMode=1;}
+            if(railSweep){Seek(.75+sample*.03);cameraMode=1;}
             if(!courseSweep&&CanSwitchPov&&proofFrame==81)SwitchPov();
         }
         if (proofFrame % 40 != 30) return;
@@ -390,7 +402,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         playing=false;SilenceAudio();yield return new WaitForSecondsRealtime(.2f);
         var paused=Idas3UnityAudio.ReadStatistics();yield return new WaitForSecondsRealtime(.3f);
         Check(Idas3UnityAudio.ReadStatistics().consumedFrames==paused.consumedFrames,"Pause stops audio consumption");
-        seconds=replay.Duration*.6;playing=true;yield return new WaitForSecondsRealtime(1);
+        Seek(replay.Duration*.6);playing=true;yield return new WaitForSecondsRealtime(1);
         Check(Idas3UnityAudio.ReadStatistics().consumedFrames>paused.consumedFrames,"Seek and resume restart audio");
         if(CanSwitchPov){SwitchPov();var before=Idas3UnityAudio.ReadStatistics();yield return new WaitForSecondsRealtime(1);Check(opponentPov&&Idas3UnityAudio.ReadStatistics().consumedFrames>before.consumedFrames,"Opponent POV audio plays");}
         Browse();yield return new WaitForSecondsRealtime(.2f);var library=Idas3UnityAudio.ReadStatistics();yield return new WaitForSecondsRealtime(.3f);

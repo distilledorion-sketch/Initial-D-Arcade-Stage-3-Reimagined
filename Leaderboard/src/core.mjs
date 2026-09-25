@@ -1,5 +1,5 @@
 export const COURSES=['Myogi','Usui','Akagi','Akina','Happogahara','Irohazaka','Shomaru','Tsuchisaka','Akina Snow','Hakone','Sadamine','Enna Skyline','Myogi (Special Stage)','Usui (Special Stage)','Momiji Line'];
-export const REQUIRED_CLIENT_BUILD='0.3.95-community-replays.32';
+export const REQUIRED_CLIENT_BUILD='0.3.95-community-replays.33';
 export function supportedBuild(build,required=REQUIRED_CLIENT_BUILD){
  return typeof required==='string'&&/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-[a-z][a-z0-9-]*\.(0|[1-9]\d*)$/.test(required)&&build===required;
 }

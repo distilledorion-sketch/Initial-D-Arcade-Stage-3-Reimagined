@@ -9,7 +9,7 @@ using UnityEngine;
 public static class Idas3MeterLayoutBounds
 {
     // Bump when composition or bounds sampling changes its authored envelope.
-    const int RendererVersion=1;
+    const int RendererVersion=6;
     [Serializable] sealed class AlphaCatalog {public AlphaTexture[] textures=Array.Empty<AlphaTexture>();}
     [Serializable] sealed class AlphaTexture {public string texture,name;public float x,y,width,height;}
     [Serializable] sealed class BakedCatalog {public int rendererVersion;public string catalogSha256,alphaSha256;public BakedLayout[] layouts;}
@@ -90,6 +90,9 @@ public static class Idas3MeterLayoutBounds
         return right>x&&bottom>y?Rect.MinMaxRect(x,y,right,bottom):default;
     }
     static Rect VisibleLocal(Idas3ArcadeHud.Sprite sprite){
+        // A moving UV samples different alpha regions without moving its quad.
+        // Reserve the full quad so rotation/scroll never changes the HUD fit.
+        if(sprite.sampleMotion!=Vector4.zero||sprite.materialEffect!=0)return sprite.rect;
         if(!alpha.TryGetValue(sprite.texture.name,out var image)){
             missingAlpha.Add(sprite.texture.name);image=new Rect(0,0,1,1);
         }
@@ -125,6 +128,11 @@ public static class Idas3MeterLayoutBounds
         var options=new Idas3GameOptions.Values{hudMeterStyle=style,hudShiftLights=true,hudPedalIndicators=true,hudNameplateStyle=0};
         var sprites=new List<Idas3ArcadeHud.Sprite>(64);Rect bounds=default;
         using(var renderer=new Idas3ImportedMeter()){
+            // Reserve the full audio envelope only in the layout sampler. Live
+            // meters always use actual output PCM, including silence.
+            var maximumAudio=new float[Idas3MeterAudioSpectrum.BandCount];
+            for(int i=0;i<maximumAudio.Length;++i)maximumAudio[i]=1;
+            renderer.AudioBandsOverride=maximumAudio;
             // Sixteen intervals include the ends and intermediate needle arcs.
             // All tach faces, transmission/day variants and full lamp states are
             // composed through the production adapter. No native data is read.
@@ -135,6 +143,35 @@ public static class Idas3MeterLayoutBounds
                     throttle=phase,brake=phase,driftOpacity=1};
                 sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,phase*.8f);
                 foreach(var sprite in sprites)if(sprite.texture&&sprite.color.a>0)bounds=Union(bounds,VisibleMeter(sprite));
+            }
+            // A gear event starts at a transition, so the telemetry sweep above
+            // cannot sample its complete transient scale/translation envelope.
+            // Prime each event and sample it independently, including expiration.
+            for(int step=0;step<=48;++step){
+                var telemetry=new Idas3ArcadeHud.Telemetry{size=40,version=2,flags=1,gear=3,
+                    speedKmh=150,rpm=7000,revLimit=8500,throttle=1,driftOpacity=1};
+                sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,0);
+                telemetry.gear=4;sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,.1f);
+                sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,.1f+step/24f);
+                foreach(var sprite in sprites)if(sprite.texture&&sprite.color.a>0)bounds=Union(bounds,VisibleMeter(sprite));
+            }
+            // Halloween's lantern swings on real drift enter/exit events. The
+            // steady lamp samples above cannot cover that motion. Reserve its
+            // complete source animation in both directions so the fit stays
+            // stable and does not cut off the lantern while it swings.
+            if(meter.id==83){
+                float duration=0;
+                foreach(var layer in meter.layers)if(layer.curves!=null)
+                    foreach(var curve in layer.curves)if(curve.owner?.name=="Cantera"&&curve.animation=="Anim_DriftLamp_InOut_INST"&&curve.property=="Rotation")
+                        duration=Mathf.Max(duration,Idas3MeterAnimationState.DurationSeconds(curve));
+                if(duration>0)foreach(uint drift in new uint[]{0,8})for(int step=0;step<=60;++step){
+                    var telemetry=new Idas3ArcadeHud.Telemetry{size=40,version=2,flags=1|(drift^8),gear=3,
+                        speedKmh=150,rpm=7000,revLimit=8500,throttle=1,driftOpacity=1};
+                    sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,0);
+                    telemetry.flags=1|drift;sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,.1f);
+                    sprites.Clear();renderer.Compose(sprites,meter,options,telemetry,.1f+duration*step/60f);
+                    foreach(var sprite in sprites)if(sprite.texture&&sprite.color.a>0)bounds=Union(bounds,VisibleMeter(sprite));
+                }
             }
         }
         if(bounds.width<=0||bounds.height<=0)bounds=new Rect(0,0,Mathf.Max(1,meter.width),Mathf.Max(1,meter.height));
