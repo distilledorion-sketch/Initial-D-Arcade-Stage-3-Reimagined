@@ -51,6 +51,26 @@ float4 ImportedMeterEffect(float2 uv,float4 sampled,float4 tint){
   // The authored dot grid and aperture are opaque RGB masks, not alpha images.
   sampled.a*=tex2D(_EffectTex1,localUv).r*tex2D(_EffectTex2,localUv).r;
  }
+ if(_MaterialEffect>4.5&&_MaterialEffect<5.5){
+  float4 light=tex2D(_EffectTex1,localUv);
+  sampled.rgb=saturate(sampled.rgb+light.rgb*_EffectColor1.rgb*tint.rgb*light.a);
+  sampled.a=max(sampled.a,light.a*tint.a);
+ }
+ if(_MaterialEffect>5.5&&_MaterialEffect<6.5){
+  float2 d=localUv-.5;float c=cos(_EffectParams.y),s=sin(_EffectParams.y);
+  float2 gradUv=float2(c*d.x-s*d.y,s*d.x+c*d.y)+.5;
+  float grad=1-tex2D(_EffectTex1,gradUv).r,aa=max(fwidth(grad),.002);
+  float reveal=step(.0001,_EffectParams.x)*(1-smoothstep(_EffectParams.x-aa,_EffectParams.x+aa,grad));
+  if(_EffectParams.x>=.9999)reveal=1;
+  sampled.a*=reveal*tex2D(_EffectTex2,localUv).a;
+ }
+ if(_MaterialEffect>6.5&&_MaterialEffect<7.5){
+  float4 grid=tex2D(_EffectTex1,frac(localUv*_EffectParams.xy+_EffectParams.zw));
+  float4 base=tex2D(_EffectTex2,localUv),mask=tex2D(_EffectTex3,localUv);
+  float horizontal=pow(saturate(1-abs(localUv.x-.5)/max(.001,_EffectParams2.x)),max(.1,_EffectParams2.y));
+  float vertical=pow(saturate(1-abs(localUv.y-.5)/max(.001,_EffectParams2.z)),max(.1,_EffectParams2.w));
+  sampled=grid*base*tint;sampled.a*=mask.r*mask.a*horizontal*vertical;
+ }
  return sampled;
 }
 float2 ImportedMeterSampleUv(float2 uv,out float visible){

@@ -15,7 +15,7 @@ public static class Idas3ArcadeMeterCatalog
     }
     [Serializable] public sealed class Layer {
         public string name,texture,nightTexture,role,disabledReason;
-        public string material,materialParent,visibility;
+        public string material,materialParent,visibility,visibilityDay;
         public float x,y,width,height,pivotX=.5f,pivotY=.5f,angle,angleMin,angleMax;
         public float opacity=1;
         public float ownOpacity=1,translationX,translationY,scaleX=1,scaleY=1,shearX,shearY;

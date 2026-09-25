@@ -1,7 +1,7 @@
-0.3.95-community-replays.33
-METER ALIGNMENT AND EFFECTS
-Miku frames and needles are aligned; Future needle trails follow their needles. Halloween lantern movement and night RPM artwork are restored. Steampunk glow colors and opacity are corrected. Restored meter animations include gear flashes, lightning, rotating frames and audio spectrum effects driven by game audio and custom music. Effects freeze while paused.
-Changed-file patches are available from .20 through .32.
+0.3.95-community-replays.34
+MISSING TACHOMETER ARTWORK AND EFFECTS
+Restored missing RPM faces, needles, night lighting, Classic dial artwork, Phoenix and Metallic gear effects, Steampunk rev glow, Single lighting, Racing pedal masks and the Retrowave grid.
+Changed-file patches are available from .20 through .33.
 
 TRANSMISSION SELECTION AND CUSTOM MUSIC
 Continue and Change Car now offer Automatic or Manual before mode selection. Each car remembers its confirmed transmission while keeping its tune, parts and progress. Back cancels an unconfirmed choice.
@@ -15,7 +15,7 @@ Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder b
 No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
 COMMUNITY TIME ATTACK
-Only 0.3.95-community-replays.33 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
+Only 0.3.95-community-replays.34 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
 Both online players need this version. Updates use a smaller changed-file patch when available for the installed version. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
 
 FIXES INCLUDED FROM .28

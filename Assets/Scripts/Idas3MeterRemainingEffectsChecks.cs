@@ -280,6 +280,40 @@ public static class Idas3MeterRemainingEffectsChecks
                 Verify(Difference(previous, Capture(renderer, options, data, 61f), 0) == 0, result, "LED cells advance while their clock is frozen.");
             }
         }
+        void Materials(Result result){
+            int source=result.sourceId;var options=Options(source);var data=Data();
+            string family=result.kind=="single-light"?"M_Add02.":result.kind=="pedal-gradient"?"M_NormalMaskVariable.":"M_Scroll_Opacity.";
+            using(var scope=new LayerScope(source,l=>Contains(l.materialParent,family)))using(var renderer=new Idas3ArcadeHud()){
+                var first=Capture(renderer,options,data,.125f);
+                if(result.kind=="pedal-gradient"){
+                    Verify(Stats(first).visiblePixels==0,result,"Pedal trail visible at zero input");
+                    data.throttle=data.brake=.5f;var half=Capture(renderer,options,data,.125f);
+                    var rotations=new List<Idas3ArcadeMeterCatalog.Parameter>();
+                    foreach(var layer in scope.selected)foreach(var parameter in layer.parameters)if(parameter.name=="RotationValue")rotations.Add(parameter);
+                    try{foreach(var rotation in rotations)rotation.value+=180;
+                        Verify(Difference(half,Capture(renderer,options,data,.125f))>8,result,"Pedal gradient ignores authored rotation");}
+                    finally{foreach(var rotation in rotations)rotation.value-=180;}
+                    data.throttle=data.brake=1;var full=Capture(renderer,options,data,.125f);
+                    Verify(Stats(half).visiblePixels>4&&Stats(full).visiblePixels>Stats(half).visiblePixels,result,"Source gradient does not progressively reveal pedal trail");
+                    Save(result,"half",.125f,half);Save(result,"full",.125f,full);
+                }else{
+                    Verify(Stats(first).visiblePixels>16,result,"Reconstructed material is invisible");Save(result,"initial",.125f,first);
+                    if(result.kind=="scroll-grid"){
+                        var later=Capture(renderer,options,data,.275f);Verify(Difference(first,later)>8,result,"Grid does not scroll");Save(result,"scroll",.275f,later);
+                        Verify(Difference(later,Capture(renderer,options,data,.275f),0)==0,result,"Grid clock does not freeze");
+                        foreach(int rate in new[]{30,60,144}){for(int tick=0;tick<rate;++tick)Build(renderer,options,data,(float)tick/rate);
+                            Verify(Difference(later,Capture(renderer,options,data,.275f),0)==0,result,"Grid varies with render rate");}
+                    }else{
+                        var old=new string[scope.selected.Length];
+                        try{for(int i=0;i<old.Length;++i){old[i]=scope.selected[i].materialParent;scope.selected[i].materialParent="";}
+                            Verify(Difference(first,Capture(renderer,options,data,.125f))>8,result,"Secondary light texture has no visible effect");}
+                        finally{for(int i=0;i<old.Length;++i)scope.selected[i].materialParent=old[i];}
+                        data.flags|=4;var night=Capture(renderer,options,data,.125f);
+                        Verify(Stats(night).visiblePixels>16&&Difference(first,night)>8,result,"Night illumination is missing");Save(result,"night",.125f,night);
+                    }
+                }
+            }
+        }
         internal void Run()
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) throw new InvalidOperationException("A GPU is required; omit -nographics.");
@@ -291,6 +325,9 @@ public static class Idas3MeterRemainingEffectsChecks
             Case(66, "brake-coil-ball", r => Ball(r, "coil_add", "pedal"));
             foreach (int source in new[] { 68, 69, 70, 74 }) Case(source, "audio-spectrum", Audio);
             Case(75, "led-sequence", Led);
+            foreach(int source in new[]{9,25,26,27,28})Case(source,"single-light",Materials);
+            foreach(int source in new[]{32,46,47,48})Case(source,"pedal-gradient",Materials);
+            Case(76,"scroll-grid",Materials);
             report.finalTextures = Idas3ImportedMeter.ResidentTextureCount; ++report.checks;
             if (report.finalTextures != report.initialTextures) report.errors.Add("Remaining-effects renderer retained imported texture leases.");
             report.passed = report.errors.Count == 0;

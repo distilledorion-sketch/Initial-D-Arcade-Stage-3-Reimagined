@@ -1,6 +1,6 @@
 {
-    "rendererVersion": 6,
-    "catalogSha256": "467106c1dea2f801fd55e5e1764a8429cfa0574a5f253a0b4289e1df0a6aff85",
+    "rendererVersion": 9,
+    "catalogSha256": "e99026b07b79e75859025f014c533563c35530cf36e42b20894d9f5e9d6d9a3c",
     "alphaSha256": "540ee199d891685372c6ab65c28fa62c11a0cd92442dcfcd135d5b00579ce719",
     "layouts": [
         {
@@ -257,10 +257,10 @@
             "style": 27,
             "bounds": {
                 "serializedVersion": "2",
-                "x": 67.69400024414063,
-                "y": 45.24399948120117,
-                "width": 371.2119140625,
-                "height": 367.8119201660156
+                "x": 70.28224182128906,
+                "y": 45.282249450683594,
+                "width": 368.58544921875,
+                "height": 367.7353820800781
             }
         },
         {

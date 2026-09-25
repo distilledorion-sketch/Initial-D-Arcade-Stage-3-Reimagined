@@ -24,6 +24,15 @@ DEFAULT_SOURCE = Path("D:/Initial D games/Extracted HUD Assets - The Arcade S3")
 GUID_NAMESPACE = uuid.UUID("7f75e250-9db1-4f2d-a979-691106676671")
 FRAME_MAXIMUMS = {1: 8000, 2: 8000, 3: 9000, 4: 9000, 5: 10000, 6: 10000, 7: 10000, 8: 13000}
 DEFAULT_MOVIE_TICKS_PER_SECOND = 24000
+# Cooked Setup_AddDayChangeVisibility calls register these exact images for
+# ECourseDay::Night (byte 1). Their editor Hidden/Visible state is not runtime
+# visibility. Keep this separate from A/B texture variants and headlight state.
+NIGHT_VISIBILITY_WIDGETS = {
+    2: ("Light",), 7: ("CenterMeterLight", "LeftMeterLight"), 8: ("Light",),
+    9: ("Light",), 22: ("Light",), 23: ("Light",), 24: ("Light",),
+    25: ("Light",), 26: ("Light",), 27: ("Light",), 28: ("Light",),
+    29: ("Light",), 36: ("Light",),
+}
 
 
 def read_json(path):
@@ -224,15 +233,21 @@ class Importer:
         if not texture:
             return [], ""
         source_ref = next((key for key, value in self.texture_paths.items() if value == texture), "")
-        pattern = re.match(r"^(.*_Rmp)(\d\d)_([AB])$", Path(texture).name, re.I)
+        pattern = re.match(r"^(.*_Rmp)(\d\d)_(AB|[AB][12]?)$", Path(texture).name, re.I)
         variants = []
         if pattern and (role in ("static", "rpm") or "Meter" in Path(texture).name):
             prefix = texture.rsplit("/", 1)[0] + "/" + pattern.group(1)
+            # AB is one shared day/night face. Classic's A1 and A2 are
+            # separate overlaid faces registered by Setup_Frame_SoftRef[2];
+            # mixing their suffixes drops one half of the authored dial.
+            suffix = pattern.group(3).upper()
+            suffix_pattern = "AB" if suffix == "AB" else r"[AB]" + re.escape(suffix[1:])
             for resource in self.texture_paths.values():
-                m = re.fullmatch(re.escape(prefix) + r"(\d\d)_([AB])", resource)
+                m = re.fullmatch(re.escape(prefix) + r"(\d\d)_(" + suffix_pattern + ")", resource)
                 if m:
                     index = int(m.group(1))
-                    variants.append({"texture": resource, "index": index, "day": m.group(2), "state": "", "maxRpm": FRAME_MAXIMUMS.get(index, 10000)})
+                    day = "" if m.group(2) == "AB" else m.group(2)[0]
+                    variants.append({"texture": resource, "index": index, "day": day, "state": "", "maxRpm": FRAME_MAXIMUMS.get(index, 10000)})
         elif role == "transmission":
             base = re.sub(r"_0[12]$", "", texture)
             for suffix, state in (("_01", "manual"), ("_02", "automatic")):
@@ -337,6 +352,10 @@ class Importer:
             return "rpm" + str(10 ** (int(name[-1]) - 1))
         if name == "GearRate01":
             return "gear"
+        if name == "GearRate01_add":
+            # Phoenix registers this image as Setup_GearNum's GearNumEffect.
+            # Its initial atlas cell is a template, not a fixed decoration.
+            return "gearEffect"
         if any(token in name for token in ("GearRateEffect", "GearRate01_Blur", "GearRate_Roll")):
             return "gearRoll" if "GearRate_Roll" in name else "gearEffect"
         if name == "CarMode":
@@ -394,12 +413,20 @@ class Importer:
             brush = fields(props.get("Brush"))
             source_resource = brush.get("ResourceObject", "")
             runtime_resource = source_resource
-            if result["id"] in (71, 72, 73) and name == "CenterPin":
+            if result["id"] in (49, 50, 51, 53, 54, 55, 60, 61, 62, 71, 72, 73, 84, 85, 86) and name == "CenterPin":
                 # Each cooked constructor registers this image through
                 # Setup_AddDayChangeTexture_SoftRef with Meter00 A/B. Meter49
                 # is only the uninitialized template brush. The generic day/
                 # night resolver below then retains the proven B alternative.
                 runtime_resource = "/Game/IND/UI/Race/Meter/00/Texture/T_Meter00_PointRmp_A.T_Meter00_PointRmp_A"
+            elif result["id"] == 25 and name == "LeftMeter":
+                # Single Purple replaces its inherited Meter09 speed face.
+                runtime_resource = "/Game/IND/UI/Race/Meter/25/Texture/Frame/T_Meter25_Spd_A.T_Meter25_Spd_A"
+            elif result["id"] in (41, 47) and name == "CenterMeter":
+                # The constructor's registered frame arrays supersede the
+                # serialized editor brush (41 -> 00; 47 -> 47, not 46).
+                frame_id = "00" if result["id"] == 41 else "47"
+                runtime_resource = "/Game/IND/UI/Race/Meter/{0}/Texture/Frame/T_Meter{0}_Rmp01_A.T_Meter{0}_Rmp01_A".format(frame_id)
             mat, material = self.material(runtime_resource)
             curves = [dict(c) for c in all_curves.get(name, [])]
             ancestors = item.get("parentGroups", [])
@@ -409,6 +436,14 @@ class Importer:
                     copy["owner"] = self.owner(group)
                     curves.append(copy)
             role = self.role(name, curves)
+            if result["id"] == 7 and name == "CenterMeter1":
+                # Setup_Frame registers the core RPM face. Its low/rev warning
+                # color animations decorate that face; they do not own it.
+                role = "static"
+            elif result["id"] == 66 and name == "RevBase":
+                # Setup_OverRev actively registers the shared RevLamp tracks.
+                # Choosing the first LowLamp track would suppress this glow.
+                role = "rev"
             if role == "static" and any(g["name"] == "DriftLampColor" for g in ancestors):
                 role = "drift"
             color = rgba(props.get("ColorAndOpacity"))
@@ -448,6 +483,7 @@ class Importer:
                 "angle": item.get("angle", fields(props.get("RenderTransform")).get("Angle", 0)), "angleMin": 0, "angleMax": 0,
                 "transform": transform, "parentTransform": item.get("parentTransform", []), "color": color, "opacity": opacity,
                 "ownOpacity": float(props.get("RenderOpacity", 1)),
+                "visibilityDay": "B" if name in NIGHT_VISIBILITY_WIDGETS.get(result["id"], ()) else "",
                 "visibility": props.get("Visibility", "Visible") if inherited_visible else "Hidden", "clipRect": item.get("clipRect") or [],
                 # All 21 recovered two-row gear atlases reserve cell zero for
                 # zero/neutral or a blank; their numbered gears use cells 1-6.
@@ -462,6 +498,21 @@ class Importer:
             layer.update(self.transform_baseline(props))
             layer["switchers"] = item.get("switchers", [])
             layer["textureVariants"], layer["nightTexture"] = self.variants(layer["texture"], role)
+            if result["id"] == 9 and name == "CenterMeter":
+                # Setup_Frame passes the same A array for day and night.
+                # The separate night-only Light supplies its illumination.
+                layer["textureVariants"] = [v for v in layer["textureVariants"] if v["day"] == "A"]
+                layer["nightTexture"] = ""
+            elif result["id"] in (26, 27, 28) and name == "CenterPin":
+                # These constructors explicitly register the common white
+                # Meter09 needle at night, not their unused same-number B PNG.
+                layer["nightTexture"] = self.texture("/Game/IND/UI/Race/Meter/09/Texture/T_Meter09_PointRmp_B.T_Meter09_PointRmp_B")
+            elif result["id"] == 46 and name == "CenterMeter":
+                # Preserve the exact recovered frame array, including its
+                # shared Meter32 entry, rather than repairing a source quirk.
+                for variant in layer["textureVariants"]:
+                    if variant["index"] == 4 and variant["day"] == "B":
+                        variant["texture"] = self.texture("/Game/IND/UI/Race/Meter/32/Texture/Frame/T_Meter32_Rmp04_B.T_Meter32_Rmp04_B")
             rotation = next((c for c in curves if c["property"] == "Rotation" and self.animation_role(c["animation"]) == role and c["values"]), None)
             if rotation:
                 layer["angleMin"], layer["angleMax"] = rotation["values"][0], rotation["values"][-1]

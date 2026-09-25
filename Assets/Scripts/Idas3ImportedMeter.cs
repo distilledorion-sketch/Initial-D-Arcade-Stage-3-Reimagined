@@ -135,12 +135,17 @@ internal sealed class Idas3ImportedMeter : IDisposable
     }
     static TransformState Initial(Layer l)=>new TransformState{x=l.translationX,y=l.translationY,angle=l.angle,sx=l.scaleX,sy=l.scaleY,shx=l.shearX,shy=l.shearY,opacity=l.ownOpacity,colorAlpha=1,width=l.width,height=l.height,visible=!Contains(l.visibility,"Hidden")&&!Contains(l.visibility,"Collapsed")};
     static TransformState Initial(Idas3ArcadeMeterCatalog.Owner o)=>new TransformState{x=o.translationX,y=o.translationY,angle=o.angle,sx=o.scaleX,sy=o.scaleY,shx=o.shearX,shy=o.shearY,opacity=o.opacity,colorAlpha=o.colorAlpha,width=o.width,height=o.height,visible=true};
-    bool Progress(Curve c,Idas3ArcadeHud.Telemetry data,float seconds,out float progress){
+    bool Progress(Curve c,Idas3ArcadeHud.Telemetry data,float seconds,bool shiftLights,out float progress){
         progress=0;
         if(lanternAnimation.TryProgress(c,out progress))return true;
         if(Contains(c.animation,"Gear_Change"))return animationState.TryProgress(c,out progress);
         if(Contains(c.animation,"LED"))return false; // Authored LED programs use the material clock.
         if(Contains(c.animation,"Corner")||Contains(c.animation,"LowLamp"))return false;
+        // A warning can tint the main dial (Classic), rather than a separate
+        // lamp. Restore its authored neutral frame when the warning is off;
+        // applying Stay at phase zero would leave the dial red all the time.
+        if(Contains(c.animation,"RevLamp")&&(!shiftLights||data.rpm<=data.revLimit*.92f))
+            return !Contains(c.animation,"Stay");
         // The duplicated brake animation is an unused copy of the accelerator
         // sweep, conflicting with the canonical left-hand brake mask.
         if(c.animation=="Anim_BrakePin_2_INST")return false;
@@ -169,6 +174,8 @@ internal sealed class Idas3ImportedMeter : IDisposable
         if(meter.id==68||meter.id==69||meter.id==70||meter.id==74)UpdateAudio(seconds);
         foreach(var layer in meter.layers){
             if(layer==null||layer.role=="disabled"||!string.IsNullOrEmpty(layer.disabledReason)||layer.width<=0||layer.height<=0)continue;
+            bool registeredDay=!string.IsNullOrEmpty(layer.visibilityDay);
+            if(registeredDay&&layer.visibilityDay!=((data.flags&4)!=0?"B":"A"))continue;
             bool selected=true;
             bool led=Idas3MeterMaterialAnimation.IsLed(layer);
             if(layer.switchers!=null)foreach(var choice in layer.switchers)
@@ -215,7 +222,7 @@ internal sealed class Idas3ImportedMeter : IDisposable
             if(layer.parents!=null)foreach(var owner in layer.parents){
                 var original=Initial(owner);var changed=original;
                 if(layer.curves!=null)foreach(var curve in layer.curves){
-                    if(curve.owner?.name!=owner.name||!Progress(curve,data,seconds,out float progress))continue;
+                    if(curve.owner?.name!=owner.name||!Progress(curve,data,seconds,options.hudShiftLights,out float progress))continue;
                     Apply(ref changed,curve.property,Evaluate(curve,progress));
                 }
                 ancestorAlpha*=changed.opacity*changed.colorAlpha;
@@ -226,7 +233,7 @@ internal sealed class Idas3ImportedMeter : IDisposable
             }
             if(!clipped&&layer.clipRect!=null&&layer.clipRect.Length==4){clip=new Rect(layer.clipRect[0],layer.clipRect[1],layer.clipRect[2],layer.clipRect[3]);clipped=true;}
             if(layer.curves!=null)foreach(var curve in layer.curves){
-                if(curve.owner!=null&&!string.IsNullOrEmpty(curve.owner.name)&&curve.owner.name!=layer.name||!Progress(curve,data,seconds,out float progress))continue;
+                if(curve.owner!=null&&!string.IsNullOrEmpty(curve.owner.name)&&curve.owner.name!=layer.name||!Progress(curve,data,seconds,options.hudShiftLights,out float progress))continue;
                 float value=Evaluate(curve,progress);
                 Apply(ref state,curve.property,value);
                 if(curve.property=="Rotation")animatedRotation=true;
@@ -246,6 +253,9 @@ internal sealed class Idas3ImportedMeter : IDisposable
                 state.angle=Mathf.Lerp(layer.angleMin,layer.angleMax,Mathf.Clamp01(phase));
             }
             color.a*=state.opacity*ancestorAlpha;
+            // Source day-change registration supersedes the editor's initial
+            // Hidden/Collapsed flag, without changing its authored opacity.
+            if(registeredDay)state.visible=true;
             // These source widgets start hidden and are revealed by source events.
             // Native drift opacity/current rev warning supply those events here.
             if(role=="drift"||role=="rev"){
@@ -268,7 +278,13 @@ internal sealed class Idas3ImportedMeter : IDisposable
             var uv=layer.uv!=null&&layer.uv.Length==4?new Rect(layer.uv[0],layer.uv[1],layer.uv[2],layer.uv[3]):new Rect(0,0,1,1);
             if(led)uv=ledUv;
             int digit=Digit(role,data);
-            if(role=="gearRoll"&&animatedIndex>=0)digit=Mathf.FloorToInt(animatedIndex);
+            if((role=="gearRoll"||role=="gearEffect")&&animatedIndex>=0){
+                // Metallic animates its blur atlas independently of the live
+                // gear digit. Its Index passes the seven-cell boundary while
+                // still visible, so repeat the atlas instead of dropping it.
+                int cells=Math.Max(1,layer.atlasCols*layer.atlasRows);
+                digit=Mathf.FloorToInt(Mathf.Repeat(animatedIndex,cells));
+            }
             if(Contains(layer.materialParent,"FlipBook_Loop")){
                 int cells=Math.Max(1,layer.atlasCols*layer.atlasRows);
                 // The source retains FlipBook and Speed but strips the time
@@ -329,6 +345,18 @@ internal sealed class Idas3ImportedMeter : IDisposable
                 sprite.materialEffect=3;sprite.effectTex1=audioTexture;sprite.effectTex2=BoundTexture(layer,"AudioNoise");
                 sprite.effectColor1=MaterialColor(layer,"Color1",Color.cyan);sprite.effectColor2=MaterialColor(layer,"Color2",Color.green);
             }else if(led){sprite.materialEffect=4;sprite.effectTex1=BoundTexture(layer,"LedEffect01");sprite.effectTex2=BoundTexture(layer,"LedEffect02");}
+            else if(Contains(layer.materialParent,"M_Add02.")){
+                sprite.materialEffect=5;sprite.effectTex1=BoundTexture(layer,"Light");
+                sprite.effectColor1=MaterialColor(layer,"EffectColor",Color.white);
+            }else if(Contains(layer.materialParent,"M_NormalMaskVariable.")){
+                sprite.materialEffect=6;sprite.gaugeMode=0;
+                sprite.effectTex1=BoundTexture(layer,"MaskGrad");sprite.effectTex2=BoundTexture(layer,"MaskDetail");
+                sprite.effectParams=new Vector4(Mathf.Clamp01(percentage),Scalar(layer,"RotationValue",0)*Mathf.Deg2Rad,0,0);
+            }else if(Contains(layer.materialParent,"M_Scroll_Opacity.")){
+                sprite.materialEffect=7;sprite.effectTex1=texture;sprite.effectTex2=BoundTexture(layer,"Tex_Base01");sprite.effectTex3=BoundTexture(layer,"Tex_Mask");
+                sprite.effectParams=new Vector4(Scalar(layer,"Utiling",1),Scalar(layer,"Vtiling",1),seconds*Scalar(layer,"Speed",1)*Scalar(layer,"SpeedX",0),seconds*Scalar(layer,"Speed",1)*Scalar(layer,"SpeedY",0));
+                sprite.effectParams2=new Vector4(Scalar(layer,"H_Radius",.7f),Scalar(layer,"H_Density",1),Scalar(layer,"V_Radius",.7f),Scalar(layer,"V_Density",1));
+            }
             if(Contains(layer.materialParent,"M_UVScroll."))sprite.sampleMotion=new Vector4(scrollU,-scrollV,0,1);
             if(Contains(layer.materialParent,"MeterRotation")||Contains(layer.materialParent,"EffRotation")){
                 // The recovered materials contain two fixed/parameterized

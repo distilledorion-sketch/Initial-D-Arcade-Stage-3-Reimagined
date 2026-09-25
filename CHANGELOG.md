@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.34 - September 25, 2026
+
+- Restored missing RPM faces, needle variants and night illumination across the affected meter styles.
+- Fixed the Classic dial disappearing or retaining its warning tint.
+- Corrected Phoenix gear flashes and Metallic animated gear digits.
+- Restored the Steampunk rev-warning glow with its intended opacity.
+- Restored Single-family lighting, Racing pedal-mask gradients and the moving Retrowave grid.
+- Community Time Attack submissions require exactly `.34`; existing times, replays and the season remain available. Update patches support `.20` through `.33`.
+
 ## 0.3.95-community-replays.33 - September 24, 2026
 
 - Corrected the frame and needle alignment of all six Miku meters, including the Silhouette styles.

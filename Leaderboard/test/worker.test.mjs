@@ -191,16 +191,16 @@ test('viewer download preserves metadata and every pose without installation ide
  assert.equal((await call('/api/admin/replay?id='+crypto.randomUUID()+'&format=package',null,auth)).status,404);
 });
 test('upload build policy accepts only the exact ROM-required release',()=>{
- assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.33');
+ assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.34');
  assert.equal(supportedBuild(REQUIRED_CLIENT_BUILD),true);
- for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.34','0.3.95-community-replays.330','0.3.96-community-replays.33','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.033','0.3.95-Community-replays.33','0.3.95-community-replays.33-extra','0.3.95-community-replays.33 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
+ for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.33','0.3.95-community-replays.35','0.3.95-community-replays.340','0.3.96-community-replays.34','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.034','0.3.95-Community-replays.34','0.3.95-community-replays.34-extra','0.3.95-community-replays.34 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
  for(const required of ['',null,'invalid','0.3.95-community-replays.*'])assert.equal(supportedBuild(required,required),false);
 });
 test('nonmatching builds are permanently rejected before replay work and without database writes',async()=>{
  await call('/api/v1/register',{token:device});
  env.MIN_CLIENT_BUILD='0.3.95-community-replays.1'; // A stale variable cannot restore the old minimum policy.
  const before=db.prepare('SELECT total_changes() n').get().n;
- for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.34','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.033']){
+ for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.33','0.3.95-community-replays.35','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.034']){
   const response=await uploadReplay(run({build}));assert.equal(response.status,409);
   const error=await response.json();assert.equal(error.code,'client_build_required');assert.equal(error.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(error.permanent,true);assert.ok(error.error.includes(REQUIRED_CLIENT_BUILD));
  }
@@ -220,7 +220,7 @@ test('configured exact release rejects both sides of its version and is exposed 
  const health=await(await call('/health')).json();assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(snapshot.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(snapshot.epoch,1);
  assert.equal(db.prepare('SELECT total_changes() n').get().n,before);
- for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.34'])assert.equal((await uploadReplay(run({build}))).status,409);
+ for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.33','0.3.95-community-replays.35'])assert.equal((await uploadReplay(run({build}))).status,409);
  assert.equal((await uploadReplay(run())).status,200);
 });
 

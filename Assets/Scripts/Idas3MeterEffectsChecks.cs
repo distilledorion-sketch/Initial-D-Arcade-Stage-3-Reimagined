@@ -382,8 +382,8 @@ public static class Idas3MeterEffectsChecks
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null) throw new InvalidOperationException("Meter effects checks require a GPU; omit -nographics.");
             if (!Idas3ArcadeHud.Available) throw new InvalidOperationException("Shared meter artwork is unavailable.");
             foreach (int source in new[] { 66, 71, 72, 73, 75, 77, 79, 80, 81, 87, 88, 89 }) Ambient(source);
-            foreach (int source in new[] { 0, 1, 3, 31, 66, 71, 75, 76, 79, 89 }) GearEvent(source);
-            foreach (int source in new[] { 66, 71, 75, 76, 79, 87 }) UpdateRates(source);
+            foreach (int source in new[] { 0, 1, 3, 31, 38, 66, 67, 71, 75, 76, 79, 89 }) GearEvent(source);
+            foreach (int source in new[] { 38, 66, 71, 75, 76, 79, 87 }) UpdateRates(source);
             IsolatedMaterial(66, "M_UVScroll.", "isolated-authored-uv-scroll", true);
             IsolatedMaterial(66, "FlipBook_Loop", "isolated-flipbook-loop", false);
             IsolatedMaterial(75, "MeterRotation", "isolated-rotating-frame", false);
