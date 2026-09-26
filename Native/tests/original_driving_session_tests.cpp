@@ -134,6 +134,26 @@ int main(int argc,char** argv)try{
         advance();require(!session.stoppedForRace(),"First reset contact did not republish cleared stopped latch");
         std::cout<<"Original race auto-brake: stopped after "<<brakeTicks<<" ticks, exact contact-stage latency, no pedal override, original stopped-latch publication\n";
     }
+    {
+        // A battle abandoned at the start can leave a published rival there.
+        // Restart solo at that pose: retain source state, but disable its pair.
+        OriginalDrivingSelection battle;battle.physics.conditionCode=7;battle.collisionVariant=1;
+        const auto pose=originalStartPose(7,0);
+        OriginalDrivingRivalSetup rival;rival.control=0;rival.position=pose.position;rival.angles=pose.angles;
+        rival.position[0]+=.25f;battle.rival=rival;
+        OriginalDrivingSession session;session.reset(root,battle,pose.position,pose.angles);
+        OriginalVehicleInputs inputs;inputs.calibration={128,32,32};inputs.analog={32768,16384,16384};
+        require(session.tick(inputs).bodyCollision.active!=0,"Regression fixture did not produce overlapping battle cars");
+        auto solo=battle;solo.rival.reset();solo.physics.progressEnabled0C9015E4=1;
+        session.reset(root,solo,pose.position,pose.angles);
+        require(session.tick(inputs).bodyCollision.active!=0,"Regression fixture did not preserve abandoned rival contact");
+        solo.bodyContactEnabled=false;session.reset(root,solo,pose.position,pose.angles);
+        for(unsigned frame=0;frame<30;++frame)
+            require(session.tick(inputs).bodyCollision.active==0,"Solo retry collided with a retained invisible rival");
+        const OriginalBodyCollisionResult shared{1,.25f,0};
+        require(session.tick(inputs,&shared).bodyCollision.active==1,"Solo policy suppressed explicit online pair contact");
+        std::cout<<"Solo restart: retained battle contact reproduced, disabled for solo, synchronized contact preserved\n";
+    }
     std::cout<<"PASS "<<ticks<<" integrated original input/drivetrain/contact/completion/recovery ticks, finite physical state and progression; "<<wallRecords
         <<" wall records, "<<recoveries<<" recoveries. Real Akina data, two cars/routes; no runtime or GPU launched. This progression check is not the independent opcode comparison.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

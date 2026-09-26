@@ -4,6 +4,7 @@
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <random>
 #include <stdexcept>
 #include <string>
 #if defined(_WIN32)
@@ -20,6 +21,22 @@ namespace idas3 {
 inline bool validRaceMusicMetadata(int index){return index>=-1&&index<int(raceMusicCatalog.size());}
 inline bool validRaceMusicSelection(int index){return validRaceMusicMetadata(index)&&index!=0;}
 inline int effectiveRaceMusicSelection(int index){return index==-2?-2:index<=0?1:index;}
+// Presentation-only randomness, separate from the original driving/audio RNG.
+// AUTO chooses a Stage 3 race song and avoids repeating the last automatic pick.
+class AutomaticRaceMusic {
+    std::mt19937 random_;
+    int previous_=0;
+public:
+    explicit AutomaticRaceMusic(std::uint32_t seed):random_(seed){}
+    int select(int index){
+        if(index>0||index==-2)return index;
+        std::array<int,12> choices{};std::size_t count=0;
+        for(int i=1;i<int(raceMusicCatalog.size());++i)
+            if(raceMusicCatalog[i].stage==3&&i!=previous_)choices.at(count++)=i;
+        previous_=choices[std::uniform_int_distribution<std::size_t>(0,count-1)(random_)];
+        return previous_;
+    }
+};
 inline int loadRaceMusicSelection(const std::filesystem::path& directory,int legacyIndex){
     const int legacy=clampMusicTrack(legacyIndex);
     const int fallback=legacy==0?-1:legacy;

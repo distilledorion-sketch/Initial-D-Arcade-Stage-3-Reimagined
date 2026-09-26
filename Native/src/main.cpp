@@ -159,6 +159,7 @@ struct App {
     fs::path saveRoot;
     fs::path userdataRoot()const{return saveRoot.empty()?root/"userdata":saveRoot;}
     int selectedRaceMusic=-1;
+    AutomaticRaceMusic automaticRaceMusic{std::uint32_t(std::chrono::steady_clock::now().time_since_epoch().count())};
     bool extraModeVisitActive()const{return buntaVisitActive||timeAttackVisitActive;}
     bool raceMusicOpponentEligible()const{
         const bool selection=frontend.stage==FrontendStage::Rival||
@@ -1195,7 +1196,7 @@ struct App {
         // Dialogue music owns the same resource slot as selection music.
         // Release it before PACK23 is registered for the race.
         audio.endResultMusic();
-        audio.musicTrack=effectiveRaceMusicSelection(selectedRaceMusic);
+        audio.musicTrack=automaticRaceMusic.select(selectedRaceMusic);
         // Release the outgoing score before race setup reuses its resource
         // slot2 for PACK23. A late menu unload would remove the new race bank.
         frontend.endSelectionMusic();
@@ -1210,6 +1211,7 @@ struct App {
         courseLightPathIndex=0;
         if(originalHandling){
             original::OriginalDrivingSelection selection;
+            selection.bodyContactEnabled=battle;
             selection.physics=original::makeOriginalFreshTimeAttackSelection(std::uint32_t(frontend.car),importedCourse?importedCourse->handlingCondition(reverse):std::uint32_t(courseIndex*2+int(reverse)),wet?original::OriginalWeather::Wet:original::OriginalWeather::Dry);
             //159720 reads tuning from the loaded driver profile. The chosen
             //weather is a race-owner input, including a quick-run override.
@@ -1722,6 +1724,24 @@ struct App {
             //the rival's working query state again. Render never advances it.
             if(projectedRearViewActive())rivalProjectedHeadlight.advance(presentedSession().collision(),matrix.elements);
         }
+    }
+    void refreshReplayHeadlights(){
+        if(!replayPlaybackActive||!originalHandling||!presentedSession().ready())return;
+        const auto& collision=presentedSession().collision();
+        const auto refresh=[&](OriginalHeadlightPresentation& light,bool on,Vec3 position,float yaw,float pitch,float roll){
+            // Replays can seek in either direction. Rebind at the recorded
+            // pose rather than advancing the stopped race actor's projection.
+            light.reset();
+            original::OriginalCollisionQuery query{};
+            original::clearOriginalCollisionQuery(query);
+            light.request(on,collision,query,{position.x,position.y,position.z});
+            if(on){
+                auto matrix=original::originalActorMatrix({position.x,position.y,position.z},{pitch,yaw,roll},*courseLightFsca);
+                light.advance(collision,matrix.elements);light.publish();
+            }
+        };
+        refresh(playerProjectedHeadlight,replayLights,playerBodyWorld,vehicle.yaw,bodyPitch,bodyRoll);
+        refresh(rivalProjectedHeadlight,rivalVisible&&replayRivalLights,rivalBodyWorld,rivalVehicle.yaw,rivalPitch,rivalRoll);
     }
     void appendProjectedHeadlights(Mesh& mesh){
         const auto append=[&](const OriginalHeadlightPresentation& light,unsigned viewMask){
@@ -3041,7 +3061,7 @@ struct App {
         auto& mesh=raceMesh;mesh.vertices.clear();mesh.ranges.clear();mesh.vertices.reserve(140000);
         static const bool copyCourseBaseline=std::getenv("IDAS3_COPY_COURSE_BASELINE")!=nullptr;
         mesh.borrowCachedGeometry=renderer.sceneCapture()!=nullptr&&!copyCourseBaseline;
-        if(originalHandling&&!replayPlaybackActive)appendProjectedHeadlights(mesh);
+        if(originalHandling)appendProjectedHeadlights(mesh);
         const auto courseRangeBegin=mesh.ranges.size();
         if(hasOriginalScenery){
             NativeAssembly background;if(catalogScenery)background=courseScene.backgroundAssembly(camera);else background.instances.push_back(originalAkinaBackgroundInstance(camera));
@@ -4932,5 +4952,3 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show){
 }
 #endif
 #endif // desktop-only entry points
-
-

@@ -148,12 +148,11 @@ void OriginalTimeAttackVisit::beginAfterResults(const Setup& s){
     if(!valid(s))throw std::invalid_argument("Invalid Time Attack visit selector");
     setup_=s;events_.clear();route_=Route::None;frame_=0;phase_=0;fade_=0;selected_=0;
     prepareRanking();
-    // 07AD20 CHECK accepts qualifying course/model/personal flags only for
-    // signed result statuses<=1. Host local persistence replaces the card
-    // writer and existing named profiles replace a second name-entry visit.
-    // ARankinTA Init07EE74..07EE8C independently requires course rank<10.
-    // Beating only a personal/model best does not qualify this child.
-    if(std::int32_t(s.resultStatus)<=1&&s.courseRankingQualified&&!rows_.empty()){
+    // Show the board after every completed run, even outside its top ten.
+    // The cabinet's ARankinTA rank<10 gate hides a populated community board
+    // from most players. Browsing it must not change qualification or awards.
+    // Time-up and unavailable rows still go directly to Continue.
+    if(std::int32_t(s.resultStatus)<=1&&!rows_.empty()){
         stage_=Stage::Ranking;timerTicks_=900;rankingFadeAlpha_=255;rankingSettle_=0;
     }else beginContinue();
 }

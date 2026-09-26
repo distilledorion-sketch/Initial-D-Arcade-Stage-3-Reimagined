@@ -19,6 +19,7 @@ public static class Idas3MeterCatalogBuild
         Debug.Log(Idas3MeterVisibilityChecks.RunChecks());
         Debug.Log(Idas3MeterFrameFamilyChecks.RunChecks());
         Debug.Log(Idas3MeterAnimatedAtlasChecks.RunChecks());
+        Debug.Log(Idas3MeterSignalChecks.RunChecks());
         foreach(string name in new[]{"ArcadeHud","ArcadeHudPreview"}){
             var shader=Resources.Load<Shader>(name);
             if(shader==null)throw new InvalidOperationException("HUD shader resource is missing: "+name);

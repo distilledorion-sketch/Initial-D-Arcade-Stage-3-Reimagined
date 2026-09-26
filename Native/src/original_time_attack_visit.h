@@ -55,6 +55,7 @@ public:
         std::uint32_t resultStatus=0,ticks6000=0,recordFlags=0;
         // Captured BEFORE insertion using source032000's strict comparison.
         // A top-ten run need not beat the course/model/personal best.
+        // Qualification does not gate post-race leaderboard visibility.
         bool courseRankingQualified=false;
         std::array<std::uint32_t,3> oldBestTimes6000{};
         std::array<std::uint8_t,5> nameGlyphs{221,221,221,221,221};

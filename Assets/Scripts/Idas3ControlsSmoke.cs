@@ -85,6 +85,7 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
         Check(bindings.ApplyDraft(),"Could not restore diagnostic controls after menu isolation");yield return Frames(4);pulse=116;
         yield return Until(()=>((host.Status.flags&1)==0)&&host.Status.simulationTicks>240,40,"Race did not start");
         VerifyXInputDiscovery();VerifySteeringAxisPairs();VerifyCaptureRecovery();
+        yield return VerifyMeterCameraPlacement();
         yield return Frames(5);
         physicalPad=new Idas3ControlBindings.PadState{connected=true,buttons=0x10};yield return Frames(12);
         Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Holding controller Start must leave offline pause open");
@@ -146,6 +147,20 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
         InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(3);
         InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.Start));yield return Frames(12);
         Check(!menu.IsOpen,"Unity gamepad Start did not resume");
+        InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
+        // Discord report: DS4/DS5 X throttle stays held after confirming
+        // Continue, but fresh L1/R1 shifts must still reach the native car.
+        bindings.BeginEdit();
+        Check(bindings.TrySetDraftPad(Idas3ControlBindings.ActionId.ShiftUp,Idas3ControlBindings.PadInput.RightShoulder)&&
+            bindings.TrySetDraftPad(Idas3ControlBindings.ActionId.ShiftDown,Idas3ControlBindings.PadInput.LeftShoulder)&&bindings.ApplyDraft(),"Could not bind shoulder shifts");
+        menu.SetOpen(true);yield return Frames(4);
+        InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(8);
+        Check(!menu.IsOpen,"Confirm did not resume from pause");
+        InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South).WithButton(GamepadButton.RightShoulder));yield return Frames(4);
+        Check(host.DiagnosticSubmittedInput.rightTrigger==255&&(host.DiagnosticSubmittedInput.padButtons&0x2000)!=0,"Held confirm/throttle swallowed a fresh shoulder shift-up");
+        InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(3);
+        InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South).WithButton(GamepadButton.LeftShoulder));yield return Frames(4);
+        Check(host.DiagnosticSubmittedInput.rightTrigger==255&&(host.DiagnosticSubmittedInput.padButtons&0x4000)!=0,"Held confirm/throttle swallowed a fresh shoulder shift-down");
         InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
         InputSystem.RemoveDevice(syntheticPad);syntheticPad=null;yield return Frames(3);
         syntheticPad=(Gamepad)InputSystem.AddDevice(TestPadDescription);InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(6);
@@ -223,6 +238,20 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
             }
         }
     }
+    private IEnumerator VerifyMeterCameraPlacement(){
+        var options=host.GameOptions;var saved=options.Current.Clone();var ui=host.GetComponent<Idas3UnityUi>();Rect bumper=default,chase=default;
+        for(int view=0;view<3;++view){
+            options.BeginEdit();options.Draft.hudMeterStyle=12;options.Draft.hudMeterLayout=1;options.Draft.defaultCamera=view;
+            Check(options.ApplyDraft(),"Could not select meter/camera for private placement check");yield return Frames(4);
+            Check(Idas3Native.ReadOptions().cameraView==view&&ui.ArcadeMeterVisible&&ui.HudBounds(2,out _),"Live meter camera state was not available");
+            ui.HudBounds(2,out var bounds);
+            if(view==0)bumper=bounds;
+            else if(view==1){chase=bounds;Check(chase.x<bumper.x&&chase.size==bumper.size,"Live chase view did not move the wide meter left");}
+            else Check(bounds==chase,"Natural camera did not use chase meter placement");
+        }
+        options.BeginEdit();JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(saved),options.Draft);
+        Check(options.ApplyDraft(),"Could not restore private meter options");yield return Frames(4);
+    }
     private void VerifyCaptureRecovery()
     {
         var connected=new Idas3ControlBindings.PadState{connected=true};
@@ -246,6 +275,39 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
             Check(drivingPacket.rightTrigger==0&&drivingPacket.leftTrigger==0&&drivingPacket.thumbLX==0,
                 reason+": capture suppression leaked driving input");
         }
+
+        var reconnect=Generic("reconnect-keyboard",out var reconnectControls);
+        var latchedPad=connected;latchedPad.buttons=0x1000; // Generic first-button menu fallback.
+        reconnect.CancelEdit(false);reconnect.ControllerDeviceChanged();
+        reconnect.Poll(k=>k==KeyCode.W||k==KeyCode.Escape,latchedPad,1,reconnectControls);
+        var reconnectFrame=new Idas3Native.FrameInput();reconnect.ApplyDriving(ref reconnectFrame);
+        Check(!reconnect.SuppressInput&&reconnect.PauseHeld&&(reconnectFrame.key2&(1u<<(87-64)))!=0,
+            "A controller switch with a held pedal blocked keyboard driving/pause");
+        Check(reconnectFrame.rightTrigger==0,"A reconnected held pedal bypassed its release guard");
+        reconnectControls[1].value=1;reconnect.Poll(_=>false,latchedPad,2,reconnectControls);
+        var reconnectMenu=new Idas3Native.FrameInput{padButtons=0x1000};reconnect.ApplyMenu(ref reconnectMenu,true);
+        Check((reconnectMenu.padButtons&0x1000)==0,"Latched generic fallback confirmed a menu after reconnect");
+        reconnectControls[1].value=-.6f;reconnect.Poll(_=>false,latchedPad,3,reconnectControls);
+        reconnectFrame=default;reconnect.ApplyDriving(ref reconnectFrame);
+        Check(reconnectFrame.rightTrigger>100,"An unmapped latched selector prevented wheel recovery after pedal release");
+
+        var latched=Generic("latched-selector",out var latchedControls,false);
+        latchedControls[0].value=1;latched.Poll(_=>false,connected,1,latchedControls);
+        latched.BeginCapture(Idas3ControlBindings.ActionId.Brake,Idas3ControlBindings.Slot.Controller,2);
+        latched.Poll(_=>false,connected,2.1,latchedControls);
+        latchedControls[2].value=-.6f;latched.Poll(_=>false,connected,2.2,latchedControls);
+        Check(!latched.IsCapturing&&latched.Draft.actions[1].controlPath=="wheel/clutch",
+            "A held wheel selector prevented capture of an independent pedal");
+        latched.Poll(_=>false,connected,2.3,latchedControls);
+        Check(latched.SuppressInput,"Accepted pedal leaked input before release");
+        latchedControls[2].value=1;latched.Poll(_=>false,connected,2.4,latchedControls);
+        Check(!latched.SuppressInput,"An unrelated latched selector blocked accepted pedal release");
+        latchedControls[0].value=0;latched.Poll(_=>false,connected,2.5,latchedControls);
+        latched.BeginCapture(Idas3ControlBindings.ActionId.Headlights,Idas3ControlBindings.Slot.Controller,3);
+        latched.Poll(_=>false,connected,3.1,latchedControls);
+        latchedControls[0].value=1;latched.Poll(_=>false,connected,3.2,latchedControls);
+        Check(!latched.IsCapturing&&latched.Draft.actions[9].controlPath=="wheel/selector",
+            "A released selector could not be bound on its next press");
 
         var escape=Generic("escape",out var escapeControls);
         string escapeDraft=JsonUtility.ToJson(escape.Draft),escapeFile=File.ReadAllText(escape.FilePath);

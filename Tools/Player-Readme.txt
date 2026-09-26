@@ -1,4 +1,11 @@
-0.3.95-community-replays.34
+0.3.95-community-replays.35
+TIME ATTACK, CONTROLS, REPLAYS AND HUD FIXES
+Completed Time Attacks now show the leaderboard even outside the top ten. Fixed retained opponent collision in solo races, blocked shifting after pause, and controller reconnect/binding locks caused by held wheel controls.
+Replays retain recorded tuning/RPM and road headlights. Imported meters regain speed-color effects and earlier shift warnings. Wide meters have improved camera-specific default placement; existing custom layouts are preserved. HUD artwork can be moved partly beyond the screen edge.
+AUTO music now varies across 12 songs without consecutive repeats. Evo III backfire is louder. Wine updates accept verified C:/Z: aliases; an older failing installer may need one manual full-ZIP update.
+Changed-file patches are available from .20 through .34. Existing saves, settings, replays, custom music and original ROMs are preserved.
+
+PREVIOUS TACHOMETER RESTORATION (.34)
 MISSING TACHOMETER ARTWORK AND EFFECTS
 Restored missing RPM faces, needles, night lighting, Classic dial artwork, Phoenix and Metallic gear effects, Steampunk rev glow, Single lighting, Racing pedal masks and the Retrowave grid.
 Changed-file patches are available from .20 through .33.
@@ -15,7 +22,7 @@ Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder b
 No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
 COMMUNITY TIME ATTACK
-Only 0.3.95-community-replays.34 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
+Only 0.3.95-community-replays.35 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
 Both online players need this version. Updates use a smaller changed-file patch when available for the installed version. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
 
 FIXES INCLUDED FROM .28

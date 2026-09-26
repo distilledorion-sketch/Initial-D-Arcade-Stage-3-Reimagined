@@ -427,7 +427,17 @@ void prepareModeFlowFixture(App& app,unsigned scene){
         app.timeAttackAnalysis=original::analyzeOriginalTimeAttack(analysisInput,fixtureSeed);app.timeAttackAnalysisPrepared=true;
         app.race.timeUp=scene==7;
         if(scene==4||scene>=7)app.beginTimeAttackVisit(true);
-        else {if(scene==6)app.results.recordFlags=0;app.audio.beginResultMusic();app.beginTimeAttackVisit(false);}
+        else {
+            if(scene==6)app.results.recordFlags=0;
+            app.audio.beginResultMusic();app.beginTimeAttackVisit(false);
+            // Fixture6 isolates the Continue screen for menu-navigation tests.
+            // Completed nonrecord runs now visit the leaderboard first too.
+            if(scene==6){
+                for(unsigned frame=0;frame<100&&app.timeAttackVisit.stage()==original::OriginalTimeAttackVisit::Stage::Ranking;++frame)
+                    app.timeAttackVisit.advance({true});
+                app.prepareTimeAttackBackdrop();
+            }
+        }
     }
     app.input={};app.updateAudioScene();
 }

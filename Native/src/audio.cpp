@@ -53,7 +53,10 @@ void EngineAudio::playTuningCue(unsigned sourceCueId){
 }
 void EngineAudio::playRaceCue(unsigned bank,unsigned cue){
     if((bank!=2&&bank!=4&&bank!=5)||cue>=(bank==2?8u:bank==4?6u:3u))return;
-    if(nativeOneShots&&originalSoundSet==4)nativeOneShots->play(20+bank,cue);
+    // The desktop mix buried the Evo III's misfire beneath engine/music.
+    // Boost only that authored cue by 6 dB, retaining its sequence and the
+    // player's Effects volume. This is a mix adjustment, not arcade parity.
+    if(nativeOneShots&&originalSoundSet==4)nativeOneShots->play(20+bank,cue,bank==2&&cue==7?2.f:1.f);
 }
 void EngineAudio::resetRaceEffects(){if(nativeOneShots)for(unsigned bank:{22u,24u,25u})nativeOneShots->stopBank(bank);}
 void EngineAudio::selectOriginalEngine(const std::filesystem::path& root,const original::OriginalBattleProfile& profile){

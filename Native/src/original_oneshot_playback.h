@@ -23,7 +23,9 @@ public:
     OriginalOneShotPlayback& operator=(const OriginalOneShotPlayback&)=delete;
     void reset();
     // Actual bank numbers20,21,22,24,25; cue is the authored A9 track number.
-    void play(unsigned bankNumber,unsigned cue);
+    // Optional host mix gain, applied after source voice synthesis. Source
+    // register/sequence behavior is unchanged; the default is bit-exact.
+    void play(unsigned bankNumber,unsigned cue,float outputGain=1.f);
     void stopBank(unsigned bankNumber);
     void setBankVolume(unsigned bankNumber,std::uint8_t level);
     void clearDspSends();

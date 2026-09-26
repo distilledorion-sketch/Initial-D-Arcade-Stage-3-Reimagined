@@ -562,7 +562,12 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAppearance(const uint32_t* va
         for(unsigned i=2;i<7;++i)if(values[i]>221)throw std::invalid_argument("Invalid replay name");
         auto& a=*r.app;
         for(unsigned i=0;i<12;++i)a.frontend.battleProfile.setu(replayProfileOffsets[i],values[i]);
-        a.frontend.battleProfile.setu(16,unsigned(a.frontend.car));a.frontend.driverProfileLoaded();a.loadedCar=-1;a.loadSelectedCar();
+        a.frontend.battleProfile.setu(16,unsigned(a.frontend.car));a.frontend.driverProfileLoaded();a.loadedCar=-1;
+        // ReplayStart only knows the model. Rebuild its isolated race with the
+        // recorded tuning too, so transmission parameters, tach range and
+        // engine audio agree with the recorded car (including the 11k AE86).
+        a.start();a.vsActive=a.loadingActive=a.preRaceDialogueActive=false;
+        a.menu=a.paused=false;a.race.phase=RacePhase::Running;
         for(unsigned i=0;i<3;++i)a.results.bestTimes6000[i]=values[12+i];a.results.modelBestAvailable=true;a.results.edgeAnchored=true;a.results.suppliedRecordTargets=true;
         a.replayDetailed=true;return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
@@ -665,6 +670,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayPose(double tick,float x,floa
         double dt=(tick-a.replayLastTick)/60.;
         if(a.replayLastTick<0||dt<0||dt>.25){a.wetWeather.reset();dt=1./60.;}
         a.replayLastTick=tick;
+        a.refreshReplayHeadlights();
         if(!a.render(dt,false))throw std::runtime_error(a.renderer.error);
         ++r.frames;publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
@@ -949,7 +955,7 @@ int IDAS3_UNITY_CALL Idas3SceneCopyRaceMusicText(int index,int field,char* desti
             throw std::invalid_argument("Invalid race music text request");
         const auto& track=raceMusicCatalog[index<0?effectiveRaceMusicSelection(index):index];
         const std::string_view text=field==0?(index<0?"default":track.id):
-            field==1?(index<0?"Game default \xe2\x80\x94 Speedy Speed Boy":track.title):track.artist;
+            field==1?(index<0?"Automatic":track.title):(index<0?"ARCADE STAGE 3":track.artist);
         if(capacity){
             auto count=std::min(text.size(),std::size_t(capacity-1));
             // A short UTF8 destination still receives a valid string.

@@ -1,12 +1,19 @@
 # Run on Linux: xvfb-run -a python3 Tests/Updates/test_wine_installer.py
 from pathlib import Path
 import hashlib,json,os,shutil,struct,subprocess,tempfile,time
-root=Path(__file__).resolve().parents[2];proof=root/'Verification/wine-updater-20260922'
+root=Path(__file__).resolve().parents[2]
+proof=Path(os.environ.get('IDAS3_UPDATE_TEST_OUTPUT',root/'Verification/wine-updater-20260922'))
+proof.mkdir(parents=True,exist_ok=True)
 base=Path(tempfile.mkdtemp(prefix='idas3-updater-wine-',dir=str(Path.home())));prefix=base/'prefix'
 env=dict(os.environ,WINEPREFIX=str(prefix),WINEDEBUG='-all',WINEDLLOVERRIDES='mscoree,mshtml=')
 wine='/usr/lib/wine/wine64'
 helper=root/'Native/build-update-helper/Idas3UpdateInstaller.exe';child=root/'Native/build-update-helper/UpdateTestChild.exe'
-def win(path):return 'Z:'+str(path.resolve()).replace('/','\\')
+prefer_c_drive=False
+def win(path):
+    path=path.resolve()
+    if prefer_c_drive and path.is_relative_to(prefix/'drive_c'):
+        return 'C:\\'+str(path.relative_to(prefix/'drive_c')).replace('/','\\')
+    return 'Z:'+str(path).replace('/','\\')
 def text(s):return struct.pack('<I',len(s.encode('utf-16le'))//2)+s.encode('utf-16le')
 results=[]
 def case(name,corrupt=False,concurrent=False,handoff=False,linked=False):
@@ -57,5 +64,28 @@ case('linked-game-file',linked=True)
 case('tampered-stage',corrupt=True)
 case('concurrent-change',concurrent=True)
 case('wait-apply-restart',handoff=True)
+# Proton/Wine can spell the same real folder through C: or the Unix Z: map.
+# The old final-path string comparison rejected the latter despite no links.
+base=prefix/'drive_c'/'updater-alias-fixtures';base.mkdir()
+case('z-path-resolves-to-c-drive')
+case('z-alias-linked-file-rejected',linked=True)
+prefer_c_drive=True
+case('native-c-drive-path')
+def alias_overlap(name,session_inside_game):
+    folder=base/name
+    game=folder/'game' if session_inside_game else folder/'session/stage/game'
+    session=game/'session' if session_inside_game else folder/'session'
+    game.mkdir(parents=True);session.mkdir(parents=True,exist_ok=True)
+    sentinels={game/'InitialDUnity.exe':b'game',session/'stage/keep.bin':b'stage',session/'backup/keep.bin':b'recovery'}
+    for path,value in sentinels.items():path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(value)
+    plan=session/'install.plan';plan.write_bytes(b'IDUPD002'+text(win(game)))
+    # Game root uses C:, plan uses Z:, but they must still count as overlapping.
+    plan_alias='Z:'+str(plan).replace('/','\\')
+    rejected=subprocess.run([wine,win(helper),plan_alias,'--test'],env=env,capture_output=True,timeout=30)
+    assert rejected.returncode!=0 and not (session/'result.json').exists(),name
+    for path,value in sentinels.items():assert path.read_bytes()==value,(name,path)
+    results.append(dict(test=name,passed=True));print(name+': PASS',flush=True)
+alias_overlap('aliased-session-inside-game',True)
+alias_overlap('aliased-game-inside-session',False)
 report=dict(passed=True,tests=results,wine=subprocess.check_output([wine,'--version'],env=env,text=True).strip(),prefix=str(prefix),externalPowerShellOrDotNetRequired=False)
 (proof/'wine-report.json').write_text(json.dumps(report,indent=2));print(json.dumps(report),flush=True)

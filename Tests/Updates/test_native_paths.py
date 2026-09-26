@@ -23,7 +23,7 @@ import time
 
 REPO = Path(__file__).resolve().parents[2]
 ALIAS_ERROR = "An update path resolves through a link."
-OUTSIDE_ERROR = "Installer must be outside the game folder."
+OUTSIDE_ERROR = "Installer and game folders must not overlap."
 REQUIRED = {
     "InitialDUnity.exe": b"new game fixture",
     "UnityPlayer.dll": b"new engine fixture",
@@ -147,21 +147,25 @@ def run_case(base, helper, name, baseline):
     if expected_success:
         assert (session / "ready").read_text() == "Prepared"
         status = json.loads((session / "result.json").read_text())
-        assert status == {"passed": True, "changedFiles": len(targets)}, status
+        assert status['passed'] and status['changedFiles']==len(targets),status
+        if not baseline:assert status['schema']==1 and status['cleanupSafe'] and not status['rollbackNeeded'],status
         expected = targets
     else:
         assert not (session / "ready").exists(), "Rejected update reached ready state"
-        assert not (session / "result.json").exists(), "Rejected update recorded success"
+        terminal=json.loads((session/'result.json').read_text()) if (session/'result.json').exists() else None
+        if terminal:assert not terminal['passed'] and terminal['changedFiles']==0 and terminal['cleanupSafe'] and not terminal['rollbackNeeded'],terminal
         assert not (game / NEW_FILE).exists(), "Rejected update installed a new file"
         expected = originals
-        for path, contents in targets.items():
-            assert (stage / path).read_bytes() == contents, (name, "changed staged data", path)
+        if stage.exists():
+            for path, contents in targets.items():
+                assert (stage / path).read_bytes() == contents, (name, "changed staged data", path)
+        else:assert terminal and terminal['cleanupSafe'] and name!='junction-stage',name
         if aliases or (name == "inside-game-root-short" and baseline):
             assert error == ALIAS_ERROR, (name, error)
         elif name == "inside-game-root-short":
-            assert error == OUTSIDE_ERROR, (name, error)
+            assert not terminal and error in ('',OUTSIDE_ERROR), (name, error)
         else:
-            assert "links" in error.lower() or "through a link" in error.lower(), (name, error)
+            assert (not terminal and error=='') or "links" in error.lower() or "through a link" in error.lower(), (name, error)
     for path, contents in {**expected, **personal}.items():
         assert (game / path).read_bytes() == contents, (name, "changed original/personal data", path)
     assert not (game / ".update-lock").exists(), "Installer left its lock file"
@@ -218,12 +222,17 @@ def run_running_game_case(base, helper, child, baseline):
         assert result.returncode != 0
         assert error == (ALIAS_ERROR if baseline else "Another copy of this game is running."), error
         assert not (session / "ready").exists(), "Installer ignored the additional running game"
-        assert not (session / "result.json").exists()
+        if baseline:assert not (session/'result.json').exists()
+        else:
+            terminal=json.loads((session/'result.json').read_text())
+            assert not terminal['passed'] and terminal['changedFiles']==0 and terminal['cleanupSafe'] and not terminal['rollbackNeeded']
         assert not (game / NEW_FILE).exists()
         for path, contents in original.items():
             assert (game / path).read_bytes() == contents, (name, path)
-        for path, contents in targets.items():
-            assert (session / "stage" / path).read_bytes() == contents, (name, path)
+        if baseline:
+            for path, contents in targets.items():
+                assert (session / "stage" / path).read_bytes() == contents, (name, path)
+        else:assert not (session/'stage').exists()
         assert all(process.poll() is None for process, _ in processes), "Installer stopped a game"
         assert not (game / ".update-lock").exists()
         return {"name": name, "passed": True, "installed": False,

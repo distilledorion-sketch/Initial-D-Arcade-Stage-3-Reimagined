@@ -35,6 +35,10 @@ struct OriginalDrivingSelection {
     // Absent keeps the solo caller contract. The complete original inactive
     // rival/pair stages still execute. Explicit setup owns its source fields.
     std::optional<OriginalDrivingRivalSetup> rival;
+    // The host disables the retained secondary actor for a solo race.
+    // Source-parity callers keep the original pair stage by default.
+    // An explicit synchronized contact result always takes precedence.
+    bool bodyContactEnabled=true;
 };
 struct OriginalDrivingStepEffects {
     OriginalVehicleStepResult vehicle;

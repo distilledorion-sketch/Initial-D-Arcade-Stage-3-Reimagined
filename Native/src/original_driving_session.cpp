@@ -232,7 +232,8 @@ OriginalDrivingStepEffects OriginalDrivingSession::tick(const OriginalVehicleInp
     // their preserved secondary pose after a negative-control reset.
     // A synchronized two-human owner can supply both halves of one contact
     // solve using the same prior-frame poses. Ordinary solo/AI keeps its path.
-    out.bodyCollision=sharedContact?*sharedContact:produceOriginalBodyContact(s.published,s.bodyContact,s.rivalData,s.fsca);
+    out.bodyCollision=sharedContact?*sharedContact:s.selection.bodyContactEnabled
+        ?produceOriginalBodyContact(s.published,s.bodyContact,s.rivalData,s.fsca):OriginalBodyCollisionResult{};
     const auto bodyEffects=applyOriginalBodyCollisionResponse(s.vehicle.drive,out.bodyCollision,s.boot.state0C31FD44,s.completion.randomSeed0C37C778);
     out.vehicle=stepOriginalVehicle(s.vehicle,inputs,s.parameters,{originalSinF32,originalCosF32,originalFiprDot3});
     prepareOriginalContactFrame(s.vehicle.drive,s.actor,s.wheels);

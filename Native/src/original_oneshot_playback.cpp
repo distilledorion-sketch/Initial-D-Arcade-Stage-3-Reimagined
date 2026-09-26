@@ -3,6 +3,7 @@
 #include "original_music_voice.h"
 #include "original_music_control.h"
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
@@ -40,8 +41,9 @@ struct OriginalOneShotPlayback::Impl {
     struct Slot {
         OriginalMusicVoice voice;OriginalMusicVoiceParameters parameters;OriginalMusicVolumeContext volume;
         unsigned bank=0,playback=0;std::uint64_t order=0;std::uint8_t flags1=0,priority=0;bool sendCleared=false;
+        float outputGain=1.f;
     };
-    struct Track {OriginalSfxSequencer sequence;unsigned bank=0;};
+    struct Track {OriginalSfxSequencer sequence;unsigned bank=0;float outputGain=1.f;};
     std::array<Bank,5> banks;std::array<Slot,32> slots;std::array<Track,16> tracks;
     OriginalOneShotStatistics stats;std::uint64_t nextOrder=0;
     unsigned active()const{return unsigned(std::count_if(slots.begin(),slots.end(),[](const auto&s){return s.voice.active();}));}
@@ -50,7 +52,7 @@ struct OriginalOneShotPlayback::Impl {
         s.parameters.totalLevel=originalMusicTotalLevel(s.volume);
         auto p=s.parameters;if(s.sendCleared)p.effectSend=0;s.voice.configure(p);
     }
-    void note(unsigned bank,const OriginalSfxSequenceEvent& event){
+    void note(unsigned bank,const OriginalSfxSequenceEvent& event,float outputGain){
         const auto& sound=banks[bank].sounds.at(event.playback);
         if(!event.volume)return; // All imported commands have nonzero velocity.
         if((sound.flags1&0x83)==0x80)for(auto& s:slots)
@@ -65,6 +67,7 @@ struct OriginalOneShotPlayback::Impl {
             free=slots.begin()+order[chosen];free->voice.stop();++stats.stolen;
         }
         free->bank=bank;free->playback=event.playback;free->order=nextOrder++;
+        free->outputGain=outputGain;
         free->flags1=sound.flags1;free->priority=sound.priority;free->sendCleared=false;
         free->parameters=sound.parameters;free->volume=sound.volume;free->volume.velocityTableValue=sound.velocity[event.volume];
         free->volume.channelGain10=originalMusicChannelGain(127,64,banks[bank].volume,64,free->volume.channelFlags0);
@@ -106,20 +109,21 @@ OriginalOneShotPlayback::OriginalOneShotPlayback(const std::filesystem::path& ro
 }
 OriginalOneShotPlayback::~OriginalOneShotPlayback()=default;
 void OriginalOneShotPlayback::reset(){for(auto& s:impl_->slots)s={};for(auto&t:impl_->tracks)t.sequence.reset();for(auto&b:impl_->banks)b.volume=127;impl_->stats={};impl_->nextOrder=0;}
-void OriginalOneShotPlayback::play(unsigned number,unsigned cue){
+void OriginalOneShotPlayback::play(unsigned number,unsigned cue,float outputGain){
+    if(!std::isfinite(outputGain)||outputGain<0.f||outputGain>4.f)throw std::invalid_argument("One-shot output gain must be finite in0..4");
     const unsigned bank=bankIndex(number);const auto& sequence=impl_->banks[bank].cues.at(cue);++impl_->stats.cues;
     auto track=std::find_if(impl_->tracks.begin(),impl_->tracks.end(),[](const auto&t){return !t.sequence.active();});
     //7D98..7DE4: first free track, otherwise first SFX track. The source16
     // sequencer slots are shared with music; this partition keeps their bound.
-    if(track==impl_->tracks.end())track=impl_->tracks.begin();track->bank=bank;
-    track->sequence.start(sequence,[&](const auto& e){impl_->note(bank,e);});
+    if(track==impl_->tracks.end())track=impl_->tracks.begin();track->bank=bank;track->outputGain=outputGain;
+    track->sequence.start(sequence,[&](const auto& e){impl_->note(bank,e,outputGain);});
 }
 void OriginalOneShotPlayback::stopBank(unsigned number){const unsigned bank=bankIndex(number);for(auto&s:impl_->slots)if(s.bank==bank)s.voice.stop();for(auto&t:impl_->tracks)if(t.bank==bank)t.sequence.stop();}
 void OriginalOneShotPlayback::setBankVolume(unsigned number,std::uint8_t level){const unsigned bank=bankIndex(number);impl_->banks[bank].volume=level&127;for(auto&s:impl_->slots)if(s.voice.active()&&s.bank==bank)impl_->volume(s);}
 void OriginalOneShotPlayback::clearDspSends(){for(auto&s:impl_->slots)if(s.voice.active()){s.voice.clearDspSend();s.sendCleared=true;}}
 OriginalIcsMixFrame OriginalOneShotPlayback::renderFrame(){
-    OriginalIcsMixFrame result;for(auto&s:impl_->slots)if(s.voice.active()){const auto f=s.voice.renderFrame();for(unsigned i=0;i<2;++i)result.dry[i]+=f.dry[i];for(unsigned i=0;i<16;++i)result.effects[i]+=f.effects[i];}
-    for(auto&t:impl_->tracks)t.sequence.advanceSample([&](const auto&e){impl_->note(t.bank,e);});++impl_->stats.frames;return result;
+    OriginalIcsMixFrame result;for(auto&s:impl_->slots)if(s.voice.active()){const auto f=s.voice.renderFrame();for(unsigned i=0;i<2;++i)result.dry[i]+=std::int32_t(f.dry[i]*s.outputGain);for(unsigned i=0;i<16;++i)result.effects[i]+=std::int32_t(f.effects[i]*s.outputGain);}
+    for(auto&t:impl_->tracks)t.sequence.advanceSample([&](const auto&e){impl_->note(t.bank,e,t.outputGain);});++impl_->stats.frames;return result;
 }
 OriginalOneShotStatistics OriginalOneShotPlayback::statistics()const{auto s=impl_->stats;s.activeVoices=impl_->active();return s;}
 }

@@ -979,7 +979,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
         {
             // Do not forward the closing press to native pause/confirmation.
             ClearKey(ref frame, 27); ClearKey(ref frame, 13); ClearKey(ref frame, 8);
-            frame.padButtons &= ~0x3010u;
+            // In a driving packet B is the canonical shift-up action, even
+            // when its physical binding is R1. A held confirm/throttle must
+            // not swallow fresh paddle presses after leaving the menu.
+            frame.padButtons &= ~0x1010u;
         }
         if (pauseMenu.BlocksGameInput || (suppressPauseControls && returningToFrontend) || Time.frameCount <= pauseBlockThroughFrame)
             NeutralizeControls(ref frame);

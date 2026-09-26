@@ -22,19 +22,11 @@ static fs::path comparablePath(std::wstring value){
     else if(prefix.rfind(L"\\\\?\\",0)==0)value=value.substr(4);
     return fullPath(value);
 }
-static fs::path longPath(const fs::path& p){
-    // Expand DOS 8.3 names without resolving junctions or symbolic links.
-    // TEMP and user profiles can use short names even for ordinary folders.
-    std::vector<wchar_t> expanded(32768);
-    DWORD length=GetLongPathNameW(p.c_str(),expanded.data(),static_cast<DWORD>(expanded.size()));
-    require(length>0&&length<expanded.size(),"Cannot expand an update path.");
-    return comparablePath(std::wstring(expanded.data(),length));
-}
 static fs::path inside(const fs::path& root,const fs::path& relative){
     auto p=fullPath(root/relative);auto prefix=lower(fullPath(root).wstring()+L"\\");
     require(lower(p.wstring()).rfind(prefix,0)==0,"An update path escaped its folder.");return p;
 }
-static void noLinks(fs::path p){
+static fs::path noReparseAncestors(fs::path p){
     // Wine exposes DOS drive mappings as reparse points. Validate every path
     // below the drive root, while allowing the drive mapping itself.
     fs::path existing;
@@ -46,6 +38,42 @@ static void noLinks(fs::path p){
         else require(GetLastError()==ERROR_FILE_NOT_FOUND||GetLastError()==ERROR_PATH_NOT_FOUND,"Cannot inspect an update path.");
         auto parent=p.parent_path();if(parent==p)break;p=parent;
     }
+    return existing;
+}
+static bool sameWineDriveAlias(const fs::path& expected,const fs::path& resolved,HANDLE original){
+    // Wine may return C:\\... for the exact same directory opened via Z:\\... .
+    // This is a DOS drive alias, not a link inside the update tree. Retain
+    // link rejection on BOTH spellings and require matching open-file identity.
+    if(!GetProcAddress(GetModuleHandleW(L"ntdll.dll"),"wine_get_version")||
+        lower(expected.root_path().wstring())==lower(resolved.root_path().wstring()))return false;
+    noReparseAncestors(resolved);
+    Handle other(CreateFileW(resolved.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT,nullptr));
+    BY_HANDLE_FILE_INFORMATION a{},b{};
+    return other.h!=INVALID_HANDLE_VALUE&&GetFileInformationByHandle(original,&a)&&GetFileInformationByHandle(other.h,&b)&&
+        !(b.dwFileAttributes&FILE_ATTRIBUTE_REPARSE_POINT)&&a.dwVolumeSerialNumber==b.dwVolumeSerialNumber&&
+        a.nFileIndexHigh==b.nFileIndexHigh&&a.nFileIndexLow==b.nFileIndexLow;
+}
+static fs::path longPath(const fs::path& p){
+    // Expand DOS 8.3 names without resolving junctions or symbolic links.
+    // TEMP and user profiles can use short names even for ordinary folders.
+    std::vector<wchar_t> expanded(32768);
+    DWORD length=GetLongPathNameW(p.c_str(),expanded.data(),static_cast<DWORD>(expanded.size()));
+    if(length>0&&length<expanded.size())return comparablePath(std::wstring(expanded.data(),length));
+    // Wine's long-name expansion can fail on a Z: spelling inside drive_c
+    // even though CreateFileW succeeds. Only accept the verified drive alias.
+    if(GetProcAddress(GetModuleHandleW(L"ntdll.dll"),"wine_get_version")){
+        noReparseAncestors(p);
+        Handle file(CreateFileW(p.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT,nullptr));
+        length=GetFinalPathNameByHandleW(file.h,expanded.data(),static_cast<DWORD>(expanded.size()),FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
+        if(length>0&&length<expanded.size()){
+            auto resolved=comparablePath(std::wstring(expanded.data(),length));
+            if(sameWineDriveAlias(fullPath(p),resolved,file.h))return resolved;
+        }
+    }
+    throw std::runtime_error("Cannot expand an update path.");
+}
+static void noLinks(fs::path p){
+    auto existing=noReparseAncestors(p);
     // Resolving the closest existing path resolves all of its ancestors too.
     // Do not reopen and resolve the same directories for every ancestor/file.
     if(!existing.empty()){
@@ -53,8 +81,18 @@ static void noLinks(fs::path p){
         require(check.h!=INVALID_HANDLE_VALUE,"Cannot inspect final update path.");
         std::vector<wchar_t> resolved(32768);DWORD length=GetFinalPathNameByHandleW(check.h,resolved.data(),static_cast<DWORD>(resolved.size()),FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
         require(length>0&&length<resolved.size(),"Cannot resolve final update path.");
-        require(lower(comparablePath(std::wstring(resolved.data(),length)).wstring())==lower(longPath(existing).wstring()),"An update path resolves through a link.");
+        auto actual=comparablePath(std::wstring(resolved.data(),length));auto expected=longPath(existing);
+        require(lower(actual.wstring())==lower(expected.wstring())||sameWineDriveAlias(expected,actual,check.h),"An update path resolves through a link.");
     }
+}
+static fs::path canonicalExistingPath(const fs::path& p){
+    noLinks(p);
+    Handle file(CreateFileW(p.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS,nullptr));
+    std::vector<wchar_t> resolved(32768);
+    DWORD length=GetFinalPathNameByHandleW(file.h,resolved.data(),static_cast<DWORD>(resolved.size()),FILE_NAME_NORMALIZED|VOLUME_NAME_DOS);
+    require(length>0&&length<resolved.size(),"Cannot resolve final update path.");
+    // Use one spelling for containment/process checks too, not just validation.
+    return comparablePath(std::wstring(resolved.data(),length));
 }
 struct HashWorkspace{
     BCRYPT_ALG_HANDLE algorithm=nullptr;
@@ -99,7 +137,7 @@ static void noOtherGame(const fs::path& game,DWORD parent){
     Handle snapshot(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0));require(snapshot.h!=INVALID_HANDLE_VALUE,"Cannot check running games.");PROCESSENTRY32W entry{};entry.dwSize=sizeof entry;
     if(Process32FirstW(snapshot.h,&entry))do{if(entry.th32ProcessID==parent||_wcsicmp(entry.szExeFile,L"InitialDUnity.exe"))continue;
         Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,entry.th32ProcessID));if(!process.h)continue;
-        wchar_t path[32768];DWORD length=32768;if(QueryFullProcessImageNameW(process.h,0,path,&length))require(lower(longPath(path).wstring())!=lower(longPath(game).wstring()),"Another copy of this game is running.");
+        wchar_t path[32768];DWORD length=32768;if(QueryFullProcessImageNameW(process.h,0,path,&length))require(lower(canonicalExistingPath(path).wstring())!=lower(canonicalExistingPath(game).wstring()),"Another copy of this game is running.");
     }while(Process32NextW(snapshot.h,&entry));
 }
 static void restart(const fs::path& root){
@@ -128,7 +166,7 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
     try{
         require(argv&&(argc==2||argc==3),"Invalid installer arguments.");test=argc==3&&std::wstring(argv[2])==L"--test";require(argc!=3||test,"Invalid test option.");
         auto plan=fullPath(argv[1]);session=plan.parent_path();require(plan.filename()==L"install.plan","Invalid install plan filename.");noLinks(session);noLinks(plan);require(fs::file_size(plan)<=64*1024*1024,"Install plan too large.");
-        plan=longPath(plan);session=plan.parent_path();
+        plan=canonicalExistingPath(plan);session=plan.parent_path();
         auto lease=inside(session,L".cleanup-lock");noLinks(lease);
         sessionLease.h=CreateFileW(lease.c_str(),GENERIC_READ|GENERIC_WRITE,FILE_SHARE_READ|FILE_SHARE_WRITE,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);require(sessionLease.h!=INVALID_HANDLE_VALUE,"Update session cleanup is running.");
         auto installerLock=inside(session,L".install-lock");noLinks(installerLock);
@@ -137,7 +175,7 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
         // rollback backup as an unused preparation that is safe to discard.
         for(auto name:{L"ready",L"result.json",L"result.json.tmp",L"error.txt"}){auto marker=inside(session,name);noLinks(marker);require(!fs::exists(marker),"This update session has already been used.");}
         std::ifstream input(plan,std::ios::binary);char magic[8];input.read(magic,8);require(std::string(magic,8)=="IDUPD002","Invalid install plan.");
-        root=fullPath(readString(input));noLinks(root);root=longPath(root);auto game=root/L"InitialDUnity.exe";require(fs::is_regular_file(game),"Game executable missing.");
+        root=canonicalExistingPath(fullPath(readString(input)));auto game=root/L"InitialDUnity.exe";require(fs::is_regular_file(game),"Game executable missing.");
         require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&lower(root.wstring()).rfind(lower(session.wstring()+L"\\"),0)!=0&&lower(root.wstring())!=lower(session.wstring()),"Installer and game folders must not overlap.");
         // Only validated temporary locations may be marked safe or reclaimed.
         owned=true;

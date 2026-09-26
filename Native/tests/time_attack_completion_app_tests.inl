@@ -15,9 +15,12 @@ int runTimeAttackCompletionAppTests(App& app){
     // A fast unrelated named leaderboard record must not become this driver's
     // personal previous best or affect which previous splits coaching sees.
     app.records.record({6,0,0,100000});
+    // Aggregate cabinet records are no longer a displayed leaderboard source.
+    // Supply this unrelated driver's time through the private shared snapshot.
+    app.setSharedRecords(app.records,true);
     const auto partition=original::originalRecordPartition(6,false);
     const std::array<std::uint32_t,3> previousSplits{250000,520000,760000};
-    const auto start=[&](std::uint32_t personal){
+    const auto start=[&](std::uint32_t personal,std::uint32_t rankingBest=100000){
         auto profile=original::makeOriginalFreshBattleProfile();profile.setu(0,1);profile.setu(16,0);profile.setu(1180,129);
         profile.setu(176+4*partition.personalIndex(),personal);profile.setu(320+4*partition.personalIndex(),1);
         for(unsigned i=0;i<3;++i)profile.setu(500+4*(partition.personalIndex()*3+i),previousSplits[i]);
@@ -28,7 +31,7 @@ int runTimeAttackCompletionAppTests(App& app){
         app.wet=app.frontend.wet=false;app.night=app.frontend.night=false;
         app.start();require(!app.timeAttackPersonalRegistered,"New race clears personal registration latch");
         require(app.results.bestTimes6000[2]==personal,"TA reads selected driver's actual personal best");
-        require(app.results.bestTimes6000[0]==100000&&app.results.bestTimes6000[1]==100000,"Course/model records stay independent of personal card");
+        require(app.results.bestTimes6000[0]==rankingBest&&app.results.bestTimes6000[1]==rankingBest,"Course/model records stay independent of personal card");
         require(!app.registerTimeAttackPersonalResult(),"Running/countdown cannot register result");
         for(unsigned frame=0;frame<600&&app.race.phase==RacePhase::Countdown;++frame)app.simulate({});
         require(app.race.phase==RacePhase::Running,"TA countdown reaches native running state");
@@ -79,6 +82,7 @@ int runTimeAttackCompletionAppTests(App& app){
     require(original::originalPersonalTimeAttackRecord(app.battleProfile,partition).ticks6000==1000000,"Common points owner preserves previous personal time");
     const auto beforeRegistration=app.battleProfile.words;
     require(app.beginTimeAttackVisit(false),"Actual App enters post-results ranking/continue");
+    require(app.timeAttackCourseRankingQualified&&app.timeAttackVisit.stage()==original::OriginalTimeAttackVisit::Stage::Ranking,"Qualifying actual finish shows leaderboard");
     const auto saved=original::originalPersonalTimeAttackRecord(app.battleProfile,partition);
     require(saved.ticks6000==finishTicks&&saved.night==0,"ARegist updates total and day/night on original card");
     const auto& times=app.originalRace.state().times;const auto count=std::min(times.sectionCount,3u);
@@ -116,6 +120,23 @@ int runTimeAttackCompletionAppTests(App& app){
     app.battleProfile.setu(1180,app.battleProfile.u(1180)&~0x20000u);
     require(app.results.bestTimes6000[2]==0,"Different driver's fresh card has no borrowed personal best");
     require(app.registerTimeAttackPersonalResult(),"First completed personal record registers");
+    // A busy community board must remain visible when this run is slower
+    // than every top-ten entry and earns no record flags. Use actual native
+    // gates and the common-results render handoff, not a forced Ranking stage.
+    TimeAttackRecords fullBoard;
+    for(unsigned i=0;i<10;++i)fullBoard.record({6,0,i,i+1});
+    app.setSharedRecords(fullBoard,true);
+    start(1,1);finish();
+    require(!app.timeAttackCourseRankingQualified&&app.results.recordFlags==0,"Actual finish outside top ten earns no ranking or record flags");
+    app.timeAttackLectureDone=true;app.timeSummaryDone=true;app.finishBannerDone=true;
+    app.beginResultVisit(*app.pendingResultSetup);app.pendingResultSetup.reset();
+    for(unsigned frame=0;frame<10000&&!app.resultAnimationFrame.finished;++frame){app.resultConfirmPending=true;app.advanceResultVisit();}
+    require(app.resultAnimationFrame.finished,"Nonrecord common results complete");
+    require(app.render(0),"Common results render hands off to the post-race owner");
+    require(app.timeAttackVisitActive&&app.timeAttackVisit.stage()==original::OriginalTimeAttackVisit::Stage::Ranking,"Actual eleventh-place finish opens leaderboard through production render handoff");
+    const auto& rows=app.timeAttackVisit.rankingRows();
+    require(rows.size()==10&&rows.front().word(0)==1&&rows.back().word(0)==10,"Leaderboard retains existing top ten without inserting a slower run");
+    require(app.results.recordFlags==0&&!app.timeAttackVisit.setup().courseRankingQualified,"Opening leaderboard cannot promote the finish or award a record");
     report<<"PASS "<<checks<<" native App Time Attack completion checks. Controlled gate finishes and natural timeout; real native lecture/result owners; private validation mode. No Unity rendering or ordinary save writes.\n";
     return 0;
 }

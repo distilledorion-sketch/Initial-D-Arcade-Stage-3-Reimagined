@@ -98,10 +98,12 @@ internal sealed class Idas3ImportedMeter : IDisposable
         if(Contains(name,"Accel"))return Mathf.Clamp01(Safe(t.throttle));
         if(Contains(name,"Brake"))return Mathf.Clamp01(Safe(t.brake));
         if(Contains(name,"Drift"))return Idas3ArcadeHud.LampOpacity(t);
-        if(Contains(name,"Rev"))return Mathf.InverseLerp(t.revLimit*.92f,t.revLimit,t.rpm);
+        if(Contains(name,"Rev"))return Idas3ArcadeHud.ShiftWarning(t);
         return 0;
     }
     internal static string SelectTexture(Layer layer,Idas3ArcadeHud.Telemetry t){
+        if(layer.speedTextures!=null&&layer.speedTextures.Length==4)
+            return layer.speedTextures[SpeedColorBand(t.speedKmh)];
         string chosen=(t.flags&4)!=0&&!string.IsNullOrEmpty(layer.nightTexture)?layer.nightTexture:layer.texture;
         int max=Idas3ArcadeHud.TachMaximum(t.revLimit),score=-1;
         bool night=(t.flags&4)!=0,automatic=(t.flags&2)!=0;
@@ -118,6 +120,8 @@ internal sealed class Idas3ImportedMeter : IDisposable
         }
         return chosen;
     }
+    // Recovered WBP_SpeedMeter_Base.GetSpeedColor compares <90, <150, <210.
+    internal static int SpeedColorBand(float speed)=>Safe(speed)<90?0:speed<150?1:speed<210?2:3;
     static int Digit(string role,Idas3ArcadeHud.Telemetry t){
         int speed=Mathf.Clamp(Mathf.FloorToInt(Safe(t.speedKmh)),0,999),rpm=Mathf.Clamp(Mathf.FloorToInt(Safe(t.rpm)),0,19999);
         switch(role){case "gear":case "gearEffect":return Mathf.Clamp(t.gear,0,6);case "speed100":return speed>=100?speed/100:10;
@@ -144,7 +148,7 @@ internal sealed class Idas3ImportedMeter : IDisposable
         // A warning can tint the main dial (Classic), rather than a separate
         // lamp. Restore its authored neutral frame when the warning is off;
         // applying Stay at phase zero would leave the dial red all the time.
-        if(Contains(c.animation,"RevLamp")&&(!shiftLights||data.rpm<=data.revLimit*.92f))
+        if(Contains(c.animation,"RevLamp")&&(!shiftLights||Idas3ArcadeHud.ShiftWarning(data)<=0))
             return !Contains(c.animation,"Stay");
         // The duplicated brake animation is an unused copy of the accelerator
         // sweep, conflicting with the canonical left-hand brake mask.
@@ -200,13 +204,23 @@ internal sealed class Idas3ImportedMeter : IDisposable
             if(role=="low")continue; // No recovered low-rev activation rule.
             float opacity=1;
             if(role=="drift")opacity=Idas3ArcadeHud.LampOpacity(data);
-            else if(role=="rev")opacity=options.hudShiftLights?Mathf.InverseLerp(data.revLimit*.92f,data.revLimit,data.rpm):0;
+            else if(role=="rev")opacity=options.hudShiftLights?Idas3ArcadeHud.ShiftWarning(data):0;
             if(opacity<=0)continue;
             var texture=Texture(SelectTexture(layer,data));if(!texture)continue;
             Color color=Tint(layer.color);
             // The white DAC face reuses the white digit atlas. Its source
             // runtime tint is absent from the export; retain readable contrast.
-            if(meter.id==42&&layer.name.StartsWith("SpeedRate",StringComparison.Ordinal))color=new Color(.08f,.08f,.08f,color.a);
+            bool speedColor=layer.speedTextures!=null&&layer.speedTextures.Length==4;
+            bool tintSpeed=meter.id==58&&(role=="speed1"||role=="speed10"||role=="speed100"||layer.name=="SpeedRate");
+            if(tintSpeed){
+                int band=SpeedColorBand(data.speedKmh);
+                if(band<3)color*=band==0?new Color(1,.02f,.02f):band==1?new Color(1,.94f,.02f):new Color(.02f,.66f,1);
+            }
+            if(meter.id==42&&layer.name.StartsWith("SpeedRate",StringComparison.Ordinal)&&!speedColor)color=new Color(.08f,.08f,.08f,color.a);
+            // The fourth atlas is neutral for the animated rainbow. Drive its
+            // hue from presentation time so pausing/seeking and FPS stay stable.
+            if((speedColor||tintSpeed)&&SpeedColorBand(data.speedKmh)==3)
+                color*=Color.HSVToRGB(Mathf.Repeat(Safe(seconds)*.5f,1),.85f,1);
             // Reuse the authored gauge colors. Their vector alpha is commonly
             // zero and is not widget opacity. Circle01's RGB emission survived
             // extraction; sibling graphs require this color-preserving adapter.

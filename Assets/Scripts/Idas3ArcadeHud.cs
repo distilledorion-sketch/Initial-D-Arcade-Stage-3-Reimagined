@@ -83,11 +83,20 @@ public sealed class Idas3ArcadeHud : IDisposable
     }
     internal static int TachMaximum(float limit)=>limit<=8000?8000:limit<=9000?9000:limit<=10000?10000:13000;
     internal static Rect DigitUv(int digit){digit=Mathf.Clamp(digit,0,10);return new Rect((digit%4)/4f,1-(digit/4+1)/3f,.25f,1/3f);}
-    internal static Rect MeterBounds(float width,float height,Idas3GameOptions.Values options){
+    internal static bool UsesWidePlacement(Idas3GameOptions.Values options){
+        var meter=Idas3ArcadeMeterCatalog.Get(options.hudMeterStyle);
+        // Use the authored dial proportions, not its surrounding animated
+        // glow/character envelope. Compact dials retain the right-side anchor.
+        return options.hudMeterLayout==1&&meter!=null&&meter.width>=meter.height*1.8f;
+    }
+    internal static Rect MeterBounds(float width,float height,Idas3GameOptions.Values options,bool thirdPerson=false){
         var size=Dimensions(options);float fit=Mathf.Min(width/1280f,height/720f);
-        float scale=Mathf.Min(420f/size.x,240f/size.y)*fit*options.HudGroupScale(2);
+        bool wide=UsesWidePlacement(options);
+        float scale=Mathf.Min((wide?600f:420f)/size.x,(wide?260f:240f)/size.y)*fit*options.HudGroupScale(2);
         float h=size.y+(options.hudNameplateStyle==1?72:0);
-        return new Rect(width-(size.x*scale+20*fit)+options.HudOffset(2).x*width,
+        // Leave the stock minimap's lower-left area clear in chase views.
+        float x=wide?(thirdPerson?180*fit:(width-size.x*scale)*.5f):width-(size.x*scale+20*fit);
+        return new Rect(x+options.HudOffset(2).x*width,
             height-(h*scale+16*fit)+options.HudOffset(2).y*height,size.x*scale,h*scale);
     }
     static Vector2 Dimensions(Idas3GameOptions.Values options)=>Idas3MeterLayoutBounds.Get(options.hudMeterStyle).size;
@@ -97,6 +106,12 @@ public sealed class Idas3ArcadeHud : IDisposable
         list.Add(new Sprite{texture=texture,rect=new Rect(346+x-w*.5f,164+y-h*.5f,w,h),uv=atlas??new Rect(0,0,1,1),color=color??Color.white,angle=angle,fill=fill,brake=name=="PointBrake_Mask",additive=additive});
     }
     internal static float LampOpacity(Telemetry t)=>t.version>=2?Mathf.Clamp01(Safe(t.driftOpacity)):0;
+    internal static float ShiftWarning(Telemetry t){
+        // The original transmission's full-throttle target is workingBase-500
+        // (15E7F2), not workingBase. Fade in over the preceding 500 RPM.
+        float full=Mathf.Max(1000,Safe(t.revLimit,8500)-500);
+        return Mathf.InverseLerp(full-500,full,Safe(t.rpm));
+    }
     static void Compose(List<Sprite> list,Idas3GameOptions.Values options,Telemetry t,float seconds,Idas3ImportedMeter renderer){
         list.Clear();Load();if(!available)return;
         if(options.hudMeterStyle>1){
@@ -112,8 +127,8 @@ public sealed class Idas3ArcadeHud : IDisposable
         Add(list,"Base",0,0,692,328);
         Add(list,"Rmp"+face+"_"+day,0,-22,232,232);
         Add(list,"Spd_"+day,210,3,200,200);
-        if(options.hudShiftLights&&rpm>=limit*.92f){
-            float warning=rpm>=limit?.6f+.4f*Mathf.Cos(seconds*Mathf.PI*10):Mathf.InverseLerp(limit*.92f,limit,rpm);
+        if(options.hudShiftLights&&ShiftWarning(t)>0){
+            float warning=ShiftWarning(t);
             Add(list,"RevLamp",0,-20,180,180,0,new Color(1,.13f,.07f,warning));
         }
         if(options.hudPedalIndicators){
@@ -172,9 +187,9 @@ public sealed class Idas3ArcadeHud : IDisposable
         point-=sourceOrigin;
         points.Add(new Vector3(bounds.x+point.x*scale,bounds.y+(point.y+shift)*scale,0));colors.Add(item.color);
     }
-    internal void Build(Idas3GameOptions.Values options,Telemetry data,float width,float height,float seconds,bool preview,out Rect bounds){
+    internal void Build(Idas3GameOptions.Values options,Telemetry data,float width,float height,float seconds,bool preview,out Rect bounds,bool thirdPerson=false){
         imported.AudioBandsOverride=AudioBandsOverride;
-        Compose(sprites,options,data,seconds,imported);DriftLampOpacity=available?LampOpacity(data):0;bounds=MeterBounds(width,height,options);
+        Compose(sprites,options,data,seconds,imported);DriftLampOpacity=available?LampOpacity(data):0;bounds=MeterBounds(width,height,options,thirdPerson);
         DriftLampSpriteCount=options.hudMeterStyle>1?imported.DriftSpriteCount:DriftLampOpacity>0?3:0;
         if(DriftLampSpriteCount==0)DriftLampOpacity=0;
         if(mesh==null){mesh=new Mesh{name="Arcade meter",hideFlags=HideFlags.DontSave};mesh.MarkDynamic();}

@@ -27,6 +27,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private static bool OptionsExitCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-options-exit-check")>=0;
     private static bool UpdatesCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-check")>=0;
     private static bool HudCustomizationCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-customization-check")>=0;
+    private static bool HudEdgePlacementCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-edge-placement-check")>=0;
     private int pulse,checks;
     private double began;
     private double presentationDelta;
@@ -676,6 +677,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         var timer=editor.Draft.HudOffset(1);editor.MoveSelected(new Vector2(-90,-30));editor.ResizeSelected(1);editor.Refresh();
         Check(editor.Bounds(2,out var after)&&after.width>before.width&&editor.Draft.HudOffset(1)==timer,"Move and resize change only the meter group");
         yield return editor.Capture(Path.Combine(root,"stuttgart-layout.png"));editor.Close(false);
+        yield return HudEdgePlacementRegression(true);
         foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1920,800)}){
             yield return Resize(size.x,size.y,false);menu.OpenHudCustomization();yield return Capture("customization-"+size.x);
             SelectHudCustomizationRow(8);menu.Activate();yield return Frames(2);editor=menu.HudEditor;editor.SelectGroup(9);editor.Refresh();
@@ -718,9 +720,32 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         observations.Add("Source meter31 Stuttgart artwork, dynamic tach scale, live vehicle telemetry, optional pedal/shift/nameplate controls, private Apply/Cancel/reload, layout and small/ultrawide captures.");
         Finish(true,null);
     }
+    private IEnumerator HudEdgePlacementRegression(bool capture){
+        // Exercise the actual editor, live composed bounds and draft offsets.
+        int savedStyle=options.Current.hudMeterStyle;
+        menu.OpenHudEditor();yield return Frames(2);var editor=menu.HudEditor;
+        Check(editor!=null&&editor.IsOpen,"HUD placement editor opened");
+        editor.Draft.hudMeterStyle=86;editor.SelectGroup(1);editor.ResetSelected();editor.Refresh();
+        Check(editor.Bounds(2,out var initial),"Youmu has live editor bounds");
+        foreach(float direction in new[]{1f,-1f}){
+            editor.MoveSelected(Vector2.one*(direction*100000));editor.Refresh();
+            Check(editor.Bounds(2,out var edge),"Youmu retained its bounds at the screen edge");
+            Check(direction>0?edge.xMax>Screen.width&&edge.yMax>Screen.height:edge.xMin<0&&edge.yMin<0,
+                "Youmu decoration still pins the dial away from the screen edge");
+            float visibleWidth=Mathf.Min(Screen.width,edge.xMax)-Mathf.Max(0,edge.xMin);
+            float visibleHeight=Mathf.Min(Screen.height,edge.yMax)-Mathf.Max(0,edge.yMin);
+            Check(visibleWidth>edge.width*.7f&&visibleHeight>edge.height*.7f,"Youmu became unreachable");
+            editor.MoveSelected(Vector2.one*(-direction*80));editor.Refresh();
+            Check(editor.Bounds(2,out var back)&&Mathf.Abs(back.x-edge.x+direction*80)<.1f&&Mathf.Abs(back.y-edge.y+direction*80)<.1f,
+                "Youmu cannot move back from the screen edge");
+        }
+        if(capture)yield return editor.Capture(Path.Combine(root,"youmu-layout.png"));editor.Close(false);
+        Check(options.Current.hudMeterStyle==savedStyle,"Cancelling the Youmu layout changed saved appearance");
+    }
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate physical-input injection");yield return Release();
+        if(HudEdgePlacementCheck){menu.OpenAttractOptions();yield return HudEdgePlacementRegression(false);menu.SetOpen(false);Finish(true,null);yield break;}
         if(HudCustomizationCheck){yield return HudCustomizationRegression();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ai-options-check")>=0){
             Check(options.Current.aiDifficulty==0,"Default AI must remain Normal");
@@ -940,6 +965,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             captures=captures.ToArray(),captureDimensions=captureDimensions.ToArray(),observations=observations.ToArray(),scope=ReportsCheck?"Private-save native/Unity regression: repeated synthetic controller Start, race pause/resume with continuously held keyboard/trigger/rebound A acceleration and steering, original live TA HUD capture, controlled-position finish gates and natural timeout; physical controllers not tested.":"Actual original attract frontend and managed options with private saves. Prompt captures request 640x480, 1024x768, 1280x720 and 1920x800 and report actual dimensions before restoring 1200x720. Synthetic physical keyboard/controller input traverses normal bindings and hold routing, including remapped confirm-button conflict and focus interruption. Apply, Back and persistence use normal options owners. Captures use actual OnGUI Repaint; no guest runtime, race fixture, native pause, or hardware force output."};
         if(PointerCheck)report.scope="Actual Unity settings, local lobby, and music chooser; real OS mouse clicks while a synthetic connected controller highlights a different control. Private saves; no physical controller hardware validation.";
         if(HudCustomizationCheck)report.scope="Standalone player with private saves: actual OnGUI 88-meter and 281-entry ornament pickers, initial/scrolled/final rows, recovered artwork/3D preview pixel checks, high-ID Apply/reload and Cancel, Original HUD compatibility, Stuttgart layout move/resize, small/ultrawide captures, and live native quick-race telemetry. Actual ornament mesh parts, transparent render target, screen-top bounds, movement-responsive swing, and Off resource release are checked. Programmatic normal menu navigation and synthetic keyboard driving; no physical controller or every-car validation.";
+        if(HudEdgePlacementCheck)report.scope="Hidden standalone Unity player with private saves: actual HUD editor and composed Youmu bounds, edge placement in both directions, visible reachability, movement back from edges and Cancel preservation. No OnGUI pixel capture or OS mouse input.";
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Gameplay captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Update / Full Repair / Later, same-version repair and patch/full fallback state transitions with controlled transfer failures, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";

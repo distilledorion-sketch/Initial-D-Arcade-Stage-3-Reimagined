@@ -51,6 +51,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     public bool OrnamentVisible {get;private set;}
     internal Idas3OrnamentRenderer OrnamentRenderer=>ornament;
     internal bool ArcadePreview {get;set;}
+    internal bool ArcadePreviewThirdPerson {get;set;}
     internal bool ArcadeMeterVisible {get;private set;}
     internal float ArcadeDriftLampOpacity=>ArcadeMeterVisible?arcadeHud.DriftLampOpacity:0;
     bool performanceBaseline;
@@ -204,7 +205,8 @@ public sealed class Idas3UnityUi : MonoBehaviour
                 }
                 if(reset){arcadeHud?.Dispose();arcadeHud=null;}
                 if(arcadeHud==null)arcadeHud=new Idas3ArcadeHud();
-                arcadeHud.Build(layout,telemetry,frame.width,frame.height,seconds,ArcadePreview,out hudBounds[2]);
+                bool thirdPerson=ArcadePreview?ArcadePreviewThirdPerson:Idas3Native.ReadOptions().cameraView!=0;
+                arcadeHud.Build(layout,telemetry,frame.width,frame.height,seconds,ArcadePreview,out hudBounds[2],thirdPerson);
                 ArcadeMeterVisible=true;
             }
         }

@@ -29,7 +29,7 @@ internal sealed class Idas3RaceMusicCatalog
     {
         Refresh();if(State.count<1||State.count>256)throw new InvalidOperationException("Invalid race music catalog size.");
         var entries=new List<Idas3RaceMusicMenu.Entry>();
-        entries.Add(new Idas3RaceMusicMenu.Entry{id=-1,title="GAME DEFAULT",artist="Speedy Speed Boy",stage=0});
+        entries.Add(new Idas3RaceMusicMenu.Entry{id=-1,title="AUTOMATIC",artist="ARCADE STAGE 3",stage=0});
         for(int i=0;i<State.count;++i){
             // Keep native IDs stable for existing saves and original audio.
             if(ReadText(i,0)=="stage3.01_gamble_rumble")continue;
@@ -54,7 +54,7 @@ internal sealed class Idas3RaceMusicCatalog
     internal string SelectedTitle {
         get {
             if(Entries!=null)foreach(var entry in Entries)if(entry.id==State.selectedIndex)return entry.title;
-            return "GAME DEFAULT";
+            return "AUTOMATIC";
         }
     }
     private static string ReadText(int index,int field)

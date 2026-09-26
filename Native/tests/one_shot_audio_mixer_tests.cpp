@@ -89,6 +89,21 @@ int main(int argc,char** argv)try{
     audio.attract(3,0);reference.scene(0);reference.music.stop();
     audio.playMenuCue(OriginalMenuCue::Confirm);compare(audio,reference,8192);
     require(nonzero>10000&&wetFrames>1000,"Fixture failed to exercise audible music/cues and effects");
+    // Held race stream gives an isolated production race-cue path, including
+    // its real DSP routing. No engine is selected and active=false is silent.
+    EngineAudio race;race.configure(argv[1]);race.scene(false,false,false,false,true);
+    Reference raceReference(argv[1]);raceReference.scene(4);
+    race.playRaceCue(2,7);raceReference.cues.play(22,7,2.f);
+    race.playRaceCue(4,2);raceReference.cues.play(24,2);
+    unsigned peak=0,clipped=0;
+    for(unsigned i=0;i<44100;++i){const auto actual=race.renderStereo(800,0,0,0,false),expected=raceReference.render();
+        require(actual==expected,"Evo III presentation gain was not routed through the race mixer");
+        for(auto sample:actual){peak=std::max(peak,unsigned(std::abs(int(sample))));clipped+=std::abs(int(sample))==32767;}
+    }
+    require(peak>100&&!clipped,"Misfire mix was silent or clipped in the concurrent-cue fixture");
+    race.resetRaceEffects();race.setOutputGains({1,1,1,0,1});race.playRaceCue(2,7);
+    for(unsigned i=0;i<44100;++i)require(race.renderStereo(800,0,0,0,false)==std::array<short,2>{},"Effects mute did not silence misfire");
+    std::cout<<"Misfire mix: +6.02 dB, concurrent-cue peak "<<peak<<"/32767, no clipped fixture samples, Effects mute respected.\n";
     std::cout<<"One-shot application mixer: "<<comparisons<<" exact stereo frames, "<<nonzero
         <<" nonzero frames, "<<wetFrames<<" effect frames; menu/tuning cues, repeated cues, pause, mute, same-set song change and attract cleanup. No output device.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

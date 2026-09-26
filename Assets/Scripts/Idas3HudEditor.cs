@@ -41,7 +41,7 @@ public sealed class Idas3HudEditor : MonoBehaviour
             camera.backgroundColor=new Color(.025f,.03f,.045f);camera.cullingMask=1<<Layer;
             camera.fieldOfView=55;camera.nearClipPlane=.01f;camera.farClipPlane=100;
             camera.transform.position=new Vector3(0,1.6f,-6.5f);camera.transform.LookAt(new Vector3(0,1.65f,0));
-            ui=preview.AddComponent<Idas3UnityUi>();ui.Initialize(camera);ui.HudOptionsOverride=working;ui.ArcadePreview=true;
+            ui=preview.AddComponent<Idas3UnityUi>();ui.Initialize(camera);ui.HudOptionsOverride=working;ui.ArcadePreview=true;ui.ArcadePreviewThirdPerson=thirdPerson;
             badge=Resources.Load<Texture2D>("Challenger/interrupt_4");
             BuildCar();car.SetActive(thirdPerson);
             IsOpen=true;Cursor.visible=true;Cursor.lockState=CursorLockMode.None;
@@ -126,7 +126,7 @@ public sealed class Idas3HudEditor : MonoBehaviour
         else Close(control==7);
     }
     public void Back(){if(adjusting)adjusting=false;else Close(false);}
-    internal void SetThirdPerson(bool value){thirdPerson=value;if(car)car.SetActive(value);}
+    internal void SetThirdPerson(bool value){thirdPerson=value;if(car)car.SetActive(value);if(ui)ui.ArcadePreviewThirdPerson=value;}
     Rect BadgeRect()
     {
         float w=Screen.width,h=Screen.height,fit=Mathf.Min(w/640,h/480);
@@ -139,10 +139,14 @@ public sealed class Idas3HudEditor : MonoBehaviour
     internal void MoveSelected(Vector2 delta)
     {
         int group=Groups[selected];if(!Bounds(group,out var bounds))return;
-        // Keep the whole group reachable even after changing aspect ratio.
-        delta.x=Mathf.Clamp(delta.x,-bounds.xMin,Mathf.Max(-bounds.xMin,Screen.width-bounds.xMax));
-        float minY=group==10?-bounds.height*(.25f/2.7f):0;
-        delta.y=Mathf.Clamp(delta.y,minY-bounds.yMin,Mathf.Max(minY-bounds.yMin,Screen.height-bounds.yMax));
+        // Imported meters reserve an animated effect envelope. Let that outer
+        // decoration cross an edge without pinning the actual dial in place;
+        // keep at least three quarters reachable for dragging it back.
+        bool importedMeter=group==2&&working.hudMeterStyle>0;
+        float marginX=importedMeter?bounds.width*.25f:0,marginY=importedMeter?bounds.height*.25f:0;
+        delta.x=Mathf.Clamp(delta.x,-marginX-bounds.xMin,Mathf.Max(-marginX-bounds.xMin,Screen.width+marginX-bounds.xMax));
+        float minY=group==10?-bounds.height*(.25f/2.7f):-marginY;
+        delta.y=Mathf.Clamp(delta.y,minY-bounds.yMin,Mathf.Max(minY-bounds.yMin,Screen.height+marginY-bounds.yMax));
         var offset=working.HudOffset(group);
         if(group==10){
             // Start from the displayed position if resize or aspect changes
@@ -156,7 +160,7 @@ public sealed class Idas3HudEditor : MonoBehaviour
         if(direction!=0)SetSelectedSizePercent(working.HudSizePercent(Groups[selected])+Math.Sign(direction));
     }
     internal void SetSelectedSizePercent(int percent)=>working.SetHudSizePercent(Groups[selected],percent);
-    internal void ResetSelected(){working.SetHudOffset(Groups[selected],Vector2.zero);working.ResetHudSize(Groups[selected]);}
+    internal void ResetSelected(){working.SetHudOffset(Groups[selected],Vector2.zero);working.ResetHudSize(Groups[selected]);if(Groups[selected]==2)working.hudMeterLayout=1;}
     internal static void CopyLayout(Idas3GameOptions.Values from,Idas3GameOptions.Values to)=>Idas3GameOptions.CopyHudLayout(from,to);
     public void Close(bool save)
     {
@@ -197,17 +201,17 @@ public sealed class Idas3HudEditor : MonoBehaviour
         var e=Event.current;
         if(!toolbar.Contains(e.mousePosition)){
             if(e.type==EventType.MouseDown&&e.button==0){
-                for(int i=Groups.Length-1;i>=0;--i)if(Bounds(Groups[i],out var hit)&&hit.Contains(e.mousePosition)){selected=i;control=0;adjusting=false;dragging=true;lastPointer=e.mousePosition;GUIUtility.hotControl=0;e.Use();break;}
+                // Overlapping transparent effects must not steal a drag from
+                // the group the player already selected in the toolbar.
+                int hitGroup=-1;
+                if(Bounds(Groups[selected],out var activeHit)&&activeHit.Contains(e.mousePosition))hitGroup=selected;
+                else for(int i=Groups.Length-1;i>=0;--i)if(Bounds(Groups[i],out var hit)&&hit.Contains(e.mousePosition)){hitGroup=i;break;}
+                if(hitGroup>=0){selected=hitGroup;control=0;adjusting=false;dragging=true;lastPointer=e.mousePosition;GUIUtility.hotControl=0;e.Use();}
             }else if(e.type==EventType.MouseDrag&&dragging){MoveSelected(e.mousePosition-lastPointer);lastPointer=e.mousePosition;e.Use();}
             else if(e.type==EventType.ScrollWheel){if(Bounds(Groups[selected],out var hit)&&hit.Contains(e.mousePosition)){ResizeSelected(-Math.Sign(e.delta.y));e.Use();}}
         }
         if(e.type==EventType.MouseUp)dragging=false;
         if(badge)GUI.DrawTextureWithTexCoords(BadgeRect(),badge,new Rect(0,1,1,-1));
-        foreach(int group in Groups)if(Bounds(group,out var bounds)){
-            bool chosen=group==Groups[selected];GUI.color=chosen?new Color(.2f,.85f,1,.9f):new Color(1,1,1,.18f);
-            GUI.DrawTexture(new Rect(bounds.x,bounds.y,bounds.width,1),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(bounds.x,bounds.yMax-1,bounds.width,1),Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(bounds.x,bounds.y,1,bounds.height),Texture2D.whiteTexture);GUI.DrawTexture(new Rect(bounds.xMax-1,bounds.y,1,bounds.height),Texture2D.whiteTexture);
-        }
         GUI.color=Color.white;Fill(toolbar,new Color32(16,18,23,255));GUI.Box(toolbar,"");
         var previousMatrix=GUI.matrix;GUI.matrix=Matrix4x4.TRS(new Vector3(toolbar.x,toolbar.y,0),Quaternion.identity,Vector3.one*toolbarScale);
         try{DrawToolbar();}finally{GUI.matrix=previousMatrix;}

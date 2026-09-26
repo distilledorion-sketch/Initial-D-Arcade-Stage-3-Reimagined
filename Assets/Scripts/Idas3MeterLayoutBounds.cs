@@ -9,7 +9,7 @@ using UnityEngine;
 public static class Idas3MeterLayoutBounds
 {
     // Bump when composition or bounds sampling changes its authored envelope.
-    const int RendererVersion=9;
+    const int RendererVersion=10;
     [Serializable] sealed class AlphaCatalog {public AlphaTexture[] textures=Array.Empty<AlphaTexture>();}
     [Serializable] sealed class AlphaTexture {public string texture,name;public float x,y,width,height;}
     [Serializable] sealed class BakedCatalog {public int rendererVersion;public string catalogSha256,alphaSha256;public BakedLayout[] layouts;}

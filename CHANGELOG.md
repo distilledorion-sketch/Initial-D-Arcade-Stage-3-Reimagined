@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.35 - September 26, 2026
+
+This update restores the leaderboard after completed Time Attack runs and addresses the reproduced bugs from the Discord bugs channel.
+
+- The post-race leaderboard now appears even when your time is outside the top ten.
+- Fixed an invisible collision caused by a retained opponent at the start of a subsequent solo race.
+- Fixed blocked shoulder shifting after pausing with the throttle held.
+- Fixed controller binding/reconnect locks caused by held wheel selectors or pedals; keyboard input can recover independently.
+- Replays now retain the recorded car tune and RPM range, and project headlights onto the road.
+- Restored imported tachometer speed-color effects and corrected shift-warning timing.
+- Improved default placement and size of wide meters for each camera. Existing custom layouts remain intact; Reset adopts the new placement.
+- Improved HUD dragging near screen edges and removed editor outlines.
+- AUTO music now selects across 12 race songs without consecutive repeats.
+- Increased Evo III backfire volume without changing its trigger timing.
+- Fixed the updater rejecting valid Wine C:/Z: aliases.
+- Corrected duplicate/ambiguous leaderboard car labels and manufacturer grouping.
+
+Still under investigation: China connectivity, Sadamine camera bumps, intermittent multiplayer contact loss and reported online FPS drops. Physical wheel confirmation is still needed for the controller fixes.
+
+Community Time Attack submissions require exactly `.35`. Existing times, replays and season 2 are preserved. Both online players need this version. Changed-file patches support `.20` through `.34`; the full Windows ZIP supports new installations and Full Repair.
+
+If an older updater fails on Wine/Proton, manually extract the full Windows ZIP over the existing game once. The corrected installer is included in this build.
+
+A verified original GDS-0033 dump is required. No ROM, personal saves or custom music are included.
+
 ## 0.3.95-community-replays.34 - September 25, 2026
 
 - Restored missing RPM faces, needle variants and night illumination across the affected meter styles.

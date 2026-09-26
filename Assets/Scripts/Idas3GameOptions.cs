@@ -29,6 +29,7 @@ public sealed class Idas3GameOptions
         public bool TimeAttackReplayRequired=>communityTimes||replayTimeAttack;
         public int rainDetail,importedSceneryDetail;
         public int hudMeterStyle; // Stable catalog ID: 0 = original, 1 = Stuttgart.
+        public int hudMeterLayout=1; // 0 = saved legacy anchor, 1 = camera-aware wide meter defaults.
         public int hudOrnamentId; // Stable source ornament ID; 0 = off.
         public bool hudShiftLights=true,hudPedalIndicators=true;
         public int hudNameplateStyle; // 0 = off, 1 = driver plate.
@@ -159,7 +160,7 @@ public sealed class Idas3GameOptions
                 // Initialize missing fields explicitly. The zero marker lets
                 // old JSON migrate without treating saved zero deadzones as
                 // missing once these settings have been written.
-                var loaded=new Values{version=0,steeringSettingsVersion=0,audioSettingsVersion=0};
+                var loaded=new Values{version=0,steeringSettingsVersion=0,audioSettingsVersion=0,hudMeterLayout=-1};
                 JsonUtility.FromJsonOverwrite(File.ReadAllText(file),loaded);
                 if(loaded==null||loaded.version!=1)throw new InvalidDataException("Unsupported options format.");
                 current=Normalize(loaded);loadedSaved=true;
@@ -229,6 +230,7 @@ public sealed class Idas3GameOptions
         to.hudPedalIndicators=from.hudPedalIndicators;to.hudNameplateStyle=from.hudNameplateStyle;
     }
     public static void CopyHudLayout(Values from,Values to){
+        to.hudMeterLayout=from.hudMeterLayout;
         to.hudPositions=from.hudPositions==null?new Vector2[Values.HudLayoutGroupCount]:(Vector2[])from.hudPositions.Clone();
         to.hudSizePercent=from.hudSizePercent==null?new int[Values.HudLayoutGroupCount]:(int[])from.hudSizePercent.Clone();
         to.hudTimerSize=from.hudTimerSize;to.hudSpeedometerSize=from.hudSpeedometerSize;
@@ -277,6 +279,8 @@ public sealed class Idas3GameOptions
         if(value.defaultCamera<0||value.defaultCamera>2)value.defaultCamera=0;
         value.aiDifficulty=Math.Max(0,Math.Min(2,value.aiDifficulty));
         if(!Idas3ArcadeMeterCatalog.IsValidStyle(value.hudMeterStyle))value.hudMeterStyle=0;
+        if(value.hudMeterLayout==-1)value.hudMeterLayout=value.HudOffset(2)==Vector2.zero&&value.HudSizePercent(2)==100?1:0;
+        else if(value.hudMeterLayout!=0&&value.hudMeterLayout!=1)value.hudMeterLayout=1;
         if(!Idas3OrnamentCatalog.IsValid(value.hudOrnamentId))value.hudOrnamentId=0;
         if(value.hudNameplateStyle<0||value.hudNameplateStyle>1)value.hudNameplateStyle=0;
         // Preserve an existing Time Attack placement; otherwise inherit a previously moved battle panel.
@@ -333,7 +337,7 @@ public sealed class Idas3GameOptions
         a.wheelFeedbackInvert==b.wheelFeedbackInvert&&a.wheelFeedbackDevice==b.wheelFeedbackDevice&&
         a.showFps==b.showFps&&a.muteWhenUnfocused==b.muteWhenUnfocused&&a.communityTimes==b.communityTimes&&
         a.discordPresence==b.discordPresence&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
-        a.hudMeterStyle==b.hudMeterStyle&&a.hudOrnamentId==b.hudOrnamentId&&a.hudShiftLights==b.hudShiftLights&&a.hudPedalIndicators==b.hudPedalIndicators&&a.hudNameplateStyle==b.hudNameplateStyle&&
+        a.hudMeterStyle==b.hudMeterStyle&&a.hudMeterLayout==b.hudMeterLayout&&a.hudOrnamentId==b.hudOrnamentId&&a.hudShiftLights==b.hudShiftLights&&a.hudPedalIndicators==b.hudPedalIndicators&&a.hudNameplateStyle==b.hudNameplateStyle&&
         SameHudPositions(a,b)&&SameHudSizes(a,b)&&a.hudOrnamentSize==b.hudOrnamentSize&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
         a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
 }

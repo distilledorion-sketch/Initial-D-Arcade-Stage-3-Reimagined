@@ -30,7 +30,8 @@ std::vector<Fixture> fixtures(const std::filesystem::path&root,unsigned bank,std
 }
 }
 int main(int argc,char**argv){try{
-    if(argc!=2)throw std::runtime_error("Expected project root");const std::filesystem::path root=argv[1];OriginalOneShotPlayback actual(root);
+    const bool pcmOnly=argc==3&&std::string(argv[2])=="--pcm-only";
+    if(argc!=2&&!pcmOnly)throw std::runtime_error("Expected project root [--pcm-only]");const std::filesystem::path root=argv[1];OriginalOneShotPlayback actual(root);
     std::uint64_t audible=0,wet=0,stereo=0,frames=0;
     for(unsigned bank:{20u,21u,22u,24u,25u}){
         const auto bytes=read(root/"data/original_audio"/(bank==21?"menu":"race")/("PACK"+std::to_string(bank)+".dtpk"));auto sounds=fixtures(root,bank,bytes);
@@ -57,6 +58,18 @@ int main(int argc,char**argv){try{
         }
     }
     require(audible&&wet&&stereo,"Original stereo and DSP sends must be present");
+    // A host mix correction must scale the complete misfire sequence, not
+    // change its timing or amplify unrelated simultaneous effects.
+    {
+        OriginalOneShotPlayback normal(root),other(root);actual.reset();
+        normal.play(22,7);other.play(24,2);actual.play(22,7,2.f);actual.play(24,2);
+        std::uint64_t energy=0;
+        for(unsigned i=0;i<44100;++i){const auto a=normal.renderFrame(),b=other.renderFrame(),mixed=actual.renderFrame();
+            for(unsigned c=0;c<2;++c){require(mixed.dry[c]==2*a.dry[c]+b.dry[c],"Misfire gain leaked into an unrelated cue");energy+=std::uint64_t(std::int64_t(a.dry[c])*a.dry[c]);}
+            for(unsigned c=0;c<16;++c)require(mixed.effects[c]==2*a.effects[c]+b.effects[c],"Misfire DSP gain did not follow its voice");
+        }
+        require(energy>10000,"Misfire fixture was silent");
+    }
     actual.reset();actual.play(21,2);actual.play(21,2);require(actual.statistics().notes==2&&actual.statistics().chokes==1,"Same-cue hardware keyoff preserves new allocation");
     actual.reset();for(unsigned i=0;i<32;++i)actual.play(21,5);require(actual.statistics().activeVoices==32&&actual.statistics().chokes==0,"Result count permits source overlap");
     actual.play(21,5);require(actual.statistics().dropped==1&&actual.statistics().notes==32,"Incoming priority256 must not wrap during allocation");
@@ -66,6 +79,7 @@ int main(int argc,char**argv){try{
     actual.reset();for(unsigned i=0;i<32;++i)actual.play(24,i%5);actual.play(25,0);require(actual.statistics().stolen==1&&actual.statistics().notes==33,"Source priority allocator steals eligible oldest voice");
     const std::array<std::uint8_t,5> priorities{178,128,200,200,128};require(originalOneShotSteal(priorities,128)==2,"First strongest numeric priority wins");
     require(originalOneShotSteal(priorities,200)==2&&originalOneShotSteal(priorities,201)==-1&&originalOneShotSteal(priorities,256)==-1,"Source tie and rejection policy");
+    if(pcmOnly){std::cout<<"PASS PCM-only: "<<checks<<" checks; "<<frames<<" exact default-gain PCM frames, concurrent misfire gain and local allocation tests. External ARM priority fixture not run.\n";return 0;}
     const auto cases=read(root/"verification/original-oneshot-audio/priority-cases.bin");std::size_t at=0;
     const auto word=[&](){std::uint32_t v=0;for(unsigned i=0;i<4;++i)v|=std::uint32_t(cases.at(at++))<<(i*8);return v;};
     const unsigned caseCount=word();for(unsigned i=0;i<caseCount;++i){const auto count=word(),incoming=word();const int expected=std::int32_t(word());

@@ -147,8 +147,29 @@ int main(int argc,char** argv){try{
     for(unsigned i=0;i<41;++i)visit.advance({});require(visit.route()==OriginalTimeAttackVisit::Route::Exit,"Expired continuation exits");
     setup.continuationEnabled=false;visit.beginAfterResults(setup);require(visit.route()==OriginalTimeAttackVisit::Route::Exit,"Disabled cabinet continuation goes to exit");
     setup.continuationEnabled=true;setup.resultStatus=0;setup.courseRankingQualified=false;
-    visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Personal/model flags alone cannot enter course ranking");
-    setup.recordFlags=0;visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Nonrecord finish does not manufacture qualifying flags");
+    visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Personal/model improvement still shows the leaderboard outside the top ten");
+    setup.recordFlags=0;visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Nonrecord finish still shows the leaderboard");
+    require(!visit.setup().courseRankingQualified&&visit.setup().recordFlags==0,"Showing the leaderboard does not award a ranking or record");
+    auto fullBoard=setup;fullBoard.localRecords.clear();
+    for(unsigned i=0;i<10;++i)fullBoard.localRecords.push_back({6,0,i,100000+i*1000});
+    fullBoard.localRecords.push_back(first);
+    for(unsigned condition:{6u,7u,14u,15u,26u,27u})for(unsigned weather:{0u,1u}){
+        fullBoard.condition=condition;fullBoard.weather=weather;
+        if(condition>=18){fullBoard.customCourseName="Special Stage";fullBoard.customMaps.resize(1);}
+        for(auto& row:fullBoard.localRecords){row.condition=condition;row.weather=weather;}
+        // Faster entries for another direction/weather must not leak in.
+        fullBoard.localRecords.push_back({condition^1u,weather,0,1});
+        fullBoard.localRecords.push_back({condition,weather^1u,0,1});
+        visit.beginAfterResults(fullBoard);
+        require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Eleventh-place finish opens the leaderboard on original and imported courses");
+        require(visit.rankingRows().size()==10&&visit.rankingRows().front().word(0)==100000&&visit.rankingRows().back().word(0)==109000,"Completed run outside top ten preserves correctly filtered and sorted rows");
+        for(unsigned i=0;i<110;++i)visit.advance({});
+        require(visit.phase()==1&&visit.fadeArgb()==0,"Unqualified finish reveals a visible leaderboard");
+        if(condition==6&&weather==0)picture(out/"ranking-outside-top-ten.ppm",visit);
+        fullBoard.localRecords.resize(11);
+    }
+    auto emptyBoard=setup;emptyBoard.localRecords.clear();visit.beginAfterResults(emptyBoard);
+    require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"An empty ranking skips to Continue without a blank leaderboard");
     setup.courseRankingQualified=true;visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Non-best top-ten insertion still receives ranking page");
     require(visit.countdownTicks()==900,"ARankinTA exact900-frame expiry");
     for(unsigned i=0;i<29;++i)visit.advance({true});require(visit.phase()==0,"Original entry fade gates confirmation for29 ticks");
@@ -157,7 +178,7 @@ int main(int argc,char** argv){try{
     visit.advance({});require(visit.phase()==2&&visit.countdownTicks()==0,"900th tick starts exit fade");
     for(unsigned i=0;i<33;++i)visit.advance({});require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Expired ranking exits through original fade/settle");
     setup.resultStatus=2;visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Top-ten flag cannot qualify time-up");
-    setup.courseRankingQualified=false;setup.resultStatus=0;
+    setup.courseRankingQualified=false;setup.resultStatus=2;
     setup.freePlay=false;setup.canContinue=false;visit.beginAfterResults(setup);visit.advance({true});for(unsigned i=0;i<41;++i)visit.advance({});require(visit.route()==OriginalTimeAttackVisit::Route::Exit,"No granted continuation cannot accept");
     const auto file=out/"local-records.csv";require(records.save(file),"Save named local rankings");TimeAttackRecords loaded;require(loaded.load(file),"Read named local rankings");
     require(loaded.entries().size()==4,"Record row count round trips");

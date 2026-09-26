@@ -359,6 +359,21 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ta-leaderboard-check")>=0){
+            yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);frozen=true;
+            Check(Idas3SceneModeFlowFixture(-2)==1,"Actual TA finish, personal records and nonqualifying leaderboard handoff");frozen=false;
+            yield return Frames(120);
+            Check(Idas3SceneModeFlowValue(1)==2,"Leaderboard is visible after a finish outside the top ten");
+            yield return Capture("time-attack-outside-top-ten");
+            yield return Pad(0x1000);yield return Until(()=>Idas3SceneModeFlowValue(1)==3,60,"Leaderboard confirm reaches Continue");
+            yield return Capture("time-attack-continue");yield return Pad(0x1000);
+            yield return Until(()=>Idas3SceneModeFlowValue(0)==0&&Idas3SceneModeFlowValue(4)==1,100,"Continue returns to course selection");
+            int leaderboardCourseStage=Idas3SceneModeFlowValue(5);
+            yield return Fixture(6);yield return Pad(0x8);yield return Pad(0x1000);
+            yield return Until(()=>Idas3SceneModeFlowValue(0)==0&&Idas3SceneModeFlowValue(4)==1,100,"Continue No exits");
+            Check(Idas3SceneModeFlowValue(5)!=leaderboardCourseStage,"Continue No returns to title");
+            Finish(true,null);yield break;
+        }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-drift-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);frozen=true;
             Check(Idas3SceneModeFlowFixture(-13)==1,"Live drift detector, contact gating and physics isolation");
@@ -675,13 +690,13 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
             Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
-            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.33","0.3.95-community-replays.35","0.3.96","0.4.0","0.3.95-community-replays.034","0.3.95-community-replays.34 ",null}){
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.34","0.3.95-community-replays.36","0.3.96","0.4.0","0.3.95-community-replays.035","0.3.95-community-replays.35 ",null}){
                 var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
                 Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
             }
-            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.33";
+            var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.34";
             previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
-            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.35";
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.36";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
@@ -1113,7 +1128,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-drift-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ta-leaderboard-check")>=0?
+            "Native gate finishes, personal-record preservation, timeout exclusion, qualifying and nonqualifying leaderboard entry, production common-results handoff, Unity capture and controller Continue/Exit. Isolated saves and synthetic offline leaderboard snapshot; no live submissions.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-drift-check")>=0?
             "Original-solver drift detector calibration on FR/FF/AWD cars in dry/wet conditions, source-state preservation, native/managed lamp data, paused live race capture, additive lamp fade pixel checks and original HUD restoration. Private saves, scripted input; no live network peer or replay drift detection.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0?
             "Full Tune route selection through actual controller frames for a second stock car created by Change Car and a legacy stock save. Route cancellation, independent B selection, skipped driver setup, persisted upgrades, repeat tuning and untouched first-car A tuning/other saves are verified. Mandatory upgrades use controlled native fixture ticks; no ordinary saves or physical controller hardware are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0?
             "Save menu last-used-car preview and model-keyed online aura level through actual Unity pointer/controller selection. Continue, Change Car, cancelled previews, stock level 1, unreadable history shown as unknown without rewriting it, another save, malformed native level arrays and post-race remembering helper persistence are checked. The helper is invoked directly instead of driving a race; only isolated diagnostic saves and online history are used.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0?
