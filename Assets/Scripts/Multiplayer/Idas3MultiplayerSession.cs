@@ -511,7 +511,7 @@ namespace Idas3.Multiplayer
                         ++RemoteSnapshotsReceived;
                         break;
                     case Packet.Ping:
-                        double stamp=r.ReadDouble();Require(Finite(stamp),"Invalid clock packet.");Send(Packet.Pong,w=>{w.Write(stamp);w.Write(Now);});break;
+                        double stamp=r.ReadDouble();Require(Finite(stamp),"Invalid clock packet.");Send(Packet.Pong,w=>{w.Write(stamp);w.Write(Now);},false);break;
                     case Packet.Pong:
                         double echoed=r.ReadDouble(),peerAt=r.ReadDouble();double rtt=Now-echoed;
                         Require(Finite(echoed)&&Finite(peerAt),"Invalid clock reply.");
@@ -704,7 +704,7 @@ namespace Idas3.Multiplayer
             if(now-lastPing>.35) {
                 lastPing=lastPingStamp=now;
                 if(pendingPings.Count>=20)pendingPings.Clear();
-                pendingPings[lastPingStamp]=0;Send(Packet.Ping,w=>w.Write(lastPingStamp));
+                pendingPings[lastPingStamp]=0;Send(Packet.Ping,w=>w.Write(lastPingStamp),false);
             }
             if(DisconnectedFinish)return;
             if(state=="Returning")return;

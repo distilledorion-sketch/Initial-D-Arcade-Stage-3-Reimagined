@@ -75,6 +75,48 @@ void wireContracts(const std::filesystem::path& root){
     require(host.step(input)&&client.step(input),"Digest setup stalled");auto c=client.packet();host.receive(c);host.reconcile();bad=host.packet();bad[24]^=1;reject(bad);
     std::cout<<"PASS actual wire codec, confirmed hash exchange, truncation/version/race/reserved/digest rejection"<<std::endl;
 }
+void wireOutageRecovery(const std::filesystem::path& root){
+    constexpr unsigned frames=600;
+    const auto selected=setup(3);const auto baseline=record(root,selected,frames);
+    // Stop delivery for three seconds in either direction, then both. Use the
+    // production packet codec and differently paced peers, not direct timeline
+    // injection: one side may confirm input while the other's ACKs are lost.
+    for(unsigned outage=0;outage<3;++outage){
+        OnlineRaceSimulation a(root,selected),b(root,selected);
+        std::array<unsigned,2> emitted{};
+        auto output=[&](unsigned slot,const OnlineRaceFrame& e,std::uint64_t digest){
+            require(e.frame==emitted[slot]++,"Outage repeated or skipped confirmed effects");
+            require(digest==baseline.hashes.at(e.frame),"Outage changed confirmed race state");
+            require(onlineContactEffectsDigest(e)==baseline.contactEffects.at(e.frame),"Outage changed contact effects");
+        };
+        OnlineRaceLink host(a,92,true,[&](const auto& e,auto d){output(0,e,d);});
+        OnlineRaceLink client(b,92,false,[&](const auto& e,auto d){output(1,e,d);});
+        std::array<OnlineRaceLink*,2> peers{&host,&client};
+        std::array<std::vector<std::uint8_t>,2> delayed;
+        unsigned stalls=0;
+        for(unsigned wall=0;wall<2000&&(emitted[0]<frames||emitted[1]<frames);++wall){
+            for(unsigned slot=0;slot<2;++slot){auto& peer=*peers[slot];peer.reconcile();
+                if(peer.timeline().frame()<frames && (slot==0||wall%3!=0)){
+                    if(!peer.step(baseline.inputs.at(peer.timeline().frame())[slot]))++stalls;
+                }
+            }
+            auto h=host.packet(),c=client.packet();std::array packets{h,c};
+            for(unsigned receiver=0;receiver<2;++receiver){
+                const auto& bytes=packets[1-receiver];
+                if(wall==175)delayed[receiver]=bytes;
+                if(wall>=180&&wall<360&&(outage==2||outage==receiver))continue;
+                peers[receiver]->receive(bytes);
+                if(wall%17==0)peers[receiver]->receive(bytes);
+                if(wall==362)peers[receiver]->receive(delayed[receiver]);
+                peers[receiver]->reconcile();
+            }
+        }
+        require(stalls>0,"Outage never exhausted the bounded history");
+        require(emitted[0]==frames&&emitted[1]==frames,"Peers failed to recover after a packet outage");
+        require(a.digest()==b.digest()&&a.digest()==baseline.hashes.back(),"Recovered peer states disagree");
+        std::cout<<"PASS wire outage="<<outage<<" stalls="<<stalls<<" confirmed_peer_frames="<<emitted[0]+emitted[1]<<"; asymmetric pace, duplicates and reordered packets"<<std::endl;
+    }
+}
 void contracts(const std::filesystem::path& root){
     for(unsigned winner=0;winner<2;++winner){
         OnlineRaceSimulation ended(root,setup(6));const auto idle=neutral();
@@ -188,8 +230,10 @@ Report run(const std::filesystem::path& root,const OnlineRaceSetup& selected,con
 }
 int main(int argc,char** argv)try{
     if(argc<2)throw std::invalid_argument("online_race_timeline_tests native_root [report.csv] [frames=1800] [cases=18]");
-    const std::filesystem::path root=argv[1];unsigned frames=argc>3?std::stoul(argv[3]):1800,cases=argc>4?std::stoul(argv[4]):18;
-    contracts(root);wireContracts(root);std::ofstream csv;if(argc>2)csv.open(argv[2]);
+    const std::filesystem::path root=argv[1];
+    if(argc>2&&std::string(argv[2])=="--recovery"){wireOutageRecovery(root);return 0;}
+    unsigned frames=argc>3?std::stoul(argv[3]):1800,cases=argc>4?std::stoul(argv[4]):18;
+    contracts(root);wireContracts(root);wireOutageRecovery(root);std::ofstream csv;if(argc>2)csv.open(argv[2]);
     if(csv)csv<<"case,condition,car0,car1,ping_ms,jitter_ms,loss_pct,confirmed_peer_frames,contacts,wall_impacts,host_rollbacks,client_rollbacks,replayed_frames,max_depth,p99_both_peers_ms,max_both_peers_ms,max_correction_units,history_bytes_both_peers,packets,lost,duplicate,desyncs\n";
     std::uint64_t checked=0,contacts=0;
     for(unsigned scenario=0;scenario<cases;++scenario){auto selected=setup(scenario);

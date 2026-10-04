@@ -55,4 +55,10 @@ namespace Idas3.Multiplayer
         void BrowseQuickMatch(int distance);
     }
 
+    // Matchmaking services can be offline while an existing peer route works.
+    public interface IIdas3MatchmakingServiceState
+    {
+        bool ServiceConnected { get; }
+    }
+
 }

@@ -10,7 +10,7 @@ namespace Idas3.Multiplayer
     // Steam App 480 is Valve's Spacewar development application. This adapter
     // uses the real Steam client/API and isolates its rooms from other tests.
     // All entry points and callbacks belong to the Unity main thread.
-    public sealed class Idas3SteamTransport : IIdas3MatchmakingTransport, IIdas3RegionalMatchmakingTransport
+    public sealed class Idas3SteamTransport : IIdas3MatchmakingTransport, IIdas3RegionalMatchmakingTransport, IIdas3MatchmakingServiceState
     {
         public const uint DevelopmentAppId = 480;
         public const string GameNamespace = "idas3-unity-recompiled-p2p-20260909";
@@ -27,8 +27,16 @@ namespace Idas3.Multiplayer
         private static Idas3SteamTransport steamOwner;
         private readonly Idas3SteamInputConfig controllerConfig = new Idas3SteamInputConfig();
         private readonly Stopwatch clock = Stopwatch.StartNew();
+        private readonly Func<double> nowSeconds;
+        private double Now => nowSeconds();
+        private readonly Queue<byte[]> pendingReliable = new Queue<byte[]>();
+        private int pendingReliableBytes;
+        private double reliableBlockedAt, nextReliableRetry;
+        private const int MaxPendingReliableBytes = 256 * 1024, MaxPendingReliableMessages = 128;
+        private const double ReliableRetryTimeout = 10;
         private readonly List<IDisposable> callbacks = new List<IDisposable>();
         private readonly List<IDisposable> calls = new List<IDisposable>();
+        private IDisposable discoveryCall;
         private readonly List<Idas3Room> rooms = new List<Idas3Room>();
         private readonly IntPtr[] received = new IntPtr[32];
         private CSteamID lobby, pendingLobby;
@@ -46,6 +54,7 @@ namespace Idas3.Multiplayer
 
         public string Kind => "Steam";
         public bool Available { get; private set; }
+        public bool ServiceConnected => Available && SteamUser.BLoggedOn();
         public bool Connected => Available && peer != 0;
         public bool IsHost => InLobby && host == local;
         public string LocalId => local == 0 ? "" : local.ToString(CultureInfo.InvariantCulture);
@@ -72,6 +81,9 @@ namespace Idas3.Multiplayer
         public event Action PeerChanged;
         public event Action<string> Error;
 
+        public Idas3SteamTransport() : this(null) { }
+        internal Idas3SteamTransport(Func<double> now) { nowSeconds = now ?? (() => clock.Elapsed.TotalSeconds); }
+
         public bool Initialize()
         {
             if (Available) return true;
@@ -93,7 +105,11 @@ namespace Idas3.Multiplayer
                 callbacks.Add(Callback<LobbyChatUpdate_t>.Create(OnLobbyMembers));
                 callbacks.Add(Callback<SteamNetworkingMessagesSessionRequest_t>.Create(OnSessionRequest));
                 callbacks.Add(Callback<SteamNetworkingMessagesSessionFailed_t>.Create(OnSessionFailed));
-                callbacks.Add(Callback<SteamServersDisconnected_t>.Create(_ => FailRoom("The connection to Steam was lost.")));
+                callbacks.Add(Callback<SteamServersDisconnected_t>.Create(OnSteamDisconnected));
+                callbacks.Add(Callback<SteamServersConnected_t>.Create(_ => {
+                    lastMembershipCheck = -100;
+                    UnityEngine.Debug.Log("IDAS3 Steam services reconnected; peer session retained.");
+                }));
                 SteamNetworkingUtils.InitRelayNetworkAccess();
                 Status = "Steam ready. Host a room or enter a room code.";
                 return true;
@@ -155,9 +171,12 @@ namespace Idas3.Multiplayer
             SteamMatchmaking.AddRequestLobbyListFilterSlotsAvailable(1);
             SteamMatchmaking.AddRequestLobbyListDistanceFilter(distance);
             SteamMatchmaking.AddRequestLobbyListResultCountFilter(50);
-            Track<LobbyMatchList_t>(SteamMatchmaking.RequestLobbyList(), (result, failed) => {
+            discoveryCall = Track<LobbyMatchList_t>(SteamMatchmaking.RequestLobbyList(), (result, failed) => {
                 if (token != operation) return;
                 EndOperation();
+                // Lobby callbacks and discovery results can arrive in either
+                // order. Once a driver arrives, discovery cannot fail the match.
+                if (InLobby && SteamMatchmaking.GetNumLobbyMembers(lobby) > 1) { RefreshPeer(); return; }
                 if (failed) { Fail("Steam room search failed. Please retry."); return; }
                 for (int i = 0; i < result.m_nLobbiesMatching && i < 50; ++i) {
                     var candidate = SteamMatchmaking.GetLobbyByIndex(i);
@@ -198,7 +217,17 @@ namespace Idas3.Multiplayer
 
         private void OnLobbyMembers(LobbyChatUpdate_t update)
         {
-            if (InLobby && update.m_ulSteamIDLobby == lobby.m_SteamID) RefreshPeer();
+            if (!InLobby || update.m_ulSteamIDLobby != lobby.m_SteamID) return;
+            const uint departed = (uint)(EChatMemberStateChange.k_EChatMemberStateChangeLeft |
+                EChatMemberStateChange.k_EChatMemberStateChangeDisconnected |
+                EChatMemberStateChange.k_EChatMemberStateChangeKicked |
+                EChatMemberStateChange.k_EChatMemberStateChangeBanned);
+            if ((update.m_rgfChatMemberStateChange & departed) != 0) {
+                ulong who = update.m_ulSteamIDUserChanged;
+                if (who == local || who == host) { FailRoom("The host left or your Steam room membership ended."); return; }
+                if (who == peer) { ClosePeer(); PeerChanged?.Invoke(); return; }
+            }
+            RefreshPeer();
         }
 
         private bool CompatibleRoom(CSteamID room) => room.IsLobby() &&
@@ -210,8 +239,8 @@ namespace Idas3.Multiplayer
 
         private void RefreshPeer()
         {
-            if (!InLobby) return;
-            lastMembershipCheck = clock.Elapsed.TotalSeconds;
+            if (!InLobby || !ServiceConnected) return;
+            lastMembershipCheck = Now;
             // GetLobbyOwner is available only after joining. Validate the
             // advertised owner against Steam here, never during discovery.
             if (!CompatibleRoom(lobby) || SteamMatchmaking.GetLobbyOwner(lobby).m_SteamID != host ||
@@ -220,17 +249,23 @@ namespace Idas3.Multiplayer
             }
             int count = SteamMatchmaking.GetNumLobbyMembers(lobby);
             if (count < 1 || count > 2) { FailRoom("The room no longer has a valid two-driver membership."); return; }
+            if (count > 1) CancelDiscovery();
             bool containsSelf = false; ulong admitted = 0;
             for (int i = 0; i < count; ++i) {
                 var member = SteamMatchmaking.GetLobbyMemberByIndex(lobby, i);
                 if (member.m_SteamID == local) containsSelf = true;
-                else if (SteamMatchmaking.GetLobbyMemberData(lobby, member, ProtocolKey) == TransportProtocol) admitted = member.m_SteamID;
+                else {
+                    string protocol = SteamMatchmaking.GetLobbyMemberData(lobby, member, ProtocolKey);
+                    // Missing cached metadata is not a departure. New members
+                    // still require protocol admission; explicit changes revoke it.
+                    if (protocol == TransportProtocol || member.m_SteamID == peer && string.IsNullOrEmpty(protocol)) admitted = member.m_SteamID;
+                }
             }
             if (!containsSelf) { FailRoom("You are no longer in the Steam room."); return; }
             if (admitted == peer) return;
             ClosePeer(); peer = admitted;
             RemoteName = peer == 0 ? "" : CleanName(SteamFriends.GetFriendPersonaName(new CSteamID(peer)), "Driver");
-            lastReceive = clock.Elapsed.TotalSeconds; lastHeartbeat = -100;
+            lastReceive = Now; lastHeartbeat = -100;
             Status = peer == 0 ? "Waiting for another driver in " + RoomCode + "." : "Connected to " + RemoteName + ".";
             PeerChanged?.Invoke();
         }
@@ -269,7 +304,23 @@ namespace Idas3.Multiplayer
         private void OnSessionFailed(SteamNetworkingMessagesSessionFailed_t failed)
         {
             if (Allowed(failed.m_info.m_identityRemote.GetSteamID64()))
-                FailRoom("Steam peer connection failed: " + failed.m_info.m_szEndDebug);
+                FailRoom("Steam peer connection failed (" + failed.m_info.m_eEndReason + "): " + failed.m_info.m_szEndDebug);
+        }
+
+        private void CancelDiscovery()
+        {
+            if (pendingKind != "Finding rooms") return;
+            ++operation; EndOperation(); rooms.Clear();
+            if (discoveryCall != null) { calls.Remove(discoveryCall); discoveryCall.Dispose(); discoveryCall = null; }
+        }
+
+        private void OnSteamDisconnected(SteamServersDisconnected_t disconnected)
+        {
+            // Steam backend availability is separate from the existing peer
+            // route. Keep pumping packets; the session still enforces liveness.
+            CancelDiscovery(); activity?.CancelSearch();
+            Status = "Steam is reconnecting…";
+            UnityEngine.Debug.LogWarning("IDAS3 Steam services interrupted (" + disconnected.m_eResult + "); keeping the peer session.");
         }
 
         public void Send(byte[] data, bool reliable)
@@ -284,16 +335,55 @@ namespace Idas3.Multiplayer
             var packet = new byte[HeaderBytes + (data == null ? 0 : data.Length)];
             Write64(packet, 0, Magic); Write64(packet, 8, lobby.m_SteamID); packet[16] = type;
             if (data != null) Buffer.BlockCopy(data, 0, packet, HeaderBytes, data.Length);
+            if (reliable && pendingReliable.Count > 0) { QueueReliable(packet); return; }
+            var result = SendRaw(packet, reliable);
+            if (result == EResult.k_EResultLimitExceeded && reliable) { QueueReliable(packet); return; }
+            HandleSendResult(result, reliable);
+        }
+
+        private EResult SendRaw(byte[] packet, bool reliable)
+        {
             var identity = new SteamNetworkingIdentity(); identity.SetSteamID64(peer);
             var handle = GCHandle.Alloc(packet, GCHandleType.Pinned);
             EResult result;
             try { result = SteamNetworkingMessages.SendMessageToUser(ref identity, handle.AddrOfPinnedObject(), (uint)packet.Length,
                 reliable ? Constants.k_nSteamNetworkingSend_ReliableNoNagle : Constants.k_nSteamNetworkingSend_UnreliableNoDelay, Channel); }
             finally { handle.Free(); }
+            return result;
+        }
+
+        private void HandleSendResult(EResult result, bool reliable)
+        {
             // Unreliable snapshots can be dropped while a route is connecting
             // or congested; reliable control messages must report failures.
             if (result == EResult.k_EResultNoConnection) FailRoom("The Steam peer connection closed.");
             else if (result != EResult.k_EResultOK && reliable) Fail("Steam could not send a control message: " + result);
+        }
+
+        private void QueueReliable(byte[] packet)
+        {
+            if (pendingReliable.Count >= MaxPendingReliableMessages || pendingReliableBytes + packet.Length > MaxPendingReliableBytes) {
+                FailRoom("The Steam connection remained congested. Please reconnect."); return;
+            }
+            if (pendingReliable.Count == 0) {
+                reliableBlockedAt = Now; nextReliableRetry = Now + .05;
+                UnityEngine.Debug.LogWarning("IDAS3 Steam send buffer full; retrying control messages in order.");
+            }
+            pendingReliable.Enqueue(packet); pendingReliableBytes += packet.Length;
+        }
+
+        private void FlushReliable()
+        {
+            if (pendingReliable.Count == 0 || Now < nextReliableRetry) return;
+            if (Now - reliableBlockedAt > ReliableRetryTimeout) { FailRoom("The Steam connection remained congested for too long."); return; }
+            nextReliableRetry = Now + .05;
+            for (int i = 0; i < 8 && Connected && pendingReliable.Count > 0; ++i) {
+                byte[] packet = pendingReliable.Peek();
+                var result = SendRaw(packet, true);
+                if (result == EResult.k_EResultLimitExceeded) return;
+                if (result != EResult.k_EResultOK) { HandleSendResult(result, true); return; }
+                pendingReliable.Dequeue(); pendingReliableBytes -= packet.Length;
+            }
         }
 
         public void Poll()
@@ -310,14 +400,16 @@ namespace Idas3.Multiplayer
         {
             SteamAPI.RunCallbacks();
             if (!Available) return;
-            double now = clock.Elapsed.TotalSeconds;
+            double now = Now;
             if(activity!=null){activity.Requested=ActivityRequested||PublishActivity;activity.SetState(ActivityState);activity.Poll(UnityEngine.Time.realtimeSinceStartupAsDouble,IsBusy);}
             // Callbacks normally update admission immediately. Retain a low
             // frequency audit for a missed/delayed lobby notification.
             if (InLobby && now - lastMembershipCheck >= 1) RefreshPeer();
             if (!Available) return;
             if (IsBusy && now > deadline) {
-                ++operation; EndOperation(); Fail("Steam request timed out. Please retry.");
+                if (pendingKind == "Finding rooms") CancelDiscovery();
+                else { ++operation; EndOperation(); }
+                Fail("Steam request timed out. Please retry.");
             }
             for (int batch = 0; batch < 8; ++batch) {
                 if (!Available) break;
@@ -342,13 +434,16 @@ namespace Idas3.Multiplayer
                 }
             }
             if (!Connected) return;
+            FlushReliable();
+            if (!Connected) return;
             if (!Allowed(peer)) { RefreshPeer(); return; }
             if (now - lastReceive > PeerTimeout) { FailRoom("The other driver stopped responding."); return; }
-            if (now - lastHeartbeat >= 1) { lastHeartbeat = now; SendEnvelope(null, true, 0); }
+            if (now - lastHeartbeat >= 1) { lastHeartbeat = now; SendEnvelope(null, false, 0); }
         }
 
         public void Leave()
         {
+            CancelDiscovery();
             ++operation; EndOperation();
             bool notify = InLobby || peer != 0;
             if (Available) {
@@ -365,6 +460,7 @@ namespace Idas3.Multiplayer
 
         private void ClosePeer()
         {
+            pendingReliable.Clear(); pendingReliableBytes = 0;
             if (peer != 0 && Available) {
                 var identity = new SteamNetworkingIdentity(); identity.SetSteamID64(peer);
                 SteamNetworkingMessages.CloseSessionWithUser(ref identity);
@@ -383,19 +479,23 @@ namespace Idas3.Multiplayer
             if (calls.Count >= 8) { Fail("Steam is still completing earlier requests. Please wait or reconnect."); return false; }
             return true;
         }
-        private long Begin(string kind) { pendingKind = kind; deadline = clock.Elapsed.TotalSeconds + OperationTimeout; Status = kind + "…"; return ++operation; }
+        private long Begin(string kind) { pendingKind = kind; deadline = Now + OperationTimeout; Status = kind + "…"; return ++operation; }
         private void EndOperation() { pendingKind = null; pendingLobby = default; }
         private void Fail(string reason) { Status = reason; Error?.Invoke(reason); }
-        private void FailRoom(string reason) { Leave(); Fail(reason); }
-        private void Track<T>(SteamAPICall_t call, Action<T, bool> action)
+        private void FailRoom(string reason) {
+            UnityEngine.Debug.LogWarning("IDAS3 Steam room ended: " + reason + "; peer silence=" + (Now-lastReceive).ToString("F2",CultureInfo.InvariantCulture) + "s; pending controls=" + pendingReliable.Count);
+            Leave(); Fail(reason);
+        }
+        private IDisposable Track<T>(SteamAPICall_t call, Action<T, bool> action)
         {
-            if (call == SteamAPICall_t.Invalid) { EndOperation(); Fail("Steam rejected the room request."); return; }
+            if (call == SteamAPICall_t.Invalid) { EndOperation(); Fail("Steam rejected the room request."); return null; }
             CallResult<T> result = null;
             result = CallResult<T>.Create((value, failed) => {
                 try { action(value, failed); }
                 finally { calls.Remove(result); result.Dispose(); }
             });
             calls.Add(result); result.Set(call);
+            return result;
         }
 
         public void Dispose()

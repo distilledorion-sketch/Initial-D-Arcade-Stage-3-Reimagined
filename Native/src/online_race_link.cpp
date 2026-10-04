@@ -40,6 +40,12 @@ void OnlineRaceLink::verify(){
 }
 void OnlineRaceLink::reconcile(){timeline_.reconcile();verify();}
 bool OnlineRaceLink::step(const OriginalVehicleInputs& local){
-    reconcile();if(!timeline_.localInput(local))return false;const bool advanced=timeline_.advance();verify();return advanced;
+    reconcile();
+    // Local confirmation does not mean the other driver received our history.
+    // During one-way packet loss we may keep confirming their inputs while
+    // their ACK stops. Never overwrite the oldest frame they still need.
+    // Keep packet/reconcile running while stalled so retransmission can recover.
+    if(timeline_.frame()-peerConfirmed_>=OnlineRaceTimeline::capacity)return false;
+    if(!timeline_.localInput(local))return false;const bool advanced=timeline_.advance();verify();return advanced;
 }
 }

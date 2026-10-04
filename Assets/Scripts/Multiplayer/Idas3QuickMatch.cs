@@ -14,7 +14,8 @@ namespace Idas3.Multiplayer
         readonly HashSet<string> attempted = new HashSet<string>(StringComparer.Ordinal);
         Stage stage;
         double deadline, nextSearch, searchBegan, occupiedAt = -1;
-        int joinFailures;
+        double serviceLostAt = -1;
+        int joinFailures, searchFailures;
         public bool IsActive => stage != Stage.Idle;
         public string Status { get; private set; } = "";
         public event Action Matched;
@@ -31,7 +32,7 @@ namespace Idas3.Multiplayer
         {
             if(IsActive || transport.InLobby || transport.IsBusy)return;
             if(!transport.Available){Failed?.Invoke("Steam is unavailable. Sign in, then try Quick Match again.");return;}
-            attempted.Clear();joinFailures=0;occupiedAt=-1;searchBegan=now();
+            attempted.Clear();joinFailures=searchFailures=0;occupiedAt=serviceLostAt=-1;searchBegan=now();
             Search(false);
         }
         void Search(bool waiting)
@@ -73,6 +74,7 @@ namespace Idas3.Multiplayer
         }
         void WaitForDriver()
         {
+            searchFailures=0;
             stage=Stage.Waiting;nextSearch=now()+3+Math.Max(0,Math.Min(1,jitter()))*2;
             Status="Waiting for another driver. Quick Match will connect you automatically.";
         }
@@ -82,6 +84,18 @@ namespace Idas3.Multiplayer
             if(handshakeComplete) {stage=Stage.Idle;Status="Opponent found. Choose your car and select Ready.";Matched?.Invoke();return;}
             if(!transport.Available){Stop("Steam disconnected. Sign in and try Quick Match again.");return;}
             double time=now();
+            if (transport is IIdas3MatchmakingServiceState service && !service.ServiceConnected) {
+                if (serviceLostAt < 0) serviceLostAt = time;
+                Status = "Steam is reconnecting — keeping your search open…";
+                if (time-serviceLostAt > 60) Stop("Steam could not reconnect. Sign in and try Quick Match again.");
+                return;
+            }
+            if (serviceLostAt >= 0) {
+                double paused = time-serviceLostAt;
+                deadline += paused; nextSearch += paused; searchBegan += paused;
+                if (occupiedAt >= 0) occupiedAt += paused;
+                serviceLostAt = -1;
+            }
             // Lobby membership precedes the admitted peer/protocol callback.
             // Keep an arriving player's host in place throughout that gap.
             if(transport.InLobby && (transport.Connected || transport.RoomMembers>1)) {
@@ -93,19 +107,19 @@ namespace Idas3.Multiplayer
             occupiedAt=-1;
             switch(stage) {
             case Stage.Searching:
-                if(transport.IsBusy){if(time>deadline)Stop("Room search timed out. Please try Quick Match again.");break;}
+                if(transport.IsBusy){if(time>deadline)HandleTransportError("Room search timed out. Please try Quick Match again.");break;}
                 var available=Candidate(false);if(available!=null)Join(available);else Host();break;
             case Stage.Joining:
                 if(time>deadline)HandleTransportError("That driver could not be reached.");break;
             case Stage.Hosting:
-                if(transport.IsBusy){if(time>deadline)Stop("Creating the room timed out. Please try again.");break;}
+                if(transport.IsBusy){if(time>deadline)HandleTransportError("Creating the room timed out. Please try again.");break;}
                 if(transport.InLobby&&transport.IsHost)WaitForDriver();
                 else Stop("Steam could not open the Quick Match room.");break;
             case Stage.Waiting:
                 if(!transport.InLobby||!transport.IsHost){Stop("The Quick Match room closed. Please try again.");break;}
                 if(time>=nextSearch&&!transport.IsBusy)Search(true);break;
             case Stage.WaitingSearch:
-                if(transport.IsBusy){if(time>deadline)Stop("Room search timed out. Please try again.");break;}
+                if(transport.IsBusy){if(time>deadline)HandleTransportError("Room search timed out. Please try again.");break;}
                 if(!transport.InLobby||!transport.IsHost){Stop("The Quick Match room closed. Please try again.");break;}
                 var other=Candidate(true);if(other!=null)Join(other);else WaitForDriver();break;
             case Stage.Retry:
@@ -115,7 +129,22 @@ namespace Idas3.Multiplayer
         public bool HandleTransportError(string message)
         {
             if(!IsActive)return false;
-            if(stage==Stage.Joining && transport.Available && ++joinFailures<=5) {
+            if (transport is IIdas3MatchmakingServiceState service && transport.Available && !service.ServiceConnected) {
+                if (serviceLostAt < 0) serviceLostAt = now();
+                if (!transport.InLobby) { stage=Stage.Retry; nextSearch=now()+1; transport.Leave(); }
+                else { stage=Stage.Waiting; nextSearch=now()+1; }
+                Status="Steam is reconnecting — keeping your search open…";
+            } else if ((stage==Stage.Searching||stage==Stage.Hosting||stage==Stage.WaitingSearch) && transport.Available && ++searchFailures<=5) {
+                if (transport.Connected || transport.InLobby && transport.RoomMembers>1) {
+                    // A search result can arrive after a driver has entered.
+                    // It must not remove them or restart the game handshake.
+                    stage=Stage.Waiting;return true;
+                }
+                nextSearch=now()+Math.Min(10,searchFailures*2);
+                if (transport.InLobby && transport.IsHost) stage=Stage.Waiting;
+                else {stage=Stage.Retry;transport.Leave();}
+                Status="Room search interrupted — retrying…";
+            } else if(stage==Stage.Joining && transport.Available && ++joinFailures<=5) {
                 stage=Stage.Retry;occupiedAt=-1;
                 nextSearch=now()+.4+Math.Max(0,Math.Min(1,jitter()));
                 transport.Leave();
