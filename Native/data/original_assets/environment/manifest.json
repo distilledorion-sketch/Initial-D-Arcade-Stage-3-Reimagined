@@ -1,0 +1,26 @@
+{
+  "schema": "idas3-environment-effects-v1",
+  "image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "banks": {
+    "leaf": {
+      "chunks": 8,
+      "textures": 4,
+      "source_sha256": {
+        "leaf_pol.bin.nz": "08dde45c6ad9591df4d9b7bc19c11a38efdfdd066cb0f21236a3f3c295a22888",
+        "leaf_pol.tbl": "e50b3be57b9c73f286519e6f5f766d345238f0edfd3c10a51af5991e1f4e0d6d",
+        "leaf_tex.bin.nz": "853f5ba8b036ddd8794b9437e4bcc6c2f2c2fbe64560cf1fa44c79334a36d8cb",
+        "leaf_tex.tbl": "19cc95b12644200af08712e853811317deceb13ca857f32a8a63e276c7a92037"
+      }
+    },
+    "flare": {
+      "chunks": 7,
+      "textures": 7,
+      "source_sha256": {
+        "flare_pol.bin.nz": "49e5fb41eb2aa85af4db318783ec4caa922fbfa32aca022a000e8353a9d852db",
+        "flare_pol.tbl": "0de2783748ed83650632c31e2f850aaeb3eab8f32457a10f1d9ad10b3bb6475a",
+        "flare_tex.bin.nz": "6815beb1c436a2b9cd2043df7359532ba9a82ee246e02f3e9e87e8f4267b1c22",
+        "flare_tex.tbl": "42c48e966b478a3ef342706b690f19410ba50079f8723d2c49c1f039446025b8"
+      }
+    }
+  }
+}

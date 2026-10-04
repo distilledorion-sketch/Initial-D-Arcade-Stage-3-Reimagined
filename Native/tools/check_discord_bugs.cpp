@@ -127,6 +127,20 @@ int main(int argc,char** argv)try{
         Mesh excluded;check(!app->backfire.append(excluded,0,original::OriginalCarAppearanceConfig(0),{},0,0,0,base),"Other car received Evo backfire");
         check(!app->backfire.append(excluded,0,original::OriginalCarAppearanceConfig(19),{},0,0,0,base),"Stock exhaust received Evo backfire");
     }
-    std::ofstream(out/"PASS.txt")<<checks<<" actual-host checks: bumper camera, course presence, saved-car packages, Bunta completion, Tsubaki maps, Evo misfire timing and geometry.\n";
+    // Exercise the actual race renderer, including its texture offsets and
+    // source path coordinate. The verification view faces Myogi's sun.
+    f.car=0;f.course=0;f.reverse=false;f.night=false;f.wet=false;f.gameMode=original::OriginalGameMode::TimeAttack;
+    f.battleProfile=original::makeOriginalFreshBattleProfile();f.battleProfile.setu(16,0);
+    app->courseIndex=0;app->reverse=false;app->night=false;app->wet=false;app->start();
+    app->environment.load(root);app->paused=true;app->vsActive=false;app->drivingView=OriginalDrivingView::Natural;
+    const auto sun=app->environment.sunDirection(0);app->vehicle.yaw=std::atan2(sun.x,sun.z);app->previous=app->vehicle;
+    app->cameraReady=false;app->texturesPending=true;
+    check(app->render(0),"Actual daytime race render failed");
+    auto flareRanges=[&]{unsigned n=0;for(const auto& r:app->raceMesh.ranges)if(r.texture>=app->flareTextureBase&&r.texture<app->flareTextureBase+7)++n;return n;};
+    check(flareRanges()>0,"Race never submitted sun flare geometry");
+    check(app->renderer.saveBitmap((out/"myogi-sun.bmp").wstring()),"Race sun capture failed");
+    app->night=true;check(app->render(0),"Night race render failed");check(flareRanges()==0,"Actual night race retained sun flare");
+    app->night=false;app->wet=true;check(app->render(0),"Wet race render failed");check(flareRanges()==0,"Actual wet race retained sun flare");
+    std::ofstream(out/"PASS.txt")<<checks<<" actual-host checks: bumper camera, course presence, saved-car packages, Bunta completion, Tsubaki maps, Evo misfire timing/geometry and environment race integration.\n";
     std::cout<<"PASS "<<checks<<" Discord regression checks\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

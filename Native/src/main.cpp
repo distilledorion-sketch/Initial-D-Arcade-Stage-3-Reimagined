@@ -28,6 +28,7 @@
 #include "car_shadow.h"
 #include "driving_effects.h"
 #include "backfire_presentation.h"
+#include "environment_presentation.h"
 #include "hud_drift_indicator.h"
 #include "hud_analog_presentation.h"
 #include "car_presentation.h"
@@ -143,6 +144,8 @@ struct App {
     DrivingEffects drivingEffects;
     BackfirePresentation backfire;
     unsigned backfireTextureBase=0;
+    EnvironmentPresentation environment;
+    unsigned leafTextureBase=0,flareTextureBase=0;
     HudDriftIndicator hudDrift;
     original::OriginalCollisionQuery hudDriftRoadQuery{};
     original::OriginalTriangleSearchTrace hudDriftRoadTrace{};
@@ -1365,7 +1368,7 @@ struct App {
         }
         if(!originalHandling)audio.useDevelopmentEngine();
         texturesPending=true;
-        menu=false;paused=false;wetWeather.reset();drivingEffects.reset();for(auto& car:effectRoadQueries)for(auto& q:car)original::clearOriginalCollisionQuery(q);audio.resetRaceEffects();race.start(originalHandling?float(originalRace.rules().goalIndex):trackFinish-trackStart);
+        menu=false;paused=false;wetWeather.reset();drivingEffects.reset();environment.reset();for(auto& car:effectRoadQueries)for(auto& q:car)original::clearOriginalCollisionQuery(q);audio.resetRaceEffects();race.start(originalHandling?float(originalRace.rules().goalIndex):trackFinish-trackStart);
         race.originalTiming=originalHandling;if(originalHandling){race.remaining6000=std::bit_cast<std::int32_t>(originalRace.state().remaining.value);
             race.sectionCapacity=1;for(auto index:originalRace.rules().sectionIndices)if(index>=0)++race.sectionCapacity;race.sectionCapacity=std::min(race.sectionCapacity,4u);}
         raceFeedback.reset(race.remaining6000);
@@ -3057,6 +3060,10 @@ struct App {
             if(!renderer.loadTextures(smokeTextures,true))return false;
             backfire.load(root);backfireTextureBase=smokeTextureBase+unsigned(smokeTextures.size());
             if(!renderer.loadTextures(backfire.textures,true))return false;
+            environment.load(root);leafTextureBase=backfireTextureBase+unsigned(backfire.textures.size());
+            if(!renderer.loadTextures(environment.leafTextures,true))return false;
+            flareTextureBase=leafTextureBase+unsigned(environment.leafTextures.size());
+            if(!renderer.loadTextures(environment.flareTextures,true))return false;
             texturesPending=false;menuTexturesLoaded=false;
         }
         const float alpha=clock.alpha();VehicleState drawCar=vehicle;drawCar.position=lerp(previous.position,vehicle.position,alpha);drawCar.yaw=lerpAngle(previous.yaw,vehicle.yaw,alpha);
@@ -3227,6 +3234,11 @@ struct App {
         // The host draws the personal-best ghost independently of collision and AI.
         drivingEffects.advance(dt,originalHandling&&!menu&&!wet&&courseIndex!=8,paused&&!multiplayer.active,effectCars);
         if(!validationHideDrivingEffects)drivingEffects.append(mesh,camera,target,smokeTextureBase+4,night);
+        std::array<std::array<unsigned,4>,2> leafSurfaces{};
+        for(unsigned c=0;c<2;++c)for(unsigned i=0;i<4;++i)leafSurfaces[c][i]=effectRoadQueries[c][i].u(28);
+        environment.advance(dt,originalHandling&&!importedCourse&&!menu&&courseIndex!=8,
+            (paused&&!multiplayer.active)||multiplayer.waiting||authorityStalled,effectCars,leafSurfaces);
+        if(!validationHideDrivingEffects)environment.appendLeaves(mesh,leafTextureBase);
         if(originalHandling&&!menu&&!replayPlaybackActive&&!validationHideDrivingEffects)
             backfire.append(mesh,audio.backfireFrame(),original::originalPlayerAppearanceConfig(frontend.battleProfile),
                 bodyPosition,drawCar.yaw,drawPitch,drawRoll,backfireTextureBase);
@@ -3274,6 +3286,12 @@ struct App {
             mesh.vertices.insert(mesh.vertices.end(),{{a,normal,color,0,0},{b,normal,color,1,0},{c,normal,color,1,1},
                 {a,normal,color,0,0},{c,normal,color,1,1},{d,normal,color,0,1}});
             mesh.ranges.back().count+=6;
+        }
+        if(!menu&&!importedCourse&&!validationHideDrivingEffects){
+            auto sunCoordinate=originalCoordinate;
+            if(replayPlaybackActive)originalPath.project({drawCar.position.x,drawCar.position.y,drawCar.position.z},sunCoordinate);
+            environment.appendSun(mesh,unsigned(courseIndex),night,wet,reverse,float(sunCoordinate.index)+sunCoordinate.fraction,
+                camera,target,renderer.cameraUp,renderer.verticalFieldOfView,renderer.nearClip,flareTextureBase);
         }
         // Smooth only the meters. The minimap, gear and every numerical owner
         // retain the current vehicle state, and the simulation is never edited.
