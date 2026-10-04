@@ -1221,7 +1221,7 @@ struct App {
         const Vec3 cameraAngles{importedRoadPresentation.ready()?-bodyPitch:d.f(0x0C),d.f(0x10)+cameraYaw,importedRoadPresentation.ready()?-bodyRoll:d.f(0x14)};
         const bool initialized=originalCamera.ready();
         if(initialized)previousRearCameraFrame=rearCameraFrame;
-        rearCameraFrame=originalCamera.rearView(playerBodyWorld,cameraAngles);
+        rearCameraFrame=originalCamera.rearView(cameraPosition,cameraAngles);
         if(!initialized)previousRearCameraFrame=rearCameraFrame;
         if(initialized)previousCameraFrame=originalCamera.frame();
         const auto& frame=originalCamera.update(cameraPosition,cameraAngles);

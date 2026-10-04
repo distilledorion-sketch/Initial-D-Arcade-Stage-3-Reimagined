@@ -23,9 +23,14 @@ public:
     const OriginalChaseFrame& frame()const{return frame_;}
     bool ready()const{return ready_;}
     Vec3 smoothedAngles()const{return angles_;}
-    OriginalRearViewFrame rearView(Vec3 carBodyPosition,Vec3 actorAngles)const{
+    OriginalRearViewFrame rearView(Vec3 actorPosition,Vec3 actorAngles)const{
+        // In bumper view the local body draw (034C20) is absent. ABackView
+        // therefore sees 034840's actor matrix, before the body-only lift.
+        // Keep the host rear-facing basis; the source model's half-turn is
+        // already accounted for by the mirrored, left-handed projection.
+        actorPosition.y-=std::bit_cast<float>(0x3ca3d70au);
         return originalRearViewFrame(original::originalActorMatrix(
-            {carBodyPosition.x,carBodyPosition.y,carBodyPosition.z},
+            {actorPosition.x,actorPosition.y,actorPosition.z},
             {actorAngles.x,actorAngles.y,actorAngles.z},trig_));
     }
     static constexpr float sourceVerticalFieldOfView=1.2333658933639526f;

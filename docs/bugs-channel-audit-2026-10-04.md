@@ -36,6 +36,23 @@ This restores the reported local-player visual, not every behavior of the origin
 
 The September 26/27 audits remain the record for older topics. Existing fixes and prior passing tests are not blanket confirmation that every player-reported case is resolved.
 
+## Afternoon follow-up
+
+Read the new topics and their replies after the user restored the browser login. No Discord messages were sent or report statuses changed.
+
+| New topic | Finding and status |
+| --- | --- |
+| [The rear-view in mirror is higher than the original D3](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1556382717090988173) | Fixed locally. The host supplied the raised body position to the rear camera, adding the car's body-only ride height. The source bumper-view camera uses the live actor matrix with its -0.02 vertical offset and local +0.8 camera offset. The host now uses that actor anchor, retaining imported-course smoothing and online presentation offsets. All driving camera choices use the same corrected mirror. |
+| [Random Crash](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1556376861888487484) | Still open. The player reports failure after time trials or entering story mode, even after reinstalling. Their screenshot shows `Idas3SceneGame.Update` and a path containing the .27 release folder, but the actual exception and the rest of the path are clipped. This does not establish the running binary's version or the cause. Need the full exception from that player's `Player.log`, their current version and install path before claiming a fix. |
+| Community Leaderboard not Getting Updated with New Times | The original message had already been deleted when opened; no replies or reproduction details remained. The topic itself subsequently disappeared from the live forum during this read. No evidence supports a specific leaderboard change from this report. |
+
+Mirror evidence is in `Verification/discord-bugs-20261004/mirror-followup/`:
+
+- `original_rear_view_tests`: 720 isolated matrices plus 720 actual source actor-to-car-to-camera sequences, 18,004 comparisons and 326,207 executed source instructions. Eye and up vectors are checked bit for bit; facing accounts only for the source model half-turn. The earlier isolated callback test alone could not detect the incorrect host anchor.
+- `discord_bug_application_tests`: 2,324 passing checks, including all 35 body ride heights across Bumper, Chase and Natural. Body placement must not alter the mirror anchor or banking.
+- The arranged Akina downhill night/Bunta capture uses FD3S Type R and AE86 at a 4.3 m center-to-center offset. `akina-mirror-before.bmp` and `akina-mirror-after.bmp` keep the scene and rival placement identical. The corrected view includes both headlights instead of cutting off the car below its bonnet. The measured height correction is 0.319946 m. This is a native renderer comparison, not a recreation of the player's exact race.
+- `rear_view_renderer_tests` passes mirrored side order, viewport containment, repeated rendering and HUD restoration at three resolutions. The native Unity plugin builds successfully. No full Unity player build, desktop installation or GitHub publication was performed for this follow-up.
+
 ## Reproducible checks and local evidence
 
 Evidence directory: `Verification/discord-bugs-20261004/` (local, ignored by Git).

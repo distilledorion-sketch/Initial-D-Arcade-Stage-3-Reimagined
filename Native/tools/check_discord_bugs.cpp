@@ -141,6 +141,46 @@ int main(int argc,char** argv)try{
     check(app->renderer.saveBitmap((out/"myogi-sun.bmp").wstring()),"Race sun capture failed");
     app->night=true;check(app->render(0),"Night race render failed");check(flareRanges()==0,"Actual night race retained sun flare");
     app->night=false;app->wet=true;check(app->render(0),"Wet race render failed");check(flareRanges()==0,"Actual wet race retained sun flare");
-    std::ofstream(out/"PASS.txt")<<checks<<" actual-host checks: bumper camera, course presence, saved-car packages, Bunta completion, Tsubaki maps, Evo misfire timing/geometry and environment race integration.\n";
+    // Mirror binding must use the actor anchor, not the separate grounded body.
+    // Match the new report's Akina/FD3S/Bunta setting. The opponent position is
+    // deliberately arranged for a repeatable framing comparison, not a race run.
+    f.car=22;f.gameMode=original::OriginalGameMode::BuntaChallenge;
+    f.battleProfile=original::makeOriginalFreshBattleProfile();f.battleProfile.setu(16,22);f.battleProfile.setu(0,2);
+    original::selectOriginalBuntaCourse(f.battleProfile,3);app->paused=false;app->start();
+    app->loadingActive=app->vsActive=app->preRaceDialogueActive=false;
+    for(unsigned i=0;i<360;++i)app->simulate({});
+    app->paused=true;app->race.phase=RacePhase::Running;app->originalRaceOwnerFrame=360;
+    const auto& drive=app->presentedSession().vehicle().drive;
+    const Vec3 actorPosition{drive.f(0),drive.f(4),drive.f(8)},actorAngles{drive.f(0x0c),drive.f(0x10),drive.f(0x14)};
+    const auto expectedMirror=app->originalCamera.rearView(actorPosition,actorAngles);
+    const auto bodyPosition=app->playerBodyWorld;
+    for(auto drivingView:{OriginalDrivingView::Bumper,OriginalDrivingView::Chase,OriginalDrivingView::Natural}){
+        app->drivingView=drivingView;
+        for(unsigned car=0;car<35;++car){
+            app->playerBodyWorld=actorPosition+Vec3{.1f,originalCarRideHeight(car),-.05f};
+            app->advanceOriginalCamera();
+            check(length(app->rearCameraFrame.eye-expectedMirror.eye)<.00001f,"Mirror camera inherited the body lift or ground offset");
+            check(length(app->rearCameraFrame.up-expectedMirror.up)<.00001f,"Mirror camera lost road banking");
+        }
+    }
+    app->playerBodyWorld=bodyPosition;app->drivingView=OriginalDrivingView::Bumper;
+    app->advanceOriginalCamera();
+    const auto delta=normalized(expectedMirror.target-expectedMirror.eye)*4.3f;
+    app->rivalVehicle.position=app->previousRival.position=app->vehicle.position+delta;
+    app->rivalBodyWorld=app->previousRivalBodyWorld=app->rivalBody.update(app->presentedSession().collision(),unsigned(app->loadedRivalCar),app->rivalVehicle.position);
+    app->rivalVehicle.yaw=app->previousRival.yaw=app->vehicle.yaw;
+    app->rivalPitch=app->previousRivalPitch=app->bodyPitch;app->rivalRoll=app->previousRivalRoll=app->bodyRoll;
+    app->previous=app->vehicle;app->previousPlayerBodyWorld=app->playerBodyWorld;app->texturesPending=true;
+    auto oldAnchor=bodyPosition;oldAnchor.y+=std::bit_cast<float>(0x3ca3d70au);
+    const auto oldMirror=app->originalCamera.rearView(oldAnchor,actorAngles);
+    const auto captureMirror=[&](const OriginalRearViewFrame& pose,const char* file){
+        app->rearCameraFrame=app->previousRearCameraFrame=pose;
+        check(app->render(0),"Akina mirror render failed");
+        check(app->renderer.saveBitmap((out/file).wstring()),"Akina mirror capture failed");
+    };
+    captureMirror(oldMirror,"akina-mirror-before.bmp");captureMirror(expectedMirror,"akina-mirror-after.bmp");
+    check(oldMirror.eye.y-expectedMirror.eye.y>.25f,"Reported mirror-height fixture did not include the old body lift");
+    std::ofstream(out/"mirror-height.txt")<<"Old eye Y: "<<oldMirror.eye.y<<"\nCorrected eye Y: "<<expectedMirror.eye.y<<"\nBody lift removed: "<<oldMirror.eye.y-expectedMirror.eye.y<<"\n";
+    std::ofstream(out/"PASS.txt")<<checks<<" actual-host checks: bumper/rear camera, course presence, saved-car packages, Bunta completion, Tsubaki maps, Evo misfire timing/geometry and environment race integration.\n";
     std::cout<<"PASS "<<checks<<" Discord regression checks\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
