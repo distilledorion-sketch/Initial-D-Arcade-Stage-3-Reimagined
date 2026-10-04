@@ -5,6 +5,17 @@ using UnityEngine;
 
 public static class Idas3MeterCatalogBuild
 {
+    public static void VerifyRetrowave(){
+        Debug.Log(Idas3RetrowaveMeterChecks.RunChecks());
+        Idas3MeterLayoutBounds.RecalculateForVerification();
+        for(int i=1;i<Idas3ArcadeMeterCatalog.Count;++i)Idas3MeterLayoutBounds.Get(Idas3ArcadeMeterCatalog.StyleAt(i));
+        const string path="Assets/Resources/ArcadeHud/Catalog/layout-bounds.json";
+        File.WriteAllText(path,Idas3MeterLayoutBounds.ExportVerifiedBake());
+        AssetDatabase.ImportAsset(path,ImportAssetOptions.ForceSynchronousImport|ImportAssetOptions.ForceUpdate);
+        Idas3MeterLayoutBounds.VerifyBakedCache();
+        Idas3RetrowaveMeterChecks.VerifyGpu(Path.GetFullPath("Verification/retrowave-gpu"));
+    }
+    public static void VerifyRetrowaveAndBuild(){VerifyRetrowave();Idas3Build.RebuildWindowsPlayer();}
     public static void VerifyDriftGrades(){
         Idas3MeterLayoutBounds.RecalculateForVerification();
         Idas3MeterDriftChecks.Run();

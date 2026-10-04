@@ -362,6 +362,10 @@ class Importer:
             return "gearRoll" if "GearRate_Roll" in name else "gearEffect"
         if name == "CarMode":
             return "transmission"
+        if name == "DriftNeon":
+            # Retrowave's unanimated outline is a permanent decoration outside
+            # DriftLampColor. Only its colored letters/glows follow drift state.
+            return "static"
         if "Drift" in name and "Corner" not in name:
             return "drift"
         if name.startswith("RevLamp") or name == "Rev_Over":

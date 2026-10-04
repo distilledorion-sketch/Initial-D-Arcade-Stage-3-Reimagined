@@ -28,6 +28,9 @@ public sealed class Idas3ArcadeHud : IDisposable
         public Texture mask;public Matrix4x4 maskTransform;public Vector4 radial;
         // XY scroll, Z rotation in turns, W repeat (otherwise transparent outside).
         public Vector4 sampleMotion;
+        // Inverse retainer homography in normalized texture coordinates.
+        // A zero third row disables it for ordinary meter layers.
+        public Vector4 projective0,projective1,projective2;
         public int materialEffect;
         public Texture effectTex1,effectTex2,effectTex3;
         public Vector4 effectParams,effectParams2;
@@ -233,6 +236,7 @@ public sealed class Idas3ArcadeHud : IDisposable
         p.SetVector("_EffectParams",item.effectParams);p.SetVector("_EffectParams2",item.effectParams2);
         p.SetColor("_EffectColor1",item.effectColor1);p.SetColor("_EffectColor2",item.effectColor2);p.SetColor("_EffectColor3",item.effectColor3);
         p.SetVector("_SampleMotion",item.sampleMotion);
+        p.SetVector("_Projective0",item.projective0);p.SetVector("_Projective1",item.projective1);p.SetVector("_Projective2",item.projective2);
         p.SetTexture("_MaskTex",item.mask?item.mask:Texture2D.whiteTexture);p.SetFloat("_MaskEnabled",item.mask?1:0);p.SetVector("_Radial",item.radial);
         p.SetVector("_MaskTransform0",new Vector4(item.maskTransform.m00,item.maskTransform.m01,item.maskTransform.m03,0));
         p.SetVector("_MaskTransform1",new Vector4(item.maskTransform.m10,item.maskTransform.m11,item.maskTransform.m13,0));
@@ -295,6 +299,7 @@ public sealed class Idas3ArcadeHud : IDisposable
         previewMaterial.SetVector("_EffectParams",item.effectParams);previewMaterial.SetVector("_EffectParams2",item.effectParams2);
         previewMaterial.SetColor("_EffectColor1",item.effectColor1);previewMaterial.SetColor("_EffectColor2",item.effectColor2);previewMaterial.SetColor("_EffectColor3",item.effectColor3);
         previewMaterial.SetVector("_SampleMotion",item.sampleMotion);
+        previewMaterial.SetVector("_Projective0",item.projective0);previewMaterial.SetVector("_Projective1",item.projective1);previewMaterial.SetVector("_Projective2",item.projective2);
         previewMaterial.SetTexture("_MaskTex",item.mask?item.mask:Texture2D.whiteTexture);previewMaterial.SetFloat("_MaskEnabled",item.mask?1:0);previewMaterial.SetVector("_Radial",item.radial);
         previewMaterial.SetVector("_MaskTransform0",new Vector4(item.maskTransform.m00,item.maskTransform.m01,item.maskTransform.m03,0));
         previewMaterial.SetVector("_MaskTransform1",new Vector4(item.maskTransform.m10,item.maskTransform.m11,item.maskTransform.m13,0));

@@ -83,6 +83,46 @@ internal sealed partial class Idas3ImportedMeter : IDisposable
         if(layer.parameters!=null)foreach(var p in layer.parameters)if(p.name==name)return Safe(p.value,fallback);
         return fallback;
     }
+    internal static bool TryRetainerProjection(Layer layer,out Matrix4x4 inverse){
+        inverse=Matrix4x4.identity;
+        if(layer.retainers==null)return false;
+        foreach(var retainer in layer.retainers){
+            if(!Contains(retainer.materialParent,"M_Homography.")||retainer.owner==null)continue;
+            var owner=retainer.owner;
+            if(owner.width<=0||owner.height<=0||layer.width<=0||layer.height<=0)return false;
+            float Parameter(string name,float fallback){
+                if(retainer.parameters!=null)foreach(var p in retainer.parameters)if(p.name==name)return Safe(p.value,fallback);
+                return fallback;
+            }
+            var a=new Vector2(Parameter("LT_X",0),Parameter("LT_Y",0));
+            var b=new Vector2(Parameter("RT_X",1),Parameter("RT_Y",0));
+            var c=new Vector2(Parameter("RB_X",1),Parameter("RB_Y",1));
+            var d=new Vector2(Parameter("LB_X",0),Parameter("LB_Y",1));
+            var bc=b-c;var dc=d-c;var diagonal=a-b+c-d;
+            float determinant=bc.x*dc.y-dc.x*bc.y;
+            if(Mathf.Abs(determinant)<.000001f)return false;
+            float g=(diagonal.x*dc.y-dc.x*diagonal.y)/determinant;
+            float h=(bc.x*diagonal.y-diagonal.x*bc.y)/determinant;
+            var forward=Matrix4x4.identity;
+            forward.m00=b.x-a.x+g*b.x;forward.m01=d.x-a.x+h*d.x;forward.m03=a.x;
+            forward.m10=b.y-a.y+g*b.y;forward.m11=d.y-a.y+h*d.y;forward.m13=a.y;
+            forward.m30=g;forward.m31=h;
+            // Source parameters use top-left retainer coordinates. The shader
+            // samples bottom-left layer UVs; account for both canvases before
+            // projecting, so tiling/fading scroll inside the original trapezoid.
+            var uvToLocal=Matrix4x4.TRS(new Vector3(0,layer.height,0),Quaternion.identity,new Vector3(layer.width,-layer.height,1));
+            var canvas=Matrix4x4.Scale(new Vector3(1/owner.width,1/owner.height,1))*Matrix(owner.transform).inverse*Matrix(layer.transform,layer.x,layer.y)*uvToLocal;
+            forward=canvas.inverse*forward*canvas;
+            if(Mathf.Abs(forward.determinant)<.000001f)return false;
+            inverse=forward.inverse;
+            // Normalize the enable flag and homogeneous denominator together.
+            if(Mathf.Abs(inverse.m33)<.000001f)return false;
+            float divisor=inverse.m33;
+            for(int row=0;row<4;++row)for(int column=0;column<4;++column)inverse[row,column]/=divisor;
+            return true;
+        }
+        return false;
+    }
     static Color Tint(float[] value)=>value!=null&&value.Length>=4?new Color(Safe(value[0],1),Safe(value[1],1),Safe(value[2],1),Safe(value[3],1)):Color.white;
     static Color MaterialColor(Layer layer,string name,Color fallback){
         if(layer.vectorParameters!=null)foreach(var value in layer.vectorParameters)if(value.name==name)return Tint(value.values);
@@ -406,6 +446,11 @@ internal sealed partial class Idas3ImportedMeter : IDisposable
                 sprite.materialEffect=7;sprite.effectTex1=texture;sprite.effectTex2=BoundTexture(layer,"Tex_Base01");sprite.effectTex3=BoundTexture(layer,"Tex_Mask");
                 sprite.effectParams=new Vector4(Scalar(layer,"Utiling",1),Scalar(layer,"Vtiling",1),seconds*Scalar(layer,"Speed",1)*Scalar(layer,"SpeedX",0),seconds*Scalar(layer,"Speed",1)*Scalar(layer,"SpeedY",0));
                 sprite.effectParams2=new Vector4(Scalar(layer,"H_Radius",.7f),Scalar(layer,"H_Density",1),Scalar(layer,"V_Radius",.7f),Scalar(layer,"V_Density",1));
+                if(TryRetainerProjection(layer,out var projection)){
+                    sprite.projective0=new Vector4(projection.m00,projection.m01,projection.m03,0);
+                    sprite.projective1=new Vector4(projection.m10,projection.m11,projection.m13,0);
+                    sprite.projective2=new Vector4(projection.m30,projection.m31,projection.m33,0);
+                }
             }
             if(Contains(layer.materialParent,"M_UVScroll."))sprite.sampleMotion=new Vector4(scrollU,-scrollV,0,1);
             if(Contains(layer.materialParent,"MeterRotation")||Contains(layer.materialParent,"EffRotation")){

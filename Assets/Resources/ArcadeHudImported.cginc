@@ -4,6 +4,17 @@ float _GaugeMode,_ClipEnabled;
 float4 _Gauge,_Atlas,_SourceSize,_ClipRect,_LocalToMeter0,_LocalToMeter1;
 sampler2D _MaskTex;float _MaskEnabled;float4 _MaskTransform0,_MaskTransform1,_Radial;
 float4 _SampleMotion;
+float4 _Projective0,_Projective1,_Projective2;
+float2 ImportedMeterProjectiveUv(float2 uv,out float visible){
+ visible=1;
+ if(abs(_Projective2.z)<.0001)return uv;
+ float3 samplePoint=float3(uv,1);
+ float denominator=dot(_Projective2.xyz,samplePoint);
+ if(abs(denominator)<.0001){visible=0;return 0;}
+ float2 source=float2(dot(_Projective0.xyz,samplePoint),dot(_Projective1.xyz,samplePoint))/denominator;
+ visible=step(0,source.x)*step(0,source.y)*step(source.x,1)*step(source.y,1);
+ return source;
+}
 float _MaterialEffect;
 sampler2D _EffectTex1,_EffectTex2,_EffectTex3;
 float4 _EffectParams,_EffectParams2,_EffectColor1,_EffectColor2,_EffectColor3;

@@ -1,7 +1,7 @@
 {
-    "rendererVersion": 12,
-    "catalogSha256": "e498729b0e09e1ab670f15a2483169f5b0224a2b0a5f8e2b02ac75ed04714a53",
-    "alphaSha256": "f4381e7d9c62c40ce0132692c561348f15cedfb6b34789d67fc940bedd8f7d28",
+    "rendererVersion": 13,
+    "catalogSha256": "fdc54aea759f146a8bc0346fde477767af5d421af42e1d43fa945c141b6cb313",
+    "alphaSha256": "b9cea95156791e2bb9eaa17e7421a5148f512119c1a9e2c27a5b1ee723725558",
     "layouts": [
         {
             "style": 1,
