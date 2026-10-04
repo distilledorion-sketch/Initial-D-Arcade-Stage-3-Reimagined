@@ -251,6 +251,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetGo(int released);
 // Settled protocol winner: -1 both time-up,0 host,1 guest,2 draw. Audio only;
 // the race must already be finished. An identical repeat is a no-op.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetLocalSnapshot(Idas3MultiplayerSnapshot* snapshot);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerApplyRemoteSnapshot(const Idas3MultiplayerSnapshot* snapshot);
 // Experimental version2 input authority. Call Enable while StartSaved is held.

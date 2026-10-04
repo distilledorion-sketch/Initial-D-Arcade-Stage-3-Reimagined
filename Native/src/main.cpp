@@ -127,6 +127,8 @@ struct App {
         std::string localName="PLAYER",remoteName="OPPONENT";
         bool active=false,waiting=false,received=false,disconnected=false;
         int finishWinner=-2; // -2 pending; protocol -1 both time-up,0/1 winning slot,2 draw
+        int rewardSelection=-1;
+        std::uint32_t pointsEarned=0;
         Idas3MultiplayerConfig config{};
         std::array<Idas3BattleRecord,2> records{{{0,0,1,0},{0,0,1,0}}};
         std::array<std::uint32_t,2> auraRanges{};
@@ -863,8 +865,8 @@ struct App {
         mp.savedReverse=reverse;mp.savedWet=wet;mp.savedNight=night;mp.savedAutomatic=automatic;
         mp.config=request;mp.active=true;mp.waiting=true;
         for(auto& aura:multiplayerAura)aura.configure(1,0);
-        // Race-owned copies retain saved tuning/paint/parts without writing
-        // online race results into either driver's offline profile.
+        // Race-owned copies retain saved tuning/paint/parts. The verified
+        // result commits only tuning points back to the selected garage car.
         frontend.battleProfile=local?*local:original::makeOriginalFreshBattleProfile();
         mp.remoteProfile=remote?*remote:original::makeOriginalFreshBattleProfile();
         mp.remoteProfile.setu(16,request.remoteCar);
@@ -954,13 +956,36 @@ struct App {
     bool multiplayerDisconnected()const{return multiplayer.active&&multiplayer.disconnected;}
     void setMultiplayerResult(int winner){
         if(winner < -1||winner > 2)throw std::invalid_argument("Invalid multiplayer result");
-        if(!multiplayer.active||multiplayer.disconnected||race.phase!=RacePhase::Finished)
+        if(!multiplayer.active||multiplayer.disconnected||
+           (authorityRace?authorityWinner()!=winner:race.phase!=RacePhase::Finished))
             throw std::logic_error("A connected finished race is required for its result");
         if(multiplayer.finishWinner!=-2){
             if(multiplayer.finishWinner!=winner)throw std::logic_error("Multiplayer result is already settled");
             return;
         }
-        multiplayer.finishWinner=winner;updateAudioScene();
+        // Online participation earns1,000 tuning points, plus1,000 for a
+        // win. Double timeout/disconnect earns none. Persist only the actual
+        // selected garage car; never copy the race's normalized physics card.
+        if(multiplayer.rewardSelection>=0&&winner>=0){
+            original::OriginalBattleProfile earned;
+            if(!onlineCarProfile(multiplayer.rewardSelection,earned))throw std::runtime_error("Selected online car could not be read for its points");
+            const auto selected=decodeOnlineCarSelection(multiplayer.rewardSelection);
+            const auto amount=1000u+(winner==int(multiplayer.config.localSlot)?1000u:0u);
+            const auto balance=earned.u(72);
+            earned.setu(72,std::uint32_t(std::min(std::uint64_t(balance)+amount,std::uint64_t(999999999))));
+            const auto directory=selected.slot>=0?LocalSaveSlots(userdataRoot()/"saves").profileDirectory(unsigned(selected.slot)):userdataRoot()/"driver_profiles_v1";
+            if(!LocalDriverProfiles(directory).save(multiplayer.config.localCar,earned))throw std::runtime_error("Online tuning points could not be saved");
+            multiplayer.pointsEarned=earned.u(72)-balance;
+            if(selected.slot==activeSaveSlot){
+                pendingProfiles.at(multiplayer.config.localCar).reset();
+                if(multiplayer.savedProfileCar==int(multiplayer.config.localCar)){
+                    multiplayer.savedProfile.setu(72,earned.u(72));multiplayer.savedBattleProfile.setu(72,earned.u(72));
+                }
+            }
+            battleProfile.setu(72,earned.u(72));frontend.battleProfile.setu(72,earned.u(72));
+        }
+        multiplayer.finishWinner=winner;race.phase=RacePhase::Finished;
+        race.originalStartDigit=-1;updateAudioScene();
     }
     void updateAudioScene(bool forcePause=false){
         if(multiplayerDisconnected())audio.scene(true,false,true,false);
@@ -1016,7 +1041,7 @@ struct App {
         importedCourse.reset();renderer.farClip=5000;
         frontend.course=saved.savedFrontendCourse;courseIndex=saved.savedCourse;frontend.reverse=reverse=saved.savedReverse;frontend.wet=wet=saved.savedWet;
         frontend.night=night=saved.savedNight;frontend.automatic=automatic=saved.savedAutomatic;
-        frontend.stage=FrontendStage::Course;menu=true;paused=false;input={};clock.reset();
+        frontend.stage=FrontendStage::Mode;menu=true;paused=false;input={};clock.reset();
         raceFog=original::originalBootstrapFog();raceLighting.reset();raceLightSets.reset();
         renderer.courseFog=nullptr;renderer.courseLighting=nullptr;renderer.playerLighting=nullptr;renderer.rivalLighting=nullptr;
         renderer.screenFadeArgb=0;menuTexturesLoaded=false;texturesPending=true;tuningPreview.reset();tuningTexturesLoaded=false;

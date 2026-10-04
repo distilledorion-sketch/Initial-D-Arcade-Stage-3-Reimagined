@@ -32,7 +32,7 @@ namespace Idas3.Multiplayer
     public sealed class Idas3MultiplayerSession : IDisposable
     {
         const uint Magic = 0x504D3349;
-        const ushort Protocol = 10;
+        const ushort Protocol = 11;
         enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs }
         // Retain this diagnostic property name; shared simulation is now the
         // normal online path, including rooms with car collisions switched off.
@@ -121,6 +121,12 @@ namespace Idas3.Multiplayer
         readonly Idas3MultiplayerRecords records;
         Idas3BattleRecord remoteRecord=Idas3BattleRecord.Fresh;
         bool recordCommitted;
+        public bool LocalContinueRequested { get; private set; }
+        public bool RemoteContinueRequested { get; private set; }
+        public bool ResultPeerLeft { get; private set; }
+        public int TuningPointsEarned { get; private set; }
+        public int BattlePointsEarned { get; private set; }
+        public event Action ReturnedToMode;
         public Idas3BattleRecord LocalRecord => records.Read(LocalCar);
         public Idas3BattleRecord ReadCarBattleRecord(int car) => records.Read(car);
         public Idas3BattleRecord RemoteRecord => remoteRecord;
@@ -344,6 +350,7 @@ namespace Idas3.Multiplayer
                 if (!helloSent) { ResetPeer(); helloSent=true; lastHeard=Now; operationAt=Now; state="Connecting";
                     Send(Packet.Hello,w=>{w.Write(Compatibility());w.Write(IsHost);w.Write(Clean(transport.LocalName));w.Write(LocalCar);w.Write(localPlayerSerial);WriteChoice(w,LocalChoice);WriteRecord(w,LocalRecord);LocalSavedCar.Write(w);}); }
             } else if (HandshakeComplete || nativeRace || helloSent) {
+                if(state=="Returning"&&recordCommitted){ReturnToMode();return;}
                 if(nativeRace){DisconnectRace("Connection to the other driver was lost.");return;}
                 StopRace(); ResetPeer(); state=InLobby ? "Lobby" : "Offline";
                 status="The other driver left. Race ended; single-player progress was preserved.";
@@ -529,17 +536,19 @@ namespace Idas3.Multiplayer
                         if(nativeRace&&recordRace==raceId){if(ExperimentalAuthority&&!recordCommitted)pendingAuthorityRecord=completedRecord;else {Require(recordCommitted,"Driver record arrived before the result.");remoteRecord=completedRecord;}}
                         break;
                     case Packet.Leave:
-                        if(nativeRace)DisconnectRace("The other driver left the race.");
+                        if(state=="Returning"&&recordCommitted)ReturnToMode();
+                        else if(nativeRace&&recordCommitted)ResultPeerDeparted();
+                        else if(nativeRace)DisconnectRace("The other driver left the race.");
                         else {status="The other driver left the room.";LeaveRoom();}break;
                     case Packet.ReturnRequest:
                         ulong requestedReturn=r.ReadUInt64();Require(m.Position==m.Length,"Unexpected lobby return data.");
-                        Require(IsHost,"Only the host commits a lobby return.");
                         if(requestedReturn==returnRaceId&&retiredRaceIds.Contains(requestedReturn)){
-                            SendReturnCommit();break;
+                            if(IsHost)SendReturnCommit();break;
                         }
                         if(requestedReturn!=raceId)break;
-                        Require(nativeRace&&(state=="Results"||(resultSent&&finishSent&&remoteFinished)),"The race has not finished.");
-                        BeginLobbyReturn();break;
+                        Require(nativeRace,"The race has not finished.");
+                        RemoteContinueRequested=true;
+                        if(IsHost&&state=="Results"&&LocalContinueRequested)BeginLobbyReturn();break;
                     case Packet.ReturnLobby:
                         ulong committedReturn=r.ReadUInt64();uint committedRevision=r.ReadUInt32();
                         Require(!IsHost&&m.Position==m.Length,"Invalid lobby return commit.");
@@ -548,10 +557,10 @@ namespace Idas3.Multiplayer
                             break;
                         }
                         if(committedReturn!=raceId)break;
-                        Require(nativeRace&&(state=="Results"||state=="Returning")&&committedRevision==unchecked(revision+1),"Unexpected lobby return commit.");
+                        Require(nativeRace&&recordCommitted&&LocalContinueRequested&&state=="Results"&&committedRevision==unchecked(revision+1),"Unexpected lobby return commit.");
                         returnRaceId=committedReturn;returnRevision=revision=committedRevision;
                         RetireNativeRace();state="Lobby";status="Both drivers returned to the lobby. Choose Ready for another race.";
-                        SendReturnAck();
+                        RefreshGarage();SendReturnAck();
                         if(HandshakeComplete&&InLobby&&!DisconnectedFinish)ReturnedToLobby?.Invoke();
                         break;
                     case Packet.ReturnAck:
@@ -561,7 +570,7 @@ namespace Idas3.Multiplayer
                         if(acknowledgedReturn!=returnRaceId||acknowledgedRevision!=returnRevision||state!="Returning")break;
                         remoteRecord=returningRecord;
                         state="Lobby";status="Both drivers returned to the lobby. Choose Ready for another race.";
-                        SendLobby();
+                        RefreshGarage();SendLobby();
                         if(HandshakeComplete&&InLobby&&!DisconnectedFinish)ReturnedToLobby?.Invoke();
                         break;
                     default: throw new InvalidDataException("Unknown multiplayer packet.");
@@ -575,15 +584,31 @@ namespace Idas3.Multiplayer
         public void ReturnToLobby()
         {
             if(DisconnectedFinish){LeaveRoom();ReturnedToLobby?.Invoke();return;}
-            if(!CanReturnToLobby)return;
+            if(nativeRace&&recordCommitted&&ResultPeerLeft){ReturnToMode();return;}
+            if(!CanReturnToLobby||LocalContinueRequested)return;
             try{
-                if(IsHost)BeginLobbyReturn();
-                else{
-                    returnRaceId=raceId;state="Returning";operationAt=Now;
-                    localReady=remoteReady=false;ResultText="";status="Returning both drivers to the lobby...";
-                    Send(Packet.ReturnRequest,w=>w.Write(returnRaceId));
-                }
+                LocalContinueRequested=true;returnRaceId=raceId;
+                status="Waiting for the other driver…";
+                Send(Packet.ReturnRequest,w=>w.Write(returnRaceId));
+                if(IsHost&&RemoteContinueRequested&&state=="Results")BeginLobbyReturn();
             }catch(Exception e){Fail("Could not return to the lobby: "+e.Message);}
+        }
+        public void ReturnToMode()
+        {
+            if((!nativeRace&&state!="Returning")||!recordCommitted)return;
+            LeaveRoom();ReturnedToMode?.Invoke();
+        }
+        void ResultPeerDeparted()
+        {
+            if(ResultPeerLeft)return;
+            ResultPeerLeft=true;HandshakeComplete=false;pendingPings.Clear();
+            leaving=true;
+            try{quickMatch?.Cancel();transport?.Leave();impairment.Clear();}
+            finally{leaving=false;}
+            // A completed race keeps its result and awards, even if the other
+            // driver chooses No while this driver is reading the points page.
+            status="The other driver left.";
+            if(LocalContinueRequested)ReturnToMode();
         }
         void SendReturnCommit() => Send(Packet.ReturnLobby,w=>{w.Write(returnRaceId);w.Write(returnRevision);});
         // The host may retire its race before the peer's RecordUpdate arrives.
@@ -591,6 +616,7 @@ namespace Idas3.Multiplayer
         void SendReturnAck() => Send(Packet.ReturnAck,w=>{w.Write(returnRaceId);w.Write(returnRevision);WriteRecord(w,LocalRecord);});
         void BeginLobbyReturn()
         {
+            Require(IsHost&&recordCommitted&&LocalContinueRequested&&RemoteContinueRequested,"Both drivers must choose Continue.");
             returnRaceId=raceId;returnRevision=unchecked(revision+1);
             RetireNativeRace();revision=returnRevision;state="Returning";operationAt=Now;
             status="Returning both drivers to the lobby...";SendReturnCommit();
@@ -604,6 +630,7 @@ namespace Idas3.Multiplayer
             LocalSnapshot=RemoteSnapshot=previousPose=default;RemoteSnapshotsReceived=SnapshotsSent=0;
             Array.Clear(poseBuffer,0,poseBuffer.Length);Array.Clear(poseTimes,0,poseTimes.Length);
             CourseWinnerSlot=-1;selectedChoice=default;ResultText="";ErrorText="";
+            LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
         }
         public void StartRace()
         {
@@ -623,6 +650,8 @@ namespace Idas3.Multiplayer
         {
             Require(HasCourseDraw,"Race requires a shared course selection.");
             RaceLocalRecord=LocalRecord;RaceRemoteRecord=remoteRecord;recordCommitted=false;
+            LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
+            TuningPointsEarned=BattlePointsEarned=0;
             state="Loading";operationAt=Now;releaseAt=0;RaceReleased=remoteLoaded=releaseAck=finishSent=resultSent=remoteFinished=false;
             LocalSnapshot=RemoteSnapshot=previousPose=default;RemoteSnapshotsReceived=SnapshotsSent=0;ResultText="";
             poseCount=0;
@@ -762,15 +791,25 @@ namespace Idas3.Multiplayer
         {
             if(DisconnectedFinish||state=="Returning"||!nativeRace)return;
             Require(Idas3MultiplayerNative.Idas3MultiplayerSetResult(winner)==1,Idas3Native.Error());
+            state="Results";ResultText=winner==-1?"TIME UP":winner==2?"DRAW":winner==(IsHost?0:1)?"YOU WIN":"YOU LOSE";
             if(!recordCommitted){
                 // Only a settled win/loss changes history. A draw, double
                 // time-up or disconnected race cannot award a battle result.
-                if(winner==0||winner==1)records.Commit(LocalCar,raceId,winner==(IsHost?0:1),RaceRemoteRecord);
+                TuningPointsEarned=Idas3MultiplayerNative.Idas3MultiplayerPointsEarned();
+                Idas3BattleRecord? completed=null;
+                try{
+                    if(winner==0||winner==1){
+                        int before=records.ReadLevelPoints(LocalCar);
+                        completed=records.Commit(LocalCar,raceId,winner==(IsHost?0:1),RaceRemoteRecord);
+                        BattlePointsEarned=records.ReadLevelPoints(LocalCar)-before;
+                    }
+                }catch(Exception e){ErrorText="Battle record could not be saved.";Debug.LogError("IDAS3 completed race record: "+e);}
                 recordCommitted=true;
-                if(winner==0||winner==1)Send(Packet.RecordUpdate,w=>{w.Write(raceId);WriteRecord(w,LocalRecord);});
+                // Transport failure after settlement must not turn an earned
+                // result into a disconnected race or hide its points page.
+                if(completed.HasValue)Send(Packet.RecordUpdate,w=>{w.Write(raceId);WriteRecord(w,completed.Value);});
             }
-            state="Results";ResultText=winner==-1?"BOTH DRIVERS — TIME UP":winner==2?"DRAW":winner==(IsHost?0:1)?"YOU WIN":"OPPONENT WINS";
-            ResultText+="   /   Host "+(hostTicks/60.0).ToString("F3")+" s   /   Guest "+(guestTicks/60.0).ToString("F3")+" s. Return to the lobby for another race.";
+            if(IsHost&&LocalContinueRequested&&RemoteContinueRequested)BeginLobbyReturn();
         }
         void UpdatePlayers()
         {
@@ -789,6 +828,7 @@ namespace Idas3.Multiplayer
             RemoteChoice=new Idas3RaceChoice(3,false,false,true);
             remoteRecord=Idas3BattleRecord.Fresh;
             raceId=returnRaceId=0;returnRevision=0;retiredRaceIds.Clear();
+            LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
         }
         void StopRace()
         {
@@ -798,6 +838,8 @@ namespace Idas3.Multiplayer
         void DisconnectRace(string reason)
         {
             if(!nativeRace||DisconnectedFinish||leaving||disposing)return;
+            if(recordCommitted){ResultPeerDeparted();return;}
+            Debug.LogWarning("IDAS3 race disconnected: "+reason);
             // Commit the neutral terminal state before transport cleanup can
             // deliver another callback. Keep nativeRace and its save barrier.
             DisconnectedFinish=true;RaceReleased=false;state="Disconnected";
@@ -831,7 +873,7 @@ namespace Idas3.Multiplayer
         public void LeaveRoom()
         {
             if(leaving)return;leaving=true;
-            try { quickMatch?.Cancel();if(HandshakeComplete){Send(Packet.Leave);PollTransport();}StopRace();transport?.Leave();ResetPeer();DisconnectedFinish=false;terminalFailure=null;ResultText="";state="Offline";status="Room closed. Your single-player progress is unchanged."; }
+            try { quickMatch?.Cancel();if(HandshakeComplete){Send(Packet.Leave);PollTransport();}StopRace();transport?.Leave();ResetPeer();DisconnectedFinish=false;terminalFailure=null;ResultText="";state="Offline";status="Room closed."; }
             finally {leaving=false;}
         }
         public void Dispose()
@@ -840,4 +882,3 @@ namespace Idas3.Multiplayer
         }
     }
 }
-

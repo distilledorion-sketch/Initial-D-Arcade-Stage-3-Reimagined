@@ -26,9 +26,9 @@ struct OnlineRaceFrame {
 };
 // Keep source sub-frame crossing precision when deciding a photo finish.
 inline int resolveOnlineRaceWinner(const std::array<OriginalRaceRuleState,2>& states){
-    for(const auto& state:states)if(state.phase!=OriginalRacePhase::Finished&&state.phase!=OriginalRacePhase::TimeUp)return -3;
-    const bool a=states[0].phase==OriginalRacePhase::TimeUp,b=states[1].phase==OriginalRacePhase::TimeUp;
-    if(a)return b?-1:1;if(b)return 0;
+    const bool firstFinished=states[0].phase==OriginalRacePhase::Finished,secondFinished=states[1].phase==OriginalRacePhase::Finished;
+    if(firstFinished!=secondFinished)return firstFinished?0:1;
+    if(!firstFinished)return states[0].phase==OriginalRacePhase::TimeUp&&states[1].phase==OriginalRacePhase::TimeUp?-1:-3;
     const auto first=states[0].times.finishTime,second=states[1].times.finishTime;
     return first==second?2:first<second?0:1;
 }

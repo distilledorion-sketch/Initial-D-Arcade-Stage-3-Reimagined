@@ -23,6 +23,7 @@ struct RaceMutable {
     std::array<SoundState,2> sound;
     OriginalBodyContactState contact;
     std::uint64_t frame=0,contactFrames=0;
+    int winner=-3;
 };
 }
 struct OnlineRaceSimulation::Impl {
@@ -97,7 +98,7 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
     std::array<OriginalBodyCollisionResult,2> contacts{};
     // Finished cars cease colliding. Never run the pair solve against a
     // delayed render pose or a car already advanced to the next frame.
-    if(s.setup.collisions&&s.state.start.started()&&
+    if(s.state.winner==-3&&s.setup.collisions&&s.state.start.started()&&
         s.rules[0].state().phase!=OriginalRacePhase::Finished&&s.rules[0].state().phase!=OriginalRacePhase::TimeUp&&
         s.rules[1].state().phase!=OriginalRacePhase::Finished&&s.rules[1].state().phase!=OriginalRacePhase::TimeUp){
         contacts=produceOriginalBodyPairContact(poses,s.state.contact,s.geometry,s.fsca);
@@ -106,14 +107,14 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
     for(unsigned slot=0;slot<2;++slot){
         auto& car=s.cars[slot];auto& rules=s.rules[slot];auto& sound=s.state.sound[slot];
         if(out.start.go){car.enableRaceStart(2);rules.start();}
-        if(out.start.runRules){const auto& actor=car.actor();
+        if(out.start.runRules&&s.state.winner==-3){const auto& actor=car.actor();
             const OriginalRacePoint position{actor.f(0),actor.f(4),actor.f(8)};
             s.path.project(position,s.state.coordinates[slot]);
             out.rules[slot]=rules.tick(s.state.coordinates[slot],position,car.stoppedForRace());
             car.setRaceAutomaticBrake(rules.state().automaticBrake);
         }
         auto controls=incoming[slot];controls.automaticMode=s.setup.automatic[slot];controls.gearEnabled=out.start.gearEnabled;
-        if(rules.state().phase==OriginalRacePhase::Finished||rules.state().phase==OriginalRacePhase::TimeUp){
+        if(s.state.winner!=-3||rules.state().phase==OriginalRacePhase::Finished||rules.state().phase==OriginalRacePhase::TimeUp){
             car.setRaceAutomaticBrake(true);
             // Preserve each driver's steering while the finish owner brakes.
             controls.analog.throttle=std::uint16_t(64u<<8);controls.analog.brake=std::uint16_t(171u<<8);
@@ -139,6 +140,10 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
         out.states[slot]=rules.state();
         if(out.driving[slot].invalidScalarDiagnostics)throw std::runtime_error("Online pair contact produced invalid physics");
     }
+    // Evaluate both crossings in the same source tick before settling a photo
+    // finish. Freeze race clocks/progress after this tick; the trailing car is
+    // not assigned a fictional finish time. Both cars brake on following ticks.
+    if(s.state.winner==-3)s.state.winner=resolveOnlineRaceWinner(out.states);
     ++s.state.frame;s.lastFrame=out;return out;
 }
 OnlineRaceSimulation::Checkpoint OnlineRaceSimulation::checkpoint()const {
@@ -171,7 +176,7 @@ std::uint64_t OnlineRaceSimulation::digest()const {
     }
     for(const auto& shape:s.state.contact.shapes0C401B04)for(auto word:shape.words)add(word);
     add(s.state.contact.count0CA9B360);for(const auto& point:s.state.contact.intersections0CA9B364)for(float v:point)f(v);
-    add(s.state.start.started());add(s.state.start.remaining());add(s.state.frame);add(s.state.contactFrames);return hash;
+    add(s.state.winner);add(s.state.start.started());add(s.state.start.remaining());add(s.state.frame);add(s.state.contactFrames);return hash;
 }
 std::uint64_t OnlineRaceSimulation::frame()const{return impl_->state.frame;}
 std::uint64_t OnlineRaceSimulation::contactFrames()const{return impl_->state.contactFrames;}

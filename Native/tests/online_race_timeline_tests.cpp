@@ -45,6 +45,12 @@ Baseline record(const std::filesystem::path& root,const OnlineRaceSetup& selecte
 void wireContracts(const std::filesystem::path& root){
     std::array<OriginalRaceRuleState,2> result;
     require(resolveOnlineRaceWinner(result)==-3,"Unfinished race awarded a result");
+    result[0].phase=OriginalRacePhase::Finished;
+    require(resolveOnlineRaceWinner(result)==0,"Host finish waited for unfinished client");
+    std::swap(result[0],result[1]);
+    require(resolveOnlineRaceWinner(result)==1,"Client finish waited for unfinished host");
+    result[1].phase=OriginalRacePhase::TimeUp;
+    require(resolveOnlineRaceWinner(result)==-3,"One timeout ended a still-running race");
     for(auto& state:result)state.phase=OriginalRacePhase::Finished;
     result[0].times.finishTime=10000;result[1].times.finishTime=10004;
     require(resolveOnlineRaceWinner(result)==0,"Sub-frame host win became a draw");
@@ -70,6 +76,26 @@ void wireContracts(const std::filesystem::path& root){
     std::cout<<"PASS actual wire codec, confirmed hash exchange, truncation/version/race/reserved/digest rejection"<<std::endl;
 }
 void contracts(const std::filesystem::path& root){
+    for(unsigned winner=0;winner<2;++winner){
+        OnlineRaceSimulation ended(root,setup(6));const auto idle=neutral();
+        for(unsigned f=0;f<300;++f)ended.step({idle,idle});
+        // Isolated numerical boundary fixture: let the real rules cross their
+        // goal with the other car still at the start. No runtime test hook.
+        auto& rules=const_cast<OriginalRaceRules&>(ended.rules(winner));
+        auto state=rules.state();state.progress.index=rules.rules().goalIndex;
+        rules.restoreNumericalState(state);
+        const auto crossing=ended.step({idle,idle});
+        require(crossing.rules[winner].finished&&resolveOnlineRaceWinner(crossing.states)==int(winner),"First source goal did not settle the online race");
+        const auto loser=1-winner;const auto before=ended.rules(loser).state();
+        require(before.phase==OriginalRacePhase::Running&&before.times.finishTime==0xffffffffu,"Loser was given a fictional finish");
+        const auto checkpoint=ended.checkpoint();
+        for(unsigned f=0;f<30;++f)ended.step({idle,idle});
+        require(ended.rules(loser).state().elapsed.value==before.elapsed.value&&ended.rules(loser).state().progress.index==before.progress.index,"Trailing car clock/progress continued after the winner finished");
+        require(ended.car(loser).raceAutomaticBrakeByte()!=0&&ended.car(winner).raceAutomaticBrakeByte()!=0,"Both cars must brake after the first finish");
+        const auto digest=ended.digest();ended.restore(checkpoint);
+        for(unsigned f=0;f<30;++f)ended.step({idle,idle});
+        require(ended.digest()==digest,"Settled first-finish result was not rollback deterministic");
+    }
     {
         OnlineRaceSimulation ended(root,setup(6));const auto idle=neutral();
         for(unsigned f=0;f<20000&&ended.rules(0).state().phase!=OriginalRacePhase::TimeUp;++f)ended.step({idle,idle});

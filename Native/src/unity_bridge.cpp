@@ -1360,6 +1360,8 @@ int IDAS3_UNITY_CALL Idas3MultiplayerStartSaved(const Idas3MultiplayerConfig* co
         if(opponent.byte(165)>3||opponent.byte(166)>3)throw std::invalid_argument("Invalid remote appearance flags");
         auto request=*config; // Lobby transmission choice is race-local; saved profile is unchanged.
         r.app->startMultiplayer(request,&player,&opponent);
+        const auto rewardSlot=decodeOnlineCarSelection(selection).slot;
+        r.app->multiplayer.rewardSelection=rewardSlot>=0?onlineSlotCarSelection(rewardSlot,request.localCar):selection;
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
         if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);
         const auto selected=decodeOnlineCarSelection(selection);
@@ -1485,6 +1487,10 @@ int IDAS3_UNITY_CALL Idas3MultiplayerDisconnect(){
         publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer disconnect error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    return r.app&&r.app->multiplayer.active?int(r.app->multiplayer.pointsEarned):0;
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerLeave(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

@@ -238,6 +238,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             multiplayerMenu.MusicSelectionRequested += () => OpenRaceMusic(1);
             multiplayer.RaceDisconnected += ShowDisconnectedFinish;
             multiplayer.ReturnedToLobby += ShowReturnedLobby;
+            multiplayer.ReturnedToMode += ShowReturnedLobby;
             challenger=gameObject.AddComponent<Idas3ChallengerOverlay>();
             challenger.Initialize(this,multiplayer);
             Idas3MultiplayerSmoke.Attach(this, multiplayer);

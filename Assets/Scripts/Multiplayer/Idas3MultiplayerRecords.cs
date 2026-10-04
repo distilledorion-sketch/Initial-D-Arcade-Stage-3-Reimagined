@@ -56,6 +56,7 @@ namespace Idas3.Multiplayer
             return Path.Combine(directory,"car_"+car.ToString("D2",CultureInfo.InvariantCulture)+".json");
         }
         public Idas3BattleRecord Read(int car)=>Load(car,out _).record;
+        public int ReadLevelPoints(int car){var saved=Load(car,out _);return checked((int)((saved.record.level-1)*100+saved.experience));}
 
         // The native evaluator owns the original progression arithmetic. This
         // store neither infers levels from win ratio nor awards tuning points.

@@ -132,7 +132,7 @@ public sealed class Idas3MultiplayerPresentationSmoke : MonoBehaviour
             CheckFrozenRecords();
             if(source.reserved>=152&&!capturing&&capturesStarted.Add(session.CurrentRaceId))StartCoroutine(Guard(Capture()));
         }
-        if(session.CanReturnToLobby&&(session.ResultText.StartsWith("DRAW",StringComparison.Ordinal)||session.ResultText.StartsWith("BOTH DRIVERS",StringComparison.Ordinal))){
+        if(session.CanReturnToLobby&&(session.ResultText=="DRAW"||session.ResultText=="TIME UP")){
             Check(ReadSaved().Equals(expectedLocal),"Draw/time-up awarded a battle, win or loss");drawVerified=true;
         }
     }
@@ -219,7 +219,7 @@ public sealed class Idas3MultiplayerPresentationSmoke : MonoBehaviour
         yield return self.Until(()=>owner.LocalSnapshot.Finished&&!owner.LocalSnapshot.TimeUp&&owner.LocalSnapshot.raceTicks==finishTicks,10,"Private native terminal snapshot did not preserve its exact finish time");
         self.Check(self.ReadSaved().Equals(before),"Pending native finish committed history before a resolved network result");
         yield return self.Barrier("winner-native-finished.json");if(role=="host")self.SendWinnerFixture(true);
-        yield return self.Until(()=>owner.CanReturnToLobby&&owner.ResultText.StartsWith(role=="host"?"YOU WIN":"OPPONENT WINS",StringComparison.Ordinal),20,"Actual Results packet did not resolve the intended private winner on both peers");
+        yield return self.Until(()=>owner.CanReturnToLobby&&owner.ResultText.StartsWith(role=="host"?"YOU WIN":"YOU LOSE",StringComparison.Ordinal),20,"Actual Results packet did not resolve the intended private winner on both peers");
         self.Check(self.ReadSaved().Equals(expected),"Winner/loser record did not persist through the ordinary result handler");
         self.Check(expected.battles==before.battles+1&&expected.wins==before.wins+(role=="host"?1u:0u),"Resolved result awarded the wrong battle/win counters");self.winnerVerified=true;
         string fingerprint=self.RecordFingerprint();yield return self.Barrier("winner-first-verified.json");
@@ -228,9 +228,9 @@ public sealed class Idas3MultiplayerPresentationSmoke : MonoBehaviour
         self.Check(self.ReadSaved().Equals(expected)&&self.RecordFingerprint()==fingerprint,"Duplicate Results packets rewrote or incremented history");
         self.Check(new Idas3MultiplayerRecords(pendingSaves).Commit(OwnCar,raceId,role=="host",opponent).Equals(expected)&&self.RecordFingerprint()==fingerprint,"Reloaded race receipt did not reject duplicate persistence");
         self.duplicateVerified=true;yield return self.Barrier("winner-duplicates-verified.json");
-        // The first natural race returns through the guest. Exercise the host
-        // return path after the persisted winner, including ReturnAck records.
-        if(role=="host")owner.ReturnToLobby();
+        // Each driver explicitly accepts the rematch; neither can retire the
+        // other driver's points screen by choosing Yes alone.
+        owner.ReturnToLobby();
         yield return self.Until(()=>owner.StateName=="Lobby"&&owner.HandshakeComplete&&!owner.IsRacing&&owner.LocalRecord.Equals(expected),30,"Winner return did not preserve the connected lobby and updated local record");
         var remoteExpected=Idas3MultiplayerRecords.Next(opponent,role!="host",before,0,out _);
         yield return self.Until(()=>owner.RemoteRecord.Equals(remoteExpected)&&owner.CanReady,20,"Returned lobby did not receive the opponent's updated record");
