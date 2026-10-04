@@ -1,9 +1,23 @@
-0.3.95-community-replays.38
-REAR-VIEW MIRRORS AND COMMUNITY BUG FIXES
-All racing modes support rear-view mirrors with bumper, chase and natural cameras.
-Corrected Tsubaki lower-hairpin guardrail collision and wet-road shadows; restored meter speed colors and Infinity gear colors.
-Improved online controller recovery and separate wheel/pedal/shifter bindings. Included Sound Room fonts and fixed linked-folder updater staging.
-Only this version can submit new times; existing records and season 2 are preserved. Changed-file patches support .20 through .37.
+0.3.95-community-replays.39
+HUD COLORS, ONLINE RESULTS AND COMMUNITY BUG FIXES
+This update is required to submit new community Time Attack times. Both players need the new version for online races.
+
+- Restored original tachometer speed colors. Double Ace uses its original white digits; other fixed-color HUDs no longer get forced red, yellow, blue or rainbow tints. Preserved authored colors and pastel designs.
+- Fixed Retrowave/Vaporwave's missing neon drift outline and scrolling grid perspective. Restored missing fifth-gear digits on the 26 affected HUD styles.
+- Online races now end when the first car finishes, followed by win/lose, earned points and Continue screens. Both players choosing Yes returns to mode selection with the online menu connected; No leaves the room.
+- Online results also award the selected car 1,000 tuning points for participation and another 1,000 for a win. Double timeouts and unfinished disconnects award none.
+- Reduced controller interruptions caused by switching between a physical controller and its Steam Input duplicate.
+- Corrected the replay bumper-camera transform and restored saved HUD placement. Replay keychains now follow recorded motion, stay still while paused and appear only in bumper view.
+- Restored a separate tuning-package choice for stock cars selected through an existing save, while keeping upgraded cars' current tunes. Fixed Bunta's pace resetting after completing level 15.
+- Restored leaf debris and original sun-flare artwork on supported base courses, and corrected rear-view mirror height.
+- Restored qualifying race-start aura sound effects and tuned Evo III exhaust flashes for the local car and online opponent, including their warm lighting pulses.
+- Restored Legend ending credits, photo strips, music and final artwork. The original driving cinematic behind the credits remains unavailable.
+- Corrected imported-course names in Discord presence, Tsubaki's analysis-map orientation and the leaderboard's course order.
+- Added scrolling crash details, a Copy error details button and a saved error report.
+
+Existing records, season 2, saves, settings, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is still required and is not included.
+
+Reports involving physical wheel binding, affected Steam/Proton updater installations, intermittent public online FPS/collisions and some replay or Sadamine camera cases still need affected-player confirmation. This release does not claim those reports are resolved.
 
 PREVIOUS UPDATE (.37)
 TSUBAKI LINE, PERSONAL-BEST GHOSTS AND SOUND ROOM
