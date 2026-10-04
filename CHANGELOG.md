@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.40 - October 4, 2026
+
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Fixed a race disconnect caused by brief packet loss: input history now waits for the other driver to acknowledge it before being overwritten, allowing the same race to recover.
+- Fixed old room searches failing or timing out after an opponent connects and ending the match.
+- Quick Match now retries temporary search failures and keeps its waiting room open. Brief Steam service interruptions pause matchmaking and resume it when Steam reconnects.
+- Temporary Steam service interruptions no longer immediately close an otherwise working peer connection.
+- Added bounded, ordered retries for a full Steam send buffer. Timing messages no longer accumulate behind reliable race controls.
+- Improved connection-failure logging, and retained normal handling for actual peer departures, failed connections and prolonged loss.
+
+Verified with simulated packet loss in both directions, two native game instances during live races, and 48 Steam/queue regression checks. Real two-account Steam/relay confirmation is still needed; this release does not claim every reported disconnect is resolved.
+
+Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is still required and is not included.
+
 ## 0.3.95-community-replays.39 - October 4, 2026
 
 This update is required to submit new community Time Attack times. Both players need the new version for online races.

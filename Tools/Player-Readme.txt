@@ -1,4 +1,18 @@
-0.3.95-community-replays.39
+0.3.95-community-replays.40
+ONLINE CONNECTION AND QUEUE RECOVERY
+This update is required to submit new community Time Attack times. Both players need the new version for online races.
+
+- Fixed a race disconnect caused by brief packet loss. Input history now remains available until the other driver acknowledges it, allowing the same race to recover.
+- Fixed old room searches failing or timing out after an opponent connects and ending the match.
+- Quick Match retries temporary search failures and keeps its waiting room open. Brief Steam service interruptions pause matchmaking and resume it when Steam reconnects.
+- Temporary Steam service interruptions no longer immediately close an otherwise working peer connection.
+- Added ordered, bounded retries for a full Steam send buffer. Timing messages no longer accumulate behind reliable race controls.
+- Improved connection-failure logging while retaining normal handling for actual departures, failed connections and prolonged loss.
+
+Verified with simulated packet loss in both directions, two native game instances during live races, and 48 Steam/queue regression checks. Real two-account Steam/relay confirmation is still needed; this release does not claim every reported disconnect is resolved.
+Changed-file patches are available from .20 through .39. Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is still required and is not included.
+
+PREVIOUS UPDATE (.39)
 HUD COLORS, ONLINE RESULTS AND COMMUNITY BUG FIXES
 This update is required to submit new community Time Attack times. Both players need the new version for online races.
 
@@ -56,7 +70,7 @@ Provide your original Initial D Arcade Stage 3 GDS-0033 dump in the rom folder b
 No original ROM is included or downloaded. First launch creates rom/README.txt if needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
 
 COMMUNITY TIME ATTACK
-Only 0.3.95-community-replays.38 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
+Only 0.3.95-community-replays.40 can submit new times. After updating, complete a new Time Attack; queued runs from older builds are no longer eligible. Existing published times, replay downloads and the current season remain available.
 Both online players need this version. Updates use a smaller changed-file patch when available for the installed version. Saves, settings, replays, custom music and locally supplied ROM files are preserved.
 
 FIXES INCLUDED FROM .28

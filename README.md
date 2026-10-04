@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. Source-code ZIPs are the development project; use the Windows game ZIP for the playable build.
 
-**Current release:** `0.3.95-community-replays.39` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.40` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `.39` restores original HUD speed colors, fixes Retrowave and missing gear digits, adds first-finisher online results with tuning rewards and Continue choices, improves controller selection and replay presentation, and restores course and exhaust effects. It also includes garage tuning, Bunta, Legend credits and leaderboard display fixes. This version is required for new community Time Attack submissions. Existing records and replay downloads remain available.
+**Latest update:** `.40` fixes race disconnections caused by brief packet loss, prevents stale matchmaking searches from ending connected races, and adds bounded recovery for temporary Steam service interruptions and send congestion. Both online drivers must update. This version is required for new community Time Attack submissions; existing records and replay downloads remain available.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract the full Windows game ZIP over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use a smaller changed-file patch when one is available for the installed version. Installer speed improvements take effect once `.27` or newer is installed; the first update from an older version still uses your previous updater.
 
