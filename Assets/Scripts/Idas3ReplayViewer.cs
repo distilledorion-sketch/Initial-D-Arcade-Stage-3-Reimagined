@@ -36,6 +36,10 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     }
     float rate = 1, orbit;
     int cameraMode;
+    internal bool OrnamentCameraVisible=>cameraMode==1&&!browsing;
+    internal Idas3ReplayData OrnamentReplay=>Viewed;
+    internal double PlaybackSeconds=>seconds;
+    internal uint PlaybackRevision=>hudTimingRevision;
     string message, filename;
     Task<string> picker;
     bool resumeAfterPicker;
@@ -95,8 +99,14 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         Application.runInBackground = true; Application.targetFrameRate = 60; QualitySettings.vSyncCount = 1;
         try{
             string optionsFile=Path.Combine(Application.persistentDataPath,"userdata-unity-scene","game-options.json");
-            if(File.Exists(optionsFile)){JsonUtility.FromJsonOverwrite(File.ReadAllText(optionsFile),audioOptions);audioOptions=Idas3GameOptions.Normalize(audioOptions);}
-        }catch(Exception e){Debug.LogWarning("Replay audio uses default volume: "+e.Message);}
+            if(File.Exists(optionsFile)){
+                audioOptions=new Idas3GameOptions.Values{version=0,steeringSettingsVersion=0,audioSettingsVersion=0,hudMeterLayout=-1};
+                JsonUtility.FromJsonOverwrite(File.ReadAllText(optionsFile),audioOptions);
+                if(audioOptions.version!=1)throw new InvalidDataException("Unsupported options format.");
+                audioOptions=Idas3GameOptions.Normalize(audioOptions);
+            }
+        }catch(Exception e){audioOptions=new Idas3GameOptions.Values();Debug.LogWarning("Replay uses default settings: "+e.Message);}
+        scene.HudOptions=audioOptions;ui.HudOptionsOverride=audioOptions;
         var args = Environment.GetCommandLineArgs();
         int index = Array.IndexOf(args, "-idas3-replay-viewer");
         int library=Array.IndexOf(args,"-idas3-replay-library");

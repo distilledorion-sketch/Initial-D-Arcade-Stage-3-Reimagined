@@ -284,7 +284,7 @@ int IDAS3_UNITY_CALL Idas3SceneReadPresence(char* output,int capacity){
     try{
         const auto& a=*r.app;const bool menu=a.menu;
         std::ostringstream json;
-        json<<"{\"condition\":"<<(menu?a.frontend.course*2+int(a.frontend.reverse):a.courseIndex*2+int(a.reverse))
+        json<<"{\"condition\":"<<a.presenceCourseCondition()
             <<",\"night\":"<<int(menu?a.frontend.night:a.night)<<",\"weather\":"<<int(menu?a.frontend.wet:a.wet)
             <<",\"car\":"<<a.frontend.car<<",\"mode\":"<<(a.multiplayer.active?1:a.frontend.gameMode==original::OriginalGameMode::TimeAttack?0:a.bunta?3:2)
             <<",\"ticks6000\":"<<a.race.elapsed6000<<",\"opponentName\":"

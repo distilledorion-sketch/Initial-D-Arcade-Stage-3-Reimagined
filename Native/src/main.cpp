@@ -27,6 +27,7 @@
 #include "original_chase_camera.h"
 #include "car_shadow.h"
 #include "driving_effects.h"
+#include "backfire_presentation.h"
 #include "hud_drift_indicator.h"
 #include "hud_analog_presentation.h"
 #include "car_presentation.h"
@@ -140,6 +141,8 @@ struct App {
     } multiplayer;
     WetWeather wetWeather;
     DrivingEffects drivingEffects;
+    BackfirePresentation backfire;
+    unsigned backfireTextureBase=0;
     HudDriftIndicator hudDrift;
     original::OriginalCollisionQuery hudDriftRoadQuery{};
     original::OriginalTriangleSearchTrace hudDriftRoadTrace{};
@@ -692,6 +695,27 @@ struct App {
         frontend.stage=FrontendStage::Mode;
         return true;
     }
+    void advanceSavedCarSelection(FrontendStage previousStage){
+        if(frontend.changingSavedCar&&previousStage==FrontendStage::Car&&frontend.stage==FrontendStage::Transmission){
+            // Keep the candidate as a preview until its transmission is
+            // confirmed. Cancelling here must not create or replace a car.
+            frontend.selectSavedCarTransmission(true);
+        }
+        if(frontend.changingSavedCar&&previousStage==FrontendStage::Transmission&&frontend.stage==FrontendStage::Mode&&needsFullTuneCourseSelection()){
+            frontend.takeDriverProfileCommit();
+            frontend.selectSavedCarTuningCourse();
+        }
+        if(frontend.changingSavedCar&&(previousStage==FrontendStage::Transmission||previousStage==FrontendStage::TuningCourse)&&frontend.stage==FrontendStage::Mode){
+            // Every model remains available, with its own saved parts and
+            // progress. New models stay stock until earned or requested tuning.
+            // This path owns the write; do not enqueue a duplicate commit.
+            frontend.takeDriverProfileCommit();
+            if(!finishSavedCarSelection()){
+                loadedProfileCar=-1;frontend.stage=FrontendStage::Car;
+                loadSelectedProfile();
+            }
+        }
+    }
     void loadSelectedProfile(){
         if(multiplayer.active||validationMode||loadedProfileCar==frontend.car)return;
         const auto car=unsigned(frontend.car);
@@ -1151,6 +1175,16 @@ struct App {
         if(advance){vehicle.travel+=length(vehicle.position-oldPosition);++vehicle.tick;vehicle.simulatedSeconds+=physicsDt;}
         if(advance)advanceHudDrift();else resetHudDrift();
     }
+    int presenceCourseCondition()const{
+        return menu?frontend.course*2+int(frontend.reverse):int(importedCourse?importedCourse->id:courseIndex)*2+int(reverse);
+    }
+    const OriginalChaseFrame& replayBumperFrame(const VehicleState& drawCar){
+        Vec3 actor=drawCar.position;
+        if(importedCourse&&replayDetailed)actor.y=playerBodyWorld.y-originalCarRideHeight(unsigned(frontend.car));
+        // The recovered bumper transform has no temporal angle filter, so
+        // seeking can evaluate the recorded pose directly.
+        return bumperCamera.update(actor,{-bodyPitch,wrapAngle(drawCar.yaw-pi),-bodyRoll});
+    }
     void advanceOriginalCamera(){
         const auto& d=presentedSession().vehicle().drive;
         const Vec3 cameraOffset=authorityRace?authorityVisualOffset[multiplayer.config.localSlot]:Vec3{};
@@ -1257,6 +1291,11 @@ struct App {
                     rival.control=setup.ordinaryRivalControl;rival.geometryCar0C9015F8=setup.geometryCar0C9015F8;
                     rival.profileMode0C901648=setup.profileMode0C901648;rival.enemyId0C9015E0=setup.enemyId0C9015E0;rival.level0C9015D0=setup.level0C9015D0;
                     rival.opponentProgress0C901644=setup.opponentProgress0C901644;rival.progress0C901604=setup.progress0C901604;
+                    // The saved 16 marker means 15+ cleared. The original
+                    // pace lookup masks to four bits, which would wrap it to
+                    // the easiest opponent. Keep the saved badge and cap only
+                    // the host's input to the authored highest pace tier.
+                    for(auto& progress:rival.progress0C901604)progress=std::min(progress,15u);
                 }else{
                     rival.control=std::bit_cast<std::int32_t>(battleProfile.u(20));rival.geometryCar0C9015F8=battleProfile.u(20);
                     rival.profileMode0C901648=battleProfile.u(0);rival.enemyId0C9015E0=battleProfile.u(24);rival.level0C9015D0=battleProfile.u(148);
@@ -2324,21 +2363,7 @@ struct App {
             loadedProfileCar=-1;
             if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
         }
-        if(frontend.changingSavedCar&&previousStage==FrontendStage::Car&&frontend.stage==FrontendStage::Transmission){
-            // Keep the candidate as a preview until its transmission is
-            // confirmed. Cancelling here must not create or replace a car.
-            frontend.selectSavedCarTransmission(true);
-        }
-        if(frontend.changingSavedCar&&previousStage==FrontendStage::Transmission&&frontend.stage==FrontendStage::Mode){
-            // Every model remains available, with its own saved parts and
-            // progress. New models stay stock until earned or requested tuning.
-            // This path owns the write; do not enqueue a duplicate commit.
-            frontend.takeDriverProfileCommit();
-            if(!finishSavedCarSelection()){
-                loadedProfileCar=-1;frontend.stage=FrontendStage::Car;
-                loadSelectedProfile();
-            }
-        }
+        advanceSavedCarSelection(previousStage);
         // Driver setup and tuning progress are distinct: a saved stock car
         // still needs its own package choice before Full Tune applies parts.
         // Previously upgraded cars keep their route; fresh drivers retain
@@ -2646,6 +2671,9 @@ struct App {
         while(vsActive&&vsSeconds+1e-9>=1.0/60.0){
             vsSeconds-=1.0/60.0;
             const auto sourceFrame=vsBanner.sourceTick();
+            if(original::originalAuraStartCue(sourceFrame,multiplayer.active&&!multiplayer.disconnected,
+                    multiplayer.records[0].level,multiplayer.records[1].level))
+                audio.playRaceCue(4,5);
             vsBanner.tick();
             if(sourceFrame>=240u){
                 vsActive=false;vsPhase=0;vsSeconds=0;clock.reset();
@@ -3027,6 +3055,8 @@ struct App {
             smokeTextureBase=rainTextureBase+((wet||courseIndex==8)?std::uint32_t(rainTextures.size()):0u)+((wet&&courseIndex!=8)?std::uint32_t(rainmarkTextures.size()):0u);
             if(smokeTextures.size()==0)smokeTextures=NativeTextureBank::load(root/"data/original_assets/effects/smoke/textures.idastex");
             if(!renderer.loadTextures(smokeTextures,true))return false;
+            backfire.load(root);backfireTextureBase=smokeTextureBase+unsigned(smokeTextures.size());
+            if(!renderer.loadTextures(backfire.textures,true))return false;
             texturesPending=false;menuTexturesLoaded=false;
         }
         const float alpha=clock.alpha();VehicleState drawCar=vehicle;drawCar.position=lerp(previous.position,vehicle.position,alpha);drawCar.yaw=lerpAngle(previous.yaw,vehicle.yaw,alpha);
@@ -3041,11 +3071,16 @@ struct App {
         }else if(replayPlaybackActive){
             const auto heading=forward(drawCar.yaw);
             const auto center=drawCar.position+Vec3{0,1.0f,0};
-            if(replayCameraMode==1){camera=center+heading*1.5f;target=camera+heading*30.f;}
+            if(replayCameraMode==1){
+                const auto& frame=replayBumperFrame(drawCar);
+                camera=frame.eye;target=frame.target;renderer.cameraUp=frame.up;
+                renderer.verticalFieldOfView=frame.verticalFieldOfView;
+            }
             else if(replayCameraMode==2){camera=center-heading*3.f+Vec3{0,24.f,0};target=center;}
             else if(replayCameraMode==3){camera=center-forward(drawCar.yaw+replayOrbit)*8.f+Vec3{0,3.f,0};target=center;}
             else{camera=center-heading*7.f+Vec3{0,2.f,0};target=center+heading*9.f;}
-            renderer.cameraUp={0,1,0};renderer.verticalFieldOfView=.95f;renderer.projectionAspect=0;renderer.nearClip=.15f;
+            if(replayCameraMode!=1){renderer.cameraUp={0,1,0};renderer.verticalFieldOfView=.95f;}
+            renderer.projectionAspect=0;renderer.nearClip=.15f;
         }else if(drivingView==OriginalDrivingView::Natural){
             // Read road presentation only: these local queries never change
             // the source actor, collision state, timing or original cameras.
@@ -3192,6 +3227,9 @@ struct App {
         // The host draws the personal-best ghost independently of collision and AI.
         drivingEffects.advance(dt,originalHandling&&!menu&&!wet&&courseIndex!=8,paused&&!multiplayer.active,effectCars);
         if(!validationHideDrivingEffects)drivingEffects.append(mesh,camera,target,smokeTextureBase+4,night);
+        if(originalHandling&&!menu&&!replayPlaybackActive&&!validationHideDrivingEffects)
+            backfire.append(mesh,audio.backfireFrame(),original::originalPlayerAppearanceConfig(frontend.battleProfile),
+                bodyPosition,drawCar.yaw,drawPitch,drawRoll,backfireTextureBase);
         // Snow/rain and tire spray are scene geometry, depth-tested against cars/scenery
         // and drawn before the HUD. Their private clock cannot alter physics.
         const bool snowWeather=courseIndex==8;

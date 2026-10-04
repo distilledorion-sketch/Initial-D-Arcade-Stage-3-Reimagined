@@ -61,7 +61,7 @@ public sealed class Idas3ControllerDevices : IDisposable
     private Preference preference = new Preference();
     private Device active, automaticResume;
     private string file;
-    private double nextScan;
+    private double nextScan, activeLastInput;
     private bool initialized, dirty = true, xinputAvailable = true, restoreSelection;
     public IReadOnlyList<DeviceChoice> Choices => choices;
     public IReadOnlyList<Idas3ControllerControl> Controls => active != null && active.choice.connected ? active.controls : NoControls;
@@ -172,8 +172,15 @@ public sealed class Idas3ControllerDevices : IDisposable
         {
             if (!device.choice.connected) continue;
             ReadDevice(device);
-            if (ObserveActivity(device) && !(device.generic && active != null && active.generic && active.choice.connected)) activity = device;
+            bool changed = ObserveActivity(device);
+            if (ReferenceEquals(device, active) && (changed || HeldGamepadInput(device))) activeLastInput = time;
+            if (changed && !(device.generic && active != null && active.generic && active.choice.connected)) activity = device;
         }
+        // Steam Input can expose a physical pad and a delayed virtual copy.
+        // Keep the current source while it is being used, then allow a fresh
+        // input on another device after a short neutral interval. Both devices
+        // remain explicitly selectable; unplug recovery is still immediate.
+        if (active != null && active.choice.connected && time - activeLastInput < .5) activity = null;
         if (preference.key == "keyboard") SetActive(null);
         else if (Specific)
         {
@@ -453,6 +460,14 @@ public sealed class Idas3ControllerDevices : IDisposable
         }
         device.pad = state;
     }
+    private static bool HeldGamepadInput(Device device)
+    {
+        if (device.generic) return false; // Generic pedals may rest at either endpoint.
+        var p = device.pad;
+        return p.buttons != 0 || p.leftTrigger > 45 || p.rightTrigger > 45 ||
+            Math.Abs((int)p.thumbLX) > 8000 || Math.Abs((int)p.thumbLY) > 8000 ||
+            Math.Abs((int)p.thumbRX) > 8000 || Math.Abs((int)p.thumbRY) > 8000;
+    }
     private static bool ObserveActivity(Device device)
     {
         bool active = false;
@@ -473,7 +488,7 @@ public sealed class Idas3ControllerDevices : IDisposable
     {
         if (preference.key == "automatic" && device != null) automaticResume = device;
         if (ReferenceEquals(active, device)) return;
-        active = device; ActiveDeviceChanged?.Invoke();
+        active = device; activeLastInput = now(); ActiveDeviceChanged?.Invoke();
     }
     private void RebuildChoices()
     {

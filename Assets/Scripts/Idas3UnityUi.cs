@@ -213,9 +213,10 @@ public sealed class Idas3UnityUi : MonoBehaviour
         if(!ArcadeMeterVisible){meterClock.Reset();meterWasPreview=false;}
         OrnamentVisible=false;
         if(layout==null||layout.hudOrnamentId==0){ornament?.Dispose();ornament=null;}
-        else if(hudVisible[2]){
+        else if(hudVisible[2]&&(ArcadePreview||Idas3ReplayViewer.Instance==null||Idas3ReplayViewer.Instance.OrnamentCameraVisible)){
             if(ornament==null)ornament=new Idas3OrnamentRenderer();
-            OrnamentVisible=ArcadePreview?ornament.RenderPreview(layout.hudOrnamentId,Time.unscaledTime)!=null:ornament.UpdateLive(layout.hudOrnamentId,out _);
+            OrnamentVisible=ArcadePreview?ornament.RenderPreview(layout.hudOrnamentId,Time.unscaledTime)!=null:
+                Idas3ReplayViewer.Instance!=null?ornament.UpdateReplay(layout.hudOrnamentId,Idas3ReplayViewer.Instance):ornament.UpdateLive(layout.hudOrnamentId,out _);
             if(OrnamentVisible){hudBounds[10]=Idas3OrnamentRenderer.ScreenBounds(frame.width,frame.height,layout);hudVisible[10]=true;}
         }else ornament?.Suspend();
         var batches = performanceBaseline ? new List<Draw>() : reusableBatches;

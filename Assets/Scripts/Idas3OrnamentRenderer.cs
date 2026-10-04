@@ -47,7 +47,7 @@ public sealed class Idas3OrnamentRenderer : IDisposable
     internal Quaternion RenderedPendantRotation=>motion.RenderPendantRotation(lastAlpha);
     internal Idas3OrnamentMotion Motion=>motion;
     internal Vector3 ChainAttachment=>chainMeshes.Count>0?chainMeshes[0].AttachmentPosition:motion.AttachmentPosition;
-    internal void Suspend(){motion.Reset();lastCar=uint.MaxValue;rendered=false;}
+    internal void Suspend(){replayMotion.Reset();motion.Reset();lastCar=uint.MaxValue;rendered=false;}
     internal static bool PreviewLoaded=>preview!=null;
     Texture2D LoadTexture(string path){
         if(string.IsNullOrEmpty(path))return Texture2D.whiteTexture;
@@ -63,7 +63,7 @@ public sealed class Idas3OrnamentRenderer : IDisposable
         pieces.Clear();chainMeshes.Clear();foreach(var material in materials)DestroyOwned(material);materials.Clear();
         ornament?.Dispose();strap?.Dispose();ornament=strap=null;
         foreach(var pair in textures)if(texturePool.TryGetValue(pair.Key,out var shared)&&--shared.users==0){texturePool.Remove(pair.Key);if(shared.value)Resources.UnloadAsset(shared.value);}
-        textures.Clear();selectedId=0;rendered=false;dynamicPose=false;lastMotion=null;previewTick=-1;lastCar=uint.MaxValue;motion.Reset();
+        textures.Clear();replayMotion.Reset();selectedId=0;rendered=false;dynamicPose=false;lastMotion=null;previewTick=-1;lastCar=uint.MaxValue;motion.Reset();
     }
     void EnsureRenderer(){
         if(camera)return;
@@ -144,6 +144,12 @@ public sealed class Idas3OrnamentRenderer : IDisposable
         foreach(var piece in pieces)modelCommands.DrawMesh(piece.mesh,piece.chain?Matrix4x4.identity:pendant*piece.assembly,piece.material,0,0);
         camera.Render();rendered=true;dynamicPose=true;lastMotion=state;lastRevision=state.PresentationRevision;lastAlpha=alpha;return target;
     }
+    readonly Idas3ReplayOrnamentTimeline replayMotion=new Idas3ReplayOrnamentTimeline();
+    internal bool UpdateReplay(int id,Idas3ReplayViewer viewer){
+        if(!Select(id)||viewer.OrnamentReplay==null)return false;
+        float alpha=replayMotion.Update(motion,viewer.OrnamentReplay,viewer.PlaybackSeconds,viewer.PlaybackRevision);
+        RenderInterpolatedMotion(id,motion,alpha);return true;
+    }
     internal bool UpdateLive(int id,out Telemetry data){
         data=default;
         if(id==0){Dispose();return false;}
@@ -199,5 +205,30 @@ public sealed class Idas3OrnamentRenderer : IDisposable
         ReleaseSelection();if(camera)camera.targetTexture=null;if(target)target.Release();
         DestroyOwned(target);DestroyOwned(screenQuad);DestroyOwned(overlay);DestroyOwned(cameraObject);
         target=null;screenQuad=null;overlay=null;cameraObject=null;camera=null;overlayProperties=null;
+    }
+}
+
+// Sample the replay at its fixed recording cadence. Render-frame positions
+// cannot be differentiated safely because several share a rounded tick.
+internal sealed class Idas3ReplayOrnamentTimeline {
+    Idas3ReplayData replay; Idas3OrnamentMotion motion; long sampled=-1; uint revision;
+    internal void Reset(){replay=null;motion=null;sampled=-1;}
+    internal float Update(Idas3OrnamentMotion target,Idas3ReplayData source,double seconds,uint currentRevision){
+        var frames=source.Frames;
+        double tick=Math.Max(frames[0].tick,Math.Min(frames[frames.Length-1].tick,seconds*60));
+        long whole=(long)Math.Floor(tick);
+        if(source!=replay||target!=motion||revision!=currentRevision||whole<sampled-1||whole>sampled+16){
+            target.Reset();sampled=Math.Max((long)frames[0].tick-1,whole-180);
+        }
+        replay=source;motion=target;revision=currentRevision;
+        // One future endpoint permits the same subframe interpolation used
+        // during racing, with no changes to recorded driving or timing.
+        long end=Math.Min(whole+1,(long)frames[frames.Length-1].tick);
+        for(long next=sampled+1;next<=end;++next){
+            var pose=source.Sample(next/60.0);var position=pose.position;
+            if(pose.state!=null)position=new Vector3(Idas3ReplayData.Scalar(pose.state[1]),Idas3ReplayData.Scalar(pose.state[2]),Idas3ReplayData.Scalar(pose.state[3]));
+            target.Sample(position,pose.yaw,(ulong)next,true,false);sampled=next;
+        }
+        return end==whole?1:(float)(tick-whole);
     }
 }

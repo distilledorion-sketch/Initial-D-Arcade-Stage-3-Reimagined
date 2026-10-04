@@ -54,13 +54,15 @@ void EngineAudio::playTuningCue(unsigned sourceCueId){
 }
 void EngineAudio::playRaceCue(unsigned bank,unsigned cue){
     if((bank!=2&&bank!=4&&bank!=5)||cue>=(bank==2?8u:bank==4?6u:3u))return;
+    if(bank==2&&cue==7&&originalSoundSet==4&&backfireFrames_==0)backfireFrames_=2;
     // The desktop mix buried the Evo III's misfire beneath engine/music.
     // Boost only that authored cue by 6 dB, retaining its sequence and the
     // player's Effects volume. This is a mix adjustment, not arcade parity.
     if(nativeOneShots&&originalSoundSet==4)nativeOneShots->play(20+bank,cue,bank==2&&cue==7?2.f:1.f);
 }
-void EngineAudio::resetRaceEffects(){if(nativeOneShots)for(unsigned bank:{22u,24u,25u})nativeOneShots->stopBank(bank);}
+void EngineAudio::resetRaceEffects(){backfireFrames_=0;if(nativeOneShots)for(unsigned bank:{22u,24u,25u})nativeOneShots->stopBank(bank);}
 void EngineAudio::selectOriginalEngine(const std::filesystem::path& root,const original::OriginalBattleProfile& profile){
+    backfireFrames_=0;
     replayEngineEnabled=false;
     endResultMusic();
     selectOriginalSoundSet(4);
@@ -120,6 +122,7 @@ void EngineAudio::clearOriginalDspSends(){
 void EngineAudio::stepOriginalEngine(const original::OriginalEngineControlInput& input,std::uint32_t& seed){
     if(!nativeEngine)return;
     if(pendingEngineFrame)throw std::logic_error("Original audio frame was not finished");
+    if(backfireFrames_)--backfireFrames_;
     nativeEngine->step(input,seed,[&](unsigned bank,unsigned cue){if(bank==5)++engineStats.releaseCues;else ++engineStats.backfireCues;playRaceCue(bank,cue);});
     pendingEngineFrame=true;++engineStats.simulationFrames;
 }
@@ -136,6 +139,7 @@ void EngineAudio::finishSoundFrame(std::uint32_t& seed){
 void EngineAudio::applyConfirmedOnlineAudio(std::span<const original::OriginalEngineCommand> engine,
         std::span<const original::OriginalTireCommand> tires){
     if(!nativeEngine)return;
+    if(backfireFrames_)--backfireFrames_;
     nativeEngine->applyContinuous(engine);
     for(const auto& command:engine){
         if(command.target==original::OriginalEngineCommandTarget::RaceCue1424A0)playRaceCue(2,unsigned(command.value));

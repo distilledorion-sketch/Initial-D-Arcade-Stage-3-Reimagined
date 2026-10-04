@@ -104,6 +104,27 @@ int main(int argc,char** argv)try{
     race.resetRaceEffects();race.setOutputGains({1,1,1,0,1});race.playRaceCue(2,7);
     for(unsigned i=0;i<44100;++i)require(race.renderStereo(800,0,0,0,false)==std::array<short,2>{},"Effects mute did not silence misfire");
     std::cout<<"Misfire mix: +6.02 dB, concurrent-cue peak "<<peak<<"/32767, no clipped fixture samples, Effects mute respected.\n";
+    // The aura is a compound cue, not a single decoded PCM sample. Exercise
+    // the production race mixer while the race music/vehicle are held, just
+    // as they are during the pre-race showcase.
+    EngineAudio aura;aura.configure(argv[1]);aura.scene(false,false,false,false,true,true);
+    Reference auraReference(argv[1]);auraReference.scene(4);
+    aura.playRaceCue(4,5);auraReference.cues.play(24,5);
+    const auto beforeAura=nonzero;
+    compare(aura,auraReference,44100);
+    require(nonzero>beforeAura+1000,"Showcase aura was silent while vehicle audio was held");
+    aura.scene(false,false,true,false,true,true);
+    const auto held=aura.oneShotStatistics().frames;
+    for(unsigned i=0;i<4096;++i)require(aura.renderStereo(800,0,0,0,false)==std::array<short,2>{},"Paused aura emitted audio");
+    require(aura.oneShotStatistics().frames==held,"Pause advanced aura sequence");
+    aura.scene(false,false,false,false,true,true);
+    compare(aura,auraReference,44100*5);
+    const auto auraStats=aura.oneShotStatistics();
+    require(auraStats.cues==1&&auraStats.notes>1&&!auraStats.activeVoices,"Aura compound sequence failed to play fully and retire");
+    aura.resetRaceEffects();aura.setOutputGains({1,1,1,0,1});aura.playRaceCue(4,5);
+    for(unsigned i=0;i<44100;++i)require(aura.renderStereo(800,0,0,0,false)==std::array<short,2>{},"Effects mute did not silence aura");
+    aura.resetRaceEffects();require(!aura.oneShotStatistics().activeVoices,"Race cancellation left aura voices active");
+    std::cout<<"Aura mix: complete PACK24 cue5, "<<auraStats.notes<<" notes, held showcase, pause/resume, Effects mute and race cleanup.\n";
     std::cout<<"One-shot application mixer: "<<comparisons<<" exact stereo frames, "<<nonzero
         <<" nonzero frames, "<<wetFrames<<" effect frames; menu/tuning cues, repeated cues, pause, mute, same-set song change and attract cleanup. No output device.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

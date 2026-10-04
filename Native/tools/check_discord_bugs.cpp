@@ -1,0 +1,132 @@
+#define wWinMain includedGameEntry
+#include "../src/main.cpp"
+#undef wWinMain
+#include <iostream>
+
+int main(int argc,char** argv)try{
+    if(argc!=3)throw std::runtime_error("Native asset root and NEW evidence directory required");
+    const auto root=fs::absolute(argv[1]),out=fs::absolute(argv[2]);
+    if(fs::exists(out))throw std::runtime_error("Preserve existing evidence");fs::create_directories(out);
+    unsigned checks=0;auto check=[&](bool ok,const char* why){++checks;if(!ok)throw std::runtime_error(why);};
+    auto app=std::make_unique<App>();app->root=root;app->saveRoot=out/"userdata";app->validationMode=true;app->settings();
+    app->frontend.initialize(root,true);app->hud.loadOriginal(root);app->audio.configure(root);
+    app->originalCamera=OriginalChaseCamera::load(root);app->bumperCamera=OriginalChaseCamera::load(root,OriginalDrivingView::Bumper);
+    // Verify the actual host camera against a fresh live camera with pitched,
+    // rolled and wrapped poses. Seeking must not retain previous camera state.
+    auto live=OriginalChaseCamera::load(root,OriginalDrivingView::Bumper);
+    for(unsigned i=0;i<30;++i){
+        Vec3 position{float(i*7),float(i%3),float(i*13)};
+        Vec3 angles{.13f*float(int(i%5)-2),.4f*float(i),.04f*float(int(i%7)-3)};
+        VehicleState recorded;recorded.position=position;recorded.yaw=wrapAngle(angles.y+pi);
+        app->bodyPitch=-angles.x;app->bodyRoll=-angles.z;
+        const auto a=app->replayBumperFrame(recorded),b=live.update(position,angles);
+        check(length(a.eye-b.eye)<.002f&&length(a.target-b.target)<.002f&&length(a.up-b.up)<.002f,"Replay bumper pose differs from live camera");
+        check(a.verticalFieldOfView==b.verticalFieldOfView,"Replay bumper FOV differs from live camera");
+    }
+    for(unsigned id=0;id<16;++id)for(bool reverse:{false,true}){
+        app->menu=true;app->frontend.course=int(id);app->frontend.reverse=reverse;
+        check(app->presenceCourseCondition()==int(id*2+reverse),"Menu presence has wrong course");
+        app->menu=false;app->reverse=reverse;app->courseIndex=id<9?int(id):3;
+        if(id>=9){app->importedCourse.emplace();app->importedCourse->id=id;}else app->importedCourse.reset();
+        check(app->presenceCourseCondition()==int(id*2+reverse),"Race presence leaked its physics donor course");
+    }
+    app->importedCourse.reset();
+    // New cars choose a package after AT/MT without buying any parts. Use
+    // the real frontend transitions and host save commit in an isolated slot.
+    app->saveSlots=LocalSaveSlots(out/"saves");app->activeSaveSlot=0;
+    app->profiles=LocalDriverProfiles(app->saveSlots.profileDirectory(0));
+    app->driverSetup=LocalDriverSetup(app->saveSlots.profileDirectory(0));
+    auto driver=original::makeOriginalFreshBattleProfile();driver.setu(76,1);driver.setu(44,1);
+    check(app->saveSlots.adopt(0,driver),"Fixture save failed");
+    for(unsigned package=0;package<4;++package){
+        auto& f=app->frontend;f.car=int(package+1);f.battleProfile=original::makeOriginalFreshBattleProfile();
+        f.battleProfile.setu(16,unsigned(f.car));f.battleProfile.setu(72,12345);f.battleProfile.setu(68,package%2);
+        f.changingSavedCar=true;f.savedDriverSelected=true;f.automatic=package%2==0;
+        f.selectSavedCarTransmission(true);f.advance(1);f.confirm();
+        for(unsigned tick=0;tick<240&&f.stage==FrontendStage::Transmission;++tick){const auto before=f.stage;f.advance(1./60);app->advanceSavedCarSelection(before);}
+        check(f.stage==FrontendStage::TuningCourse,"New car skipped its package selection");
+        f.advance(1);f.change(int(package));f.confirm();
+        for(unsigned tick=0;tick<240&&f.stage==FrontendStage::TuningCourse;++tick){const auto before=f.stage;f.advance(1./60);app->advanceSavedCarSelection(before);}
+        check(f.stage==FrontendStage::Mode&&!f.changingSavedCar,"Package selection did not finish at Mode");
+        const auto p=app->profiles.load(unsigned(f.car)).profile;
+        check(p.byte(152)==package&&p.u(68)==package%2,"Package or transmission choice was lost");
+        check(p.u(72)==12345&&p.byte(153)==0,"Package selection granted points or full tuning");
+        check(p.u(76)==1&&p.u(44)==1,"Package selection changed the save's driver name");
+        for(unsigned offset=156;offset<=166;++offset)check(p.byte(offset)==0,"Package selection granted a part");
+    }
+    auto& f=app->frontend;f.battleProfile=original::makeOriginalFreshBattleProfile();f.car=4;f.battleProfile.setu(16,4);
+    f.battleProfile.setByte(152,2);f.battleProfile.setByte(156,3);f.battleProfile.setu(72,6789);
+    check(!app->needsFullTuneCourseSelection(),"An upgraded car was offered a destructive route change");
+    f.battleProfile.setu(16,29);f.battleProfile.setByte(156,0);
+    check(!app->needsFullTuneCourseSelection(),"Single-package GC8V was offered other packages");
+    f.battleProfile.setu(16,4);f.changingSavedCar=true;f.selectSavedCarTuningCourse();f.advance(1);f.back();
+    check(f.stage==FrontendStage::Car,"Cancelling package selection did not return to the car picker");
+    // Start real Bunta sessions; the completed marker must remain on disk but
+    // must not wrap through the original low-four-bit pace lookup.
+    f.changingSavedCar=false;app->menu=false;
+    for(unsigned level:{0u,14u,15u,16u}){
+        f.car=0;f.gameMode=original::OriginalGameMode::BuntaChallenge;f.battleProfile=original::makeOriginalFreshBattleProfile();
+        f.battleProfile.setu(0,2);f.battleProfile.setu(1080,level);original::selectOriginalBuntaCourse(f.battleProfile,0);
+        app->start();
+        check(app->originalSession.rivalPaceInputs().progress0C901604[0]==std::min(level,15u),"Bunta pace wrapped after completion");
+        check(f.battleProfile.u(1080)==level&&app->battleProfile.u(1080)==level,"Bunta fix changed saved completion");
+    }
+    // Every Tsubaki SRA page uses the same screen orientation for its route
+    // and driven trace in either travel direction. Other courses stay intact.
+    ImportedCourse course;course.id=15;course.checkpoints={0,5,10,15,20};
+    original::OriginalTimeAttackTelemetrySnapshot trace;
+    for(unsigned i=0;i<=20;++i){course.center.push_back({float(i*i),0,float(i*40)});trace.drivingPath.push_back({course.center.back(),i,0xff00ff00});}
+    for(bool reverse:{false,true}){
+        const auto pages=course.analysisMaps(trace,reverse);check(pages.size()==5,"SRA page count changed");
+        for(const auto& page:pages){
+            check(!page.road.empty()&&page.road.front().from[1]<page.road.back().to[1],"Tsubaki SRA remains vertically mirrored");
+            for(const auto& line:page.driving)check(line.from[1]<=line.to[1],"Tsubaki trace was not flipped with the road");
+        }
+    }
+    course.id=9;const auto other=course.analysisMaps(trace,false);
+    check(other[0].road.front().from[1]>other[0].road.back().to[1],"Tsubaki fix flipped a different course");
+    // The existing engine command is the owner of the visual pulse. Rendering
+    // it repeatedly must not advance it or consume the shared driving RNG.
+    check(app->renderer.initialize(nullptr,960,720,true),"Offscreen backfire renderer failed");
+    app->backfire.load(root);
+    for(unsigned muffler=1;muffler<=3;++muffler){
+        f.car=19;f.battleProfile=original::makeOriginalFreshBattleProfile();f.battleProfile.setu(16,19);
+        f.battleProfile.setByte(162,std::uint8_t(muffler));f.battleProfile.setByte(166,1);
+        app->loadSelectedCar();app->audio.selectOriginalEngine(root,f.battleProfile);
+        auto gains=app->audio.outputGains();gains.effects=0;app->audio.setOutputGains(gains);
+        std::uint32_t seed=123;original::OriginalEngineControlInput input;input.rpm=7000;input.gear=3;
+        bool sawFlash=false;
+        for(unsigned tick=0;tick<100;++tick){
+            input.throttle=tick<60?1.f:0.f;app->audio.stepOriginalEngine(input,seed);app->audio.finishSoundFrame(seed);
+            if(app->audio.backfireFrame()==0){sawFlash=true;break;}
+        }
+        check(sawFlash,"Evo III accepted misfire cue did not produce a flash with Effects muted");
+        const auto appearance=original::originalPlayerAppearanceConfig(f.battleProfile);
+        check(app->renderer.loadTextures(app->originalTextures),"Evo textures failed");
+        const auto base=unsigned(app->originalTextures.size());
+        check(app->renderer.loadTextures(app->backfire.textures,true),"Backfire textures failed");
+        app->renderer.vehicleLights=false;app->renderer.opponentLights=false;app->renderer.nearClip=.05f;
+        app->renderer.overrideClearColor=true;app->renderer.clearColor={.12f,.14f,.16f,1};
+        for(int frame:{-1,0,1}){
+            Mesh mesh;mesh.originalCar(app->originalModel,app->carPresentation.pose({},false,false),{0,0,0},0);
+            const auto before=mesh.vertices.size();
+            const bool added=app->backfire.append(mesh,frame,appearance,{0,0,0},0,0,0,base);
+            check(added==(frame>=0)&&((mesh.vertices.size()>before)==added),"Backfire frame admission failed");
+            if(added){
+                for(auto i=before;i<mesh.vertices.size();++i){const auto p=mesh.vertices[i].position;
+                    check(p.z<-1.9f&&p.z>-3.5f&&p.x>.1f&&p.x<1.1f&&p.y>-.18f&&p.y<.18f,"Backfire detached from the rear exhaust");}
+            }
+            check(app->renderer.draw(mesh,{3,1.4f,-5.5f},{0,.65f,0},false,false),"Evo backfire draw failed");
+            check(app->renderer.saveBitmap((out/("evo-"+std::to_string(muffler)+"-"+std::to_string(frame)+".bmp")).wstring()),"Evo backfire capture failed");
+        }
+        for(unsigned repeat=0;repeat<20;++repeat){Mesh mesh;app->backfire.append(mesh,app->audio.backfireFrame(),appearance,{10,3,20},.7f,.1f,-.15f,base);}
+        check(app->audio.backfireFrame()==0,"Rendering advanced the backfire simulation clock");
+        app->audio.applyConfirmedOnlineAudio({},{});check(app->audio.backfireFrame()==1,"Backfire did not advance one confirmed frame");
+        app->audio.applyConfirmedOnlineAudio({},{});check(app->audio.backfireFrame()==-1,"Backfire did not end after two frames");
+        app->audio.playRaceCue(2,7);app->audio.resetRaceEffects();check(app->audio.backfireFrame()==-1,"Race restart retained a flash");
+        Mesh excluded;check(!app->backfire.append(excluded,0,original::OriginalCarAppearanceConfig(0),{},0,0,0,base),"Other car received Evo backfire");
+        check(!app->backfire.append(excluded,0,original::OriginalCarAppearanceConfig(19),{},0,0,0,base),"Stock exhaust received Evo backfire");
+    }
+    std::ofstream(out/"PASS.txt")<<checks<<" actual-host checks: bumper camera, course presence, saved-car packages, Bunta completion, Tsubaki maps, Evo misfire timing and geometry.\n";
+    std::cout<<"PASS "<<checks<<" Discord regression checks\n";
+}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

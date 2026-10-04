@@ -1,0 +1,116 @@
+{
+  "source": "HOSTFS/model/effect/bkfire",
+  "source_sha256": {
+    "bkfire_pol.bin.nz": "1057fc54ee41c7fcf1501f46f9d3417d6b0e035d8edc15394dd85319510ea87c",
+    "bkfire_pol.tbl": "934be95aed1e2edd07fc769337df73eb77fc03d145bc80e8feb3bc99efaa5fc3",
+    "bkfire_tex.bin.nz": "b8a95c7986f6b56eae2603487b8306082be6ce1f69e847cc23644503ee64a13a",
+    "bkfire_tex.tbl": "e3412dcae95a7d1e303566e8e8edd9ef4119d56a21b4b64590c4334b09454f8c"
+  },
+  "chunks": 9,
+  "textures": [
+    {
+      "index": 0,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 0,
+      "layout": "twiddled",
+      "file": "texture_000.png",
+      "source_texels_sha256": "053ac8e4dca65e128b60be926a45ff9e1615851ff77602a5e4ff24ce9eb2ce68",
+      "rgba_sha256": "b2ea8f6a6097e47e03525333a6dda5928971584baa9a29de31bfcede39825d05"
+    },
+    {
+      "index": 1,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 2048,
+      "layout": "twiddled",
+      "file": "texture_001.png",
+      "source_texels_sha256": "81231e429390e6372d173d4b3597b75f6d993cab2d31800fc171a3571d9c0c37",
+      "rgba_sha256": "f0f8305c32d600ce8424126ffed253d5dc1ddb20d1d7a4efbc8a415669c1ebc6"
+    },
+    {
+      "index": 2,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 4096,
+      "layout": "twiddled",
+      "file": "texture_002.png",
+      "source_texels_sha256": "20d558cb3f614995f971a2668bee4596dc1fc5e7d59bdee4d5e3754a83a978b5",
+      "rgba_sha256": "43eaff1f625d2ee5be32f29b63fac2bd6f215ef832bcd815f27bf9b712050450"
+    },
+    {
+      "index": 3,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 6144,
+      "layout": "twiddled",
+      "file": "texture_003.png",
+      "source_texels_sha256": "5292c449580138191d02fb7b4213315e2baf702036cc36c19db6ba74621b07df",
+      "rgba_sha256": "2f6e0daeb30bbc76d78e83f93faaaeb1ea13125f885d6c52b66a49f0bcf4cc40"
+    },
+    {
+      "index": 4,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 8192,
+      "layout": "twiddled",
+      "file": "texture_004.png",
+      "source_texels_sha256": "fdaa46eb3909bde30c82a26cfd3c51cd4a62e6630cfacb39844f9c05a524d537",
+      "rgba_sha256": "bcd334ea4e9506817250fc467b5a0574de277d509289336b5723365cde815081"
+    },
+    {
+      "index": 5,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 10240,
+      "layout": "twiddled",
+      "file": "texture_005.png",
+      "source_texels_sha256": "40d157f2a0eff7cdf56b986a190b2d8548422e1efb7f1a3dc09120bce90f5e5e",
+      "rgba_sha256": "6aebaa7396dd2df49327235349cd14dde0ecf7431e097743c66fd8964b88f8ba"
+    },
+    {
+      "index": 6,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 12288,
+      "layout": "twiddled",
+      "file": "texture_006.png",
+      "source_texels_sha256": "21ec402e1756f4fa753a0e1fe0514c06603f3166fa3aa948087fb7ee6467cc93",
+      "rgba_sha256": "d49190718c4ae9a7c59ebe722c2f44383146da9a04b57ff252927480ee4f4c73"
+    },
+    {
+      "index": 7,
+      "width": 32,
+      "height": 32,
+      "format": 2,
+      "flags": 1,
+      "offset": 14336,
+      "layout": "twiddled",
+      "file": "texture_007.png",
+      "source_texels_sha256": "4293b6a7159dfbe074274608de35515ace617f2268c39ce3d5e4891c6084a4aa",
+      "rgba_sha256": "018b3e340385449572f09d0bd78ab6c590c1ed0e0d8b73908e6593c09e1f863e"
+    }
+  ],
+  "layout_evidence": "Original per-batch TCW scan-order and pixel-format bits; exact texel decode/repack.",
+  "timing": "Not recovered by this extractor",
+  "runtime_integration": "Local tuned Evo III only; existing accepted misfire cue drives two recovered mesh frames at 60 Hz. No additional physics RNG or cue.",
+  "host_adaptation": "Body-space exhaust table Y; source effect-owner +0.3 translation is omitted to align with the host car mesh. Source per-draw random scale jitter and scene light pulse are not ported.",
+  "output_sha256": {
+    "bkfire.idasmesh": "765bed2d97f486501f5267d03228f2a5f0bd6c4a229e95b5a878001e1ede924d",
+    "textures.idastex": "a5071badb5201eb7d58ed45cf67a564b9d3360b590267c918615ba4cc751b10d"
+  }
+}

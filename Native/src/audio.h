@@ -92,6 +92,9 @@ public:
     // Development diagnostic only; ~0u is every channel, which is the game.
     void setDiagnosticMusicChannel(unsigned channel){if(nativeMusic)nativeMusic->setDiagnosticChannel(channel);}
     void playRaceCue(unsigned bank,unsigned cue);
+    // Presentation reads the accepted misfire cue; no extra driving RNG or
+    // sound request. The recovered flash uses two original 60 Hz frames.
+    int backfireFrame()const{return backfireFrames_?int(2-backfireFrames_):-1;}
     // Interrupt owner16CCC4 calls141F40(3,1): persistent PACK20 A9 cue3.
     void playChallengerCue(){if(nativeOneShots)nativeOneShots->play(20,3);}
     void resetRaceEffects();
@@ -123,6 +126,7 @@ public:
     std::shared_ptr<const OriginalAudioClip> customRaceMusic;
     bool enabled=true;
 private:
+    unsigned backfireFrames_=0;
     // Four short buffers keep menu feedback below the previous93ms queue.
     static constexpr int samples=512,buffers=4;
 #if !defined(IDAS3_PORTABLE_SCENE)

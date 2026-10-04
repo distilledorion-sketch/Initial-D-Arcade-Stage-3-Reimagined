@@ -27,6 +27,9 @@ OriginalAuraStyle originalAuraStyle(std::uint32_t level,std::uint32_t streak,boo
     return {true,l<=30?tiers[unsigned(l-21)]:(s>9?9u:8u),1.f};
 }
 unsigned originalAuraColorFrame(std::uint32_t frame){return (frame%60)/2;}
+bool originalAuraStartCue(std::uint32_t frame,bool enabled,std::uint32_t localLevel,std::uint32_t opponentLevel){
+    return frame==1&&enabled&&(originalAuraStyle(localLevel,0).visible||originalAuraStyle(opponentLevel,0,true).visible);
+}
 void OriginalAura::load(const std::filesystem::path& root){
     loaded_=false;validPose_=false;
     const auto dir=root/"data/original_assets/aura";

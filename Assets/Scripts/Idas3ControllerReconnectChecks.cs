@@ -34,6 +34,31 @@ public static class Idas3ControllerReconnectChecks
             devices.Select("keyboard");devices.Tick(false);
             Check(!devices.TryRead(out _),"Automatic recovery overrode Keyboard only");
         }
+        // Physical and Steam Input copies can report the same held controls
+        // with slightly different values/timing. They must not repeatedly
+        // switch profiles and re-arm the held-input release guard.
+        now=0;Array.Clear(slots,0,slots.Length);Array.Clear(connected,0,connected.Length);
+        connected[0]=connected[1]=true;
+        using(var devices=new Idas3ControllerDevices(()=>now,Read,device=>false)){
+            devices.Initialize(Path.Combine(root,"duplicate-pads"));
+            int changes=0;devices.ActiveDeviceChanged+=()=>++changes;
+            for(int frame=0;frame<360;++frame){
+                now=frame/60.0;
+                slots[0].gamepad.rightTrigger=255;slots[0].gamepad.thumbLX=16000;
+                slots[1].gamepad.rightTrigger=(byte)(frame%3==0?254:255);
+                slots[1].gamepad.thumbLX=(short)(frame%2==0?17000:19000);
+                devices.Tick(true);
+                Check(devices.ActiveProfileKey=="xinput:slot:0"&&devices.TryRead(out var held)&&held.rightTrigger==255,
+                    "Duplicate pad interrupted held race input at frame "+frame);
+            }
+            Check(changes==0,"Duplicate pad repeatedly reset the active binding profile");
+            slots[0]=slots[1]=default;now+=.02;devices.Tick(true);
+            now+=.6;devices.Tick(true);slots[1].gamepad.buttons=0x1000;devices.Tick(true);
+            Check(devices.ActiveProfileKey=="xinput:slot:1","A fresh controller could not take over after neutral");
+            Check(devices.Select("xinput:0")&&devices.ActiveProfileKey=="xinput:slot:0","Explicit selection was blocked by the neutral hold");
+            connected[0]=false;now+=.01;devices.Tick(false);
+            Check(devices.ActiveProfileKey=="xinput:slot:1"&&devices.TryRead(out _),"Unplug recovery waited for neutral");
+        }
         var mapper=new Idas3ControlBindings();mapper.Initialize(Path.Combine(root,"bindings"));
         mapper.ControllerDeviceChanged();
         var sample=new Idas3ControlBindings.PadState{connected=true,rightTrigger=255,thumbLX=-20000,buttons=0x1000};

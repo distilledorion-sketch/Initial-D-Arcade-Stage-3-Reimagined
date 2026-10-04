@@ -12,6 +12,31 @@ int main(int argc,char** argv)try{
     memory.zeroRegion(obj,0x200000);
     unsigned checks=0;std::size_t instructions=0;
     auto check=[&](bool b,const char* why){++checks;if(!b)throw std::runtime_error(why);};
+    // Run the original showcase's sound branch. Only profile getters and the
+    // final cue call are hooked; its tick/enable/level predicates execute SH4.
+    constexpr unsigned race=obj+0x1000;
+    for(bool enabled:{false,true})for(unsigned frame:{0u,1u,2u,120u,240u})
+    for(unsigned local:{0u,10u,11u,31u,0xffffffffu})for(unsigned remote:{0u,10u,11u,31u,0xffffffffu}){
+        memory.write32(obj+0x13c,frame);memory.write32(obj+0x1a4,race);
+        memory.write32(race+0x684,0); // unrelated start notification off
+        memory.write32(race+0x6cc,enabled?1:0);
+        RefCpu c(memory);c.r[4]=obj;c.r[15]=stack;unsigned cues=0;
+        c.callHooks[0xc16d860]=[&](auto& cpu){check(cpu.r[4]==2,"Local battle-level field");cpu.r[0]=local;};
+        c.callHooks[0xc16d940]=[&](auto& cpu){check(cpu.r[4]==2,"Opponent battle-level field");cpu.r[0]=remote;};
+        c.callHooks[0xc1420c0]=[&](auto& cpu){check(cpu.r[4]==5&&cpu.r[5]==1,"Original aura sound is forced race cue5");++cues;};
+        // Frame1 exits through7C4; other frames jump directly to7E8.
+        instructions+=c.run(0xc05b760,frame==1?0xc05b7c4:0xc05b7e8,1000);
+        check(cues==unsigned(originalAuraStartCue(frame,enabled,local,remote)),"Aura cue differs from original showcase trigger");
+    }
+    // Resolve that exact original sound request through its real manager and
+    // cue table, stopping only at the final hardware command queue.
+    {
+        constexpr unsigned manager=obj+0x2000;
+        memory.write32(0xc8ff1d8,manager);memory.write32(manager,0);memory.write32(manager+40,0xc31ecc4);
+        RefCpu c(memory);c.r[4]=5;c.r[5]=1;c.r[15]=stack;c.pr=stop;unsigned queued=0;
+        c.callHooks[0xc1ed9c0]=[&](auto& cpu){check(cpu.r[4]==0x000504a9,"Aura resolves to PACK24 A9 track5");++queued;};
+        instructions+=c.run(0xc1420c0,stop,1000);check(queued==1,"Aura compound sound queued once");
+    }
     //Execute the original initializer's entire level/scale branch, stopping
     //before any file/GPU owner. No predicate or floating operation is hooked.
     for(bool opponent:{false,true})for(int level=-1;level<=101;++level)for(unsigned streak:{0u,9u,10u,99u,0xffffffffu}){

@@ -124,10 +124,10 @@ internal sealed partial class Idas3ImportedMeter : IDisposable
     // Recovered WBP_SpeedMeter_Base.GetSpeedColor compares <90, <150, <210.
     internal static int SpeedColorBand(float speed)=>Safe(speed)<90?0:speed<150?1:speed<210?2:3;
     internal static int GearDigit(Layer layer,Idas3ArcadeHud.Telemetry t){
-        // Infinity's eighth atlas cell is the ordinary silver 5. Its gold 5
-        // is reserved for five-speed cars; six-speed cars highlight only 6.
-        bool infinity=Contains(layer.texture,"_Meter01_ShiftNum")||Contains(layer.texture,"_Meter12_ShiftNum")||Contains(layer.texture,"_Meter13_ShiftNum");
-        return infinity&&t.gear==5&&t.version>=4&&((t.flags>>16)&7)==6?7:Mathf.Clamp(t.gear,0,6);
+        // The recovered Infinity atlas has D, 1..6 and an empty eighth cell.
+        // This also supplies the themed meters; never select the empty cell
+        // for fifth gear on a six-speed car.
+        return Mathf.Clamp(t.gear,0,6);
     }
     static int Digit(string role,Idas3ArcadeHud.Telemetry t){
         int speed=Mathf.Clamp(Mathf.FloorToInt(Safe(t.speedKmh)),0,999),rpm=Mathf.Clamp(Mathf.FloorToInt(Safe(t.rpm)),0,19999);

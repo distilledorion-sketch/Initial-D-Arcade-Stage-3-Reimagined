@@ -101,13 +101,16 @@ struct ImportedCourse {
         std::vector<original::OriginalTimeAttackVisit::MapPage> pages;
         const auto route=routeCheckpoints(reverse);
         const auto sourceIndex=[&](int i){return reverse?int(center.size())-1-i:i;};
+        // Tsubaki's course card uses world +Z down the page. Keep its full
+        // route, section routes and recorded events in that same orientation.
+        const float mapZ=id==15?1.f:-1.f;
         for(unsigned page=0;page<5;++page){
             const int routeFirst=page?route[page-1]:route[0],routeLast=page?route[page]:route[4];
             int first=sourceIndex(routeFirst),last=sourceIndex(routeLast);if(first>last)std::swap(first,last);
             float x0=INFINITY,x1=-INFINITY,z0=INFINITY,z1=-INFINITY;
-            for(int i=first;i<=last;++i){const auto p=center[i];x0=std::min(x0,p[0]);x1=std::max(x1,p[0]);z0=std::min(z0,-p[2]);z1=std::max(z1,-p[2]);}
+            for(int i=first;i<=last;++i){const auto p=center[i];x0=std::min(x0,p[0]);x1=std::max(x1,p[0]);z0=std::min(z0,mapZ*p[2]);z1=std::max(z1,mapZ*p[2]);}
             const float scale=224.f/std::max({x1-x0,z1-z0,1.f}),mx=(x0+x1)*.5f,mz=(z0+z1)*.5f;
-            const auto project=[&](const std::array<float,3>& p){return Point{315+(p[0]-mx)*scale,315+(-p[2]-mz)*scale};};
+            const auto project=[&](const std::array<float,3>& p){return Point{315+(p[0]-mx)*scale,315+(mapZ*p[2]-mz)*scale};};
             const auto inside=[](Point p){return p[0]>=195&&p[0]<=435&&p[1]>=195&&p[1]<=435;};
             auto& out=pages.emplace_back();
             const auto segment=[&](std::vector<Line>& dest,Point a,Point b,std::uint32_t color){

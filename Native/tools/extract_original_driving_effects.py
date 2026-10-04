@@ -13,11 +13,11 @@ from extract_original_models import parse_model, read_payload, write_binary
 from texture_bank import decode, write_native_pack, write_png
 
 
-def extract(hostfs: Path, output: Path):
+def extract(hostfs: Path, output: Path, banks=('bkfire', 'smoke', 'rainmark')):
     report = {'schema': 'idas3-driving-effect-assets-v1', 'banks': {},
               'dry_skid_marks': 'Unconfirmed: smoke and rainmark are not evidence of a rubber skid decal.',
               'runtime_integration': False}
-    for name in ('bkfire', 'smoke', 'rainmark'):
+    for name in banks:
         source = hostfs / 'model/effect' / name
         target = output / name
         target.mkdir(parents=True, exist_ok=True)
@@ -76,7 +76,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--hostfs', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
+    parser.add_argument('--banks', nargs='+', choices=('bkfire', 'smoke', 'rainmark'),
+                        default=('bkfire', 'smoke', 'rainmark'))
     args = parser.parse_args()
-    result = extract(args.hostfs, args.out)
+    result = extract(args.hostfs, args.out, args.banks)
     print(json.dumps({name: {'textures': len(bank['textures']), 'chunks': bank['chunks']}
                       for name, bank in result['banks'].items()}))

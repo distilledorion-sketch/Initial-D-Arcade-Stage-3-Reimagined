@@ -35,15 +35,32 @@ public static class Idas3BugMeterChecks
                     }
                 }finally{meter.layers=original;commands.Clear();}
             }
-            foreach(int id in new[]{1,12,13,35,37,57,117}){
-                var meter=Idas3ArcadeMeterCatalog.Get(id+2);var layer=Array.Find(meter.layers,l=>l.role=="gear");
-                var t=new Idas3ArcadeHud.Telemetry{version=4,flags=6u<<16,gear=5};
-                Check(Idas3ImportedMeter.GearDigit(layer,t)==7,meter.name+" six-speed fifth gear should use silver cell");
-                t.flags=5u<<16;Check(Idas3ImportedMeter.GearDigit(layer,t)==5,meter.name+" five-speed fifth gear lost gold cell");
-                t.gear=6;t.flags=6u<<16;Check(Idas3ImportedMeter.GearDigit(layer,t)==6,meter.name+" sixth gear lost gold cell");
-            }
+            GearPixels(Check,output);
             Idas8ImportedShadowChecks.Gpu(Check,output);
             File.WriteAllText(Path.Combine(output,"PASS.txt"),checks+" GPU palette, maximum-gear and imported shadow checks passed");Debug.Log("PASS "+checks+" meter/shadow bug checks: "+output);
+        }finally{camera.RemoveAllCommandBuffers();commands.Dispose();camera.targetTexture=null;target.Release();UnityEngine.Object.DestroyImmediate(target);UnityEngine.Object.DestroyImmediate(pixels);UnityEngine.Object.DestroyImmediate(go);}
+    }
+    internal static void GearPixels(Action<bool,string> Check,string output){
+        var go=new GameObject("Gear image regression");var camera=go.AddComponent<Camera>();camera.enabled=false;camera.cullingMask=0;
+        camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=Color.black;camera.allowHDR=camera.allowMSAA=false;
+        var target=new RenderTexture(1280,720,24,RenderTextureFormat.ARGB32);target.Create();camera.targetTexture=target;
+        var pixels=new Texture2D(1280,720,TextureFormat.RGB24,false);var commands=new CommandBuffer();camera.AddCommandBuffer(CameraEvent.BeforeForwardOpaque,commands);
+        int affected=0;
+        try{
+            for(int index=0;index<Idas3ArcadeMeterCatalog.Count;++index){int style=Idas3ArcadeMeterCatalog.StyleAt(index);var meter=Idas3ArcadeMeterCatalog.Get(style);if(meter==null)continue;
+                var gear=meter.layers.Where(l=>l.role=="gear"&&l.texture.Contains("T_Meter01_ShiftNum")).ToArray();if(gear.Length==0)continue;
+                ++affected;var original=meter.layers;meter.layers=gear;
+                try{foreach(int maximum in new[]{5,6})foreach(int digit in new[]{4,5,6})using(var hud=new Idas3ArcadeHud()){
+                    commands.Clear();hud.Build(new Idas3GameOptions.Values{hudMeterStyle=style},new Idas3ArcadeHud.Telemetry{size=40,version=4,flags=1|((uint)maximum<<16),gear=digit,revLimit=8500,speedKmh=80},1280,720,0,true,out _);
+                    hud.Render(commands,1280,720);camera.Render();var previous=RenderTexture.active;
+                    try{RenderTexture.active=target;pixels.ReadPixels(new Rect(0,0,1280,720),0,0);pixels.Apply();}finally{RenderTexture.active=previous;}
+                    int lit=pixels.GetPixels32().Count(p=>Math.Max(p.r,Math.Max(p.g,p.b))>50);
+                    Check(lit>30,$"{meter.name} {maximum}-speed gear {digit} is blank ({lit} lit pixels)");
+                    if(digit==5&&maximum==6)File.WriteAllBytes(Path.Combine(output,$"gear-{meter.id}.png"),pixels.EncodeToPNG());
+                }}finally{meter.layers=original;commands.Clear();}
+            }
+            Check(affected==26,"Expected shared gear atlases were not present: "+affected);
+            File.AppendAllText(Path.Combine(output,"report.txt"),affected+" affected meters rendered in gears 4,5,6 for five- and six-speed cars\n");
         }finally{camera.RemoveAllCommandBuffers();commands.Dispose();camera.targetTexture=null;target.Release();UnityEngine.Object.DestroyImmediate(target);UnityEngine.Object.DestroyImmediate(pixels);UnityEngine.Object.DestroyImmediate(go);}
     }
 }

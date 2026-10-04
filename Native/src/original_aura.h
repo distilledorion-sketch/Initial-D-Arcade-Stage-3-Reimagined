@@ -11,6 +11,9 @@ struct OriginalAuraStyle {
 OriginalAuraStyle originalAuraStyle(std::uint32_t level,std::uint32_t streak,bool opponent=false);
 //17B7E0: original60Hz owner tick selects one of30 authored color frames.
 unsigned originalAuraColorFrame(std::uint32_t frame);
+// ARaceStandBy 05B772..05B7C2 requests PACK24 cue5 on tick1 if either
+// driver's aura is enabled. Two qualifying drivers still make one request.
+bool originalAuraStartCue(std::uint32_t frame,bool enabled,std::uint32_t localLevel,std::uint32_t opponentLevel);
 
 class OriginalAura {
 public:
