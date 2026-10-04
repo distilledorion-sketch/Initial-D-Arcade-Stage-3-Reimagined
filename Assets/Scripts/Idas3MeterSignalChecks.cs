@@ -53,7 +53,7 @@ public static class Idas3MeterSignalChecks
                 }
             }
         }
-        Check(families>50,"Speed family coverage unexpectedly disappeared");
+        Check(families==23,"Distinct authored speed family coverage changed: "+families);
         int wideCount=0;
         for(int i=1;i<Idas3ArcadeMeterCatalog.Count;++i){
             var options=new Idas3GameOptions.Values{hudMeterStyle=Idas3ArcadeMeterCatalog.StyleAt(i)};
@@ -75,8 +75,8 @@ public static class Idas3MeterSignalChecks
             Check(copy.hudMeterLayout==0&&copy.HudOffset(2)==saved.HudOffset(2)&&copy.HudSizePercent(2)==123,"Layout Apply/Cancel copy lost saved meter placement");
         }
         Check(wideCount>30,"Wide meter placement coverage missing");
-        // The source Double Ace set has only a neutral atlas. Check its live
-        // digit tint, including a frozen clock and animated high-speed color.
+        // Double Ace has one white digit atlas, not a changing speed palette.
+        // Neither speed thresholds nor the presentation clock may recolor it.
         var doubleAce=Idas3ArcadeMeterCatalog.Get(60);
         using(var renderer=new Idas3ImportedMeter()){
             var options=new Idas3GameOptions.Values{hudMeterStyle=60};var sprites=new List<Idas3ArcadeHud.Sprite>();
@@ -84,10 +84,8 @@ public static class Idas3MeterSignalChecks
                 sprites.Clear();renderer.Compose(sprites,doubleAce,options,new Idas3ArcadeHud.Telemetry{size=40,version=2,flags=1,revLimit=8500,rpm=4000,gear=3,speedKmh=speed},time);
                 return sprites.Find(s=>s.texture&&s.texture.name=="T_Meter58_SpdNum04").color;
             }
-            var red=Digit(89,0);var yellow=Digit(90,0);var blue=Digit(150,0);
-            Check(red.r>red.g*5&&yellow.r>yellow.b*5&&yellow.g>yellow.b*5&&blue.b>blue.r*5,"Double Ace speed tint bands missing");
-            var rainbow=Digit(210,.2f);Check(rainbow==Digit(210,.2f),"Paused rainbow advanced");
-            Check(rainbow!=Digit(210,.7f),"High-speed rainbow did not animate");
+            foreach(float speed in speeds)foreach(float time in new[]{0,.2f,.7f})
+                Check(Digit(speed,time)==Color.white,"Double Ace's white digits were recolored at "+speed);
         }
         return "PASS "+checks+" meter signal checks across "+families+" authored speed families and four engine RPM ranges";
     }

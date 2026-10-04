@@ -24,7 +24,7 @@ public static class Idas3ArcadeMeterCatalog
         public int atlasCols=1,atlasRows=1,digitOffset;
         public Variant[] textureVariants=Array.Empty<Variant>();
         public string[] speedTextures=Array.Empty<string>();
-        public bool speedPalette;
+        public bool speedRainbow;
         public Curve[] curves=Array.Empty<Curve>();
         public Parameter[] parameters=Array.Empty<Parameter>();
         public TextureBinding[] textureBindings=Array.Empty<TextureBinding>();

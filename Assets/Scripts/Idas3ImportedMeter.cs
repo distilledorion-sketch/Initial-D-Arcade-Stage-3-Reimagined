@@ -261,18 +261,10 @@ internal sealed partial class Idas3ImportedMeter : IDisposable
             if(opacity<=0)continue;
             var texture=Texture(SelectTexture(layer,data));if(!texture)continue;
             Color color=Tint(layer.color);
-            // The white DAC face reuses the white digit atlas. Its source
-            // runtime tint is absent from the export; retain readable contrast.
             bool speedColor=layer.speedTextures!=null&&layer.speedTextures.Length==4;
-            bool tintSpeed=meter.id==58&&(role=="speed1"||role=="speed10"||role=="speed100"||layer.name=="SpeedRate");
-            if(tintSpeed){
-                int band=SpeedColorBand(data.speedKmh);
-                if(band<3)color*=band==0?new Color(1,.02f,.02f):band==1?new Color(1,.94f,.02f):new Color(.02f,.66f,1);
-            }
-            if(meter.id==42&&layer.name.StartsWith("SpeedRate",StringComparison.Ordinal)&&!speedColor)color=new Color(.08f,.08f,.08f,color.a);
             // The fourth atlas is neutral for the animated rainbow. Drive its
             // hue from presentation time so pausing/seeking and FPS stay stable.
-            if((speedColor&&!layer.speedPalette||tintSpeed)&&SpeedColorBand(data.speedKmh)==3)
+            if(speedColor&&layer.speedRainbow&&SpeedColorBand(data.speedKmh)==3)
                 color*=Color.HSVToRGB(Mathf.Repeat(Safe(seconds)*.5f,1),.85f,1);
             // Reuse the authored gauge colors. Their vector alpha is commonly
             // zero and is not widget opacity. Circle01's RGB emission survived
@@ -408,14 +400,6 @@ internal sealed partial class Idas3ImportedMeter : IDisposable
             var sprite=new Idas3ArcadeHud.Sprite{texture=texture,rect=new Rect(0,0,layer.width,layer.height),uv=uv,color=color,fill=-1,additive=additive,
                 transformed=true,transform=matrix,gaugeMode=gaugeMode,gauge=gauge,clipped=clipped,clip=clip,mask=mask,maskTransform=maskTransform,radial=radial};
             ApplySeason5Material(ref sprite,layer,data,seconds,percentage,options.hudShiftLights);
-            if(layer.speedPalette){
-                int band=SpeedColorBand(data.speedKmh);
-                sprite.materialEffect=17;
-                // Preserve the source yellow band and its beveled white/dark
-                // details. The shader recolors only the chromatic component.
-                sprite.effectParams.x=band==1?0:1;
-                sprite.effectColor1=band==0?new Color(1,.02f,.02f):band==2?new Color(.02f,.66f,1):Color.HSVToRGB(Mathf.Repeat(seconds*.5f,1),.85f,1);
-            }
             if(Contains(layer.materialParent,"M_Add_Ball")){
                 sprite.materialEffect=1;
                 sprite.effectParams=new Vector4(Scalar(layer,"S Radius",.2f),Scalar(layer,"M Radius",.3f),Scalar(layer,"L Radius",.5f),Scalar(layer,"Diamond",5));
