@@ -126,6 +126,58 @@ int main(int argc,char** argv)try{
         app->audio.playRaceCue(2,7);app->audio.resetRaceEffects();check(app->audio.backfireFrame()==-1,"Race restart retained a flash");
         Mesh excluded;check(!app->backfire.append(excluded,0,original::OriginalCarAppearanceConfig(0),{},0,0,0,base),"Other car received Evo backfire");
         check(!app->backfire.append(excluded,0,original::OriginalCarAppearanceConfig(19),{},0,0,0,base),"Stock exhaust received Evo backfire");
+        // Feed the actual original engine controller through the host's peer
+        // confirmation path, for either local slot. No remote sound is added.
+        const auto tables=original::OriginalEngineTables::load(root);
+        for(unsigned local:{0u,1u}){
+            app->clearAuthority();app->multiplayer.config.localSlot=local;
+            original::OriginalEngineControlState engine;original::resetOriginalEngineControl(engine);
+            const auto config=configureProfileEngineSound(f.battleProfile);
+            auto remoteSeed=123u;bool remoteFlash=false;
+            original::OnlineRaceFrame confirmed;
+            for(unsigned tick=0;tick<100;++tick){
+                input.throttle=tick<60?1.f:0.f;
+                confirmed.engine[1-local]=original::stepOriginalEngineControl(tables,config,engine,input,remoteSeed);
+                app->confirmedAuthorityFrame(confirmed);
+                if(app->remoteBackfireFrame()==0){remoteFlash=true;break;}
+            }
+            check(remoteFlash,"Confirmed remote misfire command did not reach visual clock");
+            check(app->audio.backfireFrame()==-1,"Remote cue flashed the local car");
+            Mesh remoteMesh;check(app->backfire.append(remoteMesh,app->remoteBackfireFrame(),appearance,{10,3,20},.7f,.1f,-.15f,base,3),"Remote exhaust flash missing");
+            for(const auto& range:remoteMesh.ranges)check(range.viewMask==3&&range.emissive,"Opponent flash excluded from mirror or incorrectly lit");
+            for(unsigned repaint=0;repaint<20;++repaint)check(app->remoteBackfireFrame()==0,"Remote flash moved without a confirmed tick");
+            confirmed.engine[1-local].clear();app->confirmedAuthorityFrame(confirmed);
+            check(app->remoteBackfireFrame()==1,"Remote flash did not advance");
+            app->confirmedAuthorityFrame(confirmed);check(app->remoteBackfireFrame()==-1,"Remote flash did not expire");
+            confirmed.engine[local]={{original::OriginalEngineCommandTarget::RaceCue1424A0,0,0,7}};
+            app->confirmedAuthorityFrame(confirmed);check(app->remoteBackfireFrame()==-1,"Local cue flashed the remote car");
+            confirmed.engine[1-local]=confirmed.engine[local];app->confirmedAuthorityFrame(confirmed);
+            check(app->remoteBackfireFrame()==0,"Remote cue fixture failed");
+            app->clearAuthority();check(app->remoteBackfireFrame()==-1,"Rematch retained opponent flash");
+        }
+    }
+    // Verify the renderer's actual opponent submission and independent car
+    // appearance. This fixture does not send packets or contact Steam.
+    {
+        auto local=original::makeOriginalFreshBattleProfile(),remote=local;
+        local.setu(16,0);remote.setu(16,19);remote.setByte(162,1);remote.setByte(166,1);
+        Idas3MultiplayerConfig config{sizeof(config),2,0,0,0,0,0,19,0,1};
+        app->startMultiplayer(config,&local,&remote);app->enableAuthority(76544321,true,false);
+        app->setMultiplayerGo(true);app->vsActive=false;app->paused=true;
+        original::OnlineRaceFrame frame;frame.engine[1]={{original::OriginalEngineCommandTarget::RaceCue1424A0,0,0,7}};
+        app->confirmedAuthorityFrame(frame);
+        const auto digest=app->authorityRace->digest();
+        const auto remoteRanges=[&]{unsigned count=0;for(const auto& range:app->raceMesh.ranges)
+            if(range.texture>=app->backfireTextureBase&&range.texture<app->backfireTextureBase+app->backfire.textures.size()){
+                check(range.viewMask==3&&range.emissive,"Live opponent flame not visible in mirror");++count;
+            }return count;};
+        check(app->render(0)&&remoteRanges()>0,"Live online renderer omitted opponent exhaust flash");
+        check(app->authorityRace->digest()==digest&&app->remoteBackfireFrame()==0,"Rendering altered confirmed simulation/effect timeline");
+        frame.engine[1].clear();app->confirmedAuthorityFrame(frame);app->confirmedAuthorityFrame(frame);
+        check(app->render(0)&&remoteRanges()==0,"Live online renderer retained expired opponent flash");
+        frame.engine[1]={{original::OriginalEngineCommandTarget::RaceCue1424A0,0,0,7}};app->confirmedAuthorityFrame(frame);
+        app->disconnectMultiplayer();check(app->remoteBackfireFrame()==-1,"Disconnect retained opponent flash");
+        app->leaveMultiplayer();
     }
     // Exercise the actual race renderer, including its texture offsets and
     // source path coordinate. The verification view faces Myogi's sun.

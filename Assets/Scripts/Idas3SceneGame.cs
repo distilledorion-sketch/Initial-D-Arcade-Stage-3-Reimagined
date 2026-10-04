@@ -18,6 +18,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     [SerializeField] private float simulationAndSubmissionMs;
     private bool ready, stopping;
     private string failure;
+    private string failureReport, failureReportPath, failureTitle;
+    private Vector2 failureScroll;
     private Idas3SceneRenderer scene;
     private Idas3UnityUi ui;
     private Idas3UnityAudio sound;
@@ -1040,12 +1042,47 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void Fail(string message)
     {
         failure = message;
+        failureTitle = ready ? "The game stopped" : "The game could not start";
+        failureReport = "Initial D error report\n" + DateTime.UtcNow.ToString("u") +
+            "\nVersion: " + Application.version + "\nPlatform: " + Application.platform +
+            "\nSystem: " + SystemInfo.operatingSystem + "\nGraphics: " + SystemInfo.graphicsDeviceName +
+            " / " + SystemInfo.graphicsDeviceType + "\nStage: " + stage +
+            "\nGame data: " + Application.dataPath + "\n\n" + message;
+        // A screenshot previously clipped long paths and the actual exception.
+        // Keep a small standalone report alongside Player.log for support.
+        try
+        {
+            string path = Path.Combine(Application.persistentDataPath, "last-error.txt");
+            Directory.CreateDirectory(Application.persistentDataPath);
+            File.WriteAllText(path, failureReport);
+            failureReportPath = path;
+        }
+        catch (Exception error) { Debug.LogWarning("Could not save error report: " + error.Message); }
         Debug.LogError(message);
-        StopNative();
+        try { StopNative(); }
+        catch (Exception error) { Debug.LogError("Error while stopping the failed game: " + error); }
     }
     private void OnGUI()
     {
-        if (failure != null) GUI.Box(new Rect(16,16,Math.Min(Screen.width-32,1000),220),"Initial D Unity scene could not start\n\n"+failure);
+        if (failure == null) return;
+        float width = Mathf.Max(240, Mathf.Min(Screen.width - 32, 1100));
+        float height = Mathf.Max(200, Mathf.Min(Screen.height - 32, 650));
+        Rect panel = new Rect((Screen.width-width)*.5f, (Screen.height-height)*.5f, width, height);
+        GUI.Box(panel, GUIContent.none);
+        var title = new GUIStyle(GUI.skin.label) { fontSize=24, wordWrap=true };
+        var body = new GUIStyle(GUI.skin.label) { fontSize=16, wordWrap=true, alignment=TextAnchor.UpperLeft };
+        GUILayout.BeginArea(new Rect(panel.x+20, panel.y+16, width-40, height-32));
+        GUILayout.Label(failureTitle, title);
+        GUILayout.Space(8);
+        failureScroll = GUILayout.BeginScrollView(failureScroll);
+        GUILayout.Label(failureReport ?? failure, body);
+        GUILayout.EndScrollView();
+        GUILayout.Space(8);
+        if (!string.IsNullOrEmpty(failureReportPath))
+            GUILayout.Label("Error report saved to: " + failureReportPath, body);
+        if (GUILayout.Button("COPY ERROR DETAILS", GUILayout.Height(38)))
+            GUIUtility.systemCopyBuffer = failureReport ?? failure;
+        GUILayout.EndArea();
     }
     public void StopNative()
     {

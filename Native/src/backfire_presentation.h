@@ -18,7 +18,7 @@ public:
         trig_=original::OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");
     }
     bool append(Mesh& mesh,int frame,const original::OriginalCarAppearanceConfig& appearance,
-            Vec3 body,float yaw,float pitch,float roll,unsigned textureBase)const{
+            Vec3 body,float yaw,float pitch,float roll,unsigned textureBase,unsigned viewMask=1)const{
         const unsigned muffler=(appearance.word>>19)&7u;
         if(frame<0||frame>1||appearance.car!=19||muffler<1||muffler>3||model_.chunks.empty())return false;
         //17CB32..72: authored exhaust table and +0.05 depth. Adapt the
@@ -34,7 +34,7 @@ public:
         NativeAssembly assembly;auto& instance=assembly.instances.emplace_back();instance.chunk=unsigned(frame);
         for(unsigned row=0;row<4;++row)for(unsigned col=0;col<4;++col)instance.transform[row*4+col]=matrix.elements[col*4+row];
         const auto first=mesh.ranges.size();mesh.originalCar(model_,assembly,body,yaw,pitch,roll,textureBase);
-        for(auto i=first;i<mesh.ranges.size();++i){mesh.ranges[i].emissive=true;mesh.ranges[i].viewMask=1;}
+        for(auto i=first;i<mesh.ranges.size();++i){mesh.ranges[i].emissive=true;mesh.ranges[i].viewMask=viewMask;}
         return true;
     }
 private:

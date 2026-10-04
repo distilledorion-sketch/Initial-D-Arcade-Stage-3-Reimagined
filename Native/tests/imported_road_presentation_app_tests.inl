@@ -1,19 +1,20 @@
 // Exercise the presentation through real source driving in private saves.
-int runImportedRoadPresentationAppTests(App& app){
+int runImportedRoadPresentationAppTests(App& app,bool wetCornersOnly=false){
     std::ofstream log(app.saveRoot.parent_path()/"imported-road-presentation.txt");
     unsigned checks=0;
     const auto check=[&](bool value,const char* message){++checks;if(!value)throw std::runtime_error(message);};
     app.validationMode=true;app.replayPlaybackActive=false;app.multiplayer.active=false;
     for(unsigned route=0;route<6;++route){
+        if(wetCornersOnly&&route<4)continue;
         const int course=route==0?3:route==1?9:10;
         app.paused=false;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
-        app.frontend.course=app.courseIndex=course;app.frontend.car=0;app.frontend.automatic=true;
+        app.frontend.course=app.courseIndex=course;app.frontend.car=route>=4?1:0;app.frontend.automatic=true;
         app.frontend.reverse=app.reverse=route==3||route==5;
         app.frontend.night=app.night=false;app.frontend.wet=app.wet=route>=4;
         app.start();app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;app.menu=false;
         double rawEnergy=0,filteredEnergy=0;float lastRaw=0,lastFiltered=0,steer=0,topSpeed=0;
         unsigned samples=0,missing=0,ticks=0;bool prior=false;
-        const bool fullDrive=route==2||route==3;
+        const bool fullDrive=course==10;
         if(fullDrive){
             const auto& imported=*app.importedCourse;const auto gates=imported.routeCheckpoints(app.reverse);
             const int first=app.reverse?int(imported.center.size())-1-gates[0]:gates[0];
@@ -47,7 +48,7 @@ int runImportedRoadPresentationAppTests(App& app){
             check(largestStep<.5f,"Large road-height seam in Sadamine survey");
         }
         std::ofstream trace(app.saveRoot.parent_path()/("road-presentation-"+std::to_string(route)+".csv"));
-        trace<<"tick,roadY,rawY,presentedY,rawPitch,presentedPitch,eligible\n";
+        trace<<"tick,roadY,rawY,presentedY,rawPitch,presentedPitch,eligible,speed,wallContact,normalY,surfaceFound,progress\n";
         for(unsigned frame=0;frame<(fullDrive?36000u:course==10?1800u:360u);++frame){
             if(app.race.phase==RacePhase::Finished)break;
             if(fullDrive&&app.originalRace.state().remaining.value<60000u){
@@ -62,9 +63,10 @@ int runImportedRoadPresentationAppTests(App& app){
                 const float demand=std::clamp(3.5f*std::atan2(2*app.config.wheelbase*std::sin(angle),look)/recoveredSteeringLimit,-1.f,1.f);
                 steer+=std::clamp(demand-steer,-.07f,.07f);input.steer=-steer;
                 if(fullDrive){
-                    float target=24;
-                    for(float offset:{8.f,18.f,32.f,50.f})target=std::min(target,std::sqrt(4.5f/std::max(.001f,std::abs(app.sampleRaceDistance(p.sample.distance+offset).curvature))));
-                    target=std::clamp(target,10.f,24.f);
+                    const float limit=wetCornersOnly?38.f:24.f;
+                    float target=limit;
+                    for(float offset:{8.f,18.f,32.f,50.f})target=std::min(target,std::sqrt((wetCornersOnly?7.f:4.5f)/std::max(.001f,std::abs(app.sampleRaceDistance(p.sample.distance+offset).curvature))));
+                    target=std::clamp(target,10.f,limit);
                     input.throttle=std::clamp((target-app.vehicle.speed)*.6f,0.f,1.f);input.brake=std::clamp((app.vehicle.speed-target)*.3f,0.f,.8f);
                 }
             }
@@ -79,7 +81,7 @@ int runImportedRoadPresentationAppTests(App& app){
                 const bool sample=pose.ready()&&app.vehicle.speedKmh()>20&&!app.vehicle.wallContact;
                 if(sample&&prior){rawEnergy+=(raw-lastRaw)*(raw-lastRaw);filteredEnergy+=(filtered-lastFiltered)*(filtered-lastFiltered);++samples;}
                 prior=sample;lastRaw=raw;lastFiltered=filtered;
-                trace<<frame<<','<<road<<','<<app.vehicle.position.y<<','<<pose.position().y<<','<<-d.f(0x0C)<<','<<app.bodyPitch<<','<<pose.ready()<<'\n';
+                trace<<frame<<','<<road<<','<<app.vehicle.position.y<<','<<pose.position().y<<','<<-d.f(0x0C)<<','<<app.bodyPitch<<','<<pose.ready()<<','<<app.vehicle.speedKmh()<<','<<app.vehicle.wallContact<<','<<app.playerBody.query().f(4)<<','<<app.playerBody.surfaceFound()<<','<<app.originalRace.state().progress.index<<'\n';
                 if(pose.ready())check(pose.position().x==app.vehicle.position.x&&pose.position().z==app.vehicle.position.z,"Road presentation changed horizontal position");
                 if(course==10&&pose.ready()){
                     check(pose.position().y==road+.02f,"Sadamine retained simulated vertical bounce");

@@ -22,13 +22,13 @@ Work is isolated on `fixes/discord-bugs-20261004` in `D:/Codex/GitHub/Initial-D-
 
 ### Exhaust effect limits
 
-This restores the reported local-player visual, not every behavior of the original effect owner. Opponent/replay flash timing, per-draw random flame-length jitter and the source scene-light pulse are not implemented. The original effect geometry/materials, mount table and rotations are retained, with a body-local placement adaptation verified against the rendered exhaust. No extra driving RNG consumption, physics changes or sound event was introduced.
+This restores the reported local-player visual, not every behavior of the original effect owner. The later follow-up below adds confirmed online-opponent flash timing. Replay flash timing, per-draw random flame-length jitter and the source scene-light pulse are not implemented. The original effect geometry/materials, mount table and rotations are retained, with a body-local placement adaptation verified against the rendered exhaust. No extra driving RNG consumption, physics changes or sound event was introduced.
 
 ## Reports still open
 
 | Report | Evidence and remaining work |
 | --- | --- |
-| [Ending credits do not play after completing Legend of the Street](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1554605215767076905) | Confirmed in code: `App::finishLegendVisit` handles `Ending` by opening Title. Located original `HOSTFS/model/ending` geometry/textures and `binary/o_ending_camera_00.bin.nz`; the owner loads the ending banks at `0C0EADE0` through `0C145420`. The cinematic/credits sequence has not been restored or tested. Do not mark this fixed. |
+| [Ending credits do not play after completing Legend of the Street](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1554605215767076905) | Credits and final artwork are now restored locally; see the later follow-up below. The original driving cinematic behind the roll remains unimplemented, so the complete original ending is still only partially restored. |
 | [Can't setup my Logitech G923 Wheel in the Options Menu](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1552980823815495680) | Replies include another Xbox 360 binding failure and a working G29. Previous synthetic capture fixes are already in the base release. No G923/Fanatec hardware or affected-player input log is available here; the duplicate-controller fix is not evidence that wheel binding is repaired. Need the device/control diagnostics from a failed binding attempt. |
 | [Auto Updater does not work on Linux again](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1553197675703312535) | No new diagnostic details in the report. Earlier Windows/Wine alias tests and fixes do not establish Steam-managed Proton behavior. Need the affected player's updater log, install path and runtime; no speculative updater edit in this batch. |
 | [Cannot submit lap times in China without VPN](https://discord.com/channels/1548169613206884355/1548170688857112637/threads/1553327616239345714) | Still requires affected-network evidence and a reachable, authorized service hostname. Local service tests do not prove reachability from that network. |
@@ -65,3 +65,42 @@ Evidence directory: `Verification/discord-bugs-20261004/` (local, ignored by Git
 - `host-backfire-anchor/visible-flashes.json` and the car captures document the body-local exhaust alignment. The first visual inspection caught a source-owner height offset being incorrectly applied a second time; this was corrected, and a tighter geometry assertion now catches that error.
 - `backfire-import.json`/`backfire-reimport/` preserve extraction evidence; a backfire-only reimport produced byte-identical mesh and texture packs. Runtime source/output hashes and source-owner references are in `Native/data/original_assets/effects/bkfire/manifest.json` and its README. No CHD or executable ROM image was added.
 - `ending-owner.txt` records the incomplete ending investigation for the next pass.
+
+## Remaining-report implementation follow-up
+
+### Legend credits and final artwork
+
+`finishLegendVisit` now starts the ending owner after the final Legend result. The original staff names, photo strips, Takumi/AE86 final card and stream 12 play before returning to Title. Source scroll ranges and fade/phase arithmetic run at 60 Hz independently of render FPS. Start/Escape skips the roll, and a fresh press skips the final card; a held dialogue skip does not skip the credits. Presentation does not award points again or modify the completed profile.
+
+The 3D driving cinematic behind the original credits is **not** restored. This implementation displays the roll over black, followed by the original final card. The earlier blanket “ending not implemented” status is superseded only for these restored portions.
+
+Evidence: `Verification/discord-bugs-20261004/ending-final/`.
+
+- `original_ending_tests`: 160,944 checks and 822,622 executed original instructions across normal playback and five skip boundaries. Draw, integer conversion/division, audio and parent-notification dependencies are hooked; this is not an original full-cinematic render comparison.
+- `ending_application_tests`: 46 checks. Normal playback completes at exactly 5,460 source ticks at 30/60/144/240 render FPS. Audio starts/stops, pause, held input, both skip stages and profile stability pass. The full 31-rival **result-flow fixture** reaches Ending and then Title with all 31 completion markers retained; it does not play 31 full races.
+- Captured real native-renderer frames at ticks 600, 2400, 4600 and 5100 were visually inspected: readable, correctly oriented staff/photo strips and final card. No Unity full-player build or desktop deployment is claimed.
+- Assets are reproducible through `Native/tools/extract_original_ending.py`; runtime files and source/output hashes live in `Native/data/original_assets/ending`.
+
+### Online opponent exhaust flashes
+
+The shared online simulation already emitted the remote tuned Evo III's misfire command, but the host consumed only the local car's commands. The host now consumes confirmed remote cue 7 to drive the same two-frame exhaust effect, with the remote car's saved exhaust assembly. It is visible in both the driving view and rear-view mirror. Rendering does not tick the effect or alter simulation RNG; disconnect and rematch clear it. This does not synthesize an extra opponent sound.
+
+Evidence: `remote-backfire-final/PASS.txt`: 2,517 actual-host regression checks. Coverage includes original high-RPM/throttle-release controller output for all three exhausts and either local slot; local/remote cue isolation; no advancement on repaint; two confirmed frames; restart/disconnect cleanup; actual online renderer submission, mirror view mask and unchanged simulation digest. Replay flash timing remains open because existing recordings do not store the accepted cue.
+
+### Readable crash diagnostics
+
+The crash panel previously clipped long file paths and stack traces in a fixed 220-pixel box. It now scrolls, offers **Copy error details**, and writes `last-error.txt` beside `Player.log`, including version, platform, graphics, scene stage and the full exception. Cleanup exceptions are logged separately so they cannot replace the original failure. Managed production scripts compile successfully.
+
+This is a diagnostic improvement, **not a root-cause fix** for the “Random Crash” report. The affected player's full exception remains unavailable.
+
+### Sadamine wet-corner investigation
+
+Extended the previous short wet-drive fixture to full runs in both directions using the report's AE86 Levin. The stronger cornering fixture reaches 131.1/131.6 km/h and completes both 6.83 km routes. Across 50,167 actual driving ticks there are zero lost ground anchors. The full road survey checks 81,942 lane samples, and all three camera render paths leave physics words unchanged. `sadamine-wet-before/imported-road-presentation.txt` records 611,059 passing assertions.
+
+No new camera/handling change was made: this fixture still does not reproduce the player's sharp-turn bouncing. An affected replay and the camera setting remain necessary to reproduce that exact case. These results do not establish that every curb, collision or player-driven line is smooth.
+
+### Other open reports
+
+Linux/Steam Proton updater failure, physical G923/Fanatec binding failure, the exact post-race controller failure, public online FPS/collision intermittency, China service reachability, and remaining replay/gutter-camera cases are still unconfirmed. No new affected-machine logs or reproducible network/hardware cases were supplied during this follow-up. Prior synthetic/local passes are not treated as proof of fixes on those players' systems.
+
+The native Unity plugin builds and production managed scripts compile. Work remains local on the bugs branch; no GitHub publication, leaderboard deployment, Discord post, desktop replacement or R35 changes were performed.

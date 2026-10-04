@@ -13,6 +13,8 @@ int authorityConfirmedWinner=-3;
 std::uint64_t authorityResultFrame=0;
 std::uint64_t authorityRemoteHeadlightSequence=0;
 bool authorityRemoteHeadlights=false;
+unsigned authorityRemoteBackfireFrames=0;
+int remoteBackfireFrame()const{return authorityRemoteBackfireFrames?int(2-authorityRemoteBackfireFrames):-1;}
 
 const original::OriginalDrivingSession& presentedSession()const {
     return authorityRace?authorityRace->car(multiplayer.config.localSlot):originalSession;
@@ -23,6 +25,7 @@ void clearAuthority(){
     authorityRemoteCorrectionVelocity={};authorityRemoteYawVelocity=0;
     authorityFinished={};authorityTimeUp={};authorityStalled=false;authorityConfirmedWinner=-3;authorityResultFrame=0;
     authorityRemoteHeadlightSequence=0;authorityRemoteHeadlights=false;
+    authorityRemoteBackfireFrames=0;
 }
 void confirmedAuthorityFrame(const original::OnlineRaceFrame& frame){
     const auto local=multiplayer.config.localSlot;
@@ -44,6 +47,13 @@ void confirmedAuthorityFrame(const original::OnlineRaceFrame& frame){
     for(auto cue:frame.driving[local].feedback142460)audio.playRaceCue(2,cue);
     if(frame.driving[local].completion.requestCue4)audio.playRaceCue(2,4);
     audio.applyConfirmedOnlineAudio(frame.engine[local],frame.tires[local]);
+    // The remote engine has already emitted its commands within the shared
+    // simulation. Consume only confirmed cues; repaints and prediction replay
+    // cannot extend a flash or consume another gameplay random number.
+    if(authorityRemoteBackfireFrames)--authorityRemoteBackfireFrames;
+    for(const auto& command:frame.engine[1-local])
+        if(command.target==original::OriginalEngineCommandTarget::RaceCue1424A0&&command.value==7&&authorityRemoteBackfireFrames==0)
+            authorityRemoteBackfireFrames=2;
     if(frame.rules[local].timeExtension)raceFeedback.extend(std::bit_cast<std::int32_t>(frame.states[local].remaining.value)-frame.rules[local].secondsAdded*6000);
 }
 void enableAuthority(std::uint64_t raceId,bool remoteAutomatic,bool boost,bool collisions=true){

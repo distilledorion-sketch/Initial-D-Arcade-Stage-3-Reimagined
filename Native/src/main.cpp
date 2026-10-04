@@ -50,6 +50,7 @@
 #include "original_tuning.h"
 #include "original_result_tuning_visit.h"
 #include "original_legend_visit.h"
+#include "original_ending.h"
 #include "original_time_attack_points.h"
 #include "original_tuning_presentation.h"
 #include "original_tuning_preview.h"
@@ -170,7 +171,7 @@ struct App {
     fs::path userdataRoot()const{return saveRoot.empty()?root/"userdata":saveRoot;}
     int selectedRaceMusic=-1;
     AutomaticRaceMusic automaticRaceMusic{std::uint32_t(std::chrono::steady_clock::now().time_since_epoch().count())};
-    bool extraModeVisitActive()const{return buntaVisitActive||timeAttackVisitActive;}
+    bool extraModeVisitActive()const{return buntaVisitActive||timeAttackVisitActive||endingActive;}
     bool raceMusicOpponentEligible()const{
         const bool selection=frontend.stage==FrontendStage::Rival||
             (frontend.stage==FrontendStage::Course&&frontend.gameMode!=original::OriginalGameMode::LegendOfTheStreets);
@@ -274,6 +275,9 @@ struct App {
         for(auto& aura:multiplayerAura)aura.load(root);
     }
     FixedClock legendVisitClock;
+    original::OriginalEnding ending;
+    FixedClock endingClock;
+    bool endingActive=false,endingSkipArmed=false,endingSkipPending=false;
     std::vector<std::uint32_t> legendVisitPixels;
     bool legendVisitLoaded=false,legendVisitActive=false,legendVisitSmoke=false;
     bool legendConfirmPending=false,legendPreviousPending=false,legendNextPending=false;
@@ -1012,6 +1016,7 @@ struct App {
         // Terminal presentation only: do not tick finish rules, score points,
         // publish a win/loss, or release the multiplayer save barrier.
         multiplayer.disconnected=true;multiplayer.waiting=false;
+        authorityRemoteBackfireFrames=0;
         input={};paused=false;clock.reset();
         loadingActive=preRaceDialogueActive=legendVisitActive=vsActive=buntaVisitActive=timeAttackVisitActive=false;
         vsSeconds=0;vsPhase=vsFrame=vsShot=0;
@@ -1244,6 +1249,7 @@ struct App {
         return 1u|((replayPlaybackActive||paused||!active||race.phase!=RacePhase::Running||multiplayer.waiting||authorityStalled)?2u:0u);
     }
     void start(bool networkStart=false){
+        if(endingActive){endingActive=false;audio.applyLegendStreamCommand({original::OriginalLegendReturnCommand::StreamStop});}
         hudAnalogPresentation.reset();
         resetHudDrift();
         naturalCamera.reset();
@@ -1556,23 +1562,46 @@ struct App {
         legendVisitActive=false;
         frontend.battleProfile=battleProfile;
         saveResultProfile();
-        // The owner already advanced the profile to the next rival and its
-        // course, so a course load races that rival straight away. Ending and
-        // EjectCard are session ends; both leave the player at the ordinary
-        // selection the native shell already owns.
+        // The owner already selected the next rival/course. A completed run
+        // owns a separate ending screen before returning to the title.
         if(destination==original::OriginalLegendReturnDestination::CourseLoad){
             frontend.gameMode=original::OriginalGameMode::LegendOfTheStreets;
             start();
             return;
         }
         returnToCourseSelection();
-        // A completed run is the end of the driver's session, so the shell goes
-        // back to its start rather than to the middle of a selection.
-        if(destination==original::OriginalLegendReturnDestination::Ending){
-            frontend.stage=FrontendStage::Title;
-            frontend.advance(0);
-            legendRunCompleted=true;
-        }
+        if(destination==original::OriginalLegendReturnDestination::Ending)beginEnding();
+    }
+    void beginEnding(){
+        ending.begin(root);endingClock.reset();endingActive=true;paused=false;menu=false;
+        endingSkipArmed=endingSkipPending=false;legendRunCompleted=false;
+        using C=original::OriginalLegendReturnCommand;
+        audio.applyLegendStreamCommand({C::SoundSet,0});
+        audio.applyLegendStreamCommand({C::StreamStart,12});
+        updateAudioScene();
+    }
+    void advanceEnding(double dt){
+        if(!endingActive||paused)return;
+        endingClock.advance(dt,[&]{
+            if(!endingActive)return;
+            audio.tickLegendStream();
+            ending.timeline.step(endingSkipPending);endingSkipPending=false;
+            using C=original::OriginalLegendReturnCommand;
+            if(ending.timeline.playStream){
+                audio.applyLegendStreamCommand({C::StreamPlay});
+                audio.applyLegendStreamCommand({C::StreamVolume,127});
+            }
+            if(ending.timeline.fadeStream)audio.applyLegendStreamCommand({C::StreamFade,8});
+            if(ending.timeline.stopStream){
+                audio.applyLegendStreamCommand({C::StreamStop});
+                audio.applyLegendStreamCommand({C::SoundSet,0});
+            }
+            if(ending.timeline.finished){
+                endingActive=false;legendRunCompleted=true;input={};menu=true;
+                frontend.stage=FrontendStage::Title;frontend.advance(0);
+                renderer.screenFadeArgb=0;
+            }
+        });
     }
     bool canRetireLegendRace()const{
         return originalHandling&&battle&&!bunta&&!multiplayer.active&&!menu&&!loadingActive&&
@@ -1617,6 +1646,7 @@ struct App {
         if(!validationMode){pendingProfiles.at(unsigned(frontend.car))=battleProfile;flushProfiles();}
     }
     void returnToCourseSelection(bool challengerInterrupt=false){
+        if(endingActive){endingActive=false;audio.applyLegendStreamCommand({original::OriginalLegendReturnCommand::StreamStop});}
         resetHudDrift();
         if(importedCourse){importedCourse.reset();renderer.farClip=5000;}
         // Leaving an unfinished Legend battle is the same retirement action.
@@ -2627,7 +2657,7 @@ struct App {
         legendSkipHeld=input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START)!=0;
         advanceLegendVisit(dt);
         // A course load hands straight back to the race the owner selected.
-        if(legendVisit.finished()){finishLegendVisit();return menu?renderMenu(0):render(0);}
+        if(legendVisit.finished()){finishLegendVisit();return render(0);}
         const bool conquered=legendVisit.courseClearRunning();
         const int canvasWidth=conquered?640:renderer.width,canvasHeight=conquered?480:renderer.height;
         legendVisitPixels.assign(std::size_t(canvasWidth)*canvasHeight,0xff000000u);
@@ -2648,6 +2678,28 @@ struct App {
             return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,nullptr,false,nullptr,nullptr,layers);
         }
         return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,legendVisitPixels.data(),false,nullptr);
+    }
+    bool renderEnding(double dt){
+        const bool held=input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START)!=0;
+        // A held Start used to skip the final dialogue must not skip credits.
+        if(!held)endingSkipArmed=true;
+        if(held&&endingSkipArmed){endingSkipPending=true;endingSkipArmed=false;}
+        advanceEnding(dt);
+        if(!endingActive)return renderMenu(0);
+        constexpr int width=640,height=480;
+        legendVisitPixels.assign(width*height,0xff000000u);
+        unityUiClear(legendVisitPixels.data(),width,height,0xff000000u);
+        ending.paint(legendVisitPixels,width,height);
+        renderer.nearClip=1;renderer.farClip=5000;renderer.fitOriginalViewport=false;
+        renderer.overrideClearColor=true;renderer.clearColor={0,0,0,1};
+        renderer.vehicleLights=false;renderer.opponentLights=false;renderer.courseLampPositions.clear();
+        renderer.courseFog=nullptr;renderer.courseLighting=nullptr;
+        renderer.playerLighting=nullptr;renderer.rivalLighting=nullptr;
+        renderer.screenFadeArgb=std::uint32_t(ending.timeline.alpha)<<24;
+        renderer.verticalFieldOfView=1;renderer.projectionAspect=0;renderer.cameraUp={0,1,0};
+        const Mesh empty;
+        const std::array<OverlayPass,1> layers{{{legendVisitPixels.data(),false,true}}};
+        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,nullptr,false,nullptr,nullptr,layers);
     }
     void beginVsBanner(){
         vsActive=false;
@@ -2997,6 +3049,7 @@ struct App {
         if(buntaVisitActive)return renderBuntaVisit(dt);
         if(timeAttackVisitActive)return renderTimeAttackVisit(dt);
         if(preRaceDialogueActive)return renderPreRaceDialogue(dt);
+        if(endingActive)return renderEnding(dt);
         if(menu)return renderMenu(dt);
         if(legendVisitActive)return renderLegendVisit(dt);
         if(!replayPlaybackActive)advanceStartPresentation(dt);
@@ -3250,6 +3303,9 @@ struct App {
             mesh.originalCar(rivalModel,assembly,body,yaw,pitch,roll,base,rivalPresentation.illuminatedChunks(),true);
             mesh.originalCar(rivalPlate.model,(multiplayer.active||(replayPlaybackActive&&loadedRivalEnemy==-2))?rivalPresentation.profilePlateAssembly():rivalPlate.assembly(),body,yaw,pitch,roll,base+std::uint32_t(rivalTextures.size()),{},true);
             if(originalHandling)for(auto i=rivalRangeBegin;i<mesh.ranges.size();++i){mesh.ranges[i].carLighting=2;if(mesh.ranges[i].gmp&(1u<<11)){auto& range=mesh.ranges[i];range.texture=smokeTextureBase+5;range.tsp=(range.tsp&0x03c7ff3fu)|(4u<<29)|(1u<<26)|(1u<<20)|(3u<<6);}}
+            if(authorityRace&&!menu&&!replayPlaybackActive&&!validationHideDrivingEffects)
+                backfire.append(mesh,remoteBackfireFrame(),original::originalPlayerAppearanceConfig(multiplayer.remoteProfile),
+                    body,yaw,pitch,roll,backfireTextureBase,3);
             if(showMultiplayerAura){
                 auto& aura=multiplayerAura[1];
                 aura.update(std::uint32_t(std::fmod(multiplayer.auraSeconds*60.,4294967296.)),multiplayer.config.remoteCar,position,camera);
@@ -3646,17 +3702,18 @@ int runFinishBannerSmoke(App& app){
     report<<"final announcement ticks "<<app.finishBannerTicks<<", done "<<app.finishBannerDone<<"\n";
     return 0;
 }
-int runLegendRunSmoke(App& app){
+int runLegendRunSmoke(App& app,fs::path evidence={}){
     app.validationMode=true;app.legendVisitSmoke=true;
     app.frontend.gameMode=original::OriginalGameMode::LegendOfTheStreets;
-    fs::create_directories(app.root/"verification");
-    std::ofstream report(app.root/"verification/legend_run_smoke.txt");
+    if(evidence.empty())evidence=app.root/"verification";
+    fs::create_directories(evidence);
+    std::ofstream report(evidence/"legend_run_smoke.txt");
     if(!original::OriginalLegendVisit::available(app.root)){
         report<<"Legend return artwork unavailable; the run was not played\n";
         return 0;
     }
     app.legendVisit.load(app.root);app.legendVisitLoaded=true;
-    const fs::path frames=app.root/"verification/legend-run-frames";
+    const fs::path frames=evidence/"legend-run-frames";
     fs::create_directories(frames);
     app.frontend.battleProfile=original::makeOriginalFreshBattleProfile();
     app.frontend.battleProfile.setu(16,unsigned(app.frontend.car));
@@ -3672,6 +3729,7 @@ int runLegendRunSmoke(App& app){
         if(app.battleResult!=original::OriginalLegendResult::Win)
             throw std::runtime_error("A won Legend battle was not recorded as a win");
         app.battlePoints=original::awardOriginalLegendPoints(app.battleProfile,0u,0.f);
+        app.race.phase=RacePhase::Finished;
         app.battleProgressApplied=true;
         app.battleResults={};app.battleResults.resultStatus=0;
         app.frontend.battleProfile=app.battleProfile;
@@ -3714,6 +3772,8 @@ int runLegendRunSmoke(App& app){
     if(destination!=original::OriginalLegendReturnDestination::Ending)
         throw std::runtime_error("A won Legend run did not reach the ending");
     if(beaten!=31u)throw std::runtime_error("The ending was reached without beating every rival");
+    if(!app.endingActive)throw std::runtime_error("The completed run bypassed the ending");
+    for(unsigned tick=0;tick<5500&&app.endingActive;++tick)app.advanceEnding(1./60);
     if(!app.legendRunCompleted)throw std::runtime_error("The ending did not end the session");
     if(!app.menu||app.frontend.stage!=FrontendStage::Title)
         throw std::runtime_error("The completed run did not return the shell to its start");
