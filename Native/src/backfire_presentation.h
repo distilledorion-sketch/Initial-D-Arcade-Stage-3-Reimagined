@@ -2,6 +2,8 @@
 #include "renderer.h"
 #include "original_car_appearance_config.h"
 #include "original_matrix.h"
+#include "original_backfire_lighting.h"
+#include "original_car_lighting.h"
 
 namespace idas3 {
 // Recovered bkfire chunks 0/1, exhaust mounts and rotations. The host binds
@@ -10,6 +12,21 @@ namespace idas3 {
 class BackfirePresentation {
 public:
     NativeTextureBank textures;
+    static bool visible(int frame,const original::OriginalCarAppearanceConfig& appearance){
+        const unsigned muffler=(appearance.word>>19)&7u;
+        return frame>=0&&frame<=1&&appearance.car==19&&muffler>=1&&muffler<=3;
+    }
+    static void appendLight(original::OriginalRaceLightingSets& sets,int frame,
+            const original::OriginalCarAppearanceConfig& appearance,const original::OriginalLightMatrix& world){
+        if(!visible(frame,appearance))return;
+        const auto light=original::originalBackfireLight(true,world);
+        // Compose into draw-only copies. Repaints cannot accumulate lights,
+        // mutate confirmed race state or outlive the accepted flame cue.
+        const auto append=[&](original::OriginalCourseLighting& set){
+            if(set.count<set.lights.size())set.lights[set.count++]=light;
+        };
+        append(sets.course);append(sets.player);if(sets.hasRival)append(sets.rival);
+    }
     void load(const std::filesystem::path& root){
         if(!model_.chunks.empty())return;
         const auto base=root/"data/original_assets/effects/bkfire";
@@ -20,7 +37,7 @@ public:
     bool append(Mesh& mesh,int frame,const original::OriginalCarAppearanceConfig& appearance,
             Vec3 body,float yaw,float pitch,float roll,unsigned textureBase,unsigned viewMask=1)const{
         const unsigned muffler=(appearance.word>>19)&7u;
-        if(frame<0||frame>1||appearance.car!=19||muffler<1||muffler>3||model_.chunks.empty())return false;
+        if(!visible(frame,appearance)||model_.chunks.empty())return false;
         //17CB32..72: authored exhaust table and +0.05 depth. Adapt the
         // owner's placement to body-local coordinates: applying its +0.3 Y
         // here puts the flash above the rendered pipe (verified in captures).

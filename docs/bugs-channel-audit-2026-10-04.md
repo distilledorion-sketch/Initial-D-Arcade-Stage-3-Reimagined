@@ -22,7 +22,7 @@ Work is isolated on `fixes/discord-bugs-20261004` in `D:/Codex/GitHub/Initial-D-
 
 ### Exhaust effect limits
 
-This restores the reported local-player visual, not every behavior of the original effect owner. The later follow-up below adds confirmed online-opponent flash timing. Replay flash timing, per-draw random flame-length jitter and the source scene-light pulse are not implemented. The original effect geometry/materials, mount table and rotations are retained, with a body-local placement adaptation verified against the rendered exhaust. No extra driving RNG consumption, physics changes or sound event was introduced.
+This restores the reported local-player visual, not every behavior of the original effect owner. The later follow-up below adds confirmed online-opponent flash timing. Replay flash timing and per-draw random flame-length jitter are not implemented. A subsequent user-requested follow-up restores the source light pulse; see [backfire lighting](backfire-lighting-2026-10-04.md). The original effect geometry/materials, mount table and rotations are retained, with a body-local placement adaptation verified against the rendered exhaust. No extra driving RNG consumption, physics changes or sound event was introduced.
 
 ## Reports still open
 

@@ -172,12 +172,77 @@ int main(int argc,char** argv)try{
                 check(range.viewMask==3&&range.emissive,"Live opponent flame not visible in mirror");++count;
             }return count;};
         check(app->render(0)&&remoteRanges()>0,"Live online renderer omitted opponent exhaust flash");
+        const auto baseCount=app->raceLightSets->course.count;
+        check(app->renderer.courseLighting->count==baseCount+1,"Opponent flash omitted its course light");
+        check(app->renderer.playerLighting->count==app->raceLightSets->player.count+1&&
+            app->renderer.rivalLighting->count==app->raceLightSets->rival.count+1,"Opponent light omitted car scopes");
+        const auto flash=app->renderer.courseLighting->lights[baseCount];
+        check(flash.kind==original::OriginalCourseLightKind::Point&&flash.color==original::OriginalLightVector{1,.8f,.4f},"Opponent flash lost original warm light");
+        check(app->raceLightSets->course.count==baseCount,"Presentation light mutated base lighting");
+        for(unsigned repaint=0;repaint<8;++repaint){
+            check(app->render(0)&&app->renderer.courseLighting->count==baseCount+1,"Repaint accumulated backfire lights");
+            check(app->remoteBackfireFrame()==0,"Repaint advanced the light pulse");
+        }
+        app->validationHideDrivingEffects=true;
+        check(app->render(0)&&app->renderer.courseLighting->count==baseCount,"Hidden effects retained lighting");
+        app->validationHideDrivingEffects=false;
         check(app->authorityRace->digest()==digest&&app->remoteBackfireFrame()==0,"Rendering altered confirmed simulation/effect timeline");
         frame.engine[1].clear();app->confirmedAuthorityFrame(frame);app->confirmedAuthorityFrame(frame);
         check(app->render(0)&&remoteRanges()==0,"Live online renderer retained expired opponent flash");
+        check(app->renderer.courseLighting->count==baseCount&&app->renderer.playerLighting->count==app->raceLightSets->player.count,
+            "Expired opponent flash left illumination behind");
         frame.engine[1]={{original::OriginalEngineCommandTarget::RaceCue1424A0,0,0,7}};app->confirmedAuthorityFrame(frame);
         app->disconnectMultiplayer();check(app->remoteBackfireFrame()==-1,"Disconnect retained opponent flash");
         app->leaveMultiplayer();
+    }
+    // Local light and image comparison using an actual night-race setup.
+    // Two simultaneous lights, replay suppression and all course conditions
+    // exercise presentation copies without modifying the confirmed owners.
+    {
+        f.car=19;f.course=3;f.night=true;f.wet=false;f.gameMode=original::OriginalGameMode::TimeAttack;
+        f.battleProfile=original::makeOriginalFreshBattleProfile();f.battleProfile.setu(16,19);
+        f.battleProfile.setByte(162,1);f.battleProfile.setByte(166,1);
+        app->courseIndex=3;app->night=true;app->wet=false;app->start();
+        app->paused=true;app->managedPauseOverlay=true;app->vsActive=false;app->drivingView=OriginalDrivingView::Chase;
+        const auto render=[&](const char*name){check(app->render(0),"Backfire lighting night render failed");
+            check(app->renderer.saveBitmap((out/name).wstring()),"Backfire lighting capture failed");};
+        app->audio.resetRaceEffects();render("backfire-light-off.bmp");
+        const auto baseCount=app->raceLightSets->course.count;
+        app->audio.playRaceCue(2,7);render("backfire-light-on.bmp");
+        check(app->renderer.courseLighting->count==baseCount+1,"Local cue omitted light");
+        UnitySceneCapture portable;OriginalRearViewFrame mirror;mirror.eye={0,1,0};mirror.target={0,1,-1};mirror.up={0,1,0};
+        portable.capture(app->renderer,app->raceMesh,{0,1,-5},{0,1,0},true,false,nullptr,false,nullptr,&mirror,{});
+        const auto& published=portable.frame();check(published.viewCount==2,"Unity light capture omitted mirror");
+        for(unsigned view=0;view<2;++view)for(unsigned scope:{1u,2u}){
+            const auto* words=published.lightConstants+(view*4+scope)*156;
+            const auto count=words[153];
+            check(words[152]&&count>0,"Unity light scope disabled");
+            check((words[24+(count-1)*8+1]>>8)==0x7f6532,"Unity publication lost warm backfire RGB");
+            check(words[24+(count-1)*8+6]==0x3f94be1f,"Unity publication lost source attenuation");
+        }
+        for(unsigned repeats=0;repeats<240;++repeats){app->preparePresentedRaceLights();
+            check(app->presentedRaceLightSets->course.count==baseCount+1&&app->audio.backfireFrame()==0,"Frame-rate-dependent light pulse");}
+        app->replayPlaybackActive=true;app->preparePresentedRaceLights();
+        check(app->presentedRaceLightSets->course.count==baseCount,"Replay invented unrecorded backfire timing");
+        app->replayPlaybackActive=false;
+        app->audio.applyConfirmedOnlineAudio({},{});app->preparePresentedRaceLights();
+        check(app->presentedRaceLightSets->course.count==baseCount+1,"Second light frame missing");
+        app->audio.applyConfirmedOnlineAudio({},{});render("backfire-light-expired.bmp");
+        check(app->renderer.courseLighting->count==baseCount,"Local light did not expire");
+        const auto appearance=original::originalPlayerAppearanceConfig(f.battleProfile);
+        for(unsigned course=0;course<9;++course)for(bool night:{false,true})for(bool wet:{false,true}){
+            const auto base=original::originalCourseLighting(course,night,wet);
+            auto sets=original::composeOriginalRaceLighting(base,original::originalCarLighting(),original::originalCarLighting(),{course,0,night,wet});
+            auto before=sets;auto matrix=original::originalLightIdentityMatrix;
+            app->backfire.appendLight(sets,0,appearance,matrix);matrix[12]=5;app->backfire.appendLight(sets,1,appearance,matrix);
+            check(sets.course.count==before.course.count+2&&sets.player.count==before.player.count+2&&sets.rival.count==before.rival.count+2,
+                "Both backfire lights do not fit the original course/car scopes");
+            check(sets.course.lights[before.course.count+1].position[0]-sets.course.lights[before.course.count].position[0]==5,
+                "Simultaneous flames shared a light position");
+        }
+        original::OriginalRaceLightingSets full;full.hasRival=true;full.course.count=full.player.count=full.rival.count=16;
+        app->backfire.appendLight(full,0,appearance,original::originalLightIdentityMatrix);
+        check(full.course.count==16&&full.player.count==16&&full.rival.count==16,"Backfire overflowed a full source light array");
     }
     // Exercise the actual race renderer, including its texture offsets and
     // source path coordinate. The verification view faces Myogi's sun.

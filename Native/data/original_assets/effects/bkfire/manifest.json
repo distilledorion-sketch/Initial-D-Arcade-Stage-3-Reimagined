@@ -107,8 +107,8 @@
   ],
   "layout_evidence": "Original per-batch TCW scan-order and pixel-format bits; exact texel decode/repack.",
   "timing": "Not recovered by this extractor",
-  "runtime_integration": "Local tuned Evo III only; existing accepted misfire cue drives two recovered mesh frames at 60 Hz. No additional physics RNG or cue.",
-  "host_adaptation": "Body-space exhaust table Y; source effect-owner +0.3 translation is omitted to align with the host car mesh. Source per-draw random scale jitter and scene light pulse are not ported.",
+  "runtime_integration": "Local and confirmed online opponent tuned Evo III; existing accepted misfire cue drives two recovered mesh/light frames at 60 Hz. No additional physics RNG or cue.",
+  "host_adaptation": "Body-space exhaust table Y; source effect-owner +0.3 translation is omitted to align with the host car mesh. The separate point-light anchor, RGB and attenuation are recovered and submitted through copied course/car scopes. Source per-draw random scale jitter and replay event timing are not ported.",
   "output_sha256": {
     "bkfire.idasmesh": "765bed2d97f486501f5267d03228f2a5f0bd6c4a229e95b5a878001e1ede924d",
     "textures.idastex": "a5071badb5201eb7d58ed45cf67a564b9d3360b590267c918615ba4cc751b10d"

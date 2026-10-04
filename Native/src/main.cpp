@@ -396,6 +396,7 @@ struct App {
     original::OriginalCarLighting playerCarLight,rivalCarLight;
     original::OriginalLightVector raceCarAmbient{};
     std::optional<original::OriginalRaceLightingSets> raceLightSets;
+    std::optional<original::OriginalRaceLightingSets> presentedRaceLightSets;
     original::OriginalCarLightGain carLightGain;
     original::OriginalPathCoordinate playerLightCoordinate,rivalLightCoordinate;
     std::optional<original::OriginalFscaTable> courseLightFsca;
@@ -1792,6 +1793,18 @@ struct App {
         playerCarLight.gain=carLightGain.evaluate(playerLightCoordinate.index,playerLightCoordinate.fraction);
         if(rivalVisible)rivalCarLight.gain=carLightGain.evaluate(rivalLightCoordinate.index,rivalLightCoordinate.fraction);
         raceLightSets=original::composeOriginalRaceLighting(*raceLighting,playerCarLight,rivalCarLight,carLightingSetup());
+    }
+    void preparePresentedRaceLights(){
+        presentedRaceLightSets=raceLightSets;
+        if(!presentedRaceLightSets||menu||replayPlaybackActive||validationHideDrivingEffects||
+                !originalHandling||!presentedSession().ready())return;
+        backfire.appendLight(*presentedRaceLightSets,audio.backfireFrame(),
+            original::originalPlayerAppearanceConfig(frontend.battleProfile),
+            actorVisualMatrix(presentedSession().publishedActors().player0C8FF388).elements);
+        if(authorityRace&&rivalVisible)
+            backfire.appendLight(*presentedRaceLightSets,remoteBackfireFrame(),
+                original::originalPlayerAppearanceConfig(multiplayer.remoteProfile),
+                actorVisualMatrix(renderedRivalActor()).elements);
     }
     void initializeProjectedHeadlights(){
         if(!originalHandling)return;
@@ -3458,9 +3471,10 @@ struct App {
             rearView->up=normalized(lerp(previousRearCameraFrame.up,rearCameraFrame.up,poseAlpha));
         }
         renderer.courseFog=&raceFog;
-        renderer.courseLighting=raceLightSets?&raceLightSets->course:raceLighting?&*raceLighting:nullptr;
-        renderer.playerLighting=raceLightSets?&raceLightSets->player:nullptr;
-        renderer.rivalLighting=raceLightSets&&raceLightSets->hasRival?&raceLightSets->rival:nullptr;
+        preparePresentedRaceLights();
+        renderer.courseLighting=presentedRaceLightSets?&presentedRaceLightSets->course:raceLighting?&*raceLighting:nullptr;
+        renderer.playerLighting=presentedRaceLightSets?&presentedRaceLightSets->player:nullptr;
+        renderer.rivalLighting=presentedRaceLightSets&&presentedRaceLightSets->hasRival?&presentedRaceLightSets->rival:nullptr;
         const std::uint32_t* overlay=nullptr;
         if(vsActive&&renderer.width>0&&renderer.height>0){
             vsPixels.assign(std::size_t(renderer.width)*renderer.height,0u);
