@@ -5,6 +5,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {sha,validateRun,supportedBuild,COURSES,REQUIRED_CLIENT_BUILD} from '../src/core.mjs';
 import {decodeReplay,compressReplay} from '../src/replay.mjs';
 import {replayKey} from '../src/replay-storage.mjs';
+import {recoverRun} from '../src/recovery.mjs';
 const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';").replace("'./core.mjs'",JSON.stringify(new URL('../src/core.mjs',import.meta.url).href)).replace("'./replay.mjs'",JSON.stringify(new URL('../src/replay.mjs',import.meta.url).href)).replace("'./replay-storage.mjs'",JSON.stringify(new URL('../src/replay-storage.mjs',import.meta.url).href)).replace("'./retention.mjs'",JSON.stringify(new URL('../src/retention.mjs',import.meta.url).href));
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
@@ -455,23 +456,28 @@ test('object keys isolate owners, content and alternate compressed lengths durin
 });
 
 const shortRun=(car,ticks=120000,extra={})=>run({car,ticks6000:ticks,splits:[20000,40000,ticks,0],...extra});
+async function uploadFor(x,player){
+ const token=player.toString(16).padStart(64,'0');
+ await call('/api/v1/register',{token});
+ return uploadReplay(x,replayFor(x),{Authorization:'Bearer '+token});
+}
 async function topTenFixture(){
  const objects=objectStorage();env.RETAIN_TOP_TEN='true';await call('/api/v1/register',{token:device});
- const entries=[];for(let car=0;car<10;car++){const x=shortRun(car,100000+car*1000);entries.push(x);assert.equal((await uploadReplay(x)).status,200);}
+ const entries=[];for(let i=0;i<10;i++){const x=shortRun(0,100000+i*1000);entries.push(x);assert.equal((await uploadFor(x,i+1)).status,200);}
  return {objects,entries};
 }
 
 test('top ten accepts every valid submission but stores no score or replay below the cutoff',async()=>{
  const {objects}=await topTenFixture();
- const x=shortRun(10,120000),response=await uploadReplay(x);
+ const x=shortRun(0,120000),response=await uploadReplay(x);
  assert.equal(response.status,200);assert.equal((await response.json()).retained,false);
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
  assert.equal(db.prepare('SELECT count(*) n FROM replay_objects').get().n,10);
  assert.equal((await uploadReplay(x)).status,200);assert.equal(objects.size,10);
 });
 
-test('a future faster score permanently displaces the lowest overall entry and its replay',async()=>{
- const {objects,entries}=await topTenFixture(),x=shortRun(10,90000);
+test('a future faster score displaces a time outside both the model and overall top tens',async()=>{
+ const {objects,entries}=await topTenFixture(),x=shortRun(0,90000);
  const response=await uploadReplay(x);assert.equal(response.status,200);assert.equal((await response.json()).retained,true);
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
  assert.equal(db.prepare('SELECT id FROM runs WHERE id=?').get(entries[9].id),undefined);
@@ -484,8 +490,8 @@ test('a future faster score permanently displaces the lowest overall entry and i
 
 test('same player/car improvement replaces its old best and slower repeats never consume slots',async()=>{
  const {objects,entries}=await topTenFixture();
- assert.equal((await(await uploadReplay(shortRun(4,105000))).json()).retained,false);
- const improved=shortRun(4,80000);assert.equal((await(await uploadReplay(improved)).json()).retained,true);
+ assert.equal((await(await uploadFor(shortRun(0,105000),5)).json()).retained,false);
+ const improved=shortRun(0,80000);assert.equal((await(await uploadFor(improved,5)).json()).retained,true);
  assert.equal(db.prepare('SELECT id FROM runs WHERE id=?').get(entries[4].id),undefined);
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
 });
@@ -502,8 +508,8 @@ test('top ten is independent for each direction and weather, across all cars',as
 test('cutoff is rechecked atomically if a faster submission arrives during object upload',async()=>{
  const {objects}=await topTenFixture(),put=env.REPLAYS.put;
  let raced=false;
- env.REPLAYS.put=async(...args)=>{const result=await put(...args);if(!raced){raced=true;assert.equal((await uploadReplay(shortRun(11,80000))).status,200);}return result;};
- const x=shortRun(10,108500); // initially beats #10, but not after the competing score
+ env.REPLAYS.put=async(...args)=>{const result=await put(...args);if(!raced){raced=true;assert.equal((await uploadFor(shortRun(0,80000),11)).status,200);}return result;};
+ const x=shortRun(0,108500); // initially beats #10, but not after the competing score
  assert.equal((await(await uploadReplay(x)).json()).retained,false);
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
  assert.equal(db.prepare('SELECT id FROM runs WHERE id=?').get(x.id),undefined);
@@ -512,7 +518,7 @@ test('cutoff is rechecked atomically if a faster submission arrives during objec
 test('failed object deletion never delays the score and is retried by maintenance',async()=>{
  const {objects}=await topTenFixture(),remove=env.REPLAYS.delete;
  env.REPLAYS.delete=async()=>{throw Error('Temporary object outage');};
- const x=shortRun(10,80000);assert.equal((await(await uploadReplay(x)).json()).retained,true);
+ const x=shortRun(0,80000);assert.equal((await(await uploadReplay(x)).json()).retained,true);
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,11);
  assert.equal(db.prepare('SELECT count(*) n FROM replay_object_deletions').get().n,1);
  env.REPLAYS.delete=remove;await worker.scheduled({},env);
@@ -522,7 +528,7 @@ test('failed object deletion never delays the score and is retried by maintenanc
 
 test('explicit retention purge removes legacy blobs but keeps the exact previewed top ten',async()=>{
  await call('/api/v1/register',{token:device});const entries=[];
- for(let car=0;car<15;car++){const x=shortRun(car,100000+car*1000);entries.push(x);await uploadReplay(x);}
+ for(let i=0;i<15;i++){const x=shortRun(0,100000+i*1000);entries.push(x);await uploadFor(x,i+1);}
  const a=await login(),before=new Map(db.prepare('SELECT * FROM runs').all().map(r=>[r.id,{...r}]));
  const preview=await(await call('/api/admin/retention',null,a)).json();assert.equal(preview.keep.length,10);assert.equal(preview.remove,5);
  const body={confirm:'PERMANENTLY KEEP ONLY TOP TEN'};
@@ -547,4 +553,110 @@ test('lost object-write acknowledgement leaves no score and its unclaimed replay
  await worker.scheduled({},env);assert.equal(objects.size,0);
  env.REPLAYS.put=put;assert.equal((await uploadReplay(x)).status,200);
  assert.deepEqual(await downloadedRaw(x.id),replayFor(x));assert.equal(objects.size,1);
+});
+
+test('model top tens survive outside the overall top ten and remain visible on the website',async()=>{
+ const {objects,entries}=await topTenFixture();
+ const models=[];
+ for(let i=0;i<11;i++){
+  const x=shortRun(1,200000+i*1000);models.push(x);
+  assert.equal((await(await uploadFor(x,20+i)).json()).retained,i<10);
+ }
+ const overall=await(await call('/api/v1/board?condition=0&weather=0')).json();
+ const model=await(await call('/api/v1/board?condition=0&weather=0&car=1')).json();
+ assert.deepEqual(overall.entries.map(x=>x.id),entries.map(x=>x.id));
+ assert.deepEqual(model.entries.map(x=>x.id),models.slice(0,10).map(x=>x.id));
+ assert.equal(objects.size,20);
+ const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();
+ assert.ok(snapshot.entries.some(x=>x.id===models[0].id));
+ await worker.scheduled({},env);assert.equal(objects.size,20);
+ assert.deepEqual(await downloadedRaw(models[9].id),replayFor(models[9]));
+ const faster=shortRun(1,90000);assert.equal((await(await uploadFor(faster,40)).json()).retained,true);
+ assert.equal((await call('/api/v1/replay?id='+models[9].id)).status,404);
+ assert.equal((await call('/api/v1/replay?id='+entries[9].id)).status,200);
+ assert.equal(objects.size,20);
+});
+
+test('maintenance keeps boards readable and submissions retryable without changing data',async()=>{
+ const {objects}=await topTenFixture();env.MAINTENANCE='true';
+ const response=await uploadReplay(shortRun(0,80000));
+ assert.equal(response.status,503);assert.equal(response.headers.get('Retry-After'),'60');
+ assert.equal((await call('/api/v1/register',{token:'c'.repeat(64)})).status,503);
+ assert.equal((await call('/api/v1/board?condition=0&weather=0')).status,200);
+ assert.equal((await(await call('/health')).json()).maintenance,true);
+ await worker.scheduled({},env);assert.equal(objects.size,10);
+ delete env.MAINTENANCE;
+ assert.equal((await(await uploadReplay(shortRun(0,80000))).json()).retained,true);
+});
+
+function historicalSource(){
+ const historical=new DatabaseSync(':memory:');
+ for(const table of ['runs','replays','replay_chunks']){
+  const columns=db.prepare('PRAGMA table_info('+table+')').all();
+  historical.exec('CREATE TABLE '+table+' ('+columns.map(x=>x.name+' '+x.type).join(',')+')');
+  const insert=historical.prepare('INSERT INTO '+table+' VALUES ('+columns.map(()=>'?').join(',')+')');
+  for(const row of db.prepare('SELECT * FROM '+table).all())insert.run(...columns.map(x=>row[x.name]));
+ }
+ const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args);},async first(){return historical.prepare(sql).get(...args)||null;},async all(){return {results:historical.prepare(sql).all(...args)};}});
+ env.SOURCE={prepare:wrap};return historical;
+}
+async function recoveryFixture(){
+ await call('/api/v1/register',{token:device});const x=shortRun(1);await uploadReplay(x);
+ const original={...db.prepare('SELECT * FROM runs WHERE id=?').get(x.id)},historical=historicalSource();
+ db.exec('DELETE FROM runs; DELETE FROM replay_object_deletions');
+ const objects=objectStorage();env.RETAIN_TOP_TEN='true';
+ return {x,original,historical,objects};
+}
+
+test('recovery restores exact metadata and a verified replay without changing the historical source',async()=>{
+ const {x,original,historical,objects}=await recoveryFixture();
+ try{
+  assert.equal((await recoverRun(env,x.id)).status,'recovered');
+  assert.deepEqual({...db.prepare('SELECT * FROM runs WHERE id=?').get(x.id)},original);
+  assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+  assert.equal((await recoverRun(env,x.id)).status,'already_present');assert.equal(objects.size,1);
+  assert.equal(historical.prepare('SELECT count(*) n FROM replay_chunks').get().n,1);
+  assert.equal(db.prepare('SELECT count(*) n FROM replay_chunks').get().n,0);
+ }finally{historical.close();}
+});
+
+test('recovery preserves current moderation and refuses conflicting existing scores',async()=>{
+ const {x,historical,original}=await recoveryFixture();
+ try{
+  db.prepare('UPDATE devices SET blocked=1 WHERE id=?').run(original.device_id);
+  assert.equal((await recoverRun(env,x.id)).status,'ineligible');
+  db.exec('UPDATE devices SET blocked=0');await recoverRun(env,x.id);
+  db.prepare('UPDATE runs SET points=1 WHERE id=?').run(x.id);
+  await assert.rejects(recoverRun(env,x.id),/refusing to overwrite/);
+  assert.equal(db.prepare('SELECT points FROM runs WHERE id=?').get(x.id).points,1);
+ }finally{historical.close();}
+});
+
+test('recovery with a corrupt source or failed readback cannot publish a broken replay',async()=>{
+ const {x,historical,original,objects}=await recoveryFixture();
+ try{
+  historical.prepare('UPDATE runs SET replay_sha256=? WHERE id=?').run('0'.repeat(64),x.id);
+  await assert.rejects(recoverRun(env,x.id),/Source replay verification/);assert.equal(objects.size,0);
+  historical.prepare('UPDATE runs SET replay_sha256=? WHERE id=?').run(original.replay_sha256,x.id);
+  const get=env.REPLAYS.get;env.REPLAYS.get=async()=>null;
+  await assert.rejects(recoverRun(env,x.id),/readback/);
+  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);
+  assert.equal(db.prepare('SELECT count(*) n FROM replay_object_deletions').get().n,1);
+  env.REPLAYS.get=get;await worker.scheduled({},env);
+  assert.equal(objects.size,0);assert.equal((await recoverRun(env,x.id)).status,'recovered');
+  assert.equal(historical.prepare('SELECT count(*) n FROM replay_chunks').get().n,1);
+ }finally{historical.close();}
+});
+
+test('recovery transaction failures preserve the source and cannot remove another committed replay',async()=>{
+ const {x,historical,objects}=await recoveryFixture();
+ try{
+  const batch=env.DB.batch;env.DB.batch=async()=>{throw Error('database write failed');};
+  await assert.rejects(recoverRun(env,x.id),/database write failed/);
+  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);
+  env.DB.batch=batch;assert.equal((await recoverRun(env,x.id)).status,'recovered');
+  assert.equal(objects.size,2);await worker.scheduled({},env);assert.equal(objects.size,1);
+  assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+  assert.equal(historical.prepare('SELECT count(*) n FROM replay_chunks').get().n,1);
+ }finally{historical.close();}
 });

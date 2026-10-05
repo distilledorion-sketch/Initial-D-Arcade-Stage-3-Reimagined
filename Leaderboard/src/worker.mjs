@@ -32,8 +32,9 @@ async function downloadReplay(env,run,asPackage){
 }
 async function handle(request,env){
  const url=new URL(request.url),path=url.pathname;
+ if(env.MAINTENANCE==='true'&&request.method!=='GET')return json({error:'Leaderboard maintenance. Your game will retry this upload.'},503,{'Retry-After':'60'});
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
- if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:env.REPLAYS?'object':'database',retention:retentionEnabled(env)?'top_ten_overall':'all_submitted'});
+ if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:env.REPLAYS?'object':'database',retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:env.MAINTENANCE==='true'});
  const ip=request.headers.get('CF-Connecting-IP')||'local';
  if(path==='/api/v1/activity'&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'activity-read:'+ip);
@@ -81,7 +82,7 @@ async function handle(request,env){
   if(path==='/api/admin/retention'&&request.method==='POST'){
    const x=await body(request);
    if(x.confirm!=='PERMANENTLY KEEP ONLY TOP TEN')return json({error:'Top-ten confirmation required.'},400);
-   await env.DB.batch([pruneStatement(env,200),env.DB.prepare('INSERT INTO audit(created_at,action,target,reason) VALUES (?,?,?,?)').bind(now(),'prune leaderboard','all boards','Keep only the overall top ten per course, direction and weather')]);
+   await env.DB.batch([pruneStatement(env,200),env.DB.prepare('INSERT INTO audit(created_at,action,target,reason) VALUES (?,?,?,?)').bind(now(),'prune leaderboard','all boards','Keep the overall and per-model top tens per course, direction and weather')]);
    const cleaned=await cleanupReplayObjects(env,500);
    return json({ok:true,...cleaned});
   }
@@ -211,7 +212,7 @@ async function handle(request,env){
   const condition=Number(url.searchParams.get('condition')),weather=Number(url.searchParams.get('weather')),car=Number(url.searchParams.get('car')??-1);
   if(!Number.isInteger(condition)||condition<0||condition>=COURSES.length*2||![0,1].includes(weather)||!Number.isInteger(car)||car< -1||car>34)return json({error:'Invalid board.'},400);
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
-  const rows=(await env.DB.prepare(`WITH ranked AS (SELECT r.*,ROW_NUMBER() OVER(PARTITION BY r.device_id,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank FROM runs r JOIN devices d ON r.device_id=d.id WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.hidden=0 AND d.blocked=0 AND (?=-1 OR r.car=?)) SELECT * FROM ranked WHERE personal_rank=1 ORDER BY ticks,created_at,id LIMIT 50`).bind(env.RULESET,epoch,condition,weather,car,car).all()).results;
+  const rows=(await env.DB.prepare(`WITH ranked AS (SELECT r.*,ROW_NUMBER() OVER(PARTITION BY r.device_id,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank FROM runs r JOIN devices d ON r.device_id=d.id WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.hidden=0 AND d.blocked=0 AND (?=-1 OR r.car=?)) SELECT * FROM ranked WHERE personal_rank=1 ORDER BY ticks,created_at,id LIMIT 10`).bind(env.RULESET,epoch,condition,weather,car,car).all()).results;
   return json({entries:rows.map(publicRun),epoch,generatedAt:now()});
  }
  if(path==='/api/v1/snapshot'&&request.method==='GET'){
@@ -226,6 +227,7 @@ async function handle(request,env){
 export default {
  async fetch(request,env){try{return await handle(request,env);}catch(e){if(e instanceof Response)return e;return json({error:e instanceof SyntaxError?'Invalid request JSON.':e.message?.startsWith('Invalid')||e.message?.startsWith('Incomplete')||e.message==='Request too large.'?e.message:'Service temporarily unavailable.'},e instanceof SyntaxError||/^(Invalid|Incomplete|Request too large)/.test(e.message||'')?400:503);}},
  async scheduled(event,env){
+  if(env.MAINTENANCE==='true')return;
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(now()).run();
   if(retentionEnabled(env))await env.DB.batch([pruneStatement(env)]);
   await cleanupReplayObjects(env,500);

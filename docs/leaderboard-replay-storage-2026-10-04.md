@@ -16,12 +16,15 @@ length and upload attempt. Public downloads still check season, ruleset,
 moderation and bans. A unique object mapping and durable deletion queue prevent
 delayed cleanup from deleting another upload attempt's committed replay.
 
-The requested retention rule keeps only the overall top ten across all cars
-for each course/direction/weather board. Car filters show matching entries
-from those ten; they do not have separate retained top tens. Ranking continues
+The initial cleanup kept only the overall top ten across all cars and removed
+model records outside those ten. The user subsequently confirmed that model
+boards must also retain their own top tens. The corrected retention rule keeps
+the overall top ten **and each car model's top ten** for every
+course/direction/weather board. Ranking continues
 to use one best time per installation/car. Future valid runs are still
 submitted and compared: slower runs receive HTTP 200 with `retained: false`
-without storing their replay; faster runs replace the displaced entry. The
+without storing their replay; an entry is removed only when neither the overall
+nor its model board retains it. The
 cutoff is checked again in the score-insert transaction for concurrent races.
 Displaced scores, duplicate old personal bests, previous seasons and ineligible
 hidden/blocked entries are permanently removed, including their remote replay.
@@ -63,7 +66,7 @@ Initial pruning uses explicit authenticated maintenance requests in bounded
 batches. Do not rerun any older migrations or reset the season. Failed object
 deletions retry every five minutes without delaying an accepted score.
 
-Final live verification passed at October 4, 9:07 PM Central. Deployment
+The initial overall-only verification passed at October 4, 9:07 PM Central. Deployment
 `fcc21738-7e9c-4d22-906f-81deb8de513c` has both R2 and ongoing retention enabled.
 There were 586 retained scores across 62 nonempty boards, no board above ten,
 and 586 matching replay objects totaling 493,506,354 bytes. D1 occupied
@@ -71,3 +74,47 @@ and 586 matching replay objects totaling 493,506,354 bytes. D1 occupied
 Every retained old score's row hash matched the pre-repair baseline. The
 game's snapshot contained the same 586 IDs. Public downloads of migrated
 replays and a new real `.41` submission passed full replay validation.
+
+## Model records recovery
+
+The overall-only cleanup removed car records which were slower than a course's
+overall ten. After the user confirmed that each car must retain a separate top
+ten, the service was changed to retain the union of overall and model top tens.
+The overall board still returns ten; selecting a car returns that car's ten.
+The game snapshot preserves its existing overall-ten/model-best format.
+
+Recovery first copied and verified every table in the current database during
+a brief retryable write pause, then moved the live service to the verified
+copy. Only the detached historical database was restored. Its 11,558 score
+rows matched every saved pre-cleanup row hash, and all 12,482 replay chunks were
+present. This recovered 3,314 qualifying model records with unchanged score
+metadata, verified original replay hashes and complete R2 readbacks. Live
+uploads continued against the new primary database during recovery.
+
+An additional restore point immediately before pruning contained seven later
+submissions. Four had been superseded; three still qualified and were restored
+from their accepted original score rows. Their R2 objects had already been
+deleted and were absent from the historical database. Those three rows retain
+their original replay digests but have zero stored replay bytes, so the site
+shows no replay download. Each exception is recorded in the audit log. New
+submissions still require and validate a complete replay.
+
+At October 4, 9:49 PM Central, production contained 3,906 scores and exactly
+3,903 replay objects across 62 overall boards and 1,078 nonempty model boards.
+Every model had at most ten entries, and comparison against historical plus
+current candidates found no missing qualifying score. The compact game
+snapshot matched the expected 1,295 entries. Ten public board checks, three
+full recovered replay downloads and all three unavailable-replay displays
+passed. Original times, drivers and race metadata remained unchanged.
+Storage was 3,390,448,892 bytes in R2 plus 5,197,824 bytes in the live D1 database.
+The temporary recovery worker was removed. The detached original database was
+returned to its compact, pre-recovery state (1,581,056 bytes, zero replay blobs),
+so the temporary multi-gigabyte historical copy does not remain allocated.
+
+The source changes pass 64 tests covering model retention outside the overall
+top ten, future submissions, replay cleanup, copy failures, retryable
+maintenance, recovery integrity and preservation of current moderation.
+Private production/recovery evidence is under
+`Verification/leaderboard-model-recovery-20261004/`. The canonical production
+configuration remains at the path above, now bound to the verified replacement
+database. Do not deploy a stale copy of the original database binding.

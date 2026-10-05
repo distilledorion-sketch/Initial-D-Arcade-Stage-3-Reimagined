@@ -36,12 +36,13 @@ The checked-in configuration has a placeholder database ID. Production credentia
 - Historical-time imports and replay-less uploads are rejected.
 - Public downloads contain the replay and race metadata, not credentials or moderation fields.
 - Moderation supports hiding/restoring runs and blocking/unblocking installations.
-- With `RETAIN_TOP_TEN: "true"`, only the ten overall entries for each course,
-  direction and weather remain. Car filters show matching entries from those
-  ten. Each installation/car keeps only its best qualifying time. New valid
+- With `RETAIN_TOP_TEN: "true"`, retain the overall top ten **and each car
+  model's top ten** for every course, direction and weather. Model records
+  remain even when they fall outside the overall ten. Each installation/car
+  keeps only its best qualifying time. New valid
   submissions are still evaluated; nonqualifying times receive a successful
   acknowledgement with `retained: false` so clients do not retry forever.
-  Faster entries permanently displace the lowest entry and its replay.
+  An entry and its replay are removed only when neither board retains it.
   Personal game saves and local replay files are not affected.
 - Top-ten pruning also removes older seasons and ineligible hidden/blocked
   entries. Once pruned, a run cannot be restored by moderation or downloaded.
@@ -89,10 +90,30 @@ is intentionally irreversible through the leaderboard. `POST
 /api/admin/replay-cleanup` drains up to 500 queued object removals per call.
 
 `/health` exposes `replayStorage: "object"` when the binding is connected.
+It reports `retention: "top_ten_overall_and_model"` for the retention policy.
+The website board endpoint returns ten entries for either All models or the
+selected car. The game snapshot keeps its existing compact representation:
+the overall top ten plus each model's best time.
 Without the binding, legacy database storage remains supported for local tests
 and small independent deployments. Do not remove the binding from production
 after migrating replays. Both public boards query committed scores immediately;
 there is no daily publishing job.
+
+## Recovery and maintenance
+
+`MAINTENANCE: "true"` keeps public reads available while returning retryable
+503 responses to writes and pausing scheduled cleanup. Use it for a short
+database cutover; remove it before normal service resumes.
+
+Never restore historical data over the live database. First preserve and verify
+the current database, move live traffic to its verified copy, and restore only
+the detached historical source. `src/recovery.mjs` is a recovery helper, not a
+public endpoint. It requires a separate `SOURCE` binding and should only be used
+by an authenticated, temporary maintenance worker. It applies current bans,
+season and both top-ten cutoffs; preserves original score metadata; verifies the
+expanded replay hash and complete R2 readback; and commits the score, object
+mapping and pruning together. It never modifies the historical source. Remove
+temporary recovery access after verifying the restored boards and replays.
 
 ## Online activity
 

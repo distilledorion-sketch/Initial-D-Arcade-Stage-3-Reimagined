@@ -1,15 +1,17 @@
-// Ten overall entries per course/direction/weather board. Match the public
+// Ten overall entries AND ten entries per car for each course/direction/weather.
+// The overall top ten is a subset of the per-car top tens. Match the public
 // board's existing one-best-time-per-installation-and-car rule before ranking.
 export const retainedSql=`WITH personal AS (
- SELECT r.id,r.condition,r.weather,r.ticks,r.created_at,
+ SELECT r.id,r.condition,r.weather,r.car,r.ticks,r.created_at,
  ROW_NUMBER() OVER(PARTITION BY r.device_id,r.condition,r.weather,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank
  FROM runs r JOIN devices d ON d.id=r.device_id
  WHERE r.ruleset=? AND r.epoch=CAST((SELECT value FROM settings WHERE key='epoch') AS INTEGER)
  AND r.hidden=0 AND d.blocked=0
 ), ranked AS (
- SELECT id,ROW_NUMBER() OVER(PARTITION BY condition,weather ORDER BY ticks,created_at,id) AS rank
+ SELECT id,ROW_NUMBER() OVER(PARTITION BY condition,weather ORDER BY ticks,created_at,id) AS overall_rank,
+ ROW_NUMBER() OVER(PARTITION BY condition,weather,car ORDER BY ticks,created_at,id) AS model_rank
  FROM personal WHERE personal_rank=1
-) SELECT id FROM ranked WHERE rank<=10`;
+) SELECT id FROM ranked WHERE overall_rank<=10 OR model_rank<=10`;
 
 export const retentionEnabled=env=>String(env.RETAIN_TOP_TEN)==='true';
 export function pruneStatement(env,limit=0){
@@ -19,16 +21,18 @@ export function pruneStatement(env,limit=0){
 
 export async function qualifiesForBoard(env,x,device,createdAt){
  if(!retentionEnabled(env))return true;
- // Do not persist a replay which already misses the cutoff. Recheck by pruning
+ // A run qualifies if it reaches its model's top ten, even outside the overall
+ // top ten. Every overall top-ten run also qualifies for its model's top ten.
+ // Do not persist a replay which already misses that cutoff. Recheck by pruning
  // in the insert transaction: concurrent faster submissions may change it.
  const best=await env.DB.prepare('SELECT ticks FROM runs WHERE device_id=? AND ruleset=? AND epoch=? AND condition=? AND weather=? AND car=? AND hidden=0 ORDER BY ticks,created_at,id LIMIT 1').bind(device,env.RULESET,x.epoch,x.condition,x.weather,x.car).first();
  if(best&&best.ticks<=x.ticks6000)return false;
  const ahead=await env.DB.prepare(`WITH personal AS (SELECT r.*,
  ROW_NUMBER() OVER(PARTITION BY r.device_id,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank
  FROM runs r JOIN devices d ON d.id=r.device_id
- WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.hidden=0 AND d.blocked=0
+ WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.car=? AND r.hidden=0 AND d.blocked=0
  ) SELECT COUNT(*) AS n FROM personal r WHERE personal_rank=1 AND NOT (r.device_id=? AND r.car=?)
- AND (r.ticks<? OR (r.ticks=? AND (r.created_at<? OR (r.created_at=? AND r.id<?))))`).bind(env.RULESET,x.epoch,x.condition,x.weather,device,x.car,x.ticks6000,x.ticks6000,createdAt,createdAt,x.id).first();
+ AND (r.ticks<? OR (r.ticks=? AND (r.created_at<? OR (r.created_at=? AND r.id<?))))`).bind(env.RULESET,x.epoch,x.condition,x.weather,x.car,device,x.car,x.ticks6000,x.ticks6000,createdAt,createdAt,x.id).first();
  return ahead.n<10;
 }
 
