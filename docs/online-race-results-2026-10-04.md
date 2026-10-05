@@ -87,5 +87,5 @@ balances pass the saved-car validation.
   physical controller hardware behavior. First-finish/winning reward checks use native boundary fixtures;
   the LAN result checks use natural timeouts.
 
-This change is local to the Discord bug branch. R35 work is separate. No desktop
-installation or GitHub release was made for this request.
+The original-screen correction is included in release .41. R35 work is separate.
+This publication does not install the build on the user's Desktop.

@@ -1,4 +1,20 @@
-0.3.95-community-replays.40
+0.3.95-community-replays.41
+ORIGINAL ARCADE ONLINE RESULTS
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Replaced the online post-race placeholder panels with the original arcade result and Continue screens.
+- Restored the original result artwork, rotating car, animated point counter, sounds, fades and YES/NO selection.
+- Preserved tuning-point rewards and battle-level progress. Repeated result messages cannot award points twice.
+- Both players choosing Yes returns to Mode Select with the online menu connected. No leaves the room; a player waiting on Yes can still leave.
+- Kept settled results and earned points visible when the other driver leaves. Continue uses the original countdown and defaults to No when time expires.
+- Added mouse selection on the original YES/NO labels alongside keyboard, controller and wheel navigation. Holding a button across screens does not confirm the next screen accidentally.
+- Kept the original Continue screen visible through the rematch handoff, removing the brief placeholder-panel flash.
+
+Includes the connection and Quick Match recovery fixes from .40. Verified with 227 native checks and two two-client LAN scenarios covering connected rematches, a second race, and both leaving cases. Physical controller hardware and two-account Steam relay behavior were not newly tested.
+
+Changed-file patches support .20 through .40. Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is still required and is not included.
+
+PREVIOUS UPDATE (.40)
 ONLINE CONNECTION AND QUEUE RECOVERY
 This update is required to submit new community Time Attack times. Both players need the new version for online races.
 
