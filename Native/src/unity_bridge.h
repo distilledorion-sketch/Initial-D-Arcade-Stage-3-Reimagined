@@ -248,10 +248,17 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerCurrentGear(void);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerStartSaved(const Idas3MultiplayerConfig* config,int selection,const uint32_t* local,const uint32_t* remote,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerReadRaceCar(int side,uint32_t* words,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetGo(int released);
-// Settled protocol winner: -1 both time-up,0 host,1 guest,2 draw. Audio only;
-// the race must already be finished. An identical repeat is a no-op.
+// Settled protocol winner: -1 both time-up,0 host,1 guest,2 draw. Commits
+// selected-car rewards and starts original menus after authority validation.
+// An identical repeat is a no-op.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
+// Local original-menu presentation. These calls do not award or alter results.
+// Input flags: 1 blocked, 2 peer left, 4 peer ready, 8 record save failed.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultScreen(int field);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultInput(int confirm,int cancel,int direction,unsigned flags);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultRecord(int points,unsigned level);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultHit(float x,float y);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetLocalSnapshot(Idas3MultiplayerSnapshot* snapshot);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerApplyRemoteSnapshot(const Idas3MultiplayerSnapshot* snapshot);
 // Experimental version2 input authority. Call Enable while StartSaved is held.

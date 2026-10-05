@@ -122,6 +122,10 @@ namespace Idas3.Multiplayer
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerSetGo(int released);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerSetResult(int winner);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerPointsEarned();
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerResultScreen(int field);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerResultInput(int confirm,int cancel,int direction,uint flags);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerResultRecord(int points,uint level);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerResultHit(float x,float y);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerDisconnect();
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerGetLocalSnapshot(ref Idas3CarSnapshot snapshot);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerApplyRemoteSnapshot(ref Idas3CarSnapshot snapshot);

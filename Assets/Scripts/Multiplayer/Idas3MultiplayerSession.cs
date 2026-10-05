@@ -805,6 +805,7 @@ namespace Idas3.Multiplayer
                     }
                 }catch(Exception e){ErrorText="Battle record could not be saved.";Debug.LogError("IDAS3 completed race record: "+e);}
                 recordCommitted=true;
+                Require(Idas3MultiplayerNative.Idas3MultiplayerResultRecord(BattlePointsEarned,LocalRecord.level)==1,Idas3Native.Error());
                 // Transport failure after settlement must not turn an earned
                 // result into a disconnected race or hide its points page.
                 if(completed.HasValue)Send(Packet.RecordUpdate,w=>{w.Write(raceId);WriteRecord(w,completed.Value);});

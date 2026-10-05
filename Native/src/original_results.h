@@ -10,7 +10,7 @@ struct OriginalBattleResultsState {
     // Participation, victory/finish bonus, advantage/record bonus, earned,
     // capped balance. profileMode1 selects original iResult2DTA0EEDA0/0EEFC0.
     std::array<std::uint32_t,5> points{};
-    bool deduction=false,circuitLayout=false;
+    bool deduction=false,circuitLayout=false,draw=false;
     //0EDFE0 state+64 selects alternate TOTAL POINTS digits and unit. The
     // owner advances the original30-frame blink once per60Hz update; painting
     // only consumes that frame's visibility, including repeated/pause paints.

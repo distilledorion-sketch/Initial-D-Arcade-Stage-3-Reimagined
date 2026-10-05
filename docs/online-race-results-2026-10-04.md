@@ -10,15 +10,25 @@ After settlement, both cars brake and both race clocks/progress stop. A trailing
 car keeps its unfinished source status and has no fabricated finish time.
 The result latch is included in checkpoints and the deterministic digest.
 
-The online overlay now presents, in order:
+Online results now use the existing arcade renderers, in order:
 
-1. YOU WIN / YOU LOSE (or DRAW / TIME UP).
-2. Tuning points and battle-level points earned.
-3. CONTINUE? with YES and NO. Enter/A confirms the selected choice; Escape/B
-   selects No on this page. Input must be released between pages.
+1. The original on-track FINISH and outcome artwork/audio.
+2. The original battle-result artwork over the rotating selected car, including
+   its source point-count animation, sounds, times and saved point balance.
+   Battle-level earnings use a small additional caption. An exact draw uses a
+   neutral DRAW caption because the source result bank has no draw heading.
+3. The original CONTINUE / YES / NO artwork and car view. Enter/A confirms the
+   selected choice; Escape/B selects No. Input must be released between pages.
+   Mouse hover/click targets come from the imported YES/NO label geometry.
 
-The outcome advances after three seconds or a fresh confirmation. The points
-page waits for confirmation. One Yes never dismisses the other player's result.
+The local presentation runs at the source 60 Hz independently of race packets
+and display frame rate. FINISH lasts 120 ticks, followed by the outcome for at
+least 180 ticks and the end of its audio, then a 15-tick fade. Fresh confirmation
+can skip ahead. The common result owner supplies its original reveal/count/hold
+and fade, including confirmation to skip the count or hold. Continue uses its
+879-tick timer and 41-tick confirmation dwell; expiry selects No. Losing focus
+or opening a covering input owner freezes this local presentation and clears
+pending input. One Yes never dismisses the other player's result.
 Both Yes votes use the existing host commit/client acknowledgement to retire
 the race, restore **Mode** selection, and open the connected online menu.
 No leaves the room and returns to Mode selection with the online overlay closed.
@@ -49,25 +59,32 @@ balances pass the saved-car validation.
 
 ## Verification
 
-- Native result application checks: 89 assertions, including either first
+- Native result application checks: 227 assertions, including either first
   finisher through real input-packet/hash confirmation, rejecting an unverified
   winner, exact selected-slot/car persistence, unchanged other profile fields,
   duplicate/conflicting results, no disconnected award, and Mode return.
+  The original post-race owners additionally cover frame rates from 30 to 240,
+  point count reaching the saved balance, original Continue artwork loading,
+  focus blocking, timeout/peer-departure No, Yes confirmation dwell, and leaving
+  while waiting without changing the awarded profile. Both mouse labels remain
+  hittable in either selected layout. Evidence:
+  `Verification/original-online-results-20261004/native-pointer`.
 - Timeline checks: first-goal boundaries for either slot, no false trailing
   finish, frozen clocks, braking, exact checkpoint restore, plus 19,200 peer
   frames with 50–250 ms simulated delay, jitter/loss, and collisions.
 - Two real Unity players over LAN loopback: natural double timeout, ordered
   result/points/Continue pages, one-Yes waiting, both-Yes connected return, second
   showcase/countdown/race, and No while the opponent is on the points page.
-  Evidence: `Verification/online-postrace-lan3`.
+  Evidence: `Verification/original-online-results-20261004/lan1`.
 - A second two-client run reverses the declining role: guest chooses Yes, host
   chooses No, and both return to Mode with the online overlay closed.
-  Evidence: `Verification/online-postrace-waiting-no`.
+  Evidence: `Verification/original-online-results-20261004/lan2`.
 - Native plugin built with MSVC; production and diagnostic managed assemblies
   compiled against the installed Unity references. The isolated player uses
   private saves. Hidden-window runs check input/state transitions and render
-  race-camera captures; they do not establish IMGUI pixel layout or Steam relay
-  behavior. First-finish/winning reward checks use native boundary fixtures;
+  actual native result, Continue, and race-camera captures; the results no longer
+  use IMGUI panels. These checks do not establish Steam relay behavior or
+  physical controller hardware behavior. First-finish/winning reward checks use native boundary fixtures;
   the LAN result checks use natural timeouts.
 
 This change is local to the Discord bug branch. R35 work is separate. No desktop

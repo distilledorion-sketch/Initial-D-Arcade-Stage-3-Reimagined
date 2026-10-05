@@ -68,7 +68,7 @@ std::vector<OriginalHudDraw> OriginalBattleResults::drawList(const OriginalBattl
     // It has no WIN/LOSE heading or opponent advantage widget.
     if(timeAttack){draw(s.circuitLayout?5:4);return out;}
     //0EEC80: result heading, WIN/LOSE/TIME UP, signed advantage.
-    draw(s.circuitLayout?3:2);draw(9+s.resultStatus);
+    draw(s.circuitLayout?3:2);if(!s.draw)draw(9+s.resultStatus);
     std::array<float,7> advantageX{};advantageX[0]=4.87f;x=4.64f;
     for(unsigned i=1;i<7;++i){advantageX[i]=x;x-=.16f;}
     if(s.resultStatus>1){for(unsigned i=0;i<2;++i)draw(17,advantageX[i],-2.51f);}

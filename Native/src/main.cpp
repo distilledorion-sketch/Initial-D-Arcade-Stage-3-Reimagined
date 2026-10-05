@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "wet_weather.h"
 #include "online_car_selection.h"
+#include "online_result_screen.h"
 #include "unity_ui_capture.h"
 #include "imported_course.h"
 #include "native_multiplayer.h"
@@ -204,6 +205,7 @@ struct App {
     Vec3 playerBodyWorld{},previousPlayerBodyWorld{},rivalBodyWorld{},previousRivalBodyWorld{};
     original::OriginalDrivingSession originalSession;
 #include "online_race_app.inl"
+#include "online_result_screen_app.inl"
     original::OriginalRaceRules originalRace;
     original::OriginalRaceStart originalRaceStart;
     std::uint32_t originalRaceOwnerFrame=0;
@@ -990,6 +992,7 @@ struct App {
             battleProfile.setu(72,earned.u(72));frontend.battleProfile.setu(72,earned.u(72));
         }
         multiplayer.finishWinner=winner;race.phase=RacePhase::Finished;
+        beginOnlineResult();
         race.originalStartDigit=-1;updateAudioScene();
     }
     void updateAudioScene(bool forcePause=false){
@@ -1017,6 +1020,7 @@ struct App {
         // Terminal presentation only: do not tick finish rules, score points,
         // publish a win/loss, or release the multiplayer save barrier.
         multiplayer.disconnected=true;multiplayer.waiting=false;
+        resetOnlineResult();
         authorityRemoteBackfireFrames=0;
         input={};paused=false;clock.reset();
         loadingActive=preRaceDialogueActive=legendVisitActive=vsActive=buntaVisitActive=timeAttackVisitActive=false;
@@ -1037,6 +1041,7 @@ struct App {
         // Restore while the write barrier remains active. load() can load
         // native menu assets, but cannot flush or migrate the user's profile.
         const auto saved=multiplayer;
+        resetOnlineResult();
         audio.resetRaceEffects();audio.endResultMusic();audio.useDevelopmentEngine();
         originalSession.setEngineOutput({});rivalVisible=false;loadedRivalCar=loadedRivalEnemy=-1;
         playerProjectedHeadlight.reset();rivalProjectedHeadlight.reset();
@@ -3065,6 +3070,10 @@ struct App {
         if(endingActive)return renderEnding(dt);
         if(menu)return renderMenu(dt);
         if(legendVisitActive)return renderLegendVisit(dt);
+        if(multiplayer.active&&onlineResult.page>=0){
+            advanceOnlineResult(dt);
+            if(onlineResult.page>0)return renderOnlineResult();
+        }
         if(!replayPlaybackActive)advanceStartPresentation(dt);
         if(multiplayer.active){multiplayer.auraRanges={};multiplayer.auraSeconds+=std::clamp(dt,0.,.25);}
         // Auras belong to the car showcase. Clear both cars' submissions on
@@ -3102,6 +3111,7 @@ struct App {
         renderer.sceneViewport={};
         renderer.screenFadeArgb=resultVisit.initialized?resultAnimationFrame.fadeAlpha<<24:
             race.phase==RacePhase::Finished&&!finishBannerDone?(std::min(finishFadeTicks,15u)*255u/15u)<<24:0;
+        if(multiplayer.active&&onlineResult.page==0)renderer.screenFadeArgb=(onlineResult.finishFade*255u/15u)<<24;
         if(resultVisit.initialized){
             if(!tuningPreview)throw std::logic_error("Result owner has no car preview");
             if(!tuningTexturesLoaded||loadedTuningTextureRevision!=tuningPreview->textureRevision()){
@@ -3414,6 +3424,10 @@ struct App {
         }
         state.results=(resultsReady||displayRecords.livePanel)?&displayRecords:nullptr;
         if(multiplayerDisconnected())state.finishBanner=OriginalHudState::FinishBanner::finish;
+        else if(multiplayer.active&&onlineResult.page==0)
+            state.finishBanner=onlineResult.frame<finishBannerSwap||multiplayer.finishWinner==2?OriginalHudState::FinishBanner::finish
+                :multiplayer.finishWinner<0?OriginalHudState::FinishBanner::timeUp
+                :multiplayer.finishWinner==int(multiplayer.config.localSlot)?OriginalHudState::FinishBanner::win:OriginalHudState::FinishBanner::lose;
         else if(!multiplayer.active&&race.phase==RacePhase::Finished&&!finishBannerDone)
             state.finishBanner=finishBannerTicks<finishBannerSwap?OriginalHudState::FinishBanner::finish
                 :race.timeUp?OriginalHudState::FinishBanner::timeUp

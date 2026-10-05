@@ -8,6 +8,25 @@ int main(int argc,char** argv)try{
     const auto root=fs::absolute(argv[1]),out=fs::absolute(argv[2]);
     if(fs::exists(out))throw std::runtime_error("Preserve existing evidence");fs::create_directories(out);
     unsigned checks=0;auto check=[&](bool value,const char* why){++checks;if(!value)throw std::runtime_error(why);};
+    for(unsigned fps:{30,60,120,144,240}){
+        OnlineResultScreen screen;screen.begin(2000,14000);FixedClock clock;
+        for(unsigned i=0;i<fps*10;++i)clock.advance(1./fps,[&]{screen.advance(true);});
+        check(screen.page==1&&screen.points.displayedBalance==14000&&screen.frame==286,"Original result timing depends on display frame rate");
+    }
+    {
+        OnlineResultScreen screen;screen.begin(0,9000);screen.page=2;
+        screen.input(true,false,1,0);screen.input(false,false,0,1);screen.advance(true);
+        check(!screen.confirming&&screen.countdown==879,"Focus loss retained a queued confirmation");
+        screen.input(false,false,0,0);
+        for(unsigned i=0;i<879;++i)screen.advance(true);
+        check(screen.selected==1&&screen.confirming&&!screen.decision,"Original countdown did not choose No");
+        for(unsigned i=0;i<41;++i)screen.advance(true);
+        check(screen.decision==2,"Timed-out Continue did not finish its confirmation dwell");
+        screen.begin(0,9000);screen.page=2;screen.input(true,false,-1,2|8);screen.advance(true);
+        check(screen.selected==1&&screen.confirming&&screen.recordFailed,"Departed-peer confirmation attempted a rematch");
+        for(unsigned i=0;i<41;++i)screen.advance(true);
+        check(screen.decision==2,"Departed peer did not return to Mode");
+    }
     auto app=std::make_unique<App>();app->root=root;app->saveRoot=out/"userdata";app->validationMode=true;app->settings();
     app->frontend.initialize(root,true);app->hud.loadOriginal(root);app->audio.configure(root);
     app->originalCamera=OriginalChaseCamera::load(root);app->bumperCamera=OriginalChaseCamera::load(root,OriginalDrivingView::Bumper);
@@ -32,9 +51,45 @@ int main(int argc,char** argv)try{
         check(earned.words==expected.words&&app->multiplayer.pointsEarned==amount,"Award changed fields besides selected-car balance");
         check(app->profiles.load(0).profile.words==offline.words,"Award touched another save/car");
         app->setMultiplayerResult(winner);check(rewards.load(8).profile.words==earned.words,"Duplicate result awarded twice");
+        check(app->onlineResult.page==0,"Settled result did not start original finish presentation");
+        app->onlineResult.input(false,false,0,1);app->advanceOnlineResult(.1);
+        check(app->onlineResult.frame==0,"Blocked result input advanced presentation");
+        app->onlineResult.input(true,false,0,0);app->advanceOnlineResult(1./60.);
+        check(app->onlineResult.page==1&&app->onlineResultPreview,"Original result car scene did not open");
+        check(app->onlineResultPoints.profileMode==2&&app->onlineResultPoints.points[3]==amount,
+            "Online points were not supplied to the original battle result panel");
+        check(app->onlineResultPoints.resultStatus==(winner<0?2:winner==int(slot)?0:1)&&
+            app->onlineResultPoints.draw==(winner==2),"Online result artwork outcome is incorrect");
+        for(unsigned tick=0;tick<94;++tick)app->advanceOnlineResult(1./60.);
+        check(app->onlineResultPoints.points[4]==earned.u(72),"Original point count did not reach saved balance");
+        app->setMultiplayerResult(winner);
+        check(app->onlineResult.page==1&&app->onlineResultPoints.points[4]==earned.u(72),"Duplicate result restarted original screens");
+        app->onlineResult.input(true,false,0,0);
+        for(unsigned tick=0;tick<40;++tick)app->advanceOnlineResult(1./60.);
+        check(app->onlineResult.page==2&&app->onlineContinueArtwork.loaded(),"Original Continue artwork was not opened");
+        for(unsigned selected:{0,1}){
+            unsigned labels=0;
+            for(int y=0;y<480;y+=8)for(int x=0;x<640;x+=8){
+                const auto hit=app->onlineContinueArtwork.hitContinue(float(x),float(y),selected);
+                if(hit>=0)labels|=1u<<hit;
+            }
+            check(labels==3&&app->onlineContinueArtwork.hitContinue(-100,-100,selected)==-1,
+                "Authored Continue labels do not supply both pointer targets");
+        }
+        const auto countdown=app->onlineResult.countdown;
+        app->onlineResult.input(false,false,1,1);app->advanceOnlineResult(.1);
+        check(app->onlineResult.countdown==countdown&&app->onlineResult.selected==0,"Blocked Continue changed selection or timer");
+        app->onlineResult.input(true,false,-1,0);app->advanceOnlineResult(1./60.);
+        check(app->onlineResult.confirming&&!app->onlineResult.decision,"Continue skipped its original confirmation dwell");
+        for(unsigned tick=0;tick<41;++tick)app->advanceOnlineResult(1./60.);
+        check(app->onlineResult.decision==1&&app->multiplayer.active,"Yes must await the managed peer handshake");
+        app->onlineResult.input(false,true,0,0);app->advanceOnlineResult(1./60.);
+        check(app->onlineResult.decision==2,"No while waiting did not request disconnection");
+        check(rewards.load(8).profile.words==earned.words,"Original result presentation changed awarded save/tuning");
         rejected=false;try{app->setMultiplayerResult(winner==0?1:0);}catch(const std::logic_error&){rejected=true;}
         check(rejected,"Conflicting duplicate result accepted");
         app->leaveMultiplayer();
+        check(app->onlineResult.page==-1&&!app->onlineResultPreview,"Original post-race owner survived mode return");
         check(app->menu&&app->frontend.stage==FrontendStage::Mode&&!app->multiplayer.active,"Post-race exit must return to mode selection");
         check(app->frontend.battleProfile.words==offline.words,"Exit replaced offline driver's profile");
     }

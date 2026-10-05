@@ -130,7 +130,7 @@ void publish(UnityRuntime& r,int eventId){
     const auto& app=*r.app;s.state=1;s.width=app.renderer.width;s.height=app.renderer.height;
     s.frontendStage=int(app.frontend.stage);s.attractChild=int(app.frontend.attractChild());s.course=app.courseIndex;s.car=app.frontend.car;
     s.racePhase=int(app.race.phase);s.flags=(app.menu?1u:0)|(app.paused?2u:0)|(app.active?4u:0)|(app.running?8u:0)|(app.originalHandling?16u:0)|(app.legendVisitActive?32u:0)|(app.legendVisitActive&&app.legendVisit.choiceVisible()?64u:0)|(app.multiplayer.active?128u:0)|(app.multiplayer.active&&app.multiplayer.waiting?256u:0)|(app.preRaceDialogueActive?512u:0)|(app.loadingActive?1024u:0)|(app.multiplayerDisconnected()?2048u:0)|(app.extraModeVisitActive()?4096u:0)|(app.canRetireLegendRace()?8192u:0);
-    if(app.resultVisit.initialized)s.flags|=262144u;
+    if(app.resultVisit.initialized||app.onlineResult.page>0)s.flags|=262144u;
     if(app.importedCourse)s.flags|=importedCourseDefinition(app.importedCourse->id).sceneFlags|16384u|(app.reverse?32768u:0u)|(app.night?65536u:0u)|(app.wet?131072u:0u);
     s.speedMetresPerSecond=app.vehicle.speed;s.rpm=app.vehicle.rpm;
     s.reserved=r.sceneMode?1u:0u;
@@ -1491,6 +1491,31 @@ int IDAS3_UNITY_CALL Idas3MultiplayerDisconnect(){
 int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     return r.app&&r.app->multiplayer.active?int(r.app->multiplayer.pointsEarned):0;
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerResultScreen(int field){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.app->multiplayer.active)return -1;
+    const auto& s=r.app->onlineResult;
+    switch(field){case 0:return s.page;case 1:return s.selected;case 2:return s.decision;
+        case 3:return int(s.countdown);case 4:return int(s.frame);case 5:return int(s.points.phase);
+        case 6:return int(s.pointsFrame.displayedBalance);case 7:return s.confirming;default:return -1;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerResultInput(int confirm,int cancel,int direction,unsigned flags){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.app->multiplayer.active||r.app->onlineResult.page<0||
+        unsigned(confirm)>1||unsigned(cancel)>1||direction< -1||direction>1||(flags&~15u))return 0;
+    r.app->onlineResult.input(confirm!=0,cancel!=0,direction,flags);return 1;
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerResultRecord(int points,unsigned level){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.app->multiplayer.active||r.app->onlineResult.page<0||level<1||level>99)return 0;
+    r.app->onlineResultBattlePoints=points;r.app->onlineResultLevel=int(level);return 1;
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerResultHit(float x,float y){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.app->multiplayer.active||r.app->onlineResult.page!=2||
+       (r.app->onlineResult.confirming&&!r.app->onlineResult.decision))return -1;
+    return r.app->onlineContinueArtwork.hitContinue(x,y,r.app->onlineResult.selected);
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerLeave(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

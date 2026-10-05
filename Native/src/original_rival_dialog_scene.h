@@ -33,6 +33,9 @@ public:
     // Paints a Legend return choice overlay over whatever is already drawn.
     void paintChoice(std::span<std::uint32_t> target,int width,int height,
         OriginalLegendChoiceKind,std::uint32_t selected,std::uint32_t timerTicks)const;
+    // Pointer hit against the authored Continue label geometry, in 640x480
+    // source coordinates. Returns 0 Yes, 1 No, or -1 outside either label.
+    int hitContinue(float x,float y,unsigned selected)const;
 private:
     struct Bank { NativeModel model; NativeTextureBank textures; };
     std::filesystem::path root_;

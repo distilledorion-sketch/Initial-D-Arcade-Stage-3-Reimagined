@@ -724,7 +724,8 @@ namespace Idas3.Multiplayer
                 yield return CaptureMenu("return-results");
                 File.WriteAllText(Path.Combine(root,"return-results-ready.json"),"{\"ready\":true}");
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"return-results-ready.json")),20,"Both peers did not reach results before return.");
-                yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,6,"Win/loss did not advance to points.");
+                yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,30,"Original finish presentation did not advance to points.");
+                yield return Until(()=>Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5)>=1,3,"Original points reveal did not finish.");
                 yield return CaptureMenu("return-points");
                 pulse=13;
                 yield return Until(()=>menu.ResultsPage==2&&menu.CanAcknowledgeReturnToLobby,5,"Points did not advance to Continue.");
@@ -797,7 +798,7 @@ namespace Idas3.Multiplayer
                 else {
                     driving=false;
                     yield return Until(()=>session.CanReturnToLobby,180,"Second race did not reach its result.");
-                    yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,6,"Second result omitted points.");
+                    yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,30,"Second result omitted original points.");
                     File.WriteAllText(Path.Combine(root,"second-points-ready.txt"),session.ResultText);
                     yield return Until(()=>File.Exists(Path.Combine(peerRoot,"second-points-ready.txt")),10,"Peer did not reach second points page.");
                     if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-waiting-no-check")>=0){
@@ -1086,6 +1087,14 @@ namespace Idas3.Multiplayer
         }
         private IEnumerator CaptureMenu(string name)
         {
+            if(menu.ResultsVisible){
+                // The original owners are native camera/UI geometry, including
+                // the rotating result car. Capture those actual renderers.
+                yield return CaptureWorld(name);
+                Check(!shots[shots.Count-1].menuHeaderVisible,"Placeholder online panel covered the original result.");
+                if(menu.ResultsPage>0)Check((host.Status.flags&262144u)!=0,"Original result preview flag was absent.");
+                yield break;
+            }
             // Hidden-window transport matrix does not claim an IMGUI pixel check.
             // Game cameras are still rendered and validated below.
             if(WorldOnly)yield break;

@@ -115,6 +115,19 @@ void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,i
             bank->model.chunks[draw.chunk],placement);
     }
 }
+int OriginalRivalDialogScene::hitContinue(float x,float y,unsigned selected)const{
+    if(!loaded_)return -1;
+    for(const auto& draw:originalLegendChoiceDraws(OriginalLegendChoiceKind::Continue,selected,879)){
+        if(draw.bank!=OriginalLegendChoiceBank::Prompt||draw.chunk>1||draw.chunk>=prompt_.model.chunks.size())continue;
+        float left=1e9f,top=1e9f,right=-1e9f,bottom=-1e9f;
+        for(const auto& batch:prompt_.model.chunks[draw.chunk].batches)for(const auto& v:batch.vertices){
+            const float px=draw.x+v.position.x*100.f*draw.scale,py=draw.y-v.position.y*100.f*draw.scale;
+            left=std::min(left,px);right=std::max(right,px);top=std::min(top,py);bottom=std::max(bottom,py);
+        }
+        if(x>=left&&x<=right&&y>=top&&y<=bottom)return draw.chunk==1?0:1;
+    }
+    return -1;
+}
 void OriginalRivalDialogScene::paintChoice(std::span<std::uint32_t> target,int width,int height,
     OriginalLegendChoiceKind kind,std::uint32_t selected,std::uint32_t timerTicks)const{
     if(width<=0||height<=0||target.size()!=std::size_t(width)*height)
