@@ -103,6 +103,10 @@ Garage refresh also preserves the exact save slot, car and AT/MT choice when
 playing a secondary garage car makes it the save's primary menu entry. A
 same-model car in a different file must not take its place.
 
+Only the covered Mode owner is suspended. Other original owners continue their
+accepted transitions while controls are blocked, including the Rival handoff
+under the challenger presentation after closing Sound Room.
+
 The native development finish/status panels are now excluded from online
 races, including the interval between the local finish and verified result.
 The existing original FINISH/outcome, points and Continue owners still run.

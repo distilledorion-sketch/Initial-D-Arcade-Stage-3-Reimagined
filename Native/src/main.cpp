@@ -2437,9 +2437,11 @@ struct App {
         if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
         const auto previousColor=frontend.selectedColor();
         const auto previousStage=frontend.stage;
-        // A covering managed menu owns input. Do not let the hidden source
-        // menu count down, select a mode, or mutate a lobby's car snapshot.
-        frontend.advance(hostDrivingControlsBlocked?0:dt);
+        // Keep a covered Mode owner from changing the lobby's car snapshot.
+        // Other owners must still finish their accepted transitions: the
+        // challenger presentation also blocks controls while Rival exits.
+        const bool coveredMode=hostDrivingControlsBlocked&&frontend.stage==FrontendStage::Mode;
+        frontend.advance(coveredMode?0:dt);
         if(frontend.takeSaveCarPreviewReset()){
             loadedProfileCar=-1;
             if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
