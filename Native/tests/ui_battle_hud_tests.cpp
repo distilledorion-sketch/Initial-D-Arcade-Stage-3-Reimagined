@@ -109,6 +109,16 @@ int main(int argc,char** argv)try{
     }
     hud.resize(w,h);peer.frame=42;std::swap(peer.playerName,peer.rivalName);std::swap(peer.playerCar,peer.rivalCar);hud.paint(online);
     require(hud.lastBattlePresentation().playerName=="SMOKE JOIN"&&hud.lastBattlePresentation().playerCarCode=="BNR34"&&hud.lastBattlePresentation().rivalName=="SMOKE HOST","Guest HUD must use local DRIVER independent of pre-race grid slot");
+    const auto driving=hud.paint(online);std::vector<std::uint32_t> beforeFinish(driving,driving+n);
+    onlineClock.phase=RacePhase::Finished;online.message="Waiting for verified result";
+    const auto pendingFinish=hud.paint(online);
+    for(int y=110;y<515;++y)for(int x=391;x<875;++x)
+        require(pendingFinish[y*w+x]==beforeFinish[y*w+x],"Online result wait drew the placeholder finish/status panel");
+    save(output/"online-pending-result.bmp",std::vector<std::uint32_t>(pendingFinish,pendingFinish+n),w,h);
+    auto offlineFinish=online;offlineFinish.multiplayer=false;offlineFinish.onlineBattleHud.active=false;
+    const auto fallback=hud.paint(offlineFinish);
+    require(fallback[184*w+415]!=beforeFinish[184*w+415],"Offline fallback finish panel was removed");
+    online.message.clear();
     online.finishBanner=OriginalHudState::FinishBanner::win;hud.paint(online);
     require(!hud.lastBattlePresentation().online&&!hud.lastBattlePresentation().game2dCommands&&!hud.lastBattlePresentation().playerGlyphs,"Finish announcement retained racing HUD snapshot");
     hud.paint(s);require(hud.lastBattlePresentation().portraitCommands==1&&!hud.lastBattlePresentation().online,"Returning from online changed offline portrait branch");

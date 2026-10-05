@@ -296,6 +296,10 @@ const std::uint32_t* Hud::paint(const UiState& s){
     // nothing else over it, so the development panel, the status line and
     // the battle plates stay down.
     const bool announcement=s.finishBanner!=OriginalHudState::FinishBanner::none;
+    // Online can finish locally before the verified result arrives. Its
+    // original result owner (or disconnected screen) handles that interval;
+    // the development finish panel must never appear over it.
+    const bool fallbackFinish=race.phase==RacePhase::Finished&&!s.multiplayer&&!onlineBattle&&!settledResults&&!announcement;
     if(s.menu||!battleHud){lastBattleFrame=-1;lastBattleEnemy=lastBattleProfileMode=0xffffffff;battleAnimation={};battleFrameAnimation={};}
     if(s.menu&&s.frontend){
         const auto& art=s.frontend->paint(width,height);std::copy(art.begin(),art.end(),pixels);unityUiCopy(pixels,art.data(),width,height);
@@ -358,7 +362,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
             row(s.originalHandling?"Heading error  %.3f (normalized)":"Slip angle     %+.3f rad",v.slip);row("Yaw rate       %+.3f rad/s",v.yawRate);row("Steering       %+.3f",v.steering);row("Signed square  %+.3f",v.steeringBasis[1]);row("Load proxy     %+.3f",v.accelProxy);row("Render         %.1f FPS",s.fps);
             text(45,354,"Simulation: fixed 60 Hz",14,yellow);text(45,380,s.originalHandling?"Original player solver and car data":"Development force law / car parameters",12,muted);text(45,405,v.wallContact?"WALL CONTACT":"Free contact",12,v.wallContact?yellow:muted);
         }
-        if(!(s.paused&&s.suppressPauseOverlay)&&(s.paused||(race.phase==RacePhase::Finished&&!settledResults&&!announcement))){rect(411,182,458,333,panel);rect(411,182,458,4,yellow);text(453,213,s.paused?"PAUSED":race.timeUp?"TIME UP":s.battle?(s.battleWon?"YOU WIN":"YOU LOSE"):"RUN COMPLETE",36,white,true);
+        if(!(s.paused&&s.suppressPauseOverlay)&&(s.paused||fallbackFinish)){rect(411,182,458,333,panel);rect(411,182,458,4,yellow);text(453,213,s.paused?"PAUSED":race.timeUp?"TIME UP":s.battle?(s.battleWon?"YOU WIN":"YOU LOSE"):"RUN COMPLETE",36,white,true);
             text(454,276,formatTime(race.seconds()),45,yellow,true);text(453,353,s.paused?"ESC / START    Resume":"ENTER / A    Back to course select",18,white);
             if(!s.multiplayer){text(453,395,"R    Restart this course",17,muted);if(s.paused)text(453,434,"BACKSPACE    Course select",17,muted);}
             if(s.paused)text(453,479,s.originalHandling?"Original player physics / "+c.name:"Development handling / selected course",12,muted);
@@ -366,7 +370,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
         }
     }
     // Startup scope notices belong in pause/debug, not over the road.
-    if(!s.message.empty()&&!announcement&&!(s.paused&&s.suppressPauseOverlay)&&(s.menu||s.paused||s.debug||(race.phase==RacePhase::Finished&&!settledResults))) {rect(391,110,484,45,panel);text(407,122,s.message,14,yellow);}
+    if(!s.message.empty()&&!announcement&&!(s.paused&&s.suppressPauseOverlay)&&(s.menu||s.paused||s.debug||fallbackFinish)) {rect(391,110,484,45,panel);text(407,122,s.message,14,yellow);}
 #if !defined(IDAS3_PORTABLE_SCENE)
     GdiFlush();
 #endif

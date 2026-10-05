@@ -710,6 +710,7 @@ namespace Idas3.Multiplayer
                 host.RaceMusic.Refresh();report.selectedMusic=host.RaceMusic.State.selectedIndex;
                 if(finishMusicCheck)Check(report.selectedMusic==-1,"Private finish-music fixture must retain the game-default song choice.");
                 var localPick=session.LocalChoice;var remotePick=session.RemoteChoice;int localCar=session.LocalCar;
+                int selectedSaveSlot=session.LocalSavedCar.SaveSlot;bool selectedAutomatic=session.LocalSavedCar.Automatic;
                 Phase("waiting-natural-results");double waitStarted=Time.realtimeSinceStartupAsDouble;acceleratedReturnWait=true;
                 // Private diagnostic acceleration only: run the unchanged
                 // source rules until their real timer ends with no car input.
@@ -746,6 +747,7 @@ namespace Idas3.Multiplayer
                 Check(host.Status.frontendStage==5,"Both Yes must return behind the online menu to mode select.");
                 Check(ReferenceEquals(transport,SessionField<object>("transport"))&&SessionField<ulong>("localNonce")==localNonce&&SessionField<ulong>("remoteNonce")==remoteNonce,"Return replaced the transport or started a new peer handshake.");
                 Check(session.LocalChoice.Equals(localPick)&&session.RemoteChoice.Equals(remotePick)&&session.LocalCar==localCar&&CarSelectionAgrees(),"Return lost car or course picks.");
+                Check(session.LocalSavedCar.SaveSlot==selectedSaveSlot&&session.LocalSavedCar.Automatic==selectedAutomatic,"Return substituted another save or reset transmission.");
                 Check(!session.HasCourseDraw&&!session.LocalReady&&!session.RaceReleased&&string.IsNullOrEmpty(session.ResultText),"Return retained readiness, draw, result or GO state.");
                 foreach(var player in session.Players)Check(!player.Ready,"Return retained another player's Ready state.");
                 Check(session.LocalSnapshot.sequence==0&&session.RemoteSnapshot.sequence==0&&session.SnapshotsSent==0&&session.RemoteSnapshotsReceived==0,"Return retained a prior race snapshot stream.");
@@ -755,6 +757,11 @@ namespace Idas3.Multiplayer
                 File.WriteAllText(Path.Combine(root,"returned-lobby-verified.json"),"{\"ready\":true}");
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"returned-lobby-verified.json")),20,"Peer did not verify its reset lobby before re-ready.");
                 Phase("ready-second-race");yield return Until(()=>session.CanReady,15,"Returned lobby would not accept fresh readiness.");
+                yield return Frames(60);
+                var refreshedWords=new uint[307];
+                Check(Idas3MultiplayerNative.Idas3MultiplayerReadCar(session.LocalSavedCar.Selection,refreshedWords,307)>0,"Returned save cannot be read.");
+                for(int word=0;word<refreshedWords.Length;++word)
+                    Check(refreshedWords[word]==session.LocalSavedCar.Words[word],"Covered mode menu changed the agreed saved car before rematch.");
                 Check(menu.IsOpen,"Returned lobby must be open before the second automatic closure.");yield return Frames(3);session.SetReady(true);
                 if(role=="host"){yield return Until(()=>session.CanStart,20,"Both returned drivers could not become Ready again.");session.StartRace();}
                 yield return Until(()=>session.IsRacing,30,"Second native race did not load.");

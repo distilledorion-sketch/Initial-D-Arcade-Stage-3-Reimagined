@@ -1058,6 +1058,9 @@ struct App {
         renderer.screenFadeArgb=0;menuTexturesLoaded=false;texturesPending=true;tuningPreview.reset();tuningTexturesLoaded=false;
         if(tuningPresentation)tuningPresentation->clear();
         try{load();}catch(...){multiplayer={};throw;}
+        // Initialize Mode before the managed lobby refreshes its full saved-car
+        // snapshot. The source owner seeds the profile's menu countdown here.
+        frontend.advance(0);
         multiplayer={};message.clear();messageSeconds=0;
     }
     void loadRivalCar(unsigned carId,unsigned enemy){
@@ -2434,7 +2437,9 @@ struct App {
         if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
         const auto previousColor=frontend.selectedColor();
         const auto previousStage=frontend.stage;
-        frontend.advance(dt);
+        // A covering managed menu owns input. Do not let the hidden source
+        // menu count down, select a mode, or mutate a lobby's car snapshot.
+        frontend.advance(hostDrivingControlsBlocked?0:dt);
         if(frontend.takeSaveCarPreviewReset()){
             loadedProfileCar=-1;
             if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();

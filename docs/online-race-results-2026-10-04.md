@@ -89,3 +89,36 @@ balances pass the saved-car validation.
 
 The original-screen correction is included in release .41. R35 work is separate.
 This publication does not install the build on the user's Desktop.
+
+## Rematch and interim finish correction (2026-10-05, release .42)
+
+The returned Mode screen initialized and advanced the source countdown stored
+at profile offset 1176 after the lobby had read its car. That changed the full
+profile checked by `Idas3MultiplayerStartSaved`, producing the misleading
+"Saved car changed" error. Mode now initializes before garage refresh, and a
+covering managed menu suspends its hidden selection owner. Closing the overlay
+resumes the menu. The full 307-word saved-car validation remains unchanged.
+
+Garage refresh also preserves the exact save slot, car and AT/MT choice when
+playing a secondary garage car makes it the save's primary menu entry. A
+same-model car in a different file must not take its place.
+
+The native development finish/status panels are now excluded from online
+races, including the interval between the local finish and verified result.
+The existing original FINISH/outcome, points and Continue owners still run.
+
+The regression reproduces the old snapshot mismatch, then verifies the fix
+through a 30-second covered Mode wait, menu resumption, awards and save
+preservation (356 native application assertions). Pixel checks cover the
+pending-result interval and retain the offline fallback panel. Evidence is in
+`Verification/online-rematch-20261005`. These source/plugin changes are included in release .42.
+This publication does not install a Desktop build.
+
+Two actual Unity clients also passed the connected result/Continue/rematch and
+peer-No flow over local TCP (27,739 host checks, 26,815 guest checks). Both used
+private duplicate-model saves, selected a secondary car from Save 2, retained
+that same file and manual transmission when it became the primary entry, and
+started and drove the second race. The runtime test uses natural double
+timeouts; awarded balances and the active offline-car cache are covered by
+the native application test. This does not verify two-account Steam relay
+behavior. Production C# compiled against the installed Unity player references.

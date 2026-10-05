@@ -91,13 +91,27 @@ int main(int argc,char** argv)try{
         app->leaveMultiplayer();
         check(app->onlineResult.page==-1&&!app->onlineResultPreview,"Original post-race owner survived mode return");
         check(app->menu&&app->frontend.stage==FrontendStage::Mode&&!app->multiplayer.active,"Post-race exit must return to mode selection");
-        check(app->frontend.battleProfile.words==offline.words,"Exit replaced offline driver's profile");
+        auto restored=app->frontend.battleProfile;restored.setu(1176,offline.u(1176));
+        check(restored.words==offline.words,"Exit replaced offline driver's profile beyond initializing its menu timer");
     }
     // The current offline car also retains its award on restore.
     app->frontend.car=0;app->loadedProfileCar=0;app->frontend.battleProfile=offline;
     Idas3MultiplayerConfig config{sizeof(config),1,0,0,0,0,0,8,0,1};app->startMultiplayer(config,&offline,&target);
     app->multiplayer.rewardSelection=onlineSlotCarSelection(0,0);app->race.phase=RacePhase::Finished;app->setMultiplayerResult(0);
     app->leaveMultiplayer();check(app->frontend.battleProfile.u(72)==9890&&app->profiles.load(0).profile.u(72)==9890,"Current car award was undone on return");
+    // A rematch keeps the online menu above Mode. Its first render and a long
+    // lobby wait must not invalidate the full profile already read by C#.
+    original::OriginalBattleProfile lobbyCar,afterWait;
+    check(app->onlineCarProfile(0,lobbyCar)==1,"Returned active save is missing");
+    check(app->renderer.initializeSceneCapture(640,480),"Menu capture renderer");
+    app->demoPreparationStarted=true;app->setHostDrivingControlsBlocked(true);
+    for(unsigned frame=0;frame<120;++frame)check(app->render(.25),"Covered mode render");
+    check(app->onlineCarProfile(0,afterWait)==1&&afterWait.words==lobbyCar.words,
+        "Covered Mode changed the saved-car snapshot before rematch");
+    check(app->frontend.stage==FrontendStage::Mode,"Covered Mode auto-selected a game mode");
+    app->setHostDrivingControlsBlocked(false);
+    for(unsigned frame=0;frame<4;++frame)check(app->render(.25),"Uncovered mode render");
+    check(app->frontend.battleProfile.u(1176)<afterWait.u(1176),"Mode did not resume after closing overlay");
     offline=app->frontend.battleProfile;app->startMultiplayer(config,&offline,&target);app->multiplayer.rewardSelection=onlineSlotCarSelection(0,0);
     app->disconnectMultiplayer();bool rejected=false;try{app->setMultiplayerResult(0);}catch(const std::logic_error&){rejected=true;}
     check(rejected&&app->profiles.load(0).profile.u(72)==9890,"Disconnected race awarded points");app->leaveMultiplayer();

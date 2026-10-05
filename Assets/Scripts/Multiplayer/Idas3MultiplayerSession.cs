@@ -73,7 +73,8 @@ namespace Idas3.Multiplayer
                 if(found<0)throw new InvalidOperationException(Idas3Native.Error());
                 if(found==0)return null;
                 item.Saved=found==1;item.Automatic=item.Words[17]==0;
-                if(LocalSavedCar?.Selection==id)item.Automatic=LocalSavedCar.Automatic;
+                if(LocalSavedCar!=null&&item.SaveSlot==LocalSavedCar.SaveSlot&&item.Car==LocalSavedCar.Car)
+                    item.Automatic=LocalSavedCar.Automatic;
                 return item;
             }
             for(int slot=0;slot<5;++slot){
@@ -94,7 +95,11 @@ namespace Idas3.Multiplayer
                 garage.Add(item);
             }
             int preferred=LocalSavedCar?.Selection??Idas3MultiplayerNative.Idas3MultiplayerCurrentCar();
-            var chosen=garage.Find(c=>c.Selection==preferred)??garage.Find(c=>c.Saved&&c.Car==LocalCar)??garage.Find(c=>c.Saved)??garage.Find(c=>c.Car==LocalCar);
+            // Starting a race makes this car the slot's primary entry. Its
+            // selector can therefore change from 40+slot*35+car to slot. Keep
+            // the same file/car before considering a same-model fallback.
+            var chosen=LocalSavedCar==null?null:garage.Find(c=>c.SaveSlot==LocalSavedCar.SaveSlot&&c.Car==LocalSavedCar.Car);
+            chosen=chosen??garage.Find(c=>c.Selection==preferred)??garage.Find(c=>c.Saved&&c.Car==LocalCar)??garage.Find(c=>c.Saved)??garage.Find(c=>c.Car==LocalCar);
             if(LocalSavedCar==null&&chosen!=null&&chosen.SaveSlot<0)
                 chosen=garage.Find(c=>c.SaveSlot>=0&&c.Car==LocalCar)??garage.Find(c=>c.SaveSlot>=0)??chosen;
             if(chosen!=null)SelectSavedCar(chosen);

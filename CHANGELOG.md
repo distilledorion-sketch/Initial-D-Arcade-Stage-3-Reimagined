@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.42 - October 5, 2026
+
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Fixed online rooms closing with "Saved car changed" when starting the next race after receiving points and choosing Continue.
+- Kept the same save slot, car and automatic/manual choice through rematches, including cars selected from a save's garage.
+- Stopped the covered Mode Select screen from counting down or changing the selection behind the online menu.
+- Removed the remaining placeholder race-finished panel while the original online result is being confirmed. The arcade result, points and Continue screens remain in place.
+- Includes the leaderboard service fixes for delayed submissions, replay storage and restored model records. Leaderboards retain the top 10 overall and the top 10 per car for each course/direction/surface selection.
+
+Verified with 356 native result checks, finish-screen rendering checks, and two real Unity clients completing a connected rematch and starting a second race. Two-account Steam relay behavior was not newly tested.
+
+Changed-file patches support .20 through .41. Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is still required and is not included.
+
 ## 0.3.95-community-replays.41 - October 4, 2026
 
 This update is required for new community Time Attack submissions. Both drivers must update for online races.
