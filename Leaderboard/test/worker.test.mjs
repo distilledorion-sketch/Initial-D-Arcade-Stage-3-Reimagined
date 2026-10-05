@@ -4,14 +4,34 @@ import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {sha,validateRun,supportedBuild,COURSES,REQUIRED_CLIENT_BUILD} from '../src/core.mjs';
 import {decodeReplay,compressReplay} from '../src/replay.mjs';
-const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';").replace("'./core.mjs'",JSON.stringify(new URL('../src/core.mjs',import.meta.url).href)).replace("'./replay.mjs'",JSON.stringify(new URL('../src/replay.mjs',import.meta.url).href));
+import {replayKey} from '../src/replay-storage.mjs';
+const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';").replace("'./core.mjs'",JSON.stringify(new URL('../src/core.mjs',import.meta.url).href)).replace("'./replay.mjs'",JSON.stringify(new URL('../src/replay.mjs',import.meta.url).href)).replace("'./replay-storage.mjs'",JSON.stringify(new URL('../src/replay-storage.mjs',import.meta.url).href)).replace("'./retention.mjs'",JSON.stringify(new URL('../src/retention.mjs',import.meta.url).href));
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
 const secret='a'.repeat(64),device='b'.repeat(64);
-beforeEach(async()=>{db?.close();db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_imported_times.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0003_replays.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0004_replay_chunks.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0005_enna_skyline.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0006_special_stage_courses.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0007_tsubaki_line.sql',import.meta.url),'utf8'));const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v));},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {meta:r};}});env={RULESET:'d3-community-v1',ADMIN_KEY_SHA256:await sha(secret),DB:{prepare:wrap,async batch(queries){db.exec('BEGIN');try{const out=[];for(const q of queries)out.push(await q.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}}};for(const key of ['PUBLIC_LIMIT','WRITE_LIMIT','AUTH_LIMIT'])env[key]={async limit(){return {success:true};}};});
+beforeEach(async()=>{db?.close();db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_imported_times.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0003_replays.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0004_replay_chunks.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0005_enna_skyline.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0006_special_stage_courses.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0007_tsubaki_line.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0008_replay_retention.sql',import.meta.url),'utf8'));const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v));},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {meta:r};}});env={RULESET:'d3-community-v1',ADMIN_KEY_SHA256:await sha(secret),DB:{prepare:wrap,async batch(queries){db.exec('BEGIN');try{const out=[];for(const q of queries)out.push(await q.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}}};for(const key of ['PUBLIC_LIMIT','WRITE_LIMIT','AUTH_LIMIT'])env[key]={async limit(){return {success:true};}};});
 async function call(path,data,headers={}){return worker.fetch(new Request('https://example.test'+path,{method:data?'POST':'GET',headers:{...(data?{'Content-Type':'application/json'}:{}),...headers},body:data?JSON.stringify(data):undefined}),env);}
 const run=(extra={})=>({id:crypto.randomUUID(),ruleset:'d3-community-v1',epoch:1,condition:0,weather:0,car:0,ticks6000:1200000,nameGlyphs:[162,163,164,221,221],splits:[300000,600000,900000,1200000],manual:1,night:0,points:999999,build:REQUIRED_CLIENT_BUILD,...extra});
 const auth=()=>({Authorization:'Bearer '+device});
+function objectStorage(){
+ const objects=new Map();
+ env.REPLAYS={
+  async put(key,bytes,options){
+   const stored=new Uint8Array(bytes).slice();
+   assert.deepEqual(new Uint8Array(options.sha256),new Uint8Array(await crypto.subtle.digest('SHA-256',stored)));
+   objects.set(key,stored);return {size:stored.length};
+  },
+  async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])objects.delete(key);},
+  async get(key){const stored=objects.get(key);return stored?{size:stored.length,async arrayBuffer(){return stored.slice().buffer;}}:null;}
+ };
+ return objects;
+}
+async function downloadedRaw(id,headers){
+ const response=await call((headers?'/api/admin/replay?format=package&id=':'/api/v1/replay?id=')+id,null,headers);
+ assert.equal(response.status,200);
+ const data=new Uint8Array(await response.arrayBuffer()),size=new DataView(data.buffer).getUint32(0,true);
+ return decodeReplay(data.subarray(4+size));
+}
 test('Enna downhill/uphill dry/wet upload with replays and appear on separate boards',async()=>{
  assert.equal(COURSES[11],'Enna Skyline');
  const html=readFileSync(new URL('../src/index.html',import.meta.url),'utf8');
@@ -322,4 +342,209 @@ test('activity surveys are not summed, cannot overwrite newer observations and e
   db.prepare("UPDATE settings SET value=? WHERE key='online_activity'").run(JSON.stringify({...activity,generatedAt}));
   assert.deepEqual(await(await call('/api/v1/activity')).json(),{available:false});
  }
+});
+
+test('object-backed upload appears immediately in both boards without growing replay tables',async()=>{
+ const objects=objectStorage();await call('/api/v1/register',{token:device});
+ const x=run(),raw=replayFor(x);
+ assert.equal((await uploadReplay(x,raw)).status,200);
+ assert.equal(objects.size,1);
+ assert.equal(db.prepare('SELECT count(*) n FROM replay_chunks').get().n,0);
+ assert.equal(db.prepare('SELECT count(*) n FROM replays').get().n,0);
+ for(const path of ['/api/v1/board?condition=0&weather=0','/api/v1/snapshot?ruleset=d3-community-v1']){
+  const response=await call(path);assert.equal(response.headers.get('Cache-Control'),'no-store');
+  const data=await response.json();assert.equal(data.entries[0].id,x.id);assert.equal(data.entries[0].replayAvailable,true);
+ }
+ assert.deepEqual(await downloadedRaw(x.id),raw);
+ assert.equal((await uploadReplay(x,raw)).status,200);assert.equal(objects.size,1);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,1);
+ assert.equal((await(await call('/health')).json()).replayStorage,'object');
+});
+
+test('object write failure is retryable and never publishes a score without its replay',async()=>{
+ objectStorage();await call('/api/v1/register',{token:device});
+ const put=env.REPLAYS.put;env.REPLAYS.put=async()=>{throw Error('Storage unavailable');};
+ const x=run();assert.equal((await uploadReplay(x)).status,503);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);
+ env.REPLAYS.put=put;assert.equal((await uploadReplay(x)).status,200);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+});
+
+test('SQL failure after durable replay write can be retried without duplicating objects or scores',async()=>{
+ const objects=objectStorage();await call('/api/v1/register',{token:device});
+ const batch=env.DB.batch;env.DB.batch=async()=>{throw Error('database or disk is full');};
+ const x=run();assert.equal((await uploadReplay(x)).status,503);assert.equal(objects.size,1);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);
+ env.DB.batch=batch;assert.equal((await uploadReplay(x)).status,200);assert.equal(objects.size,1);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+});
+
+test('object-backed replays preserve moderation and reject conflicting duplicate IDs',async()=>{
+ const objects=objectStorage();await call('/api/v1/register',{token:device});
+ const x=run();await uploadReplay(x);const original=[...objects.values()][0].slice();
+ assert.equal((await uploadReplay({...x,points:123})).status,409);
+ assert.deepEqual([...objects.values()][0],original);
+ const a=await login();await call('/api/admin/run',{id:x.id,value:1,reason:'Under review'},a);
+ assert.equal((await call('/api/v1/replay?id='+x.id)).status,404);
+ assert.deepEqual(await downloadedRaw(x.id,a),replayFor(x));
+ await call('/api/admin/run',{id:x.id,value:0,reason:'Review complete'},a);
+ db.prepare('UPDATE devices SET blocked=1').run();
+ assert.equal((await call('/api/v1/replay?id='+x.id)).status,404);
+ db.prepare('UPDATE devices SET blocked=0').run();
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+});
+
+const move=(id,headers)=>call('/api/admin/replay-storage',{id,confirm:'MOVE REPLAY TO OBJECT STORAGE',reason:'Separate replay storage'},headers);
+
+test('legacy replay migration preserves exact metadata and bytes and safely repeats',async()=>{
+ await call('/api/v1/register',{token:device});const x=run();await uploadReplay(x);
+ const before={...db.prepare('SELECT * FROM runs').get()},raw=replayFor(x),objects=objectStorage();
+ assert.deepEqual(await downloadedRaw(x.id),raw); // legacy fallback before migration
+ const a=await login();const response=await move(x.id,a);
+ assert.equal(response.status,200);assert.equal((await response.json()).alreadyMoved,false);
+ assert.equal(objects.size,1);assert.equal(db.prepare('SELECT count(*) n FROM replay_chunks').get().n,0);
+ assert.deepEqual({...db.prepare('SELECT * FROM runs').get()},before);
+ assert.deepEqual(await downloadedRaw(x.id),raw);
+ assert.equal((await(await move(x.id,a)).json()).alreadyMoved,true);
+ assert.equal(db.prepare('SELECT count(*) n FROM audit').get().n,1);
+ assert.equal(db.prepare("SELECT value FROM settings WHERE key='epoch'").get().value,'1');
+});
+
+test('migration refuses missing, truncated and damaged object copies without deleting original',async()=>{
+ await call('/api/v1/register',{token:device});const x=run();await uploadReplay(x);
+ const objects=objectStorage(),a=await login(),get=env.REPLAYS.get;
+ for(const mode of ['missing','truncated','damaged']){
+  env.REPLAYS.get=async key=>{
+   if(mode==='missing')return null;
+   const value=objects.get(key).slice();if(mode==='damaged')value[value.length-1]^=1;
+   return {size:mode==='truncated'?value.length-1:value.length,async arrayBuffer(){return value.buffer;}};
+  };
+  assert.equal((await move(x.id,a)).status,503);
+  assert.ok(db.prepare('SELECT count(*) n FROM replay_chunks').get().n>0);
+  assert.equal(db.prepare('SELECT count(*) n FROM audit').get().n,0);
+ }
+ env.REPLAYS.get=get;assert.equal((await move(x.id,a)).status,200);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+});
+
+test('migration requires admin authentication, same origin, confirmation and configured storage',async()=>{
+ await call('/api/v1/register',{token:device});const x=run();await uploadReplay(x);
+ assert.equal((await move(x.id,{Origin:'https://example.test'})).status,401);
+ const a=await login();assert.equal((await move(x.id,{...a,Origin:'https://evil.test'})).status,403);
+ assert.equal((await call('/api/admin/replay-storage',{id:x.id},a)).status,400);
+ assert.equal((await move(x.id,a)).status,503); // R2 disabled
+ assert.ok(db.prepare('SELECT count(*) n FROM replay_chunks').get().n>0);
+ objectStorage();assert.equal((await move(crypto.randomUUID(),a)).status,404);
+});
+
+test('migration SQL failure leaves both copies valid for retry',async()=>{
+ await call('/api/v1/register',{token:device});const x=run();await uploadReplay(x);
+ const objects=objectStorage(),a=await login(),batch=env.DB.batch;
+ env.DB.batch=async()=>{throw Error('write failed');};
+ assert.equal((await move(x.id,a)).status,503);assert.equal(objects.size,1);
+ assert.ok(db.prepare('SELECT count(*) n FROM replay_chunks').get().n>0);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+ env.DB.batch=batch;assert.equal((await move(x.id,a)).status,200);
+});
+
+test('object keys isolate owners, content and alternate compressed lengths during upload races',()=>{
+ const row={id:crypto.randomUUID(),device_id:crypto.randomUUID(),replay_sha256:'a'.repeat(64),replay_size:1234};
+ const key=replayKey(row);
+ for(const change of [{id:crypto.randomUUID()},{device_id:crypto.randomUUID()},{replay_sha256:'b'.repeat(64)},{replay_size:1235}])assert.notEqual(replayKey({...row,...change}),key);
+ for(const change of [{id:'../bad'},{device_id:'x'},{replay_sha256:'bad'},{replay_size:0}])assert.throws(()=>replayKey({...row,...change}));
+});
+
+const shortRun=(car,ticks=120000,extra={})=>run({car,ticks6000:ticks,splits:[20000,40000,ticks,0],...extra});
+async function topTenFixture(){
+ const objects=objectStorage();env.RETAIN_TOP_TEN='true';await call('/api/v1/register',{token:device});
+ const entries=[];for(let car=0;car<10;car++){const x=shortRun(car,100000+car*1000);entries.push(x);assert.equal((await uploadReplay(x)).status,200);}
+ return {objects,entries};
+}
+
+test('top ten accepts every valid submission but stores no score or replay below the cutoff',async()=>{
+ const {objects}=await topTenFixture();
+ const x=shortRun(10,120000),response=await uploadReplay(x);
+ assert.equal(response.status,200);assert.equal((await response.json()).retained,false);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
+ assert.equal(db.prepare('SELECT count(*) n FROM replay_objects').get().n,10);
+ assert.equal((await uploadReplay(x)).status,200);assert.equal(objects.size,10);
+});
+
+test('a future faster score permanently displaces the lowest overall entry and its replay',async()=>{
+ const {objects,entries}=await topTenFixture(),x=shortRun(10,90000);
+ const response=await uploadReplay(x);assert.equal(response.status,200);assert.equal((await response.json()).retained,true);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
+ assert.equal(db.prepare('SELECT id FROM runs WHERE id=?').get(entries[9].id),undefined);
+ assert.equal((await call('/api/v1/replay?id='+entries[9].id)).status,404);
+ const board=await(await call('/api/v1/board?condition=0&weather=0')).json();assert.equal(board.entries[0].id,x.id);assert.equal(board.entries.length,10);
+ assert.equal((await(await call('/api/v1/board?condition=0&weather=0&car=9')).json()).entries.length,0);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+ const a=await login();assert.equal((await call('/api/admin/replay?id='+entries[9].id,null,a)).status,404);
+});
+
+test('same player/car improvement replaces its old best and slower repeats never consume slots',async()=>{
+ const {objects,entries}=await topTenFixture();
+ assert.equal((await(await uploadReplay(shortRun(4,105000))).json()).retained,false);
+ const improved=shortRun(4,80000);assert.equal((await(await uploadReplay(improved)).json()).retained,true);
+ assert.equal(db.prepare('SELECT id FROM runs WHERE id=?').get(entries[4].id),undefined);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
+});
+
+test('top ten is independent for each direction and weather, across all cars',async()=>{
+ const {objects}=await topTenFixture();
+ for(const extra of [{condition:1},{weather:1},{condition:2},{condition:30},{condition:31,weather:1}]){
+  const x=shortRun(12,200000,extra);assert.equal((await(await uploadReplay(x)).json()).retained,true);
+  const board=await(await call(`/api/v1/board?condition=${x.condition}&weather=${x.weather}`)).json();assert.equal(board.entries.length,1);assert.equal(board.entries[0].id,x.id);
+ }
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,15);assert.equal(objects.size,15);
+});
+
+test('cutoff is rechecked atomically if a faster submission arrives during object upload',async()=>{
+ const {objects}=await topTenFixture(),put=env.REPLAYS.put;
+ let raced=false;
+ env.REPLAYS.put=async(...args)=>{const result=await put(...args);if(!raced){raced=true;assert.equal((await uploadReplay(shortRun(11,80000))).status,200);}return result;};
+ const x=shortRun(10,108500); // initially beats #10, but not after the competing score
+ assert.equal((await(await uploadReplay(x)).json()).retained,false);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,10);
+ assert.equal(db.prepare('SELECT id FROM runs WHERE id=?').get(x.id),undefined);
+});
+
+test('failed object deletion never delays the score and is retried by maintenance',async()=>{
+ const {objects}=await topTenFixture(),remove=env.REPLAYS.delete;
+ env.REPLAYS.delete=async()=>{throw Error('Temporary object outage');};
+ const x=shortRun(10,80000);assert.equal((await(await uploadReplay(x)).json()).retained,true);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,10);assert.equal(objects.size,11);
+ assert.equal(db.prepare('SELECT count(*) n FROM replay_object_deletions').get().n,1);
+ env.REPLAYS.delete=remove;await worker.scheduled({},env);
+ assert.equal(objects.size,10);assert.equal(db.prepare('SELECT count(*) n FROM replay_object_deletions').get().n,0);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
+});
+
+test('explicit retention purge removes legacy blobs but keeps the exact previewed top ten',async()=>{
+ await call('/api/v1/register',{token:device});const entries=[];
+ for(let car=0;car<15;car++){const x=shortRun(car,100000+car*1000);entries.push(x);await uploadReplay(x);}
+ const a=await login(),before=new Map(db.prepare('SELECT * FROM runs').all().map(r=>[r.id,{...r}]));
+ const preview=await(await call('/api/admin/retention',null,a)).json();assert.equal(preview.keep.length,10);assert.equal(preview.remove,5);
+ const body={confirm:'PERMANENTLY KEEP ONLY TOP TEN'};
+ assert.equal((await call('/api/admin/retention',{confirm:'wrong'},a)).status,400);
+ env.RETAIN_TOP_TEN='true';objectStorage();
+ assert.equal((await call('/api/admin/retention',body,{Origin:'https://example.test'})).status,401);
+ assert.equal((await call('/api/admin/retention',body,{...a,Origin:'https://evil.test'})).status,403);
+ assert.equal((await call('/api/admin/retention',body,a)).status,200);
+ const remaining=db.prepare('SELECT * FROM runs').all();assert.equal(remaining.length,10);
+ assert.deepEqual(remaining.map(r=>r.id).sort(),preview.keep.sort());
+ for(const row of remaining)assert.deepEqual({...row},before.get(row.id));
+ assert.equal(db.prepare('SELECT count(DISTINCT run_id) n FROM replay_chunks').get().n,10);
+ assert.equal(db.prepare('SELECT count(*) n FROM replay_object_deletions').get().n,0);
+ assert.equal((await(await call('/api/admin/retention',null,a)).json()).remove,0);
+});
+
+test('lost object-write acknowledgement leaves no score and its unclaimed replay is collected',async()=>{
+ const objects=objectStorage();await call('/api/v1/register',{token:device});const put=env.REPLAYS.put;
+ env.REPLAYS.put=async(...args)=>{await put(...args);throw Error('Object acknowledgement lost');};
+ const x=shortRun(0);assert.equal((await uploadReplay(x)).status,503);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);assert.equal(objects.size,1);
+ await worker.scheduled({},env);assert.equal(objects.size,0);
+ env.REPLAYS.put=put;assert.equal((await uploadReplay(x)).status,200);
+ assert.deepEqual(await downloadedRaw(x.id),replayFor(x));assert.equal(objects.size,1);
 });

@@ -1,6 +1,8 @@
 import html from './index.html';
 import {COURSES,validateRun,publicRun,rankedSql,sha,token,sameSecret,REQUIRED_CLIENT_BUILD,supportedBuild} from './core.mjs';
 import {MAX_REPLAY,validateReplay,replayCsv,decodeReplay,compressReplay} from './replay.mjs';
+import {readStoredReplay,storeObjectReplay,moveReplayToObjectStorage,replayKey} from './replay-storage.mjs';
+import {retainedSql,retentionEnabled,pruneStatement,qualifiesForBoard,cleanupReplayObjects} from './retention.mjs';
 const now=()=>Math.floor(Date.now()/1000);
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'};
 function json(value,status=200,extra={}){return new Response(JSON.stringify(value),{status,headers:{...headers,'Content-Type':'application/json',...extra}});}
@@ -16,16 +18,8 @@ async function admin(request,env){const match=/(?:^|;\s*)idas_admin=([a-f0-9]{64
 function originCheck(request,url){if(request.headers.get('Origin')!==url.origin)throw new Response('Invalid request origin.',{status:403});}
 async function downloadReplay(env,run,asPackage){
  const id=run.id;
- const row=await env.DB.prepare('SELECT data FROM replays WHERE run_id=?').bind(id).first();
- let stored;
- if(row)stored=new Uint8Array(row.data);
- else{
-  const chunks=(await env.DB.prepare('SELECT part,data FROM replay_chunks WHERE run_id=? ORDER BY part').bind(id).all()).results;
-  if(!chunks.length)return json({error:'No replay attached to this run.'},404);
-  const size=chunks.reduce((n,c)=>n+new Uint8Array(c.data).byteLength,0);if(size>MAX_REPLAY)throw new Error('Invalid stored replay size.');
-  stored=new Uint8Array(size);let at=0;for(let i=0;i<chunks.length;i++){if(chunks[i].part!==i)throw new Error('Invalid stored replay chunks.');const chunk=new Uint8Array(chunks[i].data);stored.set(chunk,at);at+=chunk.length;}
- }
- if(stored.length>MAX_REPLAY)throw new Error('Invalid stored replay size.');
+ const stored=await readStoredReplay(env,run);
+ if(!stored)return json({error:'No replay attached to this run.'},404);
  if(asPackage){
   // Only viewer metadata; never include installation identity or moderation data.
   const {player,...metadata}=publicRun(run);
@@ -39,7 +33,7 @@ async function downloadReplay(env,run,asPackage){
 async function handle(request,env){
  const url=new URL(request.url),path=url.pathname;
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
- if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD});
+ if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:env.REPLAYS?'object':'database',retention:retentionEnabled(env)?'top_ten_overall':'all_submitted'});
  const ip=request.headers.get('CF-Connecting-IP')||'local';
  if(path==='/api/v1/activity'&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'activity-read:'+ip);
@@ -72,6 +66,37 @@ async function handle(request,env){
    return json({ok:true},200,{'Set-Cookie':`idas_admin=${t}; HttpOnly; Secure; SameSite=Strict; Path=/api/admin; Max-Age=43200`});
   }
   const session=await admin(request,env);
+  if(path==='/api/admin/replay-objects'&&request.method==='GET'){
+   if(!env.REPLAYS)return json({error:'Object storage is not configured.'},503);
+   const cursor=url.searchParams.get('cursor');
+   if(cursor&&cursor.length>4096)return json({error:'Invalid cursor.'},400);
+   const page=await env.REPLAYS.list({prefix:'replays/v1/',limit:1000,...(cursor?{cursor}:{})});
+   return json({objects:page.objects.map(x=>({key:x.key,size:x.size})),truncated:page.truncated,cursor:page.cursor});
+  }
+  if(path==='/api/admin/retention'&&request.method==='GET'){
+   const keep=(await env.DB.prepare(retainedSql).bind(env.RULESET).all()).results.map(x=>x.id);
+   const total=await env.DB.prepare('SELECT COUNT(*) AS n FROM runs').first();
+   return json({enabled:retentionEnabled(env),keep,total:total.n,remove:total.n-keep.length});
+  }
+  if(path==='/api/admin/retention'&&request.method==='POST'){
+   const x=await body(request);
+   if(x.confirm!=='PERMANENTLY KEEP ONLY TOP TEN')return json({error:'Top-ten confirmation required.'},400);
+   await env.DB.batch([pruneStatement(env,200),env.DB.prepare('INSERT INTO audit(created_at,action,target,reason) VALUES (?,?,?,?)').bind(now(),'prune leaderboard','all boards','Keep only the overall top ten per course, direction and weather')]);
+   const cleaned=await cleanupReplayObjects(env,500);
+   return json({ok:true,...cleaned});
+  }
+  if(path==='/api/admin/replay-cleanup'&&request.method==='POST'){
+   const cleaned=await cleanupReplayObjects(env,500);
+   const pending=await env.DB.prepare('SELECT COUNT(*) AS n FROM replay_object_deletions').first();
+   return json({ok:true,...cleaned,pending:pending.n});
+  }
+  if(path==='/api/admin/replay-storage'&&request.method==='POST'){
+   const x=await body(request);
+   if(!/^[-a-f0-9]{36}$/.test(x.id||'')||x.confirm!=='MOVE REPLAY TO OBJECT STORAGE'||typeof x.reason!=='string'||x.reason.trim().length<3||x.reason.length>300)return json({error:'Specify a run, confirmation and reason.'},400);
+   const run=await env.DB.prepare('SELECT * FROM runs WHERE id=?').bind(x.id).first();
+   if(!run||!run.replay_size)return json({error:'Replay not found.'},404);
+   return json(await moveReplayToObjectStorage(env,run,x.reason.trim()));
+  }
   if(path==='/api/admin/replay'&&request.method==='GET'){
    await limit(env.PUBLIC_LIMIT,'replay:'+ip);
    const id=url.searchParams.get('id');if(!/^[-a-f0-9]{36}$/.test(id||''))return json({error:'Invalid run ID.'},400);
@@ -139,11 +164,37 @@ async function handle(request,env){
   }
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   if(x.epoch!==epoch)return json({error:'This run belongs to an earlier season.'},409);
-  const insert=env.DB.prepare('INSERT INTO runs(id,device_id,ruleset,epoch,condition,weather,car,ticks,glyphs,splits,manual,night,points,build,created_at,imported,replay_size,replay_sha256) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(x.id,d.id,env.RULESET,epoch,x.condition,x.weather,x.car,x.ticks6000,JSON.stringify(x.nameGlyphs),JSON.stringify(x.splits),x.manual,x.night,x.points,x.build,now(),x.imported,replay?.length||0,replayHash);
+  const createdAt=now();
+  if(!await qualifiesForBoard(env,x,d.id,createdAt))return json({ok:true,retained:false,reason:'outside_top_ten'});
+  const insert=env.DB.prepare('INSERT INTO runs(id,device_id,ruleset,epoch,condition,weather,car,ticks,glyphs,splits,manual,night,points,build,created_at,imported,replay_size,replay_sha256) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(x.id,d.id,env.RULESET,epoch,x.condition,x.weather,x.car,x.ticks6000,JSON.stringify(x.nameGlyphs),JSON.stringify(x.splits),x.manual,x.night,x.points,x.build,createdAt,x.imported,replay?.length||0,replayHash);
   const statements=[insert];
-  for(let at=0,part=0;at<replay.length;at+=1000000,part++)statements.push(env.DB.prepare('INSERT INTO replay_chunks(run_id,part,data) VALUES (?,?,?)').bind(x.id,part,replay.slice(at,at+1000000).buffer));
-  await env.DB.batch(statements);
-  return json({ok:true,replay:!!replay});
+  let objectKey=null;
+  if(env.REPLAYS){
+   const identity={id:x.id,device_id:d.id,replay_sha256:replayHash,replay_size:replay.length};
+   objectKey=replayKey(identity).replace(/\.idr$/,`-${crypto.randomUUID()}.idr`);
+   try{await storeObjectReplay(env,identity,replay,objectKey);}
+   catch(error){
+    // Even a lost object-write acknowledgement may have left bytes behind.
+    // This unique attempt has no score mapping and is safe to collect later.
+    try{await env.DB.prepare('INSERT OR IGNORE INTO replay_object_deletions VALUES (?,?)').bind(objectKey,now()).run();}catch{console.warn('Replay upload cleanup could not be queued.');}
+    throw error;
+   }
+   statements.push(env.DB.prepare('INSERT INTO replay_objects(run_id,object_key) VALUES (?,?)').bind(x.id,objectKey));
+  }
+  else for(let at=0,part=0;at<replay.length;at+=1000000,part++)statements.push(env.DB.prepare('INSERT INTO replay_chunks(run_id,part,data) VALUES (?,?,?)').bind(x.id,part,replay.slice(at,at+1000000).buffer));
+  if(retentionEnabled(env))statements.push(pruneStatement(env));
+  try{await env.DB.batch(statements);}
+  catch(error){
+   if(objectKey)try{
+    const committed=await env.DB.prepare('SELECT object_key FROM replay_objects WHERE run_id=?').bind(x.id).first();
+    if(committed?.object_key!==objectKey)await env.DB.prepare('INSERT OR IGNORE INTO replay_object_deletions VALUES (?,?)').bind(objectKey,now()).run();
+   }catch{console.warn('Replay upload cleanup could not be queued.');}
+   throw error;
+  }
+  const retained=!!await env.DB.prepare('SELECT id FROM runs WHERE id=?').bind(x.id).first();
+  // A cleanup failure must not make a successfully committed time look failed.
+  try{await cleanupReplayObjects(env);}catch{console.warn('Replay cleanup pending.');}
+  return json({ok:true,replay:retained,retained});
  }
  if(path==='/api/v1/replay'&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'replay:'+ip);
@@ -174,5 +225,9 @@ async function handle(request,env){
 }
 export default {
  async fetch(request,env){try{return await handle(request,env);}catch(e){if(e instanceof Response)return e;return json({error:e instanceof SyntaxError?'Invalid request JSON.':e.message?.startsWith('Invalid')||e.message?.startsWith('Incomplete')||e.message==='Request too large.'?e.message:'Service temporarily unavailable.'},e instanceof SyntaxError||/^(Invalid|Incomplete|Request too large)/.test(e.message||'')?400:503);}},
- async scheduled(event,env){await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(now()).run();}
+ async scheduled(event,env){
+  await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(now()).run();
+  if(retentionEnabled(env))await env.DB.batch([pruneStatement(env)]);
+  await cleanupReplayObjects(env,500);
+ }
 };

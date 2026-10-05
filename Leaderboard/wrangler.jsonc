@@ -3,11 +3,18 @@
   "main": "src/worker.mjs",
   "compatibility_date": "2026-09-18",
   "workers_dev": true,
+  "r2_buckets": [
+    {
+      "binding": "REPLAYS",
+      "bucket_name": "REPLACE_WITH_YOUR_PRIVATE_REPLAY_BUCKET"
+    }
+  ],
   "observability": {
     "enabled": false
   },
   "vars": {
     "RULESET": "d3-community-v1",
+    "RETAIN_TOP_TEN": "true",
     "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.41"
   },
   "rules": [
@@ -55,7 +62,7 @@
   ],
   "triggers": {
     "crons": [
-      "17 4 * * *"
+      "*/5 * * * *"
     ]
   }
 }
