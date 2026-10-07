@@ -820,13 +820,14 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapZoom=99}).minimapZoom==2,"Previous zoom-in setting must return to original");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=-1}).minimapSize==0,"Negative size not clamped");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=99}).minimapSize==2,"Oversize not clamped");
-            menu.OpenAttractOptions();menu.SelectTab(7);Check(menu.SelectedTab==7,"HUD category unavailable");menu.Navigate(1);menu.Navigate(1);
+            menu.OpenAttractOptions();menu.SelectTab(7);Check(menu.SelectedTab==7,"HUD category unavailable");menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);
             menu.NavigateHorizontal(1);Check(options.Draft.minimapDisplay==1,"Water cup display is selectable");menu.Navigate(1);
             menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==101&&options.HasUnsavedChanges,"101% selection not dirty");
             menu.Activate();Check(options.Draft.HudSizePercent(5)==102,"Confirm did not advance by one percent");
             menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==1,"Right should zoom out to wider");menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==0,"Zoom out did not select 50%");
             var sizeGroups=new[]{1,2,3,6,7,4,9,8,10};
-            menu.SelectCategory(Idas3PauseMenu.Category.HudSizes);
+            menu.SelectCategory(Idas3PauseMenu.Category.Hud);menu.Navigate(1);menu.Navigate(1);menu.Activate();
+            Check(menu.HudSizesVisible,"HUD Sizes submenu unavailable");
             for(int row=0;row<sizeGroups.Length;++row){
                 if(row!=0)menu.Navigate(1);menu.NavigateHorizontal(1);
                 for(int other=0;other<sizeGroups.Length;++other){
@@ -837,7 +838,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             var hudReloaded=new Idas3GameOptions(new OptionsTestPlatform());hudReloaded.Initialize(Path.GetDirectoryName(options.FilePath));
             foreach(int group in sizeGroups)Check(hudReloaded.Current.HudSizePercent(group)==101,"Independent HUD setting did not survive reload: "+group);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-options-no-capture")<0)yield return Capture("hud-settings");
-            menu.SelectTab(7);menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);
+            menu.SelectTab(7);menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);
             options.Draft.SetHudSizePercent(5,150);menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==150,"Size wrapped at the upper bound");
             menu.NavigateHorizontal(-1);Check(options.Draft.HudSizePercent(5)==149,"Reverse size selection did not decrease one percent");
             options.Draft.SetHudSizePercent(5,100);menu.NavigateHorizontal(-1);Check(options.Draft.HudSizePercent(5)==100,"Size wrapped at the lower bound");
