@@ -134,6 +134,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
                 string storage = Path.Combine(Application.temporaryCachePath, "replay-viewer-session");
                 if (Idas3SceneInitialize(assets, storage, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 initialized = true;
+                if(Idas3Native.Idas3SceneSetMapDisplay(audioOptions.minimapDisplay)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetMapZoom(audioOptions.minimapZoom)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetMapSize(audioOptions.minimapSize)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 audioOutput=gameObject.AddComponent<Idas3UnityAudio>();audioOutput.Initialize();

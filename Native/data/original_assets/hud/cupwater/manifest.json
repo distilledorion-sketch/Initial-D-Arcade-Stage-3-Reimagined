@@ -1,0 +1,15 @@
+{
+  "source": "HOSTFS/model/cupwater",
+  "chunks": 70,
+  "textures": 7,
+  "geometry_uv_transform": "none",
+  "draw_owner": "17D020",
+  "motion_owner": "17D2A0",
+  "motion_curves": "323BE4",
+  "source_sha256": {
+    "cupwater_pol.bin.nz": "4f6787d25bab6f8f1947d23ad986bed31a459fba3228c1a6b2127b0e9ed1d993",
+    "cupwater_pol.tbl": "77f4419394d57ed48a9e77b9ca8af6e7ffc03a4e7943039e015e881b98ba892b",
+    "cupwater_tex.bin.nz": "7fa300367c9d8f0a938c6da4948da18ce4a1abcdc5b705053c507c037acbfd9a",
+    "cupwater_tex.tbl": "4075687012b8e066efa33f90893d4556bd5a77d29857136962c7ae89d7bcc34a"
+  }
+}

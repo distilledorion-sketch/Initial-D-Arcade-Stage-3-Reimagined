@@ -27,6 +27,7 @@ void Hud::loadOriginal(const std::filesystem::path& root){
     originalHud=OriginalRaceHud::load(root);originalResults=OriginalTimeAttackResults::load(root);originalBattleHud=OriginalBattleHudAssets::load(root);
     originalBattleResults=OriginalBattleResults::load(root);
     originalBattleNames=OriginalBattleNames::load(root);
+    waterCupArtwork_.load(root);
     portraits.clear();
     for(std::uint32_t enemy=0;enemy<31;++enemy){const std::string name(original::originalBattlePortraitBank(enemy,0));if(portraits.contains(name))continue;
         const auto folder=root/"data/original_assets/hud/faces"/name;
@@ -151,7 +152,7 @@ void Hud::routePreview(const Course& c,float x,float y,float w,float h){
 void Hud::map(const Course& c,float x,float y,float w,float h,
         const VehicleState& player,const VehicleState* rival){
     const UnityUiHudScope mapGroup(5);
-    if(c.points.size()<2||!pixels)return;
+    if(mapDisplay_==2||c.points.size()<2||!pixels)return;
     const float mapScale=1.f+.25f*float(mapSize_);
     // Grow upward and rightward; retain the original left/bottom margins.
     y+=h*(1.f-mapScale);w*=mapScale;h*=mapScale;
@@ -161,6 +162,13 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     const float baseY=float(height)-480.f*fit;
     const float left=x*fit,top=baseY+y*fit,right=(x+w)*fit,bottom=baseY+(y+h)*fit;
+    if(mapDisplay_==1){
+        mapX0_=std::max(0,int(left));mapY0_=std::max(0,int(top));
+        mapX1_=std::min(width,int(right));mapY1_=std::min(height,int(bottom));
+        waterCupArtwork_.paint({pixels,std::size_t(width)*height},width,height,waterCup_,
+            (left+right)*.5f,(top+bottom)*.5f,100.f*fit*mapScale);
+        return;
+    }
     // Sampled from the cabinet: a muted green field you can see the road
     // through, a dark outline with a lighter inner edge, and a near-black road.
     constexpr COLORREF field=RGB(120,142,130),outline=RGB(16,20,18),

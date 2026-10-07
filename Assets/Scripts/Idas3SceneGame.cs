@@ -567,6 +567,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             throw new InvalidOperationException("Could not apply performance options. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetAiDifficulty(values.aiDifficulty) != 1)
             throw new InvalidOperationException("Could not apply AI difficulty. " + Idas3Native.Error());
+        if (Idas3Native.Idas3SceneSetMapDisplay(values.minimapDisplay) != 1)
+            throw new InvalidOperationException(Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetMapZoom(values.minimapZoom) != 1)
             throw new InvalidOperationException("Could not apply minimap zoom. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetMapSize(values.minimapSize) != 1)

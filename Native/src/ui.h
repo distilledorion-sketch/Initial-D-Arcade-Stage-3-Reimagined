@@ -3,6 +3,7 @@
 #include "physics.h"
 #include "race.h"
 #include "original_hud.h"
+#include "original_water_cup.h"
 #include "original_results.h"
 #include "original_battle_hud.h"
 #include "original_battle_names.h"
@@ -69,6 +70,9 @@ public:
     void loadOriginal(const std::filesystem::path& root);
     void resize(int w,int h);
     void setMapSize(int size){mapSize_=size>=0&&size<=2?size:0;}
+    void setMapDisplay(int display){mapDisplay_=display>=0&&display<=2?display:0;}
+    void resetWaterCup(){waterCup_.reset();}
+    void advanceWaterCup(float movement,const std::array<std::uint32_t,5>& cues){waterCup_.advance(movement,cues);}
     void setMapZoom(int zoom){mapZoom_=zoom>=0&&zoom<=2?zoom:2;}
     const std::uint32_t* paint(const UiState& s);
     const std::uint32_t* paintResult(const OriginalBattleResultsState&,
@@ -130,7 +134,9 @@ private:
     // The desktop path forces alpha onto everything GDI drew, which would
     // flatten the map's see-through field. The map owns its own alpha, so it
     // records its frame and that pass leaves it alone.
-    int mapSize_=0,mapZoom_=2;
+    int mapSize_=0,mapZoom_=2,mapDisplay_=0;
+    OriginalWaterCup waterCup_;
+    OriginalWaterCupArtwork waterCupArtwork_;
     int mapX0_=0,mapY0_=0,mapX1_=0,mapY1_=0;
 };
 }

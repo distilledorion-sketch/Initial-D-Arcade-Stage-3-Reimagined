@@ -80,6 +80,7 @@ public sealed class Idas3GameOptions
             // Apply only the remaining ratio, including to its clipping bounds.
             return group==5?(float)HudSizePercent(group)/(100+25*Math.Max(0,Math.Min(2,minimapSize))):HudSizePercent(group)/100f;
         }
+        public int minimapDisplay; // 0 = map, 1 = original water cup, 2 = off.
         public int minimapSize; // 0 = original, 1 = 125%, 2 = 150%.
         public int minimapZoom=2; // Zoom-out only: 50%, 75%, original 100%.
         public float SteeringDeadzone {
@@ -240,7 +241,7 @@ public sealed class Idas3GameOptions
         to.hudOnlineSize=from.hudOnlineSize;to.hudMirrorSize=from.hudMirrorSize;
         to.hudMessagesSize=from.hudMessagesSize;to.hudChallengersSize=from.hudChallengersSize;
         to.hudTimeExtensionSize=from.hudTimeExtensionSize;to.hudOrnamentSize=from.hudOrnamentSize;
-        to.minimapSize=from.minimapSize;to.minimapZoom=from.minimapZoom;
+        to.minimapDisplay=from.minimapDisplay;to.minimapSize=from.minimapSize;to.minimapZoom=from.minimapZoom;
     }
     public bool ConfirmDisplay(){
         if(!DisplayConfirmationPending)return false;
@@ -309,6 +310,7 @@ public sealed class Idas3GameOptions
         value.hudMirrorSize=Math.Max(0,Math.Min(4,value.hudMirrorSize));
         value.hudMessagesSize=Math.Max(0,Math.Min(4,value.hudMessagesSize));
         value.hudChallengersSize=Math.Max(0,Math.Min(4,value.hudChallengersSize));
+        value.minimapDisplay=Math.Max(0,Math.Min(2,value.minimapDisplay));
         value.minimapZoom=Math.Max(0,Math.Min(2,value.minimapZoom));
         value.minimapSize=Math.Max(0,Math.Min(2,value.minimapSize));
         value.rainDetail=Math.Max(0,Math.Min(1,value.rainDetail));
@@ -341,5 +343,5 @@ public sealed class Idas3GameOptions
         a.discordPresence==b.discordPresence&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
         a.hudMeterStyle==b.hudMeterStyle&&a.hudMeterLayout==b.hudMeterLayout&&a.hudOrnamentId==b.hudOrnamentId&&a.hudShiftLights==b.hudShiftLights&&a.hudPedalIndicators==b.hudPedalIndicators&&a.hudNameplateStyle==b.hudNameplateStyle&&
         SameHudPositions(a,b)&&SameHudSizes(a,b)&&a.hudOrnamentSize==b.hudOrnamentSize&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
-        a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
+        a.minimapDisplay==b.minimapDisplay&&a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
 }

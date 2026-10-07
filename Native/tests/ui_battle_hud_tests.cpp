@@ -62,6 +62,26 @@ int main(int argc,char** argv)try{
     Course mapCourse;mapCourse.name="Akina";mapCourse.length=1000;mapCourse.points={{0,0,0},{0,0,1000}};
     mapCourse.left={{-5,0,0},{-5,0,1000}};mapCourse.right={{5,0,0},{5,0,1000}};mapCourse.cumulative={0,1000};
     online.course=&mapCourse;VehicleState rival=car;rival.position={0,0,25};online.rival=&rival;
+    // Exercise the actual compositor and capture boundary: selecting the cup
+    // replaces the map in editable group5; Off submits neither one. Painting
+    // repeatedly must not advance the60Hz water animation.
+    Idas3UiEnable(1);
+    for(int display=0;display<3;++display){
+        hud.setMapDisplay(display);hud.resetWaterCup();
+        for(int tick=0;tick<5;++tick)hud.advanceWaterCup(.1f,{});
+        Idas3UiBeginFrame(w,h);const auto p=hud.paint(online);
+        std::vector<std::uint32_t> pixels(p,p+n);unityUiSubmit(p,w,h,false,false,false);
+        UnityUiFrame frame{sizeof(UnityUiFrame)};require(Idas3UiGetFrame(&frame)==1,"No minimap display capture");
+        std::vector<UnityUiDraw> draws(frame.drawCount);Idas3UiCopyDraws(draws.data(),int(draws.size()));
+        const auto group5=std::count_if(draws.begin(),draws.end(),[](const auto& d){return ((d.flags>>8)&15)==5;});
+        require((group5>0)==(display!=2),"Map/cup/off lost its editable HUD group");
+        require((hud.lastBattlePresentation().localMapMarkers!=0)==(display==0),"Cup or Off retained map markers");
+        require(std::equal(pixels.begin(),pixels.end(),hud.paint(online)),"Cup advanced during repaint");
+        Idas3UiEnable(0);const auto software=hud.paint(online);
+        save(output/("minimap-display-"+std::to_string(display)+".bmp"),std::vector<std::uint32_t>(software,software+n),w,h);
+        Idas3UiEnable(1);
+    }
+    hud.setMapDisplay(0);Idas3UiEnable(0);
     RaceClock onlineClock=race;onlineClock.sector=2;onlineClock.sectionCapacity=4;onlineClock.sectionTimes6000={6000,18000,0,0};onlineClock.elapsed6000=30000;online.race=&onlineClock;
     if(argc>3&&std::string(argv[3])=="--group-only"){
         Idas3UiEnable(1);

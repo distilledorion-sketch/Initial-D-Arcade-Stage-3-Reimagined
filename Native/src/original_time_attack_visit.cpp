@@ -242,7 +242,12 @@ void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int w
         constexpr std::array<unsigned,4> tsuchisakaPages{4,0,1,3};
         const auto artworkIndex=course==7?tsuchisakaPages[mapIndex_]:
             course==6?(mapIndex_==0?4u:mapIndex_-1):mapIndex_;
-        c.chunk(map.model,map.textures,artworkIndex,0,24);
+        // Shomaru's three close-up pieces are authored opposite the
+        // overview/telemetry orientation. Rotate artwork around the map
+        // centre (315,291), then apply the shared 24px screen offset.
+        // Keep driving/impact coordinates and every other course unchanged.
+        if(course==6&&mapIndex_)c.chunk(map.model,map.textures,artworkIndex,630,606,-1,-1);
+        else c.chunk(map.model,map.textures,artworkIndex,0,24);
     }else{
         c.rectangle(195,195,240,240,0xff202c39);
         const auto& page=setup_.customMaps.at(mapIndex_);

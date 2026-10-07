@@ -62,13 +62,29 @@ void mapArtworkAndTrace(const std::filesystem::path& root,const std::filesystem:
                 ++roadPixels;if(actual[index]==pixel)++matchedPixels;
             }
             require(roadPixels>100,"Expected map fixture contains visible authored road pixels");
-            if(matchedPixels*100<roadPixels*99){
+            if(!(course==6&&page)&&matchedPixels*100<roadPixels*99){
                 ++mismatchedPages;std::cerr<<label<<": only "<<matchedPixels<<'/'<<roadPixels<<" road pixels match the selected telemetry view\n";
             }
             std::vector<std::uint32_t> withTrace(640*480,0xff000000u);trace.paint(withTrace,640,480);
-            unsigned blue=0;
+            unsigned blue=0,roadTrace=0;
             for(unsigned y=200;y<430;++y)for(unsigned x=200;x<430;++x)
-                if(withTrace[y*640+x]==0xff00aaffu&&actual[y*640+x]!=0xff00aaffu)++blue;
+                if(withTrace[y*640+x]==0xff00aaffu&&actual[y*640+x]!=0xff00aaffu){
+                    ++blue;
+                    // Centreline telemetry is independent of the 2D artwork.
+                    // It must run along the neutral grey road, not merely be
+                    // visible somewhere inside the map frame.
+                    bool onRoad=false;
+                    for(int dy=-2;dy<=2;++dy)for(int dx=-2;dx<=2;++dx){
+                        const auto pixel=actual[(y+dy)*640+x+dx];
+                        const int r=(pixel>>16)&255,g=(pixel>>8)&255,b=pixel&255;
+                        onRoad|=r>80&&std::abs(r-g)<12&&std::abs(r-b)<20;
+                    }
+                    roadTrace+=onRoad;
+                }
+            if(course==6&&page){
+                std::cout<<label<<": road-aligned trace "<<roadTrace<<'/'<<blue<<'\n';
+                require(roadTrace*100>=blue*90,"Shomaru section road must align with recorded centreline in both directions");
+            }
             require(blue>20,"Every overview/section view draws its recorded trace");
             trace.advance({false,false,false,false,true});artwork.advance({false,false,false,false,true});
         }

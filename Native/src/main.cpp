@@ -30,6 +30,7 @@
 #include "driving_effects.h"
 #include "backfire_presentation.h"
 #include "environment_presentation.h"
+#include "headlight_glare.h"
 #include "hud_drift_indicator.h"
 #include "hud_analog_presentation.h"
 #include "car_presentation.h"
@@ -150,6 +151,8 @@ struct App {
     unsigned backfireTextureBase=0;
     EnvironmentPresentation environment;
     unsigned leafTextureBase=0,flareTextureBase=0;
+    HeadlightGlare headlightGlare;
+    unsigned headlightGlareTextureBase=0;
     HudDriftIndicator hudDrift;
     original::OriginalCollisionQuery hudDriftRoadQuery{};
     original::OriginalTriangleSearchTrace hudDriftRoadTrace{};
@@ -1215,7 +1218,10 @@ struct App {
         for(std::size_t i=0;i<6;++i)vehicle.steeringBasis[i]=d.f(0x1CC+i*4);
         vehicle.wallContact=d.u(0x150)!=0;vehicle.wallImpactSpeed=presentedSession().roadContact().impact0C900E60;
         if(advance){vehicle.travel+=length(vehicle.position-oldPosition);++vehicle.tick;vehicle.simulatedSeconds+=physicsDt;}
-        if(advance)advanceHudDrift();else resetHudDrift();
+        if(advance){
+            advanceHudDrift();
+            hud.advanceWaterCup(length(vehicle.velocity)*physicsDt,presentedSession().contactCompletion().cues0C900E5C);
+        }else{resetHudDrift();hud.resetWaterCup();}
     }
     int presenceCourseCondition()const{
         return menu?frontend.course*2+int(frontend.reverse):int(importedCourse?importedCourse->id:courseIndex)*2+int(reverse);
@@ -3172,6 +3178,8 @@ struct App {
             if(!renderer.loadTextures(environment.leafTextures,true))return false;
             flareTextureBase=leafTextureBase+unsigned(environment.leafTextures.size());
             if(!renderer.loadTextures(environment.flareTextures,true))return false;
+            headlightGlare.load(root);headlightGlareTextureBase=flareTextureBase+unsigned(environment.flareTextures.size());
+            if(!renderer.loadTextures(headlightGlare.textures,true))return false;
             texturesPending=false;menuTexturesLoaded=false;
         }
         const float alpha=clock.alpha();VehicleState drawCar=vehicle;drawCar.position=lerp(previous.position,vehicle.position,alpha);drawCar.yaw=lerpAngle(previous.yaw,vehicle.yaw,alpha);
@@ -3490,6 +3498,23 @@ struct App {
             rearView->eye=lerp(previousRearCameraFrame.eye,rearCameraFrame.eye,poseAlpha);
             rearView->target=lerp(previousRearCameraFrame.target,rearCameraFrame.target,poseAlpha);
             rearView->up=normalized(lerp(previousRearCameraFrame.up,rearCameraFrame.up,poseAlpha));
+        }
+        if(!menu&&!validationHideDrivingEffects){
+            const bool playerLights=replayPlaybackActive?replayLights:originalHandling?playerProjectedHeadlight.enabled():night;
+            headlightGlare.append(mesh,unsigned(frontend.car),bodyPosition,drawCar.yaw,drawPitch,drawRoll,
+                playerLights,carPresentation.headlightState().fraction,camera,target,renderer.cameraUp,headlightGlareTextureBase,1);
+            if(rivalVisible){
+                const auto body=lerp(previousRivalBodyWorld,rivalBodyWorld,poseAlpha);
+                const float yaw=lerpAngle(previousRival.yaw,rivalVehicle.yaw,poseAlpha);
+                const auto angles=interpolateCarBodyAngles({previousRivalPitch,previousRivalRoll},{rivalPitch,rivalRoll},poseAlpha);
+                const bool lights=replayPlaybackActive?replayRivalLights:originalHandling?rivalProjectedHeadlight.enabled():night;
+                const auto append=[&](Vec3 eye,Vec3 aim,Vec3 up,unsigned mask){
+                    headlightGlare.append(mesh,unsigned(loadedRivalCar),body,yaw,angles.pitch,angles.roll,
+                        lights,rivalPresentation.headlightState().fraction,eye,aim,up,headlightGlareTextureBase,mask);
+                };
+                append(camera,target,renderer.cameraUp,1);
+                if(rearView)append(rearView->eye,rearView->target,rearView->up,2);
+            }
         }
         renderer.courseFog=&raceFog;
         preparePresentedRaceLights();

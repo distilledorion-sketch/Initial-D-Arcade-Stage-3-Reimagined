@@ -11,7 +11,7 @@ public sealed class Idas3HudEditor : MonoBehaviour
     [StructLayout(LayoutKind.Sequential)] struct CarFrame { public uint size,vertices,ranges,textures; public IntPtr vertexData,rangeData,textureData; }
     [StructLayout(LayoutKind.Sequential)] struct CarVertex { public Vector3 position,normal; public Color color; public Vector2 uv; public Color offset; }
     [StructLayout(LayoutKind.Sequential)] struct CarTexture { public uint width,height; public ulong pixels; public IntPtr data; }
-    [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,float seconds,int messages);
+    [DllImport("Idas3Unity",EntryPoint="Idas3SceneHudPreviewWithMap",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,int mapDisplay,float seconds,int messages);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudCar(ref CarFrame frame);
     static readonly int[] Groups={1,2,3,6,7,4,5,8,9,10};
     static readonly string[] Names={"Time / sections","Meter / gear","Time Attack records","Legend opponent","Online opponent","Rear-view mirror","Minimap","Accepting challengers","Time Extended","Keychain"};
@@ -86,7 +86,7 @@ public sealed class Idas3HudEditor : MonoBehaviour
     internal void Refresh()
     {
         if(!IsOpen)return;
-        if(Idas3SceneHudPreview(mode,Screen.width,Screen.height,working.minimapSize,working.minimapZoom,Time.unscaledTime,0)!=1){error=Idas3Native.Error();return;}
+        if(Idas3SceneHudPreview(mode,Screen.width,Screen.height,working.minimapSize,working.minimapZoom,working.minimapDisplay,Time.unscaledTime,0)!=1){error=Idas3Native.Error();return;}
         ui.ApplyFrame();
     }
     internal void SelectGroup(int index)

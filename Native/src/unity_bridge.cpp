@@ -683,6 +683,11 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayPose(double tick,float x,floa
         a.setDrivingView(cameraMode==1?OriginalDrivingView::Bumper:OriginalDrivingView::Chase);
         Idas3UiBeginFrame(width,height);
         double dt=(tick-a.replayLastTick)/60.;
+        // Repaints and fractional replay poses do not tick the cup. Recordings
+        // have no wall/ditch cue cells; replay only the known movement ripple.
+        if(a.replayLastTick<0||dt<0||dt>.25)a.hud.resetWaterCup();
+        else for(auto i=std::uint64_t(a.replayLastTick);i<std::uint64_t(tick);++i)
+            a.hud.advanceWaterCup(std::abs(speed)/60.f,{});
         if(a.replayLastTick<0||dt<0||dt>.25){a.wetWeather.reset();dt=1./60.;}
         a.replayLastTick=tick;
         a.refreshReplayHeadlights();
@@ -1059,12 +1064,12 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudCar(Idas3HudCarFrame* frame
         *frame={sizeof(*frame),unsigned(r.hudCar.vertices.size()),unsigned(r.hudCarRanges.size()),unsigned(r.hudCarImages.size()),r.hudCar.vertices.data(),r.hudCarRanges.data(),r.hudCarImages.data()};return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
-IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,float seconds,int messages){
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudPreviewWithMap(int mode,int width,int height,int mapSize,int mapZoom,int mapDisplay,float seconds,int messages){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
-        if(!r.sceneMode||!r.app||mode<0||mode>2||width<320||height<240||width>8192||height>8192||!std::isfinite(seconds))throw std::invalid_argument("Invalid HUD preview");
+        if(!r.sceneMode||!r.app||mode<0||mode>2||mapDisplay<0||mapDisplay>2||width<320||height<240||width>8192||height>8192||!std::isfinite(seconds))throw std::invalid_argument("Invalid HUD preview");
         if(!r.hudEditor){auto hud=std::make_unique<idas3::Hud>();hud->loadOriginal(r.app->root);r.hudEditor=std::move(hud);}
-        auto& hud=*r.hudEditor;hud.resize(width,height);hud.setMapSize(mapSize);hud.setMapZoom(mapZoom);
+        auto& hud=*r.hudEditor;hud.resize(width,height);hud.setMapSize(mapSize);hud.setMapZoom(mapZoom);hud.setMapDisplay(mapDisplay);
         idas3::Course course;course.name="HUD editor";course.length=1000;course.points={{0,0,0},{0,0,1000}};course.left={{-5,0,0},{-5,0,1000}};course.right={{5,0,0},{5,0,1000}};course.cumulative={0,1000};
         idas3::VehicleState car;car.speed=36.f+std::sin(seconds)*6.f;car.rpm=6000.f+std::sin(seconds)*1200.f;car.gear=4;car.position={0,0,400};
         auto rival=car;rival.position.z+=18.9f;
@@ -1078,10 +1083,19 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudPreview(int mode,int width,
         idas3::unityUiSubmit(pixels,width,height,false,false,false);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
+// Preserve the established preview ABI for older editor/diagnostic callers.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,float seconds,int messages){
+    return Idas3SceneHudPreviewWithMap(mode,width,height,mapSize,mapZoom,0,seconds,messages);
+}
 int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app||difficulty<0||difficulty>2){unityError("Invalid AI difficulty");return 0;}
     r.app->aiDifficulty=difficulty;return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneSetMapDisplay(int display){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||display<0||display>2){unityError("Invalid minimap display");return 0;}
+    r.app->hud.setMapDisplay(display);return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

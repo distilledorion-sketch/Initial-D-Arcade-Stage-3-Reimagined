@@ -1,0 +1,18 @@
+{
+  "source": "HOSTFS/model/hilight",
+  "anchor_table": "0C2FC2E8",
+  "factory": "0C0D2E20",
+  "visibility": "0C0D36A0",
+  "draw": "0C0D40A0",
+  "chunks": 4,
+  "textures": 4,
+  "cars": 35,
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source_sha256": {
+    "hilight_pol.bin.nz": "7a5efbd9cc45f24eeb75de4e818390dc67abf4775dd8971f8ccfcfc125e97f6e",
+    "hilight_pol.tbl": "cd90c057eed5ad20fc94d64d643d098c883600e7fb0ae4f6b5dbc08da0962fde",
+    "hilight_tex.bin.nz": "b9996b66d00214b5486ea90329a241c69a181a40c681054701310d87a1b86489",
+    "hilight_tex.tbl": "b5025dc0f2fedfbd531c10d7bb0fabab0713cee71208cc7d58fabaa4306f5cb4"
+  },
+  "geometry_uv_transform": "none; anchors remain body-local; host body pose includes source ride-height offset"
+}

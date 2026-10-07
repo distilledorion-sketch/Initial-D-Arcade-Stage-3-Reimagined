@@ -73,13 +73,15 @@ void battleRecords(OriginalVsBanner& banner,const std::filesystem::path& root){
         for(unsigned side=0;side<2;++side){
             const auto p=banner.battleRecordPlacement(side);
             check(p.left>=16&&p.left+p.width<=624&&p.top>100&&p.top+p.height<480&&p.opacity==1,"Settled record row left the640x480 safe area");
-            unsigned white=0;
+            unsigned white=0,lavender=0;
             for(int y=std::max(0,int(top+p.top*fit));y<std::min(height,int(std::ceil(top+(p.top+p.height+2)*fit)));++y)
                 for(int x=std::max(0,int(left+p.left*fit));x<std::min(width,int(std::ceil(left+(p.left+p.width)*fit)));++x){
                     const auto color=pixels[std::size_t(y)*width+x];
                     if((color>>24)>0&&(color&255)>180&&((color>>8)&255)>180&&((color>>16)&255)>180)++white;
+                    if((color>>24)>0&&((color>>16)&255)>100&&int(color&255)-int((color>>16)&255)>20)++lavender;
                 }
-            check(white>50,"Original-font record row produced no readable white glyphs at tested aspect ratio");
+            check(white>50,"Original stat row produced no readable white glyphs at tested aspect ratio");
+            check(lavender>20,"Battle stats lost their original lavender atlas gradient");
         }
     }
     setup.battles={0,99};setup.wins={17,100};banner.begin(setup);
@@ -131,6 +133,18 @@ int main(int argc, char** argv) try {
     check(OriginalVsBanner::available(root), "Start banner assets are not imported");
     OriginalVsBanner banner;
     banner.load(root);
+
+    if(argc>2){
+        const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
+        OriginalVsBannerSetup preview;preview.drawBackdrop=false;preview.showBattleRecords=true;
+        preview.localNameUtf8="JDR99";preview.opponentNameUtf8="PLAYER1";
+        preview.battles={11,2};preview.wins={11,0};banner.begin(preview);
+        for(unsigned i=0;i<152;++i)banner.tick();
+        std::vector<std::uint32_t> pixels(640*480,0xff303030);banner.paint(pixels,640,480);
+        std::ofstream image(out/"battle-stats.ppm",std::ios::binary);image<<"P6\n640 480\n255\n";
+        for(auto c:pixels){const char rgb[]{char(c>>16),char(c>>8),char(c)};image.write(rgb,3);}
+        check(bool(image),"Write original battle-stat preview");
+    }
 
     // Save selection reuses the source name atlas independently of the
     // animated VS owner, including Japanese and the nonsequential digit zero.

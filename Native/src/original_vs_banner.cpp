@@ -31,6 +31,16 @@ std::string battleRecord(std::uint32_t battles,std::uint32_t wins){
     return std::to_string(battles)+" BATTLE(S)  "+std::to_string(wins)+" WIN(S)  "+
         std::to_string(tenths/10)+"."+std::to_string(tenths%10)+"%";
 }
+// start2d chunk83 contains BATTLE(S), WIN(S), decimal and percent;
+// chunks84..93 contain the matching ten digits in texture13. The label
+// geometry provides the original column widths. Widen only counters that
+// exceed its three-digit slots; keep source ink, UVs and aspect ratio intact.
+float battleCounterExtra(std::uint32_t value){
+    return float(std::max(int(std::to_string(value).size())-3,0))*18.f;
+}
+float battleRecordWidth(std::uint32_t battles,std::uint32_t wins){
+    return 367.f+battleCounterExtra(battles)+battleCounterExtra(std::min(wins,battles));
+}
 // Exact visible English labels in the original localized namekana textures.
 // The corresponding source string bytes are Japanese texture lookup keys;
 // decoding those keys as Unicode would report a different, unpainted name.
@@ -223,10 +233,9 @@ const std::string& OriginalVsBanner::displayBattleRecord(unsigned side) const {
 OriginalVsBattleRecordPlacement OriginalVsBanner::battleRecordPlacement(unsigned side) const {
     const auto& text=displayBattleRecords_.at(side);
     if(!setup_.showVersus||text.empty())return {};
-    // Source name placements/motion are retained. The new network row uses
-    // the original alphabet; its fitting and outline are host presentation,
-    // not a claim about an unrecovered original statistics draw routine.
-    const float naturalWidth=recordTextWidth(text)+4.f;
+    // Match the original stat sprites, while fitting long network counters
+    // into the existing name area and retaining its animation.
+    const float naturalWidth=battleRecordWidth(setup_.battles[side],setup_.wins[side]);
     const float scale=std::min(1.f,412.f/naturalWidth);
     const float rowWidth=naturalWidth*scale;
     const auto& name=names_[side];
@@ -234,7 +243,7 @@ OriginalVsBattleRecordPlacement OriginalVsBanner::battleRecordPlacement(unsigned
     const float nameSize=onlineName&&!name.empty()?std::min(64.f,416.f/float(name.size())):64.f;
     const float nameTop=side?(!names_[2].empty()?344.f:312.f):104.f;
     return {(side?416.f:224.f)-rowWidth*.5f+nameX_[side],
-        nameTop+nameSize+5.f+nameY_[side],rowWidth,18.f*scale,nameAlpha_[side]};
+        nameTop+nameSize+5.f+nameY_[side],rowWidth,23.f*scale,nameAlpha_[side]};
 }
 
 std::vector<std::uint16_t> OriginalVsBanner::encodeSource(std::span<const std::uint8_t> source) const {
@@ -506,6 +515,35 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
             const auto layout=importedTitlePlacement();
             compositeImage(target,width,height,title,(float(width)-640.f*fit)*.5f+layout.left*fit,
                 (float(height)-480.f*fit)*.5f+layout.top*fit,layout.width*fit,layout.height*fit);
+            continue;
+        }
+        if(side<2){
+            const auto battles=setup_.battles[side],wins=std::min(setup_.wins[side],battles);
+            const float extraBattles=battleCounterExtra(battles),extraWins=battleCounterExtra(wins);
+            const float scale=bounds.width/battleRecordWidth(battles,wins);
+            SpritePlacement p;p.scale=unitsPerPixel*fit*scale;p.invertY=true;p.authoredHeight=0;
+            p.offsetX=(float(width)-640.f*fit)*.5f+bounds.left*fit;
+            p.offsetY=(float(height)-480.f*fit)*.5f+(bounds.top+scale)*fit;
+            p.opacity=bounds.opacity;p.straightAlphaOverlay=!setup_.drawBackdrop;
+            auto labels=model_.chunks[83];
+            for(auto& batch:labels.batches)for(auto& vertex:batch.vertices){
+                const float x=vertex.position.x;
+                vertex.position.x+=(extraBattles+(x>2.f?extraWins:0.f))/unitsPerPixel;
+            }
+            compositeOriginalMenuChunk(target,width,height,textures_,labels,p);
+            const auto number=[&](std::uint32_t value,float right,float advance){
+                const auto digits=std::to_string(value);
+                float x=right-float(digits.size())*advance;
+                for(char digit:digits){auto at=p;at.offsetX+=x*fit*scale;
+                    compositeOriginalMenuChunk(target,width,height,textures_,model_.chunks[84+digit-'0'],at);
+                    x+=advance;
+                }
+            };
+            number(battles,54.f+extraBattles,18.f);
+            number(wins,207.f+extraBattles+extraWins,18.f);
+            const auto tenths=battles?std::uint64_t(wins)*1000/battles:0;
+            number(unsigned(tenths/10),315.f+extraBattles+extraWins,14.f);
+            number(unsigned(tenths%10),341.f+extraBattles+extraWins,18.f);
             continue;
         }
         const auto& text=side==2?setup_.customCourseName:displayBattleRecords_[side];
