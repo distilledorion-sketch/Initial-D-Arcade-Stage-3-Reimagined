@@ -2,12 +2,32 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.44 - October 7, 2026
+
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Added Gunsai and Odawara with course selection cards, original scenery, collision, race titles, records and replay support.
+- Odawara runs two laps with separate clockwise/counterclockwise road layouts. Gunsai offers outbound/inbound routes. Both support day/night and dry/wet conditions and use Stage 3 Myogi handling.
+- Added Gunsai and Odawara to the in-game and website leaderboards, including direction/weather and individual-car records. Existing records and replay downloads are preserved.
+- All 93 factory paint colors are available on every car, including online opponents and replays. Existing colors and tuning parts are preserved.
+- Added a Sun Glare toggle under Display & Graphics.
+- Added Free Camera in Replay Viewer, plus separate switches for the game HUD and replay overlay. Use C / Y to cycle cameras, G / left-stick click for the game HUD, and H / Select for the replay overlay.
+
+The new courses use adapted wet scenery from the supplied dry assets. Physical controller freecam and two-account Steam races have not been newly verified. R35 development remains separate.
+
+Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is required and is not included.
+
+
+Fresh installs: download `Initial-D-Setup-0.3.95.44.zip`, extract it, and run `Install Initial D.cmd`. It downloads and verifies both game packages automatically. Manual installs: extract the Windows-x64 ZIP and the matching Additional-Courses ZIP into the same folder.
+
+Existing players: normal updates use one changed-file patch; patches support .20 through .43. Full Repair in .44 fetches both packages automatically. An older updater that falls back to its full download may need one Full Repair after restarting to finish installing the new courses.
+
 ## 0.3.95-community-replays.43 - October 7, 2026
 
 This update is required for new community Time Attack submissions. Both drivers must update for online races.
 
 - Added private online rooms, hidden from public listings and Quick Match, with room-code joining.
-- Added individual Gear 1–6 bindings for manual transmission, including H-shifter inputs. Existing bindings are preserved. Neutral/clutch/reverse simulation is not added.
+- Added individual Gear 1â€“6 bindings for manual transmission, including H-shifter inputs. Existing bindings are preserved. Neutral/clutch/reverse simulation is not added.
 - Reorganized settings into clearer categories and moved HUD sizes into a dedicated submenu.
 - Filled the margins around supported 4:3 menus with extended scrolling blue Initial D artwork.
 - Added Original/Balanced track lighting and corrected Special Stage ambient lighting and fog handling.
@@ -16,7 +36,7 @@ This update is required for new community Time Attack submissions. Both drivers 
 - Corrected inverted Shomaru Time Attack section maps.
 - Corrected imported-track replay bumper-camera height and slope handling.
 - Restored recorded driving footage behind Legend ending credits. Some original cinematic effects remain incomplete.
-- Optimized HUD/menu rendering by reusing vertex/index buffers and draw commands. HUD CPU time improved 7–23% in local tests; this is not an overall FPS increase claim.
+- Optimized HUD/menu rendering by reusing vertex/index buffers and draw commands. HUD CPU time improved 7â€“23% in local tests; this is not an overall FPS increase claim.
 
 Validation includes native regression tests, managed/player input checks, a full-course driving comparison and 45 pixel-identical rendered HUD/menu comparisons. Physical H-shifters and two-account Steam private rooms still need end-to-end testing. Online/later-sector FPS drops, intermittent public connection/collision reports, affected wheel hardware and Linux/Proton updater reports remain under investigation.
 
@@ -132,7 +152,7 @@ This update restores graded tachometer drift lights and fixes imported-course vi
 - Corrected inverted road shadows on Hakone and Sadamine, including wet-weather masks.
 - Fixed overlapping uphill/downhill fences and checkpoint gates on Sadamine.
 
-Drift levels are adapted to this game’s physics using the recovered artwork and animations; exact arcade thresholds are not claimed.
+Drift levels are adapted to this gameâ€™s physics using the recovered artwork and animations; exact arcade thresholds are not claimed.
 
 Community Time Attack submissions require exactly `.36`. Existing times, replays and season 2 are preserved. Both online players need this version. Changed-file patches support `.20` through `.35`; the full Windows ZIP supports new installations and Full Repair.
 
@@ -310,7 +330,7 @@ A verified original GDS-0033 dump is required. No ROM, personal saves or custom 
 
 ## 0.3.95-community-replays.15 - September 22, 2026
 
-- Fixed numeric driver-name glyphs on the community website and in replay filename generation. The original digit order is 1–9, then 0.
+- Fixed numeric driver-name glyphs on the community website and in replay filename generation. The original digit order is 1â€“9, then 0.
 - Corrected the leaderboard car labels for the Sileighty, Lancer Evo V and Evo VI TME while retaining their existing car IDs and records.
 
 - Added a rebindable Toggle headlights action in Settings > Controls: H on keyboard and right-stick click on standard controllers. Existing bindings migrate without replacing assigned controls; wheels can bind their own button. Verified projected lights and popup headlights off/on on original and imported courses.
@@ -360,33 +380,33 @@ Both online players must install this update. The updater preserves personal sav
 
 
 
-## 0.3.95-community-replays.10 — September 20, 2026
+## 0.3.95-community-replays.10 â€” September 20, 2026
 
 - Restored the arcade race-intro HUD entrance: TIME slides from the left and RECORD / DIFFERENCE / DRIVER slide from the right, with backing strips entering before their labels.
 - Restored the Legend of the Streets rival portrait entrance and the delayed player names. Online battle panels use the same entrance timing.
 - Uses the original game's slide filters on the race's 60 Hz clock, preserving numeric clocks and stable animation during pause or repeated renders.
 - Verified filter output against original instructions, rendered all three HUD modes at three aspect ratios, and checked the Unity pre-race sequence.
 
-## 0.3.95-community-replays.9 — September 20, 2026
+## 0.3.95-community-replays.9 â€” September 20, 2026
 
 - Improve Windows frame-cap pacing by waiting immediately before presentation with a high-resolution timer.
 - Keep existing FPS choices, VSync behavior, and uncapped rendering.
 - Reset pacing after focus changes and long stalls; avoid catch-up bursts and duplicate software limiters.
 
-## 0.3.95-community-replays.8 — September 20, 2026
+## 0.3.95-community-replays.8 â€” September 20, 2026
 
 - Restore snowfall and tire snow powder on Akina Snow using original effect textures.
 - Keep rain streaks and water trails separate from snow effects.
 - Apply Full/Reduced weather detail to snow as well as rain; rename the Graphics setting to Weather & Spray.
 
-## 0.3.95-community-replays.7 — September 20, 2026
+## 0.3.95-community-replays.7 â€” September 20, 2026
 
 - Add Discord Rich Presence with the Initial D Arcade Stage 3 title and supplied logo.
 - Show menus, race mode, track direction, conditions, opponents, results, and replay activity.
 - Add a View Leaderboard button and an on/off setting under Gameplay.
 - Keep Discord communication off the race frame loop; no account linking required.
 
-## 0.3.95-community-replays.6 — September 20, 2026
+## 0.3.95-community-replays.6 â€” September 20, 2026
 
 - Check GitHub before entering the game; show a Yes/No prompt for newer Windows releases.
 - Download and verify accepted updates, install after the game closes, then restart automatically.
@@ -394,14 +414,14 @@ Both online players must install this update. The updater preserves personal sav
 - Continue into the game when up to date, declined, or offline.
 - Add a manual update check under Gameplay on the title screen.
 
-## 0.3.95-community-replays.5 — September 20, 2026
+## 0.3.95-community-replays.5 â€” September 20, 2026
 
 - Combine personal Time Attack bests with current online leaderboard times while connected.
 - Keep personal times visible when the online leaderboard is empty.
 - Avoid duplicate rows when a personal best is already published.
 - Retain personal-only records offline and continue excluding obsolete shared records.
 
-## September 19–20, 2026 updates
+## September 19â€“20, 2026 updates
 
 - Added the replay library to Options, optional Online/Legend recording and required recording for shared Time Attacks.
 - Added camera controls, online opponent POV, recorded speed/RPM/movement and reconstructed engine audio.

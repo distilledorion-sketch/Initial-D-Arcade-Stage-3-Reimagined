@@ -170,6 +170,9 @@ public sealed class Idas3UnityUi : MonoBehaviour
     public void ApplyFrame()
     {
         if (source == null) return;
+        bool visible=sceneRenderer==null||sceneRenderer.ShowGameHud;
+        backgroundCamera.enabled=foregroundCamera.enabled=visible;
+        if(!visible)return;
         IndexUploadCount = CommandRebuildCount = 0;
         var frame = new Frame { size = 40 };
         if (Idas3UiGetFrame(ref frame) == 0) throw new InvalidOperationException("Native UI frame unavailable");
@@ -380,7 +383,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     // Explicit captures render the same overlay cameras as the normal player.
     public void RenderOverlayForCapture()
     {
-        if(source==null)return;
+        if(source==null||sceneRenderer!=null&&!sceneRenderer.ShowGameHud)return;
         backgroundCamera.targetTexture=foregroundCamera.targetTexture=source.targetTexture;
         try {backgroundCamera.Render();foregroundCamera.Render();}
         finally {backgroundCamera.targetTexture=foregroundCamera.targetTexture=null;}

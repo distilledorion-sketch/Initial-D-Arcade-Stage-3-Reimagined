@@ -38,14 +38,20 @@ public static class Idas3UpdateStaging {
     public static string Hash(string path){using(var input=File.OpenRead(path))using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(input)).Replace("-","").ToLowerInvariant();}
     private static void PutString(BinaryWriter writer,string value){writer.Write(value.Length);writer.Write(Encoding.Unicode.GetBytes(value));}
     private static byte[] Digest(string value){var bytes=new byte[32];if(value!=null)for(int i=0;i<32;i++)bytes[i]=Convert.ToByte(value.Substring(i*2,2),16);return bytes;}
-    public static string Prepare(string root,string session,string archive,string digest,bool patch,string baseVersion,string targetVersion,int parentId,long parentFileTime,Func<string,Patch> parse,Action<int,int> progress=null){
+    public static string Prepare(string root,string session,string archive,string digest,bool patch,string baseVersion,string targetVersion,int parentId,long parentFileTime,Func<string,Patch> parse,Action<int,int> progress=null,string contentArchive=null,string contentDigest=null){
         root=Path.GetFullPath(root);session=Path.GetFullPath(session);NoLinks(root);NoLinks(session);
         if(!File.Exists(Path.Combine(root,"InitialDUnity.exe")))throw new IOException("Game executable is missing.");
         if(!string.Equals(Path.GetFullPath(archive),Inside(session,"game.zip"),StringComparison.OrdinalIgnoreCase)||!Regex.IsMatch(digest??"",@"\A[0-9a-f]{64}\z")||Hash(archive)!=digest)throw new IOException("Update archive verification failed.");
         string stage=Inside(session,"stage"),backup=Inside(session,"backup");
         if(Directory.Exists(stage)||Directory.Exists(backup))throw new IOException("Update session already used.");
         var records=new List<Record>();var inventory=new Dictionary<string,PatchFile>(StringComparer.OrdinalIgnoreCase);
-        using(var zip=ZipFile.OpenRead(archive)){
+        var archives=new List<ZipArchive>();
+        try {
+            var zip=ZipFile.OpenRead(archive);archives.Add(zip);
+            if(contentArchive!=null){
+                if(patch||!string.Equals(Path.GetFullPath(contentArchive),Inside(session,"content.zip"),StringComparison.OrdinalIgnoreCase)||!Regex.IsMatch(contentDigest??"",@"\A[0-9a-f]{64}\z")||Hash(contentArchive)!=contentDigest)throw new IOException("Additional content verification failed.");
+                archives.Add(ZipFile.OpenRead(contentArchive));
+            }
             if(patch){
                 try{
                     ZipArchiveEntry manifest=null;foreach(var entry in zip.Entries)if(entry.FullName=="update-patch.json"){if(manifest!=null)throw new IOException("Duplicate manifest.");manifest=entry;}
@@ -59,7 +65,7 @@ public static class Idas3UpdateStaging {
                 }catch(Exception e){throw new PatchRejectedException("Invalid patch: "+e.Message);}
             }
             var entries=new Dictionary<string,ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);long expanded=0;
-            foreach(var entry in zip.Entries){
+            foreach(var sourceZip in archives)foreach(var entry in sourceZip.Entries){
                 if(patch&&entry.FullName=="update-patch.json")continue;
                 string name=SafeName(entry.FullName.TrimEnd('/'));
                 if((entry.ExternalAttributes&0x400)!=0||((entry.ExternalAttributes>>16)&0xf000)==0xa000)throw new IOException("Links are not allowed in update archives.");
@@ -91,7 +97,7 @@ public static class Idas3UpdateStaging {
                 records.Add(new Record{path=name,oldHash=old,newHash=next,size=pair.Value.Length,changed=old!=next});
                 if(progress!=null)progress(++completed,total);
             }
-        }
+        } finally {foreach(var opened in archives)opened.Dispose();}
         string plan=Inside(session,"install.plan");
         using(var writer=new BinaryWriter(new FileStream(plan,FileMode.CreateNew,FileAccess.Write))){
             writer.Write(Encoding.ASCII.GetBytes("IDUPD002"));PutString(writer,root);writer.Write(parentId);writer.Write(parentFileTime);writer.Write(records.Count);

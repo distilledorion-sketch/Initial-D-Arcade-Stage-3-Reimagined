@@ -61,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.43";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.44";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -222,6 +222,22 @@ public static class Idas3Build
             "Both multiplayer players must run this same test build.\n\n" +
             File.ReadAllText(readme).Replace("INITIAL D UNITY - CURRENT BUILD", "INITIAL D UNITY - TEST BUILD")
                 .Replace("LocalLow\\Chris\\Initial D Unity\\", "LocalLow\\Chris\\Initial D Unity Test\\"));
+    }
+
+    public static void BuildIdZeroPreview()
+    {
+        Configure();
+        string product=PlayerSettings.productName;
+        try {
+            PlayerSettings.productName="Initial D IdZero Preview";
+            AssetDatabase.SaveAssets();
+            BuildPlayer("Builds/IdZeroPreview/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");
+            File.WriteAllText("Builds/IdZeroPreview/PREVIEW.txt",
+                "Gunsai and Odawara integration preview. Select either course in Time Attack or Online Battle.\n"+
+                "Odawara runs two laps, with different roads for clockwise/counterclockwise.\n"+
+                "Both tracks currently use the package's Myogi handling. Wet scenery is adapted from dry assets.\n"+
+                "Uses separate saves under Initial D IdZero Preview. This build has not been published.\n");
+        } finally {PlayerSettings.productName=product;AssetDatabase.SaveAssets();}
     }
 
     public static void BuildSpecialStagePreview()

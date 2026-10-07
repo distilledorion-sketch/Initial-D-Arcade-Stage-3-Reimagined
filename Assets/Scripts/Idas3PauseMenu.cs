@@ -208,7 +208,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?3:tab==0?6:tab==4?7:tab==2?4:tab==1?10:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
+    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?3:tab==0?6:tab==4?7:tab==2?4:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -323,7 +323,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==6)v.rainDetail=Wrap(v.rainDetail+direction,2);
             if(row==7)v.importedSceneryDetail=Wrap(v.importedSceneryDetail+direction,3);
             if(row==8)v.trackLighting=Wrap(v.trackLighting+direction,2);
-            if(row==9)v.showFps=!v.showFps;
+            if(row==9)v.sunGlare=!v.sunGlare;
+            if(row==10)v.showFps=!v.showFps;
         }else if(tab==2){
             if(row==0)v.defaultCamera=Wrap(v.defaultCamera+direction,CameraModes.Length);
             if(row==1)v.aiDifficulty=Wrap(v.aiDifficulty+direction,3);
@@ -506,7 +507,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(6,"WEATHER & SPRAY",new[]{"FULL","REDUCED"}[v.rainDetail]);
             ChoiceRow(7,"IMPORTED SCENERY",new[]{"ORIGINAL","BALANCED","LOW"}[v.importedSceneryDetail]);
             ChoiceRow(8,"TRACK LIGHTING",v.trackLighting==0?"ORIGINAL":"BALANCED");
-            ChoiceRow(9,"SHOW FRAME RATE",v.showFps?"ON":"OFF");
+            ChoiceRow(9,"SUN GLARE",v.sunGlare?"ON":"OFF");
+            ChoiceRow(10,"SHOW FRAME RATE",v.showFps?"ON":"OFF");
             Text(new Rect(288,522,687,20),v.vSync?"Turn off VSync to use the frame limit.":"Display changes must be confirmed within 15 seconds.",small);
         }else if(tab==2){
             ChoiceRow(0,"DEFAULT CAMERA",CameraModes[v.defaultCamera]);
@@ -573,7 +575,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
     private bool CompactRows=>tab==1||tab==4||hudSizesOpen;
-    private float RowY(int row)=>tab==4?(row<3?208+row*38:354+(row-3)*38):tab==1?194+row*32:CompactRows?194+row*36:194+row*59;
+    private float RowY(int row)=>tab==4?(row<3?208+row*38:354+(row-3)*38):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
         float y=RowY(row);bool compact=CompactRows;
         if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
@@ -584,11 +586,11 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void ChoiceRow(int row,string name,string value){
         float y=RowY(row);bool compact=CompactRows;
-        if(selection==row+1)Frame(new Rect(278,y,714,tab==1?31:compact?35:49),Red);
-        Text(new Rect(290,y+(compact?5:13),294,31),name,label);
-        if(Button(new Rect(595,y+(compact?2:7),34,compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
-        Text(new Rect(636,y+(compact?5:8),304,33),value,button);
-        if(Button(new Rect(948,y+(compact?2:7),34,compact?29:35),"›")){selection=row+1;Adjust(row,1);}
+        if(selection==row+1)Frame(new Rect(278,y,714,tab==1?28:compact?35:49),Red);
+        Text(new Rect(290,y+(tab==1?2:compact?5:13),294,tab==1?26:31),name,label);
+        if(Button(new Rect(595,y+(compact?2:7),34,tab==1?25:compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
+        Text(new Rect(636,y+(tab==1?2:compact?5:8),304,tab==1?26:33),value,button);
+        if(Button(new Rect(948,y+(compact?2:7),34,tab==1?25:compact?29:35),"›")){selection=row+1;Adjust(row,1);}
     }
     private void ControlsView(){
         if(bindings==null){Text(new Rect(288,206,690,45),"Control bindings are unavailable.",wrapped);return;}

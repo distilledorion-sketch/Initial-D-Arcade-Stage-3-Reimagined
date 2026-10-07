@@ -374,11 +374,24 @@ namespace Idas3.Multiplayer
                 using(var file=File.OpenRead(path)) complete="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
                 using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) complete+="-"+Convert.ToBase64String(hash.ComputeHash(file));
             }
-            for(int course=11;course<Idas3CourseCatalog.Count;++course)
+            for(int course=11;course<16;++course)
                 complete+="-"+course+"-"+SpecialStageFingerprint(Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12&&course<=14,course==15);
+            complete+="-16-"+GunsaiFingerprint(Path.Combine(Application.streamingAssetsPath,"GUNSAI"));
+            complete+="-17-"+OdawaraFingerprint(Path.Combine(Application.streamingAssetsPath,"ODAWARA"));
             complete+=ExperimentalAuthority?"-authority1":"-pose1";
             // Never cache an incomplete identity when reading a course fails.
             return compatibility=complete;
+        }
+        internal static string GunsaiFingerprint(string folder)=>IdZeroFingerprint(folder,"course.id","gunsai_path.bin","gunsai_path_l.bin","gunsai_path_r.bin","gunsai.rcl","gunsai-reverse.rcl","race.bin");
+        internal static string OdawaraFingerprint(string folder)=>IdZeroFingerprint(folder,"course.id","odawara_path.bin","odawara_path_l.bin","odawara_path_r.bin","odawara_reverse_path.bin","odawara_reverse_path_l.bin","odawara_reverse_path_r.bin","odawara.rcl","odawara-reverse.rcl","race.bin");
+        static string IdZeroFingerprint(string folder,params string[] names){
+            if(!File.Exists(Path.Combine(folder,"menu.idastex")))return "absent";
+            using(var hash=SHA256.Create())using(var combined=new MemoryStream()){
+                foreach(var name in names){
+                    using(var file=File.OpenRead(Path.Combine(folder,name))){var part=hash.ComputeHash(file);combined.Write(part,0,part.Length);}
+                }
+                return Convert.ToBase64String(hash.ComputeHash(combined.ToArray()));
+            }
         }
         internal static string EnnaFingerprint(string folder)=>SpecialStageFingerprint(folder,"enna",false);
         internal static string SpecialStageFingerprint(string folder,string slug,bool scaledTimers,bool stage8=false)

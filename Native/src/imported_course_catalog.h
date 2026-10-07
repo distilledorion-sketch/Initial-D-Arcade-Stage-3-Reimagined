@@ -10,7 +10,7 @@ struct ImportedCourseDefinition {
     bool nightOnly,specialStage;
     std::uint32_t sceneFlags;
 };
-inline constexpr std::array<ImportedCourseDefinition,7> importedCourseDefinitions{{
+inline constexpr std::array<ImportedCourseDefinition,9> importedCourseDefinitions{{
     {9,0,"hakone","HAKONE","HAKONE",false,false,0},
     {10,2,"sadamine","SADAMINE","SADAMINE",false,false,524288u},
     {11,6,"enna","ENNA SKYLINE","ENNA",true,true,1048576u},
@@ -18,6 +18,8 @@ inline constexpr std::array<ImportedCourseDefinition,7> importedCourseDefinition
     {13,8,"usui_special","USUI (SPECIAL STAGE)","USUI_SPECIAL",true,true,1048576u|4194304u},
     {14,4,"momiji","MOMIJI LINE","MOMIJI",true,true,1048576u|8388608u},
     {15,6,"tsubaki","TSUBAKI LINE","TSUBAKI",false,false,16777216u},
+    {16,0,"gunsai","GUNSAI","GUNSAI",false,false,33554432u},
+    {17,0,"odawara","ODAWARA","ODAWARA",false,false,67108864u},
 }};
 inline constexpr unsigned supportedCourseCount=9+unsigned(importedCourseDefinitions.size());
 inline constexpr unsigned supportedConditionCount=supportedCourseCount*2;

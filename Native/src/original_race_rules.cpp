@@ -122,7 +122,9 @@ void OriginalRaceRules::resetImported(std::vector<OriginalRacePoint> center,std:
     if(center.size()<21||center.size()!=left.size()||left.size()!=right.size()||initialSeconds<=0||initialSeconds>999)
         throw std::invalid_argument("Invalid imported race data");
     const int period=int(center.size())-1;
-    if(row.startIndex<0||row.goalIndex<=0||row.startIndex+row.goalIndex>=period)throw std::invalid_argument("Imported race gates outside path");
+    // A circuit repeats its first point; its goal is whole laps past the start.
+    const bool circuit=center.front()==center.back();
+    if(row.startIndex<0||row.goalIndex<=0||(circuit?row.startIndex>=period:row.startIndex+row.goalIndex>=period))throw std::invalid_argument("Imported race gates outside path");
     for(const auto* stream:{&center,&left,&right})for(auto p:*stream)for(float f:p)if(!std::isfinite(f))throw std::invalid_argument("Invalid imported path point");
     for(auto bonus:bonuses)if(bonus<0||bonus>999)throw std::invalid_argument("Invalid imported time extension");
     setup_={unsigned(reverse),2,0};legend_=battle_=false;imported_=true;importedBonuses_=bonuses;enemy_=0;

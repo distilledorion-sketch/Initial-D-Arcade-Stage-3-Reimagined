@@ -124,9 +124,9 @@ struct HostInput {
     bool button(WORD b)const{return (pressedButtons&b)!=0;}
 };
 struct App {
-    std::filesystem::path importedCourseRoot,sadamineCourseRoot,ennaCourseRoot,tsubakiCourseRoot;
+    std::filesystem::path importedCourseRoot,sadamineCourseRoot,ennaCourseRoot,tsubakiCourseRoot,gunsaiCourseRoot,odawaraCourseRoot;
     std::array<std::filesystem::path,3> specialStageCourseRoots;
-    std::filesystem::path& importedRoot(int id){return id==15?tsubakiCourseRoot:id>=12?specialStageCourseRoots.at(unsigned(id-12)):id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
+    std::filesystem::path& importedRoot(int id){return id==17?odawaraCourseRoot:id==16?gunsaiCourseRoot:id==15?tsubakiCourseRoot:id>=12?specialStageCourseRoots.at(unsigned(id-12)):id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
     std::optional<ImportedCourse> importedCourse;
     struct MultiplayerState {
         std::string localName="PLAYER",remoteName="OPPONENT";
@@ -166,6 +166,7 @@ struct App {
     NativeTextureBank smokeTextures;
     std::uint32_t smokeTextureBase=0;
     int performanceRainDetail=0;
+    bool sunGlareEnabled=true;
     int aiDifficulty=0;
     WeatherShelter weatherShelter;
     NativeTextureBank rainTextures,rainmarkTextures;
@@ -340,6 +341,7 @@ struct App {
     int replayInitialRemaining=0;
     int replayCameraMode=0;
     float replayOrbit=0;
+    Vec3 replayFreeEye{},replayFreeTarget{0,0,1};
     double replayLastTick=-1;
     std::string sharedFinishJson;
     std::vector<std::uint8_t> sharedFinishReplay;
@@ -536,7 +538,7 @@ struct App {
         originalAssembly=NativeAssembly::load(modelDir/"assembly"/(folder+"_default.idasasm"),originalModel.chunks.size());
         carPresentation=CarPresentation::loadPlayerProfile(root,appearanceProfile);
         carPresentation.applyMaterials(originalModel);
-        numberPlate=OriginalNumberPlate::load(root,unsigned(frontend.car),color);
+        numberPlate=OriginalNumberPlate::load(root,unsigned(frontend.car),original::originalCarPresentationColor(unsigned(frontend.car),color));
         numberPlate.setPlayerProfile(appearanceProfile);
         if(differentCar){originalTextures=NativeTextureBank::load(root/"data/original_assets/cars"/folder/"textures/textures.idastex");texturesPending=true;menuTexturesLoaded=false;}
         loadedCar=frontend.car;loadedColor=int(color);loadedAppearanceWord=appearance.word;loadedProfileCondition=appearanceProfile.u(32);loadedDriverName=name;
@@ -792,7 +794,7 @@ struct App {
         const auto appearance=original::originalPlayerAppearanceConfig(profile,frontend.stage==FrontendStage::Car?1u:0u);
         std::array<std::uint32_t,6> name{profile.u(76)};for(unsigned i=0;i<5;++i)name[i+1]=profile.u(44+4*i);
         if(driverEntryPreviewActive&&driverEntryPreviewAppearance&&driverEntryPreviewAppearance->car==appearance.car&&
-            driverEntryPreviewAppearance->word==appearance.word&&driverEntryPreviewAppearance->materialVariant==appearance.materialVariant&&
+            driverEntryPreviewAppearance->word==appearance.word&&driverEntryPreviewAppearance->customPaintRgb==appearance.customPaintRgb&&driverEntryPreviewAppearance->materialVariant==appearance.materialVariant&&
             driverEntryPreviewCondition==profile.u(32)&&driverEntryPreviewName==name)return;
         const auto folder=std::string(originalCarFolders.at(frontend.car));
         auto model=NativeModel::load(root/"data/original_models"/folder/(folder+".idasmesh"));
@@ -817,7 +819,7 @@ struct App {
         original::applyOriginalTuningCandidateAppearance(appearance,candidate);
         std::array<std::uint32_t,6> name{profile.u(76)};for(unsigned i=0;i<5;++i)name[i+1]=profile.u(44+4*i);
         if(tuningCoursePreviewActive&&tuningCoursePreviewCarId==frontend.car&&tuningCoursePreviewPackage==int(menuState.selected496)&&
-            tuningCoursePreviewAppearance&&tuningCoursePreviewAppearance->word==appearance.word&&
+            tuningCoursePreviewAppearance&&tuningCoursePreviewAppearance->word==appearance.word&&tuningCoursePreviewAppearance->customPaintRgb==appearance.customPaintRgb&&
             tuningCoursePreviewAppearance->materialVariant==appearance.materialVariant&&tuningCoursePreviewCondition==profile.u(32)&&tuningCoursePreviewName==name)return;
         const auto folder=std::string(originalCarFolders.at(frontend.car));
         auto model=NativeModel::load(root/"data/original_models"/folder/(folder+".idasmesh"));
@@ -1105,7 +1107,7 @@ struct App {
     }
     void load(){
         if(importedCourse){
-            course=Course::load(importedCourse->root,importedCourse->slug,importedCourse->name,reverse);
+            course=importedCourse->course(reverse);
             hasOriginalScenery=catalogScenery=false;sceneWet=wet;courseObjects.reset();courseBillboards.reset();courseCrows.reset();
             trackStart=2;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;
             chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
@@ -1427,7 +1429,7 @@ struct App {
             }
             else if(importedCourse)importedCourse->resetRules(originalRace,reverse,spawn.position);
             else originalRace.reset(root,{condition,2,wet?1u:0u},originalCoordinate,spawn.position);
-            if(battle||multiplayer.active)battleMetrics=importedCourse?original::OriginalBattleMetrics(std::span(importedCourse->center).subspan(importedCourse->checkpoints[0],importedCourse->rules(reverse).goalIndex+1),reverse):original::OriginalBattleMetrics::load(root,condition);
+            if(battle||multiplayer.active)battleMetrics=importedCourse?importedCourse->battleMetrics(reverse):original::OriginalBattleMetrics::load(root,condition);
         }
         if(!originalHandling)audio.useDevelopmentEngine();
         texturesPending=true;
@@ -2308,7 +2310,7 @@ struct App {
             auto sourceIndex=routeIndex;
             if(course.reversed)sourceIndex=course.points.size()-1-sourceIndex;
             Vec3 objectReference=course.points.at(routeIndex);
-            if(!menu&&originalHandling){
+            if(!menu&&originalHandling&&!(replayPlaybackActive&&replayCameraMode==4)){
                 // The source course owner receives a driving-cell index once
                 // per fixed tick. Its reverse sector cell is N-2-i, whereas
                 // 099460 samples the reverse point N-1-i for spatial culling.
@@ -2840,7 +2842,7 @@ struct App {
         setup.compactHeader=true;
         static constexpr unsigned directions[9][2]={{5,4},{5,4},{1,0},{1,0},{2,3},{1,6},{2,3},{2,3},{1,0}};
         setup.drawDirection=true;setup.direction=directions[courseIndex][reverse?1:0];
-        if(importedCourse){setup.customCourseName=importedCourse->name;setup.drawDirection=true;setup.direction=reverse?0u:1u;}
+        if(importedCourse){setup.customCourseName=importedCourse->name;setup.drawDirection=true;setup.direction=importedCourse->laps?(reverse?4u:5u):importedCourse->id==16?(reverse?3u:2u):reverse?0u:1u;}
         if(battle&&!bunta){
             const auto metadata=original::originalLegendStartMetadata(battleProfile.u(24));
             setup.drawDirection=true;setup.direction=metadata.direction;
@@ -2984,7 +2986,15 @@ struct App {
         input.acceleratorFraction=timeAttackSnapshot.acceleratorFraction;input.brakeFraction=timeAttackSnapshot.brakeFraction;
         input.maxSteeringDelta=timeAttackSnapshot.maxSteeringDelta;input.wallCount=timeAttackSnapshot.wallCount;
         input.ditchCount=timeAttackSnapshot.ditchCount;input.maxGearUsed=timeAttackSnapshot.maxGearUsed;
-        original::populateOriginalTimeAttackAnalysisTiming(input.course,originalRace.state().times,race.timeUp?2u:0u,
+        auto analysisTimes=originalRace.state().times;
+        if(importedCourse&&importedCourse->laps){
+            // Imported coaching uses four sections. Keep actual circuit lap
+            // crossings in the race owner, but adapt its section timestamps
+            // to the original analysis routine's lap-time input fields.
+            analysisTimes.lapCount=std::min(3u,analysisTimes.sectionCount);
+            std::copy_n(analysisTimes.sectionTimes.begin(),analysisTimes.lapCount,analysisTimes.lapTimes.begin());
+        }
+        original::populateOriginalTimeAttackAnalysisTiming(input.course,analysisTimes,race.timeUp?2u:0u,
             prior.ticks6000,prior.intermediate6000,input);
         originalSession.withSharedRandom([&](auto& seed){timeAttackAnalysis=original::analyzeOriginalTimeAttack(input,seed);});
         timeAttackAnalysisPrepared=true;
@@ -3292,6 +3302,7 @@ struct App {
                 camera=frame.eye;target=frame.target;renderer.cameraUp=frame.up;
                 renderer.verticalFieldOfView=frame.verticalFieldOfView;
             }
+            else if(replayCameraMode==4){camera=replayFreeEye;target=replayFreeTarget;}
             else if(replayCameraMode==2){camera=center-heading*3.f+Vec3{0,24.f,0};target=center;}
             else if(replayCameraMode==3){camera=center-forward(drawCar.yaw+replayOrbit)*8.f+Vec3{0,3.f,0};target=center;}
             else{camera=center-heading*7.f+Vec3{0,2.f,0};target=center+heading*9.f;}
@@ -3357,7 +3368,7 @@ struct App {
             NativeAssembly background;if(catalogScenery)background=courseScene.backgroundAssembly(camera);else background.instances.push_back(originalAkinaBackgroundInstance(camera));
             mesh.originalCar(originalBackgroundModel,background,{0,0,0},0,std::uint32_t(originalCourseTextures.size()));
         }
-        scenery(mesh,menu?trackStart:progress);
+        scenery(mesh,menu?trackStart:replayPlaybackActive&&replayCameraMode==4?course.project(camera).sample.distance:progress);
         if(courseCrows)mesh.originalCar(courseCrows->model,courseCrows->assembly(),{0,0,0},0,crowTextureBase);
         if(hasOriginalScenery)for(auto i=courseRangeBegin;i<mesh.ranges.size();++i)mesh.ranges[i].courseLighting=true;
         const float poseAlpha=menu||paused||race.phase==RacePhase::Finished?1.f:alpha;
@@ -3499,7 +3510,7 @@ struct App {
                 {a,normal,color,0,0},{c,normal,color,1,1},{d,normal,color,0,1}});
             mesh.ranges.back().count+=6;
         }
-        if(!menu&&!importedCourse&&!validationHideDrivingEffects){
+        if(!menu&&!importedCourse&&!validationHideDrivingEffects&&sunGlareEnabled){
             auto sunCoordinate=originalCoordinate;
             if(replayPlaybackActive)originalPath.project({drawCar.position.x,drawCar.position.y,drawCar.position.z},sunCoordinate);
             environment.appendSun(mesh,unsigned(courseIndex),night,wet,reverse,float(sunCoordinate.index)+sunCoordinate.fraction,
@@ -3659,13 +3670,14 @@ int runFactoryPaintPreview(App& app,const fs::path& output){
         app.frontend.battleProfile.setu(16,car);app.frontend.battleProfile.setu(1180,app.frontend.battleProfile.u(1180)|1u);
         app.frontend.stage=FrontendStage::Car;app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
         app.frontend.advance(8./60.);
-        const unsigned count=original::originalCarColorCounts[car];
+        const unsigned count=original::carPaintCount;
         for(unsigned color=0;color<count;++color){
             if(color)app.frontend.changeColor(1);
             if(!app.render(1./60))throw std::runtime_error(app.renderer.error);
             if(app.loadedCar!=int(car)||app.loadedColor!=int(color)||app.frontend.selectedColor()!=color)throw std::runtime_error("Factory paint input did not reach the live showroom");
             const auto stem="car-"+std::to_string(car)+"-color-"+std::to_string(color);
-            if(!app.renderer.saveBitmap((output/(stem+".bmp")).wstring()))throw std::runtime_error("Factory paint capture failed");
+            if((color==0||color==original::originalCarColorCounts[car]||color==count-1)&&
+                !app.renderer.saveBitmap((output/(stem+".bmp")).wstring()))throw std::runtime_error("Factory paint capture failed");
             report<<car<<','<<color<<','<<app.carPresentation.assembly().instances.size()<<','<<app.carPresentation.materialPatchCount()<<','<<app.frontend.selectedColor()<<','<<app.frontend.battleProfile.u(64)<<'\n';
         }
         app.frontend.confirm();app.frontend.advance(164./60.);

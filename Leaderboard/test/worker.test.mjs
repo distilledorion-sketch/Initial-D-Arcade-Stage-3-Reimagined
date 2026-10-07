@@ -10,7 +10,7 @@ const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').r
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
 const secret='a'.repeat(64),device='b'.repeat(64);
-beforeEach(async()=>{db?.close();db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_imported_times.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0003_replays.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0004_replay_chunks.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0005_enna_skyline.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0006_special_stage_courses.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0007_tsubaki_line.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0008_replay_retention.sql',import.meta.url),'utf8'));const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v));},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {meta:r};}});env={RULESET:'d3-community-v1',ADMIN_KEY_SHA256:await sha(secret),DB:{prepare:wrap,async batch(queries){db.exec('BEGIN');try{const out=[];for(const q of queries)out.push(await q.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}}};for(const key of ['PUBLIC_LIMIT','WRITE_LIMIT','AUTH_LIMIT'])env[key]={async limit(){return {success:true};}};});
+beforeEach(async()=>{db?.close();db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../migrations/0001_leaderboard.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_imported_times.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0003_replays.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0004_replay_chunks.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0005_enna_skyline.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0006_special_stage_courses.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0007_tsubaki_line.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0008_replay_retention.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0009_idzero_courses.sql',import.meta.url),'utf8'));const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args.map(v=>v instanceof ArrayBuffer?new Uint8Array(v):v));},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {meta:r};}});env={RULESET:'d3-community-v1',ADMIN_KEY_SHA256:await sha(secret),DB:{prepare:wrap,async batch(queries){db.exec('BEGIN');try{const out=[];for(const q of queries)out.push(await q.run());db.exec('COMMIT');return out;}catch(e){db.exec('ROLLBACK');throw e;}}}};for(const key of ['PUBLIC_LIMIT','WRITE_LIMIT','AUTH_LIMIT'])env[key]={async limit(){return {success:true};}};});
 async function call(path,data,headers={}){return worker.fetch(new Request('https://example.test'+path,{method:data?'POST':'GET',headers:{...(data?{'Content-Type':'application/json'}:{}),...headers},body:data?JSON.stringify(data):undefined}),env);}
 const run=(extra={})=>({id:crypto.randomUUID(),ruleset:'d3-community-v1',epoch:1,condition:0,weather:0,car:0,ticks6000:1200000,nameGlyphs:[162,163,164,221,221],splits:[300000,600000,900000,1200000],manual:1,night:0,points:999999,build:REQUIRED_CLIENT_BUILD,...extra});
 const auth=()=>({Authorization:'Bearer '+device});
@@ -51,8 +51,8 @@ test('Enna downhill/uphill dry/wet upload with replays and appear on separate bo
  }
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();
  assert.deepEqual(snapshot.courses,COURSES);assert.equal(snapshot.entries.length,4);
- assert.equal((await call('/api/v1/board?condition=32&weather=0')).status,400);
- assert.equal((await uploadReplay(run({condition:32}))).status,400);
+ assert.equal((await call('/api/v1/board?condition=36&weather=0')).status,400);
+ assert.equal((await uploadReplay(run({condition:36}))).status,400);
  assert.equal((await uploadReplay(run({condition:22,build:'0.3.95-enna-preview.1'}))).status,409);
  assert.equal((await call('/api/v1/runs',run({condition:22}),auth())).status,426);
  assert.equal((await uploadReplay(run({condition:22,imported:1}))).status,400);
@@ -86,6 +86,52 @@ test('Tsubaki has separate downhill/uphill dry/wet boards and matching replay do
   assert.equal(meta.condition,condition);assert.equal(meta.weather,weather);
  }
  for(const condition of [18,19,20,21,28,29])assert.equal((await(await call(`/api/v1/board?condition=${condition}&weather=0`)).json()).entries.length,0);
+});
+
+test('IDZero migration preserves existing scores, replay bytes and storage foreign keys',()=>{
+ const prior=new DatabaseSync(':memory:');
+ try{
+  prior.exec('PRAGMA foreign_keys=ON');
+  for(const name of ['0001_leaderboard','0002_imported_times','0003_replays','0004_replay_chunks','0005_enna_skyline','0006_special_stage_courses','0007_tsubaki_line','0008_replay_retention'])prior.exec(readFileSync(new URL('../migrations/'+name+'.sql',import.meta.url),'utf8'));
+  prior.exec("INSERT INTO devices(id,token_hash,created_at) VALUES('device','token',1)");
+  const insert=prior.prepare('INSERT INTO runs(id,device_id,ruleset,epoch,condition,weather,car,ticks,glyphs,splits,manual,night,points,build,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+  for(const condition of [0,18,28,30,31]){
+   const id='record-'+condition;insert.run(id,'device','d3-community-v1',2,condition,0,0,1200000,'[162,221,221,221,221]','[300000,600000,900000,1200000]',1,0,1000,REQUIRED_CLIENT_BUILD,1);
+   prior.prepare('INSERT INTO replays(run_id,data) VALUES(?,?)').run(id,new Uint8Array(44).fill(condition));
+   prior.prepare('INSERT INTO replay_objects(run_id,object_key) VALUES(?,?)').run(id,'existing/'+id);
+  }
+  const before=prior.prepare('SELECT * FROM runs ORDER BY id').all();
+  const bytes=prior.prepare('SELECT * FROM replays ORDER BY run_id').all();
+  prior.exec(readFileSync(new URL('../migrations/0009_idzero_courses.sql',import.meta.url),'utf8'));
+  assert.deepEqual(prior.prepare('SELECT * FROM runs ORDER BY id').all(),before);
+  assert.deepEqual(prior.prepare('SELECT * FROM replays ORDER BY run_id').all(),bytes);
+  assert.equal(prior.prepare('SELECT count(*) n FROM replay_objects').get().n,5);
+  assert.equal(prior.prepare('SELECT count(*) n FROM replay_object_deletions').get().n,0);
+  assert.deepEqual(prior.prepare('PRAGMA foreign_key_check').all(),[]);
+ }finally{prior.close();}
+});
+
+test('IDZero courses keep direction/weather boards and replays separate from old courses',async()=>{
+ assert.deepEqual(COURSES.slice(16),['Gunsai','Odawara']);
+ await call('/api/v1/register',{token:device});
+ const old=run({condition:30});assert.equal((await uploadReplay(old)).status,200);
+ for(const condition of [32,33,34,35])for(const weather of [0,1]){
+  const x=run({condition,weather,night:weather});
+  assert.equal((await uploadReplay(x)).status,200);
+  const board=await(await call(`/api/v1/board?condition=${condition}&weather=${weather}`)).json();
+  assert.deepEqual(board.entries.map(r=>r.id),[x.id]);
+  const download=await call('/api/v1/replay?id='+x.id);assert.equal(download.status,200);
+  const bytes=new Uint8Array(await download.arrayBuffer()),n=new DataView(bytes.buffer).getUint32(0,true);
+  const meta=JSON.parse(new TextDecoder().decode(bytes.subarray(4,4+n)));
+  assert.equal(meta.condition,condition);assert.equal(meta.weather,weather);
+  db.prepare('UPDATE runs SET hidden=1 WHERE id=?').run(x.id);
+  assert.equal((await(await call(`/api/v1/board?condition=${condition}&weather=${weather}`)).json()).entries.length,0);
+  db.prepare('UPDATE runs SET hidden=0 WHERE id=?').run(x.id);
+ }
+ const oldBoard=await(await call('/api/v1/board?condition=30&weather=0')).json();
+ assert.deepEqual(oldBoard.entries.map(r=>r.id),[old.id]);
+ assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,9);
+ assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
 });
 
 test('personal battle and incomplete recordings cannot upload',async()=>{
@@ -228,16 +274,16 @@ test('viewer download preserves metadata and every pose without installation ide
  assert.equal((await call('/api/admin/replay?id='+crypto.randomUUID()+'&format=package',null,auth)).status,404);
 });
 test('upload build policy accepts only the exact ROM-required release',()=>{
- assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.43');
+ assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.44');
  assert.equal(supportedBuild(REQUIRED_CLIENT_BUILD),true);
- for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.44','0.3.95-community-replays.430','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.043','0.3.95-Community-replays.43','0.3.95-community-replays.43-extra','0.3.95-community-replays.43 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
+ for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.45','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
  for(const required of ['',null,'invalid','0.3.95-community-replays.*'])assert.equal(supportedBuild(required,required),false);
 });
 test('nonmatching builds are permanently rejected before replay work and without database writes',async()=>{
  await call('/api/v1/register',{token:device});
  env.MIN_CLIENT_BUILD='0.3.95-community-replays.1'; // A stale variable cannot restore the old minimum policy.
  const before=db.prepare('SELECT total_changes() n').get().n;
- for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.44','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.043']){
+ for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.45','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
   const response=await uploadReplay(run({build}));assert.equal(response.status,409);
   const error=await response.json();assert.equal(error.code,'client_build_required');assert.equal(error.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(error.permanent,true);assert.ok(error.error.includes(REQUIRED_CLIENT_BUILD));
  }
@@ -257,7 +303,7 @@ test('configured exact release rejects both sides of its version and is exposed 
  const health=await(await call('/health')).json();assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(snapshot.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(snapshot.epoch,1);
  assert.equal(db.prepare('SELECT total_changes() n').get().n,before);
- for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.44'])assert.equal((await uploadReplay(run({build}))).status,409);
+ for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.45'])assert.equal((await uploadReplay(run({build}))).status,409);
  assert.equal((await uploadReplay(run())).status,200);
 });
 
@@ -659,4 +705,12 @@ test('recovery transaction failures preserve the source and cannot remove anothe
   assert.deepEqual(await downloadedRaw(x.id),replayFor(x));
   assert.equal(historical.prepare('SELECT count(*) n FROM replay_chunks').get().n,1);
  }finally{historical.close();}
+});
+
+// Shared paints remain appearance-only and use the existing replay word.
+test('all shared car paints validate and out-of-range paint is rejected',async()=>{
+ const {validateReplay}=await import('../src/replay.mjs');
+ const x=run(),bytes=replayFor(x);
+ for(const color of [0,7,15,16,92]){new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).setUint32(36,color,true);assert.doesNotThrow(()=>validateReplay(bytes,x));}
+ for(const color of [93,0xffffffff]){new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).setUint32(36,color,true);assert.throws(()=>validateReplay(bytes,x),/appearance/);}
 });

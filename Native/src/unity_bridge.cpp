@@ -575,7 +575,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAppearance(const uint32_t* va
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.app||!r.sceneMode||!r.app->replayPlaybackActive||!values||count!=15)throw std::invalid_argument("Invalid replay appearance");
-        if(values[0]>1||values[1]>=original::originalCarColorCounts.at(unsigned(r.app->frontend.car))||values[7]>5)throw std::invalid_argument("Invalid replay paint or name");
+        if(values[0]>1||values[1]>=original::carPaintCount||values[7]>5)throw std::invalid_argument("Invalid replay paint or name");
         for(unsigned i=2;i<7;++i)if(values[i]>221)throw std::invalid_argument("Invalid replay name");
         auto& a=*r.app;
         for(unsigned i=0;i<12;++i)a.frontend.battleProfile.setu(replayProfileOffsets[i],values[i]);
@@ -606,7 +606,7 @@ int IDAS3_UNITY_CALL Idas3ReplayOpponentStart(int car,int enemy,const uint32_t* 
         auto& a=*r.app;
         if(enemy>=0)a.loadRivalCar(unsigned(car),unsigned(enemy));
         else{
-            if(values[0]>1||values[1]>=original::originalCarColorCounts.at(unsigned(car))||values[7]>5)throw std::invalid_argument("Invalid opponent appearance");
+            if(values[0]>1||values[1]>=original::carPaintCount||values[7]>5)throw std::invalid_argument("Invalid opponent appearance");
             auto profile=original::makeOriginalFreshBattleProfile();for(unsigned i=0;i<12;++i)profile.setu(replayProfileOffsets[i],values[i]);profile.setu(16,unsigned(car));
             const auto folder=std::string(originalCarFolders.at(unsigned(car)));
             a.rivalModel=NativeModel::load(a.root/"data/original_models"/folder/(folder+".idasmesh"));
@@ -648,12 +648,20 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayHud(int elapsed6000,int finis
         return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
+int IDAS3_UNITY_CALL Idas3ReplayFreeCamera(float x,float y,float z,float tx,float ty,float tz){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.sceneMode||!r.app->replayPlaybackActive){unityError("No replay is open");return 0;}
+    for(float v:{x,y,z,tx,ty,tz})if(!std::isfinite(v)||std::abs(v)>1000000){unityError("Invalid free camera position");return 0;}
+    const Vec3 eye{x,y,z},target{tx,ty,tz},direction=target-eye;
+    if(dot(direction,direction)<.0001f||direction.x*direction.x+direction.z*direction.z<.000001f){unityError("Invalid free camera direction");return 0;}
+    r.app->replayFreeEye=eye;r.app->replayFreeTarget=target;return 1;
+}
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayPose(double tick,float x,float y,float z,float yaw,float speed,int gear,float pitch,int cameraMode,float orbit,int width,int height){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.app||!r.sceneMode||!r.app->replayPlaybackActive)throw std::logic_error("No replay is open");
         sceneDimensions(width,height);
-        if(!std::isfinite(tick)||tick<0||tick>108000||!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(z)||!std::isfinite(yaw)||!std::isfinite(speed)||!std::isfinite(pitch)||!std::isfinite(orbit)||gear<0||gear>6||cameraMode<0||cameraMode>3)throw std::invalid_argument("Invalid replay pose");
+        if(!std::isfinite(tick)||tick<0||tick>108000||!std::isfinite(x)||!std::isfinite(y)||!std::isfinite(z)||!std::isfinite(yaw)||!std::isfinite(speed)||!std::isfinite(pitch)||!std::isfinite(orbit)||gear<0||gear>6||cameraMode<0||cameraMode>4)throw std::invalid_argument("Invalid replay pose");
         auto& a=*r.app;
         if((a.renderer.width!=width||a.renderer.height!=height)&&!a.renderer.resize(width,height))throw std::runtime_error(a.renderer.error);
         a.vehicle.position={x,y,z};a.vehicle.yaw=yaw;a.vehicle.speed=speed;a.vehicle.gear=gear;a.previous=a.vehicle;
@@ -1114,6 +1122,11 @@ int IDAS3_UNITY_CALL Idas3SceneSetPerformance(int rainDetail){
     if(!r.sceneMode||!r.app||rainDetail<0||rainDetail>1){unityError("Invalid presentation quality options");return 0;}
     r.app->performanceRainDetail=rainDetail;return 1;
 }
+int IDAS3_UNITY_CALL Idas3SceneSetSunGlare(int enabled){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||(enabled!=0&&enabled!=1)){unityError("Invalid sun glare option");return 0;}
+    r.app->sunGlareEnabled=enabled!=0;return 1;
+}
 float IDAS3_UNITY_CALL Idas3NormalizeMusicPreview(float* samples,int count,int rate,int channels){
     if(!samples||count<=0||count>32*1024*1024||rate<8000||rate>192000||channels<1||channels>2||count%channels)return 0;
     try{return static_cast<float>(idas3::music_loudness::normalize({samples,static_cast<std::size_t>(count)},unsigned(rate),unsigned(channels)).gain);}
@@ -1369,7 +1382,7 @@ int IDAS3_UNITY_CALL Idas3MultiplayerStartSaved(const Idas3MultiplayerConfig* co
             opponent.setu(24,remote[24/4]);opponent.setu(152,remote[152/4]);
             if(opponent.u(24)>31||opponent.byte(164)>=76)throw std::invalid_argument("Invalid remote physics profile");
         }
-        if(opponent.u(16)!=config->remoteCar||opponent.u(76)>5||opponent.u(64)>=original::originalCarColorCounts.at(config->remoteCar))
+        if(opponent.u(16)!=config->remoteCar||opponent.u(76)>5||opponent.u(64)>=original::carPaintCount)
             throw std::invalid_argument("Invalid remote saved car appearance");
         for(unsigned offset=44;offset<=60;offset+=4)if(opponent.u(offset)>220)throw std::invalid_argument("Invalid remote driver glyph");
         for(unsigned offset=156;offset<164;++offset)if(opponent.byte(offset)>6)throw std::invalid_argument("Invalid remote body part");

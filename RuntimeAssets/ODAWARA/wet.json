@@ -1,0 +1,14 @@
+{
+  "skyMaterial": "sky_day_dry",
+  "skyTexture": "wet-sky.dds",
+  "fogColor": [
+    0.6627,
+    0.6549,
+    0.6588
+  ],
+  "fogRange": 220.0,
+  "brightness": 0.8,
+  "desaturate": 0.55,
+  "shadow": 0.3,
+  "source": "Initial D Arcade Stage 8 / TSUBAKI day_wet sky; regrade measured from Stage 8 wet scenery"
+}

@@ -214,6 +214,9 @@ IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetSteeringDeadzone();
 // Invalid/nonfinite values leave the setting unchanged; uninitialized getter=-1.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSteeringSmoothing(float value);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetPerformance(int rainDetail);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSunGlare(int enabled);
+// Replay-only world camera, applied by ReplayPose cameraMode4 before culling.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayFreeCamera(float x,float y,float z,float tx,float ty,float tz);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapSize(int size);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapDisplay(int display);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom);

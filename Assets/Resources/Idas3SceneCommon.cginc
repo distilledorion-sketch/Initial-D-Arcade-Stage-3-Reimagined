@@ -27,7 +27,8 @@
    Texture2D _ImportedShadowTex; SamplerState sampler_ImportedShadowTex;
    float _ImportedSponsorSigns;
    float _ImportedCoverage,_ImportedCutoff,_ImportedHasShadow,_ImportedSky,_ImportedNight;
-   float _ImportedShadowOnly,_ImportedShadowUv;
+   float _ImportedShadowOnly,_ImportedShadowUv,_ImportedAuthoredNormals;
+   float4 _ImportedAreaFog,_ImportedAreaFogColor;
    float _ImportedPs2Lighting;
    float4 _ImportedNightAmbient;
    float4 _ImportedUntexturedShadow;
@@ -255,7 +256,7 @@ float4 mainPS(P v):SV_TARGET{
  float4 color=_MainTex.Sample(sampler_MainTex,v.uv);
  // Stage 8 type-6 atlases encode visibility, not black-overlay opacity.
  // The standalone road-shadow pass must invert the same mask as UV2 shadows.
- if(_ImportedShadowOnly!=0)color.a=1-color.a;
+ if(_ImportedShadowOnly!=0)color.a=(1-color.a)*_ImportedShadowOnly;
  if(_ImportedCoverage!=0){
   // Derivative-scaled coverage stays approximately one pixel wide while the
   // camera moves. MSAA resolves that coverage instead of binary leaf flicker.
@@ -278,7 +279,9 @@ float4 mainPS(P v):SV_TARGET{
  // PCT meshes already contain baked lighting. Only authored normal-bearing
  // geometry uses directional lighting, avoiding double-darkened foliage.
  if(_ImportedSky==0 && _ImportedNight==0 && dot(v.n,v.n)>.01)
-  color.rgb*=idasNativeDiffuse(v.n,v.world,_WorldSpaceCameraPos,_ImportedSunDirection.xyz);
+  color.rgb*=_ImportedAuthoredNormals!=0
+   ?.32+.68*saturate(dot(normalize(v.n),normalize(_ImportedSunDirection.xyz)))
+   :idasNativeDiffuse(v.n,v.world,_WorldSpaceCameraPos,_ImportedSunDirection.xyz);
  float4 shadow=_ImportedShadowTex.Sample(sampler_ImportedShadowTex,shadowUv);
  color.rgb*=lerp(1,.32+.68*shadow.rgb,(1-shadow.a)*_ImportedHasShadow);
  if(_TrackSurface!=0&&_ImportedSky==0&&_ImportedShadowOnly==0)
@@ -297,6 +300,11 @@ float4 mainPS(P v):SV_TARGET{
    ?idasNativeAtmosphere(color.rgb,atmosphere.rgb,distance,85,410)
    :idasNativeAtmosphere(color.rgb,_ImportedFogColor.rgb,distance,_ImportedFogRange.x,_ImportedFogRange.y);
   }
+ }
+ if(_ImportedAreaFog.z>0){
+  float areaFog=saturate((length(v.world-eye.xyz)-_ImportedAreaFog.x)/max(_ImportedAreaFog.y-_ImportedAreaFog.x,.001));
+  areaFog=_ImportedSky!=0?1:1-(1-areaFog)*(1-areaFog);
+  color.rgb=lerp(color.rgb,_ImportedAreaFogColor.rgb,_ImportedAreaFog.z*areaFog);
  }
  return color;
 #else

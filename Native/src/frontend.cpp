@@ -271,15 +271,15 @@ void Frontend::selectSavedCarTransmission(bool returnToCar){
 void Frontend::initializeColorSelection(){
     const auto roster=carsForMake(make);const auto found=std::find(roster.begin(),roster.end(),car);
     if(found==roster.end())throw std::logic_error("Car color owner has a different manufacturer");
-    std::vector<std::uint32_t> counts;for(int id:roster)counts.push_back(original::originalCarColorCounts[std::size_t(id)]);
+    std::vector<std::uint32_t> counts(roster.size(),original::carPaintCount);
     const auto saved=battleProfile.u(64),selected=unsigned(found-roster.begin());
     original::initializeOriginalCarColorSelection(colorSelection,counts,selected,saved<counts[selected]?saved:0);
     colorSelectionMake=make;pendingColorButtons=0;
 }
 unsigned Frontend::selectedColor()const{
     if(stage==FrontendStage::Car&&stageInitialized&&observedStage==stage&&colorSelectionMake==make&&
-            colorSelection.currentColor684<original::originalCarColorCounts.at(std::size_t(car)))return colorSelection.currentColor684;
-    const auto saved=battleProfile.u(64);return saved<original::originalCarColorCounts.at(std::size_t(car))?saved:0;
+            colorSelection.currentColor684<original::carPaintCount)return colorSelection.currentColor684;
+    const auto saved=battleProfile.u(64);return saved<original::carPaintCount?saved:0;
 }
 void Frontend::driverProfileLoaded(){
     // At entry the source seeds the saved color. While browsing, its own
@@ -861,7 +861,7 @@ void Frontend::drawCourseCarousel(int width,int height) {
 }
 void Frontend::drawChoiceMenu(int width,int height,bool movingWidgets) {
     original::OriginalChoiceMenuState state;
-    state.course=isImportedCourse(course)?3:course;state.frame=carFrame;
+    state.course=course==17?0:course==16?4:isImportedCourse(course)?3:course;state.frame=carFrame;
     state.confirmationPhase=carConfirmationFrame<0?0.f:1.f;
     if(stage==FrontendStage::Transmission){state.screen=original::OriginalChoiceScreen::Transmission;state.selected=automatic?0:1;state.confirmationPhase=transmissionConfirmationPhase;}
     else if(stage==FrontendStage::Route){state.screen=original::OriginalChoiceScreen::Route;state.selected=reverse?1:0;}
@@ -941,9 +941,10 @@ void Frontend::drawCarCarousel(int width,int height) {
     }
 }
 void Frontend::drawCarColorIndicator(int width,int height){
-    const auto count=original::originalCarColorCounts.at(std::size_t(car));
-    const auto& rgb=original::originalCarPaintRgb.at(std::size_t(car));
-    const auto commands=original::originalCarColorIndicatorDraws(unsigned(car),selectedColor(),std::span(rgb).first(count));
+    const auto& rgb=original::carPaintPalettes.at(std::size_t(car));
+    const auto selected=selectedColor(),first=selected/8*8;
+    const auto commands=original::originalCarColorIndicatorDraws(first?35u:unsigned(car),selected-first,
+        std::span(rgb).subspan(first,std::min(8u,original::carPaintCount-first)));
     auto& assets=bank("v3sS05cars");const float fit=std::min(float(width)/640.f,float(height)/480.f);
     struct PaletteBatch{NativeModelChunk chunk;SpritePlacement placement;float depth;};
     std::vector<PaletteBatch> batches;
@@ -962,6 +963,8 @@ void Frontend::drawCarColorIndicator(int width,int height){
     }
     std::stable_sort(batches.begin(),batches.end(),[](const auto& a,const auto& b){return a.depth<b.depth;});
     for(const auto& batch:batches)compositeOriginalMenuChunk(pixels,width,height,assets.textures,batch.chunk,batch.placement);
+    menuFont.paint(pixels,width,height,"PAINT "+std::to_string(selected+1)+" / "+std::to_string(original::carPaintCount),
+        (width-640.f*fit)*.5f+90*fit,(height-480.f*fit)*.5f+345*fit,10*fit,0xffffffffu,0xff000000u,fit);
 }
 void Frontend::draw(const std::string& name,int chunk,int width,int height,float x,float y,float multiplier,float opacity) {
     auto& selected=bank(name);

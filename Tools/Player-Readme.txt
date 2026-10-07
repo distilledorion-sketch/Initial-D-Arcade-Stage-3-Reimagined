@@ -1,4 +1,24 @@
-0.3.95-community-replays.43
+0.3.95-community-replays.44
+NEW COURSES, PAINTS AND REPLAY OPTIONS
+
+Fresh installs: download `Initial-D-Setup-0.3.95.44.zip`, extract it, and run `Install Initial D.cmd`. It downloads and verifies both game packages automatically. Manual installs: extract the Windows-x64 ZIP and the matching Additional-Courses ZIP into the same folder.
+
+Existing players: normal updates use one changed-file patch; patches support .20 through .43. Full Repair in .44 fetches both packages automatically. An older updater that falls back to its full download may need one Full Repair after restarting to finish installing the new courses.
+
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Added Gunsai and Odawara with course selection cards, original scenery, collision, race titles, records and replay support.
+- Odawara runs two laps with separate clockwise/counterclockwise road layouts. Gunsai offers outbound/inbound routes. Both support day/night and dry/wet conditions and use Stage 3 Myogi handling.
+- Added Gunsai and Odawara to the in-game and website leaderboards, including direction/weather and individual-car records. Existing records and replay downloads are preserved.
+- All 93 factory paint colors are available on every car, including online opponents and replays. Existing colors and tuning parts are preserved.
+- Added a Sun Glare toggle under Display & Graphics.
+- Added Free Camera in Replay Viewer, plus separate switches for the game HUD and replay overlay. Use C / Y to cycle cameras, G / left-stick click for the game HUD, and H / Select for the replay overlay.
+
+The new courses use adapted wet scenery from the supplied dry assets. Physical controller freecam and two-account Steam races have not been newly verified. R35 development remains separate.
+
+Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is required and is not included.
+
+PREVIOUS UPDATE (.43)
 PRIVATE MATCHES, CONTROLS AND COMMUNITY FIXES
 This update is required for new community Time Attack submissions. Both drivers must update for online races.
 

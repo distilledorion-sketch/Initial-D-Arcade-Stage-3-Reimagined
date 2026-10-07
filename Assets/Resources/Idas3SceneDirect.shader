@@ -17,6 +17,9 @@ Shader "IDAS3/Original Scene Direct Material"
   _ImportedShadowOnly("Imported shadow overlay",Float)=0
   _ImportedUntexturedShadow("Untextured shadow visibility",Color)=(0,0,0,0)
   _ImportedShadowUv("Imported shadow UV set",Float)=1
+  _ImportedAuthoredNormals("Imported normals are authored lighting normals",Float)=0
+  _ImportedAreaFog("Imported area fog",Vector)=(0,0,0,0)
+  _ImportedAreaFogColor("Imported area fog color",Color)=(0,0,0,1)
   _ImportedSky("Imported sky",Float)=0
   _ImportedNight("Imported night scenery",Float)=0
   _ImportedPs2Lighting("PS2 baked color and linear fog",Float)=0

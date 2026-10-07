@@ -46,4 +46,21 @@ inline constexpr std::array<std::array<std::uint32_t,8>,35> originalCarPaintRgb=
     {0xdcdcdcu,0xaa000au,0xaaacadu,0x151515u,0x000a55u},
     {0xb40500u,0xdcdcdcu,0x001455u,0x686873u,0xffe600u,0xaaacadu,0x151515u,0x091707u},
 }};
+// Append other models' paints after each model's factory colors. Existing
+// save IDs and paint-dependent factory body variants keep their meaning.
+// This traversal order is part of the save/replay format; only append entries.
+inline constexpr unsigned carPaintCount=93;
+inline const auto carPaintPalettes=[]{
+    std::array<std::array<std::uint32_t,carPaintCount>,35> palettes{};
+    for(unsigned car=0;car<35;++car){
+        auto& colors=palettes[car];unsigned count=0;
+        for(unsigned i=0;i<originalCarColorCounts[car];++i)colors[count++]=originalCarPaintRgb[car][i];
+        for(unsigned donor=0;donor<35;++donor)for(unsigned i=0;i<originalCarColorCounts[donor];++i){
+            const auto rgb=originalCarPaintRgb[donor][i];bool found=false;
+            for(unsigned j=0;j<count;++j)found|=colors[j]==rgb;
+            if(!found)colors.at(count++)=rgb;
+        }
+    }
+    return palettes;
+}();
 }

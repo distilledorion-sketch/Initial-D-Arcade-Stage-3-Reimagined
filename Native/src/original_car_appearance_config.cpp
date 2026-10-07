@@ -33,7 +33,7 @@ void applyOriginalCarAppearanceCall(OriginalCarAppearanceConfig& s,std::uint32_t
         if(s.car==27)value=car27.at(value);
         field(22,7,mapped(value));break;
     }
-    case 0x0c028660:field(25,7,value);s.paintDirty=true;break;
+    case 0x0c028660:field(25,7,value);s.paintDirty=true;s.customPaintRgb=0xffffffffu;break;
     case 0x0c0286a0:s.materialVariant=value;break;
     case 0x0c0286c0:
         // Values1/2 add a bit to the installed pair;0/3 replace the pair.
@@ -48,6 +48,8 @@ OriginalCarAppearanceConfig originalPlayerAppearanceConfig(const OriginalBattleP
     OriginalCarAppearanceConfig out(profile.u(16));
     for(unsigned slot:{0u,2u,1u,3u,4u,5u,6u,7u,9u})applyOriginalCarAppearanceCall(out,0x0c0287a0,slot,profile.byte(156+slot));
     applyOriginalCarAppearanceCall(out,0x0c028660,originalCarPresentationColor(out.car,profile.u(64)));
+    if(profile.u(64)>=originalCarColorCounts[out.car]&&profile.u(64)<carPaintCount)
+        out.customPaintRgb=carPaintPalettes[out.car][profile.u(64)];
     applyOriginalCarAppearanceCall(out,0x0c0286a0,materialVariant);
     applyOriginalCarAppearanceCall(out,0x0c028720,profile.byte(166)&1);
     applyOriginalCarAppearanceCall(out,0x0c028760,(profile.byte(166)>>1)&1);

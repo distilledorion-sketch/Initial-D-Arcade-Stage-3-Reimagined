@@ -86,7 +86,8 @@ void OriginalCarMaterialRebuild::rebuild(OriginalCarAppearanceConfig& config,std
         // Packed appearances (including ranking cars) may predate validation.
         // Repair only this render copy's paint bits; preserve every installed part.
         config.word=(config.word&~(7u<<25))|(color<<25);
-        const unsigned rgb=originalCarPaintRgb[car_][color];state_.rgb={rgb>>16,(rgb>>8)&255,rgb&255};
+        const unsigned rgb=config.customPaintRgb==0xffffffffu?originalCarPaintRgb[car_][color]:config.customPaintRgb;
+        state_.rgb={rgb>>16,(rgb>>8)&255,rgb&255};
         for(const auto& p:paint_){auto& m=chunks_[p.chunk].materials[p.material].words;m[3]=(m[3]&0xff000000)|rgb;}
         config.paintDirty=false;
     }

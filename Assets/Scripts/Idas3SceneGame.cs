@@ -252,6 +252,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
             Idas3OnlineControllerSmoke.Attach(this);
             Idas3RaceMusicSmoke.Attach(this);
             Idas3AttractOptionsSmoke.Attach(this);
+            foreach(string idZeroCourse in new[]{"GUNSAI","ODAWARA"}){
+                string idZeroPack=Path.Combine(Application.streamingAssetsPath,idZeroCourse);
+                if(!File.Exists(Path.Combine(idZeroPack,"menu.idastex")))continue;
+                if(Idas3Native.Idas3SceneRegisterImportedCourse(idZeroPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
+                if(hakone==null)hakone=new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
+            }
             string sadaminePack=Path.Combine(Application.streamingAssetsPath,"SADAMINE");
             string ennaPack=Path.Combine(Application.streamingAssetsPath,"ENNA");
             if(File.Exists(Path.Combine(ennaPack,"menu.idastex"))){
@@ -565,6 +571,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             throw new InvalidOperationException("Could not apply steering smoothing. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetPerformance(values.rainDetail) != 1)
             throw new InvalidOperationException("Could not apply performance options. " + Idas3Native.Error());
+        if (Idas3Native.Idas3SceneSetSunGlare(values.sunGlare?1:0) != 1)
+            throw new InvalidOperationException("Could not apply sun glare option. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetAiDifficulty(values.aiDifficulty) != 1)
             throw new InvalidOperationException("Could not apply AI difficulty. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetMapDisplay(values.minimapDisplay) != 1)

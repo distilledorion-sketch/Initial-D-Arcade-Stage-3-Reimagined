@@ -14,6 +14,7 @@ public static class Idas3ControllerMenuChecks
     }
     public static void Run(){
         checks=0;string root=Path.GetFullPath("Verification/wheel-menu-navigation-20260918/unit-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+        CheckSunGlareOptions(Path.Combine(root,"sun-glare"));
         var go=new GameObject("Private menu checks");
         try{
             var options=new Idas3GameOptions(new Platform());options.Initialize(root);
@@ -69,6 +70,22 @@ public static class Idas3ControllerMenuChecks
             File.WriteAllText(Path.Combine(root,"result.txt"),"PASS "+checks+" checks\n");File.WriteAllText("Verification/wheel-menu-navigation-20260918/unit-result.txt","PASS "+checks+" checks; isolated preferences: "+root+"\n");Debug.Log("PASS controller menu checks "+checks);
         }finally{UnityEngine.Object.DestroyImmediate(go);}
     }
+    private static void CheckSunGlareOptions(string root){
+        Directory.CreateDirectory(root);
+        string file=Path.Combine(root,"game-options.json");
+        const string legacy="{\"version\":1,\"musicVolume\":0.4,\"trackLighting\":0}";
+        File.WriteAllText(file,legacy);
+        var options=new Idas3GameOptions(new Platform());options.Initialize(root);
+        Check(options.Current.sunGlare&&File.ReadAllText(file)==legacy,"Legacy preferences must retain sun glare without rewriting saves");
+        options.BeginEdit();options.Draft.sunGlare=false;
+        Check(options.HasUnsavedChanges&&options.Current.sunGlare,"Glare edit must remain a tracked draft until Apply");
+        options.BeginEdit();Check(options.Draft.sunGlare&&!options.HasUnsavedChanges,"Cancel must restore the saved glare setting");
+        options.Draft.sunGlare=false;Check(options.ApplyDraft(),"Sun glare Apply failed");
+        var reload=new Idas3GameOptions(new Platform());reload.Initialize(root);
+        Check(!reload.Current.sunGlare&&reload.Current.musicVolume==.4f&&reload.Current.trackLighting==0,"Disabling glare must persist without changing other settings");
+        reload.BeginEdit();reload.ResetDraft();
+        Check(reload.Draft.sunGlare&&!reload.Current.sunGlare,"Reset must propose the original glare without immediately applying it");
+    }
     private static void CheckCameraOptions(string root){
         var options=new Idas3GameOptions(new Platform());options.Initialize(Path.Combine(root,"new"));
         Check(options.Current.defaultCamera==0&&options.Draft.defaultCamera==0&&!options.HasUnsavedChanges,"New preferences must keep Bumper as the default camera");
@@ -117,7 +134,8 @@ public static class Idas3ControllerMenuChecks
             Action<Idas3PauseMenu.Category,int> select=(category,row)=>{menu.SelectCategory(category);for(int i=0;i<row;++i)menu.Navigate(1);};
             select(Idas3PauseMenu.Category.Audio,5);menu.Activate();expected.muteWhenUnfocused=!expected.muteWhenUnfocused;
             select(Idas3PauseMenu.Category.Graphics,8);menu.Activate();expected.trackLighting=1-expected.trackLighting;
-            select(Idas3PauseMenu.Category.Graphics,9);menu.Activate();expected.showFps=!expected.showFps;
+            select(Idas3PauseMenu.Category.Graphics,9);menu.Activate();expected.sunGlare=!expected.sunGlare;
+            select(Idas3PauseMenu.Category.Graphics,10);menu.Activate();expected.showFps=!expected.showFps;
             select(Idas3PauseMenu.Category.Gameplay,1);menu.Activate();expected.aiDifficulty=1;
             select(Idas3PauseMenu.Category.Gameplay,2);menu.Activate();expected.timeAttackGhost=!expected.timeAttackGhost;
             select(Idas3PauseMenu.Category.Steering,0);menu.Activate();expected.controllerResponse=1;

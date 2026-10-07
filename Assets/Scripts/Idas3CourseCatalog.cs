@@ -5,9 +5,9 @@ using UnityEngine;
 // Course identities are stable across saves, replays, matchmaking and the board.
 public static class Idas3CourseCatalog
 {
-    public static readonly string[] Names={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow","Hakone","Sadamine","Enna Skyline","Myogi (Special Stage)","Usui (Special Stage)","Momiji Line","Tsubaki Line"};
-    public static readonly string[] Packs={"HAKONE","SADAMINE","ENNA","MYOGI_SPECIAL","USUI_SPECIAL","MOMIJI","TSUBAKI"};
-    public static readonly string[] Slugs={"hakone","sadamine","enna","myogi_special","usui_special","momiji","tsubaki"};
+    public static readonly string[] Names={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow","Hakone","Sadamine","Enna Skyline","Myogi (Special Stage)","Usui (Special Stage)","Momiji Line","Tsubaki Line","Gunsai","Odawara"};
+    public static readonly string[] Packs={"HAKONE","SADAMINE","ENNA","MYOGI_SPECIAL","USUI_SPECIAL","MOMIJI","TSUBAKI","GUNSAI","ODAWARA"};
+    public static readonly string[] Slugs={"hakone","sadamine","enna","myogi_special","usui_special","momiji","tsubaki","gunsai","odawara"};
     public static int Count=>Names.Length;
     public static int ConditionCount=>Count*2;
     internal static string SceneName(Idas3Native.Status status){
@@ -19,8 +19,8 @@ public static class Idas3CourseCatalog
     public static bool RequiresNight(int course)=>course==4||course==8||course>=11&&course<=14;
     public static string DirectionToken(int course,bool reverse){
         if(course<0||course>=Count)throw new ArgumentOutOfRangeException(nameof(course));
-        if(course<2)return reverse?"cw":"ccw";
-        if(course==4||course==6||course==7)return reverse?"ib":"ob";
+        if(course<2||course==17)return reverse?"cw":"ccw";
+        if(course==4||course==6||course==7||course==16)return reverse?"ib":"ob";
         if(course==5&&reverse)return "rev";
         return reverse?"uh":"dh";
     }

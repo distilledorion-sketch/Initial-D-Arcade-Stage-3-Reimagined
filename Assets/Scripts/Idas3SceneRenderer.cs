@@ -45,6 +45,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public Camera MainCamera => main;
     public Camera MirrorCamera => mirror;
     public Idas3GameOptions.Values HudOptions { get; set; } = new Idas3GameOptions.Values();
+    public bool ShowGameHud { get; set; } = true;
     public Rect ViewportRect { get; private set; } = new Rect(0, 0, 1, 1);
     public int ActiveMeshCount { get; private set; }
     public int UploadedVertexCount { get; private set; }
@@ -426,7 +427,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         for (int i = 0; i < frame.overlayCount; ++i) behind |= ((*(SceneOverlay*)IntPtr.Add(frame.overlays, i * 24)).flags & 1) != 0;
         main.clearFlags = behind ? CameraClearFlags.Depth : CameraClearFlags.SolidColor;
         SetCamera(main, outputMainCamera, 0, clear, frame.width, frame.height);
-        mirror.enabled = frame.viewCount == 2;
+        mirror.enabled = ShowGameHud && frame.viewCount == 2;
         if (mirror.enabled) SetCamera(mirror, frame.mirrorCamera, 1, clear, frame.width, frame.height);
         DepthDrawCount = DepthBufferRebuildCount = 0;
         UpdateDepthCommands(main, 1, opaqueAlphaDepth, mainDepthDraws, true);

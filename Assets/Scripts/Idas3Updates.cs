@@ -39,6 +39,9 @@ public sealed class Idas3Updates : MonoBehaviour
     private IEnumerator pendingInstallation;
     private static Task cacheCleanup;
     private string fullUrl,fullHash,patchUrl,patchHash;
+    private string contentUrl,contentHash;
+    private long contentBytes;
+    private bool downloadingContent;
     private long fullBytes,patchBytes;
     private bool usingPatch,repair;
     private int actionSelected=2;
@@ -80,6 +83,7 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     internal struct Result {
         public CheckState state;public string version,url,message,downloadUrl,hash;public long bytes;public string patchUrl,patchHash;public long patchBytes;
+        public string contentUrl,contentHash;public long contentBytes;
     }
 
     public void Initialize(bool checkOnStartup=true){
@@ -118,7 +122,8 @@ public sealed class Idas3Updates : MonoBehaviour
             if(operation!=null)yield return operation;
             ApplyResponse(request.responseCode,response.Text,operation==null||request.result!=UnityWebRequest.Result.Success||response.Exceeded);
             activeRequest=null;
-            if(State==CheckState.Current&&startupWindow)ContinueToGame();
+            if(State==CheckState.Current&&startupWindow&&MissingCourseContent())Message="Additional course files are missing. Choose Full Repair to download and install them.";
+            else if(State==CheckState.Current&&startupWindow)ContinueToGame();
             else if(State==CheckState.Unavailable&&startupWindow){yield return new WaitForSecondsRealtime(1.5f);ContinueToGame();}
         }
     }
@@ -127,6 +132,7 @@ public sealed class Idas3Updates : MonoBehaviour
         State=result.state;AvailableVersion=result.version;ReleaseUrl=result.url;Message=result.message;
         fullUrl=result.downloadUrl;fullHash=result.hash;fullBytes=result.bytes;
         patchUrl=result.patchUrl;patchHash=result.patchHash;patchBytes=result.patchBytes;repair=false;
+        contentUrl=result.contentUrl;contentHash=result.contentHash;contentBytes=result.contentBytes;
         SelectDownload(false);
     }
     internal static Result Evaluate(string installed,long code,string json,bool failed=false){
@@ -148,6 +154,13 @@ public sealed class Idas3Updates : MonoBehaviour
             if(string.Equals(asset.browser_download_url,expected,StringComparison.Ordinal)&&asset.digest!=null&&Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z")){windows=asset;break;}
         }
         if(windows==null){unavailable.message="The latest release does not have a verified Windows download yet. Try again later.";return unavailable;}
+        Asset content=null;
+        string contentName="Initial-D-Additional-Courses-"+release.tag_name.TrimStart('v')+".zip";
+        if(release.assets!=null)foreach(var asset in release.assets)if(asset!=null&&asset.name==contentName){
+            string expected=RepositoryUrl+"/releases/download/"+Uri.EscapeDataString(release.tag_name)+"/"+contentName;
+            if(content!=null||asset.state!="uploaded"||asset.size<=0||asset.size>=2L*1024*1024*1024||asset.browser_download_url!=expected||asset.digest==null||!Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z"))return unavailable;
+            content=asset;
+        }
         Asset patch=null;
         string patchName="Initial-D-Update-from-"+installed+"-to-"+release.tag_name.TrimStart('v')+"-Patch.zip";
         if(order>0&&release.assets!=null)foreach(var asset in release.assets){
@@ -159,6 +172,7 @@ public sealed class Idas3Updates : MonoBehaviour
         return new Result{state=order>0?CheckState.Available:CheckState.Current,version=version,url=url,
             downloadUrl=windows.browser_download_url,hash=windows.digest.Substring(7).ToLowerInvariant(),bytes=windows.size,
             patchUrl=patch?.browser_download_url,patchHash=patch?.digest.Substring(7).ToLowerInvariant(),patchBytes=patch?.size??0,
+            contentUrl=content?.browser_download_url,contentHash=content?.digest.Substring(7).ToLowerInvariant(),contentBytes=content?.size??0,
             message=order>0?"Version "+version+" is available. Download and install it now?":
                 order==0?"You have the latest public Windows release.":"Your installed build is newer than the latest public Windows release."};
     }
@@ -192,6 +206,7 @@ public sealed class Idas3Updates : MonoBehaviour
         usingPatch=!full&&patchUrl!=null;
         downloadUrl=usingPatch?patchUrl:fullUrl;downloadHash=usingPatch?patchHash:fullHash;downloadBytes=usingPatch?patchBytes:fullBytes;
     }
+    private bool MissingCourseContent()=>contentUrl!=null&&(!Idas3CourseCatalog.Available(16)||!Idas3CourseCatalog.Available(17));
     internal void AcceptUpdate(){BeginInstall(false);}
     internal void AcceptRepair(){BeginInstall(true);}
     private void BeginInstall(bool full){
@@ -245,8 +260,8 @@ public sealed class Idas3Updates : MonoBehaviour
         try{
         sessionLease=Idas3UpdateCache.AcquireLease(session);
         string archive=Path.Combine(session,"game.zip");
-        if(new DriveInfo(Path.GetPathRoot(session)).AvailableFreeSpace<downloadBytes+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
-        State=CheckState.Downloading;Message="Downloading update…";
+        if(new DriveInfo(Path.GetPathRoot(session)).AvailableFreeSpace<downloadBytes+(!usingPatch?contentBytes:0)+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
+        downloadingContent=false;State=CheckState.Downloading;Message="Downloading update…";
         using(var request=UnityWebRequest.Get(downloadUrl)){
             activeRequest=request;request.downloadHandler=new DownloadHandlerFile(archive){removeFileOnAbort=true};
             request.redirectLimit=5;request.timeout=0;
@@ -270,6 +285,28 @@ public sealed class Idas3Updates : MonoBehaviour
         sessionWorker=verification;
         while(!verification.IsCompleted)yield return null;
         if(!verification.GetAwaiter().GetResult())throw new IOException("Download verification failed. Nothing was installed.");
+        string contentArchive=null;
+        if(!usingPatch&&contentUrl!=null){
+            contentArchive=Path.Combine(session,"content.zip");
+            downloadingContent=true;State=CheckState.Downloading;Message="Downloading additional courses…";
+            using(var request=UnityWebRequest.Get(contentUrl)){
+                activeRequest=request;request.downloadHandler=new DownloadHandlerFile(contentArchive){removeFileOnAbort=true};request.redirectLimit=5;request.timeout=0;
+                var operation=request.SendWebRequest();ulong previous=0;double last=Time.realtimeSinceStartupAsDouble;
+                while(!operation.isDone){
+                    if(cancelled){request.Abort();break;}
+                    if(request.downloadedBytes!=previous){previous=request.downloadedBytes;last=Time.realtimeSinceStartupAsDouble;}
+                    if(request.downloadedBytes>(ulong)contentBytes||Time.realtimeSinceStartupAsDouble-last>45){request.Abort();break;}
+                    yield return null;
+                }
+                activeRequest=null;
+                if(cancelled){ContinueToGame();State=CheckState.Unavailable;yield break;}
+                if(request.result!=UnityWebRequest.Result.Success)throw new IOException("Course download interrupted. Nothing was installed.");
+            }
+            downloadingContent=false;State=CheckState.Preparing;Message="Verifying additional courses…";
+            var contentCheck=Task.Run(()=>new FileInfo(contentArchive).Length==contentBytes&&Idas3UpdateStaging.Hash(contentArchive)==contentHash);
+            sessionWorker=contentCheck;while(!contentCheck.IsCompleted)yield return null;
+            if(!contentCheck.GetAwaiter().GetResult())throw new IOException("Course download verification failed. Nothing was installed.");
+        }
         string helper=Path.Combine(session,"install.exe");
         File.WriteAllBytes(helper,helperAsset.bytes);
         int parentId;long parentTime;
@@ -277,7 +314,7 @@ public sealed class Idas3Updates : MonoBehaviour
         Message="Checking game files and preparing the update…";
         int checkedFiles=0,totalFiles=0;
         var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,session,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json),
-            (done,total)=>{System.Threading.Interlocked.Exchange(ref totalFiles,total);System.Threading.Interlocked.Exchange(ref checkedFiles,done);}));
+            (done,total)=>{System.Threading.Interlocked.Exchange(ref totalFiles,total);System.Threading.Interlocked.Exchange(ref checkedFiles,done);},contentArchive,contentHash));
         sessionWorker=preparation;
         while(!preparation.IsCompleted){
             int total=System.Threading.Volatile.Read(ref totalFiles),done=System.Threading.Volatile.Read(ref checkedFiles);
@@ -363,8 +400,8 @@ public sealed class Idas3Updates : MonoBehaviour
         GUI.Label(new Rect(30,76,580,80),Message,windowText);
         if(State==CheckState.Available||State==CheckState.Current){
             GUI.Label(new Rect(30,157,580,58),State==CheckState.Available?
-                "Update: "+((patchUrl!=null?patchBytes:fullBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+(fullBytes/1048576d).ToString("0")+" MB":
-                "Full Repair: "+(fullBytes/1048576d).ToString("0")+" MB",windowText);
+                "Update: "+((patchUrl!=null?patchBytes:fullBytes+contentBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB":
+                "Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB",windowText);
             for(int i=0;i<3;i++){
                 bool enabled=i==2||fullUrl!=null&&TryCompareVersions(AvailableVersion,InstalledVersion,out int order)&&order>=0&&(i!=0||State==CheckState.Available);
                 GUI.enabled=enabled;GUI.color=actionSelected==i?new Color(1,.85f,.3f):Color.white;
@@ -374,9 +411,10 @@ public sealed class Idas3Updates : MonoBehaviour
             }
             GUI.enabled=true;GUI.color=Color.white;
         }else if(State==CheckState.Downloading){
-            float progress=activeRequest==null?0:Mathf.Clamp01((float)(activeRequest.downloadedBytes/(double)downloadBytes));
+            long activeBytes=downloadingContent?contentBytes:downloadBytes;
+            float progress=activeRequest==null?0:Mathf.Clamp01((float)(activeRequest.downloadedBytes/(double)activeBytes));
             GUI.Box(new Rect(60,171,520,25),GUIContent.none);GUI.DrawTexture(new Rect(64,175,512*progress,17),Texture2D.whiteTexture);
-            GUI.Label(new Rect(60,204,520,30),(progress*100).ToString("0")+"%  /  "+(downloadBytes/1048576d).ToString("0")+" MB",windowText);
+            GUI.Label(new Rect(60,204,520,30),(progress*100).ToString("0")+"%  /  "+(activeBytes/1048576d).ToString("0")+" MB",windowText);
             if(GUI.Button(new Rect(220,256,200,45),"CANCEL",windowButton))cancelled=true;
         }else if(State==CheckState.Unavailable){if(GUI.Button(new Rect(200,245,240,48),"CONTINUE TO GAME",windowButton))ContinueToGame();}
         GUI.matrix=matrix;GUI.color=color;

@@ -2,6 +2,9 @@
 #include "car_presentation.h"
 #include "original_car_color_catalog.h"
 #include "original_number_plate.h"
+#include "original_car_material_rebuild.h"
+#include "original_car_color_selection.h"
+#include <set>
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -151,6 +154,38 @@ int main(int argc,char** argv)try{
         try{(void)OriginalNumberPlate::load(root,car,original::originalCarColorCounts[car]);}catch(const std::out_of_range&){plateRejected=true;}
         require(carRejected&&plateRejected,"Appearance loaders accepted a color beyond the original palette");
     }
+    // Every shared paint uses each car's own paintable material mask. Test
+    // the high IDs through profile -> geometry/parts -> material rebuilding,
+    // and the menu's wrap/confirm path, not just the palette table.
+    unsigned expanded=0;
+    const std::set<unsigned> shared(original::carPaintPalettes[0].begin(),original::carPaintPalettes[0].end());
+    require(shared.size()==93,"Shared paint palette has duplicates");
+    for(unsigned car=0;car<35;++car){
+        const auto& palette=original::carPaintPalettes[car];
+        require(std::set<unsigned>(palette.begin(),palette.end())==shared,"A car is missing shared paints");
+        auto profile=original::makeOriginalFreshBattleProfile();profile.setu(16,car);profile.setByte(156,1);
+        const auto words=profile.words;
+        const auto base=root/"data/original_models"/originalCarFolders[car];
+        auto materials=original::OriginalCarMaterialRebuild::load(base/"material_layout.bin",car);
+        original::OriginalCarColorSelection selection;
+        const std::array<unsigned,1> counts{original::carPaintCount};
+        original::initializeOriginalCarColorSelection(selection,counts,0,0);
+        original::stepOriginalCarColorSelection(selection,{0,0x10,true});
+        require(selection.profileColor64==92,"Paint previous/wrap/confirm lost expanded ID");
+        original::stepOriginalCarColorSelection(selection,{0,0x20,true});
+        require(selection.profileColor64==0,"Paint next wrap did not reach first color");
+        for(unsigned color=0;color<93;++color){
+            profile.setu(64,color);auto config=original::originalPlayerAppearanceConfig(profile);
+            require((config.word&7)==1,"Shared paint changed fitted front part");
+            require(((config.word>>25)&7)==(color<original::originalCarColorCounts[car]?color:0),"Shared paint selected an unintended body variant");
+            if(color<original::originalCarColorCounts[car])require(palette[color]==original::originalCarPaintRgb[car][color],"Factory save color ID changed");
+            materials.rebuild(config,0);const auto rgb=materials.state().rgb;
+            require(((rgb[0]<<16)|(rgb[1]<<8)|rgb[2])==palette[color],"Shared paint did not reach body materials");
+            auto originalWords=profile.words;originalWords[64/4]=words[64/4];
+            require(originalWords==words,"Paint modified other saved profile values");++expanded;
+        }
+    }
+    std::cout<<"PASS "<<expanded<<" shared car/paint combinations, stable factory IDs, installed parts, material RGB and menu wrap/confirmation.\n";
     require(appearances==181&&defaults==35&&s13AlternateBody,"Factory color/default/alternate-body coverage is incomplete");
     std::cout<<"PASS181 complete factory appearances,35 unchanged fresh defaults, S13 alternate body, "<<patches<<" material patches, "<<animated<<" wheel programs, "<<poses<<" day/brake/night poses and "<<vertices<<" finite transformed vertices, two plates per color. Native integration validation; source-instruction parity is tested separately.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

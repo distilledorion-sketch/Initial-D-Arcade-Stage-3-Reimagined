@@ -21,7 +21,7 @@ export function validateReplay(bytes,run){
  if(!(bytes instanceof Uint8Array)||bytes.length<96||bytes.length>MAX_RAW||run.imported)throw new Error('Invalid replay.');
  const v=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),count=v.getUint32(8,true);
  if(v.getUint32(0,true)!==0x32524449||v.getUint32(4,true)!==run.ticks6000||v.getUint32(12,true)!==60||count<2||count>108001||v.getUint32(16,true)!==96||v.getUint32(20,true)!==160||v.getUint32(24,true)!==1||v.getUint32(28,true)!==12||v.getUint32(92,true)!==0||bytes.length!==96+count*160)throw new Error('Invalid detailed replay header or finish time.');
- if(v.getUint32(32,true)>1||v.getUint32(36,true)>15||v.getUint32(60,true)>5)throw new Error('Invalid replay appearance.');
+ if(v.getUint32(32,true)>1||v.getUint32(36,true)>=93||v.getUint32(60,true)>5)throw new Error('Invalid replay appearance.');
  for(let i=2;i<7;i++)if(v.getUint32(32+i*4,true)>221)throw new Error('Invalid replay driver name.');
  let previous=-1,lastElapsed=0;
  for(let i=0;i<count;i++){

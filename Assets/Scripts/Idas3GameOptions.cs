@@ -31,6 +31,7 @@ public sealed class Idas3GameOptions
         public bool TimeAttackReplayRequired=>communityTimes||replayTimeAttack;
         public int rainDetail,importedSceneryDetail;
         public int trackLighting=1; // 0 = original, 1 = balanced scenery exposure.
+        public bool sunGlare=true;
         public int hudMeterStyle; // Stable catalog ID: 0 = original, 1 = Stuttgart.
         public int hudMeterLayout=1; // 0 = saved legacy anchor, 1 = camera-aware wide meter defaults.
         public int hudOrnamentId; // Stable source ornament ID; 0 = off.
@@ -345,5 +346,5 @@ public sealed class Idas3GameOptions
         a.discordPresence==b.discordPresence&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
         a.hudMeterStyle==b.hudMeterStyle&&a.hudMeterLayout==b.hudMeterLayout&&a.hudOrnamentId==b.hudOrnamentId&&a.hudShiftLights==b.hudShiftLights&&a.hudPedalIndicators==b.hudPedalIndicators&&a.hudNameplateStyle==b.hudNameplateStyle&&
         SameHudPositions(a,b)&&SameHudSizes(a,b)&&a.hudOrnamentSize==b.hudOrnamentSize&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
-        a.minimapDisplay==b.minimapDisplay&&a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail&&a.trackLighting==b.trackLighting;
+        a.minimapDisplay==b.minimapDisplay&&a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail&&a.trackLighting==b.trackLighting&&a.sunGlare==b.sunGlare;
 }

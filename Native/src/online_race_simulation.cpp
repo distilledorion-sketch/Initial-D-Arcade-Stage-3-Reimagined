@@ -57,7 +57,7 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
     auto& s=*impl_;s.setup=setup;
     const bool reverse=(setup.condition&1)!=0;
     s.path=setup.imported?setup.imported->racePath(reverse):OriginalRacePath::load(root,setup.condition);
-    s.metrics=setup.imported?OriginalBattleMetrics(std::span(setup.imported->center).subspan(setup.imported->checkpoints[0],setup.imported->rules(reverse).goalIndex+1),reverse):OriginalBattleMetrics::load(root,setup.condition);
+    s.metrics=setup.imported?setup.imported->battleMetrics(reverse):OriginalBattleMetrics::load(root,setup.condition);
     auto importedRoad=setup.imported?std::optional(setup.imported->drivingRoad(reverse)):std::nullopt;
     s.geometry=OriginalRivalData::load(root/"data/original_rival");
     s.fsca=OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");

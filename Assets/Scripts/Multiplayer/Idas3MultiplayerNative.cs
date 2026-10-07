@@ -26,7 +26,7 @@ namespace Idas3.Multiplayer
         internal static Idas3OnlineCar Read(BinaryReader r,int expected){
             var car=new Idas3OnlineCar{Selection=r.ReadInt32(),Saved=r.ReadBoolean(),Automatic=r.ReadBoolean()};
             foreach(int offset in AppearanceOffsets)car.Words[offset/4]=r.ReadUInt32();
-            if(car.Selection<0||car.Selection>=SelectionCount||(car.Selection>=40&&(car.Selection-40)%35!=expected)||car.Car!=expected||expected<0||expected>=35||car.Words[19]>5||car.Words[16]>7)
+            if(car.Selection<0||car.Selection>=SelectionCount||(car.Selection>=40&&(car.Selection-40)%35!=expected)||car.Car!=expected||expected<0||expected>=35||car.Words[19]>5||car.Words[16]>=93)
                 throw new InvalidDataException("Invalid saved car selection");
             for(int i=11;i<=15;++i)if(car.Words[i]>220)throw new InvalidDataException("Invalid saved driver glyph");
             for(int offset=156;offset<164;++offset)if(((car.Words[offset/4]>>((offset%4)*8))&255)>6)throw new InvalidDataException("Invalid saved body part");

@@ -75,7 +75,7 @@ public sealed class Idas3ReplayData
         {
             if (binary.ReadUInt32() != 96 || binary.ReadUInt32() != 160 || binary.ReadUInt32() != 1 || binary.ReadUInt32() != 12) throw new InvalidDataException("Unsupported detailed replay.");
             appearance = new uint[15]; for (int i = 0; i < 15; i++) appearance[i] = binary.ReadUInt32();
-            if (binary.ReadUInt32() != 0 || appearance[0] > 1 || appearance[1] > 15 || appearance[7] > 5) throw new InvalidDataException("Invalid replay appearance.");
+            if (binary.ReadUInt32() != 0 || appearance[0] > 1 || appearance[1] >= 93 || appearance[7] > 5) throw new InvalidDataException("Invalid replay appearance.");
             for (int i = 2; i < 7; i++) if (appearance[i] > 221) throw new InvalidDataException("Invalid recorded name.");
         }
         if (binaryStream.Length - binaryStream.Position != count * (detailed ? 160L : 28L))

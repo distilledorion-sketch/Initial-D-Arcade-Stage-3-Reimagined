@@ -11,9 +11,9 @@ internal static class Idas3DiscordChecks
         var ta=Idas3DiscordPresence.Describe(s,status,false,false);
         check(ta.details=="Time Attack · Akina Downhill"&&ta.state.StartsWith("Night / Wet"),"Time Attack course and conditions");
         check(ta.elapsedSeconds==134&&ta.timed,"Elapsed clock uses native race time");
-        string[] courseNames={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow","Hakone","Sadamine","Enna Skyline","Myogi (Special Stage)","Usui (Special Stage)","Momiji Line","Tsubaki Line"};
-        string[] forward={"Counterclockwise","Counterclockwise","Downhill","Downhill","Outbound","Downhill","Outbound","Outbound","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill"};
-        string[] reverse={"Clockwise","Clockwise","Uphill","Uphill","Inbound","Reverse","Inbound","Inbound","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill"};
+        string[] courseNames={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow","Hakone","Sadamine","Enna Skyline","Myogi (Special Stage)","Usui (Special Stage)","Momiji Line","Tsubaki Line","Gunsai","Odawara"};
+        string[] forward={"Counterclockwise","Counterclockwise","Downhill","Downhill","Outbound","Downhill","Outbound","Outbound","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill","Downhill","Outbound","Counterclockwise"};
+        string[] reverse={"Clockwise","Clockwise","Uphill","Uphill","Inbound","Reverse","Inbound","Inbound","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill","Uphill","Inbound","Clockwise"};
         check(courseNames.Length==Idas3CourseCatalog.Count,"Presence checks cover every course");
         for(int course=0;course<courseNames.Length;++course)foreach(int direction in new[]{0,1}){
             s.condition=course*2+direction;var d=Idas3DiscordPresence.Describe(s,status,false,false);

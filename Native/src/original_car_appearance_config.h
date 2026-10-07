@@ -8,6 +8,9 @@ struct OriginalCarAppearanceConfig {
     std::uint32_t car=0,word=0,materialVariant=0;
     std::array<std::uint32_t,6> variants{0,1,2,3,4,5};
     bool paintDirty=false;
+    // Expanded player paints are separate from the source's three geometry
+    // bits, so a new color cannot accidentally select different body parts.
+    std::uint32_t customPaintRgb=0xffffffffu;
     explicit OriginalCarAppearanceConfig(std::uint32_t carId=0);
 };
 // The original result owner already records these ACar calls. This handles
