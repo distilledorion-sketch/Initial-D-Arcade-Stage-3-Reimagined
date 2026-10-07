@@ -375,14 +375,14 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             var folder=Path.Combine(root,"legacy-options");Directory.CreateDirectory(folder);File.WriteAllText(Path.Combine(folder,"game-options.json"),"{\"version\":1}");
             var legacy=new Idas3GameOptions(new PerformancePlatform());legacy.Initialize(folder);Check(legacy.Current.timeAttackGhost,"Old settings default ghost on");
             var menu=host.PauseMenu;menu.SetOpen(true);menu.SelectTab(2);
-            for(int i=0;i<10;++i)menu.Navigate(1);
-            Check(menu.DiagnosticSelection==11&&host.GameOptions.Draft.timeAttackGhost,"Gameplay controller reaches ghost toggle");
+            for(int i=0;i<2;++i)menu.Navigate(1);
+            Check(menu.DiagnosticSelection==3&&host.GameOptions.Draft.timeAttackGhost,"Gameplay controller reaches ghost toggle");
             // Optional interactive capture: hidden Windows players do not send
             // OnGUI repaint events. Controller/settings checks run in both.
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-menu-capture")>=0)yield return Capture("gameplay-ghost-setting");
             menu.Activate();
             Check(!host.GameOptions.Draft.timeAttackGhost&&host.GameOptions.Current.timeAttackGhost&&host.GameOptions.HasUnsavedChanges,"Toggle remains draft before Apply");
-            menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==13,"Apply remains reachable");menu.Activate();yield return Frames(2);
+            menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==6,"Apply remains reachable");menu.Activate();yield return Frames(2);
             Check(!host.GameOptions.Current.timeAttackGhost&&!ghost.ShowGhost&&!ghost.Visible,"Apply turns live ghost off");
             var reload=new Idas3GameOptions(new PerformancePlatform());reload.Initialize(Path.GetDirectoryName(host.GameOptions.FilePath));
             Check(!reload.Current.timeAttackGhost,"Ghost off survives restart");
@@ -771,9 +771,10 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             Check(Idas3GameOptions.PerformancePreset(host.GameOptions.Draft)==1,"Controller selects Balanced preset");
             menu.Navigate(1);menu.Activate();Check(host.GameOptions.Draft.rainDetail==0,"Controller rain detail toggle");
             menu.Navigate(1);menu.Activate();Check(host.GameOptions.Draft.importedSceneryDetail==2,"Controller scenery toggle");
-            menu.Navigate(1);Check(menu.DiagnosticSelection==9,"Graphics controller reaches Reset Defaults");
-            menu.Navigate(1);Check(menu.DiagnosticSelection==10,"Graphics controller reaches Apply");
-            menu.Navigate(1);Check(menu.DiagnosticSelection==11,"Graphics controller reaches Back");
+            menu.Navigate(1);Check(menu.DiagnosticSelection==9,"Graphics controller reaches FPS display");
+            menu.Navigate(1);Check(menu.DiagnosticSelection==10,"Graphics controller reaches Reset Defaults");
+            menu.Navigate(1);Check(menu.DiagnosticSelection==11,"Graphics controller reaches Apply");
+            menu.Navigate(1);Check(menu.DiagnosticSelection==12,"Graphics controller reaches Back");
             menu.SetOpen(false);Check(host.GameOptions.Current.rainDetail==0,"Leaving without Apply discards graphics edits");
             Check(Idas3Native.Idas3SceneSetPerformance(-1)==0&&Idas3Native.Idas3SceneSetPerformance(2)==0,"Native quality boundary rejects invalid values");
             Check(Idas3SceneModeFlowFixture(-7)==1,"Native weather/mirror and race invariance regression");
@@ -827,7 +828,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             string saved=File.ReadAllText(Path.Combine(community,"pending.json"));Check(saved.Contains(fresh.id)&&!saved.Contains(old.id)&&!saved.Contains(imported.id)&&!saved.Contains(previousBuild.id)&&!saved.Contains(futureBuild.id),"Queue migration keeps only the exact-release run");
             Check(File.Exists(Path.Combine(community,fresh.id+".idr")),"Eligible queued replay is preserved");
             var menu=host.PauseMenu;menu.OpenAttractOptions();menu.SelectTab(5);menu.Navigate(1);Check(menu.DiagnosticSelection==2,"Controller reaches rankings");
-            menu.Navigate(1);Check(menu.DiagnosticSelection==3,"Controller reaches Reset after the two Records options");menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==5,"Controller reaches Back without an import row");
+            menu.Navigate(1);Check(menu.DiagnosticSelection==3,"Controller reaches Discord presence");menu.Navigate(1);Check(menu.DiagnosticSelection==4,"Controller reaches Reset after Online options");menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==6,"Controller reaches Back without an import row");
             menu.SetOpen(false);Finish(true,null);yield break;
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-local-check")>=0){
@@ -886,7 +887,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             var menu=(Idas3PauseMenu)typeof(Idas3SceneGame).GetField("pauseMenu",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(host);
             menu.OpenAttractOptions();menu.SelectTab(2);yield return Frames(3);
             Check(menu.FullTuneAvailable,"Gameplay Full Tune available for selected saved driver");
-            for(int i=0;i<6;++i)menu.Navigate(1);
+            for(int i=0;i<3;++i)menu.Navigate(1);
             // Hidden diagnostic windows do not receive IMGUI repaint events.
             // Exercise the real menu's navigation/action; capture native screens below.
             menu.Activate();yield return Frames(8);

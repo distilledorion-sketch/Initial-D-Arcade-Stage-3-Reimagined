@@ -230,7 +230,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         yield return WheelInput(-1);Check(host.GameOptions.Draft.musicVolume<original,"Wheel steering edits music volume");
         yield return new WaitForEndOfFrame();var picture=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(root,"wheel-options.png"),picture.EncodeToPNG());Destroy(picture);
         yield return WheelInput(back:true);Check(!host.PauseMenu.WheelEditing,"Brake finishes value edit");
-        for(int i=0;i<5;++i)yield return WheelInput(1);yield return WheelInput(confirm:true);Check(!host.GameOptions.HasUnsavedChanges,"Wheel reaches Apply");
+        for(int i=0;i<6;++i)yield return WheelInput(1);yield return WheelInput(confirm:true);Check(!host.GameOptions.HasUnsavedChanges,"Wheel reaches Apply");
         yield return WheelInput(back:true);yield return WheelInput(1);Check(host.PauseMenu.SelectedTab==1,"Wheel selects Graphics category");
         yield return WheelInput(1);yield return WheelInput(1);yield return WheelInput(confirm:true);yield return WheelInput(1);
         yield return WheelInput(confirm:true);yield return WheelInput(confirm:true);Check(host.PauseMenu.BindingChoiceVisible,"Wheel opens binding actions");

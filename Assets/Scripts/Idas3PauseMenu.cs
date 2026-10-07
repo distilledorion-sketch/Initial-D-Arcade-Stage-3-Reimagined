@@ -11,7 +11,10 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private static readonly Color Raised=new Color32(34,36,42,255),Edge=new Color32(65,68,76,255);
     private static readonly Color Red=new Color32(222,35,49,255),Muted=new Color32(164,166,175,255);
     private static readonly Color PromptYellow=new Color32(255,221,44,255);
-    private static readonly string[] Tabs={"AUDIO","GRAPHICS","GAMEPLAY","CONTROLS","WHEEL","RECORDS","REPLAYS","HUD"};
+    public enum Category {Audio,Graphics,Gameplay,Controls,Steering,Online,Replays,Hud,HudSizes,Updates}
+    private static readonly string[] Tabs={"AUDIO","DISPLAY & GRAPHICS","GAMEPLAY","CONTROLS","STEERING & WHEEL","ONLINE","REPLAYS","HUD & MAP","HUD SIZES","UPDATES"};
+    private static readonly int[] HudSizeGroups={1,2,3,6,7,4,9,8,10};
+    private static readonly string[] HudSizeNames={"TIME / SECTION TIMES","SPEEDOMETER / GEAR","TIME ATTACK RECORDS","LEGEND OPPONENT PANEL","ONLINE OPPONENT PANEL","REAR-VIEW MIRROR","TIME EXTENDED","ACCEPTING CHALLENGERS","ORNAMENT / KEYCHAIN"};
     public string ReplayStatus {get;set;}="Finished recordings are saved on this computer.";
     public string CommunityStatus {get;set;}="Community times ready.";
     public Idas3Updates Updates {get;set;}
@@ -117,6 +120,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         OpenChanged?.Invoke(open);
         if(!open)AttractOptions=false;
     }
+    public void SelectCategory(Category category)=>SelectTab((int)category);
+    internal int OptionRows=>Rows;
     public void SelectTab(int index){
         if(!IsOpen)SetOpen(true);
         if(bindings!=null&&bindings.IsCapturing)return;
@@ -157,8 +162,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(pending!=Command.None){if(modalSelection==1){queued=pending;pending=Command.None;}else pending=Command.None;return;}
         if(!showOptions){MainAction(selection);return;}
         if(selection==0){selection=1;return;}
-        if(tab==2&&selection==7){if(FullTuneAvailable)queued=Command.FullTune;return;}
-        if(tab==2&&selection==8){if(AttractOptions)Updates?.Activate();return;}
+        if(tab==2&&selection==4){if(FullTuneAvailable)queued=Command.FullTune;return;}
+        if(tab==9&&selection==1){if(AttractOptions)Updates?.Activate();return;}
         if(tab==5&&selection==2){Application.OpenURL(Idas3CommunityTimes.ServiceUrl);return;}
         if(tab==6&&selection==1){queued=Command.Replays;return;}
         if(tab==7&&selection==1){OpenHudCustomization();return;}
@@ -196,7 +201,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>tab==7?13:tab==6?4:tab==5?2:tab==0?5:tab==4?4:tab==2?11:tab==1?8:bindings!=null?10+BindingFirstSelection-1:0;
+    private int Rows=>tab==9?1:tab==8?HudSizeGroups.Length:tab==7?5:tab==6?4:tab==5?3:tab==0?6:tab==4?7:tab==2?4:tab==1?9:bindings!=null?10+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -286,13 +291,15 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==2)v.engineVolume=Mathf.Clamp(v.engineVolume+direction*.05f,0,Idas3GameOptions.MaximumVolume);
             if(row==3)v.tireVolume=Mathf.Clamp(v.tireVolume+direction*.05f,0,Idas3GameOptions.MaximumVolume);
             if(row==4)v.effectsVolume=Mathf.Clamp(v.effectsVolume+direction*.05f,0,Idas3GameOptions.MaximumVolume);
+            if(row==5)v.muteWhenUnfocused=!v.muteWhenUnfocused;
         }else if(tab==7){
             if(row==0){OpenHudCustomization();return;}
             if(row==1){OpenHudEditor();return;}
-            if(row==2){v.minimapDisplay=Wrap(v.minimapDisplay+direction,3);return;}row-=3;
-            if(row==1)v.minimapZoom=Wrap(v.minimapZoom-direction,3);
-            int group=row==0?5:row==2?1:row==3?2:row==4?3:row==5?6:row==6?7:row==7?4:row==8?9:row==9?8:0;
-            if(group!=0)v.SetHudSizePercent(group,v.HudSizePercent(group)+Math.Sign(direction));
+            if(row==2)v.minimapDisplay=Wrap(v.minimapDisplay+direction,3);
+            if(row==3)v.SetHudSizePercent(5,v.HudSizePercent(5)+Math.Sign(direction));
+            if(row==4)v.minimapZoom=Wrap(v.minimapZoom-direction,3);
+        }else if(tab==8){
+            if(row>=0&&row<HudSizeGroups.Length){int group=HudSizeGroups[row];v.SetHudSizePercent(group,v.HudSizePercent(group)+Math.Sign(direction));}
         }else if(tab==1){
             if(row==0)v.displayMode=Wrap(v.displayMode+direction,3);
             if(row==1){var resolutions=options.AvailableResolutions;if(resolutions.Length==0)return;
@@ -304,28 +311,27 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==5)options.SetPerformancePreset(Wrap(Idas3GameOptions.PerformancePreset(v)+direction,3));
             if(row==6)v.rainDetail=Wrap(v.rainDetail+direction,2);
             if(row==7)v.importedSceneryDetail=Wrap(v.importedSceneryDetail+direction,3);
+            if(row==8)v.showFps=!v.showFps;
         }else if(tab==2){
             if(row==0)v.defaultCamera=Wrap(v.defaultCamera+direction,CameraModes.Length);
-            if(row==8)v.discordPresence=!v.discordPresence;
-            if(row==9)v.aiDifficulty=Wrap(v.aiDifficulty+direction,3);
-            if(row==10)v.timeAttackGhost=!v.timeAttackGhost;
-            if(row==1)v.showFps=!v.showFps;
-            if(row==2)v.muteWhenUnfocused=!v.muteWhenUnfocused;
-            if(row==3)v.controllerResponse=Wrap(v.controllerResponse+direction,ControllerResponses.Length);
-            if(row==4)v.SteeringDeadzone=Mathf.Clamp(Mathf.Round(v.SteeringDeadzone*100)+direction,0,30)/100f;
-            if(row==5)v.steeringSmoothing=Mathf.Clamp(Mathf.Round(v.steeringSmoothing*100)+direction,0,100)/100f;
+            if(row==1)v.aiDifficulty=Wrap(v.aiDifficulty+direction,3);
+            if(row==2)v.timeAttackGhost=!v.timeAttackGhost;
         }else if(tab==5){
             if(row==0)v.communityTimes=!v.communityTimes;
+            if(row==2)v.discordPresence=!v.discordPresence;
         }else if(tab==4){
-            if(row==0)v.wheelForceFeedback=!v.wheelForceFeedback;
-            if(row==1&&wheelFeedback!=null){
+            if(row==0)v.controllerResponse=Wrap(v.controllerResponse+direction,ControllerResponses.Length);
+            if(row==1)v.SteeringDeadzone=Mathf.Clamp(Mathf.Round(v.SteeringDeadzone*100)+direction,0,30)/100f;
+            if(row==2)v.steeringSmoothing=Mathf.Clamp(Mathf.Round(v.steeringSmoothing*100)+direction,0,100)/100f;
+            if(row==3)v.wheelForceFeedback=!v.wheelForceFeedback;
+            if(row==4&&wheelFeedback!=null){
                 var choices=wheelFeedback.Choices;if(choices.Count>0){
                     int at=0;for(int i=0;i<choices.Count;++i)if(choices[i].id==v.wheelFeedbackDevice){at=i;break;}
                     v.wheelFeedbackDevice=choices[Wrap(at+direction,choices.Count)].id;
                 }
             }
-            if(row==2)v.wheelFeedbackStrength=Mathf.Clamp(Mathf.Round(v.wheelFeedbackStrength*100)+direction,0,100)/100f;
-            if(row==3)v.wheelFeedbackInvert=!v.wheelFeedbackInvert;
+            if(row==5)v.wheelFeedbackStrength=Mathf.Clamp(Mathf.Round(v.wheelFeedbackStrength*100)+direction,0,100)/100f;
+            if(row==6)v.wheelFeedbackInvert=!v.wheelFeedbackInvert;
         }
         notice="";
     }
@@ -385,7 +391,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(AttractOptions)Text(new Rect(750,33,238,27),"BACK TO ATTRACT",small);
             else if(online){Fill(new Rect(728,37,9,9),Red);Text(new Rect(750,29,238,26),"LIVE RACE CONTINUES",button);}
             else Text(new Rect(782,33,198,27),"TAKE A BREATHER",small);
-            Text(new Rect(710,77,295,23),Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?"UPDATE AVAILABLE — GAMEPLAY":"v"+Application.version,small,Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?PromptYellow:Muted);
+            Text(new Rect(710,77,295,23),Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?"UPDATE AVAILABLE — UPDATES":"v"+Application.version,small,Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?PromptYellow:Muted);
             if(Button(new Rect(984,22,34,35),"×")){Back();if(!IsOpen)return;}
             bool enabled=GUI.enabled;GUI.enabled=enabled&&!Modal&&!BindingInputBlocked;
             if(showOptions)OptionsView();else MainView();
@@ -428,7 +434,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(Updates!=null&&Updates.State==Idas3Updates.CheckState.Available){
             var updateRect=new Rect(rect.x,rect.y-height-4,rect.width,height);
             Fill(updateRect,new Color(0,0,0,.75f));
-            Text(new Rect(updateRect.x+padding-2,updateRect.y+2,updateRect.width-2*padding+4,updateRect.height-4),"UPDATE AVAILABLE — OPTIONS > GAMEPLAY",attractPromptStyle,PromptYellow);
+            Text(new Rect(updateRect.x+padding-2,updateRect.y+2,updateRect.width-2*padding+4,updateRect.height-4),"UPDATE AVAILABLE — OPTIONS > UPDATES",attractPromptStyle,PromptYellow);
         }
         if(AttractHoldProgress>0){
             Fill(new Rect(rect.x,rect.yMax-2,rect.width,2),Edge);
@@ -455,9 +461,9 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         Text(new Rect(570,y-2,405,31),value,label);
     }
     private void OptionsView(){
-        const float categoryTop=139,categoryStep=48,categoryHeight=39;
+        const float categoryTop=139,categoryStep=40,categoryHeight=34;
         for(int i=0;i<Tabs.Length;++i){var rect=new Rect(30,categoryTop+i*categoryStep,207,categoryHeight);if(Button(rect,Tabs[i],tab==i))SelectTab(i);if(selection==0&&tab==i)Frame(rect,Color.white);}
-        Text(new Rect(31,categoryTop+Tabs.Length*categoryStep+5,205,88),wheelNavigation?"STEERING: SELECT\nACCEL: EDIT / DONE\nBRAKE: BACK\nAPPLY to save":"CHOOSE CATEGORY\n↑ ↓ / STEERING\nCONFIRM to edit\nBACK to categories",wrapped);
+        Text(new Rect(31,categoryTop+Tabs.Length*categoryStep+5,205,80),wheelNavigation?"STEERING: SELECT\nACCEL: EDIT / DONE\nBRAKE: BACK\nAPPLY to save":"CHOOSE CATEGORY\n↑ ↓ / STEERING\nCONFIRM to edit\nBACK to categories",wrapped);
         Fill(new Rect(262,130,748,413),Panel);
         Text(new Rect(282,144,660,36),tab==3?"CONTROLLER & KEYBOARD":Tabs[tab],heading);
         if(selection==0)Frame(new Rect(276,139,716,42),Red);
@@ -469,21 +475,15 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             VolumeRow(2,"ENGINE",v.engineVolume,value=>v.engineVolume=value);
             VolumeRow(3,"TIRE SQUEAL",v.tireVolume,value=>v.tireVolume=value);
             VolumeRow(4,"EFFECTS / VOICES",v.effectsVolume,value=>v.effectsVolume=value);
-            Text(new Rect(288,497,683,29),"Changes take effect when you choose APPLY.",small);
+            ChoiceRow(5,"MUTE WHEN UNFOCUSED",v.muteWhenUnfocused?"ON":"OFF");
         }else if(tab==7){
-            if(Button(new Rect(278,180,714,27),"CUSTOMIZE",selection==1)){selection=1;OpenHudCustomization();}
-            if(Button(new Rect(278,208,714,27),"EDIT HUD LAYOUT",selection==2)){selection=2;OpenHudEditor();}
+            if(Button(new Rect(282,197,692,39),"HUD APPEARANCE",selection==1)){selection=1;OpenHudCustomization();}
+            if(Button(new Rect(282,256,692,39),"EDIT HUD LAYOUT",selection==2)){selection=2;OpenHudEditor();}
             ChoiceRow(2,"MINIMAP DISPLAY",new[]{"MAP","WATER CUP","OFF"}[v.minimapDisplay]);
-            ChoiceRow(3,"MINIMAP SIZE",v.HudSizePercent(5)+"%");
+            ChoiceRow(3,"MAP / WATER CUP SIZE",v.HudSizePercent(5)+"%");
             ChoiceRow(4,"MINIMAP ZOOM OUT",new[]{"WIDEST (50%)","WIDER (75%)","ORIGINAL"}[v.minimapZoom]);
-            ChoiceRow(5,"TIME / SECTION TIMES",v.HudSizePercent(1)+"%");
-            ChoiceRow(6,"SPEEDOMETER / GEAR",v.HudSizePercent(2)+"%");
-            ChoiceRow(7,"TIME ATTACK RECORDS",v.HudSizePercent(3)+"%");
-            ChoiceRow(8,"LEGEND OPPONENT PANEL",v.HudSizePercent(6)+"%");
-            ChoiceRow(9,"ONLINE OPPONENT PANEL",v.HudSizePercent(7)+"%");
-            ChoiceRow(10,"REAR-VIEW MIRROR",v.HudSizePercent(4)+"%");
-            ChoiceRow(11,"TIME EXTENDED",v.HudSizePercent(9)+"%");
-            ChoiceRow(12,"ACCEPTING CHALLENGERS",v.HudSizePercent(8)+"%");
+        }else if(tab==8){
+            for(int row=0;row<HudSizeGroups.Length;++row)ChoiceRow(row,HudSizeNames[row],v.HudSizePercent(HudSizeGroups[row])+"%");
         }else if(tab==1){
             ChoiceRow(0,"DISPLAY MODE",DisplayModes[v.displayMode]);ChoiceRow(1,"RESOLUTION",v.width+" × "+v.height);
             ChoiceRow(2,"VERTICAL SYNC",v.vSync?"ON":"OFF");ChoiceRow(3,"FRAME LIMIT",v.frameRateLimit==0?"UNLIMITED":v.frameRateLimit+" FPS");
@@ -492,34 +492,25 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(5,"QUALITY PRESET",preset<0?"CUSTOM":new[]{"ORIGINAL","BALANCED","LOW"}[preset]);
             ChoiceRow(6,"WEATHER & SPRAY",new[]{"FULL","REDUCED"}[v.rainDetail]);
             ChoiceRow(7,"IMPORTED SCENERY",new[]{"ORIGINAL","BALANCED","LOW"}[v.importedSceneryDetail]);
-            string help=selection==6?"Balanced: 720p / 2x AA. Low: 540p / no AA. Both use reduced effects and scenery, capped at 60 FPS. Mirror and gameplay stay enabled.":
-                selection==7?"Reduced uses fewer rain and spray particles. Rain stays visible and wet grip is unchanged.":
-                selection==8?"Lower detail uses simpler trees sooner and draws less distant scenery on Hakone and Sadamine. Roads and collision stay the same.":
-                selection==2?"Resolution changes the entire game image and window size in windowed mode. Confirm display changes within 15 seconds.":
-                v.vSync?"VSync synchronizes to your display. Turn it off to use the frame limit.":"Display changes must be confirmed within 15 seconds.";
-            Text(new Rect(288,504,687,40),help,wrapped);
+            ChoiceRow(8,"SHOW FRAME RATE",v.showFps?"ON":"OFF");
+            Text(new Rect(288,522,687,20),v.vSync?"Turn off VSync to use the frame limit.":"Display changes must be confirmed within 15 seconds.",small);
         }else if(tab==2){
-            ChoiceRow(0,"DEFAULT CAMERA",CameraModes[v.defaultCamera]);ChoiceRow(1,"SHOW FRAME RATE",v.showFps?"ON":"OFF");
-            ChoiceRow(2,"MUTE WHEN UNFOCUSED",v.muteWhenUnfocused?"ON":"OFF");
-            ChoiceRow(3,"CONTROLLER RESPONSE",ControllerResponses[v.controllerResponse]);
-            SliderRow(4,"STEERING DEADZONE",v.SteeringDeadzone,.3f,value=>v.SteeringDeadzone=value);
-            SliderRow(5,"STEERING SMOOTHING",v.steeringSmoothing,1,value=>v.steeringSmoothing=value);
-            Text(new Rect(290,377,294,27),"FULL TUNE",label);
-            if(Button(new Rect(595,376,387,29),"999999 POINTS + UPGRADES",selection==7,FullTuneAvailable)){selection=7;queued=Command.FullTune;}
-            Text(new Rect(290,408,294,27),"GAME UPDATES",label);
-            if(Button(new Rect(595,407,387,29),Updates?.ButtonLabel??"CHECK FOR UPDATES",selection==8,AttractOptions&&Updates!=null&&Updates.CanActivate)){selection=8;Updates.Activate();}
-            ChoiceRow(8,"DISCORD RICH PRESENCE",v.discordPresence?"ON":"OFF");
-            ChoiceRow(9,"AI DRIVER DIFFICULTY",new[]{"NORMAL","HARD (+5% PACE)","EXPERT (+10% PACE)"}[v.aiDifficulty]);
-            ChoiceRow(10,"TIME ATTACK GHOST",v.timeAttackGhost?"ON":"OFF");
-            string help=selection==7?(FullTuneAvailable?"Choose a save, then a make and car for upgrades.":"Finish the current screen and leave online play to use Full Tune."):
-                selection==8?(!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable."):"Deadzone is saved per controller response. APPLY saves changes.";
-            Text(new Rect(288,536,687,16),selection==11?"Race your best saved run. New bests are saved with the ghost off, too.":selection==10?"Legend of the Streets only. Bunta Challenge keeps its original difficulty.":selection==9?"Shares game activity with the Discord desktop app. APPLY saves your choice.":help,small);
+            ChoiceRow(0,"DEFAULT CAMERA",CameraModes[v.defaultCamera]);
+            ChoiceRow(1,"AI DRIVER DIFFICULTY",new[]{"NORMAL","HARD (+5% PACE)","EXPERT (+10% PACE)"}[v.aiDifficulty]);
+            ChoiceRow(2,"TIME ATTACK GHOST",v.timeAttackGhost?"ON":"OFF");
+            Text(new Rect(290,384,294,31),"FULL TUNE",label);
+            if(Button(new Rect(595,378,387,35),"999999 POINTS + UPGRADES",selection==4,FullTuneAvailable)){selection=4;queued=Command.FullTune;}
+            string help=selection==4?(FullTuneAvailable?"Choose a save, then a make and car for upgrades.":"Finish the current screen and leave online play to use Full Tune."):
+                selection==3?"Race your best saved run. New bests are saved with the ghost off, too.":
+                selection==2?"Legend of the Streets only. Bunta Challenge keeps its original difficulty.":"";
+            Text(new Rect(288,454,687,65),help,wrapped);
         }else if(tab==5){
             ChoiceRow(0,"COMMUNITY TIMES",v.communityTimes?"ON":"OFF");
-            if(Button(new Rect(595,257,387,35),"VIEW SHARED RANKINGS",selection==2))Application.OpenURL(Idas3CommunityTimes.ServiceUrl);
-            Text(new Rect(288,344,681,72),"Only new completed Time Attacks with a replay can be uploaded. Previous saved times cannot be uploaded.",wrapped);
-            Text(new Rect(288,422,681,65),CommunityStatus,wrapped);
-            Text(new Rect(288,493,681,55),"New times include a driving replay for admin review. No Steam linking. OFF stops uploads; existing submissions remain.",wrapped);
+            if(Button(new Rect(282,256,692,39),"VIEW LEADERBOARDS",selection==2)){selection=2;Application.OpenURL(Idas3CommunityTimes.ServiceUrl);}
+            ChoiceRow(2,"DISCORD RICH PRESENCE",v.discordPresence?"ON":"OFF");
+            Text(new Rect(288,385,681,52),"New Time Attack submissions require a driving replay. Turning Community Times off stops uploads; existing submissions remain.",wrapped);
+            Text(new Rect(288,446,681,65),CommunityStatus,wrapped);
+            if(selection==3)Text(new Rect(288,514,681,25),"Shows your game activity in the Discord desktop app.",small);
         }else if(tab==6){
             if(Button(new Rect(282,197,692,39),"OPEN REPLAY LIBRARY",selection==1))queued=Command.Replays;
             ChoiceRow(1,"TIME ATTACK",v.communityTimes?"ON — REQUIRED FOR SHARING":v.replayTimeAttack?"ON":"OFF");
@@ -527,12 +518,23 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(3,"LEGEND OF THE STREETS",v.replayLegend?"ON":"OFF");
             Text(new Rect(288,436,681,40),"Recording choices apply to the next race. Community Times always requires a Time Attack replay, even if optional recording is off.",wrapped);
             Text(new Rect(288,481,681,55),ReplayStatus,wrapped);
-        }else if(tab==3)ControlsView();else{
-            ChoiceRow(0,"FORCE FEEDBACK",v.wheelForceFeedback?"ON":"OFF");
-            ChoiceRow(1,"DEVICE",WheelDeviceName(v.wheelFeedbackDevice));
-            SliderRow(2,"STRENGTH",v.wheelFeedbackStrength,1,value=>v.wheelFeedbackStrength=value);
-            ChoiceRow(3,"INVERT FORCE",v.wheelFeedbackInvert?"ON":"OFF");
-            Text(new Rect(288,439,681,87),wheelFeedback?.StatusText??"Wheel feedback is unavailable.",wrapped);
+        }else if(tab==3)ControlsView();
+        else if(tab==4){
+            Text(new Rect(290,182,681,22),"STEERING RESPONSE",small);
+            ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
+            SliderRow(1,"DEADZONE",v.SteeringDeadzone,.3f,value=>v.SteeringDeadzone=value);
+            SliderRow(2,"SMOOTHING",v.steeringSmoothing,1,value=>v.steeringSmoothing=value);
+            Text(new Rect(290,326,681,22),"WHEEL FORCE FEEDBACK",small);
+            ChoiceRow(3,"FORCE FEEDBACK",v.wheelForceFeedback?"ON":"OFF");
+            ChoiceRow(4,"DEVICE",WheelDeviceName(v.wheelFeedbackDevice));
+            SliderRow(5,"STRENGTH",v.wheelFeedbackStrength,1,value=>v.wheelFeedbackStrength=value);
+            ChoiceRow(6,"INVERT FORCE",v.wheelFeedbackInvert?"ON":"OFF");
+            Text(new Rect(288,508,681,35),selection<=3?"Deadzone is saved separately for each response profile.":wheelFeedback?.StatusText??"Wheel feedback is unavailable.",wrapped);
+        }else if(tab==9){
+            if(Button(new Rect(282,197,692,43),Updates?.ButtonLabel??"CHECK FOR UPDATES",selection==1,AttractOptions&&Updates!=null&&Updates.CanActivate)){selection=1;Updates.Activate();}
+            Text(new Rect(288,273,681,70),!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable.",wrapped);
+            Text(new Rect(288,367,681,30),"INSTALLED VERSION",small);
+            Text(new Rect(288,398,681,40),"v"+Application.version,label);
         }
         bool unsaved=tab==3?bindings!=null&&bindings.HasUnsavedChanges:options.HasUnsavedChanges;
         string error=tab==3?bindings?.LastError:options.LastError;
@@ -556,35 +558,23 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(wheelFeedback!=null)foreach(var choice in wheelFeedback.Choices)if(choice.id==id)return choice.name;
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
+    private bool CompactRows=>tab==1||tab==4||tab==8;
+    private float RowY(int row)=>tab==4?(row<3?208+row*38:354+(row-3)*38):CompactRows?194+row*36:194+row*59;
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
-        if(tab==2){
-            float compactY=188+row*31;if(selection==row+1)Frame(new Rect(278,compactY,714,31),Red);
-            Text(new Rect(290,compactY+7,294,27),name,label);
-            float compactValue=GUI.HorizontalSlider(new Rect(595,compactY+13,279,20),value,0,maximum);
-            if(!Mathf.Approximately(compactValue,value)){selection=row+1;set(Mathf.Round(compactValue*100)/100f);notice="";}
-            Text(new Rect(899,compactY+5,79,27),Mathf.RoundToInt(compactValue*100)+"%",button);return;
-        }
-        float y=194+row*(tab==2?48:59);if(selection==row+1)Frame(new Rect(278,y,714,tab==2?46:49),Red);
-        Text(new Rect(290,y+13,294,31),name,label);
-        float next=GUI.HorizontalSlider(new Rect(595,y+18,279,20),value,0,maximum);
+        float y=RowY(row);bool compact=CompactRows;
+        if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
+        Text(new Rect(290,y+(compact?7:13),294,31),name,label);
+        float next=GUI.HorizontalSlider(new Rect(595,y+(compact?13:18),279,20),value,0,maximum);
         if(!Mathf.Approximately(next,value)){selection=row+1;set(Mathf.Round(next*100)/100f);notice="";}
-        Text(new Rect(899,y+8,79,33),Mathf.RoundToInt(next*100)+"%",button);
+        Text(new Rect(899,y+(compact?5:8),79,33),Mathf.RoundToInt(next*100)+"%",button);
     }
     private void ChoiceRow(int row,string name,string value){
-        if(tab==1||tab==2||tab==7){
-            float compactY=tab==7?180+row*28:tab==2?188+row*31:194+row*38;
-            if(selection==row+1)Frame(new Rect(278,compactY,714,tab==7?27:tab==2?31:37),Red);
-            Text(new Rect(290,compactY+3,294,27),name,label);
-            if(Button(new Rect(595,compactY+2,34,tab==7?25:29),"‹")){selection=row+1;Adjust(row,-1);}
-            Text(new Rect(636,compactY+5,304,27),value,button);
-            if(Button(new Rect(948,compactY+2,34,tab==7?25:29),"›")){selection=row+1;Adjust(row,1);}
-            return;
-        }
-        float y=194+row*(tab==2?48:59);if(selection==row+1)Frame(new Rect(278,y,714,tab==2?46:49),Red);
-        Text(new Rect(290,y+13,294,31),name,label);
-        if(Button(new Rect(595,y+7,34,35),"‹")){selection=row+1;Adjust(row,-1);}
-        Text(new Rect(636,y+8,304,33),value,button);
-        if(Button(new Rect(948,y+7,34,35),"›")){selection=row+1;Adjust(row,1);}
+        float y=RowY(row);bool compact=CompactRows;
+        if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
+        Text(new Rect(290,y+(compact?5:13),294,31),name,label);
+        if(Button(new Rect(595,y+(compact?2:7),34,compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
+        Text(new Rect(636,y+(compact?5:8),304,33),value,button);
+        if(Button(new Rect(948,y+(compact?2:7),34,compact?29:35),"›")){selection=row+1;Adjust(row,1);}
     }
     private void ControlsView(){
         if(bindings==null){Text(new Rect(288,206,690,45),"Control bindings are unavailable.",wrapped);return;}

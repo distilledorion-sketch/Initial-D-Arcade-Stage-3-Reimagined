@@ -178,7 +178,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check((File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null)==savedBefore,"Cancelling Natural camera wrote the options file");
         menu.SelectTab(2);menu.NavigateHorizontal(1);Check(options.Draft.defaultCamera==1,"Chase moved from its existing option index");menu.NavigateHorizontal(1);
         Check(options.Draft.defaultCamera==2&&CameraOptions().cameraView==0,"Natural draft applied before the menu APPLY action");
-        for(int row=0;row<11;++row)menu.Navigate(1);menu.Activate();yield return Frames(4);
+        for(int row=0;row<menu.OptionRows+1;++row)menu.Navigate(1);menu.Activate();yield return Frames(4);
         Check(options.LastError==null&&!options.HasUnsavedChanges&&options.Current.defaultCamera==2,"Gameplay APPLY did not save Natural camera");CheckCamera(2);
         Check(host.Status.simulationTicks==frozen&&host.Status.speedMetresPerSecond==pausedSpeed&&host.Status.rpm==pausedRpm,"Applying Natural advanced or modified paused driving state");
         var persisted=JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath));
@@ -291,20 +291,20 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         // Use the same row navigation and APPLY action as the actual menu.
         // The existing controls tab and binding drafts are not edited here.
         foreach(int expected in new[]{1,2,0}){
-            menu.SelectTab(2);menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);
+            menu.SelectCategory(Idas3PauseMenu.Category.Steering);
             int prior=options.Current.controllerResponse;
             for(int attempt=0;options.Draft.controllerResponse!=expected&&attempt<3;++attempt)menu.NavigateHorizontal(1);
-            Check(options.Draft.controllerResponse==expected,"Gameplay response row could not select "+expected);
+            Check(options.Draft.controllerResponse==expected,"Steering response row could not select "+expected);
             Check(Idas3Native.Idas3SceneGetControllerResponse()==prior,"Draft controller response applied before APPLY");
             Check(options.HasUnsavedChanges==(prior!=expected),"Controller response change was not tracked as an unsaved option");
             float nativeBefore=Idas3Native.Idas3SceneGetSteeringDeadzone();
             float expectedDeadzone=Mathf.Round(options.Draft.SteeringDeadzone*100+1)/100f;
             menu.Navigate(1);menu.NavigateHorizontal(1);
-            Check(Mathf.Abs(options.Draft.SteeringDeadzone-expectedDeadzone)<.000001f,"Gameplay deadzone row did not adjust by one percent");
+            Check(Mathf.Abs(options.Draft.SteeringDeadzone-expectedDeadzone)<.000001f,"Steering deadzone row did not adjust by one percent");
             Check(Idas3Native.Idas3SceneGetSteeringDeadzone()==nativeBefore,"Draft steering deadzone applied before APPLY");
             yield return Frames(2);yield return Capture("gameplay-response-"+expected);
-            // Ten Gameplay rows: advance from deadzone (5) to APPLY (12).
-            for(int row=5;row<12;++row)menu.Navigate(1);menu.Activate();yield return Frames(3);
+            // Advance from deadzone to the category Apply action.
+            for(int row=2;row<menu.OptionRows+2;++row)menu.Navigate(1);menu.Activate();yield return Frames(3);
             Check(options.LastError==null&&options.Current.controllerResponse==expected&&!options.HasUnsavedChanges,"Menu APPLY failed for controller response "+expected);
             Check(Idas3Native.Idas3SceneGetControllerResponse()==expected,"Native response did not change through menu APPLY: "+expected);
             Check(Mathf.Abs(Idas3Native.Idas3SceneGetSteeringDeadzone()-expectedDeadzone)<.000001f,"Native deadzone did not change through menu APPLY");
@@ -357,10 +357,10 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         var zeroReload=new Idas3GameOptions(platform);zeroReload.Initialize(freshRoot);
         Check(zeroReload.Current.steeringSmoothing==0,"Saved zero smoothing did not survive reloading");
 
-        // Reach the real sixth Gameplay row, including footer navigation, and
+        // Reach the steering smoothing row, including footer navigation, and
         // use its same one-percent controller actions. No input bindings or
         // live force-feedback settings are changed by this diagnostic.
-        menu.SelectTab(2);for(int row=0;row<5;++row)menu.Navigate(1);
+        menu.SelectCategory(Idas3PauseMenu.Category.Steering);menu.Navigate(1);menu.Navigate(1);
         string beforeCancel=File.ReadAllText(options.FilePath);
         menu.NavigateHorizontal(-1);Check(options.Draft.steeringSmoothing==0&&!options.HasUnsavedChanges,"Smoothing slider escaped its lower bound");
         menu.NavigateHorizontal(1);Check(options.Draft.steeringSmoothing==.01f&&options.HasUnsavedChanges,"Smoothing row did not increment by one percent");
@@ -375,7 +375,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         yield return Frames(3);
         Check(!host.ControlBindings.SuppressInput,"BACK release latch did not clear before reopening smoothing options");
         foreach(float expected in new[]{.01f,.37f,1f,0f}){
-            menu.SelectTab(2);for(int row=0;row<5;++row)menu.Navigate(1);
+            menu.SelectCategory(Idas3PauseMenu.Category.Steering);menu.Navigate(1);menu.Navigate(1);
             float previous=options.Current.steeringSmoothing;
             for(int step=0;Mathf.Abs(options.Draft.steeringSmoothing-expected)>.000001f&&step<101;++step)
                 menu.NavigateHorizontal(options.Draft.steeringSmoothing<expected?1:-1);
@@ -383,7 +383,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
             if(expected==1){menu.NavigateHorizontal(1);Check(options.Draft.steeringSmoothing==1,"Smoothing slider escaped its upper bound");}
             Check(options.HasUnsavedChanges&&options.Current.steeringSmoothing==previous&&Idas3Native.Idas3SceneGetSteeringSmoothing()==previous,"Smoothing draft changed native/current values before APPLY");
             if(expected==.37f||expected==0){yield return Frames(2);yield return Capture(expected==0?"gameplay-smoothing-off":"gameplay-smoothing");}
-            for(int row=6;row<12;++row)menu.Navigate(1);menu.Activate();yield return Frames(3);
+            for(int row=3;row<menu.OptionRows+2;++row)menu.Navigate(1);menu.Activate();yield return Frames(3);
             Check(options.LastError==null&&!options.HasUnsavedChanges&&Mathf.Abs(options.Current.steeringSmoothing-expected)<.000001f,"Smoothing menu APPLY failed");
             Check(Mathf.Abs(Idas3Native.Idas3SceneGetSteeringSmoothing()-expected)<.000001f,"Smoothing menu APPLY did not update native value");
             var saved=JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath));
@@ -420,8 +420,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
 
         Check(!options.Current.wheelForceFeedback,"Live diagnostic must leave wheel feedback disabled");
         menu.SelectTab(4);Check(menu.SelectedTab==4,"Wheel tab is unreachable");
-        menu.Back();menu.NavigateHorizontal(1);Check(menu.SelectedTab==5,"Wheel-to-records category navigation failed");
-        menu.NavigateHorizontal(-1);Check(menu.SelectedTab==4,"Records-to-wheel category navigation failed");menu.Activate();
+        menu.Back();menu.NavigateHorizontal(1);Check(menu.SelectedTab==5,"Steering-to-online category navigation failed");
+        menu.NavigateHorizontal(-1);Check(menu.SelectedTab==4,"Online-to-steering category navigation failed");menu.Activate();for(int row=0;row<3;++row)menu.Navigate(1);
         menu.NavigateHorizontal(1);Check(options.Draft.wheelForceFeedback&&!options.Current.wheelForceFeedback,"Wheel enable toggle did not remain a draft");
         menu.NavigateHorizontal(-1);Check(!options.Draft.wheelForceFeedback,"Could not leave live wheel feedback disabled");
         menu.Navigate(1);menu.NavigateHorizontal(1);string device=options.Draft.wheelFeedbackDevice;

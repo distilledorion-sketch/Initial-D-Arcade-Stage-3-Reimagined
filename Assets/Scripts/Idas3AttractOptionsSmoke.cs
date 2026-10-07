@@ -319,8 +319,8 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         updates.ApplyResponse(0,"",true);
         Check(updates.State==Idas3Updates.CheckState.Unavailable&&host.Ready,"Offline failure leaves game ready");
         physicalKey=KeyCode.C;yield return ExpectOpen("updates-keyboard-C");yield return Release();
-        menu.SelectTab(2);for(int i=0;i<7;i++)menu.Navigate(1);
-        Check(menu.DiagnosticSelection==8,"Game Updates accessible by navigation");
+        menu.SelectCategory(Idas3PauseMenu.Category.Updates);
+        Check(menu.DiagnosticSelection==1,"Game Updates accessible in its own category");
         observations.Add("Before menu capture: updateWindow="+updates.WindowVisible+" menuOpen="+menu.IsOpen+" menuRepaints="+menu.DiagnosticRepaints);
         Check(!updates.WindowVisible,"Update modal remained open after live check");
         yield return Capture("updates-offline");
@@ -366,7 +366,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720),new Vector2Int(1920,800)}){
             yield return Resize(size.x,size.y,false);yield return Capture("updates-available-"+size.x+"x"+size.y,size.x,size.y);
         }
-        menu.Navigate(-1);Check(menu.DiagnosticSelection==7,"Full Tune remains next to updates");
+        menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);for(int row=0;row<3;++row)menu.Navigate(1);Check(menu.DiagnosticSelection==4,"Full Tune remains available in Gameplay");
         menu.Back();Check(menu.CategoryFocused,"Back returns to categories");menu.Back();yield return Release();
         yield return Until(()=>menu.AttractPromptVisible,3,"Returned to title prompt");yield return Capture("updates-title-notice");
         pulse=13;yield return Until(()=>host.Status.frontendStage!=0,8,"Game can start after update check");
@@ -758,10 +758,10 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(options.Current.aiDifficulty==0,"Default AI must remain Normal");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=-1}).aiDifficulty==0,"Negative AI setting");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=99}).aiDifficulty==2,"AI setting cap");
-            menu.OpenAttractOptions();menu.SelectTab(2);for(int i=0;i<9;++i)menu.Navigate(1);
+            menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);
             menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==1,"Controller did not choose Hard");
             menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==2,"Controller did not choose Expert");
-            Check(options.Current.aiDifficulty==0,"Unapplied difficulty leaked");menu.Navigate(1);menu.Navigate(1);menu.Activate();menu.Navigate(-1);menu.Navigate(-1);
+            Check(options.Current.aiDifficulty==0,"Unapplied difficulty leaked");for(int row=2;row<menu.OptionRows+2;++row)menu.Navigate(1);menu.Activate();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);
             Check(options.Current.aiDifficulty==2&&Idas3SceneModeFlowValue(34)==2,"Difficulty not applied to native owner");
             var reloaded=new Idas3GameOptions(new OptionsTestPlatform());reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
             Check(reloaded.Current.aiDifficulty==2,"Difficulty did not persist");
@@ -821,12 +821,14 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=-1}).minimapSize==0,"Negative size not clamped");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{minimapSize=99}).minimapSize==2,"Oversize not clamped");
             menu.OpenAttractOptions();menu.SelectTab(7);Check(menu.SelectedTab==7,"HUD category unavailable");menu.Navigate(1);menu.Navigate(1);
+            menu.NavigateHorizontal(1);Check(options.Draft.minimapDisplay==1,"Water cup display is selectable");menu.Navigate(1);
             menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==101&&options.HasUnsavedChanges,"101% selection not dirty");
             menu.Activate();Check(options.Draft.HudSizePercent(5)==102,"Confirm did not advance by one percent");
             menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==1,"Right should zoom out to wider");menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==0,"Zoom out did not select 50%");
-            var sizeGroups=new[]{1,2,3,6,7,4,9,8};
+            var sizeGroups=new[]{1,2,3,6,7,4,9,8,10};
+            menu.SelectCategory(Idas3PauseMenu.Category.HudSizes);
             for(int row=0;row<sizeGroups.Length;++row){
-                menu.Navigate(1);menu.NavigateHorizontal(1);
+                if(row!=0)menu.Navigate(1);menu.NavigateHorizontal(1);
                 for(int other=0;other<sizeGroups.Length;++other){
                     Check(options.Draft.HudSizePercent(sizeGroups[other])==(other<=row?101:100),"HUD row changed a different group: "+sizeGroups[other]);
                 }
@@ -835,7 +837,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             var hudReloaded=new Idas3GameOptions(new OptionsTestPlatform());hudReloaded.Initialize(Path.GetDirectoryName(options.FilePath));
             foreach(int group in sizeGroups)Check(hudReloaded.Current.HudSizePercent(group)==101,"Independent HUD setting did not survive reload: "+group);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-options-no-capture")<0)yield return Capture("hud-settings");
-            menu.SelectTab(7);menu.Navigate(1);menu.Navigate(1);
+            menu.SelectTab(7);menu.Navigate(1);menu.Navigate(1);menu.Navigate(1);
             options.Draft.SetHudSizePercent(5,150);menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==150,"Size wrapped at the upper bound");
             menu.NavigateHorizontal(-1);Check(options.Draft.HudSizePercent(5)==149,"Reverse size selection did not decrease one percent");
             options.Draft.SetHudSizePercent(5,100);menu.NavigateHorizontal(-1);Check(options.Draft.HudSizePercent(5)==100,"Size wrapped at the lower bound");
@@ -860,12 +862,12 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
                     Check(accepted,"Discord acknowledged logo, activity and leaderboard button");
                 }
             }
-            menu.OpenAttractOptions();menu.SelectTab(2);
-            for(int i=0;i<8;i++)menu.Navigate(1);
-            Check(menu.DiagnosticSelection==9,"Discord toggle is controller accessible");menu.Activate();Check(!options.Draft.discordPresence,"Confirm toggles presence");
+            menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Online);
+            menu.Navigate(1);menu.Navigate(1);
+            Check(menu.DiagnosticSelection==3,"Discord toggle is controller accessible");menu.Activate();Check(!options.Draft.discordPresence,"Confirm toggles presence");
             menu.Navigate(1);menu.Navigate(1);menu.Activate();Check(!options.Current.discordPresence,"Apply persists presence off");
-            menu.SelectTab(2);for(int i=0;i<8;i++)menu.Navigate(1);
-            foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720)}){yield return Resize(size.x,size.y,false);yield return Capture("discord-gameplay-"+size.x,size.x,size.y);}
+            menu.SelectCategory(Idas3PauseMenu.Category.Online);menu.Navigate(1);menu.Navigate(1);
+            foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720)}){yield return Resize(size.x,size.y,false);yield return Capture("discord-online-"+size.x,size.x,size.y);}
             menu.Back();menu.Back();CheckTitle("Discord settings preserve original title");Finish(true,null);yield break;
         }
         CheckTitle("Diagnostic did not begin in original attract mode");
@@ -895,8 +897,8 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         yield return Release();Check(menu.CategoryFocused,"Settings did not start at category list");menu.Activate();menu.NavigateHorizontal(-1);float applied=options.Draft.masterVolume;
         Check(applied<options.Current.masterVolume&&options.HasUnsavedChanges,"Audio row did not edit its draft");
         Check(NativeMaster()==unchanged.masterVolume,"Audio draft changed native gain before Apply");
-        // Audio has four rows: from selection1, five Down actions reach Apply6.
-        for(int i=0;i<6;++i)menu.Navigate(1);menu.Activate();yield return Frames(4);
+        // Audio Apply follows its six options and Reset Defaults.
+        for(int i=0;i<menu.OptionRows+1;++i)menu.Navigate(1);menu.Activate();yield return Frames(4);
         Check(options.LastError==null&&!options.HasUnsavedChanges&&options.Current.masterVolume==applied&&NativeMaster()==applied,"Attract Audio Apply failed");
         var loaded=new Idas3GameOptions(new OptionsTestPlatform());loaded.Initialize(Path.GetDirectoryName(options.FilePath));
         Check(loaded.LastError==null&&loaded.Current.masterVolume==applied,"Attract Audio Apply did not persist");
@@ -974,7 +976,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(HudCustomizationCheck)report.scope="Standalone player with private saves: actual OnGUI "+Idas3ArcadeMeterCatalog.Count+"-entry meter and "+Idas3OrnamentCatalog.Count+"-entry ornament pickers, initial/scrolled/final rows, recovered artwork/3D preview pixel checks, high-ID Apply/reload and Cancel, Original HUD compatibility, Stuttgart layout move/resize, small/ultrawide captures, and live native quick-race telemetry including Season 5 meters and ornaments. Actual ornament mesh parts, transparent render target, screen-top bounds, movement-responsive swing, and Off resource release are checked. Programmatic normal menu navigation and synthetic keyboard driving; no physical controller or every-car validation.";
         if(HudEdgePlacementCheck)report.scope="Hidden standalone Unity player with private saves: actual HUD editor and composed Youmu bounds, edge placement in both directions, visible reachability, movement back from edges and Cancel preservation. No OnGUI pixel capture or OS mouse input.";
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
-        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Gameplay captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Online settings captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Update / Full Repair / Later, same-version repair and patch/full fallback state transitions with controlled transfer failures, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));Debug.Log((report.passed?"PASS":"FAIL")+" attract options "+error);
 #if UNITY_EDITOR
