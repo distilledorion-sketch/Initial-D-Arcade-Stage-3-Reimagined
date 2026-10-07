@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+  <application>
+    <activity android:name="com.unity3d.player.UnityPlayerActivity" tools:node="remove" />
+    <activity android:name="com.unity3d.player.UnityPlayerGameActivity" tools:node="remove" />
+    <activity android:name="com.idas3.unity.Idas3Activity" android:exported="true"
+              android:theme="@style/UnityThemeSelector"
+              android:screenOrientation="sensorLandscape"
+              android:launchMode="singleTask"
+              android:hardwareAccelerated="false"
+              android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|orientation|screenLayout|uiMode|screenSize|smallestScreenSize|fontScale|layoutDirection|density">
+      <meta-data android:name="unityplayer.UnityActivity" android:value="true" />
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

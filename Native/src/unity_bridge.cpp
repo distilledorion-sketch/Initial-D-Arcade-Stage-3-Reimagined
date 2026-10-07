@@ -928,9 +928,26 @@ int IDAS3_UNITY_CALL Idas3SceneSetPreRaceNames(const char* localUtf8,const char*
             throw std::logic_error("Set online names after loading and before releasing the start");
         const auto parse=[](const char* text){
             if(!text)throw std::invalid_argument("A driver name is required");
+#if defined(IDAS3_PORTABLE_SCENE)
+            const auto length=strnlen(text,129);
+            if(!length||length>128)throw std::invalid_argument("Driver names must be valid UTF8 up to128bytes");
+            for(std::size_t i=0;i<length;){
+                const auto first=static_cast<unsigned char>(text[i++]);std::size_t extra=0;
+                std::uint32_t code=0;
+                if(first<0x80)code=first;
+                else if(first>=0xc2&&first<=0xdf){code=first&0x1f;extra=1;}
+                else if(first>=0xe0&&first<=0xef){code=first&0x0f;extra=2;}
+                else if(first>=0xf0&&first<=0xf4){code=first&0x07;extra=3;}
+                else throw std::invalid_argument("Driver names must be valid UTF8 up to128bytes");
+                if(i+extra>length)throw std::invalid_argument("Driver names must be valid UTF8 up to128bytes");
+                for(std::size_t j=0;j<extra;++j){const auto next=static_cast<unsigned char>(text[i++]);if((next&0xc0)!=0x80)throw std::invalid_argument("Driver names must be valid UTF8 up to128bytes");code=(code<<6)|(next&0x3f);}
+                if((extra==2&&code<0x800)||(extra==3&&code<0x10000)||code>0x10ffff||(code>=0xd800&&code<=0xdfff))throw std::invalid_argument("Driver names must be valid UTF8 up to128bytes");
+            }
+#else
             const auto length=strnlen_s(text,129);
             if(!length||length>128||MultiByteToWideChar(CP_UTF8,MB_ERR_INVALID_CHARS,text,int(length),nullptr,0)<=0)
                 throw std::invalid_argument("Driver names must be valid UTF8 up to128bytes");
+#endif
             for(std::size_t i=0;i<length;++i)if(static_cast<unsigned char>(text[i])<32)
                 throw std::invalid_argument("Driver names cannot contain control characters");
             return std::string(text,length);
