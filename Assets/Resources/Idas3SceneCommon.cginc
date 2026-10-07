@@ -14,11 +14,22 @@
     float fog=saturate((distance-start)/max(range,.001));
     return lerp(color,fogColor,fog*fog);
    }
+   float _IdasTrackLighting,_TrackSurface;
+   // A small, hue-preserving exposure shoulder brings out shaded scenery
+   // without raising black, clipping highlights, or relighting baked meshes.
+   // Apply before fog, and never to skies or multiplicative light/shadow passes.
+   float3 idasTrackPresentation(float3 color,float night){
+    float gain=lerp(.22,.14,saturate(night))*saturate(_IdasTrackLighting);
+    float peak=max(color.r,max(color.g,color.b));
+    return color*(1+gain)/(1+gain*saturate(peak));
+   }
    #if defined(IDAS_IMPORTED_COURSE)
    Texture2D _ImportedShadowTex; SamplerState sampler_ImportedShadowTex;
    float _ImportedSponsorSigns;
    float _ImportedCoverage,_ImportedCutoff,_ImportedHasShadow,_ImportedSky,_ImportedNight;
    float _ImportedShadowOnly,_ImportedShadowUv;
+   float _ImportedPs2Lighting;
+   float4 _ImportedNightAmbient;
    float4 _ImportedUntexturedShadow;
    float4 _ImportedSunDirection,_ImportedFogColor,_ImportedFogRange;
    #endif
@@ -260,7 +271,8 @@ float4 mainPS(P v):SV_TARGET{
   // lamp response instead of leaving the original baked road unlit.
   float3 normal=dot(v.n,v.n)>.01?normalize(v.n):normalize(cross(ddy(v.world),ddx(v.world)));
   if(dot(normal,v.world-eye.xyz)>0)normal=-normal;
-  tint=max(tint,idasNativeNightAmbient())+idasCourseLampLight(v.world,normal);
+  float3 ambient=_ImportedPs2Lighting!=0?_ImportedNightAmbient.rgb:idasNativeNightAmbient();
+  tint=max(tint,ambient)+idasCourseLampLight(v.world,normal);
  }
  color.rgb*=tint;
  // PCT meshes already contain baked lighting. Only authored normal-bearing
@@ -269,12 +281,22 @@ float4 mainPS(P v):SV_TARGET{
   color.rgb*=idasNativeDiffuse(v.n,v.world,_WorldSpaceCameraPos,_ImportedSunDirection.xyz);
  float4 shadow=_ImportedShadowTex.Sample(sampler_ImportedShadowTex,shadowUv);
  color.rgb*=lerp(1,.32+.68*shadow.rgb,(1-shadow.a)*_ImportedHasShadow);
+ if(_TrackSurface!=0&&_ImportedSky==0&&_ImportedShadowOnly==0)
+  color.rgb=idasTrackPresentation(color.rgb,_ImportedNight);
  if(_ImportedSky==0){
+  float distance=length(v.world-eye.xyz);
+  if(_ImportedPs2Lighting!=0){
+   // Special Stage exports start/end distances, not the D3 fog range.
+   // Its dry and wet conditions have distinct, authored linear fog.
+   float fog=saturate((distance-_ImportedFogRange.x)/max(.001,_ImportedFogRange.y-_ImportedFogRange.x));
+   color.rgb=lerp(color.rgb,_ImportedFogColor.rgb,fog);
+  }else{
   // Night source Mie coefficients are not RGB fog (several are white/0.4).
   // Reuse D3's native night atmosphere instead of turning the horizon white.
   color.rgb=_ImportedNight!=0
-   ?idasNativeAtmosphere(color.rgb,atmosphere.rgb,length(v.world-eye.xyz),85,410)
-   :idasNativeAtmosphere(color.rgb,_ImportedFogColor.rgb,length(v.world-eye.xyz),_ImportedFogRange.x,_ImportedFogRange.y);
+   ?idasNativeAtmosphere(color.rgb,atmosphere.rgb,distance,85,410)
+   :idasNativeAtmosphere(color.rgb,_ImportedFogColor.rgb,distance,_ImportedFogRange.x,_ImportedFogRange.y);
+  }
  }
  return color;
 #else
@@ -328,6 +350,7 @@ float4 mainPS(P v):SV_TARGET{
   float3 streetLight=idasCourseLampLight(v.world,normal);
   color.rgb*=min(idasNativeNightAmbient()+illumination*float3(.94,.86,.70)+streetLight,float3(1.30,1.24,1.16));
  }
+ if(_TrackSurface!=0&&showroomLight.w==0)color.rgb=idasTrackPresentation(color.rgb,atmosphere.w);
  if(sourceVertexFogColorEnabled.w!=0&&original!=0){
   uint fogMode=(tsp>>22)&3;
   if(fogMode==0)color.rgb=lerp(color.rgb,sourceFogColorDensity.rgb,sourceFogCoefficient(v.reciprocalDepth));

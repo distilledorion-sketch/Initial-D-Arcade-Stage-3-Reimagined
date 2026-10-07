@@ -36,5 +36,27 @@ int main()try{
     require(adaptOriginalHostInput(state,shifts,false,true,122).pressedByte==0x30,"Simultaneous original button edges must be preserved");
     bool rejected=false;try{adaptOriginalHostInput(state,{std::numeric_limits<float>::quiet_NaN(),0,0},false,true,123);}catch(const std::invalid_argument&){rejected=true;}
     require(rejected,"Nonfinite native input accepted");
+    for(unsigned maximum=1;maximum<=6;++maximum)for(unsigned gear=1;gear<=6;++gear){
+        OriginalHostControls controls;controls.requestedGear=std::uint8_t(gear);
+        const auto request=adaptOriginalHostInput(state,controls,false,true,0);
+        require(request.requestedGear==gear,"Host lost direct gear selection");
+        OriginalTransmissionState transmission;transmission.gear00=maximum;
+        OriginalTransmissionDrive drive;OriginalTransmissionGlobals globals;
+        OriginalTransmissionParameters parameters;parameters.maximumGear=maximum;
+        OriginalTransmissionProfile profile;
+        OriginalTransmissionInputs direct{0,false,true,1,request.requestedGear};
+        decideOriginalTransmissionGear(transmission,drive,globals,direct,parameters,profile);
+        require(transmission.gear00==(gear<=maximum?gear:maximum),"Direct gear ignored car's gear count");
+        require(transmission.snapshot04==maximum&&transmission.snapshot08==transmission.gear00,"Direct shift lost original transition snapshots");
+        const auto engaged=transmission.gear00;
+        direct.requestedGear=0;decideOriginalTransmissionGear(transmission,drive,globals,direct,parameters,profile);
+        require(transmission.gear00==engaged,"Open shifter gate must preserve arcade engaged gear");
+        direct.requestedGear=std::uint8_t(gear);direct.gearEnabled=false;
+        decideOriginalTransmissionGear(transmission,drive,globals,direct,parameters,profile);
+        require(transmission.gear00==0,"Direct gear bypassed countdown/finished gate");
+        direct.gearEnabled=true;direct.automaticMode=true;direct.requestedGear=1;
+        decideOriginalTransmissionGear(transmission,drive,globals,direct,parameters,profile);
+        require(transmission.gear00==maximum,"Direct MT binding changed automatic selection");
+    }
     std::cout<<"PASS native-to-original input range, ADC quantization, monotonicity, gear edges and finite-input contract\n";
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}

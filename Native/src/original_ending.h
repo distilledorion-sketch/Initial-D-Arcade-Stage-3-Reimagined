@@ -5,7 +5,7 @@
 
 namespace idas3::original {
 // Credits/final-card portion of 0EB2C0. One step is one original 60 Hz tick;
-// the 3D driving cinematic is deliberately not approximated by this owner.
+// the host composes a separate, read-only completed-race recording behind it.
 struct OriginalEndingTimeline {
     unsigned frame=0,totalFrame=0,phase=0;
     float alpha=255,creditsY=0,photosY=0;

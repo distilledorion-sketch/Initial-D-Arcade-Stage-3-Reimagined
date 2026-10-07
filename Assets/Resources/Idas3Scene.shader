@@ -2,6 +2,7 @@ Shader "IDAS3/Original Scene Material"
 {
  Properties {
   _MainTex("Original texture",2D)="white"{}
+  _TrackSurface("Track surface lighting",Float)=0
   _SrcBlend("Source RGB",Float)=1
   _DstBlend("Destination RGB",Float)=0
   _SrcBlendAlpha("Source alpha",Float)=1
@@ -19,6 +20,7 @@ Shader "IDAS3/Original Scene Material"
   _ImportedSky("Imported sky",Float)=0
   _ImportedNight("Imported night scenery",Float)=0
   _ImportedPs2Lighting("PS2 baked color and linear fog",Float)=0
+  _ImportedNightAmbient("Imported night ambient",Vector)=(.22,.25,.34,0)
   _ImportedSkyFollowXZ("Sky follows camera XZ",Float)=0
   _ImportedBillboard("Upright spectator sprite",Float)=0
  }

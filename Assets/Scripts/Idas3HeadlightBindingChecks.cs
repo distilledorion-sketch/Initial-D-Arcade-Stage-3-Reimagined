@@ -17,7 +17,7 @@ public static class Idas3HeadlightBindingChecks {
             var old=Idas3ControlBindings.Defaults();old.version=version;Array.Resize(ref old.actions,9);
             if(conflict){old.actions[6].key1=KeyCode.H;old.actions[6].pad=Idas3ControlBindings.PadInput.RightThumb;}
             File.WriteAllText(Path.Combine(path,"controls.json"),JsonUtility.ToJson(old));var m=new Idas3ControlBindings();m.Initialize(path);
-            Check(m.LastError==null&&m.Current.version==3&&m.Current.actions.Length==10,"Legacy controls did not migrate");
+            Check(m.LastError==null&&m.Current.version==4&&m.Current.actions.Length==Idas3ControlBindings.ActionCount,"Legacy controls did not migrate");
             for(int i=0;i<9;i++)Check(JsonUtility.ToJson(m.Current.actions[i])==JsonUtility.ToJson(old.actions[i]),"Migration changed an existing action");
             Check(H(Read(m,KeyCode.H))==!conflict,"Migration overwrote a key assignment");Check(H(Read(m,KeyCode.None,0x80))==!conflict,"Migration overwrote a controller assignment");
         }

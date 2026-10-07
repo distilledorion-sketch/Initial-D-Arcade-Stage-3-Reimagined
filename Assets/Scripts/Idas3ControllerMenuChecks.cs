@@ -116,7 +116,8 @@ public static class Idas3ControllerMenuChecks
             var expected=options.Current.Clone();
             Action<Idas3PauseMenu.Category,int> select=(category,row)=>{menu.SelectCategory(category);for(int i=0;i<row;++i)menu.Navigate(1);};
             select(Idas3PauseMenu.Category.Audio,5);menu.Activate();expected.muteWhenUnfocused=!expected.muteWhenUnfocused;
-            select(Idas3PauseMenu.Category.Graphics,8);menu.Activate();expected.showFps=!expected.showFps;
+            select(Idas3PauseMenu.Category.Graphics,8);menu.Activate();expected.trackLighting=1-expected.trackLighting;
+            select(Idas3PauseMenu.Category.Graphics,9);menu.Activate();expected.showFps=!expected.showFps;
             select(Idas3PauseMenu.Category.Gameplay,1);menu.Activate();expected.aiDifficulty=1;
             select(Idas3PauseMenu.Category.Gameplay,2);menu.Activate();expected.timeAttackGhost=!expected.timeAttackGhost;
             select(Idas3PauseMenu.Category.Steering,0);menu.Activate();expected.controllerResponse=1;

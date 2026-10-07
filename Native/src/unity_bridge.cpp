@@ -186,6 +186,8 @@ void initialize(UnityRuntime& r,const UnityCommand& command){
 }
 #endif
 void assignInput(HostInput& dst,const Idas3UnityInput& src,bool focused){
+    const auto gear=(src.flags>>8)&7u;
+    dst.requestedGear=focused&&!(src.flags&2u)&&gear<=6?std::uint8_t(gear):0;
     for(unsigned key=0;key<256;++key){const bool next=focused&&((src.keys[key/32]>>(key%32))&1u);dst.pressed[key]=next&&!dst.down[key];dst.down[key]=next;}
     dst.connected=focused&&src.padConnected!=0;XINPUT_STATE pad{};
     if(dst.connected){auto& p=pad.Gamepad;p.wButtons=WORD(src.padButtons);

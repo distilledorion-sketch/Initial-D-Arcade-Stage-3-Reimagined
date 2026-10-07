@@ -26,6 +26,8 @@ std::array<OriginalVehicleInputs,2> driving(const OnlineRaceSimulation& sim,std:
     std::array<OriginalVehicleInputs,2> out;
     for(unsigned slot=0;slot<2;++slot){
         out[slot]=adaptOriginalHostInput(host[slot],onlineRaceTestControls(sim,slot,frame),sim.setup().automatic[slot],false,frame);
+        // Exercise direct gears through delayed/reordered history and rollback.
+        if(frame%180<30)out[slot].requestedGear=std::uint8_t(1+(frame/180+slot)%6);
     }
     return out;
 }
@@ -63,6 +65,7 @@ void wireContracts(const std::filesystem::path& root){
     auto selected=setup(3);OnlineRaceSimulation a(root,selected),b(root,selected);
     OnlineRaceLink host(a,91,true),client(b,91,false);auto input=neutral();
     for(unsigned f=0;f<600;++f){
+        input.requestedGear=std::uint8_t(1+(f/30)%6);
         require(host.step(input)&&client.step(input),"Wire stalled on a healthy link");
         if(f%2==0){auto h=host.packet(),c=client.packet();host.receive(c);client.receive(h);host.reconcile();client.reconcile();}
     }

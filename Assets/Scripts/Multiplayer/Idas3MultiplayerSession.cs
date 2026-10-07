@@ -271,11 +271,15 @@ namespace Idas3.Multiplayer
             SetTransport(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-challenger-check")>=0?
                 (IIdas3Transport)new Idas3ChallengerTestTransport(port,name):new Idas3TcpTransport(port,true,name)); OpenMenu();
         }
-        public void HostRoom()
+        public bool SupportsPrivateRooms => transport is IIdas3PrivateRoomTransport;
+        public bool PrivateRoom => transport is IIdas3PrivateRoomTransport privacy && privacy.PrivateRoom;
+        public void HostRoom(bool privateRoom = false)
         {
             OpenMenu(); if (nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
+            if (privateRoom && !SupportsPrivateRooms) return;
             ResetPeer(); localNonce = Nonce(); ClearError(); state = "Connecting"; operationAt=Now;
-            transport.Host(Idas3LobbyNames.ForHost(transport.LocalName));
+            if(privateRoom) ((IIdas3PrivateRoomTransport)transport).HostPrivate(Idas3LobbyNames.ForHost(transport.LocalName));
+            else transport.Host(Idas3LobbyNames.ForHost(transport.LocalName));
             if (IsHost) { state="Lobby"; status="Share the room code. Both drivers must select Ready before the host starts."; }
         }
         public void JoinRoom(string code)

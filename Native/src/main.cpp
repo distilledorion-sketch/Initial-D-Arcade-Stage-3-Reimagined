@@ -53,6 +53,7 @@
 #include "original_result_tuning_visit.h"
 #include "original_legend_visit.h"
 #include "original_ending.h"
+#include "ending_replay.h"
 #include "original_time_attack_points.h"
 #include "original_tuning_presentation.h"
 #include "original_tuning_preview.h"
@@ -109,6 +110,7 @@ namespace {
 const std::array<const char*,9> courseIds={"k_ez","s_nm","h_hd","k_df","s_vh","s_uh","n_sy","k_tu","k_df"};
 const std::array<const char*,9> courseNames={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow"};
 struct HostInput {
+    std::uint8_t requestedGear=0;
     std::array<bool,256> down{},pressed{};
     XINPUT_STATE pad{};WORD oldButtons=0,pressedButtons=0;bool connected=false;
 #if !defined(IDAS3_PORTABLE_SCENE)
@@ -202,7 +204,7 @@ struct App {
     OriginalNumberPlate rivalPlate;int loadedRivalCar=-1,loadedRivalEnemy=-1;bool rivalVisible=false;
     VehicleState rivalVehicle{},previousRival{};CarWheelPose rivalWheels{},previousRivalWheels{};
     float rivalPitch=0,rivalRoll=0,previousRivalPitch=0,previousRivalRoll=0;
-    OriginalCarBodyPosition playerBody,rivalBody;
+    OriginalCarBodyPosition playerBody,rivalBody,replayCameraBody;
     ImportedRoadPresentation importedRoadPresentation;
     Vec3 previousImportedActor{};
     Vec3 playerBodyWorld{},previousPlayerBodyWorld{},rivalBodyWorld{},previousRivalBodyWorld{};
@@ -283,6 +285,9 @@ struct App {
     original::OriginalEnding ending;
     FixedClock endingClock;
     bool endingActive=false,endingSkipArmed=false,endingSkipPending=false;
+    EndingReplay endingReplay;
+    bool endingTexturesLoaded=false;
+    std::array<CarPresentation,2> endingCars;
     std::vector<std::uint32_t> legendVisitPixels;
     bool legendVisitLoaded=false,legendVisitActive=false,legendVisitSmoke=false;
     bool legendConfirmPending=false,legendPreviousPending=false,legendNextPending=false;
@@ -452,6 +457,7 @@ struct App {
     std::array<std::vector<std::uint32_t>,6> nameLayers;
     std::uint32_t namePaintFrame=~0u;int namePaintWidth=0,namePaintHeight=0;
     std::vector<std::uint32_t> tuningCourseBackground;
+    std::vector<std::uint32_t> menuBackdropPixels;
     std::vector<OriginalTuningCourseOverlay> tuningCourseLayers;
     std::uint32_t tuningCoursePaintFrame=~0u;int tuningCoursePaintWidth=0,tuningCoursePaintHeight=0;
     NativeModel tuningCoursePreviewModel;
@@ -1228,7 +1234,17 @@ struct App {
     }
     const OriginalChaseFrame& replayBumperFrame(const VehicleState& drawCar){
         Vec3 actor=drawCar.position;
-        if(importedCourse&&replayDetailed)actor.y=playerBodyWorld.y-originalCarRideHeight(unsigned(frontend.car));
+        if(importedCourse&&replayDetailed&&!importedCourseDefinition(importedCourse->id).specialStage){
+            // IDR2 stores the displayed body after road smoothing, not the
+            // camera anchor. The body is raised along the contact normal and
+            // its model origin is 2 cm below the actor. Undo that exact height
+            // conversion; subtracting a flat ride height reintroduces slope
+            // motion and loses the 2 cm offset. Keep this query separate from
+            // the live solver/body cache, including during backward seeks.
+            replayCameraBody.update(presentedSession().collision(),unsigned(frontend.car),actor);
+            if(replayCameraBody.surfaceFound())
+                actor.y=playerBodyWorld.y-replayCameraBody.query().f(4)*originalCarRideHeight(unsigned(frontend.car))+.02f;
+        }
         // The recovered bumper transform has no temporal angle filter, so
         // seeking can evaluate the recorded pose directly.
         return bumperCamera.update(actor,{-bodyPitch,wrapAngle(drawCar.yaw-pi),-bodyRoll});
@@ -1264,6 +1280,7 @@ struct App {
         return 1u|((replayPlaybackActive||paused||!active||race.phase!=RacePhase::Running||multiplayer.waiting||authorityStalled)?2u:0u);
     }
     void start(bool networkStart=false){
+        replayCameraBody.reset();
         if(endingActive){endingActive=false;audio.applyLegendStreamCommand({original::OriginalLegendReturnCommand::StreamStop});}
         hudAnalogPresentation.reset();
         resetHudDrift();
@@ -1418,7 +1435,8 @@ struct App {
         race.originalTiming=originalHandling;if(originalHandling){race.remaining6000=std::bit_cast<std::int32_t>(originalRace.state().remaining.value);
             race.sectionCapacity=1;for(auto index:originalRace.rules().sectionIndices)if(index>=0)++race.sectionCapacity;race.sectionCapacity=std::min(race.sectionCapacity,4u);}
         raceFeedback.reset(race.remaining6000);
-        recording.beginCapture(originalHandling);finishedSaved=false;skids.clear();resultsReady=false;results={};
+        recording.beginCapture(originalHandling);endingReplay.clear();endingCars={};endingTexturesLoaded=false;
+        finishedSaved=false;skids.clear();resultsReady=false;results={};
         personalGhost=TimeAttackGhost{};
         if(!battle&&!multiplayer.active&&!replayPlaybackActive&&frontend.gameMode==original::OriginalGameMode::TimeAttack)
             personalGhost.load(personalGhostPath());
@@ -1584,12 +1602,17 @@ struct App {
             start();
             return;
         }
-        returnToCourseSelection();
+        // Keep the completed course, cars and private recording alive until
+        // the ending leaves. Course selection reloads these resources.
         if(destination==original::OriginalLegendReturnDestination::Ending)beginEnding();
+        else returnToCourseSelection();
     }
     void beginEnding(){
         ending.begin(root);endingClock.reset();endingActive=true;paused=false;menu=false;
+        endingReplay.seal();endingTexturesLoaded=false;
+        endingCars={carPresentation,rivalPresentation};
         endingSkipArmed=endingSkipPending=false;legendRunCompleted=false;
+        audio.endResultMusic();audio.resetRaceEffects();
         using C=original::OriginalLegendReturnCommand;
         audio.applyLegendStreamCommand({C::SoundSet,0});
         audio.applyLegendStreamCommand({C::StreamStart,12});
@@ -1613,6 +1636,8 @@ struct App {
             }
             if(ending.timeline.finished){
                 endingActive=false;legendRunCompleted=true;input={};menu=true;
+                endingReplay.clear();endingCars={};endingTexturesLoaded=false;
+                menuTexturesLoaded=false;texturesPending=true;
                 frontend.stage=FrontendStage::Title;frontend.advance(0);
                 renderer.screenFadeArgb=0;
             }
@@ -1694,6 +1719,7 @@ struct App {
         }
         audio.endResultMusic();tuningPreview.reset();tuningTexturesLoaded=false;
         if(tuningPresentation)tuningPresentation->clear();
+        endingReplay.clear();endingCars={};endingTexturesLoaded=false;
         menuTexturesLoaded=false;texturesPending=true;
         menu=true;paused=false;frontend.stage=FrontendStage::Course;renderer.screenFadeArgb=0;load();
     }
@@ -1733,7 +1759,7 @@ struct App {
         d.steer=steeringSmoothing.advance(steering,advanceSmoothing?physicsDt:0.f);
         d.throttle=std::max(float(input.down['W']||input.down[VK_UP]),pad.throttle);
         d.brake=std::max(float(input.down['S']||input.down[VK_DOWN]||input.down[VK_SPACE]),pad.brake);
-        d.shiftUp=input.down['E']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_B);d.shiftDown=input.down['Q']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_X);return d;
+        d.shiftUp=input.down['E']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_B);d.shiftDown=input.down['Q']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_X);d.requestedGear=input.requestedGear;return d;
     }
     template<class F> void advanceHostClock(double elapsed,F&& step){
         if(multiplayerDisconnected()){clock.reset();return;}
@@ -2002,7 +2028,7 @@ struct App {
                 else event=originalRace.tick(originalCoordinate,position,originalSession.stoppedForRace());
                 originalSession.setRaceAutomaticBrake(originalRace.state().automaticBrake);
             }
-            original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp};
+            original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear};
             const bool justFinished=event.finished||event.timeUp;
             if(justFinished){controls={d.steer,0,1,false,false};originalSession.setRaceAutomaticBrake(true);}
             auto inputs=original::adaptOriginalHostInput(originalInput,controls,d.automatic,startFrame.gearEnabled&&!justFinished,0);
@@ -2119,6 +2145,18 @@ struct App {
         }
     }
     void captureReplayFrame(){
+        // Credits must work with battle-replay saving disabled. Capture only
+        // live Legend racing, before the optional archive's early return.
+        if(originalHandling&&battle&&!bunta&&!multiplayer.active&&!replayPlaybackActive&&
+           !endingActive&&race.phase==RacePhase::Running&&courseLightFsca){
+            EndingReplayFrame frame;frame.pathIndex=courseLightPathIndex;
+            frame.cars[0]={vehicle.position,playerBodyWorld,vehicle.yaw,bodyPitch,bodyRoll,
+                wheelPose,carPresentation.headlightState(),true,playerProjectedHeadlight.enabled(),vehicle.brake>.05f};
+            frame.cars[1]={rivalVehicle.position,rivalBodyWorld,rivalVehicle.yaw,rivalPitch,rivalRoll,
+                rivalWheels,rivalPresentation.headlightState(),rivalVisible,rivalProjectedHeadlight.enabled(),
+                (renderedRivalActor()[92/4]&1)!=0};
+            endingReplay.record(std::move(frame),*courseLightFsca);
+        }
         if(diagnosticCaptureOff||replayPlaybackActive||archivePublished||(multiplayer.active&&!archiveThisRace))return;
         const auto replayTick=multiplayer.active?std::uint64_t(recording.frames.size()+1):race.ticks;
         ReplayDetail detail;
@@ -2419,11 +2457,25 @@ struct App {
         renderer.verticalFieldOfView=1.f;renderer.cameraUp={0,1,0};
         hud.resize(renderer.width,renderer.height);
         const Mesh empty;
-        const bool drawn=renderer.draw(empty,{0,0,0},{0,0,-1},false,false,loadingPixels.data());
+        const bool drawn=renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuBackgroundWithMargins(loadingPixels,dt));
         if(!drawn)return false;
         // The load happens after the first frame is on screen.
         if(!loadingStarted){loadingStarted=true;start();}
         return true;
+    }
+    const std::uint32_t* menuBackgroundWithMargins(const std::vector<std::uint32_t>& background,double dt=0){
+        frontend.advanceMenuBackdrop(dt);
+        menuBackdropPixels=background;
+        unityUiCopy(menuBackdropPixels.data(),background.data(),renderer.width,renderer.height);
+        frontend.paintMenuMargins(menuBackdropPixels,renderer.width,renderer.height);
+        return menuBackdropPixels.data();
+    }
+    const std::uint32_t* menuMarginsOnly(double dt){
+        frontend.advanceMenuBackdrop(dt);
+        menuBackdropPixels.assign(std::size_t(renderer.width)*renderer.height,0);
+        unityUiClear(menuBackdropPixels.data(),renderer.width,renderer.height);
+        frontend.paintMenuMargins(menuBackdropPixels,renderer.width,renderer.height);
+        return menuBackdropPixels.data();
     }
     bool renderMenu(double dt){
         if(!demoPreparationStarted){
@@ -2625,7 +2677,7 @@ struct App {
             }
             std::vector<OverlayPass> passes;passes.reserve(tuningCourseLayers.size());
             for(const auto& layer:tuningCourseLayers)passes.push_back({layer.pixels.data(),layer.additive,true});
-            return renderer.draw(mesh,pose.eye,pose.target,false,false,tuningCourseBackground.data(),true,&showroomLighting,nullptr,passes);
+            return renderer.draw(mesh,pose.eye,pose.target,false,false,menuBackgroundWithMargins(tuningCourseBackground),true,&showroomLighting,nullptr,passes);
         }
         if(nameEntry){
             const auto& state=frontend.nameEntryState();const auto& presentation=frontend.nameEntryPresentation();
@@ -2645,7 +2697,7 @@ struct App {
             }
             const std::array<OverlayPass,5> layers{{{nameLayers[1].data(),false,true},{nameLayers[2].data(),true,true},
                 {nameLayers[3].data(),false,true},{nameLayers[4].data(),true,true},{nameLayers[5].data(),false,true}}};
-            return renderer.draw(mesh,pose.eye,pose.target,false,false,nameLayers[0].data(),true,&showroomLighting,nullptr,layers);
+            return renderer.draw(mesh,pose.eye,pose.target,false,false,menuBackgroundWithMargins(nameLayers[0]),true,&showroomLighting,nullptr,layers);
         }
         return renderer.draw(mesh,pose.eye,pose.target,false,false,hud.paint(state),showCar,showCar?&showroomLighting:nullptr);
     }
@@ -2706,9 +2758,9 @@ struct App {
         const Mesh empty;
         if(conquered){
             const std::array<OverlayPass,1> layers{{{legendVisitPixels.data(),false,true}}};
-            return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,nullptr,false,nullptr,nullptr,layers);
+            return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuMarginsOnly(paused?0:dt),false,nullptr,nullptr,layers);
         }
-        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,legendVisitPixels.data(),false,nullptr);
+        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuBackgroundWithMargins(legendVisitPixels,paused?0:dt),false,nullptr);
     }
     bool renderEnding(double dt){
         const bool held=input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START)!=0;
@@ -2717,20 +2769,61 @@ struct App {
         if(held&&endingSkipArmed){endingSkipPending=true;endingSkipArmed=false;}
         advanceEnding(dt);
         if(!endingActive)return renderMenu(0);
+        const bool driving=!ending.timeline.finalCard&&endingReplay.ready()&&hasOriginalScenery;
         constexpr int width=640,height=480;
-        legendVisitPixels.assign(width*height,0xff000000u);
-        unityUiClear(legendVisitPixels.data(),width,height,0xff000000u);
+        const auto clear=driving?0u:0xff000000u;
+        legendVisitPixels.assign(width*height,clear);
+        unityUiClear(legendVisitPixels.data(),width,height,clear);
         ending.paint(legendVisitPixels,width,height);
-        renderer.nearClip=1;renderer.farClip=5000;renderer.fitOriginalViewport=false;
+        renderer.nearClip=.1f;renderer.farClip=5000;renderer.fitOriginalViewport=true;renderer.sceneViewport={};
         renderer.overrideClearColor=true;renderer.clearColor={0,0,0,1};
         renderer.vehicleLights=false;renderer.opponentLights=false;renderer.courseLampPositions.clear();
         renderer.courseFog=nullptr;renderer.courseLighting=nullptr;
         renderer.playerLighting=nullptr;renderer.rivalLighting=nullptr;
         renderer.screenFadeArgb=std::uint32_t(ending.timeline.alpha)<<24;
-        renderer.verticalFieldOfView=1;renderer.projectionAspect=0;renderer.cameraUp={0,1,0};
-        const Mesh empty;
+        renderer.verticalFieldOfView=std::bit_cast<float>(0x3f860a92u);renderer.projectionAspect=4.f/3.f;renderer.cameraUp={0,1,0};
+        Mesh mesh;Vec3 eye{},target{0,0,-1};
+        if(driving){
+            if(!endingTexturesLoaded){
+                if(!renderer.loadTextures(originalCourseTextures)||!renderer.loadTextures(originalBackgroundTextures,true)||
+                   !renderer.loadTextures(originalTextures,true)||!renderer.loadTextures(numberPlate.textures,true)||
+                   (rivalVisible&&(!renderer.loadTextures(rivalTextures,true)||!renderer.loadTextures(rivalPlate.textures,true))))return false;
+                endingTexturesLoaded=true;texturesPending=true;menuTexturesLoaded=false;
+            }
+            const auto& frame=endingReplay.frame(ending.timeline.totalFrame?ending.timeline.totalFrame-1:0);
+            eye=frame.eye;target=frame.target;
+            const auto background=catalogScenery?courseScene.backgroundAssembly(eye):NativeAssembly{{originalAkinaBackgroundInstance(eye)}};
+            mesh.originalCar(originalBackgroundModel,background,{},0,unsigned(originalCourseTextures.size()));
+            const int period=int(course.points.size()-1);
+            const int index=(frame.pathIndex%period+period)%period;
+            const auto sourceIndex=std::size_t(course.reversed?period-1-index:index);
+            const auto& assembly=catalogScenery?courseScene.assemblyForPathIndex(sourceIndex):originalCourseSectors.at(akinaSectorForPathIndex(sourceIndex));
+            std::vector<NativeAssemblyInsertion> insertions;
+            if(courseBillboards)insertions=courseBillboards->insertionsForPathIndex(sourceIndex,assembly.instances.size());
+            if(courseObjects){auto trees=courseObjects->insertionsForPathIndex(sourceIndex,
+                originalCourseLightReference(course.points,frame.pathIndex),assembly.instances.size());
+                insertions.insert(insertions.end(),std::make_move_iterator(trees.begin()),std::make_move_iterator(trees.end()));}
+            std::stable_sort(insertions.begin(),insertions.end(),[](const auto& a,const auto& b){return a.before<b.before;});
+            courseMeshCache.appendWithInsertions(mesh,originalCourseModel,assembly,insertions);
+            unsigned base=unsigned(originalCourseTextures.size()+originalBackgroundTextures.size());
+            for(unsigned slot=0;slot<2;++slot){
+                const auto& car=frame.cars[slot];auto& presentation=endingCars[slot];
+                if(car.visible&&(slot==0||rivalVisible)){
+                    presentation.restoreHeadlightState(car.headlights);
+                    const auto& pose=presentation.pose(car.wheels,car.lights,car.braking);
+                    mesh.originalCar(slot?rivalModel:originalModel,pose,car.body,car.yaw,car.pitch,car.roll,base,presentation.illuminatedChunks(),true);
+                    const auto& plate=slot?rivalPlate:numberPlate;
+                    mesh.originalCar(plate.model,slot?plate.assembly():presentation.profilePlateAssembly(),
+                        car.body,car.yaw,car.pitch,car.roll,base+unsigned(slot?rivalTextures.size():originalTextures.size()),{},true);
+                }
+                base+=unsigned(slot?rivalTextures.size()+rivalPlate.textures.size():originalTextures.size()+numberPlate.textures.size());
+            }
+            renderer.vehiclePosition=frame.cars[0].body;renderer.vehicleForward=forward(frame.cars[0].yaw);renderer.vehicleLights=frame.cars[0].lights;
+            renderer.opponentPosition=frame.cars[1].body;renderer.opponentForward=forward(frame.cars[1].yaw);renderer.opponentLights=frame.cars[1].visible&&frame.cars[1].lights;
+            if(catalogScenery)renderer.courseLampPositions.assign(courseScene.lampPositions().begin(),courseScene.lampPositions().end());
+        }
         const std::array<OverlayPass,1> layers{{{legendVisitPixels.data(),false,true}}};
-        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,nullptr,false,nullptr,nullptr,layers);
+        return renderer.draw(mesh,eye,target,driving&&night,driving&&wet,menuMarginsOnly(paused?0:dt),false,nullptr,nullptr,layers);
     }
     void beginVsBanner(){
         vsActive=false;
@@ -2812,7 +2905,7 @@ struct App {
             else if(event.command==C::Cue)audio.playOriginalMenuCue(event.a);
         }
     }
-    bool paintModeVisit(std::uint32_t fade){
+    bool paintModeVisit(std::uint32_t fade,double dt){
         renderer.nearClip=1.f;renderer.farClip=5000;renderer.fitOriginalViewport=false;
         renderer.overrideClearColor=true;renderer.clearColor={0,0,0,1};
         renderer.vehicleLights=false;renderer.opponentLights=false;renderer.courseLampPositions.clear();
@@ -2821,7 +2914,7 @@ struct App {
         renderer.screenFadeArgb=fade;renderer.verticalFieldOfView=1.f;
         renderer.projectionAspect=0;renderer.cameraUp={0,1,0};hud.resize(renderer.width,renderer.height);
         const Mesh empty;
-        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,modeVisitPixels.data(),false,nullptr);
+        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuBackgroundWithMargins(modeVisitPixels,dt),false,nullptr);
     }
     bool beginBuntaVisit(bool beforeRace){
         if(multiplayer.active||frontend.gameMode!=original::OriginalGameMode::BuntaChallenge)return false;
@@ -2858,7 +2951,7 @@ struct App {
         modeVisitPixels.assign(std::size_t(renderer.width)*renderer.height,0xff000000u);
         unityUiClear(modeVisitPixels.data(),renderer.width,renderer.height,0xff000000u);
         buntaVisit.paint(modeVisitPixels,renderer.width,renderer.height);
-        return paintModeVisit(buntaVisit.fadeArgb());
+        return paintModeVisit(buntaVisit.fadeArgb(),dt);
     }
     original::OriginalTimeAttackVisit::Setup timeAttackVisitSetup()const{
         original::OriginalTimeAttackVisit::Setup setup;
@@ -2985,7 +3078,7 @@ struct App {
             return renderer.draw(timeAttackRankingPreview->mesh(),timeAttackRankingPreview->eye,timeAttackRankingPreview->target,
                 false,false,modeVisitPixels.data(),false,&timeAttackRankingPreview->lighting);
         }
-        return paintModeVisit(timeAttackVisit.fadeArgb());
+        return paintModeVisit(timeAttackVisit.fadeArgb(),dt);
     }
     bool beginPreRaceDialogue(){
         preRaceDialogueActive=false;
@@ -3061,7 +3154,7 @@ struct App {
         renderer.verticalFieldOfView=1.f;renderer.projectionAspect=0;renderer.cameraUp={0,1,0};
         hud.resize(renderer.width,renderer.height);
         const Mesh empty;
-        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,preRaceDialoguePixels.data(),false,nullptr);
+        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuBackgroundWithMargins(preRaceDialoguePixels,paused?0:dt),false,nullptr);
     }
     // What a start request does once anything that precedes the race is done.
     bool enterRaceAfterPrompt(){

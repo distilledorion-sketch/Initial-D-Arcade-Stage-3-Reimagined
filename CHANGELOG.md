@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.43 - October 7, 2026
+
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Added private online rooms, hidden from public listings and Quick Match, with room-code joining.
+- Added individual Gear 1–6 bindings for manual transmission, including H-shifter inputs. Existing bindings are preserved. Neutral/clutch/reverse simulation is not added.
+- Reorganized settings into clearer categories and moved HUD sizes into a dedicated submenu.
+- Filled the margins around supported 4:3 menus with extended scrolling blue Initial D artwork.
+- Added Original/Balanced track lighting and corrected Special Stage ambient lighting and fog handling.
+- Added Map, Water Cup and Off minimap choices, including water movement and impact splashes.
+- Restored opponent headlight halos, including rearview visibility, and original online battle-stat artwork.
+- Corrected inverted Shomaru Time Attack section maps.
+- Corrected imported-track replay bumper-camera height and slope handling.
+- Restored recorded driving footage behind Legend ending credits. Some original cinematic effects remain incomplete.
+- Optimized HUD/menu rendering by reusing vertex/index buffers and draw commands. HUD CPU time improved 7–23% in local tests; this is not an overall FPS increase claim.
+
+Validation includes native regression tests, managed/player input checks, a full-course driving comparison and 45 pixel-identical rendered HUD/menu comparisons. Physical H-shifters and two-account Steam private rooms still need end-to-end testing. Online/later-sector FPS drops, intermittent public connection/collision reports, affected wheel hardware and Linux/Proton updater reports remain under investigation.
+
+Changed-file patches support .20 through .42. Existing saves, tuning, records, season 2, replays, custom music and original ROM files are preserved. A verified original GDS-0033 dump is still required and is not included. R35 development remains separate.
+
 ## 0.3.95-community-replays.42 - October 5, 2026
 
 This update is required for new community Time Attack submissions. Both drivers must update for online races.

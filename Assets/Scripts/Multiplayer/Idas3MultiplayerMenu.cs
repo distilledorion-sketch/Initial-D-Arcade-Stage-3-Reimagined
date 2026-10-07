@@ -348,7 +348,7 @@ namespace Idas3.Multiplayer
         private void HeaderStatus(){
             string status=session.StateName=="Returning"?"RETURNING TO LOBBY":ResultsVisible?"RACE FINISHED":session.IsRacing?"LIVE RACE CONTINUES":session.IsQuickMatching?"FINDING A DRIVER":session.InLobby?"ROOM CONNECTED":session.Available?"LINK READY":"LINK OFFLINE";
             Fill(new Rect(619,30,6,6),session.Available?Green:Muted);Text(new Rect(637,23,196,26),status,small);
-            Text(new Rect(619,65,214,24),session.TransportName.ToUpperInvariant()+(session.InLobby&&session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":""),small);
+            Text(new Rect(619,65,214,24),session.TransportName.ToUpperInvariant()+(session.PrivateRoom?" / PRIVATE":"")+(session.InLobby&&session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":""),small);
         }
         private void Activity(float y){
             Text(new Rect(28,y+10,210,24),"ONLINE ACTIVITY",small);
@@ -359,10 +359,11 @@ namespace Idas3.Multiplayer
         }
         private void BrowserView(){
             Activity(116);bool steam=session.TransportIndex==0;bool idle=!session.Busy;float x=26,y=190;
-            if(ActionButton(new Rect(x,y,232,47),"QUICK MATCH",steam&&session.Available&&idle,true)){session.QuickMatch();if(session.IsQuickMatching)SetOpen(false);}
-            if(ActionButton(new Rect(x,y+58,232,47),"HOST A BATTLE",session.Available&&idle))session.HostRoom();
-            if(ActionButton(new Rect(x,y+116,232,47),steam?"JOIN WITH CODE":"JOIN WITH ADDRESS",idle)){joinEntry=true;controllerFocus.Reset();}
-            if(ActionButton(new Rect(x,y+174,232,47),"BACK TO GAME"))SetOpen(false);
+            if(ActionButton(new Rect(x,y,232,40),"QUICK MATCH",steam&&session.Available&&idle,true)){session.QuickMatch();if(session.IsQuickMatching)SetOpen(false);}
+            if(ActionButton(new Rect(x,y+48,232,40),steam?"HOST PUBLIC BATTLE":"HOST A BATTLE",session.Available&&idle))session.HostRoom();
+            if(ActionButton(new Rect(x,y+96,232,40),"HOST PRIVATE BATTLE",session.SupportsPrivateRooms&&session.Available&&idle))session.HostRoom(true);
+            if(ActionButton(new Rect(x,y+144,232,40),steam?"JOIN WITH CODE":"JOIN WITH ADDRESS",idle)){joinEntry=true;controllerFocus.Reset();}
+            if(ActionButton(new Rect(x,y+192,232,40),"BACK TO GAME"))SetOpen(false);
             if(ActionButton(new Rect(x,438,112,33),"STEAM",idle,steam))session.SelectTransport(0);
             if(ActionButton(new Rect(x+120,438,112,33),"LAN DIRECT",idle,!steam))session.SelectTransport(1);
             if(steam){

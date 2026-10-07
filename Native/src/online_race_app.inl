@@ -131,7 +131,7 @@ void receiveAuthority(std::span<const std::uint8_t> packet){
 }
 void simulateAuthority(const DriverInput& d){
     auto inputState=authorityInput;
-    const auto input=original::adaptOriginalHostInput(inputState,{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp},automatic,false,0);
+    const auto input=original::adaptOriginalHostInput(inputState,{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear},automatic,false,0);
     if(!authorityLink->step(input)){authorityStalled=true;return;}
     authorityStalled=false;authorityInput=inputState;
     const auto remote=1-multiplayer.config.localSlot;

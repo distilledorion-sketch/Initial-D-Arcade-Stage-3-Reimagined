@@ -6,7 +6,7 @@ public sealed partial class Idas3ControlBindings
     sealed class RigState { public bool seen; public int blocked; public readonly Dictionary<string,Idas3ControllerControl> controls=new Dictionary<string,Idas3ControllerControl>(StringComparer.Ordinal); }
     readonly Dictionary<string,RigState> rigStates=new Dictionary<string,RigState>(StringComparer.Ordinal);
     readonly List<string> expiredRigStates=new List<string>();
-    readonly float[] rigAmounts=new float[10];
+    readonly float[] rigAmounts=new float[ActionCount];
 
     // Profiles remain independent in the editor. Only explicitly saved generic
     // device bindings join the active wheel rig; gamepads and keyboard-only

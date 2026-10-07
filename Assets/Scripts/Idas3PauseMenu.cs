@@ -26,7 +26,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private Idas3ControlBindings bindings;
     private Idas3ControllerDevices controllerDevices;
     private Idas3WheelFeedback wheelFeedback;
-    private int bindingColumn;
+    private int bindingColumn, lastBindingSelection=-1;
+    private Vector2 bindingScroll;
     private bool wheelNavigation,wheelEditing;
     private bool bindingChoice;
     private int bindingChoiceSelection;
@@ -207,7 +208,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?3:tab==0?6:tab==4?7:tab==2?4:tab==1?9:bindings!=null?10+BindingFirstSelection-1:0;
+    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?3:tab==0?6:tab==4?7:tab==2?4:tab==1?10:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -253,7 +254,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     public void BeginBindingCapture(Idas3ControlBindings.ActionId action,Idas3ControlBindings.Slot slot){
         if(bindings==null||BindingInputBlocked)return;
-        if((int)action<0||(int)action>=10||(int)slot<0||(int)slot>=4)return;
+        if((int)action<0||(int)action>=Idas3ControlBindings.ActionCount||(int)slot<0||(int)slot>=4)return;
         if(slot==Idas3ControlBindings.Slot.Controller&&controllerDevices!=null&&controllerDevices.Controls.Count==0){notice="No controller active. Connect one or choose a connected device above.";return;}
         if(!IsOpen||!showOptions||tab!=3)SelectTab(3);
         selection=(int)action+BindingFirstSelection;bindingColumn=(int)slot;captureAction=action;captureSlot=slot;notice="";
@@ -321,7 +322,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==5)options.SetPerformancePreset(Wrap(Idas3GameOptions.PerformancePreset(v)+direction,3));
             if(row==6)v.rainDetail=Wrap(v.rainDetail+direction,2);
             if(row==7)v.importedSceneryDetail=Wrap(v.importedSceneryDetail+direction,3);
-            if(row==8)v.showFps=!v.showFps;
+            if(row==8)v.trackLighting=Wrap(v.trackLighting+direction,2);
+            if(row==9)v.showFps=!v.showFps;
         }else if(tab==2){
             if(row==0)v.defaultCamera=Wrap(v.defaultCamera+direction,CameraModes.Length);
             if(row==1)v.aiDifficulty=Wrap(v.aiDifficulty+direction,3);
@@ -503,7 +505,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(5,"QUALITY PRESET",preset<0?"CUSTOM":new[]{"ORIGINAL","BALANCED","LOW"}[preset]);
             ChoiceRow(6,"WEATHER & SPRAY",new[]{"FULL","REDUCED"}[v.rainDetail]);
             ChoiceRow(7,"IMPORTED SCENERY",new[]{"ORIGINAL","BALANCED","LOW"}[v.importedSceneryDetail]);
-            ChoiceRow(8,"SHOW FRAME RATE",v.showFps?"ON":"OFF");
+            ChoiceRow(8,"TRACK LIGHTING",v.trackLighting==0?"ORIGINAL":"BALANCED");
+            ChoiceRow(9,"SHOW FRAME RATE",v.showFps?"ON":"OFF");
             Text(new Rect(288,522,687,20),v.vSync?"Turn off VSync to use the frame limit.":"Display changes must be confirmed within 15 seconds.",small);
         }else if(tab==2){
             ChoiceRow(0,"DEFAULT CAMERA",CameraModes[v.defaultCamera]);
@@ -570,7 +573,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
     private bool CompactRows=>tab==1||tab==4||hudSizesOpen;
-    private float RowY(int row)=>tab==4?(row<3?208+row*38:354+(row-3)*38):CompactRows?194+row*36:194+row*59;
+    private float RowY(int row)=>tab==4?(row<3?208+row*38:354+(row-3)*38):tab==1?194+row*32:CompactRows?194+row*36:194+row*59;
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
         float y=RowY(row);bool compact=CompactRows;
         if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
@@ -581,7 +584,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void ChoiceRow(int row,string name,string value){
         float y=RowY(row);bool compact=CompactRows;
-        if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
+        if(selection==row+1)Frame(new Rect(278,y,714,tab==1?31:compact?35:49),Red);
         Text(new Rect(290,y+(compact?5:13),294,31),name,label);
         if(Button(new Rect(595,y+(compact?2:7),34,compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
         Text(new Rect(636,y+(compact?5:8),304,33),value,button);
@@ -605,7 +608,19 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         Text(new Rect(288,headerY,169,23),"ACTION",small);
         string[] columns={"KEYBOARD 1","KEYBOARD 2","KEYBOARD 3","CONTROLLER"};
         for(int col=0;col<4;++col)if(Button(new Rect(col==3?804:462+col*114,headerY,col==3?180:110,24),columns[col],bindingColumn==col,true,false,bindingButton))SelectBindingColumn(col);
-        for(int row=0;row<10;++row){
+        float viewHeight=deviceControls?248:288;
+        if(selection!=lastBindingSelection){
+            int index=selection-BindingFirstSelection;
+            if(index>=0&&index<Idas3ControlBindings.ActionCount){
+                float top=index*rowHeight;
+                if(top<bindingScroll.y)bindingScroll.y=top;
+                else if(top+rowHeight>bindingScroll.y+viewHeight)bindingScroll.y=top+rowHeight-viewHeight;
+            }
+            lastBindingSelection=selection;
+        }
+        bindingScroll=GUI.BeginScrollView(new Rect(280,firstY,724,viewHeight),bindingScroll,
+            new Rect(280,firstY,706,Idas3ControlBindings.ActionCount*rowHeight),false,true);
+        for(int row=0;row<Idas3ControlBindings.ActionCount;++row){
             float y=firstY+row*rowHeight;var action=(Idas3ControlBindings.ActionId)row;
             Text(new Rect(288,y+5,169,23),Idas3ControlBindings.ActionName(action),small,selection==row+BindingFirstSelection?Color.white:Muted);
             for(int col=0;col<4;++col){
@@ -614,7 +629,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
                 if(Button(cell,bindings.BindingName(action,slot),selection==row+BindingFirstSelection&&bindingColumn==col,!deviceControls||col!=3||controllerDevices.Controls.Count>0,false,bindingButton))OpenBindingChoice(action,slot);
             }
         }
-        Text(new Rect(288,deviceControls?524:514,702,18),"Fixed menu controls: arrows / D-pad, Enter / A, Esc / B. F1 always opens online.",small);
+        GUI.EndScrollView();
+        Text(new Rect(288,deviceControls?524:514,702,18),"Gear 1–6: Manual transmission. Scroll for more bindings. APPLY saves all devices.",small);
     }
     private void BindingChoiceView(){
         ModalFrame(Idas3ControlBindings.ActionName(captureAction).ToUpperInvariant(),"Choose REBIND to assign a control, CLEAR to remove this slot, or BACK.\nRebinding waits up to 15 seconds. Leave controls at rest to cancel without assigning anything.");

@@ -880,7 +880,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private static void NeutralizeControls(ref Idas3Native.FrameInput frame)
     {
-        frame.flags |= 2u; // Reset native steering smoothing while gameplay controls are blocked.
+        frame.flags = (frame.flags & ~0x700u) | 2u; // Reset native steering smoothing while gameplay controls are blocked.
         frame.key0 = frame.key1 = frame.key2 = frame.key3 = frame.key4 = frame.key5 = frame.key6 = frame.key7 = 0;
         frame.padButtons = frame.leftTrigger = frame.rightTrigger = frame.padConnected = 0;
         frame.thumbLX = frame.thumbLY = frame.thumbRX = frame.thumbRY = 0;

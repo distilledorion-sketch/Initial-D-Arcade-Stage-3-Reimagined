@@ -18,7 +18,9 @@ OriginalVehicleStepResult stepOriginalVehicle(OriginalVehicleState& s,
 
     out.motionScalar=computeOriginalMotionScale(s.drive,p.angular);
     auto memoryParameters=p.steeringMemory;
-    memoryParameters.shiftDownPressed=(in.pressedByte&0x10u)!=0;
+    memoryParameters.shiftDownPressed=(in.pressedByte&0x10u)!=0 ||
+        (!in.automaticMode&&in.gearEnabled&&in.requestedGear>=1&&
+         in.requestedGear<=p.transmission.maximumGear&&in.requestedGear<s.transmission.gear00);
     updateOriginalSteeringMemory(s.drive,memoryParameters);
     out.feedback=updateOriginalAngular(s.drive,p.angular,math,out.motionScalar);
     auto lossParameters=p.loss;
@@ -33,7 +35,7 @@ OriginalVehicleStepResult stepOriginalVehicle(OriginalVehicleState& s,
     s.transmissionGlobals.previousGear988c=s.tail.previousGear0CAA988C;
     s.transmissionGlobals.throttle9898=s.controls.throttle;
     const idas3::OriginalTransmissionInputs transmissionInputs{
-        in.pressedByte,in.automaticMode,in.gearEnabled,out.frameCoefficient};
+        in.pressedByte,in.automaticMode,in.gearEnabled,out.frameCoefficient,in.requestedGear};
     const auto sine=[](float argument,void* context){return static_cast<OriginalMath*>(context)->sinF32(argument);};
     idas3::stepOriginalTransmission(s.transmission,drive,s.transmissionGlobals,
         transmissionInputs,p.transmission,p.profile,sine,&math);

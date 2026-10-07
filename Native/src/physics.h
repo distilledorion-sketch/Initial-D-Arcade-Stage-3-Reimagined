@@ -16,6 +16,7 @@ struct DriverInput {
     bool shiftUp = false;  // held host state; the solver derives rising edges
     bool shiftDown = false;
     bool automatic = true;
+    std::uint8_t requestedGear = 0; // 0 no direct selection; 1..6 forward gears
 };
 
 enum class DriveLayout { Rear, Front, All };

@@ -127,8 +127,9 @@ void step(VehicleState& s, const DriverInput& input,
         if (coupledRpm > c.redlineRpm * 0.94f && s.gear < gears) shift = 1;
         else if (coupledRpm < c.redlineRpm * 0.39f && s.gear > 1) shift = -1;
     }
-    if (shift && s.shiftSeconds == 0) {
-        const int nextGear = std::clamp(s.gear + shift, 1, gears);
+    const bool direct = !input.automatic && input.requestedGear >= 1 && input.requestedGear <= gears;
+    if ((direct || shift) && s.shiftSeconds == 0) {
+        const int nextGear = direct ? input.requestedGear : std::clamp(s.gear + shift, 1, gears);
         if (nextGear != s.gear) {
             s.previousGear = s.gear;
             s.gear = nextGear;

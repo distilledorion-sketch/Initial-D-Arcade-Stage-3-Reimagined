@@ -10,13 +10,13 @@ namespace {
 bool equal(const OriginalVehicleInputs& a,const OriginalVehicleInputs& b){
     return a.analog.steering==b.analog.steering&&a.analog.throttle==b.analog.throttle&&a.analog.brake==b.analog.brake&&
         a.calibration.steeringWord==b.calibration.steeringWord&&a.calibration.throttleWord==b.calibration.throttleWord&&
-        a.calibration.brakeWord==b.calibration.brakeWord&&a.pressedByte==b.pressedByte&&a.suppressRawThrottle0C2F4BC8==b.suppressRawThrottle0C2F4BC8;
+        a.calibration.brakeWord==b.calibration.brakeWord&&a.pressedByte==b.pressedByte&&a.requestedGear==b.requestedGear&&a.suppressRawThrottle0C2F4BC8==b.suppressRawThrottle0C2F4BC8;
     // Transmission mode and GO enable are owned by race setup/countdown.
 }
 bool valid(const OriginalVehicleInputs& input){
     // The native host adapter produces this fixed calibrated ADC boundary.
     return input.calibration.steeringWord==128&&input.calibration.throttleWord==32&&input.calibration.brakeWord==32&&
-        !input.suppressRawThrottle0C2F4BC8&&(input.pressedByte&~0x30u)==0;
+        !input.suppressRawThrottle0C2F4BC8&&(input.pressedByte&~0x30u)==0&&input.requestedGear<=6;
 }
 }
 OnlineRaceTimeline::OnlineRaceTimeline(OnlineRaceSimulation& simulation,std::uint64_t race,bool host,ConfirmedOutput output)

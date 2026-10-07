@@ -10,10 +10,11 @@ namespace Idas3.Multiplayer
     // Steam App 480 is Valve's Spacewar development application. This adapter
     // uses the real Steam client/API and isolates its rooms from other tests.
     // All entry points and callbacks belong to the Unity main thread.
-    public sealed class Idas3SteamTransport : IIdas3MatchmakingTransport, IIdas3RegionalMatchmakingTransport, IIdas3MatchmakingServiceState
+    public sealed class Idas3SteamTransport : IIdas3MatchmakingTransport, IIdas3RegionalMatchmakingTransport, IIdas3MatchmakingServiceState, IIdas3PrivateRoomTransport
     {
         public const uint DevelopmentAppId = 480;
         public const string GameNamespace = "idas3-unity-recompiled-p2p-20260909";
+        internal const string PrivateNamespace = GameNamespace + "-private";
         public const string TransportProtocol = "1";
         public const int MaxPayloadBytes = 65536;
         private const string GameKey = "idas3.game", ProtocolKey = "idas3.protocol";
@@ -66,6 +67,7 @@ namespace Idas3.Multiplayer
         public IReadOnlyList<Idas3Room> Rooms => rooms;
         public bool IsBusy => pendingKind != null;
         public bool InLobby => lobby.m_SteamID != 0;
+        public bool PrivateRoom => InLobby && SteamMatchmaking.GetLobbyData(lobby, GameKey) == PrivateNamespace;
         public ulong RoomOrder => lobby.m_SteamID;
         public int RoomMembers => InLobby ? SteamMatchmaking.GetNumLobbyMembers(lobby) : 0;
         public string BuildCompatibility {
@@ -119,20 +121,27 @@ namespace Idas3.Multiplayer
 
         public void Host(string roomName) => HostRoom(roomName, false);
         public void HostQuickMatch(string roomName) => HostRoom(roomName, true);
-        private void HostRoom(string roomName, bool quickMatch)
+        public void HostPrivate(string roomName) => HostRoom(roomName, false, true);
+        // Invisible lobbies permit code joins and hide the Steam friends entry.
+        // A separate namespace excludes them from ALL public searches, including
+        // older clients. Steam's Private type requires a Steam invitation.
+        internal static ELobbyType RoomType(bool privateRoom) => privateRoom ? ELobbyType.k_ELobbyTypeInvisible : ELobbyType.k_ELobbyTypePublic;
+        internal static string RoomNamespace(bool privateRoom) => privateRoom ? PrivateNamespace : GameNamespace;
+        internal static bool PublicNamespace(string value) => value == GameNamespace;
+        private void HostRoom(string roomName, bool quickMatch, bool privateRoom = false)
         {
             if (!CanStart()) return;
             Leave(); long token = Begin("Creating room");
             string title = CleanName(roomName, LocalName + "'s race");
             string build = buildCompatibility;
-            Track<LobbyCreated_t>(SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, 2), (result, failed) => {
+            Track<LobbyCreated_t>(SteamMatchmaking.CreateLobby(RoomType(privateRoom), 2), (result, failed) => {
                 var created = new CSteamID(result.m_ulSteamIDLobby);
                 if (token != operation) { if (!failed && result.m_eResult == EResult.k_EResultOK) SteamMatchmaking.LeaveLobby(created); return; }
                 EndOperation();
                 if (failed || result.m_eResult != EResult.k_EResultOK) { Fail("Could not create Steam room: " + result.m_eResult); return; }
                 lobby = created; host = local;
                 bool ok = SteamMatchmaking.SetLobbyJoinable(lobby, false);
-                ok &= SteamMatchmaking.SetLobbyData(lobby, GameKey, GameNamespace);
+                ok &= SteamMatchmaking.SetLobbyData(lobby, GameKey, RoomNamespace(privateRoom));
                 ok &= SteamMatchmaking.SetLobbyData(lobby, ProtocolKey, TransportProtocol);
                 ok &= SteamMatchmaking.SetLobbyData(lobby, BuildKey, build);
                 ok &= SteamMatchmaking.SetLobbyData(lobby, QuickMatchKey, quickMatch ? "1" : "0");
@@ -180,7 +189,7 @@ namespace Idas3.Multiplayer
                 if (failed) { Fail("Steam room search failed. Please retry."); return; }
                 for (int i = 0; i < result.m_nLobbiesMatching && i < 50; ++i) {
                     var candidate = SteamMatchmaking.GetLobbyByIndex(i);
-                    if (!CompatibleRoom(candidate) || candidate == lobby) continue;
+                    if (!PublicNamespace(SteamMatchmaking.GetLobbyData(candidate, GameKey)) || !CompatibleRoom(candidate) || candidate == lobby) continue;
                     int members = SteamMatchmaking.GetNumLobbyMembers(candidate);
                     if (members < 1 || members >= 2) continue;
                     rooms.Add(new Idas3Room { Code = EncodeRoom(candidate.m_SteamID),
@@ -231,7 +240,7 @@ namespace Idas3.Multiplayer
         }
 
         private bool CompatibleRoom(CSteamID room) => room.IsLobby() &&
-            SteamMatchmaking.GetLobbyData(room, GameKey) == GameNamespace &&
+            (PublicNamespace(SteamMatchmaking.GetLobbyData(room, GameKey)) || SteamMatchmaking.GetLobbyData(room, GameKey) == PrivateNamespace) &&
             SteamMatchmaking.GetLobbyData(room, ProtocolKey) == TransportProtocol &&
             !string.IsNullOrWhiteSpace(buildCompatibility) && SteamMatchmaking.GetLobbyData(room, BuildKey) == buildCompatibility &&
             SteamMatchmaking.GetLobbyMemberLimit(room) == 2 &&

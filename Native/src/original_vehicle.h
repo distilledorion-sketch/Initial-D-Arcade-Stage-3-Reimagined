@@ -33,6 +33,7 @@ struct OriginalVehicleInputs {
     std::uint8_t pressedByte=0;
     bool automaticMode=false,gearEnabled=false;
     std::int32_t elapsedFrames0C900E84=0;
+    std::uint8_t requestedGear=0; // Host H-pattern extension; 0 preserves original shifting.
 };
 struct OriginalVehicleStepResult {
     float frameCoefficient=0,motionScalar=0;

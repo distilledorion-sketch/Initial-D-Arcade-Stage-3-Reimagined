@@ -86,7 +86,9 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
     static bool IsPairedTexture(Manifest manifest,string name)=>IsPairedGateTexture(name)||
         (manifest.oneSidedTextures!=null&&Array.IndexOf(manifest.oneSidedTextures,name)>=0);
     void Load(int courseId){
-        var root=Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[courseId-9]);
+        LoadPack(courseId,Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[courseId-9]));
+    }
+    void LoadPack(int courseId,string root){
         var manifest=JsonUtility.FromJson<Manifest>(File.ReadAllText(Path.Combine(root,"manifest.json")));
         Require(manifest.textureNames.Length>0&&manifest.textureNames.Length<1024&&manifest.trees.Length<10000,"Enna manifest");
         Require(manifest.spectators!=null&&manifest.spectators.Length<1000&&manifest.gateSets?.Length==2&&manifest.lighting!=null,"Enna presentation metadata");
@@ -110,6 +112,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
             var material=new Material(geometryBaseline||paired?shader:directShader){name="Enna "+name,mainTexture=texture,renderQueue=900,enableInstancing=true};materials.Add(material);
             material.EnableKeyword("IDAS_IMPORTED_COURSE");material.SetFloat("_ImportedNight",1);material.SetFloat("_ImportedCutoff",.3f);
             material.SetFloat("_ImportedPs2Lighting",1);
+            material.SetFloat("_TrackSurface",1);
             material.SetVector("_ImportedNightAmbient",Vec(lighting.ambient)*2);
             material.SetVector("_ImportedFogColor",Vec(lighting.fogColor));
             material.SetVector("_ImportedFogRange",new Vector4(lighting.fogStart,lighting.fogEnd,0,0));

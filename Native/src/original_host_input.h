@@ -6,6 +6,7 @@ struct OriginalHostControls {
     // Native coordinates: positive steering turns right; pedals in[0,1].
     float steering=0,throttle=0,brake=0;
     bool shiftDown=false,shiftUp=false;
+    std::uint8_t requestedGear=0;
 };
 struct OriginalHostInputState {std::uint8_t previousShiftButtons=0;};
 enum class ControllerResponse { FlycastGamepad=0, Previous=1, FlycastWheel=2 };

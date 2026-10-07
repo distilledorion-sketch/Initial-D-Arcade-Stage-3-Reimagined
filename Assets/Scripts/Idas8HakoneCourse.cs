@@ -129,6 +129,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 else if(t.type==6) { m.SetTexture("_ImportedShadowTex",Texture(t.file)); m.SetFloat("_ImportedHasShadow",1); m.SetFloat("_ImportedShadowUv",t.uv); }
             }
             m.SetFloat("_ImportedShadowOnly",s.textures.Length==1&&s.textures[0].type==6?1:0);
+            m.SetFloat("_TrackSurface",!s.sky&&!s.shadow&&!(s.textures.Length==1&&s.textures[0].type==6)?1:0);
             if(s.shadow||(s.textures.Length==1&&s.textures[0].type==6)) { m.SetFloat("_SrcBlend",(float)BlendMode.SrcAlpha); m.SetFloat("_DstBlend",(float)BlendMode.OneMinusSrcAlpha); m.SetFloat("_ZWrite",0); m.renderQueue=950; }
             if(s.shadow&&s.textures.Length==0){
                 // Tsubaki's wet roadside shadow has no texture. Its retained

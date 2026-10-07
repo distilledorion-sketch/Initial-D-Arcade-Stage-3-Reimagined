@@ -150,10 +150,18 @@ void OriginalGasstandAttract::paintText(std::span<std::uint32_t> target,int widt
     }else advance+=5;}
 }
 void OriginalGasstandAttract::extendBackdrop(std::span<std::uint32_t> target,int width,int height)const{
+    paintMargins(target,width,height,state_.displayedBackgroundPhase,true);
+}
+void OriginalGasstandAttract::paintMenuMargins(std::span<std::uint32_t> target,int width,int height,std::uint64_t frame)const{
+    const auto period=unsigned(std::ceil(gasstand_data::lit_0C112F88/gasstand_data::lit_0C112E28));
+    paintMargins(target,width,height,unsigned(frame%period),false);
+}
+void OriginalGasstandAttract::paintMargins(std::span<std::uint32_t> target,int width,int height,unsigned backgroundPhase,bool attract)const{
     if(width<=0||height<=0||target.size()!=std::size_t(width)*height)throw std::invalid_argument("Invalid attract backdrop destination");
     const float fit=std::min(width/640.f,height/480.f);const int drawWidth=std::max(1,int(640*fit)),drawHeight=std::max(1,int(480*fit));
     const int left=(width-drawWidth)/2,top=(height-drawHeight)/2;
-    if(left==0)return;
+    if(drawWidth==width&&drawHeight==height)return;
+    if(attract&&left==0)return;
     const auto& batch=gasstand_.chunks.at(57).batches.at(0);const auto& image=gasstandTextures_.at(batch.material[9]);
     const auto& a=batch.vertices.at(batch.indices.at(0));const auto& b=batch.vertices.at(batch.indices.at(1));const auto& c=batch.vertices.at(batch.indices.at(2));
     const float dx1=b.position.x-a.position.x,dy1=b.position.y-a.position.y,dx2=c.position.x-a.position.x,dy2=c.position.y-a.position.y,det=dx1*dy2-dx2*dy1;
@@ -161,49 +169,60 @@ void OriginalGasstandAttract::extendBackdrop(std::span<std::uint32_t> target,int
     const float vx=((b.v-a.v)*dy2-(c.v-a.v)*dy1)/det,vy=(dx1*(c.v-a.v)-dx2*(b.v-a.v))/det;
     if(std::abs(uy)>1e-5f||std::abs(vx)>1e-5f)throw std::runtime_error("Attract tile is not axis aligned");
     const auto wrap=[](float uv,int size){const int i=int(std::floor(uv*size));return (i%size+size)%size;};
-    const float phase=float(state_.displayedBackgroundPhase)*gasstand_data::lit_0C112E28;
+    const float phase=float(backgroundPhase)*gasstand_data::lit_0C112E28;
     const auto& gradientBatch=etc_.chunks.at(1).batches.at(0);const auto& gradient=etcTextures_.at(gradientBatch.material[9]);
     const auto& ga=gradientBatch.vertices.at(0);const auto& gb=gradientBatch.vertices.at(1);
     if(unityUiEnabled()){
-        // The native extension stretches each already-authored edge pixel for
-        // the header/footer and extends the original tile+gradient in between.
-        for(const auto side:std::array<std::array<float,3>,2>{{{0.f,float(left),float(left)},{float(left+drawWidth),float(width-left-drawWidth),float(left+drawWidth-1)}}}){
-            const float xx=side[0],ww=side[1],edge=side[2];
-            unityUiCopyRegion(target.data(),width,height,edge,float(top),edge+1,top+63*fit,xx,float(top),ww,63*fit);
-            unityUiCopyRegion(target.data(),width,height,edge,top+424*fit,edge+1,float(top+drawHeight),xx,top+424*fit,ww,drawHeight-424*fit);
-            const float y1=top+63*fit,y2=top+424*fit;
+        // Attract extends its own header/footer and gradient. Other menus use
+        // the blue tile alone: the conversation's white lower glow belongs to
+        // that scene, not to the blank space around unrelated menu artwork.
+        const std::array<std::array<float,4>,4> margins={{{0,0,float(left),float(height)},
+            {float(left+drawWidth),0,float(width),float(height)},
+            {float(left),0,float(left+drawWidth),float(top)},
+            {float(left),float(top+drawHeight),float(left+drawWidth),float(height)}}};
+        for(const auto& rect:std::span(margins).first(attract?2:4)){
+            const float xx=rect[0],ww=rect[2]-rect[0];
+            if(ww<=0||rect[3]<=rect[1])continue;
+            float y1=rect[1],y2=rect[3];
+            if(attract){
+                const float edge=xx==0?float(left):float(left+drawWidth-1);
+                unityUiCopyRegion(target.data(),width,height,edge,float(top),edge+1,top+63*fit,xx,float(top),ww,63*fit);
+                unityUiCopyRegion(target.data(),width,height,edge,top+424*fit,edge+1,float(top+drawHeight),xx,top+424*fit,ww,drawHeight-424*fit);
+                y1=top+63*fit;y2=top+424*fit;
+            }
             auto uv=[&](float x,float y){const float sx=(x-left)/fit/100.f-phase,sy=(y-top)/fit;return std::array<float,2>{(sx-a.position.x)*ux+a.u,(-sy/100.f+phase-a.position.y)*vy+a.v};};
             auto vertex=[&](float x,float y){const auto p=uv(x,y);return UnityUiVertex{x,y,p[0],p[1],0xffffffff,0};};
             const auto aa=vertex(xx,y1),bb=vertex(xx+ww,y1),cc=vertex(xx,y2),dd=vertex(xx+ww,y2);
             unityUiTriangle(target.data(),width,height,image,aa,bb,cc,1,batch.ich[2],true,batch.ich[0]);unityUiTriangle(target.data(),width,height,image,cc,bb,dd,1,batch.ich[2],true,batch.ich[0]);
-            float gy1=std::max(63.f,(-std::max(ga.position.y,gb.position.y)-gasstand_data::lit_0C0D13D8)*100.f);
-            float gy2=std::min(424.f,(-std::min(ga.position.y,gb.position.y)-gasstand_data::lit_0C0D13D8)*100.f);
-            if(gy2>gy1){auto gv=[&](float x,float y){const float gy=-y/100.f-gasstand_data::lit_0C0D13D8;return UnityUiVertex{x,top+y*fit,0,ga.v+(gy-ga.position.y)*(gb.v-ga.v)/(gb.position.y-ga.position.y),0xffffffff,0};};
+            float gy1=std::max((y1-top)/fit,(-std::max(ga.position.y,gb.position.y)-gasstand_data::lit_0C0D13D8)*100.f);
+            float gy2=std::min((y2-top)/fit,(-std::min(ga.position.y,gb.position.y)-gasstand_data::lit_0C0D13D8)*100.f);
+            if(attract&&gy2>gy1){auto gv=[&](float x,float y){const float gy=-y/100.f-gasstand_data::lit_0C0D13D8;return UnityUiVertex{x,top+y*fit,0,ga.v+(gy-ga.position.y)*(gb.v-ga.v)/(gb.position.y-ga.position.y),0xffffffff,0};};
                 const auto a1=gv(xx,gy1),b1=gv(xx+ww,gy1),c1=gv(xx,gy2),d1=gv(xx+ww,gy2);
                 unityUiTriangle(target.data(),width,height,gradient,a1,b1,c1,1,(1u<<29)|(1u<<26)|(3u<<6),true,8);unityUiTriangle(target.data(),width,height,gradient,c1,b1,d1,1,(1u<<29)|(1u<<26)|(3u<<6),true,8);}
         }return;
     }
     std::vector<int> columns(std::size_t(width),0);
-    for(int x=0;x<width;++x)if(x<left||x>=left+drawWidth){const float sourceX=(x-left+.5f)/fit/100.f-phase;
+    for(int x=0;x<width;++x){const float sourceX=(x-left+.5f)/fit/100.f-phase;
         columns[std::size_t(x)]=wrap((sourceX-a.position.x)*ux+a.u,int(image.width));}
-    for(int y=top;y<top+drawHeight;++y){
+    for(int y=attract?top:0;y<(attract?top+drawHeight:height);++y){
         const float sourceY=(y-top+.5f)/fit;auto* row=target.data()+std::size_t(y)*width;
-        if(sourceY<63.f||sourceY>=424.f){
+        if(attract&&(sourceY<63.f||sourceY>=424.f)){
             std::fill(row,row+left,row[left]);std::fill(row+left+drawWidth,row+width,row[left+drawWidth-1]);
         }else{
             const int ty=wrap((-sourceY/100.f+phase-a.position.y)*vy+a.v,int(image.height));const auto* texture=image.argb.data()+std::size_t(ty)*image.width;
             // etc chunk1 adds the original vertical gradient over the moving
             // tile. Extend that layer too, preventing a seam at the 4:3 edge.
             const float gy=-sourceY/100.f-gasstand_data::lit_0C0D13D8;std::uint32_t glow=0;
-            if(gy>=std::min(ga.position.y,gb.position.y)&&gy<=std::max(ga.position.y,gb.position.y)){
+            if(attract&&gy>=std::min(ga.position.y,gb.position.y)&&gy<=std::max(ga.position.y,gb.position.y)){
                 const float uv=ga.v+(gy-ga.position.y)*(gb.v-ga.v)/(gb.position.y-ga.position.y);
                 glow=gradient.argb[std::size_t(wrap(uv,int(gradient.height)))*gradient.width];
             }
             const auto shade=[&](std::uint32_t pixel){
                 return 0xff000000u|(std::min(255u,((pixel>>16)&255)+((glow>>16)&255))<<16)|
                     (std::min(255u,((pixel>>8)&255)+((glow>>8)&255))<<8)|std::min(255u,(pixel&255)+(glow&255));};
-            for(int x=0;x<left;++x)row[x]=shade(texture[columns[std::size_t(x)]]);
-            for(int x=left+drawWidth;x<width;++x)row[x]=shade(texture[columns[std::size_t(x)]]);
+            const bool outsideRows=y<top||y>=top+drawHeight;
+            for(int x=0;x<(outsideRows?width:left);++x)row[x]=shade(texture[columns[std::size_t(x)]]);
+            if(!outsideRows)for(int x=left+drawWidth;x<width;++x)row[x]=shade(texture[columns[std::size_t(x)]]);
         }
     }
 }

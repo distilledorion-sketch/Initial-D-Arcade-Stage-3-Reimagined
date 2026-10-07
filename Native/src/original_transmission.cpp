@@ -77,7 +77,18 @@ void decideOriginalTransmissionGear(
         s.gear00=candidate;
     } else {
         // 0C15E620..0C15E682. Raw byte already contains press edges.
-        const std::uint32_t request=(in.pressedByte>>4)&3u;
+        // Host H-shifter extension: select a supported forward gear while
+        // retaining the original RPM/coupling/transition calculations below.
+        // Arcade MT has no driver-selectable neutral or reverse. Empty gates
+        // retain the engaged gear; unsupported gears do not become top gear.
+        const bool direct=in.requestedGear>=1&&in.requestedGear<=p.maximumGear;
+        const auto oldGear=s.gear00;
+        if(direct)s.gear00=in.requestedGear;
+        const std::uint32_t request=direct?0:(in.pressedByte>>4)&3u;
+        if(direct&&s.gear00>oldGear){
+            if(s.gear00==p.maximumGear)d.field400=1;
+            if(!(p.upper>s.filtered18))g.flag91fb4c=1;
+        }
         if(request==1) {
             s.gear00-=1u;
             if(signedWord(s.gear00)<0)s.gear00=1;

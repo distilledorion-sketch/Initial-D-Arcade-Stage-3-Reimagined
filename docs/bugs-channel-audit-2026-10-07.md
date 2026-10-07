@@ -61,3 +61,68 @@ Verification: 219 native/renderer checks cover all 35 anchor records, angle/rang
 Native plugin build and production managed compilation pass; existing compiler warnings remain. `git diff --check` passes. Visual evidence and local diagnostics remain under the ignored `Verification/bugs-20261007` directory.
 
 The two asset exporters write source hashes and extraction manifests. The reference executable is used only for local extraction/validation and is not added to the repository or any build. No ROM/CHD is included. The changes require a future packaged update before players receive them.
+
+## Resumed unfinished reports
+
+The user requested resuming unfinished bugs after the Japanese texture download stalled. The Discord browser session requested a new login, so this pass uses the reports recorded above and in the October 4 audit; it does not claim to have inspected new messages.
+
+### Imported-track replay bumper height
+
+Reproduced a separate camera error in the existing Replay Viewer report. Detailed replays reconstructed their camera anchor by subtracting a flat ride height from the recorded displayed body. Live Hakone, Sadamine and Tsubaki instead raise the body along the road normal, with a 2 cm model-origin offset. The old reconstruction also incorrectly adjusted Special Stage replays, whose live camera uses the recorded actor directly.
+
+The viewer now reverses the slope-aware height conversion for the three Stage 8 imports and uses the recorded actor for Special Stage. A separate contact-query cache preserves the live solver/body state. Missing contact falls back to the recorded actor; legacy IDR1 recordings keep their existing path. No replay format, physics, tuning, save or leaderboard change is involved.
+
+`imported_replay_camera_tests` compares real host driving poses against replay evaluation on all seven imported courses plus Akina, in both directions and dry/wet conditions. The pre-fix fixture failed 2,520 pose comparisons, with a maximum 25.2 mm camera error. After correction, the expanded suite passes 14,496 checks, including backward/forward seeking, repeated paused paints, legacy recordings and unchanged solver/contact state. The largest remaining numerical difference is 0.111 mm (2 mm tolerance). The original chase/bumper instruction-reference test also passes. Native Unity plugin rebuilt successfully; existing compiler warnings remain.
+
+Evidence: `Verification/bugs-resumed-20261007/replay-camera-before/`, `replay-camera-final/` and `build-final.log`. This fixes the reproduced replay-height mismatch. It does **not** establish a fix for the separately reported live Sadamine sharp-turn bouncing, which remains unreproduced.
+
+### Later-sector frame-rate investigation
+
+Added `late_race_benchmark` to sample the production native scene-publication path at 5%, 55%, 75% and 90% of Akagi and Akina uphill, with one/two cars, day/night and the rear-view camera. It uses arranged frozen poses, private saves and the normal Unity UI capture path. It checks that rendering leaves the simulation digest unchanged. This expands the earlier near-start checks, but does not measure Unity GPU/managed rendering, network reconciliation, moving sector transitions or playable frame rate.
+
+Native scene preparation measures 0.078–0.386 ms median across the 32 local cases (1,920 measured frames after warmup); this alone does not explain or resolve the reported drops to 40 FPS. No speculative performance or networking change was made. Evidence: `Verification/bugs-resumed-20261007/late-race-verified/`. Earlier diagnostic attempts omitted UI capture or the rear-view submission and are not the reported benchmark.
+
+### Remaining limits
+
+Physical G923/Fanatec failures, Steam-managed Proton updates, intermittent public online collisions/disconnects, China reachability and the clipped random-crash report still lack the affected hardware/network, complete logs or reproduction. The original driving cinematic behind the restored ending credits also remains unfinished. These reports remain open. No Desktop installation, GitHub publication or Discord message was performed in this pass.
+
+## Ending driving backdrop follow-up
+
+Restored a driving backdrop behind the Legend ending credits locally. The old transition called `returnToCourseSelection()` before starting the ending, replacing the completed scene; it now keeps that scene until the credits finish. A separate 3,600-frame buffer records both cars during Legend racing, including wheel/body pose, lamps, braking and course-selection index. It works with optional replay saving disabled, cannot grow beyond one minute, and holds its final pose when its recorded footage ends. Playback never runs the race solver, awards points or saves another time. Its recording and private car presentation copies are cleared on exit or the next race.
+
+The camera uses the car-relative eye and target from `o_ending_camera_00` (kind 13) and its original FOV. This restores the missing visible backdrop; it is **not a complete source-identical cinematic port**. Original camera shake/smoothing, source highlight selection, special ending-scene lighting and independently animated track effects remain outside this change. Credits, photographs, final card, music, fades and skip timing retain the earlier source-verified owner.
+
+Validation: `Verification/ending-driving-20261007/application-final/` contains 64 passing application checks and actual rendered frames. This drives 1,800 native ticks against the final Legend rival with replay saving disabled, verifies two-car capture and movement, checks ring overwrite/seal/hold behavior, and exercises the ending at 30/60/144/240 FPS. Physics digest, race tick count and profile remain unchanged through playback. Pause, held-input protection, both skip stages, audio stop, buffer cleanup and the existing 31-rival result-flow fixture pass. That fixture settles results rather than driving 31 complete races. The independent `original_ending` reference test also passes. Native software-rendered frames were visually inspected; this is not a new Unity GPU performance measurement or an original-hardware cinematic comparison.
+
+This pass does not resolve the hardware/network-dependent reports or the later-sector FPS report. Changes remain local; no Desktop installation, GitHub publication or Discord messages.
+
+## Private matches and direct gear bindings (2026-10-07)
+
+- Online Battle now offers **Host Public Battle** and **Host Private Battle**. Private rooms use the existing shareable room code. Both peers see **PRIVATE** in the room header. LAN Direct retains its existing address-based hosting.
+- Private Steam rooms use an invisible lobby and a separate game namespace. Public discovery filters that namespace at Steam's query boundary, including on older clients, and validates it again in returned results. Quick Match also rejects private room records. Direct code joins accept either namespace after the same game/build/owner/capacity checks. The room code is a join link, not a password or protection against someone sharing it.
+- Steam's private lobby type requires invitations, so it is not used for code-based rooms. See [Steam matchmaking lobby types](https://partner.steamgames.com/doc/api/isteammatchmaking#ELobbyType).
+- Settings > Controls now contains Gear 1 through Gear 6 in a scrollable binding list. Keyboard, gamepad buttons, and separate generic wheel/H-shifter devices use the existing capture/profile system. Keyboard/controller navigation follows the selected row through the list.
+- Direct selections apply only to Manual transmission and only to gears the selected car has. Empty/overlapping shifter positions retain the engaged arcade gear; no clutch, neutral, or reverse model is added. Sequential shift bindings remain supported. A direct downshift retains the original downshift steering signal, and all shifts still use the original RPM/coupling calculations.
+- Existing controls formats migrate to version 4, preserving all previous bindings and adding six unbound gear actions to each device. Disconnect, reconnect-release, focus-loss, and menu-capture guards cover direct gears.
+- The native frame ABI remains 88 bytes (gear in flag bits 8–10). Authoritative online input packets use codec version 2 and carry the direct gear in the existing input byte; rollback compares it and predicts the held state. Build matching continues to require identical builds.
+
+Validation: `Verification/private-shifter-20261007/`. Native host-input, source-reference transmission, and source-reference vehicle tests pass. A four-case online simulation checks 57,600 peer frames at 50–250 ms, with jitter, loss, duplication, reordering, and outage recovery. Unity checks pass for 62 direct gear/privacy assertions, 19 multi-device rig checks, existing headlight migration, and 112 controller/menu checks. The first hidden-player screenshot attempts did not repaint; they are preserved as failed evidence and do not establish visual verification. Physical H-shifter hardware and two separate Steam accounts have not been tested. No release or desktop installation is part of this change.
+The final hidden Unity player input run passed **136 checks**, including navigating to Gear 6, capturing and saving its binding, delivering the requested gear in the actual native frame, and clearing it on release (`player-input/report.json`). Visual repaint and physical-device/network limitations above still apply.
+
+## Game optimization pass (2026-10-07)
+
+Optimized the production original-menu/HUD submission path. It now uploads a single interleaved vertex stream, retains a capacity-sized sequential index buffer, and publishes changed submesh ranges together. Changing digit counts no longer clears and reuploads every draw's indices. Original background/foreground commands are reused until their draw state, clip, canvas size or order changes. Custom tachometers, ornaments and fades retain a separate animated command buffer in the same display order. HUD editor bounds are merged once per source draw instead of reconstructing a rectangle for every triangle vertex.
+
+The performance harness also now renders the complete six-camera stack explicitly when requested and checks exact render counts. The earlier manual mode allowed `ApplyFrame` to re-enable the main camera and duplicate renders. CPU-only hidden-window measurements are still labelled as such; they are not display FPS measurements.
+
+Evidence: `Verification/optimization-20261007/comparison.json`, `managed-build.log`, `ui-final-full/`, `legend-day-render-{baseline,optimized}/`, and `ui-final-pixels-v2/`.
+
+- Akagi uphill/night full-course traversal: 10,858 measured source ticks, actual finish without timeout (diagnostic timer grace enabled). Median HUD submission time fell **7.0%** against the original implementation. This run measures CPU submission; the hidden window did not automatically render cameras.
+- Akagi two-car Legend race: 1,800 measured frames per variant, 1,800 main-camera and 10,800 total camera render events each. Median HUD submission time fell **23.1%** against the forced-rebuild comparison. Both paths in this comparison include the bounds optimization. Overall wall time changed only slightly; no overall FPS percentage is claimed.
+- The final full-course run uploaded no HUD indices after warmup and rebuilt original HUD commands on approximately 38% of frames, instead of every frame. Both scenarios measured zero main-thread allocated bytes per frame after warmup.
+- Driving samples match exactly before/after for simulation ticks, speed, course distance, course length, race progress, wall contacts and travel. No physics or networking code was changed in this pass.
+- **45 byte-for-byte rendered-image comparisons across 15 views pass**: independent HUD sizes/offsets, two custom tachometers with an ornament, course/mode menu transitions, and 1280x960, 1920x1080 and 3440x1440 menu targets. Comparisons force index/command rebuilding, then exercise reuse on the same frozen source frame. Output was also visually inspected. Final runs contain no mesh overlap warnings or exceptions.
+
+Limits: Windows/RX 9070 XT private diagnostic player; its existing serialized assets/shaders were retained for matched tests. GPU timing was unavailable. The two-car fixture is local Legend AI, not a public online race. Scenery transitions still sometimes update more than 1,800 material queues; their exact source ordering was preserved. This pass does not establish a fix for the reported 40 FPS online/later-sector drops. Changes remain local; no Desktop installation, GitHub publication or Discord messages.
+
+Superseded diagnostics are retained: the first manual-render attempt double-rendered, the first Legend/night request disagreed with the rival's authored daytime conditions, individual submesh updates produced transient overlap warnings before being changed to a bulk update, and a menu capture initially used a world-geometry assertion. None of those runs is used as passing final evidence.

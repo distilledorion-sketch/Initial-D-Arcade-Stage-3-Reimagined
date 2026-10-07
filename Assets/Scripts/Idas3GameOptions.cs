@@ -30,6 +30,7 @@ public sealed class Idas3GameOptions
         public bool timeAttackGhost=true;
         public bool TimeAttackReplayRequired=>communityTimes||replayTimeAttack;
         public int rainDetail,importedSceneryDetail;
+        public int trackLighting=1; // 0 = original, 1 = balanced scenery exposure.
         public int hudMeterStyle; // Stable catalog ID: 0 = original, 1 = Stuttgart.
         public int hudMeterLayout=1; // 0 = saved legacy anchor, 1 = camera-aware wide meter defaults.
         public int hudOrnamentId; // Stable source ornament ID; 0 = off.
@@ -315,6 +316,7 @@ public sealed class Idas3GameOptions
         value.minimapSize=Math.Max(0,Math.Min(2,value.minimapSize));
         value.rainDetail=Math.Max(0,Math.Min(1,value.rainDetail));
         value.importedSceneryDetail=Math.Max(0,Math.Min(2,value.importedSceneryDetail));
+        value.trackLighting=Math.Max(0,Math.Min(1,value.trackLighting));
         if(value.controllerResponse<0||value.controllerResponse>2)value.controllerResponse=0;
         if(value.steeringSettingsVersion<1){value.steeringDeadzoneGamepad=.1f;value.steeringDeadzonePrevious=.13f;value.steeringDeadzoneWheel=0;}
         value.steeringSettingsVersion=1;
@@ -343,5 +345,5 @@ public sealed class Idas3GameOptions
         a.discordPresence==b.discordPresence&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
         a.hudMeterStyle==b.hudMeterStyle&&a.hudMeterLayout==b.hudMeterLayout&&a.hudOrnamentId==b.hudOrnamentId&&a.hudShiftLights==b.hudShiftLights&&a.hudPedalIndicators==b.hudPedalIndicators&&a.hudNameplateStyle==b.hudNameplateStyle&&
         SameHudPositions(a,b)&&SameHudSizes(a,b)&&a.hudOrnamentSize==b.hudOrnamentSize&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
-        a.minimapDisplay==b.minimapDisplay&&a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail;
+        a.minimapDisplay==b.minimapDisplay&&a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail&&a.trackLighting==b.trackLighting;
 }

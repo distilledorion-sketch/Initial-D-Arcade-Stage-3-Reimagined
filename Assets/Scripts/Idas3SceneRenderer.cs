@@ -224,6 +224,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     private void BeforeCamera(Camera camera)
     {
         if (camera != main && camera != mirror) return;
+        Shader.SetGlobalFloat("_IdasTrackLighting", HudOptions.trackLighting);
         Shader.SetGlobalInteger("_IdasView", camera == mirror ? 1 : 0);
         Shader.SetGlobalBuffer("_IdasFrameWords", framesBuffer);
         Shader.SetGlobalBuffer("_IdasLightWords", lightsBuffer);
@@ -621,6 +622,10 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         m.SetInt("_SrcBlend", (int)Factor(source, true, false)); m.SetInt("_DstBlend", (int)Factor(destination, false, false));
         m.SetInt("_SrcBlendAlpha", (int)Factor(source, true, true)); m.SetInt("_DstBlendAlpha", (int)Factor(destination, false, true));
         uint list = original ? (r.pcw >> 24) & 7 : 0;
+        // Keep cars, skies/unlit artwork, UI, projected headlights and
+        // translucent shadow overlays out of the scenery exposure curve.
+        m.SetFloat("_TrackSurface", IsCourseGeometry(r) && list != 2 &&
+            (r.flags & 2) == 0 && (r.gmp & 512) == 0 ? 1 : 0);
         // The source translucent list is auto-sorted per pixel by the original
         // hardware, which compares greater-or-equal and does not write depth.
         // Punch-through is not auto-sorted on the hardware: only the translucent

@@ -120,6 +120,8 @@ public:
     bool saveCarChangeRequested=false;
     bool saveCarPreviewReset=false;
     bool showingGasstand()const{return stage==FrontendStage::Title&&attractChildId==11;}
+    void paintMenuMargins(std::span<std::uint32_t> target,int width,int height)const;
+    void advanceMenuBackdrop(double seconds);
     unsigned attractChild()const{return attractChildId;}
     // Source gear/view edges, consumed once at the next original60Hz tick.
     void queueRankingInput(original::OriginalRankingPageInput input){
@@ -177,6 +179,7 @@ private:
     std::vector<std::uint32_t> previousModePaintKey;
     const std::vector<std::uint32_t>* displayedCanvas=nullptr;
     std::uint64_t canvasRevision=0,displayedRevision=0;
+    std::uint64_t menuBackdropFrame=0,displayedBackdropFrame=0;
     int displayedWidth=0,displayedHeight=0;
     // 196CE0 changes only its selected glow during confirmation. Keep both
     // complete compositions, including their original depth ordering.
@@ -193,6 +196,7 @@ private:
     std::uint32_t buntaBadgeFrame=0;
     std::uint32_t carFrame=0;
     double frameRemainder=0;
+    double menuBackdropRemainder=0;
     NativeTextureBank titleExtension,creditTextures;
     NativeSpriteBank creditSprites;
     bool hasTitleExtension=false;

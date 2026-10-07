@@ -65,7 +65,7 @@ namespace Idas3.Multiplayer
         {
             Idas3Room selected=null;
             foreach(var room in transport.Rooms) {
-                if(room==null || string.IsNullOrEmpty(room.Code) || room.Code==transport.RoomCode || room.Order==0 ||
+                if(room==null || room.Private || string.IsNullOrEmpty(room.Code) || room.Code==transport.RoomCode || room.Order==0 ||
                     room.Capacity!=2 || room.Members!=1 || attempted.Contains(room.Code))continue;
                 if(alreadyHosting && room.QuickMatch && room.Order>=transport.RoomOrder)continue;
                 if(selected==null || room.Order<selected.Order)selected=room;

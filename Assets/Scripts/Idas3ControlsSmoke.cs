@@ -98,6 +98,23 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
         physicalKey=KeyCode.Escape;yield return Frames(3);physicalKey=KeyCode.None;yield return Frames(3);
         Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Physical Escape did not open native offline pause");
         menu.SelectTab(3);yield return Frames(3);yield return Capture("defaults");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-private-shifter-check")>=0){
+            bool capture=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-input-check-no-captures")<0;
+            for(int i=0;i<menu.OptionRows-1;++i)menu.Navigate(1);
+            yield return Frames(3);yield return Capture("gears");
+            var scroll=(Vector2)typeof(Idas3PauseMenu).GetField("bindingScroll",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(menu);
+            if(capture)Check(scroll.y>0,"Controller focus did not reveal the last gear binding");
+            menu.BeginBindingCapture(Idas3ControlBindings.ActionId.Gear6,Idas3ControlBindings.Slot.Primary);
+            yield return Frames(3);Check(bindings.IsCapturing,"Gear 6 cannot be rebound from the game menu");yield return Capture("gear6-capture");
+            physicalKey=KeyCode.Keypad6;yield return Frames(3);physicalKey=KeyCode.None;yield return Frames(3);
+            Check(!bindings.IsCapturing&&bindings.ApplyDraft(),"Could not save captured gear");
+            menu.SetOpen(false);yield return Frames(4);physicalKey=KeyCode.Keypad6;yield return Frames(4);
+            Check(((host.DiagnosticSubmittedInput.flags>>8)&7)==6,"Player did not submit direct gear to native");
+            physicalKey=KeyCode.None;yield return Frames(4);
+            Check((host.DiagnosticSubmittedInput.flags&0x700u)==0,"Player retained released direct gear");
+            if(capture)yield return Idas3.Multiplayer.Idas3OnlineMenuScreens.Run(root);
+            Finish(true,null);yield break;
+        }
         menu.BeginBindingCapture(Idas3ControlBindings.ActionId.Accelerate,Idas3ControlBindings.Slot.Primary);
         yield return Frames(3);Check(bindings.IsCapturing,"Controls cell did not enter capture");yield return Capture("capture");
         physicalKey=KeyCode.A;yield return Frames(3);Check(bindings.IsCapturing&&!string.IsNullOrEmpty(bindings.CaptureError),"Conflicting steering key was accepted silently");

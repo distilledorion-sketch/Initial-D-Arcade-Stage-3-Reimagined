@@ -89,6 +89,8 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
     banks.clear(); previousKey.clear(); previousMotionKey.clear(); pixels.clear(); staticPixels.clear();
     displayPixels.clear();previousModePaintKey.clear();displayedCanvas=nullptr;
     canvasRevision=displayedRevision=0;displayedWidth=displayedHeight=0;
+    menuBackdropFrame=displayedBackdropFrame=0;
+    menuBackdropRemainder=0;
     rivalCacheKey.clear();for(auto& frame:rivalPixels)frame.clear();
     carouselMake=-1;carouselCar=-1;carouselSlot=0;carouselScroll=displayedScroll=0;
     carConfirmationFrame=-1;selectionExitFrame=-1;frameRemainder=0;carFrame=0;
@@ -526,6 +528,7 @@ void Frontend::advance(double seconds) {
     frameRemainder+=seconds*60.;
     const auto frames=std::uint64_t(std::floor(frameRemainder+1.e-9));
     frameRemainder-=double(frames);
+    advanceMenuBackdrop(seconds);
     const auto updateOwner=[&]() -> bool {
         ++carFrame;
         if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::BuntaChallenge)
@@ -972,13 +975,24 @@ void Frontend::draw(const std::string& name,int chunk,int width,int height,float
     placement.defaultOriginalUiColors=true;
     compositeOriginalMenuChunk(pixels,width,height,selected.textures,selected.model.chunks[std::size_t(chunk)],placement);
 }
+void Frontend::paintMenuMargins(std::span<std::uint32_t> target,int width,int height)const{
+    if(gasstandLoaded)gasstand.paintMenuMargins(target,width,height,menuBackdropFrame);
+}
+void Frontend::advanceMenuBackdrop(double seconds){
+    if(!std::isfinite(seconds)||seconds<0)throw std::invalid_argument("Invalid menu backdrop duration");
+    menuBackdropRemainder+=seconds*60.;
+    const auto frames=std::uint64_t(std::floor(menuBackdropRemainder+1.e-9));
+    menuBackdropRemainder-=double(frames);menuBackdropFrame+=frames;
+}
 const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
     synchronizeStage();
     if(width<=0 || height<=0 || width>16384 || height>16384) throw std::invalid_argument("Invalid native menu dimensions");
     collectPreloadedArtwork();
     const auto& canvas=paintOriginalCanvas();
     if(width==640&&height==480)return canvas;
-    if(displayedCanvas==&canvas&&displayedRevision==canvasRevision&&displayedWidth==width&&displayedHeight==height)return displayPixels;
+    const bool menuMargins=stage!=FrontendStage::Title&&std::int64_t(width)*3!=std::int64_t(height)*4;
+    if(displayedCanvas==&canvas&&displayedRevision==canvasRevision&&displayedWidth==width&&displayedHeight==height&&
+        (!menuMargins||displayedBackdropFrame==menuBackdropFrame))return displayPixels;
     // Original menu geometry and color blending live on the640x480 arcade
     // canvas. Scaling that finished frame avoids rerasterizing the same tiny
     // authored textures across millions of host pixels during each animation.
@@ -999,8 +1013,10 @@ const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
         for(int x=0;x<drawWidth;++x)destination[x]=row[columns[std::size_t(x)]];}
     }
     if(showingGasstand())gasstand.extendBackdrop(displayPixels,width,height);
+    else if(menuMargins)paintMenuMargins(displayPixels,width,height);
     if(stage==FrontendStage::Title&&attractChildId==7)demoOverlays.extendBackdrop(displayPixels,width,height,titleFrame?titleFrame-1:0);
     displayedCanvas=&canvas;displayedRevision=canvasRevision;displayedWidth=width;displayedHeight=height;
+    displayedBackdropFrame=menuBackdropFrame;
     return displayPixels;
 }
 void Frontend::paintAttractPrompts(std::span<std::uint32_t> target,int width,int height)const{

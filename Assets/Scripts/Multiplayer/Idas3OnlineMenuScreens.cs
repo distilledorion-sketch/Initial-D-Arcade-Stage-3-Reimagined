@@ -7,7 +7,8 @@ using UnityEngine;
 namespace Idas3.Multiplayer {
 // Explicit isolated controller diagnostic only; this transport never makes network calls.
 internal static class Idas3OnlineMenuScreens {
-    sealed class RoomsTransport:IIdas3Transport {
+    sealed class RoomsTransport:IIdas3Transport,IIdas3PrivateRoomTransport {
+        public bool PrivateRoom=>false;public void HostPrivate(string name){}
         internal readonly List<Idas3Room> items=new List<Idas3Room>();
         public string Kind=>"Diagnostic";public bool Available=>true;public bool Connected=>false;public bool IsHost=>false;
         public string LocalId=>"1";public string LocalName=>"Chris";public string RemoteId=>"";public string RemoteName=>"";

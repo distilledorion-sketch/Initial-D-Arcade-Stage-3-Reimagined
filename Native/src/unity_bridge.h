@@ -37,7 +37,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* val
 #pragma pack(push,8)
 typedef struct Idas3UnityInput {
     uint32_t size;                 //sizeof(Idas3UnityInput),88 bytes
-    uint32_t flags;                //bit0 focused, bit1 host driving controls blocked; other bits reserved
+    uint32_t flags;                //bit0 focused, bit1 controls blocked; bits8..10 requested gear (0 none,1..6)
     double deltaSeconds;           //unscaled Unity frame delta
     uint32_t keys[8];              //held Windows virtual-key bits,0..255
     uint32_t padButtons;           //XInput button bits

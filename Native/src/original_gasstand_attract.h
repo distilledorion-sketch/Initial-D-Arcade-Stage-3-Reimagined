@@ -51,11 +51,15 @@ public:
     // Extend only the backdrop into widescreen margins after fitting the
     // unmodified 4:3 composition. Uses original tile57 and its live phase.
     void extendBackdrop(std::span<std::uint32_t>,int width,int height)const;
+    // Reuse the scrolling logo tile across all empty margins of a fitted menu.
+    // The center stays untouched; frame is an independent original 60Hz clock.
+    void paintMenuMargins(std::span<std::uint32_t>,int width,int height,std::uint64_t frame)const;
 private:
     OriginalGasstandState state_;
     NativeModel gasstand_,etc_;
     NativeTextureBank gasstandTextures_,etcTextures_,alphabet_;
     std::vector<NativeImage> preparedAlphabet_;
     void paintImpl(std::span<std::uint32_t>,int,int,bool)const;
+    void paintMargins(std::span<std::uint32_t>,int,int,unsigned phase,bool attract)const;
 };
 }

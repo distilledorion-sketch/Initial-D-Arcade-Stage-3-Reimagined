@@ -63,6 +63,7 @@ OriginalVehicleInputs adaptOriginalHostInput(OriginalHostInputState& state,
     out.pressedByte=held&std::uint8_t(~state.previousShiftButtons);
     state.previousShiftButtons=held;
     out.automaticMode=automatic;out.gearEnabled=gearEnabled;
+    out.requestedGear=controls.requestedGear<=6?controls.requestedGear:0;
     out.elapsedFrames0C900E84=elapsedFrames;
     return out;
 }

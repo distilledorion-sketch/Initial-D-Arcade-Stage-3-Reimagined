@@ -62,6 +62,7 @@ struct OriginalTransmissionInputs {
     bool automaticMode=false;          // 0C9015C4 != 0; also controls down hold
     bool gearEnabled=true;             // bit15 of *[0C900954]+0x50
     float coefficientFr15=0;           // earlier solver output, not a fixed ratio
+    std::uint8_t requestedGear=0;       // host-only direct MT selection; 0 leaves original logic exact
 };
 
 // Exact original sine boundary. Called only on the tach overshoot branch.

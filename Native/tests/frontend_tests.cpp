@@ -1,6 +1,7 @@
 #include "frontend.h"
 #include "original_car_color_catalog.h"
 #include "original_record_rules.h"
+#include "unity_ui_capture.h"
 #include <algorithm>
 #include <array>
 #include <filesystem>
@@ -11,6 +12,59 @@
 
 using namespace idas3;
 void require(bool condition,const char* message) {if(!condition)throw std::runtime_error(message);}
+bool sameWideMenuCenter(const std::vector<std::uint32_t>& a,const std::vector<std::uint32_t>& b){
+    for(int y=0;y<720;++y)for(int x=160;x<1120;++x)
+        if(a[std::size_t(y)*1280+x]!=b[std::size_t(y)*1280+x])return false;
+    return true;
+}
+void verifyMenuMargins(const std::filesystem::path& root){
+    original::OriginalGasstandAttract art;art.load(root);
+    constexpr std::uint32_t marker=0x12345678;
+    for(const auto size:std::array<std::array<int,2>,5>{{{640,480},{1280,720},{1920,800},{720,1280},{1365,768}}}){
+        const int w=size[0],h=size[1];const float fit=std::min(w/640.f,h/480.f);
+        const int dw=int(640*fit),dh=int(480*fit),left=(w-dw)/2,top=(h-dh)/2;
+        std::vector<std::uint32_t> first(std::size_t(w)*h,marker),next=first;
+        art.paintMenuMargins(first,w,h,0);art.paintMenuMargins(next,w,h,60);
+        unsigned changes=0;
+        for(int y=0;y<h;++y)for(int x=0;x<w;++x){
+            const auto i=std::size_t(y)*w+x;
+            if(x>=left&&x<left+dw&&y>=top&&y<top+dh)
+                require(first[i]==marker&&next[i]==marker,"Menu backdrop overwrote the original canvas");
+            else{
+                require((first[i]>>24)==255&&(next[i]>>24)==255,"Menu margin contains an unpainted gap");
+                changes+=first[i]!=next[i];
+            }
+        }
+        require(w==dw&&h==dh?changes==0:changes>1000,"Menu margins did not scroll");
+        // The Unity draw list must also stay outside the fitted menu, without
+        // falling back to a full-screen CPU upload or accumulating old frames.
+        Idas3UiEnable(1);unsigned drawCount=0;
+        for(unsigned frame=0;frame<2;++frame){
+            Idas3UiBeginFrame(w,h);unityUiClear(first.data(),w,h);
+            art.paintMenuMargins(first,w,h,frame*60);unityUiSubmit(first.data(),w,h,false,false,false);
+            UnityUiFrame info{sizeof(UnityUiFrame)};require(Idas3UiGetFrame(&info)!=0,"Missing Unity backdrop frame");
+            require(info.unresolvedSurfaces==0&&info.drawCount<=16,"Menu backdrop failed command capture");
+            if(frame)require(info.drawCount==drawCount,"Menu backdrop accumulated stale draw commands");
+            drawCount=info.drawCount;
+            std::vector<UnityUiVertex> vertices(info.vertexCount);Idas3UiCopyVertices(vertices.data(),int(vertices.size()));
+            for(std::size_t i=0;i+2<vertices.size();i+=3){
+                const auto& a=vertices[i];const auto& b=vertices[i+1];const auto& c=vertices[i+2];
+                require(std::max({a.x,b.x,c.x})<=left||std::min({a.x,b.x,c.x})>=left+dw||
+                    std::max({a.y,b.y,c.y})<=top||std::min({a.y,b.y,c.y})>=top+dh,
+                    "Unity backdrop triangle overlaps the menu");
+            }
+        }
+        Idas3UiEnable(0);
+    }
+    Frontend slow,fast;slow.initialize(root);fast.initialize(root);
+    slow.stage=fast.stage=FrontendStage::SaveSelect;
+    const auto before=slow.paint(1280,720);
+    for(unsigned i=0;i<30;++i)slow.advance(1./30.);
+    for(unsigned i=0;i<144;++i)fast.advance(1./144.);
+    require(slow.paint(1280,720)==fast.paint(1280,720),"Backdrop speed depends on rendering FPS");
+    require(sameWideMenuCenter(before,slow.paint(1280,720))&&before!=slow.paint(1280,720),"Static menu cache froze the backdrop or changed the menu");
+    std::cout<<"Scrolling menu margins passed CPU/Unity bounds, resize, cache and 30/144 FPS checks.\n";
+}
 void saveBitmap(const std::filesystem::path& path,const std::vector<std::uint32_t>& pixels,int width,int height) {
     std::ofstream out(path,std::ios::binary);
     auto u16=[&](unsigned value){for(int i=0;i<2;++i)out.put(char(value>>(8*i)));};
@@ -365,6 +419,7 @@ int main(int argc,char**argv) {
             require(records.courseRecordTimes()[2]==1300000,"Snow menu did not read its forced wet partition");
         }
         if(argc>1) {
+            verifyMenuMargins(argv[1]);
             {
                 Frontend saves;saves.initialize(argv[1]);saves.stage=FrontendStage::SaveSelect;
                 saves.saveFiles[0]={true,"CHRIS","AE86 TRUENO","B1","2026/09/23",3661,9};
@@ -464,12 +519,12 @@ int main(int argc,char**argv) {
                 warning.change(-1);warning.advance(6./60.);
                 const auto clean=warning.paint(1280,720);
                 warning.confirm();warning.advance(1./60.);const auto points=warning.paint(1280,720);
-                require(points!=clean&&!warning.confirmationInProgress(),"Rejected Bunta confirmation failed to show original points panel");
-                warning.advance(120./60.);require(points==warning.paint(1280,720),"Points panel disappeared before its source lifetime");
-                warning.advance(1./60.);require(clean==warning.paint(1280,720),"Expired warning remained in the widescreen cache");
+                require(!sameWideMenuCenter(points,clean)&&!warning.confirmationInProgress(),"Rejected Bunta confirmation failed to show original points panel");
+                warning.advance(120./60.);require(sameWideMenuCenter(points,warning.paint(1280,720)),"Points panel disappeared before its source lifetime");
+                warning.advance(1./60.);require(sameWideMenuCenter(clean,warning.paint(1280,720)),"Expired warning remained in the widescreen cache");
                 warning.battleProfile.setu(72,4000);warning.confirm();warning.advance(1./60.);
-                const auto card=warning.paint(1280,720);require(card!=clean&&card!=points,"Card rejection reused the points artwork");
-                warning.advance(121./60.);require(clean==warning.paint(1280,720),"Card warning did not expire at its source boundary");
+                const auto card=warning.paint(1280,720);require(!sameWideMenuCenter(card,clean)&&!sameWideMenuCenter(card,points),"Card rejection reused the points artwork");
+                warning.advance(121./60.);require(sameWideMenuCenter(clean,warning.paint(1280,720)),"Card warning did not expire at its source boundary");
                 if(argc>2){const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
                     saveBitmap(out/"mode-points-warning.bmp",points,1280,720);
                     saveBitmap(out/"mode-card-warning.bmp",card,1280,720);
@@ -546,17 +601,17 @@ int main(int argc,char**argv) {
             const auto scrollStart=menu.paint(wideWidth,wideHeight);
             menu.advance(2./60.);
             const auto scrollMiddle=menu.paint(wideWidth,wideHeight);
-            require(scrollStart!=scrollMiddle,"Original four-frame carousel scroll did not animate");
+            require(!sameWideMenuCenter(scrollStart,scrollMiddle),"Original four-frame carousel scroll did not animate");
             menu.advance(4./60.);
             const auto scrollEnd=menu.paint(wideWidth,wideHeight);
             menu.advance(.5);
-            require(scrollEnd==menu.paint(wideWidth,wideHeight),"Settled carousel should stop repainting");
+            require(sameWideMenuCenter(scrollEnd,menu.paint(wideWidth,wideHeight)),"Settled carousel should stop repainting");
             menu.confirm();menu.advance(18./60.);
             const auto shrinking=menu.paint(wideWidth,wideHeight);
-            require(shrinking!=scrollEnd,"Original confirmation shrink did not change thumbnail row");
+            require(!sameWideMenuCenter(shrinking,scrollEnd),"Original confirmation shrink did not change thumbnail row");
             // Motion must not change the cached manufacturer/header/nameplate
             // or central showroom backing, avoiding a full-frame animation.
-            for(int y=270;y<wideHeight;++y)for(int x=0;x<wideWidth;++x)
+            for(int y=270;y<wideHeight;++y)for(int x=160;x<1120;++x)
                 require(shrinking[std::size_t(y)*wideWidth+x]==scrollEnd[std::size_t(y)*wideWidth+x],"Carousel animation modified static screen artwork");
             if(!output.empty()) {
                 saveBitmap(output/"car-showroom-base-wide.bmp",settled,wideWidth,wideHeight);
@@ -569,7 +624,7 @@ int main(int argc,char**argv) {
             const auto makeSettled=menu.paint(wideWidth,wideHeight);
             menu.confirm();menu.advance(18./60.);
             const auto makeShrinking=menu.paint(wideWidth,wideHeight);
-            require(makeShrinking!=makeSettled,"Original seven-emblem confirmation did not animate");
+            require(!sameWideMenuCenter(makeShrinking,makeSettled),"Original seven-emblem confirmation did not animate");
             if(!output.empty()) {
                 saveBitmap(output/"make-strip-wide.bmp",makeSettled,wideWidth,wideHeight);
                 saveBitmap(output/"make-confirm-wide.bmp",makeShrinking,wideWidth,wideHeight);
@@ -579,11 +634,11 @@ int main(int argc,char**argv) {
             const auto courseSettled=menu.paint(wideWidth,wideHeight);
             menu.change(-1);const auto courseScroll=menu.paint(wideWidth,wideHeight);
             menu.advance(3./60.);const auto courseMiddle=menu.paint(wideWidth,wideHeight);
-            require(courseScroll!=courseMiddle,"Original five-frame course scroll did not animate");
+            require(!sameWideMenuCenter(courseScroll,courseMiddle),"Original five-frame course scroll did not animate");
             menu.advance(4./60.);const auto courseEnd=menu.paint(wideWidth,wideHeight);
-            menu.advance(.5);require(courseEnd==menu.paint(wideWidth,wideHeight),"Settled course strip must remain cached");
+            menu.advance(.5);require(sameWideMenuCenter(courseEnd,menu.paint(wideWidth,wideHeight)),"Settled course strip must remain cached");
             menu.confirm();menu.advance(18./60.);const auto courseShrinking=menu.paint(wideWidth,wideHeight);
-            require(courseShrinking!=courseEnd,"Original course confirmation did not animate");
+            require(!sameWideMenuCenter(courseShrinking,courseEnd),"Original course confirmation did not animate");
             if(!output.empty()) {
                 saveBitmap(output/"course-strip-wide.bmp",courseSettled,wideWidth,wideHeight);
                 saveBitmap(output/"course-scroll-wide.bmp",courseMiddle,wideWidth,wideHeight);
@@ -591,9 +646,9 @@ int main(int argc,char**argv) {
             }
             menu.advance(13./60.);menu.stage=FrontendStage::Mode;menu.gameMode=original::OriginalGameMode::TimeAttack;
             menu.advance(.5);const auto modeSettled=menu.paint(wideWidth,wideHeight);
-            menu.advance(2);require(modeSettled==menu.paint(wideWidth,wideHeight),"Settled mode screen must remain cached");
+            menu.advance(2);require(sameWideMenuCenter(modeSettled,menu.paint(wideWidth,wideHeight)),"Settled mode screen must remain cached");
             menu.confirm();menu.advance(30./60.);const auto modeConfirm=menu.paint(wideWidth,wideHeight);
-            require(modeConfirm!=modeSettled,"Original mode confirmation did not animate");
+            require(!sameWideMenuCenter(modeConfirm,modeSettled),"Original mode confirmation did not animate");
             if(!output.empty()){
                 saveBitmap(output/"mode-wide.bmp",modeSettled,wideWidth,wideHeight);
                 saveBitmap(output/"mode-confirm-wide.bmp",modeConfirm,wideWidth,wideHeight);

@@ -8,7 +8,7 @@ namespace Idas3.Multiplayer
         public string Code, Name, HostName;
         public int Members, Capacity = 2;
         public ulong Order;
-        public bool QuickMatch;
+        public bool QuickMatch, Private;
     }
 
     // All events and methods run on Unity's main thread. Implementations must
@@ -53,6 +53,12 @@ namespace Idas3.Multiplayer
     public interface IIdas3RegionalMatchmakingTransport
     {
         void BrowseQuickMatch(int distance);
+    }
+
+    public interface IIdas3PrivateRoomTransport
+    {
+        bool PrivateRoom { get; }
+        void HostPrivate(string roomName);
     }
 
     // Matchmaking services can be offline while an existing peer route works.
