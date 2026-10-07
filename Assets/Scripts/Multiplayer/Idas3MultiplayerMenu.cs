@@ -324,9 +324,11 @@ namespace Idas3.Multiplayer
                 if(!IsOpen){
                     if(RaceHudActive||session.IsRacing||!session.InLobby&&!session.IsQuickMatching)return;
                     float scale=Mathf.Clamp(Screen.height/900f,.75f,1.25f);
-                    GUI.matrix=Matrix4x4.TRS(new Vector3(Screen.width-278*scale,18*scale,0),Quaternion.identity,new Vector3(scale,scale,1));
+                    // Android's top-right corner holds the touch MENU/VIEW buttons.
+                    bool phone=Idas3PlatformPaths.IsAndroid;
+                    GUI.matrix=Matrix4x4.TRS(new Vector3(phone?Screen.width*.5f-129*scale:Screen.width-278*scale,18*scale,0),Quaternion.identity,new Vector3(scale,scale,1));
                     string state=session.IsQuickMatching?" / SEARCHING":session.InLobby?(session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":" / CONNECTED"):"";
-                    if(ActionButton(new Rect(0,0,258,38),"F1  ONLINE BATTLE"+state))SetOpen(true);
+                    if(ActionButton(new Rect(0,0,258,38),(phone?"ONLINE BATTLE":"F1  ONLINE BATTLE")+state))SetOpen(true);
                     if(session.HasCourseDraw){Fill(new Rect(0,38,258,29),Panel);Text(new Rect(10,43,238,22),"RACE COURSE / "+Track(session.Course),small);}
                     return;
                 }
@@ -363,16 +365,22 @@ namespace Idas3.Multiplayer
             if(ActionButton(new Rect(x,y+58,232,47),"HOST A BATTLE",session.Available&&idle))session.HostRoom();
             if(ActionButton(new Rect(x,y+116,232,47),steam?"JOIN WITH CODE":"JOIN WITH ADDRESS",idle)){joinEntry=true;controllerFocus.Reset();}
             if(ActionButton(new Rect(x,y+174,232,47),"BACK TO GAME"))SetOpen(false);
-            if(ActionButton(new Rect(x,438,112,33),"STEAM",idle,steam))session.SelectTransport(0);
-            if(ActionButton(new Rect(x+120,438,112,33),"LAN DIRECT",idle,!steam))session.SelectTransport(1);
+            if(Idas3PlatformPaths.IsAndroid)Text(new Rect(x,438,232,33),"SAME WI-FI OR HOTSPOT",small);
+            else{
+                if(ActionButton(new Rect(x,438,112,33),"STEAM",idle,steam))session.SelectTransport(0);
+                if(ActionButton(new Rect(x+120,438,112,33),"LAN DIRECT",idle,!steam))session.SelectTransport(1);
+            }
             if(steam){
                 Section(new Rect(280,190,594,286),"OPEN ROOMS");
                 if(ActionButton(new Rect(736,201,120,28),session.Available?"REFRESH":"RETRY STEAM",idle))session.RefreshRooms();
                 RoomsList(new Rect(299,246,552,198));
             }else{
-                Section(new Rect(280,190,594,286),"DIRECT CONNECTION");
-                Text(new Rect(300,255,530,70),"Host a LAN room or enter the host's address.",wrapped);
-                Text(new Rect(300,325,530,50),"Both drivers must be reachable on the same network.",wrapped);
+                // Hosts on the same network announce themselves; the address
+                // entry stays available for networks that block broadcasts.
+                Section(new Rect(280,190,594,286),"ROOMS ON THIS NETWORK");
+                if(ActionButton(new Rect(736,201,120,28),"REFRESH",idle))session.RefreshRooms();
+                RoomsList(new Rect(299,246,552,198));
+                if(session.Rooms==null||session.Rooms.Count==0)Text(new Rect(300,400,530,50),"Both drivers must be on the same Wi-Fi or hotspot. If no room appears, use JOIN WITH ADDRESS.",wrapped);
             }
         }
         internal static float ScrollThumbHeight(float track,float viewport,float content)=>Mathf.Min(track,Mathf.Max(24,track*viewport/Mathf.Max(viewport,content)));

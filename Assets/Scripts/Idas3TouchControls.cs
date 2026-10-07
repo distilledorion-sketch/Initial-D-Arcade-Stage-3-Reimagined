@@ -638,6 +638,7 @@ public sealed class Idas3TouchControls : MonoBehaviour
         }
         checks+=Idas3GameOptions.RunMobileDisplaySelfTests();
         checks+=Idas3PauseMenu.RunMobileLayoutSelfTests();
+        checks+=Idas3.Multiplayer.Idas3TcpTransport.RunLanSelfTests();
         return checks;
     }
 }

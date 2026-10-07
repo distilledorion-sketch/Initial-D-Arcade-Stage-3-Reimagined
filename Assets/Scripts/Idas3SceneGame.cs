@@ -239,7 +239,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
             gameOptions.Initialize(saves);
             controlBindings = new Idas3ControlBindings();
             controlBindings.Initialize(saves);
-            if (Idas3PlatformPaths.IsAndroid) touchControls = gameObject.AddComponent<Idas3TouchControls>();
+            if (Idas3PlatformPaths.IsAndroid)
+            {
+                touchControls = gameObject.AddComponent<Idas3TouchControls>();
+                // Tilt driving and online lobbies can go a long time without a
+                // touch; a sleeping screen suspends the app and drops the race.
+                Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            }
             multiplayerMenu.ManagedControlInput = true;
             pauseMenu = gameObject.AddComponent<Idas3PauseMenu>();
             pauseMenu.Initialize(gameOptions);
