@@ -15,7 +15,7 @@ public sealed class Idas3CustomRaceMusic : MonoBehaviour
 {
     internal const int AddId=-100,FirstId=1000;
     public const string FolderName="Custom Music";
-    public const string ReadmeText="CUSTOM MUSIC\n\nPlace MP3, OGG or WAV files in this folder, then open Sound Room > Custom music.\nYou can also use ADD MUSIC in the game. DELETE removes the song from this library and folder; files imported from elsewhere are left untouched.\n\nUp to 64 songs. Maximum 100 MB per file, 10 minutes, mono/stereo at up to 48 kHz.\nMusic stays on this PC and is not sent to other players.\n";
+    public const string ReadmeText="CUSTOM MUSIC\n\nPlace MP3, OGG or WAV files in this folder, then open Sound Room > Custom music.\nYou can also use ADD MUSIC in the game. DELETE removes the song from this library and folder; files imported from elsewhere are left untouched.\n\nUp to 64 songs. Maximum 100 MB per file, 10 minutes, mono/stereo at up to 48 kHz.\nMusic stays on this device and is not sent to other players.\n";
     const int MaxSamples=32*1024*1024;
     [Serializable] internal sealed class Song {public string file,title,sourceFile,sourceHash;public int rate,channels,samples;public long sourceBytes,sourceModifiedUtcTicks;}
     [Serializable] sealed class Library {public string selected,selectedPackaged;public List<Song> songs=new List<Song>();}
@@ -29,7 +29,7 @@ public sealed class Idas3CustomRaceMusic : MonoBehaviour
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneSetCustomRaceMusicLoop([In] short[] samples,int count,int rate,int channels,int context,int loopStart,int loopEnd);
     internal void Initialize(string saveRoot,Idas3RaceMusicMenu view,Idas3RaceMusicCatalog original,string musicFolder=null){
         folder=Path.Combine(saveRoot,"custom-music");menu=view;catalog=original;
-        FolderPath=Path.GetFullPath(musicFolder??Path.Combine(Path.GetDirectoryName(Application.dataPath),FolderName));
+        FolderPath=Path.GetFullPath(musicFolder??Idas3PlatformPaths.CustomMusicRoot);
         try{
             Directory.CreateDirectory(folder);string path=Path.Combine(folder,"library.json");
             if(File.Exists(path)&&new FileInfo(path).Length<128*1024)library=JsonUtility.FromJson<Library>(File.ReadAllText(path))??new Library();
@@ -180,7 +180,15 @@ public sealed class Idas3CustomRaceMusic : MonoBehaviour
             }
         }finally{if(clip!=null)Destroy(clip);SetBusy(false);completed?.Invoke(success);}
     }
-    internal void AddMusic(){if(!Busy)StartCoroutine(PickAndImport());}
+    internal void AddMusic(){
+        if(Busy)return;
+        if(Idas3PlatformPaths.IsAndroid){
+            menu.SetNotice("Copy MP3, OGG or WAV files into the app's Custom Music folder, then refresh.");
+            RefreshFolder();
+            return;
+        }
+        StartCoroutine(PickAndImport());
+    }
     IEnumerator PickAndImport(){
         SetBusy(true);menu.SetNotice("Choose an MP3, OGG or WAV file…");
         string path=null;Exception error=null;int complete=0;

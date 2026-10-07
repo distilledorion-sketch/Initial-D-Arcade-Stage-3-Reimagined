@@ -16,6 +16,9 @@
 /Native/bin*/
 /Native/userdata/
 /Native/verification/
+/Assets/Plugins/Android/arm64-v8a/
+/Assets/StreamingAssets/rom/
+/Assets/StreamingAssets/IDAS3/
 *.csproj
 *.sln
 *.slnx

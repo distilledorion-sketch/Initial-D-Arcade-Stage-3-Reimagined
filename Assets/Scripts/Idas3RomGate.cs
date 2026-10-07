@@ -1,22 +1,25 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Networking;
 
 [DefaultExecutionOrder(-10000)]
 public sealed class Idas3RomGate : MonoBehaviour
 {
     public static bool Verified { get; private set; }
     internal static Idas3RomGate Instance { get; private set; }
-    internal bool Checking => validation != null;
+    internal bool Checking => validation != null || preparingBundledRom;
     internal string Message => message;
     internal string RomFolder => Path.Combine(gameRoot, "rom");
     private string gameRoot, message = "Checking GDS-0033…";
     private Task<Idas3RomValidation.Result> validation;
     private CancellationTokenSource cancellation;
     private volatile float progress;
+    private bool bundledRomPrepared, preparingBundledRom;
     private Camera background;
     private int selected;
     private GUIStyle titleStyle, textStyle, pathStyle, buttonStyle;
@@ -42,7 +45,7 @@ public sealed class Idas3RomGate : MonoBehaviour
         var go = new GameObject("GDS-0033 startup check");
         DontDestroyOnLoad(go);
         Instance = go.AddComponent<Idas3RomGate>();
-        Instance.gameRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        Instance.gameRoot = Idas3PlatformPaths.GameRoot;
         Instance.background = go.AddComponent<Camera>();
         Instance.background.clearFlags = CameraClearFlags.SolidColor;
         Instance.background.backgroundColor = Color.black;
@@ -57,6 +60,11 @@ public sealed class Idas3RomGate : MonoBehaviour
     internal void CheckAgain()
     {
         if (Verified || Checking) return;
+        if (Idas3PlatformPaths.IsAndroid && !bundledRomPrepared)
+        {
+            if (!preparingBundledRom) StartCoroutine(PrepareBundledRom());
+            return;
+        }
         try
         {
             Directory.CreateDirectory(RomFolder);
@@ -78,6 +86,79 @@ public sealed class Idas3RomGate : MonoBehaviour
         {
             message = "Could not access the rom folder. Check the game folder permissions.";
             Debug.LogWarning("GDS-0033 startup check: " + error.Message);
+        }
+    }
+
+    private IEnumerator PrepareBundledRom()
+    {
+        preparingBundledRom = true;
+        progress = 0;
+        message = "Preparing bundled GDS-0033…";
+        var preparation = CopyBundledRom();
+        try
+        {
+            // C# forbids yielding inside a try block with a catch clause. Drive
+            // the copy iterator here so IO/request failures can still fall back
+            // to the normal ROM validator and manual import screen.
+            while (true)
+            {
+                bool more;
+                object current;
+                try { more = preparation.MoveNext(); current = more ? preparation.Current : null; }
+                catch (Exception error)
+                {
+                    Debug.LogWarning("Bundled Android ROM was not copied: " + error.Message);
+                    break;
+                }
+                if (!more) break;
+                yield return current;
+            }
+        }
+        finally
+        {
+            try { (preparation as IDisposable)?.Dispose(); }
+            finally { preparingBundledRom = false; bundledRomPrepared = true; }
+        }
+        CheckAgain();
+    }
+
+    private IEnumerator CopyBundledRom()
+    {
+        string source = Application.streamingAssetsPath.TrimEnd('/') + "/rom/gds-0033.chd";
+        string folder = RomFolder;
+        string destination = Path.Combine(folder, "gds-0033.chd");
+        string temporary = destination + ".bundled-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            Directory.CreateDirectory(folder);
+            // Never delete or overwrite a ROM the user has already imported.
+            // Idas3RomValidation remains the authority, including SHA-256.
+            if (!File.Exists(destination))
+            {
+                using (var request = UnityWebRequest.Get(source))
+                {
+                    request.downloadHandler = new DownloadHandlerFile(temporary, false) { removeFileOnAbort = true };
+                    request.timeout = 300;
+                    var operation = request.SendWebRequest();
+                    while (!operation.isDone)
+                    {
+                        progress = Mathf.Clamp01(request.downloadProgress);
+                        yield return null;
+                    }
+                    if (request.result == UnityWebRequest.Result.Success && File.Exists(temporary) &&
+                        new FileInfo(temporary).Length == Idas3RomValidation.ChdBytes)
+                    {
+                        // File.Move also refuses to overwrite a concurrent import.
+                        File.Move(temporary, destination);
+                    }
+                    else if (request.result != UnityWebRequest.Result.Success)
+                        Debug.LogWarning("Bundled Android ROM could not be read: " + request.error);
+                }
+            }
+        }
+        finally
+        {
+            try { if (File.Exists(temporary)) File.Delete(temporary); } catch (Exception) { }
         }
     }
 
@@ -110,9 +191,51 @@ public sealed class Idas3RomGate : MonoBehaviour
     private void Activate(int action)
     {
         if (action == 0) CheckAgain();
-        else if (action == 1) Application.OpenURL(new Uri(RomFolder + Path.DirectorySeparatorChar).AbsoluteUri);
+        else if (action == 1)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            using (var picker = new AndroidJavaClass("com.idas3.unity.Idas3Activity"))
+                picker.CallStatic("openRomPicker", gameObject.name);
+#else
+            Application.OpenURL(new Uri(RomFolder + Path.DirectorySeparatorChar).AbsoluteUri);
+#endif
+        }
         else Quit();
     }
+
+    // Called by the Android activity after the user selects one CHD or the
+    // complete CUE/BIN set. Selection names are normalized before copying and
+    // the existing validator remains the authority for the final check.
+    public void OnAndroidRomUris(string payload)
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        StartCoroutine(ImportAndroidUris(payload));
+#endif
+    }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private System.Collections.IEnumerator ImportAndroidUris(string payload)
+    {
+        string folder = RomFolder;
+        Directory.CreateDirectory(folder);
+        bool copied = false;
+        foreach (string row in (payload ?? "").Split(new[]{'\n'}, StringSplitOptions.RemoveEmptyEntries))
+        {
+            string[] fields = row.Split(new[]{'\t'}, 2);
+            if (fields.Length != 2) continue;
+            string name = Path.GetFileName(fields[1]).ToLowerInvariant();
+            string destinationName = null;
+            if (name == "gds-0033.chd" || name == "gds-0033.cue" || name == "gds-0033-track1.bin" ||
+                name == "gds-0033-track2.bin" || name == "gds-0033-track3.bin") destinationName = name;
+            if (destinationName == null) continue;
+            using (var bridge = new AndroidJavaClass("com.idas3.unity.Idas3Activity"))
+                copied |= bridge.CallStatic<bool>("copyUriToFile", fields[0], Path.Combine(folder, destinationName));
+        }
+        if (!copied) { message = "No supported GDS-0033 file was selected."; yield break; }
+        CheckAgain();
+        yield break;
+    }
+#endif
 
     private static void Quit()
     {
@@ -168,7 +291,7 @@ public sealed class Idas3RomGate : MonoBehaviour
         }
         else
         {
-            string[] labels = { "CHECK AGAIN", "OPEN ROM FOLDER", "QUIT" };
+            string[] labels = { "CHECK AGAIN", Idas3PlatformPaths.IsAndroid ? "IMPORT ROM FILES" : "OPEN ROM FOLDER", "QUIT" };
             for (int i = 0; i < labels.Length; ++i)
             {
                 var rect = new Rect(198 + i * 295, 445, 280, 56);

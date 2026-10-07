@@ -1,4 +1,4 @@
-param([ValidateSet('Open','Build')][string]$Action = 'Open', [string]$UnityPath)
+param([ValidateSet('Open','Build','BuildAndroid')][string]$Action = 'Open', [string]$UnityPath)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $UnityPath) { $UnityPath = $env:IDAS3_UNITY_EDITOR }
@@ -22,9 +22,15 @@ if (-not $UnityPath -or -not (Test-Path -LiteralPath $UnityPath)) {
 }
 $logsRoot = Join-Path $projectRoot 'Logs'
 New-Item -ItemType Directory -Path $logsRoot -Force | Out-Null
-$editorArgs = @('-projectPath', ('"' + $projectRoot + '"'), '-force-d3d11', '-logFile', ('"' + (Join-Path $logsRoot ($Action + '.log')) + '"'))
+$editorArgs = @('-projectPath', ('"' + $projectRoot + '"'), '-logFile', ('"' + (Join-Path $logsRoot ($Action + '.log')) + '"'))
 if ($Action -eq 'Build') {
     $editorArgs += @('-batchmode', '-quit', '-buildTarget', 'Win64', '-executeMethod', 'Idas3Build.BuildWindows')
+    $editorArgs = @('-projectPath', ('"' + $projectRoot + '"'), '-force-d3d11', '-logFile', ('"' + (Join-Path $logsRoot ($Action + '.log')) + '"')) + $editorArgs[4..($editorArgs.Length-1)]
+}
+if ($Action -eq 'BuildAndroid') {
+    $editorArgs += @('-batchmode', '-quit', '-buildTarget', 'Android', '-executeMethod', 'Idas3Build.BuildAndroidArm64')
+}
+if ($Action -eq 'Build' -or $Action -eq 'BuildAndroid') {
     $process = Start-Process -FilePath $UnityPath -ArgumentList $editorArgs -WindowStyle Hidden -PassThru
     # Wait for the editor, not its long-lived licensing/package services.
     $process.WaitForExit()

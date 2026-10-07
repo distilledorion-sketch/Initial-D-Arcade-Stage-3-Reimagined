@@ -25,6 +25,43 @@ The force-feedback plugin is also supplied. To rebuild it after configuring the 
 cmake --build Native/build-unity-d --target Idas3WheelFeedback
 ```
 
+### Android ARM64 native plugin (work in progress)
+
+The portable scene ABI can be configured for Android ARM64 with the NDK CMake
+toolchain. Install CMake 3.24 or newer, Ninja, and an Android NDK that contains
+`build/cmake/android.toolchain.cmake`, then run:
+
+```powershell
+.\Tools\Build Native Android.ps1
+```
+
+The script builds only `Idas3Unity` with `IDAS3_PORTABLE_SCENE` and stages
+`libIdas3Unity.so` under `Assets/Plugins/Android/arm64-v8a`. The Android Unity
+player and asset-pack staging are separate steps; the existing Windows build
+scripts do not select this target.
+
+A ROM is never required to build. Without one, the APK asks the player to
+import their own GDS-0033 (CHD, or the CUE plus three BIN files) through the
+Android file picker on first launch and runs the same SHA-256 validation as
+Windows. For a private local test only, a verified `gds-0033.chd` placed under
+`Assets/StreamingAssets/rom/` is copied into the app-private ROM directory on
+first launch instead. That folder is ignored by Git and must not be included in
+public source, CI or release archives.
+
+After installing Unity 6000.6 with Android Build Support (verified with
+6000.6.4f1), run `Build Android.cmd`. The editor method selects ARM64, IL2CPP
+and Vulkan and requires the Android native plugin plus the staged
+`IDAS3/data.manifest.json`. To include the six imported course packs in the
+same local staging tree, run `Tools\Stage Android Assets.ps1` after
+`Stage-GameData.ps1`; it extends the manifest with `RuntimeAssets` entries and
+preserves their hashes. `Tools\Verify Android APK.py <apk>` re-hashes every
+packaged runtime file and checks 16 KB ELF alignment of the native libraries.
+
+On Android the game shows on-screen controls (steering wheel or tilt
+steering, pedals, gears, menu and story Skip buttons). Options replaces the
+desktop-only settings with a TOUCH page, a Bluetooth CONTROLLER page and a
+render-scale resolution that keeps the phone's aspect ratio.
+
 ## Unity player
 
 Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all six imported courses beside the player.

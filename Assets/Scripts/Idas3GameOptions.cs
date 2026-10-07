@@ -94,6 +94,52 @@ public sealed class Idas3GameOptions
         public ResolutionChoice(int width,int height){this.width=width;this.height=height;}
         public override string ToString()=>width+" × "+height;
     }
+    // Android renders a percentage of the panel's native landscape size: a
+    // fixed 1280×720 / 960×540 would be stretched across a 20:9 phone. There is
+    // no windowed mode, and an uncapped Android target means 30 FPS, not "unlimited".
+    internal static bool MobileDisplay=>Idas3PlatformPaths.IsAndroid;
+    internal static readonly int[] RenderScales={100,85,75,67,50};
+    internal static readonly int[] MobileFrameRates={30,60,90,120};
+    internal static ResolutionChoice NativeDisplay{get{
+        int w=Display.main.systemWidth,h=Display.main.systemHeight;
+        if(w<=0||h<=0){w=Screen.currentResolution.width;h=Screen.currentResolution.height;}
+        return new ResolutionChoice(Math.Max(w,h),Math.Min(w,h));
+    }}
+    internal static ResolutionChoice Scaled(ResolutionChoice native,int percent)=>
+        new ResolutionChoice(Math.Max(2,native.width*percent/200*2),Math.Max(2,native.height*percent/200*2));
+    internal static int RenderScale(ResolutionChoice native,int width){
+        int best=RenderScales[0];
+        foreach(int percent in RenderScales)if(Math.Abs(Scaled(native,percent).width-width)<Math.Abs(Scaled(native,best).width-width))best=percent;
+        return best;
+    }
+    internal static Values SnapMobile(Values value,ResolutionChoice native){
+        var size=Scaled(native,RenderScale(native,value.width));
+        value.width=size.width;value.height=size.height;value.displayMode=1;
+        int fps=MobileFrameRates[0];
+        foreach(int rate in MobileFrameRates)if(Math.Abs(rate-value.frameRateLimit)<Math.Abs(fps-value.frameRateLimit))fps=rate;
+        value.frameRateLimit=value.frameRateLimit==0?60:fps;
+        return value;
+    }
+    private static ResolutionChoice PresetResolution(int preset)=>MobileDisplay?Scaled(NativeDisplay,preset==1?75:50):
+        preset==1?new ResolutionChoice(1280,720):new ResolutionChoice(960,540);
+    internal static int RunMobileDisplaySelfTests(){
+        int checks=0;void Check(bool ok,string why){if(!ok)throw new Exception("Mobile display: "+why);++checks;}
+        foreach(var native in new[]{new ResolutionChoice(2400,1080),new ResolutionChoice(2670,1200),new ResolutionChoice(1600,720),new ResolutionChoice(3200,1440)}){
+            double aspect=(double)native.width/native.height;
+            foreach(int percent in RenderScales){
+                var size=Scaled(native,percent);
+                Check(size.width%2==0&&size.height%2==0,"even render size");
+                Check(Math.Abs((double)size.width/size.height-aspect)<.01,"render scale keeps the phone's aspect ratio");
+                Check(size.width>=640&&size.height>=360,"render scale survives option normalization");
+                Check(RenderScale(native,size.width)==percent,"render scale round-trips");
+            }
+            var legacy=SnapMobile(new Values{width=1280,height=720,displayMode=0,frameRateLimit=0},native);
+            Check(Math.Abs((double)legacy.width/legacy.height-aspect)<.01&&legacy.displayMode==1,"old 16:9 save is snapped, not stretched");
+            Check(legacy.frameRateLimit==60,"uncapped becomes 60, not Android's 30 FPS default");
+            Check(SnapMobile(new Values{width=native.width,height=native.height,frameRateLimit=144},native).frameRateLimit==120,"frame rate snaps to 30/60/90/120");
+        }
+        return checks;
+    }
     public interface IPlatform
     {
         int Width {get;}
@@ -113,6 +159,7 @@ public sealed class Idas3GameOptions
         public ResolutionChoice[] Resolutions {
             get{
                 var choices=new List<ResolutionChoice>();
+                if(MobileDisplay){var native=NativeDisplay;foreach(int percent in RenderScales)choices.Insert(0,Scaled(native,percent));return choices.ToArray();}
                 Action<int,int> add=(w,h)=>{
                     if(w<640||h<360)return;
                     if(!choices.Exists(item=>item.width==w&&item.height==h))choices.Add(new ResolutionChoice(w,h));
@@ -149,6 +196,7 @@ public sealed class Idas3GameOptions
     public ResolutionChoice[] AvailableResolutions=>platform.Resolutions;
     public Idas3GameOptions(IPlatform environment=null){platform=environment??new UnityPlatform();}
     public Values Defaults(){
+        if(MobileDisplay){var native=NativeDisplay;return new Values{width=native.width,height=native.height,displayMode=1};}
         return new Values{width=Math.Max(640,platform.Width),height=Math.Max(360,platform.Height),
             displayMode=Math.Max(0,Math.Min(2,platform.DisplayMode))};
     }
@@ -183,6 +231,7 @@ public sealed class Idas3GameOptions
             current.width=Math.Max(640,Math.Min(8192,platform.Width));
             current.height=Math.Max(360,Math.Min(8192,platform.Height));
             current.displayMode=Math.Max(0,Math.Min(2,platform.DisplayMode));
+            if(MobileDisplay)SnapMobile(current,NativeDisplay);
         }
         draft=current.Clone();
     }
@@ -194,13 +243,14 @@ public sealed class Idas3GameOptions
         if(preset<0||preset>2)throw new ArgumentOutOfRangeException(nameof(preset));
         draft.rainDetail=preset==0?0:1;draft.importedSceneryDetail=preset;
         draft.antiAliasing=preset==0?4:preset==1?2:0;
-        if(preset!=0){draft.width=preset==1?1280:960;draft.height=preset==1?720:540;draft.vSync=false;draft.frameRateLimit=60;}
+        if(preset!=0){var size=PresetResolution(preset);draft.width=size.width;draft.height=size.height;draft.vSync=false;draft.frameRateLimit=60;}
     }
     public static int PerformancePreset(Values v){
         if(v.rainDetail==0&&v.importedSceneryDetail==0&&v.antiAliasing==4)return 0;
         if(v.vSync||v.frameRateLimit!=60)return -1;
-        if(v.rainDetail==1&&v.importedSceneryDetail==1&&v.antiAliasing==2&&v.width==1280&&v.height==720)return 1;
-        if(v.rainDetail==1&&v.importedSceneryDetail==2&&v.antiAliasing==0&&v.width==960&&v.height==540)return 2;
+        var balanced=PresetResolution(1);var low=PresetResolution(2);
+        if(v.rainDetail==1&&v.importedSceneryDetail==1&&v.antiAliasing==2&&v.width==balanced.width&&v.height==balanced.height)return 1;
+        if(v.rainDetail==1&&v.importedSceneryDetail==2&&v.antiAliasing==0&&v.width==low.width&&v.height==low.height)return 2;
         return -1;
     }
     public bool ApplyDraft(){
@@ -278,6 +328,7 @@ public sealed class Idas3GameOptions
         value.height=Math.Max(360,Math.Min(8192,value.height));
         if(value.antiAliasing!=0&&value.antiAliasing!=2&&value.antiAliasing!=4&&value.antiAliasing!=8)value.antiAliasing=4;
         if(value.frameRateLimit!=0)value.frameRateLimit=Math.Max(30,Math.Min(360,value.frameRateLimit));
+        if(MobileDisplay)SnapMobile(value,NativeDisplay);
         if(value.defaultCamera<0||value.defaultCamera>2)value.defaultCamera=0;
         value.aiDifficulty=Math.Max(0,Math.Min(2,value.aiDifficulty));
         if(!Idas3ArcadeMeterCatalog.IsValidStyle(value.hudMeterStyle))value.hudMeterStyle=0;

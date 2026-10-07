@@ -219,7 +219,7 @@ namespace Idas3.Multiplayer
         public Idas3CarSnapshot LocalSnapshot { get; private set; }
         public Idas3CarSnapshot RemoteSnapshot { get; private set; }
         public IReadOnlyList<Idas3Room> Rooms => transport?.Rooms ?? emptyRooms;
-        public bool EnnaAvailable { get; } = File.Exists(Path.Combine(Application.streamingAssetsPath,"ENNA/menu.idastex"));
+        public bool EnnaAvailable { get; } = File.Exists(Path.Combine(Idas3PlatformPaths.RuntimePackPath("ENNA"),"menu.idastex"));
         public int AvailableCourseCount { get {int count=0;for(int i=0;i<Idas3CourseCatalog.Count;++i)if(Idas3CourseCatalog.Available(i))++count;return count;} }
         public IReadOnlyList<Idas3PlayerInfo> Players { get { UpdatePlayers(); return players; } }
         public static readonly string[] CarNames = {
@@ -364,14 +364,14 @@ namespace Idas3.Multiplayer
         string Compatibility()
         {
             if (compatibility!=null) return compatibility;
-            string path=Path.Combine(Application.dataPath,"Plugins/x86_64/Idas3Unity.dll");
-            string complete;
-            using(var hash=SHA256.Create()) {
-                using(var file=File.OpenRead(path)) complete="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
-                using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) complete+="-"+Convert.ToBase64String(hash.ComputeHash(file));
-            }
+            // Platform binaries are intentionally excluded: an ARM64 Android
+            // .so and an x86_64 Windows DLL are different files but implement
+            // the same wire protocol and simulation contract. Bump this
+            // canonical identity whenever the authoritative protocol or rules
+            // change; platform-specific packaging cannot block cross-play.
+            string complete="idas3-mp10-cross-platform-v1-"+Application.version;
             for(int course=11;course<Idas3CourseCatalog.Count;++course)
-                complete+="-"+course+"-"+SpecialStageFingerprint(Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12&&course<=14,course==15);
+                complete+="-"+course+"-"+SpecialStageFingerprint(Idas3PlatformPaths.RuntimePackPath(Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12&&course<=14,course==15);
             complete+=ExperimentalAuthority?"-authority1":"-pose1";
             // Never cache an incomplete identity when reading a course fails.
             return compatibility=complete;

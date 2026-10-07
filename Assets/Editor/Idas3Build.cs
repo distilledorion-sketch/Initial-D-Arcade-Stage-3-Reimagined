@@ -147,6 +147,49 @@ public static class Idas3Build
         BuildUnityScene();
     }
 
+    [MenuItem("Initial D/Build Android ARM64 APK")]
+    public static void BuildAndroidArm64()
+    {
+        string output=Environment.GetEnvironmentVariable("IDAS3_ANDROID_OUTPUT");
+        if(string.IsNullOrWhiteSpace(output))output="Builds/Android/InitialDUnity.apk";
+        const string scenePath="Assets/Scenes/InitialDUnityScene.unity";
+        if(!File.Exists("Assets/Plugins/Android/arm64-v8a/libIdas3Unity.so"))
+            throw new FileNotFoundException("Run Tools\\Build Native Android.ps1 before building the APK.");
+        if(!File.Exists("Assets/StreamingAssets/IDAS3/data.manifest.json"))
+            throw new FileNotFoundException("Stage Native/data into Assets\\StreamingAssets\\IDAS3 before building the APK.");
+        // The ROM is never required or committed. Without a private local copy
+        // the APK asks the player to import their own GDS-0033 on first launch.
+        if(!File.Exists("Assets/StreamingAssets/rom/gds-0033.chd"))
+            Debug.Log("No bundled ROM: the APK will ask the player to import GDS-0033 on first launch.");
+        Configure();
+        EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android,BuildTarget.Android);
+        PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android,ScriptingImplementation.IL2CPP);
+        PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android,false);
+        PlayerSettings.SetGraphicsAPIs(BuildTarget.Android,new[]{GraphicsDeviceType.Vulkan});
+        // Idas3Activity extends UnityPlayerActivity, not UnityPlayerGameActivity.
+        PlayerSettings.Android.applicationEntry=AndroidApplicationEntry.Activity;
+        PlayerSettings.Android.targetArchitectures=AndroidArchitecture.ARM64;
+        PlayerSettings.Android.minSdkVersion=AndroidSdkVersions.AndroidApiLevel26;
+        PlayerSettings.Android.targetSdkVersion=AndroidSdkVersions.AndroidApiLevel36;
+        PlayerSettings.defaultInterfaceOrientation=UIOrientation.LandscapeLeft;
+        EditorUserBuildSettings.buildAppBundle=false;
+        EditorUserBuildSettings.exportAsGoogleAndroidProject=false;
+        PlayerSettings.Android.splitApplicationBinary=false;
+        var androidPlugin=AssetImporter.GetAtPath("Assets/Plugins/Android/arm64-v8a/libIdas3Unity.so") as PluginImporter;
+        if(androidPlugin==null)throw new InvalidOperationException("Android native plugin was not imported.");
+        androidPlugin.SetCompatibleWithAnyPlatform(false);
+        androidPlugin.SetCompatibleWithEditor(false);
+        androidPlugin.SetCompatibleWithPlatform(BuildTarget.Android,true);
+        androidPlugin.SetPlatformData(BuildTarget.Android,"CPU","ARM64");
+        androidPlugin.SaveAndReimport();
+        AssetDatabase.SaveAssets();
+        Directory.CreateDirectory(Path.GetDirectoryName(output));
+        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{scenePath},locationPathName=output,
+            target=BuildTarget.Android,options=BuildOptions.CompressWithLz4HC});
+        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Android ARM64 build failed: "+report.summary.result);
+        Debug.Log("Android APK built: "+Path.GetFullPath(output)+" ("+new FileInfo(output).Length+" bytes)");
+    }
+
     public static void RebuildWindowsPlayer(){
         const string output="Builds/Current/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete Windows package first.",output);
@@ -327,4 +370,3 @@ public static class Idas3Build
         Debug.Log("Initial D Unity player and all game assets: " + output);
     }
 }
-

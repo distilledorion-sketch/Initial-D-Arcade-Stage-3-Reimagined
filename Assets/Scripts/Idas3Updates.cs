@@ -27,7 +27,7 @@ public sealed class Idas3Updates : MonoBehaviour
     public string ReleaseUrl {get;private set;}
     public bool CanCheck=>!Busy&&Time.realtimeSinceStartupAsDouble>=nextCheck;
     public bool CanActivate=>State==CheckState.Available||State==CheckState.Current&&fullUrl!=null||CanCheck;
-    public string ButtonLabel=>Busy?"PLEASE WAIT…":State==CheckState.Available?"INSTALL UPDATE":State==CheckState.Current?"UPDATES / REPAIR":"CHECK FOR UPDATES";
+    public string ButtonLabel=>Idas3PlatformPaths.IsAndroid?"APK UPDATES":Busy?"PLEASE WAIT…":State==CheckState.Available?"INSTALL UPDATE":State==CheckState.Current?"UPDATES / REPAIR":"CHECK FOR UPDATES";
     public bool WindowVisible {get;private set;}
     private bool Busy=>State==CheckState.Checking||State==CheckState.Downloading||State==CheckState.Preparing;
     private double nextCheck;
@@ -56,6 +56,7 @@ public sealed class Idas3Updates : MonoBehaviour
     private static void Bootstrap(){
         Instance=null;StartupFinished=true;
         if(Application.isEditor)return;
+        if(Idas3PlatformPaths.IsAndroid)return;
         bool diagnostic=false;
         foreach(string arg in Environment.GetCommandLineArgs())
             if((arg.StartsWith("-idas3-",StringComparison.Ordinal)&&arg!="-idas3-skip-update-once")||arg.StartsWith("-hakone-",StringComparison.Ordinal))diagnostic=true;
@@ -84,9 +85,11 @@ public sealed class Idas3Updates : MonoBehaviour
 
     public void Initialize(bool checkOnStartup=true){
         InstalledVersion=Application.version;
+        if(Idas3PlatformPaths.IsAndroid){State=CheckState.Unavailable;Message="Install a newer APK to update the game.";return;}
         if(checkOnStartup){StartupFinished=false;startupWindow=true;ShowWindow();CheckNow();}
     }
     public void Activate(){
+        if(Idas3PlatformPaths.IsAndroid){Message="APK updates are installed outside the game.";return;}
         if(State==CheckState.Available||State==CheckState.Current&&fullUrl!=null)ShowWindow();
         else if(CanCheck){ShowWindow();CheckNow();}
     }

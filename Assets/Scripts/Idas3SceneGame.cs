@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
@@ -17,6 +18,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
     [SerializeField] private float speedKmh;
     [SerializeField] private float simulationAndSubmissionMs;
     private bool ready, stopping;
+    private bool preparingAndroidData;
+    private string androidAssetRoot;
+    private GUIStyle loadingTitleStyle, loadingBodyStyle;
     private string failure;
     private string failureReport, failureReportPath, failureTitle;
     private Vector2 failureScroll;
@@ -31,6 +35,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3ReplayLibrary replayLibrary;
     private Idas3TimeAttackGhost timeAttackGhost;
     private Idas3ControlBindings controlBindings;
+    private Idas3TouchControls touchControls;
     private Idas3ControllerDevices controllerDevices = new Idas3ControllerDevices();
     private Idas3WheelFeedback wheelFeedback;
     internal Idas3ControllerDevices ControllerDevices => controllerDevices;
@@ -116,7 +121,25 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void Awake(){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();}
     private void InitializeGame()
     {
-        if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished) return;
+        if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished || preparingAndroidData) return;
+        if (Idas3PlatformPaths.IsAndroid && !Idas3AndroidRuntimeData.Ready)
+        {
+            if (!preparingAndroidData)
+            {
+                preparingAndroidData = true;
+                // Without this, the default Unity skybox is the only visible
+                // output while thousands of files are being unpacked.
+                var loadingCamera = GetComponent<Camera>();
+                if (loadingCamera != null)
+                {
+                    loadingCamera.clearFlags = CameraClearFlags.SolidColor;
+                    loadingCamera.backgroundColor = new Color(0.035f, 0.045f, 0.06f);
+                }
+                Application.targetFrameRate = 60;
+                StartCoroutine(PrepareAndroidData());
+            }
+            return;
+        }
         if (Idas3ReplayViewer.Requested) { enabled = false; return; }
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-legacy-host") >= 0) { enabled = false; return; }
         if (instance != null && instance != this) { Destroy(gameObject); return; }
@@ -136,12 +159,17 @@ public sealed class Idas3SceneGame : MonoBehaviour
             string assets = Application.isEditor
                 ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native"))
                 : Path.Combine(Application.streamingAssetsPath, "IDAS3");
+            if (Idas3PlatformPaths.IsAndroid)
+            {
+                assets = androidAssetRoot;
+                Idas3PlatformPaths.RuntimeAssetsRoot = Path.Combine(assets, "data", "RuntimeAssets");
+            }
             string saves = Path.Combine(Application.persistentDataPath, "userdata-unity-scene");
             var hakone=FindAnyObjectByType<Idas8HakoneCourse>();
             var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();
             bool ennaTest=enna!=null&&enna.testBuild;
             bool importedTest=(hakone!=null&&hakone.testBuild)||ennaTest;
-            string pack=Path.Combine(Application.streamingAssetsPath,"HAKONE");
+            string pack=Idas3PlatformPaths.RuntimePackPath("HAKONE");
             bool importedCourse=File.Exists(Path.Combine(pack,"menu.idastex"));
             if(importedTest&&!Application.isEditor)assets=File.ReadAllText(Path.Combine(Application.streamingAssetsPath,"d3-assets.txt")).Trim();
             if(importedTest)saves=Path.Combine(Application.persistentDataPath,"hakone-race-test");
@@ -211,6 +239,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             gameOptions.Initialize(saves);
             controlBindings = new Idas3ControlBindings();
             controlBindings.Initialize(saves);
+            if (Idas3PlatformPaths.IsAndroid) touchControls = gameObject.AddComponent<Idas3TouchControls>();
             multiplayerMenu.ManagedControlInput = true;
             pauseMenu = gameObject.AddComponent<Idas3PauseMenu>();
             pauseMenu.Initialize(gameOptions);
@@ -299,6 +328,15 @@ public sealed class Idas3SceneGame : MonoBehaviour
         catch (Exception error) { Fail(error.ToString()); }
     }
 
+    private IEnumerator PrepareAndroidData()
+    {
+        yield return Idas3AndroidRuntimeData.Prepare(Path.Combine(Application.streamingAssetsPath, "IDAS3"));
+        preparingAndroidData = false;
+        if (!Idas3AndroidRuntimeData.Ready) { Fail(Idas3AndroidRuntimeData.Error ?? "Android game data could not be unpacked."); yield break; }
+        androidAssetRoot = Idas3AndroidRuntimeData.Root;
+        InitializeGame();
+    }
+
     private static readonly KeyCode[] keys = {
         KeyCode.Backspace,KeyCode.Return,KeyCode.Escape,KeyCode.Space,
         KeyCode.LeftArrow,KeyCode.UpArrow,KeyCode.RightArrow,KeyCode.DownArrow,
@@ -332,7 +370,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         if(!ready&&!stopping&&failure==null){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();return;}
         if (!ready || stopping || failure != null) return;
-        if(pauseMenu!=null&&pauseMenu.Updates!=null&&pauseMenu.Updates.WindowVisible)return;
+        if(pauseMenu!=null&&pauseMenu.Updates!=null&&pauseMenu.Updates.WindowVisible){touchControls?.ResetInput();return;}
         try
         {
             gameOptions.Tick(Time.realtimeSinceStartupAsDouble);
@@ -343,6 +381,18 @@ public sealed class Idas3SceneGame : MonoBehaviour
             pauseMenu.FullTuneAvailable=pauseMenu.IsOpen&&!multiplayer.InLobby&&!multiplayer.Busy&&!multiplayer.ChallengerPending&&Idas3Native.Idas3SceneCanFullTune()==1;
             ExecutePauseCommands();
             if (stopping) return;
+            if (touchControls != null)
+            {
+                var touchMode = Idas3TouchControls.SelectMode(Status.flags, Status.racePhase,
+                    pauseMenu.BlocksGameInput || multiplayerMenu.BlocksGameInput || raceMusicMenu.BlocksGameInput);
+                bool touchMenu = touchMode != Idas3TouchControls.Mode.Driving;
+                int touchContext = touchMenu ? 100 + Status.frontendStage * 16 +
+                    (pauseMenu.IsOpen ? 1 : 0) + (multiplayerMenu.IsOpen ? 2 : 0) + (raceMusicMenu.IsOpen ? 4 : 0) +
+                    (int)(Status.flags & (32u | 64u | 512u | 1024u | 4096u)) * 1024 : 1;
+                touchControls.Poll(touchMode,
+                    touchContext, Focused && !controlBindings.SuppressInput && !pauseMenu.EditingHud && !challenger.Active,
+                    AttractOptionsAllowed ? "OPTIONS" : touchMenu ? "BACK" : "PAUSE");
+            }
             if (Focused && !pauseMenu.IsOpen && !controlBindings.SuppressInput && Input.GetKeyDown(KeyCode.F11)) ToggleFullscreen();
             bool muteBackground = gameOptions.Current.muteWhenUnfocused && !Focused;
             if (muteBackground != appliedBackgroundMute) ApplyNativeOptions(gameOptions.Current, false);
@@ -370,7 +420,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                     if (keys[i] != KeyCode.F1 && Input.GetKey(keys[i])) frame.SetKey(virtualKeys[i]);
                 // Managed menus hit-test the pointer themselves. Translating
                 // their click to Enter activates the controller selection first.
-                Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0),
+                Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0)&&!Idas3TouchControls.SuppressMouse,
                     !networkRoom&&!pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&
                     !saveMenuOwnsPointer&&!savePointerReleaseBlocked);
                 controllerDevices.TryRead(out physicalPad);
@@ -397,7 +447,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
             else controlBindings.Poll(physicalKey, physicalPad, Time.realtimeSinceStartupAsDouble,
                 diagnosticPad ? null : controllerDevices.Controls, diagnosticPad ? null : controllerDevices.RigSamples);
             bool bindingInputBlocked = controlBindings.SuppressInput || controlBindings.IsCapturing;
-            multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld,
+            if (!bindingInputBlocked && touchControls != null && touchControls.PausePressed && AttractOptionsAllowed)
+                pauseMenu.OpenAttractOptions();
+            multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld || (touchControls?.OnlineHeld ?? false),
+                controlBindings.RawPauseHeld || (touchControls?.PauseHeld ?? false),
                 bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || musicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active);
             if (multiplayerMenu.IsOpen && pauseMenu.IsOpen)
             {
@@ -413,6 +466,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (drivingBindings && !pauseMenu.IsOpen && !multiplayerMenu.BlocksGameInput)
                 controlBindings.ApplyDriving(ref frame);
             else controlBindings.ApplyMenu(ref frame,controllerDevices.ActiveIsGeneric,true);
+            touchControls?.Apply(ref frame, CanOpenPause || pauseMenu.IsOpen || multiplayerMenu.IsOpen || raceMusicMenu.IsOpen);
             if (!Idas3SceneSmoke.PrepareFrame(ref frame)) return;
             if (!Idas3MultiplayerSmoke.PrepareFrame(ref frame)) return;
             if (!Idas3PauseSmoke.PrepareFrame(ref frame)) return;
@@ -776,7 +830,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             attractOptionsHoldSeconds = 0;
             return false;
         }
-        if (controlBindings.ViewChangeHeld)
+        if (controlBindings.ViewChangeHeld || (touchControls?.CameraHeld ?? false))
         {
             if (attractOptionsHoldSeconds == 0) attractViewTapChild = Status.attractChild;
             attractOptionsHoldSeconds += Math.Min(Time.unscaledDeltaTime, .1f);
@@ -918,8 +972,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private bool RouteSaveMenuPointer(Idas3Native.FrameInput frame, bool ownsPointer, bool inputBlocked)
     {
         bool allowed = Focused && !inputBlocked && !pauseMenu.BlocksGameInput && !multiplayerMenu.BlocksGameInput;
-        bool mouseHeld = !diagnosticMode && Input.GetMouseButton(0);
-        if(allowed&&ownsPointer&&!diagnosticMode)
+        bool mouseHeld = !diagnosticMode && !Idas3TouchControls.SuppressMouse && Input.GetMouseButton(0);
+        if(allowed&&ownsPointer&&!diagnosticMode&&!Idas3TouchControls.SuppressMouse)
         {
             var point=Input.mousePosition;
             // A stationary cursor must not override the default No or a
@@ -957,7 +1011,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         // menu is open; treating it as a second edge immediately closes pause.
         bool toggle = pressed(27);
         bool closeHeld = Held(raw, 27) || Held(raw, 13) || (raw.padButtons & 0x3010) != 0 ||
-            (pauseMenu.AttractOptions && controlBindings.ViewChangeHeld) || (!diagnosticMode && Input.GetMouseButton(0));
+            (pauseMenu.AttractOptions && controlBindings.ViewChangeHeld) || (!diagnosticMode && !Idas3TouchControls.SuppressMouse && Input.GetMouseButton(0));
         if (!closeHeld) suppressPauseControls = false;
         if (multiplayerMenu.BlocksGameInput)
         {
@@ -1064,6 +1118,11 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private void OnGUI()
     {
+        if (preparingAndroidData && failure == null)
+        {
+            DrawAndroidLoading();
+            return;
+        }
         if (failure == null) return;
         float width = Mathf.Max(240, Mathf.Min(Screen.width - 32, 1100));
         float height = Mathf.Max(200, Mathf.Min(Screen.height - 32, 650));
@@ -1084,9 +1143,47 @@ public sealed class Idas3SceneGame : MonoBehaviour
             GUIUtility.systemCopyBuffer = failureReport ?? failure;
         GUILayout.EndArea();
     }
+    private void DrawAndroidLoading()
+    {
+        if (loadingTitleStyle == null)
+        {
+            loadingTitleStyle = new GUIStyle(GUI.skin.label) { alignment=TextAnchor.MiddleCenter, wordWrap=true };
+            loadingBodyStyle = new GUIStyle(GUI.skin.label) { alignment=TextAnchor.MiddleCenter, wordWrap=true };
+        }
+        float scale = Mathf.Clamp(Screen.height / 720f, 0.7f, 2f);
+        loadingTitleStyle.fontSize = Mathf.RoundToInt(30 * scale);
+        loadingBodyStyle.fontSize = Mathf.RoundToInt(20 * scale);
+        float width = Mathf.Min(Screen.width - 48, 1000 * scale);
+        float left = (Screen.width - width) * 0.5f;
+        float top = (Screen.height - 260 * scale) * 0.5f;
+        Color previous = GUI.color;
+        try
+        {
+            GUI.color = new Color(0.035f, 0.045f, 0.06f);
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(left, top, width, 52 * scale), "PREPARING GAME DATA", loadingTitleStyle);
+            GUI.Label(new Rect(left, top + 58 * scale, width, 36 * scale), Idas3AndroidRuntimeData.Phase, loadingBodyStyle);
+            var bar = new Rect(left, top + 110 * scale, width, 16 * scale);
+            GUI.color = new Color(0.18f, 0.22f, 0.27f);
+            GUI.DrawTexture(bar, Texture2D.whiteTexture);
+            GUI.color = new Color(0.3f, 0.75f, 1f);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Idas3AndroidRuntimeData.Progress, bar.height), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            string counts = Idas3AndroidRuntimeData.CompletedFiles + " / " + Idas3AndroidRuntimeData.TotalFiles + " files   |   " +
+                (Idas3AndroidRuntimeData.Progress * 100).ToString("F1") + "%";
+            GUI.Label(new Rect(left, top + 138 * scale, width, 36 * scale), counts, loadingBodyStyle);
+            GUI.Label(new Rect(left, top + 181 * scale, width, 58 * scale),
+                "First launch can take several minutes. Keep the game open.\nVerified files are retained if preparation is interrupted.", loadingBodyStyle);
+            if (!string.IsNullOrEmpty(Idas3AndroidRuntimeData.CurrentFile))
+                GUI.Label(new Rect(left, top + 246 * scale, width, 56 * scale), Idas3AndroidRuntimeData.CurrentFile, loadingBodyStyle);
+        }
+        finally { GUI.color = previous; }
+    }
     public void StopNative()
     {
         if (stopping) return;
+        touchControls?.ResetInput();
         stopping = true;
         if(timeAttackGhost!=null)timeAttackGhost.ShowGhost=false;
         raceMusicMenu?.StopPreview();
