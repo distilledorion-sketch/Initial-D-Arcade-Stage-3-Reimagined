@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.46 - October 8, 2026
+
+Includes the completed changes since .45. Update both drivers for online races; .46 is required for new community Time Attack submissions.
+
+- Optimize Gunsai and Odawara scenery and trees, including detail transitions and imported mesh packing. Close scenery and course visibility distances are retained. Measured full-route render time improved on the test PC; gains vary by hardware.
+- Reduce installed game size with lossless native asset compression and compressed Unity resources. The same-content comparison saved approximately 1.88 GB (31%). Download size is only slightly smaller. The updater replaces obsolete loose Unity data without touching personal files.
+- Add Japanese original-game text textures with English fallback. Add a separate custom-menu language setting for English, Japanese and Simplified Chinese, covering the remake's pause/settings, online, music and other custom menus. These settings are independent.
+- Correct replay freecam left/right movement and horizontal mouse look.
+- Add the Online setting to hide advantage distance when an opponent turns their headlights off at night (Hidden by default). The existing darker appearance of unlit opponents is retained.
+- Correct Odawara clockwise/counter-clockwise labels in course selection, results, online menus and the leaderboard website, without changing route IDs or physics.
+- Fix outdated local Gunsai and Odawara Time Attack records surviving the handling update. On first load, unversioned records for these two courses are reset in the shared rankings and each save's personal rankings. The original CSV is preserved beside it as .before-idzero-revision-1.bak. Other courses, tuning, points and saves are preserved; new revision-marked times remain valid. An earlier Odawara-only migration is respected.
+- Give Gunsai/Odawara best-time ghosts their own revision, so old-physics ghosts are not used against the revised courses. Existing ghost files and replay archives are preserved.
+
+The community boards are not reset again in this release. Existing published records are retained.
+
+Fresh installs: download Initial-D-Setup-0.3.95.46.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Existing players can use the in-game updater; patches support .20 through .45. This compression update replaces more files than a typical code-only patch.
+
+A verified original GDS-0033 dump is required and is not included. Personal ROMs, saves, replays and custom music are not included in release archives.
+
 ## 0.3.95-community-replays.45 - October 7, 2026
 
 This update is required for new community Time Attack submissions. Both drivers must update for online races.

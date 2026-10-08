@@ -132,7 +132,7 @@ void OriginalGasstandAttract::load(const std::filesystem::path& root){
     gasstand_=NativeModel::load(gas/"gasstand.idasmesh");gasstandTextures_=NativeTextureBank::load(gas/"textures/textures.idastex");
     etc_=NativeModel::load(etc/"v3sA00etc.idasmesh");etcTextures_=NativeTextureBank::load(etc/"textures/textures.idastex");
     alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
-    if(gasstand_.chunks.size()!=58||gasstandTextures_.size()!=15||alphabet_.size()!=62||etc_.chunks.size()<5)throw std::runtime_error("Original gasstand asset identity mismatch");reset();
+    if(gasstand_.chunks.size()!=58||gasstandTextures_.sourceSize()!=15||alphabet_.size()!=62||etc_.chunks.size()<5)throw std::runtime_error("Original gasstand asset identity mismatch");reset();
     preparedAlphabet_.clear();preparedAlphabet_.reserve(alphabet_.size());
     for(unsigned i=0;i<alphabet_.size();++i){auto glyph=alphabet_.at(i);
         for(auto& color:glyph.argb){if((color&0xffffff)!=0xffffff)throw std::runtime_error("Original alphabet expects white source glyphs");color=(color&0xff000000)|0x010101;}

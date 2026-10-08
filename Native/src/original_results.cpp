@@ -23,7 +23,7 @@ OriginalBattleResults OriginalBattleResults::load(const std::filesystem::path& r
     OriginalBattleResults out;const auto path=root/"data/original_assets/results/result";
     out.model_=NativeModel::load(path/"result.idasmesh");
     out.textures_=NativeTextureBank::load(path/"textures/textures.idastex");
-    if(out.model_.chunks.size()!=43||out.textures_.size()!=10)throw std::runtime_error("Original battle results bank identity mismatch");
+    if(out.model_.chunks.size()!=43||out.textures_.sourceSize()!=10)throw std::runtime_error("Original battle results bank identity mismatch");
     return out;
 }
 std::vector<OriginalHudDraw> OriginalBattleResults::drawList(const OriginalBattleResultsState& s)const{
@@ -121,7 +121,7 @@ OriginalTimeAttackResults OriginalTimeAttackResults::load(const std::filesystem:
     out.mainTextures_=NativeTextureBank::load(directory/"game2d/textures/textures.idastex");
     out.timeAttack_=NativeModel::load(directory/"game2d_ta/game2d_ta.idasmesh");
     out.timeAttackTextures_=NativeTextureBank::load(directory/"game2d_ta/textures/textures.idastex");
-    if(out.main_.chunks.size()!=212||out.mainTextures_.size()!=76||out.timeAttack_.chunks.size()!=24)throw std::runtime_error("Original results bank identity mismatch");
+    if(out.main_.chunks.size()!=212||out.mainTextures_.sourceSize()!=76||out.timeAttack_.chunks.size()!=24)throw std::runtime_error("Original results bank identity mismatch");
     // These authored widgets submit their foreground label before their black
     // backing strip. The arcade resolves that with Z; our 2D compositor uses
     // submission order. Sort once at load, keeping the original artwork intact.

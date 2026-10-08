@@ -61,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.45";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.46";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -151,15 +151,13 @@ public static class Idas3Build
         const string output="Builds/Current/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete Windows package first.",output);
         Configure();
-        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
-            target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
-        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Windows player build failed: "+report.summary.result);
+        BuildPlayer(output,"Assets/Scenes/InitialDUnityScene.unity");
     }
     public static void RebuildWindowsScripts(){
         const string output="Builds/Current/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete Windows package first.",output);
         var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
-            target=BuildTarget.StandaloneWindows64,options=BuildOptions.BuildScriptsOnly});
+            target=BuildTarget.StandaloneWindows64,options=ScriptBuildOptions(output)});
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Windows script build failed: "+report.summary.result);
     }
 
@@ -169,14 +167,14 @@ public static class Idas3Build
         const string output="Builds/MenuPresentationCheck/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete diagnostic package first.",output);
         var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
-            target=BuildTarget.StandaloneWindows64,options=BuildOptions.BuildScriptsOnly});
+            target=BuildTarget.StandaloneWindows64,options=ScriptBuildOptions(output)});
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Diagnostic script build failed: "+report.summary.result);
     }
     public static void RebuildSadamineStagingScripts(){
         const string output="Builds/Staging/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete staged package first.",output);
         var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
-            target=BuildTarget.StandaloneWindows64,options=BuildOptions.BuildScriptsOnly});
+            target=BuildTarget.StandaloneWindows64,options=ScriptBuildOptions(output)});
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Staged script build failed: "+report.summary.result);
     }
     public static void RebuildSadamineStagingPlayer(){
@@ -185,9 +183,7 @@ public static class Idas3Build
         const string output="Builds/Staging/InitialDUnity.exe";
         if(!File.Exists(output))throw new FileNotFoundException("Build the complete staged package first.",output);
         Configure();
-        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
-            target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
-        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Staged player build failed: "+report.summary.result);
+        BuildPlayer(output,"Assets/Scenes/InitialDUnityScene.unity");
     }
     public static void BuildPerformanceStaging(){
         // Existing isolated package supplies the unchanged runtime assets.
@@ -287,6 +283,12 @@ public static class Idas3Build
         }
     }
 
+    private static BuildOptions ScriptBuildOptions(string output)
+    {
+        string archive=Path.Combine(Path.GetDirectoryName(output),Path.GetFileNameWithoutExtension(output)+"_Data/data.unity3d");
+        return BuildOptions.BuildScriptsOnly | (File.Exists(archive)?BuildOptions.CompressWithLz4HC:BuildOptions.None);
+    }
+
     private static void BuildPlayer(string relativeOutput,string scenePath)
     {
         string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
@@ -296,7 +298,7 @@ public static class Idas3Build
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
             scenes = new[] { scenePath }, locationPathName = output,
-            target = BuildTarget.StandaloneWindows64, options = BuildOptions.None
+            target = BuildTarget.StandaloneWindows64, options = BuildOptions.CompressWithLz4HC
         });
         if (report.summary.result != BuildResult.Succeeded)
             throw new InvalidOperationException("Unity build failed: " + report.summary.result);
@@ -317,7 +319,7 @@ public static class Idas3Build
         string destination = Path.Combine(Path.GetDirectoryName(output), Path.GetFileNameWithoutExtension(output)+"_Data/StreamingAssets/IDAS3");
         string script = Path.Combine(project, "Tools/Stage-GameData.ps1");
         var start = new ProcessStartInfo("powershell.exe") {
-            Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\" -DestinationRoot \"" + destination + "\"",
+            Arguments = "-NoProfile -ExecutionPolicy Bypass -File \"" + script + "\" -DestinationRoot \"" + destination + "\" -CompressAssets",
             UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = project,
             RedirectStandardOutput = true, RedirectStandardError = true
         };

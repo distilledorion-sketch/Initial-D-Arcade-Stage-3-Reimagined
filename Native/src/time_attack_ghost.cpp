@@ -1,4 +1,5 @@
 #include "time_attack_ghost.h"
+#include "imported_course_catalog.h"
 #include <bit>
 #include <fstream>
 
@@ -18,7 +19,9 @@ bool valid(const Replay& run,unsigned car){
 }
 }
 std::filesystem::path TimeAttackGhost::path(const std::filesystem::path& profiles,unsigned course,bool reverse,bool wet){
-    return profiles/"ghosts_v1"/("course_"+std::to_string(course)+(reverse?"_reverse":"_forward")+(wet?"_wet":"_dry")+".idghost");
+    const auto revision=localTimeAttackRevision(course);
+    return profiles/"ghosts_v1"/("course_"+std::to_string(course)+(reverse?"_reverse":"_forward")+(wet?"_wet":"_dry")+
+        (revision?"_r"+std::to_string(revision):"")+".idghost");
 }
 bool TimeAttackGhost::load(const std::filesystem::path& path){
     replay=Replay{};car=0;

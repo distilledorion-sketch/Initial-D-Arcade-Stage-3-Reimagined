@@ -3,7 +3,7 @@
 Odawara is a two-lap circuit whose directions take different roads through
 the corner before the line, so IDZero ships a centre path, edge paths and a
 collision mesh per direction. The pack keeps both: `odawara*` for
-counterclockwise and `odawara_reverse*`/`odawara-reverse.rcl` for clockwise. Collision repacking and
+clockwise and `odawara_reverse*`/`odawara-reverse.rcl` for counterclockwise. Collision repacking and
 its coarse-cell repair are shared with Import-IdZeroGunsai.py.
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ _spec.loader.exec_module(gunsai)
 
 SOURCE = "odawara"
 LAPS = 2  # COURSE_DATA.ini NumLaps
-# COURSE_DATA.ini's suffix for the clockwise files, then the pack's path and
+# COURSE_DATA.ini's suffix for the counterclockwise files, then the pack's path and
 # collision names (`<slug>-reverse.rcl` is the loader's existing convention).
 DIRECTIONS = (("", "odawara", "odawara"), ("_b", "odawara_reverse", "odawara-reverse"))
 Point = tuple[float, float, float]
@@ -182,7 +182,7 @@ def export(source: Path, output: Path) -> None:
         variant["blockingClass"] = blocking
         variant["roadSamplesChecked"], variant["dividedRoadSamples"] = verify_road_contact(
             output / name, center, left, right)
-        report["directions"]["clockwise" if suffix else "counterclockwise"] = {
+        report["directions"]["counterclockwise" if suffix else "clockwise"] = {
             "lapPoints": len(center), "closingGap": round(gap, 3),
             "edgePoints": [len(left_cloud), len(right_cloud)],
             "widestCrossSection": round(widest, 3), "collision": {name: variant}}

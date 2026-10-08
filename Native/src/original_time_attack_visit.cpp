@@ -295,7 +295,7 @@ void OriginalTimeAttackVisit::paintRanking(std::span<std::uint32_t> target,int w
     using namespace ranking_data;const Canvas c(target,width,height);const auto course=setup_.condition/2,direction=setup_.condition&1;
     std::vector<OriginalRankingBoardDraw> draws;
     auto fixed=[&](unsigned chunk,Vec3 pos={}){OriginalRankingBoardDraw d;d.chunk=chunk;d.position=pos;draws.push_back(d);};
-    fixed(48);if(setup_.customCourseName.empty())fixed(courseChunks[course]);fixed(routeChunks[(setup_.customCourseName.empty()?course:3)*2+direction]);if(course!=8)fixed(setup_.weather?43:42);fixed(47);fixed(3);
+    fixed(48);if(setup_.customCourseName.empty())fixed(courseChunks[course]);fixed(routeChunks[originalCoursePresentationCondition(setup_.condition)]);if(course!=8)fixed(setup_.weather?43:42);fixed(47);fixed(3);
     // ARankinTA supplies a nonnegative qualified row, suppressing attract's
     // gear/model hint50. That control belongs only to attract child12.
     float y=f(lit_0C1BDBC8);

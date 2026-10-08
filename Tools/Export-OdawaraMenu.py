@@ -3,7 +3,7 @@
 Both are cut from RuntimeAssets/ODAWARA/thumbnail-preview.png, a view of the
 start line (Tools/Render-ImportedScenePreview.py, or an in-game capture). The
 card follows Export-GunsaiMenu.py: title, rule and course map with -x right
-and +z up. Odawara is a circuit, so the map is the whole counterclockwise lap
+and +z up. Odawara is a circuit, so the map is the whole clockwise lap
 and marks its start/finish line.
 """
 import argparse

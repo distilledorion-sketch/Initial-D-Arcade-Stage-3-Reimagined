@@ -10,6 +10,7 @@ namespace {
 constexpr const char* legacyHeader="condition,weather,car,finish_ticks6000";
 constexpr const char* namedHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night";
 constexpr const char* splitHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3";
+const std::string revisionHeader=std::string(splitHeader)+",course_revision";
 bool valid(const TimeAttackEntry& e){return e.condition<supportedConditionCount&&e.weather<2&&e.car<35&&e.ticks6000>0&&e.ticks6000<10800000
     && (e.intermediate6000==std::array<std::uint32_t,3>{} || (e.intermediate6000[0]>0&&e.intermediate6000[0]<e.intermediate6000[1]&&e.intermediate6000[1]<e.intermediate6000[2]&&e.intermediate6000[2]<e.ticks6000))
     &&std::all_of(e.nameGlyphs.begin(),e.nameGlyphs.end(),[](auto c){return c<=221;});}
@@ -38,7 +39,7 @@ void TimeAttackRecords::record(TimeAttackEntry entry){
 }
 bool TimeAttackRecords::load(const std::filesystem::path& file){
     std::ifstream in(file);if(!in)return false;
-    std::string line;std::getline(in,line);const bool splits=line==splitHeader,named=line==namedHeader||splits;
+    std::string line;std::getline(in,line);const bool versioned=line==revisionHeader,splits=line==splitHeader||versioned,named=line==namedHeader||splits;
     if(!named&&line!=legacyHeader)return false;
     TimeAttackRecords loaded;std::size_t rows=0;
     while(std::getline(in,line)){
@@ -52,20 +53,41 @@ bool TimeAttackRecords::load(const std::filesystem::path& file){
             e.manual=manual!=0;e.night=night!=0;
         }
         if(splits)for(auto& split:e.intermediate6000)if(!(row>>split))return false;
+        unsigned revision=0;if(versioned&&!(row>>revision))return false;
         if(row>>extra||!valid(e))return false;
+        const auto current=localTimeAttackRevision(e.condition/2);
+        // Do not rewrite data created by a newer game with unknown semantics.
+        if(revision>current)return false;
+        if(revision<current){loaded.needsMigration_=true;continue;}
         loaded.record(e);
     }
-    if(!in.eof())return false;entries_=std::move(loaded.entries_);return true;
+    if(!in.eof())return false;entries_=std::move(loaded.entries_);needsMigration_=loaded.needsMigration_;return true;
 }
 bool TimeAttackRecords::save(const std::filesystem::path& file)const{
-    const std::filesystem::path temporary=file.string()+".tmp",backup=file.string()+".previous";
+    if(needsMigration_){
+        // Separate from the earlier Odawara-only backup: a save may already
+        // contain valid revision-1 Odawara runs alongside revision-0 Gunsai.
+        auto archive=file;archive+=".before-idzero-revision-1.bak";
+        std::error_code error;
+        // Keep the original CSV for recovery; never overwrite an earlier archive.
+        if(!std::filesystem::is_regular_file(archive,error)){
+            // A failed copy must not leave a partial file under the final
+            // archive name which a later retry could mistake for a backup.
+            auto pending=archive;pending+=".tmp";
+            error.clear();std::filesystem::copy_file(file,pending,std::filesystem::copy_options::overwrite_existing,error);
+            if(error)return false;
+            std::filesystem::rename(pending,archive,error);
+            if(error)return false;
+        }
+    }
+    auto temporary=file,backup=file;temporary+=".tmp";backup+=".previous";
     std::ofstream out(temporary);if(!out)return false;
-    out<<splitHeader<<'\n';
+    out<<revisionHeader<<'\n';
     for(const auto& e:entries_){
         out<<e.condition<<','<<e.weather<<','<<e.car<<','<<e.ticks6000;
         for(auto code:e.nameGlyphs)out<<','<<unsigned(code);
         out<<','<<unsigned(e.manual)<<','<<unsigned(e.night);
-        for(auto split:e.intermediate6000)out<<','<<split;out<<'\n';
+        for(auto split:e.intermediate6000)out<<','<<split;out<<','<<localTimeAttackRevision(e.condition/2)<<'\n';
     }
     out.close();if(!out)return false;
     std::error_code error;std::filesystem::rename(temporary,file,error);if(!error)return true;

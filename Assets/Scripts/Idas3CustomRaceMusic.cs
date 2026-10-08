@@ -184,7 +184,8 @@ public sealed class Idas3CustomRaceMusic : MonoBehaviour
     IEnumerator PickAndImport(){
         SetBusy(true);menu.SetNotice("Choose an MP3, OGG or WAV file…");
         string path=null;Exception error=null;int complete=0;
-        var thread=new Thread(()=>{try{path=ChooseFile(FolderPath);}catch(Exception e){error=e;}finally{Volatile.Write(ref complete,1);}}){IsBackground=true};
+        string dialogTitle=Idas3MenuLocalization.T("Add custom race music");
+        var thread=new Thread(()=>{try{path=ChooseFile(FolderPath,dialogTitle);}catch(Exception e){error=e;}finally{Volatile.Write(ref complete,1);}}){IsBackground=true};
         thread.SetApartmentState(ApartmentState.STA);thread.Start();
         while(Volatile.Read(ref complete)==0)yield return null;
         if(error!=null){menu.SetNotice("The music file picker could not open.");SetBusy(false);yield break;}
@@ -264,8 +265,8 @@ public sealed class Idas3CustomRaceMusic : MonoBehaviour
     }
     [DllImport("comdlg32.dll",CharSet=CharSet.Unicode)] static extern bool GetOpenFileNameW([In,Out] OpenFileName data);
     [DllImport("comdlg32.dll")] static extern uint CommDlgExtendedError();
-    static string ChooseFile(string initialDirectory){
-        var dialog=new OpenFileName{size=Marshal.SizeOf(typeof(OpenFileName)),initialDir=initialDirectory};dialog.file=Marshal.StringToHGlobalUni(new string('\0',dialog.maxFile));
+    static string ChooseFile(string initialDirectory,string dialogTitle){
+        var dialog=new OpenFileName{size=Marshal.SizeOf(typeof(OpenFileName)),initialDir=initialDirectory,title=dialogTitle};dialog.file=Marshal.StringToHGlobalUni(new string('\0',dialog.maxFile));
         try{if(GetOpenFileNameW(dialog))return Marshal.PtrToStringUni(dialog.file);if(CommDlgExtendedError()!=0)throw new IOException();return null;}
         finally{Marshal.FreeHGlobal(dialog.file);}
     }

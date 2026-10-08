@@ -21,6 +21,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     private bool introWarmup, introFoliageCheck, carDoorCheck, diagnosticPoseActive;
     private bool perfCheck, perfLegend, perfNight, perfWet;
     private bool perfFullDrive,perfReverse;
+    private bool languageCheck;
     private readonly float[] driveTelemetry=new float[12];
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneCourseDriveDiagnostic(int enabled,[Out] float[] values,int count);
     private bool rivalCheck, rivalPostResult, rivalFastForward, retireCheck;
@@ -164,6 +165,11 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(Directory.Exists(output)||File.Exists(output))throw new IOException("Use a NEW scene smoke directory: "+output);
         Directory.CreateDirectory(output);
         saves=Path.Combine(output,"userdata");
+        if(Array.IndexOf(args,"-idas3-scene-language")>=0){
+            int language=DiagnosticInt(args,"-idas3-scene-language",0,0,1);
+            Directory.CreateDirectory(saves);
+            File.WriteAllText(Path.Combine(saves,"game-options.json"),"{\"version\":1,\"arcadeTextLanguage\":"+language+",\"discordPresence\":false,\"communityTimes\":false}");
+        }
         if(Array.IndexOf(args,"-idas3-scene-night-check")>=0){Directory.CreateDirectory(saves);File.WriteAllText(Path.Combine(saves,"settings.txt"),"3 0 0 0 1 1 1 0\n");}
         bool requestedDepth=Array.IndexOf(args,"-idas3-scene-depth-check")>=0;
         bool requestedPerf=Array.IndexOf(args,"-idas3-scene-perf-check")>=0;
@@ -207,6 +213,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         File.WriteAllText(Path.Combine(output,"ISOLATED_SCENE_TEST.txt"),"Diagnostic saves and captures; no ordinary user profile loaded.\n");
         active=host.gameObject.AddComponent<Idas3SceneSmoke>();
         active.host=host;active.root=output;active.began=Time.realtimeSinceStartupAsDouble;
+        active.languageCheck=Array.IndexOf(args,"-idas3-scene-language")>=0;
         active.realtimeAudio=Array.IndexOf(args,"-idas3-scene-realtime-audio")>=0;
         active.legendCheck=Array.IndexOf(args,"-idas3-scene-legend-check")>=0;
         active.driveInspect=Array.IndexOf(args,"-idas3-scene-drive-inspect")>=0;
@@ -399,7 +406,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         int captureSamples=target!=null?target.antiAliasing:1;
         bool restoreCaptureSamples=perfCheck&&target!=null&&captureSamples>1;
         if(restoreCaptureSamples){target.Release();target.antiAliasing=1;Check(target.Create(),"Diagnostic AA1 target creation");record.targetAntialiasing=1;}
-        if((cullCheck||perfCheck||rivalCheck)&&target!=null){
+        if((cullCheck||perfCheck||rivalCheck||languageCheck)&&target!=null){
             // The desktop session can suppress automatic presentation even
             // while Update and native simulation continue. Explicitly render
             // this diagnostic target once, in the game's camera depth order.
@@ -435,8 +442,9 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             VerifyUiSubmissionPixels(target,capture);
         if(restoreCaptureSamples){target.Release();target.antiAliasing=captureSamples;Check(target.Create(),"Restore measured AA4 target");}
         Check(capture!=null&&capture.width>0,"Unity screen capture failed.");
-        if(cullCheck||perfCheck){
+        if(cullCheck||perfCheck||languageCheck){
             foreach(var pixel in capture.GetPixels32())if(Mathf.Max(pixel.r,Mathf.Max(pixel.g,pixel.b))>24)++record.visibleCapturePixels;
+            if(languageCheck&&name!="attract")Check(record.visibleCapturePixels>1000,"Localized screen capture is empty");
         }
         File.WriteAllBytes(Path.Combine(root,name+".png"),capture.EncodeToPNG());Destroy(capture);
         shots.Add(record);File.WriteAllText(Path.Combine(root,name+".json"),JsonUtility.ToJson(record,true));
@@ -479,6 +487,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         yield return Frames(3);Check(host.Ready,"Scene host did not initialize.");
         host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Isolate physical controller input");yield return Frames(4);
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-language")>=0){yield return LanguageCheck();yield break;}
         if(rivalCheck){yield return RivalCheck();yield break;}
         if(perfCheck){yield return PerformanceCheck();yield break;}
         if(introCheck){yield return IntroCheck();yield break;}
@@ -572,6 +581,40 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         Check(scene.MirrorCamera.enabled&&scene.CurrentFrame.viewCount==2,"Legend bumper rear view is missing.");
         yield return Capture("legend-bumper-mirror",true);
         yield return Key(67);yield return Frames(10);yield return Capture("legend-chase",true);
+        Finish(true,null);
+    }
+    private IEnumerator LanguageCheck(){
+        hires=new RenderTexture(Screen.width,Screen.height,24,RenderTextureFormat.ARGB32){name="Language artwork verification",antiAliasing=1};
+        Check(hires.Create(),"Language verification target creation");host.GetComponent<Camera>().targetTexture=hires;
+        int language=DiagnosticInt(Environment.GetCommandLineArgs(),"-idas3-scene-language",0,0,1);
+        Check(host.GameOptions.Current.arcadeTextLanguage==language,"Language was not loaded before native startup");
+        Check(Idas3Native.Idas3SceneConfigureLanguage(1-language)==0,"Live scene allowed mixing language caches");
+        Check(Idas3Native.Idas3SceneConfigureLanguage(language)==1,"Current language was not retained");
+        yield return Frames(120);yield return Capture("attract",false);
+        yield return Key(116);yield return Frames(20);
+        for(int frame=0;host.Status.racePhase!=2&&frame<1800;++frame)yield return null;
+        Check(host.Status.racePhase==2,"Language test did not finish the race showcase/countdown");
+        held=87;yield return Frames(360);held=0;
+        Check(host.Status.speedMetresPerSecond>1,"Localized game did not accelerate");
+        yield return Capture("race-hud",true);
+        var menu=host.GetComponent<Idas3PauseMenu>();menu.SetOpen(true);yield return Frames(4);
+        menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);
+        for(int row=0;row<4;++row)menu.Navigate(1);
+        yield return Frames(3);yield return Capture("language-option",false);
+        Check(Idas3Native.Idas3SceneReturnToCourse()==1,"Language test could not return to course selection");
+        menu.SetOpen(false);yield return Frames(60);
+        Check(host.Status.frontendStage==6,"Expected course selection");yield return Capture("course-menu",false);
+        // The real TA choice owners use the same stable IDs in both languages.
+        for(int stage=6;stage<=8;++stage){
+            Check(host.Status.frontendStage==stage,"Language changed selection order");
+            yield return Key(13);yield return Frames(100);
+            Check(host.Status.frontendStage==stage+1,"Localized choice did not advance");
+            yield return Capture(new[]{"route-menu","weather-menu","time-menu"}[stage-6],false);
+        }
+        for(int stage=9;stage>5;--stage){yield return Key(27);yield return Frames(100);Check(host.Status.frontendStage==stage-1,"Localized Back changed menu order");}
+        yield return Capture("mode-menu",false);
+        for(int stage=5;stage>2;--stage){yield return Key(27);yield return Frames(160);Check(host.Status.frontendStage==stage-1,"Localized car menu back navigation failed");
+            yield return Capture(new[]{"make-menu","car-menu","transmission-menu"}[stage-3],false);}
         Finish(true,null);
     }
     // The whole post-result Legend owner in the actual player: a Legend battle
@@ -995,6 +1038,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     }
     private IEnumerator PerformanceCheck()
     {
+        Idas8ImportedTreeChecks.Run();
         var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();
         perfMainCamera=host.GetComponent<Camera>();
         Check(perfMainCamera.targetTexture==null,"Performance benchmark must use normal window rendering.");
@@ -1006,6 +1050,9 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         QualitySettings.antiAliasing=diagnosticAa;
         bool offscreen=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-offscreen")>=0;
         bool manualRender=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-manual-render")>=0;
+        bool waitGpu=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-wait-gpu")>=0;
+        Check(!waitGpu||manualRender,"GPU completion probe requires the explicit offscreen camera stack");
+        Texture2D completionPixel=waitGpu?new Texture2D(1,1,TextureFormat.RGBA32,false):null;
         if(offscreen){
             hires=new RenderTexture(2560,1080,24,RenderTextureFormat.ARGB32){name="Performance target",antiAliasing=diagnosticAa};
             Check(hires.Create(),"Performance target creation");perfMainCamera.targetTexture=hires;
@@ -1148,6 +1195,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(perfFullDrive)report.scope="Visible automatic rendering with original race physics, collisions, weather, recording and HUD; diagnostic route-following controls at fixed 60 Hz source steps. One source tick per rendered frame accelerates wall-clock traversal when FPS exceeds 60. No teleport or collision changes. Opt-in diagnostic timer grace and extension counts are reported; this validates rendering coverage, not race qualification. Completion and timeout reported separately. No screenshots or disk writes during timed driving.";
         if(offscreen)report.scope="CPU scene-submission benchmark at 2560x1080 AA4 with matched source ticks and cache-on/off runs. Hidden windows may skip automatic camera rendering; render-event counts are reported. No GPU or display FPS claim; screenshots separately verify rendered output.";
         if(manualRender)report.scope="Fixed-input private benchmark: explicit complete camera stack to a 2560x1080 target every measured frame, with automatic rendering disabled. Includes main view, mirror and HUD. Frame timing/counter data can lag; this is an offscreen workload, not display FPS. No captures or readbacks during measurement.";
+        if(waitGpu)report.scope="GPU-completed offscreen workload at 2560x1080, explicit main view, mirror and HUD. Every measured frame synchronously reads one pixel after the camera stack, forcing GPU completion. Wall and sceneRender timings include synchronization/readback overhead; these are comparison timings, not display FPS or pure GPU timings. No image encoding or disk writes during measurement.";
         if(perfWet){
             bool hasRain=false;var weatherFrame=scene.CurrentFrame;
             for(int i=0;i<weatherFrame.rangeCount;++i)hasRain|=unchecked((uint)Marshal.ReadInt32(weatherFrame.ranges,i*64+12))==0x941024d2u;
@@ -1184,6 +1232,11 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(captureScreens&&perfWet)yield return Capture("wet-moving-bumper",true);
         if(captureScreens&&perfLegend)yield return Capture("legend-mirror-moving",true);
         if(captureScreens&&manualRender&&!perfWet&&!perfLegend)yield return Capture("dry-moving-bumper",true);
+        // Warmup/captures restore camera.enabled. Do not let that setup frame
+        // add an automatic render to the explicitly measured offscreen stack.
+        if(manualRender)foreach(var camera in renderStack)camera.enabled=false;
+        var importedCourse=FindAnyObjectByType<Idas8HakoneCourse>();
+        if(perfCourse==16||perfCourse==17)importedCourse.VerifyTreeState();
         Camera.onPostRender+=CountPerformanceRender;
         report.audioBefore=Idas3UnityAudio.ReadStatistics();
         report.replayCaptureEnabled=captureEnabled;
@@ -1195,13 +1248,19 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         long beganTicks=System.Diagnostics.Stopwatch.GetTimestamp(),previousTicks=beganTicks;
         double tickMilliseconds=1000.0/System.Diagnostics.Stopwatch.Frequency;
         // All arrays and delegates are prepared before this loop. No captures,
-        // readbacks, JSON serialization or filesystem traffic are performed.
+        // JSON serialization or filesystem traffic. The optional one-pixel
+        // GPU completion probe is the only readback, and is reported explicitly.
         int measuredFrames=0;
         for(int i=0;i<perfFrames;++i){
             if(timingEnabled)FrameTimingManager.CaptureFrameTimings();
             yield return null;
             long renderStart=System.Diagnostics.Stopwatch.GetTimestamp();
             if(manualRender)RenderPerformanceStack(renderStack);
+            if(waitGpu){
+                var previousTarget=RenderTexture.active;RenderTexture.active=hires;
+                completionPixel.ReadPixels(new Rect(0,0,1,1),0,0,false);
+                RenderTexture.active=previousTarget;
+            }
             double renderMs=(System.Diagnostics.Stopwatch.GetTimestamp()-renderStart)*tickMilliseconds;
             long now=System.Diagnostics.Stopwatch.GetTimestamp(),allocated=GC.GetAllocatedBytesForCurrentThread();
             var status=host.Status;var source=scene.CurrentFrame;
@@ -1240,6 +1299,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         }
         if(perfFullDrive){Idas3SceneCourseDriveDiagnostic(0,null,0);Array.Resize(ref samples,measuredFrames);report.samples=samples;report.sampleFrames=measuredFrames;}
         report.measuredSeconds=(previousTicks-beganTicks)/(double)System.Diagnostics.Stopwatch.Frequency;
+        if(completionPixel!=null)Destroy(completionPixel);
+        if(perfCourse==16||perfCourse==17)importedCourse.VerifyTreeState();
         Camera.onPostRender-=CountPerformanceRender;held=0;
         foreach(var camera in renderStack)camera.enabled=true;
         scene.VerifyViewCulling(Check);
@@ -1715,7 +1776,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         var report=new Report{passed=passed,error=error,shutdownComplete=stopped,checks=checks,
             unityVersion=Application.unityVersion,device=SystemInfo.graphicsDeviceName,
             elapsedSeconds=Time.realtimeSinceStartupAsDouble-began,captures=shots.ToArray()};
-        if(perfCheck)report.scope="Opt-in race performance benchmark with isolated saves and original handling; automatic 2560x1080 AA4 window rendering, vSync0, fixed source ticks, held-throttle warmup and measurement. See performance.json for sample rows, percentile summaries, frame timing availability, camera render events and allocation scope. No per-frame captures or readbacks.";
+        if(perfCheck)report.scope="Opt-in race performance benchmark with isolated saves and original handling. See performance.json for exact rendering mode, antialiasing, driving controls, GPU-completion/readback scope, sample rows, timing availability and camera render events.";
         if(cullCheck)report.scope="Opt-in Myogi culling regression at 2560x1080: source Time Attack bumper/chase, Legend bumper/mirror/chase, fixed-step driving, and camera-only tree106 close-ups. Source buffers are hashed for matched baseline/fix comparison. A passing harness establishes execution and capture invariants; visual comparison is separate.";
         if(depthCheck)report.scope="Opt-in depth/sorting investigation on course "+depthCourse+" at 2560x1080 with diagnostic AA1/manual camera rendering: Time Attack bumper/chase and twelve fixed 120-frame driving intervals, plus an optional frozen camera probe. Native geometry hashes and source depth/list counts permit matched comparisons. A passing harness establishes capture invariants, not visual correctness.";
         if(introCheck)report.scope="Opt-in source intro child7 car investigation at 2560x1080 with diagnostic AA1/manual camera rendering. Logo cards3-5 use15 source ticks per update; child6 and the captured intro use single ticks. Captures span early camera cuts, consecutive body-motion frames, and headlight transitions. Intro-relative native update counts, source geometry hashes, range/depth census and selected geometry/lighting dumps support matched visual audits. Passing establishes capture invariants, not car visual correctness.";

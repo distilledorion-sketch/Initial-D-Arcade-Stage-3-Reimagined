@@ -1,11 +1,74 @@
 #include "time_attack_records.h"
 #include "imported_course_catalog.h"
 #include <fstream>
+#include <chrono>
 #include <iostream>
 #include <stdexcept>
 using namespace idas3;
 void require(bool x,const char* message){if(!x)throw std::runtime_error(message);}
+std::string read(const std::filesystem::path& file){std::ifstream in(file,std::ios::binary);return {std::istreambuf_iterator<char>(in),{}};}
+void idZeroMigration(){
+    const auto root=std::filesystem::temp_directory_path()/("idas3-record-migration-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::filesystem::create_directories(root);
+    const std::string base="condition,weather,car,finish_ticks6000",name=",name0,name1,name2,name3,name4,manual,night",splits=",split1,split2,split3";
+    // Each historical format in a different save, including a Unicode path.
+    for(unsigned format=0;format<3;++format){
+        const auto file=root/std::to_string(format)/std::filesystem::path(u8"記録.csv");
+        std::filesystem::create_directory(file.parent_path());
+        {std::ofstream out(file);out<<base<<(format?name:"")<<(format==2?splits:"")<<'\n';
+            for(unsigned condition=0;condition<supportedConditionCount;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car)
+                out<<condition<<','<<wet<<','<<car<<','<<1000000+car<<(format?",1,2,3,4,221,1,1":"")<<(format==2?",200000,400000,600000":"")<<'\n';
+        }
+        const auto original=read(file);TimeAttackRecords records;
+        require(records.load(file)&&records.needsMigration(),"Historical Gunsai/Odawara rows need migration");
+        require(read(file)==original,"Read-only imports must never rewrite save files");
+        for(unsigned condition=0;condition<supportedConditionCount;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car){
+            const auto e=records.personalBest(condition,wet,car);
+            require(e.ticks6000==(condition>=32?0:1000000+car),"Reset only Gunsai/Odawara, across directions/weather/all models");
+            if(condition<32&&format)require(e.manual&&e.night&&e.nameGlyphs[0]==1,"Preserve unaffected record metadata");
+            if(condition<32&&format==2)require(e.intermediate6000==std::array<std::uint32_t,3>{200000,400000,600000},"Preserve unrelated checkpoints");
+        }
+        require(records.save(file),"Archive and migrate local times");auto archive=file;archive+=".before-idzero-revision-1.bak";
+        require(read(archive)==original,"Legacy CSV backup must be byte-exact");
+        for(unsigned condition=32;condition<36;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car)
+            records.record({condition,wet,car,1400000+condition*1000+wet*100+car});
+        require(records.save(file),"New slower post-reset times must save");
+        TimeAttackRecords loaded;require(loaded.load(file)&&!loaded.needsMigration(),"Migration is one-time");
+        for(unsigned condition=32;condition<36;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car)
+            require(loaded.best(condition,wet,car).model==1400000+condition*1000+wet*100+car,"New Gunsai/Odawara times survive restart");
+        require(loaded.save(file)&&read(archive)==original,"Later saves must retain the first recovery archive");
+        {std::ofstream out(file);out<<base<<"\n34,0,0,900000\ninvalid\n";}
+        require(!loaded.load(file)&&!loaded.needsMigration()&&loaded.best(34,0,0).model==1434000,"Malformed migration must not partially replace live data");
+        {std::ofstream out(file);out<<base<<name<<splits<<",course_revision\n34,0,0,900000,1,2,3,4,221,1,1,0,0,0,2\n";}
+        require(!loaded.load(file)&&loaded.best(34,0,0).model==1434000,"Future revision must fail without discarding current state");
+    }
+    const auto blocked=root/"blocked.csv";{std::ofstream out(blocked);out<<base<<"\n34,0,0,900000\n";}
+    auto archive=blocked;archive+=".before-idzero-revision-1.bak";std::filesystem::create_directory(archive);
+    const auto original=read(blocked);TimeAttackRecords records;
+    require(records.load(blocked)&&!records.save(blocked)&&read(blocked)==original,"Archive failure must leave original data intact");
+    // Upgrading the Odawara-only fix must retain its new records and backup.
+    const auto mixed=root/"already-migrated-odawara.csv";
+    const std::string mixedCsv=base+name+splits+",course_revision\n"
+        "32,0,0,900000,1,2,3,4,221,1,1,0,0,0,0\n"
+        "33,1,34,950000,1,2,3,4,221,1,1,0,0,0,0\n"
+        "34,0,0,1200000,1,2,3,4,221,1,1,200000,400000,600000,1\n"
+        "35,1,34,1300000,1,2,3,4,221,0,0,0,0,0,1\n";
+    {std::ofstream out(mixed,std::ios::binary);out<<mixedCsv;}
+    auto oldArchive=mixed;oldArchive+=".before-odawara-revision-1.bak";
+    {std::ofstream out(oldArchive);out<<"Earlier Odawara backup";}
+    require(records.load(mixed)&&records.needsMigration()&&records.best(32,0,0).model==0&&records.best(33,1,34).model==0,"Old Gunsai rows were not removed after the earlier Odawara migration");
+    require(records.best(34,0,0).model==1200000&&records.best(35,1,34).model==1300000,"Gunsai migration reset valid Odawara times");
+    require(records.personalBest(34,0,0).intermediate6000==std::array<std::uint32_t,3>{200000,400000,600000},"Gunsai migration changed Odawara splits");
+    require(records.save(mixed),"Separate backup for follow-up Gunsai migration");
+    auto newArchive=mixed;newArchive+=".before-idzero-revision-1.bak";
+    require(read(newArchive)==mixedCsv&&read(oldArchive)=="Earlier Odawara backup","Follow-up migration overwrote the earlier archive or omitted its new backup");
+    records.record({32,0,0,1500000});records.record({33,1,34,1600000});
+    require(records.save(mixed)&&records.load(mixed)&&!records.needsMigration()&&records.best(32,0,0).model==1500000&&records.best(33,1,34).model==1600000,"New Gunsai times did not survive follow-up migration");
+    require(records.best(34,0,0).model==1200000&&records.best(35,1,34).model==1300000,"New Gunsai saves lost valid Odawara records");
+    std::cout<<"PASS Gunsai/Odawara migration: all cars, both directions/weather, three legacy formats, Unicode paths, exact backups, restart, failure safety and Odawara-only upgrade\n";
+}
 int main(){try{
+    idZeroMigration();
     TimeAttackRecords records;records.record({6,0,0,1000124});records.record({6,0,1,999996});
     records.record({6,1,0,700000});records.record({7,0,0,600000});
     auto best=records.best(6,0,0);require(best.course==999996&&best.model==1000124,"source course/weather partition and shared course/model records");

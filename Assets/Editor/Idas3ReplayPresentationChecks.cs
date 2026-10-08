@@ -11,7 +11,9 @@ using UnityEngine;
 // isolated replay storage. No player saves or ROM files are accessed.
 public static class Idas3ReplayPresentationChecks {
     const BindingFlags Hidden=BindingFlags.Instance|BindingFlags.NonPublic|BindingFlags.Public;
-    static readonly string Output=Path.GetFullPath("Verification/paint-replay-20261007");
+    static string Output=Path.GetFullPath("Verification/paint-replay-20261007");
+    static bool nightBattleChecks;
+    public static void RunNightBattleFixes(){Output=Path.GetFullPath("Verification/night-battle-freecam-20261008");nightBattleChecks=true;Run();}
     static int checks;
     static void Check(bool ok,string label){if(!ok)throw new Exception(label);checks++;}
     static object Get(object o,string name)=>o.GetType().GetField(name,Hidden).GetValue(o);
@@ -24,6 +26,7 @@ public static class Idas3ReplayPresentationChecks {
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneInitialize([MarshalAs(UnmanagedType.LPUTF8Str)]string assets,[MarshalAs(UnmanagedType.LPUTF8Str)]string saves,int width,int height);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneStep(ref Input input);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneShutdown();
+    [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneModeFlowFixture(int scene);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3ReplayStart(int condition,int weather,int night,int car,int manual);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneSetSunGlare(int enabled);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3ReplayAppearance(uint[] values,int count);
@@ -49,10 +52,40 @@ public static class Idas3ReplayPresentationChecks {
             File.WriteAllBytes(Path.Combine(Output,name+".png"),image.EncodeToPNG());return image.GetPixels32();
         }finally{camera.targetTexture=oldTarget;RenderTexture.active=old;target.Release();UnityEngine.Object.DestroyImmediate(target);UnityEngine.Object.DestroyImmediate(image);}
     }
+    static void FreeCameraDirections(Idas3ReplayViewer viewer,Idas3SceneRenderer renderer,Camera camera){
+        var position=(Vector3)Get(viewer,"freePosition");float yaw=(float)Get(viewer,"freeYaw"),pitch=(float)Get(viewer,"freePitch");
+        foreach(float heading in new[]{0f,90f,180f,270f})foreach(float tilt in new[]{-35f,0f,35f}){
+            Action reset=()=>{Set(viewer,"freePosition",position);Set(viewer,"freeYaw",heading);Set(viewer,"freePitch",tilt);Call(viewer,"Present");};
+            reset();var frame=renderer.CurrentFrame.mainCamera;var forward=(frame.target-frame.eye).normalized;
+            var right=Vector3.Cross(forward,frame.up).normalized;
+            var marker=frame.eye+forward*30;var center=camera.WorldToViewportPoint(marker);
+            Check(camera.WorldToViewportPoint(marker+right).x>center.x,"Native screen-right projection changed");
+            foreach(float side in new[]{-1f,1f}){
+                reset();Call(viewer,"ApplyFreeCameraInput",new Vector3(side,0,0),Vector2.zero,2f);Call(viewer,"Present");
+                Check(Vector3.Dot(renderer.CurrentFrame.mainCamera.eye-position,right)*side>1.9f,"A/D or left stick moved in the wrong screen direction");
+                Check((camera.WorldToViewportPoint(marker).x-center.x)*side<0,"Freecam strafe did not move scenery oppositely on screen");
+                reset();Call(viewer,"ApplyFreeCameraInput",Vector3.zero,new Vector2(side*5,0),0f);Call(viewer,"Present");
+                Check((camera.WorldToViewportPoint(marker).x-center.x)*side<0,"Mouse/right-stick horizontal look is reversed");
+            }
+            reset();Call(viewer,"ApplyFreeCameraInput",Vector3.forward,Vector2.zero,2f);Call(viewer,"Present");
+            Check(Vector3.Dot(renderer.CurrentFrame.mainCamera.eye-position,forward)>1.9f,"Forward movement regressed");
+            reset();Call(viewer,"ApplyFreeCameraInput",Vector3.zero,new Vector2(0,5),0f);Call(viewer,"Present");
+            Check(camera.WorldToViewportPoint(marker).y<center.y,"Vertical look regressed");
+        }
+        foreach(int fps in new[]{30,60,144}){
+            Set(viewer,"freePosition",position);Set(viewer,"freeYaw",0f);Set(viewer,"freePitch",0f);
+            for(int i=0;i<fps;++i)Call(viewer,"ApplyFreeCameraInput",Vector3.right,Vector2.zero,12f/fps);
+            Check(Vector3.Distance((Vector3)Get(viewer,"freePosition"),position+Vector3.left*12)<.01f,"Strafing speed depends on FPS");
+            for(int i=0;i<fps;++i)Call(viewer,"ApplyFreeCameraInput",Vector3.zero,new Vector2(100f/fps,0),0f);
+            Check(Mathf.Abs(Mathf.DeltaAngle((float)Get(viewer,"freeYaw"),260))<.01f,"Controller look speed depends on FPS");
+        }
+        Set(viewer,"freePosition",position);Set(viewer,"freeYaw",yaw);Set(viewer,"freePitch",pitch);Call(viewer,"Present");
+    }
     public static void Run(){
         Directory.CreateDirectory(Output);ShaderUtil.allowAsyncCompilation=false;
         Idas3ControllerMenuChecks.Run();
-        string saves=Path.Combine(Output,"replay-viewer-session");Directory.CreateDirectory(saves);
+        string saves=Path.Combine(Output,nightBattleChecks?"userdata":"replay-viewer-session");Directory.CreateDirectory(saves);
+        if(nightBattleChecks)File.WriteAllText(Path.Combine(Output,"ISOLATED_MODE_FLOW_TEST.txt"),"Private night battle presentation fixture");
         Check(Idas3SceneInitialize(Path.GetFullPath("Native"),saves,1280,720)==1,"Scene initialize");
         var go=new GameObject("Private replay presentation check");var camera=go.AddComponent<Camera>();
         var renderer=go.AddComponent<Idas3SceneRenderer>();renderer.Initialize(camera);
@@ -60,6 +93,13 @@ public static class Idas3ReplayPresentationChecks {
         var viewer=go.AddComponent<Idas3ReplayViewer>();viewer.enabled=false;
         Set(viewer,"scene",renderer);Set(viewer,"ui",ui);Set(viewer,"<View>k__BackingField",camera);
         try{
+            if(nightBattleChecks){
+                Check(Idas3SceneModeFlowFixture(-17)==1,"Night battle app checks failed; see private report");
+                // Start a fresh viewer owner after the authority fixture, just
+                // as the actual replay viewer runs in a separate process.
+                Check(Idas3SceneShutdown()==1,"Night battle fixture shutdown");
+                Check(Idas3SceneInitialize(Path.GetFullPath("Native"),Path.Combine(Output,"replay-viewer-session"),1280,720)==1,"Replay fixture initialization");
+            }
             Check(Idas3ReplayStart(0,0,0,0,1)==1,"Replay start");
             var input=new Input{size=88,flags=1,width=1280,height=720};Check(Idas3SceneStep(ref input)==1,"Initial replay render");renderer.ApplyFrame();
             var c=renderer.CurrentFrame.mainCamera;var forward=(c.target-c.eye);forward.y=0;forward.Normalize();
@@ -70,6 +110,7 @@ public static class Idas3ReplayPresentationChecks {
             for(int i=0;i<5;i++){Call(viewer,"CycleCamera");Call(viewer,"Present");Check((int)Get(viewer,"cameraMode")==((i+1)%5),"Camera cycle missed freecam or existing view");}
             Set(viewer,"cameraMode",4);Call(viewer,"ResetFreeCamera");Call(viewer,"Present");
             var free=(Vector3)Get(viewer,"freePosition");Check(Vector3.Distance(free,renderer.CurrentFrame.mainCamera.eye)<.001f,"Free camera did not reach native rendering");
+            FreeCameraDirections(viewer,renderer,camera);
             Set(viewer,"freePosition",free+new Vector3(9,8,6));Set(viewer,"freeYaw",(float)Get(viewer,"freeYaw")+30);Call(viewer,"Present");
             Check(Vector3.Distance(free+new Vector3(9,8,6),renderer.CurrentFrame.mainCamera.eye)<.001f,"Free camera movement ignored");
             Shot(camera,ui,"free-camera-hud");

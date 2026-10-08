@@ -19,10 +19,22 @@ public static class Idas3CourseCatalog
     public static bool RequiresNight(int course)=>course==4||course==8||course>=11&&course<=14;
     public static string DirectionToken(int course,bool reverse){
         if(course<0||course>=Count)throw new ArgumentOutOfRangeException(nameof(course));
-        if(course<2||course==17)return reverse?"cw":"ccw";
+        if(course==17)return reverse?"ccw":"cw";
+        if(course<2)return reverse?"cw":"ccw";
         if(course==4||course==6||course==7||course==16)return reverse?"ib":"ob";
         if(course==5&&reverse)return "rev";
         return reverse?"uh":"dh";
+    }
+    public static string DirectionLabel(int course,bool reverse){
+        switch(DirectionToken(course,reverse)){
+            case "cw":return "CLOCKWISE";
+            case "ccw":return "COUNTERCLOCKWISE";
+            case "ob":return "OUTBOUND";
+            case "ib":return "INBOUND";
+            case "rev":return "REVERSE";
+            case "uh":return "UPHILL";
+            default:return "DOWNHILL";
+        }
     }
     public static bool Available(int course)=>course>=0&&course<Count&&(course<9||File.Exists(Path.Combine(Application.streamingAssetsPath,Packs[course-9],"menu.idastex")));
     public static int NextAvailable(int course,int direction){

@@ -56,7 +56,7 @@ if($MyInvocation.InvocationName -eq '.'){return}
 $Destination=[IO.Path]::GetFullPath($Destination)
 Assert-PlainPath $Destination
 if((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count){throw 'The installation folder must be empty. Existing players should use the game updater.'}
-$version='0.3.95-community-replays.45';$tag='v'+$version
+$version='0.3.95-community-replays.46';$tag='v'+$version
 $repo='distilledorion-sketch/Initial-D-Arcade-Stage-3-Reimagined'
 $web=[Net.WebClient]::new();$web.Headers['User-Agent']='Initial-D-Setup';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 $cache=Join-Path $PSScriptRoot ('.initial-d-download-'+[Guid]::NewGuid().ToString('N'))
@@ -65,7 +65,7 @@ try {
     Write-Host 'Checking the official release...'
     $release=$web.DownloadString("https://api.github.com/repos/$repo/releases/tags/$tag")|ConvertFrom-Json
     if($release.draft -or $release.prerelease -or $release.tag_name -ne $tag){throw 'The requested release is not available.'}
-    $names=@('Initial-D-Arcade-Stage-3-Reimagined-0.3.95.45-Windows-x64.zip',"Initial-D-Additional-Courses-$version.zip")
+    $names=@('Initial-D-Arcade-Stage-3-Reimagined-0.3.95.46-Windows-x64.zip',"Initial-D-Additional-Courses-$version.zip")
     $archives=@()
     foreach($name in $names) {
         $assetMatches=@($release.assets|Where-Object{$_.name -ceq $name})

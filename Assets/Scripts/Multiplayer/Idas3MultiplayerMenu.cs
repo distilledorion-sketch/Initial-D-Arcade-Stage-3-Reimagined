@@ -289,17 +289,17 @@ namespace Idas3.Multiplayer
         private static void Frame(Rect r,Color c){Fill(new Rect(r.x,r.y,r.width,1),c);Fill(new Rect(r.x,r.yMax-1,r.width,1),c);Fill(new Rect(r.x,r.y,1,r.height),c);Fill(new Rect(r.xMax-1,r.y,1,r.height),c);}
         private static string Safe(string text,string fallback="")=>string.IsNullOrWhiteSpace(text)?fallback:text;
         private static string Track(int course)=>course>=0&&course<Courses.Length?Courses[course]:"SELECT COURSE";
-        private static string Direction(int course,bool reverse)=>course>=9?(reverse?"UPHILL":"DOWNHILL"):(reverse?"REVERSE":"FORWARD");
-        private static string Conditions(int course,bool reverse,bool wet,bool night)=>Direction(course,reverse)+" / "+(course==8?"SNOW":wet?"WET":"DRY")+" / "+(night?"NIGHT":"DAY");
+        private static string Direction(int course,bool reverse)=>Idas3CourseCatalog.DirectionLabel(course,reverse);
+        private static string Conditions(int course,bool reverse,bool wet,bool night)=>Idas3MenuLocalization.T(Direction(course,reverse))+" / "+Idas3MenuLocalization.T(course==8?"SNOW":wet?"WET":"DRY")+" / "+Idas3MenuLocalization.T(night?"NIGHT":"DAY");
         private static string PickSummary(Idas3RaceChoice c)=>Track(c.Course)+" / "+Conditions(c.Course,c.Reverse,c.Wet,c.Night);
-        private void Text(Rect r,string text,GUIStyle style,Color? color=null){var old=GUI.contentColor;GUI.contentColor=color??(style==small||style==wrapped?Muted:Color.white);GUI.Label(r,text??"",style);GUI.contentColor=old;}
+        private void Text(Rect r,string text,GUIStyle style,Color? color=null,bool translate=true){var old=GUI.contentColor;GUI.contentColor=color??(style==small||style==wrapped?Muted:Color.white);Idas3MenuLocalization.Label(r,text,style,translate);GUI.contentColor=old;}
         private bool ActionButton(Rect r,string text,bool enabled=true,bool primary=false,string identity=null){
             string id=identity??r.x+":"+r.y+":"+text;
             if(enabled&&GUI.enabled&&Event.current.type==EventType.MouseDown&&r.Contains(Event.current.mousePosition))controllerFocus.Pointer(id);
             bool controllerClick=IsOpen&&controllerFocus.Control(id,r,enabled&&GUI.enabled,Event.current.type==EventType.Repaint);
             bool hover=enabled&&r.Contains(Event.current.mousePosition);
             Fill(r,enabled&&primary?Red:hover?Raised:Panel);Frame(r,enabled&&primary?Red:Edge);
-            Text(r,text,button.CalcSize(new GUIContent(text)).x>r.width-6?tightButton:button,enabled?Color.white:Muted*.6f);
+            Text(r,text,button.CalcSize(new GUIContent(Idas3MenuLocalization.T(text))).x>r.width-6?tightButton:button,enabled?Color.white:Muted*.6f);
             if(IsOpen&&enabled&&controllerFocus.Focused(id))Frame(new Rect(r.x-2,r.y-2,r.width+4,r.height+4),Color.white);
             bool old=GUI.enabled;GUI.enabled=old&&enabled;bool click=GUI.Button(r,GUIContent.none,GUIStyle.none);GUI.enabled=old;return click||controllerClick;
         }
@@ -325,9 +325,9 @@ namespace Idas3.Multiplayer
                     if(RaceHudActive||session.IsRacing||!session.InLobby&&!session.IsQuickMatching)return;
                     float scale=Mathf.Clamp(Screen.height/900f,.75f,1.25f);
                     GUI.matrix=Matrix4x4.TRS(new Vector3(Screen.width-278*scale,18*scale,0),Quaternion.identity,new Vector3(scale,scale,1));
-                    string state=session.IsQuickMatching?" / SEARCHING":session.InLobby?(session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":" / CONNECTED"):"";
-                    if(ActionButton(new Rect(0,0,258,38),"F1  ONLINE BATTLE"+state))SetOpen(true);
-                    if(session.HasCourseDraw){Fill(new Rect(0,38,258,29),Panel);Text(new Rect(10,43,238,22),"RACE COURSE / "+Track(session.Course),small);}
+                    string state=session.IsQuickMatching?" / "+Idas3MenuLocalization.T("SEARCHING"):session.InLobby?(session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":" / "+Idas3MenuLocalization.T("CONNECTED")):"";
+                    if(ActionButton(new Rect(0,0,258,38),Idas3MenuLocalization.T("F1  ONLINE BATTLE")+state))SetOpen(true);
+                    if(session.HasCourseDraw){Fill(new Rect(0,38,258,29),Panel);Text(new Rect(10,43,238,22),Idas3MenuLocalization.Format("RACE COURSE / {0}",Track(session.Course)),small);}
                     return;
                 }
                 Fill(new Rect(0,0,Screen.width,Screen.height),new Color(0,0,0,.82f));
@@ -348,7 +348,7 @@ namespace Idas3.Multiplayer
         private void HeaderStatus(){
             string status=session.StateName=="Returning"?"RETURNING TO LOBBY":ResultsVisible?"RACE FINISHED":session.IsRacing?"LIVE RACE CONTINUES":session.IsQuickMatching?"FINDING A DRIVER":session.InLobby?"ROOM CONNECTED":session.Available?"LINK READY":"LINK OFFLINE";
             Fill(new Rect(619,30,6,6),session.Available?Green:Muted);Text(new Rect(637,23,196,26),status,small);
-            Text(new Rect(619,65,214,24),session.TransportName.ToUpperInvariant()+(session.PrivateRoom?" / PRIVATE":"")+(session.InLobby&&session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":""),small);
+            Text(new Rect(619,65,214,24),session.TransportName.ToUpperInvariant()+(session.PrivateRoom?" / "+Idas3MenuLocalization.T("PRIVATE"):"")+(session.InLobby&&session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":""),small);
         }
         private void Activity(float y){
             Text(new Rect(28,y+10,210,24),"ONLINE ACTIVITY",small);
@@ -393,9 +393,9 @@ namespace Idas3.Multiplayer
             if(e.type==EventType.MouseUp)scrollDragging=false;
             GUI.BeginGroup(new Rect(view.x,view.y,view.width-22,view.height));
             for(int i=0;i<count;++i){var room=rooms[i];float y=i*66-roomScroll.y;
-                Fill(new Rect(0,y,view.width-22,1),Edge);Text(new Rect(0,y+11,view.width-121,22),Idas3LobbyNames.ForHost(room.HostName),label);
-                Text(new Rect(0,y+37,view.width-121,19),Safe(room.HostName,"DRIVER")+" / "+room.Members+" OF 2 DRIVERS",small);
-                if(ActionButton(new Rect(view.width-106,y+16,78,33),room.Members<2?"JOIN":"FULL",room.Members<2&&session.Available&&!session.Busy,false,"room:"+room.Code))session.JoinRoom(room.Code);
+                Fill(new Rect(0,y,view.width-22,1),Edge);Text(new Rect(0,y+11,view.width-121,22),Idas3MenuLocalization.Format("{0} Lobby",room.HostName),label);
+                Text(new Rect(0,y+37,view.width-121,19),Idas3MenuLocalization.Format("{0} / {1} OF 2 DRIVERS",Safe(room.HostName,Idas3MenuLocalization.T("DRIVER")),room.Members),small);
+                if(ActionButton(new Rect(view.width-106,y+16,78,33),room.Members<2?"JOIN":"ROOM FULL",room.Members<2&&session.Available&&!session.Busy,false,"room:"+room.Code))session.JoinRoom(room.Code);
             }
             if(count==0){Text(new Rect(8,61,view.width-40,30),session.Busy?"SEARCHING…":"NO OPEN ROOMS",heading);}
             GUI.EndGroup();Fill(track,Ink);Frame(track,Edge);thumb.y=track.y+(max>0?roomScroll.y/max*(track.height-thumbHeight):0);Fill(thumb,scrollDragging?Red:Muted);
@@ -404,7 +404,7 @@ namespace Idas3.Multiplayer
             Section(new Rect(26,126,848,350),session.TransportIndex==0?"ROOM CODE":"HOST ADDRESS");
             Text(new Rect(48,195,790,24),session.TransportIndex==0?"ROOM CODE":"IP ADDRESS:PORT",small);
             GUI.SetNextControlName("idas3-room-code");var old=GUI.backgroundColor;GUI.backgroundColor=Raised;
-            joinCode=GUI.TextField(new Rect(48,235,657,48),joinCode,128,field);GUI.backgroundColor=old;
+            joinCode=GUI.TextField(new Rect(48,235,657,48),joinCode,128,Idas3MenuLocalization.Style(field));GUI.backgroundColor=old;
             if(ActionButton(new Rect(719,235,132,48),"EDIT",!session.Busy)){codeDraft=joinCode;codeEditing=true;controllerFocus.Reset();GUI.FocusControl(null);}
             if(ActionButton(new Rect(48,316,803,47),"JOIN BATTLE",session.Available&&!session.Busy&&!string.IsNullOrWhiteSpace(joinCode),true)){session.JoinRoom(joinCode.Trim());joinEntry=false;}
         }
@@ -423,14 +423,14 @@ namespace Idas3.Multiplayer
             Activity(116);Section(new Rect(26,190,848,286),"QUICK MATCH");
             Text(new Rect(76,266,748,43),"FINDING A DRIVER",title);
             Text(new Rect(78,332,710,64),session.StatusText,wrapped);
-            if(session.InLobby)Text(new Rect(78,414,710,23),"ROOM / "+session.RoomCode,small);
+            if(session.InLobby)Text(new Rect(78,414,710,23),Idas3MenuLocalization.Format("ROOM / {0}",session.RoomCode),small);
         }
         private int ConnectedPlayers(){int count=0;foreach(var p in session.Players)if(p!=null&&p.Connected)++count;return count;}
         private void RoomView(){
             joinEntry=false;
-            Text(new Rect(28,115,590,25),"ROOM / "+session.RoomCode,small);
+            Text(new Rect(28,115,590,25),Idas3MenuLocalization.Format("ROOM / {0}",session.RoomCode),small);
             if(ActionButton(new Rect(680,110,83,29),"COPY",!string.IsNullOrEmpty(session.RoomCode)))GUIUtility.systemCopyBuffer=session.RoomCode;
-            Text(new Rect(782,116,94,24),ConnectedPlayers()+" / 2 DRIVERS",small);
+            Text(new Rect(782,116,94,24),Idas3MenuLocalization.Format("{0} / 2 DRIVERS",ConnectedPlayers()),small);
             bool terminal=ResultsVisible||session.StateName=="Returning";
             Section(new Rect(26,150,452,340),terminal?"BATTLE FINISHED":"DRIVERS");
             var players=session.Players;
@@ -438,7 +438,7 @@ namespace Idas3.Multiplayer
                 Fill(new Rect(44,y-4,416,1),Edge);
                 if(p==null||!p.Connected){Text(new Rect(44,y+34,414,33),"WAITING FOR A DRIVER",heading,Muted);continue;}
                 Text(new Rect(44,y+3,231,21),(p.IsLocal?"YOU":"OPPONENT")+(p.IsHost?" / HOST":""),small);
-                Text(new Rect(44,y+27,255,28),Safe(p.Name,"DRIVER"),heading);
+                Text(new Rect(44,y+27,255,28),Safe(p.Name,Idas3MenuLocalization.T("DRIVER")),heading,translate:false);
                 string status=terminal?"FINISHED":session.IsRacing?"RACING":p.Ready?"READY":"NOT READY";
                 Text(new Rect(323,y+27,137,26),status,button,p.Ready?Green:Muted);
                 var carRect=new Rect(78,y+68,252,26);
@@ -468,7 +468,7 @@ namespace Idas3.Multiplayer
             else Text(new Rect(517,213,337,43),session.CourseWinnerSlot==(session.IsHost?0:1)?"YOUR PICK SELECTED":"OPPONENT PICK SELECTED",small);
             Text(new Rect(517,288,337,36),Track(session.Course),heading);
             Text(new Rect(517,337,337,46),Conditions(session.Course,session.Reverse,session.Wet,session.Night),wrapped,Color.white);
-            Text(new Rect(517,398,337,41),"BOOST "+(session.BoostEnabled?"ON":"OFF")+" / CAR COLLISIONS "+(session.CollisionsEnabled?"ON":"OFF"),wrapped);
+            Text(new Rect(517,398,337,41),Idas3MenuLocalization.Format("BOOST {0} / CAR COLLISIONS {1}",Idas3MenuLocalization.T(session.BoostEnabled?"ON":"OFF"),Idas3MenuLocalization.T(session.CollisionsEnabled?"ON":"OFF")),wrapped);
             Text(new Rect(517,451,337,28),session.CountdownText,small);
         }
         private void OptionRow(float y,string name,string value,bool enabled,Action action){Fill(new Rect(516,y-3,338,1),Edge);Text(new Rect(516,y+8,155,25),name,small);if(ActionButton(new Rect(679,y,175,35),value,enabled,false,"course-option:"+name))action();}
@@ -486,7 +486,7 @@ namespace Idas3.Multiplayer
             Fill(new Rect(26,553,848,1),Edge);
             if(joinEntry){if(ActionButton(new Rect(26,570,220,35),"BACK")){joinEntry=false;controllerFocus.Reset();}return;}
             if(session.IsQuickMatching){if(ActionButton(new Rect(26,570,232,35),"CANCEL SEARCH",true,true))session.CancelQuickMatch();if(ActionButton(new Rect(642,570,232,35),"BACK TO GAME"))SetOpen(false);return;}
-            if(MusicSelectionAllowed){if(ActionButton(new Rect(26,567,348,35),"MUSIC  / "+SelectedMusicTitle))MusicSelectionRequested?.Invoke();}
+            if(MusicSelectionAllowed){if(ActionButton(new Rect(26,567,348,35),Idas3MenuLocalization.Format("MUSIC  / {0}",SelectedMusicTitle)))MusicSelectionRequested?.Invoke();}
             else Text(new Rect(28,578,370,23),"↑ ↓ SELECT   ENTER / A CONFIRM   ESC / B BACK",small);
             if(!session.InLobby)return;
             if(session.StateName=="Returning"){ActionButton(new Rect(498,567,376,35),"RETURNING TO LOBBY…",false);return;}

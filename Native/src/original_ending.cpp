@@ -7,7 +7,7 @@ void OriginalEnding::begin(const std::filesystem::path& root){
         const auto folder=root/"data/original_assets/ending";
         auto model=NativeModel::load(folder/"ending.idasmesh");
         auto textures=NativeTextureBank::load(folder/"textures/textures.idastex");
-        if(model.chunks.size()!=6||textures.size()!=17)
+        if(model.chunks.size()!=6||textures.sourceSize()!=17)
             throw std::runtime_error("Incomplete ending artwork");
         model_=std::move(model);textures_=std::move(textures);
     }

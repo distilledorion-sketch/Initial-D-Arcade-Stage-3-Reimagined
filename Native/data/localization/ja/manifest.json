@@ -1,0 +1,2677 @@
+{
+  "version": 1,
+  "language": "ja",
+  "source": "Initial D Arcade Stage 3 Japan Rev C / GDS-0032C",
+  "banks": [
+    {
+      "asset": "attract/cards/adv_caution/adv_caution.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "0620305b8c786956ba026322d34cf5b9e3adf40d96e1f881959d44d3290e4e79",
+      "japanese_sha256": "0620305b8c786956ba026322d34cf5b9e3adf40d96e1f881959d44d3290e4e79"
+    },
+    {
+      "asset": "attract/demo_overlays/adv2d_v3/adv2d_v3.idasmesh",
+      "chunks": 46,
+      "base_textures": 23,
+      "textures": 25,
+      "mapping": [
+        [
+          34,
+          34
+        ],
+        [
+          38,
+          38
+        ]
+      ],
+      "english_sha256": "3c2e16d12c8a0726f56684a980bd0b9e3d537044ee9c74c8bcb80ac2766eb628",
+      "japanese_sha256": "3fd7785476e087031bc646f133712c196f06eb15043191e820c48971f97b1954"
+    },
+    {
+      "asset": "attract/gasstand/gasstand.idasmesh",
+      "chunks": 58,
+      "base_textures": 15,
+      "textures": 20,
+      "mapping": [
+        [
+          10,
+          7
+        ],
+        [
+          11,
+          8
+        ],
+        [
+          12,
+          9
+        ]
+      ],
+      "english_sha256": "591cfbf4d87fa357d505c444e865304bea1a6194636b4286e429a6a4d2e6e17c",
+      "japanese_sha256": "562583b65fbb45a100bef258c3398b16f8107195bf2a1488b79e8819a79e3ffa"
+    },
+    {
+      "asset": "attract/ranking/v3sT13rankin/v3sT13rankin.idasmesh",
+      "chunks": 51,
+      "base_textures": 19,
+      "textures": 23,
+      "mapping": [
+        [
+          8,
+          7
+        ],
+        [
+          9,
+          8
+        ],
+        [
+          10,
+          9
+        ],
+        [
+          11,
+          10
+        ],
+        [
+          12,
+          11
+        ],
+        [
+          13,
+          12
+        ],
+        [
+          14,
+          13
+        ],
+        [
+          15,
+          14
+        ],
+        [
+          16,
+          15
+        ],
+        [
+          32,
+          31
+        ],
+        [
+          33,
+          32
+        ],
+        [
+          34,
+          33
+        ],
+        [
+          35,
+          34
+        ],
+        [
+          36,
+          35
+        ],
+        [
+          37,
+          36
+        ],
+        [
+          38,
+          37
+        ],
+        [
+          42,
+          40
+        ],
+        [
+          43,
+          41
+        ],
+        [
+          46,
+          44
+        ],
+        [
+          47,
+          45
+        ],
+        [
+          49,
+          47
+        ],
+        [
+          50,
+          48
+        ]
+      ],
+      "english_sha256": "f2a3979598cb41e959ab7c20d393abe99fa0b268b11dde2644cd3c9790b4a4b6",
+      "japanese_sha256": "f0dbd587ba862dc3d92f601595449e2bc752a2b3c879b86c9eb17a2311c0c6fb"
+    },
+    {
+      "asset": "ending/ending.idasmesh",
+      "chunks": 6,
+      "base_textures": 17,
+      "textures": 28,
+      "mapping": [
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ]
+      ],
+      "english_sha256": "6539d16975da1ee7e89a1ba8d196ab7a386152ed794836a3bffd518834ac98ef",
+      "japanese_sha256": "8225ba01671f8c19d82d02d92999e806ec24df17baae1ab7be7f497456725b16"
+    },
+    {
+      "asset": "hud/game2d/game2d.idasmesh",
+      "chunks": 212,
+      "base_textures": 76,
+      "textures": 83,
+      "mapping": [
+        [
+          9,
+          8
+        ],
+        [
+          91,
+          90
+        ],
+        [
+          96,
+          95
+        ],
+        [
+          145,
+          142
+        ],
+        [
+          147,
+          144
+        ],
+        [
+          148,
+          145
+        ],
+        [
+          149,
+          146
+        ],
+        [
+          150,
+          147
+        ],
+        [
+          151,
+          148
+        ],
+        [
+          152,
+          149
+        ],
+        [
+          153,
+          150
+        ],
+        [
+          154,
+          151
+        ],
+        [
+          155,
+          152
+        ],
+        [
+          156,
+          153
+        ],
+        [
+          157,
+          154
+        ],
+        [
+          158,
+          155
+        ],
+        [
+          159,
+          156
+        ],
+        [
+          160,
+          157
+        ],
+        [
+          161,
+          158
+        ],
+        [
+          162,
+          159
+        ],
+        [
+          163,
+          160
+        ],
+        [
+          164,
+          161
+        ],
+        [
+          165,
+          162
+        ],
+        [
+          166,
+          163
+        ],
+        [
+          167,
+          164
+        ],
+        [
+          168,
+          165
+        ],
+        [
+          169,
+          166
+        ],
+        [
+          170,
+          167
+        ],
+        [
+          171,
+          168
+        ],
+        [
+          172,
+          169
+        ],
+        [
+          173,
+          170
+        ],
+        [
+          174,
+          171
+        ],
+        [
+          175,
+          172
+        ],
+        [
+          176,
+          173
+        ],
+        [
+          177,
+          174
+        ],
+        [
+          178,
+          175
+        ],
+        [
+          179,
+          176
+        ],
+        [
+          180,
+          177
+        ],
+        [
+          181,
+          178
+        ]
+      ],
+      "english_sha256": "65546f413f64f9724943a486bdc51441ef787de593270dfdebba3a7bc89999a9",
+      "japanese_sha256": "94e12eb544a15e7586418b2b857176ead1dd0768f09185e389a52a80fe19daa1"
+    },
+    {
+      "asset": "hud/game2d_intr/game2d_intr.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "fecd8a23f6263fc6a4ede95c752062e760a9374535bbec11f7e5ba9c895ae97b",
+      "japanese_sha256": "fecd8a23f6263fc6a4ede95c752062e760a9374535bbec11f7e5ba9c895ae97b"
+    },
+    {
+      "asset": "hud/game2d_ta/game2d_ta.idasmesh",
+      "chunks": 24,
+      "base_textures": 7,
+      "textures": 11,
+      "mapping": [
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ]
+      ],
+      "english_sha256": "39368f3747b3933fd4585f9b5c52ecc00ed3a3e01619bd515150d1cff4f59b5d",
+      "japanese_sha256": "8c529376103b4c85de1e29641ee9cae35c0149699bae967344da756ee79c5d56"
+    },
+    {
+      "asset": "hud/game2d_vs/game2d_vs.idasmesh",
+      "chunks": 12,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ]
+      ],
+      "english_sha256": "17ae593d51d91bc411d85a29b3c61bd20bd06faaea9b8a47d0ed938d5b11fd40",
+      "japanese_sha256": "14c2493eee57520877ccf26ae731a273ca94744624f5e040576fd26ebbca05f5"
+    },
+    {
+      "asset": "hud/start2d/start2d.idasmesh",
+      "chunks": 121,
+      "base_textures": 38,
+      "textures": 66,
+      "mapping": [
+        [
+          71,
+          70
+        ],
+        [
+          72,
+          71
+        ],
+        [
+          73,
+          72
+        ],
+        [
+          74,
+          73
+        ],
+        [
+          75,
+          74
+        ],
+        [
+          76,
+          75
+        ],
+        [
+          77,
+          76
+        ],
+        [
+          78,
+          77
+        ],
+        [
+          79,
+          78
+        ],
+        [
+          80,
+          79
+        ],
+        [
+          83,
+          82
+        ],
+        [
+          84,
+          83
+        ],
+        [
+          85,
+          84
+        ],
+        [
+          86,
+          85
+        ],
+        [
+          87,
+          86
+        ],
+        [
+          88,
+          87
+        ],
+        [
+          89,
+          88
+        ],
+        [
+          90,
+          89
+        ],
+        [
+          91,
+          90
+        ],
+        [
+          92,
+          91
+        ],
+        [
+          93,
+          92
+        ],
+        [
+          94,
+          93
+        ],
+        [
+          95,
+          94
+        ],
+        [
+          96,
+          95
+        ],
+        [
+          97,
+          96
+        ],
+        [
+          104,
+          103
+        ],
+        [
+          105,
+          104
+        ],
+        [
+          106,
+          105
+        ],
+        [
+          107,
+          106
+        ],
+        [
+          108,
+          107
+        ],
+        [
+          109,
+          108
+        ],
+        [
+          110,
+          109
+        ],
+        [
+          111,
+          110
+        ],
+        [
+          112,
+          111
+        ],
+        [
+          113,
+          112
+        ],
+        [
+          114,
+          113
+        ],
+        [
+          115,
+          114
+        ],
+        [
+          116,
+          115
+        ],
+        [
+          118,
+          117
+        ]
+      ],
+      "english_sha256": "d7df6e2ec492f9228d18d02084afafda7f72d2092572b337904ba36787ebc43c",
+      "japanese_sha256": "1086715fac1a7939c23e9009f60411e5ec64b663c125b0acfcf055d13055337b"
+    },
+    {
+      "asset": "loading/loadcmn/loadcmn.idasmesh",
+      "chunks": 13,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ]
+      ],
+      "english_sha256": "46764b5ba5294750b006ae89c2f4ad1ee01bdf56c5da9813f78cdbff57302559",
+      "japanese_sha256": "f5327b4c469d33089ce5c7b0c49366ef60aca20b952c3cf4d06e56822ad9ff68"
+    },
+    {
+      "asset": "loading/loadvs/loadvs.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "0e7e789aa251e63bbc77ba302153b831daf623f2061dec7216a9c285d20109c9",
+      "japanese_sha256": "cf59c22c336655b8cb57f6cc16383279629f9473f408ca62b1930a480c5f04ff"
+    },
+    {
+      "asset": "loading/loadwait/loadwait.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "295bf554bb1022b7768d5308b2d60096c188f53fce220ab430f58ade8f304f18",
+      "japanese_sha256": "295bf554bb1022b7768d5308b2d60096c188f53fce220ab430f58ade8f304f18"
+    },
+    {
+      "asset": "menus/v3/adv2d/adv2d_v3.idasmesh",
+      "chunks": 46,
+      "base_textures": 23,
+      "textures": 25,
+      "mapping": [
+        [
+          34,
+          34
+        ],
+        [
+          38,
+          38
+        ]
+      ],
+      "english_sha256": "3c2e16d12c8a0726f56684a980bd0b9e3d537044ee9c74c8bcb80ac2766eb628",
+      "japanese_sha256": "3fd7785476e087031bc646f133712c196f06eb15043191e820c48971f97b1954"
+    },
+    {
+      "asset": "menus/v3/adv_newtitle/adv_newtitle.idasmesh",
+      "chunks": 2,
+      "base_textures": 2,
+      "textures": 4,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "english_sha256": "1e665a1c6214d4003411312aacaf46b8e7fd6e3c0ec9945be9c7f10a8cae3bd1",
+      "japanese_sha256": "220bc8c8141ac3c0fd974ae9e37d4e075cef460a92b62274362e02740730bd17"
+    },
+    {
+      "asset": "menus/v3/adv_title/adv_title.idasmesh",
+      "chunks": 2,
+      "base_textures": 2,
+      "textures": 4,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "english_sha256": "6532e907b17705879b4e8ac8aca1ec695e02f419aab6702aa17b50d2257e77db",
+      "japanese_sha256": "7ea428ceb4a8ca5c8a3e67b7118a86d494cde11508147aac579248fdbba047da"
+    },
+    {
+      "asset": "menus/v3/v3sA00etc/v3sA00etc.idasmesh",
+      "chunks": 8,
+      "base_textures": 9,
+      "textures": 14,
+      "mapping": [
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          7,
+          8
+        ]
+      ],
+      "english_sha256": "0007dd1e776c75f8b0d402f7804d23f4f4b569b1b60c5fefd093c754caabd7b4",
+      "japanese_sha256": "7b5ba12919b1bc00007d3bcbcc1355bba256d840c83e7d91811fc1f0ac5898f2"
+    },
+    {
+      "asset": "menus/v3/v3sB01course/v3sB01course.idasmesh",
+      "chunks": 3,
+      "base_textures": 2,
+      "textures": 3,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ]
+      ],
+      "english_sha256": "35a05a004cf62dd19c44cdc3c70abea27cffbc4fb1ca0f06ac34922334f7a981",
+      "japanese_sha256": "35a05a004cf62dd19c44cdc3c70abea27cffbc4fb1ca0f06ac34922334f7a981"
+    },
+    {
+      "asset": "menus/v3/v3sK00common/v3sK00common.idasmesh",
+      "chunks": 84,
+      "base_textures": 25,
+      "textures": 28,
+      "mapping": [
+        [
+          31,
+          30
+        ],
+        [
+          32,
+          31
+        ],
+        [
+          33,
+          32
+        ],
+        [
+          34,
+          33
+        ],
+        [
+          35,
+          34
+        ],
+        [
+          36,
+          35
+        ],
+        [
+          37,
+          36
+        ],
+        [
+          38,
+          37
+        ],
+        [
+          39,
+          38
+        ],
+        [
+          42,
+          40
+        ]
+      ],
+      "english_sha256": "8e0d23208d36a7c7e189b43e08b6b106f74c368a638d91258fa5974f056ad743",
+      "japanese_sha256": "eb0687f408cb87105339f4da83d43a2f6d09d9f395d21e36ba4ddcbf2d438b58"
+    },
+    {
+      "asset": "menus/v3/v3sK01course/v3sK01course.idasmesh",
+      "chunks": 28,
+      "base_textures": 17,
+      "textures": 29,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          26,
+          26
+        ]
+      ],
+      "english_sha256": "8267277d97cab0a560cc6e8bc7ce80675d55f0df24e44dd7e72800e265d5621e",
+      "japanese_sha256": "8267277d97cab0a560cc6e8bc7ce80675d55f0df24e44dd7e72800e265d5621e"
+    },
+    {
+      "asset": "menus/v3/v3sK02rival/v3sK02rival.idasmesh",
+      "chunks": 114,
+      "base_textures": 21,
+      "textures": 30,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          41,
+          50
+        ],
+        [
+          47,
+          56
+        ],
+        [
+          75,
+          84
+        ],
+        [
+          76,
+          85
+        ],
+        [
+          77,
+          86
+        ],
+        [
+          78,
+          87
+        ],
+        [
+          79,
+          88
+        ],
+        [
+          80,
+          89
+        ],
+        [
+          81,
+          90
+        ],
+        [
+          82,
+          91
+        ],
+        [
+          83,
+          92
+        ],
+        [
+          84,
+          93
+        ],
+        [
+          85,
+          94
+        ],
+        [
+          86,
+          95
+        ],
+        [
+          87,
+          96
+        ],
+        [
+          88,
+          97
+        ],
+        [
+          89,
+          98
+        ],
+        [
+          90,
+          99
+        ],
+        [
+          91,
+          100
+        ],
+        [
+          92,
+          101
+        ],
+        [
+          93,
+          102
+        ],
+        [
+          94,
+          103
+        ],
+        [
+          95,
+          104
+        ],
+        [
+          96,
+          105
+        ],
+        [
+          97,
+          106
+        ],
+        [
+          98,
+          107
+        ],
+        [
+          99,
+          108
+        ],
+        [
+          100,
+          109
+        ],
+        [
+          101,
+          110
+        ],
+        [
+          102,
+          111
+        ],
+        [
+          103,
+          112
+        ],
+        [
+          104,
+          113
+        ],
+        [
+          105,
+          114
+        ],
+        [
+          106,
+          115
+        ],
+        [
+          107,
+          116
+        ],
+        [
+          109,
+          118
+        ],
+        [
+          110,
+          119
+        ],
+        [
+          111,
+          120
+        ],
+        [
+          112,
+          121
+        ],
+        [
+          113,
+          122
+        ]
+      ],
+      "english_sha256": "50057a49cda082146f0f60390f46d7f13c28bf241c9a9fe6433f42cfb7340dfe",
+      "japanese_sha256": "63d58b0d61811472f39cbe157bb5314e808fb0f666917fbb86c6af74cd94fd90"
+    },
+    {
+      "asset": "menus/v3/v3sS00common/v3sS00common.idasmesh",
+      "chunks": 55,
+      "base_textures": 13,
+      "textures": 15,
+      "mapping": [
+        [
+          21,
+          21
+        ],
+        [
+          51,
+          50
+        ]
+      ],
+      "english_sha256": "9fdb2ec7888d84b3b92b620dde405b8f256c7edc9dfdd136847737e4a3014f72",
+      "japanese_sha256": "bf799f7ebe5d18c77335e8c478e3a7bc4936e2d454719652185b86460ee2a339"
+    },
+    {
+      "asset": "menus/v3/v3sS04maker/v3sS04maker.idasmesh",
+      "chunks": 18,
+      "base_textures": 11,
+      "textures": 13,
+      "mapping": [
+        [
+          17,
+          17
+        ]
+      ],
+      "english_sha256": "33e3d513021b4e496129669e5905b0dd7d20b91cc5e150a25b13850777a3c349",
+      "japanese_sha256": "33e3d513021b4e496129669e5905b0dd7d20b91cc5e150a25b13850777a3c349"
+    },
+    {
+      "asset": "menus/v3/v3sS05cars/v3sS05cars.idasmesh",
+      "chunks": 44,
+      "base_textures": 13,
+      "textures": 17,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ],
+        [
+          26,
+          26
+        ],
+        [
+          27,
+          27
+        ],
+        [
+          28,
+          28
+        ],
+        [
+          29,
+          29
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          31,
+          31
+        ],
+        [
+          32,
+          32
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          35
+        ],
+        [
+          37,
+          37
+        ],
+        [
+          43,
+          42
+        ]
+      ],
+      "english_sha256": "79ef1a93ee8983f5bed9b85fecf95a229bfa3fb092b24c1c44f77e4a13440661",
+      "japanese_sha256": "56f6cbf913a394b5d5d8f47a73ce1280b2cb6eabeb4f962e64b1320378f84054"
+    },
+    {
+      "asset": "menus/v3/v3sS06mission/v3sS06mission.idasmesh",
+      "chunks": 6,
+      "base_textures": 5,
+      "textures": 9,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          5,
+          5
+        ]
+      ],
+      "english_sha256": "2aa0d226f327934df76f20533040e5cccde63391068e61cdfecd7fe73b4eff24",
+      "japanese_sha256": "d78a4716f130e66eff180de15bb21f316748832bb52d225e58e03515fed86d9e"
+    },
+    {
+      "asset": "menus/v3/v3sS07tune/v3sS07tune.idasmesh",
+      "chunks": 73,
+      "base_textures": 28,
+      "textures": 37,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ],
+        [
+          26,
+          26
+        ],
+        [
+          27,
+          27
+        ],
+        [
+          28,
+          28
+        ],
+        [
+          29,
+          29
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          31,
+          31
+        ],
+        [
+          32,
+          32
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          35
+        ],
+        [
+          36,
+          36
+        ],
+        [
+          37,
+          37
+        ],
+        [
+          38,
+          38
+        ],
+        [
+          39,
+          39
+        ],
+        [
+          40,
+          40
+        ],
+        [
+          41,
+          41
+        ],
+        [
+          50,
+          50
+        ],
+        [
+          68,
+          68
+        ],
+        [
+          69,
+          69
+        ],
+        [
+          70,
+          70
+        ],
+        [
+          71,
+          71
+        ],
+        [
+          72,
+          72
+        ]
+      ],
+      "english_sha256": "a0e8336316296917f47b0db0047e2481de9ac48f0bcba420a468ce1b3e397c86",
+      "japanese_sha256": "58e8d8209286c4251e6c346557dfa4d443e553bbb0c7e6434f6a414a5c080899"
+    },
+    {
+      "asset": "menus/v3/v3sS11mode/v3sS11mode.idasmesh",
+      "chunks": 19,
+      "base_textures": 20,
+      "textures": 35,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          18,
+          18
+        ]
+      ],
+      "english_sha256": "f609402ba52ee6908b2601274d3f782b3de34954c04c49ee8aa93599246f7d58",
+      "japanese_sha256": "78ef3d913a0ea90bf4cdac806b3e57c55a319b3a6b6a42fe1a2d26ba55b28666"
+    },
+    {
+      "asset": "menus/v3/v3sT02route/v3sT02route.idasmesh",
+      "chunks": 32,
+      "base_textures": 15,
+      "textures": 26,
+      "mapping": [
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ],
+        [
+          26,
+          26
+        ],
+        [
+          27,
+          27
+        ],
+        [
+          28,
+          28
+        ],
+        [
+          29,
+          29
+        ],
+        [
+          31,
+          31
+        ]
+      ],
+      "english_sha256": "8cfa2aff0e7da9b47788012f54f9dd4f120c0b271d33c5a2d6fa56e0025aa5c1",
+      "japanese_sha256": "5b784ffffeb431b01f1bab14a214fe8504e7ec5d2c3030dd98444cf7c577c337"
+    },
+    {
+      "asset": "menus/v3/v3sT03weather/v3sT03weather.idasmesh",
+      "chunks": 6,
+      "base_textures": 5,
+      "textures": 9,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ]
+      ],
+      "english_sha256": "e62ca7f10f517c60eda5a4c66cffb9c5d1bf83a0f35ff3340850568ef6cfaa7f",
+      "japanese_sha256": "83af2b67207d8c18c6abab3f313db32143a1bc354e92eb2a628514e2d55ceaa0"
+    },
+    {
+      "asset": "menus/v3/v3sT04time/v3sT04time.idasmesh",
+      "chunks": 6,
+      "base_textures": 5,
+      "textures": 9,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ]
+      ],
+      "english_sha256": "9a6ac0b974dce21a2419a8334bcd4e8a887773fed3e853d12cd7cc2bbe48a473",
+      "japanese_sha256": "ca47eebf3e5318a873acfc8e066520ab4368331cb6606cc5ec3c99e7633a2198"
+    },
+    {
+      "asset": "menus/warnings/mode_bunta/mode_bunta.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "723aee0b58ee0e2a50885117534818b8091e380adc9c5b74a1ce1294846636e5",
+      "japanese_sha256": "158e5ef81d23c7184e56a47081eff6febf14f8bc2e037c15e0ba1f87369c528c"
+    },
+    {
+      "asset": "menus/warnings/select0402/select0402.idasmesh",
+      "chunks": 2,
+      "base_textures": 2,
+      "textures": 4,
+      "mapping": [
+        [
+          0,
+          3
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "english_sha256": "c7a85bc463647f7814a457632551d4f0b7e835f998bd0893c986153960f91827",
+      "japanese_sha256": "9d667f050eb33c4dde8598b18b7e951ad0e703e0480e24a7d271265c878ff69f"
+    },
+    {
+      "asset": "model_menus/v3sS08name/v3sS08name.idasmesh",
+      "chunks": 7,
+      "base_textures": 6,
+      "textures": 8,
+      "mapping": [
+        [
+          6,
+          6
+        ]
+      ],
+      "english_sha256": "5b41436741981a1ff9ee5ad04573cee002d6cca95b75b142b1394126fc17e858",
+      "japanese_sha256": "5b41436741981a1ff9ee5ad04573cee002d6cca95b75b142b1394126fc17e858"
+    },
+    {
+      "asset": "name_entry/select/select.idasmesh",
+      "chunks": 46,
+      "base_textures": 24,
+      "textures": 27,
+      "mapping": [
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          45,
+          45
+        ]
+      ],
+      "english_sha256": "22cda1a920579ffd28da7bd179810a34b1b2edfdce660790fab3109a0f36de82",
+      "japanese_sha256": "22cda1a920579ffd28da7bd179810a34b1b2edfdce660790fab3109a0f36de82"
+    },
+    {
+      "asset": "name_entry/v3sS08name/v3sS08name.idasmesh",
+      "chunks": 7,
+      "base_textures": 6,
+      "textures": 8,
+      "mapping": [
+        [
+          6,
+          6
+        ]
+      ],
+      "english_sha256": "5b41436741981a1ff9ee5ad04573cee002d6cca95b75b142b1394126fc17e858",
+      "japanese_sha256": "5b41436741981a1ff9ee5ad04573cee002d6cca95b75b142b1394126fc17e858"
+    },
+    {
+      "asset": "results/result/result.idasmesh",
+      "chunks": 43,
+      "base_textures": 10,
+      "textures": 11,
+      "mapping": [
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ]
+      ],
+      "english_sha256": "614b23e4672fd6a387eb36f17842ec8e6d168e4da32a1b5f9978bd9e14456806",
+      "japanese_sha256": "8b233d609e62a5172b8414246ce8a42da69d55692e3b778f34132a9d3cc34e45"
+    },
+    {
+      "asset": "results/v3sT13rankin/v3sT13rankin.idasmesh",
+      "chunks": 51,
+      "base_textures": 19,
+      "textures": 23,
+      "mapping": [
+        [
+          8,
+          7
+        ],
+        [
+          9,
+          8
+        ],
+        [
+          10,
+          9
+        ],
+        [
+          11,
+          10
+        ],
+        [
+          12,
+          11
+        ],
+        [
+          13,
+          12
+        ],
+        [
+          14,
+          13
+        ],
+        [
+          15,
+          14
+        ],
+        [
+          16,
+          15
+        ],
+        [
+          32,
+          31
+        ],
+        [
+          33,
+          32
+        ],
+        [
+          34,
+          33
+        ],
+        [
+          35,
+          34
+        ],
+        [
+          36,
+          35
+        ],
+        [
+          37,
+          36
+        ],
+        [
+          38,
+          37
+        ],
+        [
+          42,
+          40
+        ],
+        [
+          43,
+          41
+        ],
+        [
+          46,
+          44
+        ],
+        [
+          47,
+          45
+        ],
+        [
+          49,
+          47
+        ],
+        [
+          50,
+          48
+        ]
+      ],
+      "english_sha256": "f2a3979598cb41e959ab7c20d393abe99fa0b268b11dde2644cd3c9790b4a4b6",
+      "japanese_sha256": "f0dbd587ba862dc3d92f601595449e2bc752a2b3c879b86c9eb17a2311c0c6fb"
+    },
+    {
+      "asset": "results/v3sT14password/v3sT14password.idasmesh",
+      "chunks": 3,
+      "base_textures": 3,
+      "textures": 4,
+      "mapping": [
+        [
+          1,
+          1
+        ]
+      ],
+      "english_sha256": "f2e2da7436621131501e6eb351135c67c78ee3aba03c4477825efc51a5628df1",
+      "japanese_sha256": "f2e2da7436621131501e6eb351135c67c78ee3aba03c4477825efc51a5628df1"
+    },
+    {
+      "asset": "rival_dialog/banks/continue/continue.idasmesh",
+      "chunks": 26,
+      "base_textures": 15,
+      "textures": 17,
+      "mapping": [
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ]
+      ],
+      "english_sha256": "22bca7b7ffa3829f6e69d202d1259f4b7ac609224d0c0a58aa0ed754b9d58edb",
+      "japanese_sha256": "22bca7b7ffa3829f6e69d202d1259f4b7ac609224d0c0a58aa0ed754b9d58edb"
+    },
+    {
+      "asset": "rival_dialog/banks/rival_scene/rival_scene.idasmesh",
+      "chunks": 21,
+      "base_textures": 15,
+      "textures": 16,
+      "mapping": [
+        [
+          19,
+          18
+        ]
+      ],
+      "english_sha256": "8a98aec0d42f104d05f4881554ce90a2e6aa26d8004d7114d4043d0fe4fc6295",
+      "japanese_sha256": "b352d0eaa89e002cadcd98c25da1fef4fab062b20f875ba0ebdc6c62a1f92eb9"
+    },
+    {
+      "asset": "rival_dialog/banks/v3sK17continue/v3sK17continue.idasmesh",
+      "chunks": 18,
+      "base_textures": 14,
+      "textures": 25,
+      "mapping": [
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ]
+      ],
+      "english_sha256": "c044da07f83d8035dae043dd2b8ae5d3a7753ada4a728004526a724a02ef9358",
+      "japanese_sha256": "47e4c172cfae1829d4ae97964951a4965c3a801e3ca2b7f17cc13028a710e6f2"
+    },
+    {
+      "asset": "time_attack/lecture/lecture.idasmesh",
+      "chunks": 47,
+      "base_textures": 9,
+      "textures": 13,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          31,
+          31
+        ],
+        [
+          32,
+          32
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          35
+        ],
+        [
+          36,
+          36
+        ]
+      ],
+      "english_sha256": "d3ae63aa4757e1f7014b4b57a30814790fbf9901c9117777a4ddf6c81bcfdd45",
+      "japanese_sha256": "37f2b2c55321970467a0c093bd7b3c1d99e4acd63bd3d3d9dcf4b5cf96c77be5"
+    },
+    {
+      "asset": "tuning/v3sK12shop/v3sK12shop.idasmesh",
+      "chunks": 67,
+      "base_textures": 11,
+      "textures": 17,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ],
+        [
+          26,
+          26
+        ],
+        [
+          27,
+          27
+        ],
+        [
+          28,
+          28
+        ],
+        [
+          29,
+          29
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          31,
+          31
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          35
+        ],
+        [
+          36,
+          36
+        ],
+        [
+          37,
+          37
+        ],
+        [
+          38,
+          38
+        ],
+        [
+          39,
+          39
+        ],
+        [
+          41,
+          41
+        ],
+        [
+          42,
+          42
+        ],
+        [
+          43,
+          43
+        ],
+        [
+          44,
+          44
+        ],
+        [
+          45,
+          45
+        ],
+        [
+          46,
+          46
+        ],
+        [
+          47,
+          47
+        ],
+        [
+          48,
+          48
+        ],
+        [
+          49,
+          49
+        ],
+        [
+          50,
+          50
+        ],
+        [
+          51,
+          51
+        ],
+        [
+          52,
+          52
+        ],
+        [
+          53,
+          53
+        ],
+        [
+          54,
+          54
+        ],
+        [
+          55,
+          55
+        ],
+        [
+          56,
+          56
+        ],
+        [
+          57,
+          57
+        ],
+        [
+          58,
+          58
+        ],
+        [
+          59,
+          59
+        ],
+        [
+          60,
+          60
+        ],
+        [
+          61,
+          61
+        ],
+        [
+          62,
+          62
+        ],
+        [
+          63,
+          63
+        ],
+        [
+          64,
+          64
+        ],
+        [
+          65,
+          65
+        ],
+        [
+          66,
+          66
+        ]
+      ],
+      "english_sha256": "6a16c90c92caf2bd937f502bbbc82ea5ed9c48216e7ba546e10522a9f01eb560",
+      "japanese_sha256": "cb84a07a65adc5d63688085f405fb4dd4e4046b89c03aaee62eed024c1e5a203"
+    },
+    {
+      "asset": "tuning/v3sK17continue/v3sK17continue.idasmesh",
+      "chunks": 18,
+      "base_textures": 14,
+      "textures": 25,
+      "mapping": [
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ]
+      ],
+      "english_sha256": "c044da07f83d8035dae043dd2b8ae5d3a7753ada4a728004526a724a02ef9358",
+      "japanese_sha256": "47e4c172cfae1829d4ae97964951a4965c3a801e3ca2b7f17cc13028a710e6f2"
+    },
+    {
+      "asset": "tuning_course/v3sS07tune/v3sS07tune.idasmesh",
+      "chunks": 73,
+      "base_textures": 28,
+      "textures": 37,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          23,
+          23
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ],
+        [
+          26,
+          26
+        ],
+        [
+          27,
+          27
+        ],
+        [
+          28,
+          28
+        ],
+        [
+          29,
+          29
+        ],
+        [
+          30,
+          30
+        ],
+        [
+          31,
+          31
+        ],
+        [
+          32,
+          32
+        ],
+        [
+          33,
+          33
+        ],
+        [
+          34,
+          34
+        ],
+        [
+          35,
+          35
+        ],
+        [
+          36,
+          36
+        ],
+        [
+          37,
+          37
+        ],
+        [
+          38,
+          38
+        ],
+        [
+          39,
+          39
+        ],
+        [
+          40,
+          40
+        ],
+        [
+          41,
+          41
+        ],
+        [
+          50,
+          50
+        ],
+        [
+          68,
+          68
+        ],
+        [
+          69,
+          69
+        ],
+        [
+          70,
+          70
+        ],
+        [
+          71,
+          71
+        ],
+        [
+          72,
+          72
+        ]
+      ],
+      "english_sha256": "a0e8336316296917f47b0db0047e2481de9ac48f0bcba420a468ce1b3e397c86",
+      "japanese_sha256": "58e8d8209286c4251e6c346557dfa4d443e553bbb0c7e6434f6a414a5c080899"
+    }
+  ]
+}

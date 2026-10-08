@@ -226,7 +226,7 @@ public sealed class Idas3HudCustomization : MonoBehaviour
     }
     static void Fill(Rect rect,Color color){var before=GUI.color;GUI.color=color;GUI.DrawTexture(rect,Texture2D.whiteTexture);GUI.color=before;}
     static void Frame(Rect rect,Color color){Fill(new Rect(rect.x,rect.y,rect.width,1),color);Fill(new Rect(rect.x,rect.yMax-1,rect.width,1),color);Fill(new Rect(rect.x,rect.y,1,rect.height),color);Fill(new Rect(rect.xMax-1,rect.y,1,rect.height),color);}
-    static void Text(Rect rect,string value,GUIStyle style,Color? color=null){var before=GUI.contentColor;GUI.contentColor=color??Color.white;GUI.Label(rect,value,style);GUI.contentColor=before;}
+    static void Text(Rect rect,string value,GUIStyle style,Color? color=null){var before=GUI.contentColor;GUI.contentColor=color??Color.white;Idas3MenuLocalization.Label(rect,value,style);GUI.contentColor=before;}
     bool Button(Rect rect,string value,bool active,bool primary=false)
     {
         bool hover=GUI.enabled&&rect.Contains(Event.current.mousePosition);

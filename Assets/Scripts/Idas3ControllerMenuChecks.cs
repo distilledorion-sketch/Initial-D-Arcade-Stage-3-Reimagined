@@ -15,6 +15,7 @@ public static class Idas3ControllerMenuChecks
     public static void Run(){
         checks=0;string root=Path.GetFullPath("Verification/wheel-menu-navigation-20260918/unit-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
         CheckSunGlareOptions(Path.Combine(root,"sun-glare"));
+        CheckLightsOffAdvantage(Path.Combine(root,"night-advantage"));
         var go=new GameObject("Private menu checks");
         try{
             var options=new Idas3GameOptions(new Platform());options.Initialize(root);
@@ -125,6 +126,18 @@ public static class Idas3ControllerMenuChecks
             options.BeginEdit();options.ResetDraft();Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==2,"Reset defaults must propose Bumper without changing the saved camera");
         }finally{UnityEngine.Object.DestroyImmediate(go);}
     }
+    private static void CheckLightsOffAdvantage(string root){
+        Directory.CreateDirectory(root);File.WriteAllText(Path.Combine(root,"game-options.json"),"{\"version\":1}");
+        var options=new Idas3GameOptions(new Platform());options.Initialize(root);
+        Check(options.Current.hideLightsOffAdvantage,"Existing settings should hide lights-off advantage by default");
+        options.BeginEdit();options.Draft.hideLightsOffAdvantage=false;
+        Check(options.HasUnsavedChanges&&options.Current.hideLightsOffAdvantage,"Draft option applied early or was not detected");
+        options.BeginEdit();Check(options.Draft.hideLightsOffAdvantage,"Discard did not restore gap option");
+        options.Draft.hideLightsOffAdvantage=false;Check(options.ApplyDraft(),"Could not apply lights-off advantage option");
+        var loaded=new Idas3GameOptions(new Platform());loaded.Initialize(root);
+        Check(!loaded.Current.hideLightsOffAdvantage,"Visible-gap preference did not survive reload");
+        loaded.BeginEdit();loaded.ResetDraft();Check(loaded.Draft.hideLightsOffAdvantage&&!loaded.Current.hideLightsOffAdvantage,"Reset changed the applied preference");
+    }
     private static void CheckOptionCategories(string root){
         var options=new Idas3GameOptions(new Platform());options.Initialize(root);
         var go=new GameObject("Private option category checks");
@@ -145,6 +158,7 @@ public static class Idas3ControllerMenuChecks
             menu.Navigate(1);menu.Navigate(1);menu.NavigateHorizontal(1);expected.wheelFeedbackStrength=.36f;
             menu.Navigate(1);menu.Activate();expected.wheelFeedbackInvert=true;
             select(Idas3PauseMenu.Category.Online,2);menu.Activate();expected.discordPresence=!expected.discordPresence;
+            select(Idas3PauseMenu.Category.Online,3);menu.Activate();expected.hideLightsOffAdvantage=false;
             select(Idas3PauseMenu.Category.Hud,3);menu.Activate();expected.minimapDisplay=1;
             menu.Navigate(1);menu.NavigateHorizontal(1);expected.SetHudSizePercent(5,101);
             menu.Navigate(1);menu.NavigateHorizontal(1);expected.minimapZoom=1;

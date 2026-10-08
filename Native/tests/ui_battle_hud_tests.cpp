@@ -127,7 +127,28 @@ int main(int argc,char** argv)try{
             if(gap==25.f)save(output/("online-hud-"+std::to_string(ww)+"x"+std::to_string(hh)+".bmp"),actual,ww,hh);
         }
     }
-    hud.resize(w,h);peer.frame=42;std::swap(peer.playerName,peer.rivalName);std::swap(peer.playerCar,peer.rivalCar);hud.paint(online);
+    // The same received opponent headlight state serves Steam/LAN and replay
+    // presentation. Check the production compositor, including option changes
+    // without advancing the simulation and missing-packet validity.
+    hud.resize(w,h);peer.frame=42;peer.advantage=25.f;
+    for(bool night:{false,true})for(bool hide:{false,true})for(bool lights:{false,true})for(bool received:{false,true}){
+        online.night=night;peer.opponentHeadlights=lights;peer.rivalPositionFraction=received?.25f:-1.f;
+        hud.setLightsOffAdvantage(hide);
+        const auto p=hud.paint(online);const std::vector<std::uint32_t> actual(p,p+n);
+        require(hud.lastBattlePresentation().advantageHidden==(night&&hide&&!lights),"Lights-off gap applied outside night/opponent/option condition");
+        require(hud.lastBattlePresentation().signedAdvantage==25.f,"Hiding advantage modified race distance");
+        OriginalBattleHudState expected;expected.flags104=0x001fffff;expected.profileMode0C31C99C=3;expected.frame204=42;
+        expected.validity96=night&&hide&&!lights?-1.f:peer.rivalPositionFraction;expected.signedAdvantage100=25.f;
+        OriginalBattleHudAnimation animation;std::vector<std::uint32_t> expectedPixels(n);
+        battleBank.paintGame2d(expectedPixels,w,h,drawOriginalBattleHud(expected,animation),true);
+        nameBank.paintOnline(expectedPixels,w,h,peer.playerName,peer.rivalName,peer.playerCar,peer.rivalCar);
+        const float fit=float(h)/480;
+        for(int y=0;y<int(160*fit);++y)for(int x=int(w-150*fit);x<w;++x)
+            require(actual[std::size_t(y)*w+x]==expectedPixels[std::size_t(y)*w+x],"Night gap pixels do not match original available/unavailable artwork");
+        if(night&&hide&&received)save(output/(lights?"online-night-lights-on.bmp":"online-night-lights-off.bmp"),actual,w,h);
+    }
+    online.night=false;peer.opponentHeadlights=true;peer.rivalPositionFraction=.25f;hud.setLightsOffAdvantage(true);
+    std::swap(peer.playerName,peer.rivalName);std::swap(peer.playerCar,peer.rivalCar);hud.paint(online);
     require(hud.lastBattlePresentation().playerName=="SMOKE JOIN"&&hud.lastBattlePresentation().playerCarCode=="BNR34"&&hud.lastBattlePresentation().rivalName=="SMOKE HOST","Guest HUD must use local DRIVER independent of pre-race grid slot");
     const auto driving=hud.paint(online);std::vector<std::uint32_t> beforeFinish(driving,driving+n);
     onlineClock.phase=RacePhase::Finished;online.message="Waiting for verified result";

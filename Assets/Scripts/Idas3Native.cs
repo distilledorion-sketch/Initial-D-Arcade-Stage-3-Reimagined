@@ -73,8 +73,12 @@ internal static class Idas3Native
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern float Idas3SceneGetSteeringDeadzone();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetSteeringSmoothing(float value);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetPerformance(int rainDetail);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneConfigureLanguage(int language);
+    [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)]
+    public static extern int Idas3SceneSetCustomMenuLanguage(int language);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetSunGlare(int enabled);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetMapSize(int size);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetLightsOffAdvantage(int hide);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetMapDisplay(int display);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetMapZoom(int zoom);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetAiDifficulty(int difficulty);

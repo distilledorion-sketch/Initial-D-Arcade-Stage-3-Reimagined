@@ -24,6 +24,15 @@ inline constexpr std::array<ImportedCourseDefinition,9> importedCourseDefinition
 }};
 inline constexpr unsigned supportedCourseCount=9+unsigned(importedCourseDefinitions.size());
 inline constexpr unsigned supportedConditionCount=supportedCourseCount*2;
+// Presentation only: never swap the stable route, collision or leaderboard IDs.
+// Odawara's source-ordered path (condition 34) runs clockwise.
+inline constexpr unsigned originalCoursePresentationCondition(unsigned condition){
+    const auto course=condition/2,reverse=condition&1;
+    return course<9?condition:course==17?(reverse^1u):course==16?8u+reverse:6u+reverse;
+}
+// Unversioned Gunsai/Odawara times include pre-.45 handling and cannot be
+// distinguished from newer runs. Only those courses start a fresh local epoch.
+inline constexpr unsigned localTimeAttackRevision(unsigned course){return course==16||course==17?1u:0u;}
 inline constexpr bool isImportedCourseId(int id){return id>=9&&id<int(supportedCourseCount);}
 inline const ImportedCourseDefinition& importedCourseDefinition(unsigned id){
     if(!isImportedCourseId(int(id)))throw std::invalid_argument("Unknown imported course");

@@ -448,6 +448,10 @@ const std::uint32_t* Hud::paint(const UiState& s){
             battle.slide208=entrance.labels;battle.slide212=entrance.backings;
             battle.flags104=0x001ffffe|(s.rearView?1u:0u);battle.profileMode0C31C99C=mode;
             battle.frame204=frame;battle.validity96=onlineBattle?s.onlineBattleHud.rivalPositionFraction:s.battleRivalPositionFraction;
+            // Keep the original ADVANTAGE header and unavailable-distance
+            // artwork when a night opponent turns their headlights off.
+            const bool hideGap=onlineBattle&&s.night&&hideLightsOffAdvantage_&&!s.onlineBattleHud.opponentHeadlights;
+            if(hideGap)battle.validity96=-1.f;
             battle.signedAdvantage100=onlineBattle?s.onlineBattleHud.advantage:s.battleAdvantage;
             // Render repeats and pause reuse the animation input for this 60 Hz tick.
             auto nextAnimation=battleFrameAnimation;
@@ -456,6 +460,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
             const auto target=std::span<std::uint32_t>(pixels,std::size_t(width)*height);
             originalBattleHud.paintGame2d(target,width,height,draws,true);
             battlePresentation_.online=onlineBattle;battlePresentation_.profileMode=mode;
+            battlePresentation_.advantageHidden=hideGap;
             battlePresentation_.signedAdvantage=battle.signedAdvantage100;
             for(const auto& draw:draws){
                 if(draw.kind==OriginalBattleHudDraw::Kind::game2d){++battlePresentation_.game2dCommands;if(draw.draw.index==186)battlePresentation_.mirrorEnabled=true;}

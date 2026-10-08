@@ -396,16 +396,16 @@ public sealed class Idas3Updates : MonoBehaviour
         float scale=Mathf.Min(1.5f,Mathf.Min(Screen.width/680f,Screen.height/390f));
         GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-640*scale)/2,(Screen.height-330*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
         GUI.Box(new Rect(0,0,640,330),GUIContent.none);
-        GUI.Label(new Rect(20,18,600,50),State==CheckState.Checking?"CHECKING FOR UPDATES":State==CheckState.Available?"UPDATE AVAILABLE":State==CheckState.Downloading?"DOWNLOADING UPDATE":State==CheckState.Preparing?"INSTALLING UPDATE":"UPDATE CHECK",windowTitle);
-        GUI.Label(new Rect(30,76,580,80),Message,windowText);
+        Idas3MenuLocalization.Label(new Rect(20,18,600,50),State==CheckState.Checking?"CHECKING FOR UPDATES":State==CheckState.Available?"UPDATE AVAILABLE":State==CheckState.Downloading?"DOWNLOADING UPDATE":State==CheckState.Preparing?"INSTALLING UPDATE":"UPDATE CHECK",windowTitle);
+        Idas3MenuLocalization.Label(new Rect(30,76,580,80),Message,windowText);
         if(State==CheckState.Available||State==CheckState.Current){
-            GUI.Label(new Rect(30,157,580,58),State==CheckState.Available?
+            Idas3MenuLocalization.Label(new Rect(30,157,580,58),State==CheckState.Available?
                 "Update: "+((patchUrl!=null?patchBytes:fullBytes+contentBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB":
                 "Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB",windowText);
             for(int i=0;i<3;i++){
                 bool enabled=i==2||fullUrl!=null&&TryCompareVersions(AvailableVersion,InstalledVersion,out int order)&&order>=0&&(i!=0||State==CheckState.Available);
                 GUI.enabled=enabled;GUI.color=actionSelected==i?new Color(1,.85f,.3f):Color.white;
-                if(GUI.Button(new Rect(25+i*200,240,190,52),i==0?"UPDATE":i==1?"FULL REPAIR":"LATER",windowButton)){
+                if(GUI.Button(new Rect(25+i*200,240,190,52),Idas3MenuLocalization.T(i==0?"UPDATE":i==1?"FULL REPAIR":"LATER"),Idas3MenuLocalization.Style(windowButton))){
                     if(i==0)AcceptUpdate();else if(i==1)AcceptRepair();else ContinueToGame();
                 }
             }
@@ -414,9 +414,9 @@ public sealed class Idas3Updates : MonoBehaviour
             long activeBytes=downloadingContent?contentBytes:downloadBytes;
             float progress=activeRequest==null?0:Mathf.Clamp01((float)(activeRequest.downloadedBytes/(double)activeBytes));
             GUI.Box(new Rect(60,171,520,25),GUIContent.none);GUI.DrawTexture(new Rect(64,175,512*progress,17),Texture2D.whiteTexture);
-            GUI.Label(new Rect(60,204,520,30),(progress*100).ToString("0")+"%  /  "+(activeBytes/1048576d).ToString("0")+" MB",windowText);
-            if(GUI.Button(new Rect(220,256,200,45),"CANCEL",windowButton))cancelled=true;
-        }else if(State==CheckState.Unavailable){if(GUI.Button(new Rect(200,245,240,48),"CONTINUE TO GAME",windowButton))ContinueToGame();}
+            Idas3MenuLocalization.Label(new Rect(60,204,520,30),(progress*100).ToString("0")+"%  /  "+(activeBytes/1048576d).ToString("0")+" MB",windowText);
+            if(GUI.Button(new Rect(220,256,200,45),Idas3MenuLocalization.T("CANCEL"),Idas3MenuLocalization.Style(windowButton)))cancelled=true;
+        }else if(State==CheckState.Unavailable){if(GUI.Button(new Rect(200,245,240,48),Idas3MenuLocalization.T("CONTINUE TO GAME"),Idas3MenuLocalization.Style(windowButton)))ContinueToGame();}
         GUI.matrix=matrix;GUI.color=color;
     }
 

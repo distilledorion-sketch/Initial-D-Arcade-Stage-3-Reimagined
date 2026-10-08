@@ -33,6 +33,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     readonly List<Transform> skies=new List<Transform>();
     readonly List<(MeshRenderer renderer,bool uphill)> directionalScenery=new List<(MeshRenderer,bool)>();
     Camera view; string root,variant; bool reverse,visible=true; Idas3SceneGame host;
+    bool idZeroGeometryBaseline;
     uint SceneFlags => Idas3ReplayViewer.Instance != null ? Idas3ReplayViewer.Instance.Status.flags : host.Status.flags;
     public string LoadedVariant => variant;
     public int PairedTreeTriangles {get;private set;}
@@ -155,13 +156,22 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         return t;
     }
     void LoadScene() {
-        var shader=Resources.Load<Shader>("Idas3Scene"); if(shader==null || !shader.isSupported) throw new InvalidOperationException("Shared scene shader missing or unsupported");
+        // Keep a matched legacy path only for the isolated performance fixture.
+        var args=Environment.GetCommandLineArgs();
+        idZeroGeometryBaseline=Array.IndexOf(args,"-idas3-scene-smoke")>=0&&Array.IndexOf(args,"-idas3-idzero-geometry-baseline")>=0;
+        bool direct=IdZero(LoadedCourse)&&!idZeroGeometryBaseline;
+        bool packTrees=direct&&!(Array.IndexOf(args,"-idas3-scene-smoke")>=0&&Array.IndexOf(args,"-idas3-tree-packing-baseline")>=0);
+        long treeVerticesBefore=0,treeVerticesAfter=0,treeIndexBytesBefore=0,treeIndexBytesAfter=0;
+        var shader=Resources.Load<Shader>("Idas3Scene");
+        var directShader=direct?Resources.Load<Shader>("Idas3SceneDirect"):shader;
+        if(shader==null||!shader.isSupported||directShader==null||!directShader.isSupported)throw new InvalidOperationException("Shared scene shader missing or unsupported");
         bool roadsideBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-foliage-baseline")>=0&&
             Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-sadamine-boundary-check")>=0;
         materials=new Material[data.materials.Length];
         for(int i=0;i<materials.Length;i++) {
-            var s=data.materials[i]; var m=new Material(shader){name=s.name}; materials[i]=m;
+            var s=data.materials[i]; var m=new Material(directShader){name=s.name}; materials[i]=m;
             m.EnableKeyword("IDAS_IMPORTED_COURSE");
+            if(direct)m.EnableKeyword("IDAS_IMPORTED_VERTEX_FACES");
             m.SetFloat("_ImportedSponsorSigns",(LoadedCourse=="TSUBAKI"?IsTsubakiSignAtlas(s):IsSponsorMaterial(LoadedCourse,s.name))?1:0);
             // Repeated cutout trees share meshes/materials. Instance their
             // world transforms; blended road shadows retain their draw order.
@@ -224,8 +234,21 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                     if(data.materials[mat].kind=="tree")PairedTreeTriangles+=paired;
                     else PairedRoadsideTriangles+=paired;
                 }
-                var mesh=new Mesh{name="Hakone original shape "+shape,indexFormat=IndexFormat.UInt32};
-                mesh.vertices=vertices; mesh.normals=normals; mesh.uv=uv; mesh.uv2=uv2; mesh.colors32=colors; if(treeFaces!=null)mesh.uv3=treeFaces; mesh.triangles=indices; mesh.RecalculateBounds(); mesh.UploadMeshData(true);
+                var planes=direct?SceneryFacePlanes(vertices,indices,treeFaces):null;
+                bool tree=data.materials[mat].kind=="tree";
+                if(tree){treeVerticesBefore+=vertices.Length;treeIndexBytesBefore+=(long)indices.Length*4;}
+                if(packTrees&&tree)PackTreeVertices(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,ref treeFaces,ref planes);
+                var indexFormat=packTrees&&tree&&vertices.Length<=65535?IndexFormat.UInt16:IndexFormat.UInt32;
+                if(tree){treeVerticesAfter+=vertices.Length;treeIndexBytesAfter+=(long)indices.Length*(indexFormat==IndexFormat.UInt16?2:4);}
+                var mesh=new Mesh{name="Hakone original shape "+shape,indexFormat=indexFormat};
+                mesh.vertices=vertices; mesh.normals=normals; mesh.uv=uv; mesh.uv2=uv2; mesh.colors32=colors;
+                // Unity may alias missing UV streams to texture coordinates.
+                // Explicit zeros keep unpaired triangles two-sided; otherwise
+                // arbitrary texture UVs can turn into per-corner culling flags.
+                if(direct)mesh.uv3=treeFaces??new Vector2[vertices.Length];
+                else if(treeFaces!=null)mesh.uv3=treeFaces;
+                if(direct)mesh.SetUVs(3,planes);
+                mesh.triangles=indices; mesh.RecalculateBounds(); mesh.UploadMeshData(true);
                 sourceMeshes[shape]=mesh; sourceMaterials[shape]=mat;
                 if(data.materials[mat].kind=="tree" || data.materials[mat].kind=="gallery") continue;
                 var go=new GameObject(materials[mat].name+" "+shape); go.transform.SetParent(transform,false);
@@ -255,6 +278,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             item.renderer.shadowCastingMode=ShadowCastingMode.Off; item.renderer.receiveShadows=false; scenery.Add(item);
         }
         Debug.Log("HAKONE scenery placements: "+scenery.Count);
+        if(direct)Debug.Log($"IDZero tree buffers {LoadedCourse}: vertices {treeVerticesBefore} -> {treeVerticesAfter}; index bytes {treeIndexBytesBefore} -> {treeIndexBytesAfter}");
     }
     internal static int SceneryDirection(string course,string material){
         // Gunsai authors each gate twice at one place (START over FINISH at
@@ -400,21 +424,44 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             materials[i].SetFloat("_AlphaToMask",cutout&&samples>1?1:0);
         }
     }
-    internal static int TreeLod(float distanceSquared,int previous){
+    internal static int TreeLod(float distanceSquared,int previous,bool denseModels=false){
         // Separate enter/exit distances prevent camera shake or corrections
         // from toggling tree meshes or visibility on consecutive frames.
-        if(previous==0&&distanceSquared<286f*286f)return 0;
-        if(previous==1&&distanceSquared>=234f*234f&&distanceSquared<660f*660f)return 1;
-        if(previous==2&&distanceSquared>=540f*540f&&distanceSquared<1760f*1760f)return 2;
+        // IDZero's c model is still a detailed 3D tree (~1,100 triangles),
+        // unlike Stage 8's two-triangle card. Use it beyond 200 m instead of
+        // retaining the ~2,400-triangle models out to 600 m. Visibility range
+        // is unchanged, including trees in the mirror and distant hillsides.
+        float near=denseModels?80f:260f,far=denseModels?200f:600f;
+        if(previous==0&&distanceSquared<(near*1.1f)*(near*1.1f))return 0;
+        if(previous==1&&distanceSquared>=(near*.9f)*(near*.9f)&&distanceSquared<(far*1.1f)*(far*1.1f))return 1;
+        if(previous==2&&distanceSquared>=(far*.9f)*(far*.9f)&&distanceSquared<1760f*1760f)return 2;
         if(previous==-1&&distanceSquared>=1440f*1440f)return -1;
-        return distanceSquared<260f*260f?0:distanceSquared<600f*600f?1:distanceSquared<1600f*1600f?2:-1;
+        return distanceSquared<near*near?0:distanceSquared<far*far?1:distanceSquared<1600f*1600f?2:-1;
     }
+    internal static List<Vector4> SceneryFacePlanes(Vector3[] vertices,int[] indices,Vector2[] faces){
+        // Paired faces already have separate vertices. Store one identical
+        // object-space plane on all three corners: the vertex shader can reject
+        // the hidden side without running a geometry shader on millions of
+        // tree triangles. Lighting normals and source UVs remain untouched.
+        var planes=new Vector4[vertices.Length];
+        if(faces==null)return new List<Vector4>(planes);
+        for(int i=0;i<indices.Length;i+=3){
+            int a=indices[i],b=indices[i+1],c=indices[i+2];
+            if(faces[a].x<=.5f)continue;
+            var n=Vector3.Cross(vertices[b]-vertices[a],vertices[c]-vertices[a]).normalized;
+            var plane=new Vector4(n.x,n.y,n.z,-Vector3.Dot(n,vertices[a]));
+            planes[a]=planes[b]=planes[c]=plane;
+        }
+        return new List<Vector4>(planes);
+    }
+    bool BillboardTree(int lod)=>lod==2&&(!IdZero(LoadedCourse)||idZeroGeometryBaseline);
     internal void VerifyTreeState(){
         if(PairedTreeTriangles<=0)throw new InvalidOperationException("Source paired leaf faces were not tagged");
         foreach(var item in scenery){
             if(item.source.kind!="tree"||item.lod<0)continue;
             if(!item.renderer.enabled||item.filter.sharedMesh!=sourceMeshes[item.source.meshes[item.lod]])throw new InvalidOperationException("Visible tree lost its LOD mesh");
-            if(item.lod==2){var facing=view.transform.position-item.filter.transform.position;facing.y=0;if(facing.sqrMagnitude>.01f&&Vector3.Dot(item.filter.transform.forward,facing.normalized)<.99f)throw new InvalidOperationException("Distant tree is edge-on");}
+            if(BillboardTree(item.lod)){var facing=view.transform.position-item.filter.transform.position;facing.y=0;if(facing.sqrMagnitude>.01f&&Vector3.Dot(item.filter.transform.forward,facing.normalized)<.99f)throw new InvalidOperationException("Distant tree is edge-on");}
+            else if(Quaternion.Angle(item.transform.rotation,item.authoredRotation)>.01f)throw new InvalidOperationException("3D tree lost its authored orientation");
         }
         for(int i=0;i<materials.Length;i++)if(data.materials[i].cutoff>0&&!data.materials[i].sky){
             if(materials[i].GetFloat("_AlphaToMask")!=(QualitySettings.antiAliasing>1?1:0))throw new InvalidOperationException("Foliage coverage does not follow graphics settings");
@@ -426,17 +473,18 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     }
     void UpdateScenery(Vector3 cameraPosition) {
         int detail=host.GameOptions?.Current.importedSceneryDetail??0;
+        bool denseModels=IdZero(LoadedCourse)&&!idZeroGeometryBaseline;
         foreach(var item in scenery) {
             float d=SceneryDistanceSquared((item.position-cameraPosition).sqrMagnitude,detail);
             bool tree=item.tree;
-            int lod=tree?TreeLod(d,item.lod):(d<500*500?0:-1);
+            int lod=tree?TreeLod(d,item.lod,denseModels):(d<500*500?0:-1);
             if(item.lod!=lod) {
                 item.lod=lod; item.renderer.enabled=lod>=0;
                 if(lod>=0) { int index=item.source.meshes[lod]; item.filter.sharedMesh=sourceMeshes[index]; item.renderer.sharedMaterial=materials[sourceMaterials[index]];
-                    if(tree&&lod!=2)item.transform.rotation=item.authoredRotation;
+                    if(tree&&!BillboardTree(lod))item.transform.rotation=item.authoredRotation;
                 }
             }
-            if(lod>=0&&(!tree||lod==2)) {
+            if(lod>=0&&(!tree||BillboardTree(lod))) {
                 Vector3 facing=cameraPosition-item.position; facing.y=0;
                 if(facing.sqrMagnitude>.01f) item.transform.rotation=Quaternion.LookRotation(facing,Vector3.up);
             }

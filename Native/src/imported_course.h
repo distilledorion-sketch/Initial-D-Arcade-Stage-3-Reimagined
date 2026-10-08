@@ -35,7 +35,7 @@ struct ImportedCourse {
     // the first point at the end, so the lap period is the point count less 1.
     int laps=0;
     // Odawara's directions take different roads through one corner, so the
-    // clockwise race has its own source-ordered path, driven backwards.
+    // counterclockwise race has its own source-ordered path, driven backwards.
     struct Route {Course source;std::vector<original::OriginalRacePoint> center,left,right;};
     std::optional<Route> reverseRoute;
     const Course& sourceFor(bool reverse)const{return reverse&&reverseRoute?reverseRoute->source:source;}

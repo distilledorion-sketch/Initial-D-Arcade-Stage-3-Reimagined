@@ -82,6 +82,8 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
     preloadedBanks={};
     projectRoot=rootPath;assetRoot = rootPath / "data" / "original_assets" / "menus" / "v3";
     menuFont=MenuFont::load(rootPath);
+    localizedMenuFonts[0]=MenuFont::load(rootPath,"data/localization/custom-menus/ja.bin");
+    localizedMenuFonts[1]=MenuFont::load(rootPath,"data/localization/custom-menus/zh-Hans.bin");
     namePresentation.reset();nameState={};nameInput={};menuCueIds.clear();driverProfileCommit=false;
     tuningData.reset();tuningPresentation.reset();tuningCourseMenu={};tuningCourseSelected=0;tuningCourseConfirmPending=false;
     nameCommittedForVisit=driverSetupCompleted=savedCarTuningCourse=false;
@@ -861,10 +863,11 @@ void Frontend::drawCourseCarousel(int width,int height) {
 }
 void Frontend::drawChoiceMenu(int width,int height,bool movingWidgets) {
     original::OriginalChoiceMenuState state;
-    state.course=course==17?0:course==16?4:isImportedCourse(course)?3:course;state.frame=carFrame;
+    const auto presentation=originalCoursePresentationCondition(unsigned(course)*2+unsigned(reverse));
+    state.course=int(presentation/2);state.frame=carFrame;
     state.confirmationPhase=carConfirmationFrame<0?0.f:1.f;
     if(stage==FrontendStage::Transmission){state.screen=original::OriginalChoiceScreen::Transmission;state.selected=automatic?0:1;state.confirmationPhase=transmissionConfirmationPhase;}
-    else if(stage==FrontendStage::Route){state.screen=original::OriginalChoiceScreen::Route;state.selected=reverse?1:0;}
+    else if(stage==FrontendStage::Route){state.screen=original::OriginalChoiceScreen::Route;state.selected=int(presentation&1);}
     else if(stage==FrontendStage::Weather){state.screen=original::OriginalChoiceScreen::Weather;state.selected=wet?1:0;}
     else {state.screen=original::OriginalChoiceScreen::Time;state.selected=night?1:0;}
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
@@ -1050,7 +1053,9 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
         tuningPresentation->paintCanvas(pixels,width,height,tuningCourseMenu,battleProfile.u(1176));return pixels;
     }
     if(stage==FrontendStage::SaveSelect){
-        const std::vector<int> key{int(stage),saveSelected,int(saveFileCarLive),int(saveActionsOpen),saveActionSelected,
+        const int language=customMenuLanguage();
+        const auto& font=language&&localizedMenuFonts[language-1].ready()?localizedMenuFonts[language-1]:menuFont;
+        const std::vector<int> key{int(stage),language,saveSelected,int(saveFileCarLive),int(saveActionsOpen),saveActionSelected,
             int(saveDeleteOpen),saveDeleteSelected,int(saveDeleteFailed),int(saveFiles.at(std::size_t(saveSelected)).level)};
         if(key==previousKey)return pixels;previousKey=key;++canvasRevision;
         constexpr std::uint32_t ink=0xff0b0c0fu,panel=0xff16181du,raised=0xff22242au;
@@ -1069,19 +1074,20 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
             fill(x,y,w,1,argb);fill(x,y+h-1,w,1,argb);fill(x,y,1,h,argb);fill(x+w-1,y,1,h,argb);
         };
         const auto text=[&](std::string_view value,float x,float y,float size,std::uint32_t color,float maxWidth=1000.f){
-            const float measured=menuFont.width(value,size);
+            const float measured=font.width(value,size);
             if(measured>maxWidth)size*=maxWidth/measured;
-            menuFont.paint(pixels,width,height,value,x,y,size,color);
+            font.paint(pixels,width,height,value,x,y,size,color);
         };
+        const auto tr=[&](std::string_view value){return language&&localizedMenuFonts[language-1].ready()?customMenuText(value):value;};
         const auto number=[](unsigned value){return (value<10?std::string("0"):std::string())+std::to_string(value);};
         const auto& chosen=saveFiles[std::size_t(std::clamp(saveSelected,0,int(saveFiles.size())-1))];
         const auto used=std::count_if(saveFiles.begin(),saveFiles.end(),[](const auto& file){return file.used;});
 
         fill(24,18,592,446,ink);frame(24,18,592,446,edge);fill(24,18,592,3,red);
-        text("SAVE SELECT",42,31,30,white);
-        text("INITIAL D / SELECT A DRIVER",43,73,11,muted);
-        const auto count=std::to_string(used)+" / "+std::to_string(saveFiles.size())+" USED";
-        text(count,596-menuFont.width(count,12),43,12,muted);
+        text(tr("SAVE SELECT"),42,31,30,white);
+        text(tr("INITIAL D / SELECT A DRIVER"),43,73,11,muted);
+        const auto count=std::to_string(used)+" / "+std::to_string(saveFiles.size())+" "+std::string(tr("USED"));
+        text(count,596-font.width(count,12),43,12,muted);
         fill(25,96,590,1,edge);
 
         constexpr int listX=42,listY=110,listW=252,rowH=50,pitch=59;
@@ -1094,62 +1100,62 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
             text(number(i+1),listX+13,float(y+13),20,selected?white:muted);
             if(file.used&&paintSaveName&&std::any_of(file.name.begin(),file.name.end(),[](unsigned char c){return c>=128;}))
                 paintSaveName(pixels,width,height,file.name,listX+50,float(y+9),20,listW-64);
-            else text(file.used?file.name:"NEW DRIVER",listX+50,float(y+5),20,file.used?white:muted,listW-64);
-            text(file.used?file.car:"EMPTY SLOT",listX+51,float(y+30),11,muted,listW-65);
+            else text(file.used?file.name:tr("NEW DRIVER"),listX+50,float(y+5),20,file.used?white:muted,listW-64);
+            text(file.used?file.car:tr("EMPTY SLOT"),listX+51,float(y+30),11,muted,listW-65);
         }
 
         fill(310,110,288,316,panel);fill(310,110,3,43,red);
-        text(chosen.used?"LAST USED CAR":"FILE "+number(unsigned(saveSelected+1)),326,119,10,muted);
+        text(chosen.used?tr("LAST USED CAR"):std::string(tr("FILE"))+" "+number(unsigned(saveSelected+1)),326,119,10,muted);
         if(chosen.used){
             text(chosen.car,326,135,21,white,256);
             text(chosen.grade,326,163,11,muted,256);
             const auto& box=saveCarViewport;
             fill(box[0]-1,box[1]-1,box[2]+2,box[3]+2,ink);
             frame(box[0]-1,box[1]-1,box[2]+2,box[3]+2,edge);
-            if(!saveFileCarLive)text("CAR PREVIEW",392,235,12,muted);
-            text("PLAY TIME",326,saveActionsOpen?312:317,10,muted);
+            if(!saveFileCarLive)text(tr("CAR PREVIEW"),392,235,12,muted);
+            text(tr("PLAY TIME"),326,saveActionsOpen?312:317,10,muted);
             text(formatPlayTime(chosen.playedSeconds),326,saveActionsOpen?325:332,saveActionsOpen?17:20,white,155);
             fill(498,saveActionsOpen?312:320,1,saveActionsOpen?29:35,edge);
-            text("LEVEL",516,saveActionsOpen?312:317,10,muted);
+            text(tr("LEVEL"),516,saveActionsOpen?312:317,10,muted);
             text(chosen.level?std::to_string(chosen.level):"--",516,saveActionsOpen?325:332,saveActionsOpen?17:20,white,66);
             if(!saveActionsOpen)fill(326,366,256,1,edge);
-            text("LAST PLAYED",326,saveActionsOpen?348:377,10,muted);
+            text(tr("LAST PLAYED"),326,saveActionsOpen?348:377,10,muted);
             const auto date=chosen.lastPlayed.empty()?std::string("----/--/--"):chosen.lastPlayed;
-            text(date,582-menuFont.width(date,12),saveActionsOpen?346:374,12,white);
+            text(date,582-font.width(date,12),saveActionsOpen?346:374,12,white);
             if(saveActionsOpen){
                 for(int action=0;action<2;++action){
                     const int x=326+action*133;const bool selected=saveActionSelected==action;
                     fill(x,365,123,30,selected?red:raised);frame(x,365,123,30,selected?white:edge);
-                    const std::string_view label=action==0?"CONTINUE":"CHANGE CAR";
-                    text(label,x+(123-menuFont.width(label,13))*.5f,373,13,white);
+                    const std::string_view label=action==0?tr("CONTINUE"):tr("CHANGE CAR");
+                    text(label,x+(123-font.width(label,13))*.5f,373,13,white);
                 }
                 const bool selected=saveActionSelected==2;
                 fill(326,399,256,26,selected?red:raised);frame(326,399,256,26,selected?white:edge);
-                text("DELETE SAVE",454-menuFont.width("DELETE SAVE",12)*.5f,406,12,white);
+                text(tr("DELETE SAVE"),454-font.width(tr("DELETE SAVE"),12)*.5f,406,12,white);
             }
         }else{
             frame(433,196,42,42,edge);fill(443,216,22,2,muted);fill(453,206,2,22,muted);
-            text("NEW DRIVER",380,258,22,white);
-            text("EMPTY SLOT",419,291,11,muted);
+            text(tr("NEW DRIVER"),380,258,22,white);
+            text(tr("EMPTY SLOT"),419,291,11,muted);
         }
         fill(42,440,556,1,edge);
         float x=43;
         for(const auto& [keyName,action]:std::initializer_list<std::pair<const char*,const char*>>{
                 {"ARROWS / STEERING","SELECT"},{"ACCEL.","CONFIRM"},{"BRAKE","BACK"}}){
-            text(keyName,x,451,11,white);x+=menuFont.width(keyName,11)+7;
-            text(action,x,451,11,muted);x+=menuFont.width(action,11)+25;
+            text(tr(keyName),x,451,11,white);x+=font.width(tr(keyName),11)+7;
+            text(tr(action),x,451,11,muted);x+=font.width(tr(action),11)+25;
         }
         if(saveDeleteOpen){
             fill(154,162,332,166,ink);frame(154,162,332,166,edge);fill(154,162,332,3,red);
-            text("ARE YOU SURE?",320-menuFont.width("ARE YOU SURE?",25)*.5f,186,25,white);
-            const auto label="DELETE SAVE "+number(unsigned(saveSelected+1));
-            text(label,320-menuFont.width(label,12)*.5f,224,12,muted);
-            if(saveDeleteFailed)text("COULD NOT DELETE SAVE",320-menuFont.width("COULD NOT DELETE SAVE",10)*.5f,249,10,red);
+            text(tr("ARE YOU SURE?"),320-font.width(tr("ARE YOU SURE?"),25)*.5f,186,25,white);
+            const auto label=std::string(tr("DELETE SAVE"))+" "+number(unsigned(saveSelected+1));
+            text(label,320-font.width(label,12)*.5f,224,12,muted);
+            if(saveDeleteFailed)text(tr("COULD NOT DELETE SAVE"),320-font.width(tr("COULD NOT DELETE SAVE"),10)*.5f,249,10,red);
             for(int choice=0;choice<2;++choice){
                 const int buttonX=180+choice*152;const bool selected=saveDeleteSelected==choice;
                 fill(buttonX,270,128,36,selected?red:raised);frame(buttonX,270,128,36,selected?white:edge);
-                const std::string_view label=choice==0?"NO":"YES";
-                text(label,buttonX+(128-menuFont.width(label,17))*.5f,280,17,white);
+                const std::string_view label=choice==0?tr("NO"):tr("YES");
+                text(label,buttonX+(128-font.width(label,17))*.5f,280,17,white);
             }
         }
         return pixels;

@@ -1,0 +1,35 @@
+Night battle display and replay freecam fixes - 2026-10-08
+
+Status: implemented and tested locally; no Desktop installation or GitHub publication.
+
+Replay free camera now uses the native renderer's right-handed screen basis.
+A/D and the left stick strafe in the intended screen direction. Horizontal
+mouse/right-stick look is corrected; vertical look, forward motion, reset,
+independent replay/HUD visibility, and elapsed-time movement remain intact.
+
+Settings > Online > Lights-off Advantage: Hidden (default) / Visible.
+Apply persists the choice; drafts and cancellation follow normal settings.
+During night Online/LAN races, Hidden replaces the numerical advantage with
+the original unavailable-distance dashes when the opponent's headlights are
+off. The header, driver names, mirror, minimap, actual distance, race rules and
+physics remain intact. Day races and offline battles are unaffected. Online
+replays use their recorded opponent light state and the same local setting.
+The label and explanation are translated for Japanese and Simplified Chinese.
+
+Existing original opponent darkening was verified, not replaced with a new
+brightness effect. Night lights-off darkens the rival near/ahead of the player;
+turning lights back on restores original ambient lighting. Original distance
+fade and other car lights remain as authored.
+
+Verification (private artifacts in Verification/night-battle-freecam-20261008):
+- Native ui_battle_hud_tests passed, including actual pixels for day/night,
+  hide/show, headlights on/off, missing packets, and same-frame option changes.
+- Original car lighting reference tests passed against the original routines.
+- Production App authority fixture: 134 checks passed for both player slots,
+  day/night, stale messages, darken/restore, rendered HUD/lighting and unchanged
+  simulation digest. This is an isolated fixture, not a live Steam match.
+- Unity editor replay presentation: 149 checks passed, including actual
+  projection for left/right strafe and look at 12 headings/pitches, forward
+  and vertical controls, plus timing at 30/60/144 FPS.
+- Settings/navigation suite: 124 checks passed, including default migration,
+  draft/discard, Apply, persistence and Reset Defaults.

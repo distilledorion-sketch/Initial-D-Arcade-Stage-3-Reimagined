@@ -10,7 +10,8 @@ TrueTypeFontImporter:
   includeFontData: 1
   fontNames:
   - Noto Sans JP
-  fallbackFontReferences: []
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: faef39dc40054e7a91a4907773061ab0, type: 3}
   customCharacters:
   fontRenderingMode: 0
   ascentCalculationMode: 1

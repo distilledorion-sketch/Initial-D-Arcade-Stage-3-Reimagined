@@ -1,6 +1,8 @@
 #include "native_assets.h"
+#include "native_asset_storage.h"
 #include "unity_ui_capture.h"
 #include <algorithm>
+#include <atomic>
 #include <bit>
 #include <cmath>
 #include <fstream>
@@ -9,18 +11,30 @@
 #include <string>
 
 namespace idas3 {
-namespace {
-class Reader {
-    std::ifstream input;
-public:
-    explicit Reader(const std::filesystem::path& path):input(path,std::ios::binary){
-        if(!input)throw std::runtime_error("Cannot open native asset: "+path.string());
+namespace { std::atomic<int> uiLanguage{0}; }
+void setOriginalUiLanguage(int language){
+    if(language!=0&&language!=1)throw std::invalid_argument("Unknown arcade text language");
+    uiLanguage.store(language);
+}
+int originalUiLanguage(){return uiLanguage.load();}
+std::filesystem::path localizedUiAssetPath(const std::filesystem::path& path){
+    if(originalUiLanguage()!=1)return path;
+    // Only model UI banks have a mapped counterpart. Never redirect physics,
+    // courses, cars or executable data, and leave unsupported text in English.
+    if(path.extension()!=".idasmesh"&&path.extension()!=".idastex")return path;
+    std::filesystem::path prefix,relative;bool found=false;
+    for(const auto& part:path.lexically_normal()){
+        if(!found&&part=="original_assets"&&prefix.filename()=="data"){
+            found=true;continue;
+        }
+        if(found)relative/=part;else prefix/=part;
     }
-    void bytes(void* out,std::size_t size){if(!input.read(static_cast<char*>(out),std::streamsize(size)))throw std::runtime_error("Truncated native asset");}
-    std::uint32_t u32(){std::array<unsigned char,4>b{};bytes(b.data(),4);return b[0]|(std::uint32_t(b[1])<<8)|(std::uint32_t(b[2])<<16)|(std::uint32_t(b[3])<<24);}
-    float f32(){float f=std::bit_cast<float>(u32());if(!std::isfinite(f))throw std::runtime_error("Non-finite original sprite attribute");return f;}
-    bool end(){return input.peek()==std::char_traits<char>::eof();}
-};
+    if(!found||relative.empty())return path;
+    const auto candidate=prefix/"localization"/"ja"/"original_assets"/relative;
+    return std::filesystem::is_regular_file(candidate)?candidate:path;
+}
+namespace {
+using Reader = NativeAssetReader;
 std::uint32_t blend(std::uint32_t dst,std::uint32_t src,float alpha){
     const auto sa=std::uint32_t(std::clamp(std::lround(((src>>24)&255)*alpha),0l,255l));
     if(!sa)return dst;if(sa==255)return src|0xff000000u;
@@ -125,10 +139,18 @@ void triangle(std::span<std::uint32_t> target,int width,int height,const NativeI
 }
 }
 NativeTextureBank NativeTextureBank::load(const std::filesystem::path& path){
-    Reader reader(path);std::array<char,8>magic{};reader.bytes(magic.data(),8);
+    const auto selected=localizedUiAssetPath(path);
+    Reader reader(selected);std::array<char,8>magic{};reader.bytes(magic.data(),8);
     if(magic!=std::array<char,8>{'I','D','A','S','3','T','1',0}||reader.u32()!=1)throw std::runtime_error("Unsupported native texture format");
     auto count=reader.u32();if(!count||count>4096)throw std::runtime_error("Invalid native texture count");
-    NativeTextureBank bank;bank.images.resize(count);std::size_t total=0;
+    NativeTextureBank bank;bank.sourceCount=count;
+    if(selected!=path){
+        Reader source(path);std::array<char,8>baseMagic{};source.bytes(baseMagic.data(),8);
+        if(baseMagic!=magic||source.u32()!=1)throw std::runtime_error("Invalid localization base bank");
+        bank.sourceCount=source.u32();
+        if(!bank.sourceCount||bank.sourceCount>count)throw std::runtime_error("Invalid localization texture extent");
+    }
+    bank.images.resize(count);std::size_t total=0;
     for(std::uint32_t i=0;i<count;i++){
         auto index=reader.u32(),w=reader.u32(),h=reader.u32(),size=reader.u32();
         if(index>=count||!bank.images[index].argb.empty()||!w||!h||w>2048||h>2048||std::uint64_t(w)*h*4!=size)throw std::runtime_error("Invalid native texture record");
@@ -140,8 +162,9 @@ NativeTextureBank NativeTextureBank::load(const std::filesystem::path& path){
 }
 const NativeImage& NativeTextureBank::at(std::uint32_t index)const{return images.at(index);}
 NativeModel NativeModel::load(const std::filesystem::path& path){
-    if(std::filesystem::file_size(path)>512*1024*1024)throw std::runtime_error("Native model file budget exceeded");
-    Reader reader(path);std::array<char,8> magic{};reader.bytes(magic.data(),8);
+    const auto selected=localizedUiAssetPath(path);
+    if(std::filesystem::file_size(selected)>512*1024*1024)throw std::runtime_error("Native model file budget exceeded");
+    Reader reader(selected);std::array<char,8> magic{};reader.bytes(magic.data(),8);
     if(magic!=std::array<char,8>{'I','D','A','S','3','M','1',0}||reader.u32()!=1)throw std::runtime_error("Unsupported native model format");
     auto count=reader.u32();if(!count||count>8192)throw std::runtime_error("Invalid native model chunk count");
     NativeModel model;model.chunks.resize(count);std::size_t totalVertices=0,totalIndices=0,totalRaw=0;

@@ -77,7 +77,7 @@ std::vector<OriginalBattleHudDraw> drawOriginalBattleHud(const OriginalBattleHud
 OriginalBattleHudAssets OriginalBattleHudAssets::load(const std::filesystem::path& root){
     OriginalBattleHudAssets out;const auto directory=root/"data/original_assets/hud/game2d";
     out.model_=NativeModel::load(directory/"game2d.idasmesh");out.textures_=NativeTextureBank::load(directory/"textures/textures.idastex");
-    if(out.model_.chunks.size()!=212||out.textures_.size()!=76)throw std::runtime_error("Original battle HUD game2d identity mismatch");return out;
+    if(out.model_.chunks.size()!=212||out.textures_.sourceSize()!=76)throw std::runtime_error("Original battle HUD game2d identity mismatch");return out;
 }
 void OriginalBattleHudAssets::paintGame2d(std::span<std::uint32_t> argb,int width,int height,
         std::span<const OriginalBattleHudDraw> commands,bool edgeAnchored)const{

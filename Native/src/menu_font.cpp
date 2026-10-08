@@ -6,9 +6,24 @@
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
+#include <atomic>
+#include "custom_menu_text.h"
 
 namespace idas3 {
 namespace {
+std::atomic<int> menuLanguage{0};
+// Invalid UTF-8 advances by one byte and paints a replacement glyph. Decode
+// bounded string_views so malformed names can never read beyond their extent.
+std::uint32_t nextCode(std::string_view text,std::size_t& at){
+    const auto first=static_cast<unsigned char>(text[at++]);
+    if(first<128)return first;
+    const int extra=first>=0xc2&&first<=0xdf?1:first>=0xe0&&first<=0xef?2:first>=0xf0&&first<=0xf4?3:0;
+    if(!extra||at+extra>text.size())return '?';
+    std::uint32_t code=first&((1u<<(6-extra))-1u);
+    for(int n=0;n<extra;++n){const auto c=static_cast<unsigned char>(text[at+n]);if((c&0xc0)!=0x80)return '?';code=(code<<6)|(c&63);}
+    if(code<(extra==1?128u:extra==2?2048u:65536u)||code>0x10ffff||(code>=0xd800&&code<=0xdfff))return '?';
+    at+=extra;return code;
+}
 std::uint32_t word(const std::vector<unsigned char>& bytes, std::size_t at) {
     if (at + 4 > bytes.size()) throw std::runtime_error("Truncated menu font");
     return unsigned(bytes[at]) | (unsigned(bytes[at + 1]) << 8) |
@@ -22,9 +37,21 @@ float real(const std::vector<unsigned char>& bytes, std::size_t at) {
 }
 }
 
-MenuFont MenuFont::load(const std::filesystem::path& root) {
+void setCustomMenuLanguage(int language){if(language<0||language>2)throw std::invalid_argument("Invalid custom menu language");menuLanguage.store(language);}
+int customMenuLanguage(){return menuLanguage.load();}
+std::string_view customMenuText(std::string_view english){
+    const int language=customMenuLanguage();if(!language)return english;
+    for(const auto& row:customMenuTranslations)if(english==row[0])return row[language];
+    return english;
+}
+const MenuFont::Glyph& MenuFont::glyph(std::uint32_t code) const{
+    if(const auto found=glyphs_.find(code);found!=glyphs_.end())return found->second;
+    if(const auto found=glyphs_.find('?');found!=glyphs_.end())return found->second;
+    static const Glyph empty{};return empty;
+}
+MenuFont MenuFont::load(const std::filesystem::path& root,const std::filesystem::path& file) {
     MenuFont font;
-    std::ifstream in(root / "data/native_assets/menu_font/font.bin", std::ios::binary);
+    std::ifstream in(root / file, std::ios::binary);
     if (!in) return font;
     const std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(in)), {});
     if (bytes.size() < 24 || std::memcmp(bytes.data(), "IDMF", 4) || word(bytes, 4) != 1)
@@ -32,14 +59,18 @@ MenuFont MenuFont::load(const std::filesystem::path& root) {
     const auto width = word(bytes, 8), height = word(bytes, 12);
     font.baked_ = float(word(bytes, 16));
     const auto count = word(bytes, 20);
-    if (!width || !height || width > 8192 || height > 8192 || count > 512 || font.baked_ <= 0)
+    if (!width || !height || width > 8192 || height > 8192 || count > 65536 || font.baked_ <= 0)
         throw std::runtime_error("Invalid menu font header");
     std::size_t at = 24;
     for (unsigned i = 0; i < count; ++i, at += 24) {
         const auto code = word(bytes, at);
         Glyph glyph{real(bytes, at + 4), real(bytes, at + 8), real(bytes, at + 12),
                     real(bytes, at + 16), real(bytes, at + 20), true};
-        if (code < font.glyphs_.size()) font.glyphs_[code] = glyph;
+        if(code>0x10ffff||!std::isfinite(glyph.advance)||glyph.advance<0||
+           !std::isfinite(glyph.x)||!std::isfinite(glyph.y)||!std::isfinite(glyph.w)||!std::isfinite(glyph.h)||
+           glyph.x<0||glyph.y<0||glyph.w<0||glyph.h<0||glyph.x+glyph.w>width||glyph.y+glyph.h>height)
+            throw std::runtime_error("Invalid menu font glyph");
+        font.glyphs_[code] = glyph;
     }
     const std::size_t pixels = std::size_t(width) * height;
     if (bytes.size() != at + pixels * 4) throw std::runtime_error("Menu font pixel extent mismatch");
@@ -54,9 +85,9 @@ float MenuFont::width(std::string_view text, float pixelHeight) const {
     if (!ready()) return 0;
     const float scale = pixelHeight / baked_;
     float total = 0;
-    for (const unsigned char c : text) {
-        const auto& glyph = glyphs_[c < glyphs_.size() ? c : ' '];
-        total += (glyph.present ? glyph.advance : glyphs_[' '].advance) * scale;
+    for (std::size_t at=0;at<text.size();) {
+        const auto& g = glyph(nextCode(text,at));
+        total += g.advance * scale;
     }
     return total;
 }
@@ -127,9 +158,9 @@ void MenuFont::paint(std::span<std::uint32_t> target, int targetWidth, int targe
     if (!ready() || targetWidth <= 0 || targetHeight <= 0) return;
     const float scale = pixelHeight / baked_;
     float pen = x;
-    for (const unsigned char c : text) {
-        const auto& glyph = glyphs_[c < glyphs_.size() ? c : ' '];
-        if (!glyph.present) { pen += glyphs_[' '].advance * scale; continue; }
+    for (std::size_t at=0;at<text.size();) {
+        const auto& glyph = this->glyph(nextCode(text,at));
+        if (!glyph.present) continue;
         if (outlineWidth > 0) {
             const int reach = std::max(1, int(std::lround(outlineWidth)));
             // Filling the whole ring costs one quad per offset under the host,

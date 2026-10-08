@@ -35,7 +35,7 @@ void OriginalDemoOverlays::load(const std::filesystem::path& root){
     textures_=NativeTextureBank::load(base/"adv2d_v3/textures/textures.idastex");
     std::ifstream in(base/"timeline.bin",std::ios::binary);std::array<char,8> magic{};in.read(magic.data(),8);
     if(magic!=std::array<char,8>{'I','D','O','2','D','0','0','1'})throw std::runtime_error("Original demo timeline format");
-    const auto count=u32(in),fadeCount=u32(in);if(count!=206||fadeCount!=6||model_.chunks.size()!=46||textures_.size()!=23)throw std::runtime_error("Unexpected original demo assets");
+    const auto count=u32(in),fadeCount=u32(in);if(count!=206||fadeCount!=6||model_.chunks.size()!=46||textures_.sourceSize()!=23)throw std::runtime_error("Unexpected original demo assets");
     cues_.clear();fades_.clear();
     for(unsigned i=0;i<count;++i){OriginalDemoOverlayCue c;c.chunk=u32(in);c.start=u32(in);c.fadeInEnd=u32(in);c.fadeOutStart=u32(in);c.end=u32(in);
         for(auto* group:{&c.from,&c.to,&c.scaleFrom,&c.scaleTo})for(auto& f:*group)f=f32(in);

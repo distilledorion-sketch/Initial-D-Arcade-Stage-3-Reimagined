@@ -1,0 +1,54 @@
+Odawara local records and route names — 2026-10-08
+
+The .45 handling update reset community records but deliberately left local
+personal records and ghosts intact. Old fast Odawara runs could therefore
+remain in the course, model and personal targets shown by the game.
+
+Local CSV storage now writes a course_revision column. Odawara (conditions
+34/35) requires revision 1. Historical CSV formats remain readable, with
+unversioned Odawara rows excluded and all other course rows retained. The
+game archives the original CSV before rewriting it on save selection/startup:
+<filename>.before-odawara-revision-1.bak. A failed backup prevents replacement.
+Both five save slots and the legacy driver profile directory use this path.
+The cabinet aggregate file receives the same migration. Read-only historical
+imports filter stale rows without changing files.
+
+Existing rows do not record the producing build, so the one-time reset affects
+ALL existing unversioned local Odawara times, including runs made after .45.
+The backup retains them for recovery. New versioned times survive reloads and
+save switching. Odawara best-time ghosts use revisioned filenames; archived
+old ghosts and saved replay files remain untouched. Other tracks' ghost paths
+and records are unchanged. No live user saves were modified during testing.
+
+Actual route-point winding confirms condition 34 is clockwise and condition
+35 is counterclockwise in the game's minimap projection. Presentation now
+uses those labels in original route selection, start banners, TA rankings,
+online rooms, Discord presence, replay filenames/descriptions and the website.
+The online labels include Japanese and Simplified Chinese translations.
+The shared imported-ranking mapping also gives Gunsai outbound/inbound text
+instead of the former generic downhill/uphill labels.
+
+No route geometry, collision, handling, condition IDs, community scores or
+server policy changed. Website source is updated locally; deploy it with the
+next release. No new leaderboard migration is needed.
+
+Validation in Verification/odawara-records-directions:
+- Storage: all 35 cars, directions/weather, three historical CSV formats,
+  unrelated records/checkpoints, Unicode paths, exact backups, repeat loads,
+  malformed/future revisions, and failed archive safety.
+- Ghost storage: old-fast/new-slower isolation and reload in all four Odawara
+  direction/weather combinations; original-course ghost identity retained.
+- Native app: 48 import/save-selection checks, including all five slots and
+  legacy profiles, actual displayed rankings and switching away/back.
+- Actual course winding and original menu rendering/input/confirmation;
+  clockwise and counterclockwise ranking screenshots inspected.
+- 630 existing Time Attack visit checks.
+- 123 managed presence/replay/online/localization checks, Unity compiled.
+- 73 leaderboard service/site tests passed.
+
+Native plugin rebuilt in Assets/Plugins/x86_64. Not installed on Desktop,
+not published to GitHub, and no website deployment performed.
+
+Follow-up: the user requested the same reset for Gunsai. See
+gunsai-records-2026-10-08.txt for the expanded migration and new backup suffix.
+Already-versioned Odawara records and the original backup are preserved.

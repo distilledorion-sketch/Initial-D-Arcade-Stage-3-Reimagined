@@ -33,7 +33,7 @@ OriginalRaceHud OriginalRaceHud::load(const std::filesystem::path& root){
     out.sprites_=NativeSpriteBank::load(spr/"original_rip.tbl",spr/"original_rip.bin");
     out.spriteTextures_=NativeTextureBank::load(spr/"textures/textures.idastex");
     out.trig_=original::OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");
-    if(out.model_.chunks.size()!=212||out.modelTextures_.size()!=76||out.sprites_.sprites.size()!=15||out.spriteTextures_.size()!=41)throw std::runtime_error("Original race HUD bank identity mismatch");
+    if(out.model_.chunks.size()!=212||out.modelTextures_.sourceSize()!=76||out.sprites_.sprites.size()!=15||out.spriteTextures_.size()!=41)throw std::runtime_error("Original race HUD bank identity mismatch");
     for(const auto& chunk:out.model_.chunks){
         std::size_t count=0;for(const auto& batch:chunk.batches)count+=batch.vertices.size();
         out.maxChunkVertices_=std::max(out.maxChunkVertices_,count);

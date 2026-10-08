@@ -11,10 +11,12 @@ public sealed class Idas3MenuFontBuild : IPreprocessBuildWithReport
     public int callbackOrder=>0;
     public void OnPreprocessBuild(BuildReport report)
     {
-        const string path="Assets/Resources/Fonts/NotoSansJP-Regular.otf";
-        var importer=AssetImporter.GetAtPath(path) as TrueTypeFontImporter;
-        if(importer==null||!importer.includeFontData||AssetDatabase.LoadAssetAtPath<Font>(path)==null)
-            throw new BuildFailedException("Sound Room requires its bundled Noto font with Include Font Data enabled.");
+        foreach(string language in new[]{"JP","SC"}){
+            string path="Assets/Resources/Fonts/NotoSans"+language+"-Regular.otf";
+            var importer=AssetImporter.GetAtPath(path) as TrueTypeFontImporter;
+            if(importer==null||!importer.includeFontData||AssetDatabase.LoadAssetAtPath<Font>(path)==null)
+                throw new BuildFailedException("Custom menus require bundled Noto fonts with Include Font Data enabled: "+language);
+        }
     }
 
     // Isolated real-menu renderer. No ROM, native game initialization, personal

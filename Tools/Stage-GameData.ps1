@@ -6,6 +6,8 @@ Preserve every original native runtime data file in a Unity deployment.
 Run after the Unity player build to avoid importing 14,000+ native files into
 the Unity editor. No file deletion, save migration or live-save writes occur.
 The default destination is outside Assets. The source snapshot is read-only.
+CompressAssets losslessly packs staged texture/model banks after verifying the
+copy. The shipping DLL must include native_asset_storage support.
 .EXAMPLE
 .\Tools\Stage-GameData.ps1 -InventoryOnly
 .EXAMPLE
@@ -20,7 +22,8 @@ param(
     [string]$DestinationRoot,
     [string]$ManifestPath,
     [switch]$InventoryOnly,
-    [switch]$CreateFreshSaveSeed
+    [switch]$CreateFreshSaveSeed,
+    [switch]$CompressAssets
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -57,7 +60,12 @@ function Assert-NoReparseAncestor([string]$Path) {
         $candidate = $parent
     }
 }
-function Hash-File([string]$Path) { return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
+function Hash-File([string]$Path) {
+    $stream = [IO.File]::OpenRead($Path)
+    $hasher = [Security.Cryptography.SHA256]::Create()
+    try { return [BitConverter]::ToString($hasher.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }
+    finally { $hasher.Dispose(); $stream.Dispose() }
+}
 function Relative-DataPath([string]$Path) { return $Path.Substring($sourceData.Length + 1).Replace('\', '/') }
 function Write-Json([string]$Path, $Value) {
     [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($Path)) | Out-Null
@@ -137,6 +145,21 @@ if (-not $InventoryOnly) {
             throw "Unexpected prior deployment file: $relative. Choose a fresh destination; the staging script never deletes files."
         }
     }
+    if ($CompressAssets) {
+        $packer = Join-Path $SourceRoot 'bin/pack_native_assets.exe'
+        if (-not (Test-Path -LiteralPath $packer -PathType Leaf)) { throw 'Build the pack_native_assets target before compressed staging.' }
+        & $packer $sourceData $targetData | Out-Host
+        if ($LASTEXITCODE -ne 0) { throw 'Lossless native asset packing failed.' }
+        # Shipping manifests describe bytes on disk. Retain the original hash
+        # separately so auditing can still prove preservation of the source.
+        foreach ($record in $records) {
+            $record['sourceBytes'] = $record.bytes
+            $record['sourceSha256'] = $record.sha256
+            $destination = Join-Path $targetData $record.path
+            $record.bytes = (Get-Item -LiteralPath $destination).Length
+            $record.sha256 = Hash-File $destination
+        }
+    }
 }
 
 foreach ($record in @($handlingBefore) + @($saveBefore)) {
@@ -156,14 +179,17 @@ if ($CreateFreshSaveSeed) {
         } else { [IO.File]::WriteAllText($path, $defaults[$name], (New-Object Text.UTF8Encoding($false))) }
     }
 }
+$storedBytes = [long]0
+foreach ($record in $records) { $storedBytes += [long]$record.bytes }
 $manifest = [ordered]@{
     schema='idas3-unity-runtime-data-v1'; nativeRelease='0.3.29'; generatedUtc=[DateTime]::UtcNow.ToString('o')
     sourceRoot=$SourceRoot; destinationRoot=$DestinationRoot; staged=(-not [bool]$InventoryOnly)
-    fileCount=$records.Count; bytes=$totalBytes; files=@($records.ToArray())
+    fileCount=$records.Count; sourceBytes=$totalBytes; bytes=$storedBytes; files=@($records.ToArray())
+    losslessAssetsPacked=([bool]$CompressAssets -and -not [bool]$InventoryOnly)
     handlingSources=$handlingBefore; handlingUnchanged=$true; sourceSaveFilesChecked=$saveBefore.Count; sourceSavesUnchanged=$true
     savesStaged=$false; optionalFreshSaveSeed=$seedPath
 }
 Write-Json $ManifestPath $manifest
 if (-not $InventoryOnly) { Write-Json (Join-Path $DestinationRoot 'data.manifest.json') $manifest }
-Write-Host ("{0}: {1:N0} files, {2:N0} bytes; {3} handling source hashes and {4} copied-source save hashes unchanged." -f $(if($InventoryOnly){'Inventoried'}else{'Staged and verified'}),$records.Count,$totalBytes,$handlingBefore.Count,$saveBefore.Count)
+Write-Host ("{0}: {1:N0} files, {2:N0} stored bytes; {3} handling source hashes and {4} copied-source save hashes unchanged." -f $(if($InventoryOnly){'Inventoried'}else{'Staged and verified'}),$records.Count,$manifest.bytes,$handlingBefore.Count,$saveBefore.Count)
 Write-Host "Manifest: $ManifestPath"

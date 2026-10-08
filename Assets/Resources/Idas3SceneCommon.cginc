@@ -140,8 +140,16 @@ float sourceFogCoefficient(float reciprocalDepth){
  uint pair=_IdasFogWords[2+(index>>2)][index&3];
  return lerp(float(pair>>8),float(pair&255),fraction)/255.0;
 }
-struct V{float3 p:POSITION;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD0;float4 offsetColor:TEXCOORD1;float2 treeFace:TEXCOORD2;UNITY_VERTEX_INPUT_INSTANCE_ID};
-struct P{float4 p:SV_POSITION;float3 world:TEXCOORD0;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD1;float4 offsetColor:COLOR1;noperspective float reciprocalDepth:TEXCOORD2;float treeFace:TEXCOORD3;float sponsorAxis:TEXCOORD4;};
+struct V{float3 p:POSITION;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD0;float4 offsetColor:TEXCOORD1;float2 treeFace:TEXCOORD2;
+#if defined(IDAS_IMPORTED_COURSE) && defined(IDAS_IMPORTED_VERTEX_FACES)
+ float4 facePlane:TEXCOORD3;
+#endif
+ UNITY_VERTEX_INPUT_INSTANCE_ID};
+struct P{float4 p:SV_POSITION;float3 world:TEXCOORD0;float3 n:NORMAL;float4 c:COLOR0;float2 uv:TEXCOORD1;float4 offsetColor:COLOR1;noperspective float reciprocalDepth:TEXCOORD2;float treeFace:TEXCOORD3;float sponsorAxis:TEXCOORD4;
+#if defined(IDAS_IMPORTED_COURSE) && defined(IDAS_IMPORTED_VERTEX_FACES)
+ float faceVisibility:SV_CullDistance0;
+#endif
+};
 Texture2D _MainTex;SamplerState sampler_MainTex;
 P mainVS(V v){UNITY_SETUP_INSTANCE_ID(v);P o;o.treeFace=v.treeFace.x;o.sponsorAxis=v.treeFace.y;
 #if defined(IDAS_IMPORTED_COURSE)
@@ -153,6 +161,13 @@ P mainVS(V v){UNITY_SETUP_INSTANCE_ID(v);P o;o.treeFace=v.treeFace.x;o.sponsorAx
 #endif
  o.n=mul((float3x3)unity_ObjectToWorld,v.n);o.c=v.c;o.uv=v.uv;
  o.offsetColor=v.offsetColor;o.reciprocalDepth=1/o.p.w;
+#if defined(IDAS_IMPORTED_VERTEX_FACES)
+ // Source paired faces have different UVs/colors on each side. Their three
+ // vertices carry the same geometric plane, separate from lighting normals.
+ // Reject only the hidden paired side, in object space, before rasterization.
+ // This also works with the mirror's projection and reflected view convention.
+ o.faceVisibility=v.treeFace.x>.5&&dot(v.facePlane,float4(mul(unity_WorldToObject,float4(eye.xyz,1)).xyz,1))<=0?-1:1;
+#endif
  return o;
 #else
  o.p=mul(float4(v.p,1),viewProjection);o.world=v.p;o.n=v.n;o.c=v.c;o.uv=v.uv;o.offsetColor=v.offsetColor;

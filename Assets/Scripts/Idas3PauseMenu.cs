@@ -20,7 +20,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     public Idas3Updates Updates {get;set;}
     private static readonly string[] DisplayModes={"WINDOWED","BORDERLESS","FULLSCREEN"};
     private static readonly string[] CameraModes={"BUMPER","CHASE","NATURAL"};
-    private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS","FLYCAST WHEEL"};
+    private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS RESPONSE","FLYCAST WHEEL"};
     private static readonly int[] FrameCaps={0,30,60,90,120,144,165,240,360},AaValues={0,2,4,8};
     private Idas3GameOptions options;
     private Idas3ControlBindings bindings;
@@ -208,7 +208,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?3:tab==0?6:tab==4?7:tab==2?4:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
+    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?7:tab==2?6:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -329,9 +329,12 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==0)v.defaultCamera=Wrap(v.defaultCamera+direction,CameraModes.Length);
             if(row==1)v.aiDifficulty=Wrap(v.aiDifficulty+direction,3);
             if(row==2)v.timeAttackGhost=!v.timeAttackGhost;
+            if(row==4)v.arcadeTextLanguage=Wrap(v.arcadeTextLanguage+direction,2);
+            if(row==5)v.customMenuLanguage=Wrap(v.customMenuLanguage+direction,3);
         }else if(tab==5){
             if(row==0)v.communityTimes=!v.communityTimes;
             if(row==2)v.discordPresence=!v.discordPresence;
+            if(row==3)v.hideLightsOffAdvantage=!v.hideLightsOffAdvantage;
         }else if(tab==4){
             if(row==0)v.controllerResponse=Wrap(v.controllerResponse+direction,ControllerResponses.Length);
             if(row==1)v.SteeringDeadzone=Mathf.Clamp(Mathf.Round(v.SteeringDeadzone*100)+direction,0,30)/100f;
@@ -360,7 +363,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private static void Fill(Rect rect,Color color){var before=GUI.color;GUI.color=color;GUI.DrawTexture(rect,Texture2D.whiteTexture);GUI.color=before;}
     private static void Frame(Rect rect,Color color){Fill(new Rect(rect.x,rect.y,rect.width,1),color);Fill(new Rect(rect.x,rect.yMax-1,rect.width,1),color);Fill(new Rect(rect.x,rect.y,1,rect.height),color);Fill(new Rect(rect.xMax-1,rect.y,1,rect.height),color);}
-    private void Text(Rect rect,string value,GUIStyle style,Color? color=null){var before=GUI.contentColor;GUI.contentColor=color??(style==small||style==wrapped?Muted:Color.white);GUI.Label(rect,value??"",style);GUI.contentColor=before;}
+    private void Text(Rect rect,string value,GUIStyle style,Color? color=null,bool translate=true){var before=GUI.contentColor;GUI.contentColor=color??(style==small||style==wrapped?Muted:Color.white);Idas3MenuLocalization.Label(rect,value,style,translate);GUI.contentColor=before;}
     private bool Button(Rect rect,string value,bool active=false,bool enabled=true,bool primary=false,GUIStyle textStyle=null){
         bool hover=enabled&&rect.Contains(Event.current.mousePosition);
         Fill(rect,!enabled?Panel:primary?Red:hover||active?Raised:Panel);Frame(rect,active?Red:Edge);
@@ -433,11 +436,12 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         float available=right-left-2*padding;
         if(available<=0)return;
         attractPromptStyle.fontSize=Mathf.Clamp(Mathf.RoundToInt(13*scale),10,20);
-        string text="HOLD "+attractControlLabel.ToUpperInvariant()+" FOR OPTIONS";
+        string text=Idas3MenuLocalization.Format("HOLD {0} FOR OPTIONS",attractControlLabel.ToUpperInvariant());
         var content=new GUIContent(text);
-        Vector2 size=attractPromptStyle.CalcSize(content);
+        var promptStyle=Idas3MenuLocalization.Style(attractPromptStyle);
+        Vector2 size=promptStyle.CalcSize(content);
         while(size.x>available&&attractPromptStyle.fontSize>6){
-            --attractPromptStyle.fontSize;size=attractPromptStyle.CalcSize(content);
+            --attractPromptStyle.fontSize;promptStyle.fontSize=attractPromptStyle.fontSize;size=promptStyle.CalcSize(content);
         }
         float width=Mathf.Ceil(size.x)+2*padding,height=Mathf.Ceil(size.y)+Mathf.Ceil(8*scale)+2;
         var rect=new Rect(right-width,bottom-height,width,height);
@@ -465,8 +469,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         Text(new Rect(404,160,573,37),online?"THE BATTLE IS STILL ON":"YOUR NEXT CORNER CAN WAIT",heading);
         Text(new Rect(405,215,554,72),online?"Opening this menu does not pause either driver. Return to the road when you are ready.":"Your race is paused. Adjust your settings, check the controls, or return to the road.",wrapped);
         SummaryRow(308,"CAMERA",CameraModes[options.Current.defaultCamera]);
-        SummaryRow(370,"DISPLAY",options.Current.width+" × "+options.Current.height+"  /  "+DisplayModes[options.Current.displayMode]);
-        SummaryRow(432,"AUDIO",Mathf.RoundToInt(options.Current.masterVolume*100)+"% MASTER VOLUME");
+        SummaryRow(370,"DISPLAY",options.Current.width+" × "+options.Current.height+"  /  "+Idas3MenuLocalization.T(DisplayModes[options.Current.displayMode]));
+        SummaryRow(432,"AUDIO",Idas3MenuLocalization.Format("{0}% MASTER VOLUME",Mathf.RoundToInt(options.Current.masterVolume*100)));
         Text(new Rect(405,562,573,45),online?"Leaving ends your participation in this battle.":"Restarting or leaving discards the current race attempt.",wrapped);
     }
     private void SummaryRow(float y,string name,string value){
@@ -514,19 +518,23 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(0,"DEFAULT CAMERA",CameraModes[v.defaultCamera]);
             ChoiceRow(1,"AI DRIVER DIFFICULTY",new[]{"NORMAL","HARD (+5% PACE)","EXPERT (+10% PACE)"}[v.aiDifficulty]);
             ChoiceRow(2,"TIME ATTACK GHOST",v.timeAttackGhost?"ON":"OFF");
-            Text(new Rect(290,384,294,31),"FULL TUNE",label);
-            if(Button(new Rect(595,378,387,35),"999999 POINTS + UPGRADES",selection==4,FullTuneAvailable)){selection=4;queued=Command.FullTune;}
+            Text(new Rect(290,RowY(3)+5,294,31),"FULL TUNE",label);
+            if(Button(new Rect(595,RowY(3)+2,387,35),"999999 POINTS + UPGRADES",selection==4,FullTuneAvailable)){selection=4;queued=Command.FullTune;}
+            ChoiceRow(4,"ARCADE TEXT LANGUAGE",v.arcadeTextLanguage==1?"JAPANESE":"ENGLISH");
+            ChoiceRow(5,"CUSTOM MENU LANGUAGE",Idas3MenuLocalization.LanguageNames[v.customMenuLanguage],false);
             string help=selection==4?(FullTuneAvailable?"Choose a save, then a make and car for upgrades.":"Finish the current screen and leave online play to use Full Tune."):
                 selection==3?"Race your best saved run. New bests are saved with the ghost off, too.":
                 selection==2?"Legend of the Streets only. Bunta Challenge keeps its original difficulty.":"";
-            Text(new Rect(288,454,687,65),help,wrapped);
+            if(selection==5)help="Original menu and race text artwork. Apply, then restart the game. Separate from Custom Menu Language.";
+            if(selection==6)help="Pause, online, music and other custom menus only. Apply to change now. Original arcade artwork stays unchanged.";
+            Text(new Rect(288,485,687,56),help,wrapped);
         }else if(tab==5){
             ChoiceRow(0,"COMMUNITY TIMES",v.communityTimes?"ON":"OFF");
             if(Button(new Rect(282,256,692,39),"VIEW LEADERBOARDS",selection==2)){selection=2;Application.OpenURL(Idas3CommunityTimes.ServiceUrl);}
             ChoiceRow(2,"DISCORD RICH PRESENCE",v.discordPresence?"ON":"OFF");
-            Text(new Rect(288,385,681,52),"New Time Attack submissions require a driving replay. Turning Community Times off stops uploads; existing submissions remain.",wrapped);
-            Text(new Rect(288,446,681,65),CommunityStatus,wrapped);
-            if(selection==3)Text(new Rect(288,514,681,25),"Shows your game activity in the Discord desktop app.",small);
+            ChoiceRow(3,"LIGHTS-OFF ADVANTAGE",v.hideLightsOffAdvantage?"HIDDEN":"VISIBLE");
+            Text(new Rect(288,436,681,48),selection==4?"Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.":selection==3?"Shows your game activity in the Discord desktop app.":"New Time Attack submissions require a driving replay. Turning Community Times off stops uploads; existing submissions remain.",wrapped);
+            Text(new Rect(288,490,681,45),CommunityStatus,wrapped);
         }else if(tab==6){
             if(Button(new Rect(282,197,692,39),"OPEN REPLAY LIBRARY",selection==1))queued=Command.Replays;
             ChoiceRow(1,"TIME ATTACK",v.communityTimes?"ON — REQUIRED FOR SHARING":v.replayTimeAttack?"ON":"OFF");
@@ -574,8 +582,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(wheelFeedback!=null)foreach(var choice in wheelFeedback.Choices)if(choice.id==id)return choice.name;
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
-    private bool CompactRows=>tab==1||tab==4||hudSizesOpen;
-    private float RowY(int row)=>tab==4?(row<3?208+row*38:354+(row-3)*38):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
+    private bool CompactRows=>tab==1||tab==2||tab==4||hudSizesOpen;
+    private float RowY(int row)=>tab==2?194+row*49:tab==4?(row<3?208+row*38:354+(row-3)*38):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
         float y=RowY(row);bool compact=CompactRows;
         if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
@@ -584,12 +592,12 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(!Mathf.Approximately(next,value)){selection=row+1;set(Mathf.Round(next*100)/100f);notice="";}
         Text(new Rect(899,y+(compact?5:8),79,33),Mathf.RoundToInt(next*100)+"%",button);
     }
-    private void ChoiceRow(int row,string name,string value){
+    private void ChoiceRow(int row,string name,string value,bool translateValue=true){
         float y=RowY(row);bool compact=CompactRows;
         if(selection==row+1)Frame(new Rect(278,y,714,tab==1?28:compact?35:49),Red);
         Text(new Rect(290,y+(tab==1?2:compact?5:13),294,tab==1?26:31),name,label);
         if(Button(new Rect(595,y+(compact?2:7),34,tab==1?25:compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
-        Text(new Rect(636,y+(tab==1?2:compact?5:8),304,tab==1?26:33),value,button);
+        Text(new Rect(636,y+(tab==1?2:compact?5:8),304,tab==1?26:33),value,button,translate:translateValue);
         if(Button(new Rect(948,y+(compact?2:7),34,tab==1?25:compact?29:35),"›")){selection=row+1;Adjust(row,1);}
     }
     private void ControlsView(){
@@ -603,7 +611,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(Button(new Rect(378,183,34,31),"‹",DeviceRowSelected,choices.Count>1))ChangeControllerDevice(-1);
             if(Button(new Rect(420,183,520,31),choice,DeviceRowSelected,choices.Count>1))ChangeControllerDevice(1);
             if(Button(new Rect(948,183,34,31),"›",DeviceRowSelected,choices.Count>1))ChangeControllerDevice(1);
-            string active=controllerDevices.Controls.Count>0?(controllerDevices.UsingFallback?"TEMPORARY DEVICE  /  ":"ACTIVE  /  ")+controllerDevices.ActiveName:controllerDevices.SelectedKey=="keyboard"?"Keyboard only. Select a controller above to edit its bindings.":"Controller disconnected. Keyboard controls remain available.";
+            string active=controllerDevices.Controls.Count>0?Idas3MenuLocalization.Format(controllerDevices.UsingFallback?"TEMPORARY DEVICE / {0}":"ACTIVE / {0}",controllerDevices.ActiveName):controllerDevices.SelectedKey=="keyboard"?"Keyboard only. Select a controller above to edit its bindings.":"Controller disconnected. Keyboard controls remain available.";
             Text(new Rect(288,218,694,22),active,small);
         }
         float headerY=deviceControls?241:192,firstY=deviceControls?270:220,rowHeight=deviceControls?25:29;
@@ -641,9 +649,9 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void BindingCaptureView(){
         bool controller=captureSlot==Idas3ControlBindings.Slot.Controller;
-        string slot=controller?"CONTROLLER  /  "+(controllerDevices?.ActiveName??bindings.ActiveControllerProfileLabel):"KEYBOARD "+((int)captureSlot+1)+"  /  shared across devices";
+        string slot=controller?Idas3MenuLocalization.Format("CONTROLLER / {0}",controllerDevices?.ActiveName??bindings.ActiveControllerProfileLabel):Idas3MenuLocalization.Format("KEYBOARD {0} / shared across devices",(int)captureSlot+1);
         string prompt=!string.IsNullOrEmpty(bindings.CaptureError)?bindings.CaptureError:bindings.CapturePrompt;
-        ModalFrame("REBIND "+Idas3ControlBindings.ActionName(captureAction).ToUpperInvariant(),slot+"\n"+prompt+"\n"+(controller?"Assigned controller controls swap actions. APPLY saves your changes.":"Esc cancels. Keyboard conflicts must be cleared before reassignment."));
+        ModalFrame(Idas3MenuLocalization.Format("REBIND {0}",Idas3MenuLocalization.T(Idas3ControlBindings.ActionName(captureAction))),slot+"\n"+Idas3MenuLocalization.T(prompt)+"\n"+Idas3MenuLocalization.T(controller?"Assigned controller controls swap actions. APPLY saves your changes.":"Esc cancels. Keyboard conflicts must be cleared before reassignment."));
         if(Button(new Rect(247,404,253,48),"CLEAR SLOT")){
             bool cleared=bindings.ClearDraft(captureAction,captureSlot);bindings.CancelCapture();
             notice=cleared?"Binding cleared. Apply to save.":bindings.LastError??"Could not clear this binding.";
@@ -658,7 +666,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         Text(new Rect(248,287,539,88),body,wrapped);
     }
     private void DisplayConfirmation(){
-        ModalFrame("KEEP THESE DISPLAY SETTINGS?","Confirm within "+Mathf.CeilToInt((float)options.SecondsRemaining)+" seconds.\nUnconfirmed changes will be reverted automatically.");
+        ModalFrame("KEEP THESE DISPLAY SETTINGS?",Idas3MenuLocalization.Format("Confirm within {0} seconds.\nUnconfirmed changes will be reverted automatically.",Mathf.CeilToInt((float)options.SecondsRemaining)));
         if(Button(new Rect(247,404,253,48),"REVERT",modalSelection==0))options.RevertDisplay();
         if(Button(new Rect(519,404,274,48),"KEEP CHANGES",modalSelection==1,true,true))KeepDisplay();
     }

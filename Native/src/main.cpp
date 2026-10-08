@@ -552,12 +552,16 @@ struct App {
     int browsedSaveSlot=-2;
     bool legacyDriversChecked=false;
     bool browsingSaveFiles=false;
+    void loadLocalTimeAttackRecords(TimeAttackRecords& store,const fs::path& path){
+        if(store.load(path)&&store.needsMigration()&&!store.save(path))
+            status("Could not archive old Gunsai/Odawara records; original file retained");
+    }
     void useSaveSlot(int slot){
         activeSaveSlot=slot;saveSlotSeconds=0;
         const auto directory=slot<0?userdataRoot()/"driver_profiles_v1"
                                    :saveSlots.profileDirectory(unsigned(slot));
         importedPersonalPath=directory/"hakone_personal_v1.csv";
-        importedPersonalRecords=TimeAttackRecords{};importedPersonalRecords.load(importedPersonalPath);
+        importedPersonalRecords=TimeAttackRecords{};loadLocalTimeAttackRecords(importedPersonalRecords,importedPersonalPath);
         profiles=LocalDriverProfiles(directory);
         driverSetup=LocalDriverSetup(directory);
         pendingProfiles={};loadedProfileCar=-1;
@@ -1473,7 +1477,7 @@ struct App {
             rememberSaveCar(activeSaveSlot,unsigned(frontend.car));
     }
     void saveSettings(){if(multiplayer.active)return;flushProfiles();std::ofstream out(userdataRoot()/"settings.txt");out<<courseIndex<<' '<<profile<<' '<<reverse<<' '<<wet<<' '<<night<<' '<<automatic<<' '<<audio.enabled<<' '<<audio.musicTrack<<'\n';std::ofstream native(userdataRoot()/"native_selection.txt");native<<frontend.make<<' '<<frontend.car<<'\n';}
-    void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");useSaveSlot(-1);records.load(userdataRoot()/"time_attack_records_v1.csv");frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
+    void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");useSaveSlot(-1);loadLocalTimeAttackRecords(records,userdataRoot()/"time_attack_records_v1.csv");frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
         selectedRaceMusic=loadRaceMusicSelection(userdataRoot(),audio.musicTrack);
     }
     void commands(double dt){
@@ -2842,7 +2846,7 @@ struct App {
         setup.compactHeader=true;
         static constexpr unsigned directions[9][2]={{5,4},{5,4},{1,0},{1,0},{2,3},{1,6},{2,3},{2,3},{1,0}};
         setup.drawDirection=true;setup.direction=directions[courseIndex][reverse?1:0];
-        if(importedCourse){setup.customCourseName=importedCourse->name;setup.drawDirection=true;setup.direction=importedCourse->laps?(reverse?4u:5u):importedCourse->id==16?(reverse?3u:2u):reverse?0u:1u;}
+        if(importedCourse){const auto presentation=originalCoursePresentationCondition(importedCourse->id*2+unsigned(reverse));setup.customCourseName=importedCourse->name;setup.drawDirection=true;setup.direction=directions[presentation/2][presentation&1];}
         if(battle&&!bunta){
             const auto metadata=original::originalLegendStartMetadata(battleProfile.u(24));
             setup.drawDirection=true;setup.direction=metadata.direction;
@@ -3562,6 +3566,7 @@ struct App {
         }
         if(multiplayer.active){
             auto& online=state.onlineBattleHud;online.active=true;
+            online.opponentHeadlights=(multiplayer.remote.flags&Idas3MpHeadlights)!=0;
             online.playerName=multiplayer.localName;online.rivalName=multiplayer.remoteName;
             online.playerCar=multiplayer.config.localCar;online.rivalCar=multiplayer.config.remoteCar;
             online.frame=int(originalRaceOwnerFrame);
@@ -3579,6 +3584,7 @@ struct App {
         }
         if(replayOpponent){
             state.rival=&rivalVehicle;
+            state.onlineBattleHud.opponentHeadlights=replayRivalLights;
             if(loadedRivalEnemy>=0){state.battle=true;state.battleEnemy=unsigned(loadedRivalEnemy);state.battleProfileMode=0;state.battleRivalCar=unsigned(loadedRivalCar);state.battleHudFrame=int(race.ticks);state.battleAdvantage=replayAdvantage;state.battleRivalPositionFraction=0;}
             else {auto& online=state.onlineBattleHud;online.active=true;online.playerName=multiplayer.localName;online.rivalName=multiplayer.remoteName;online.playerCar=unsigned(frontend.car);online.rivalCar=unsigned(loadedRivalCar);online.frame=int(race.ticks);online.advantage=replayAdvantage;online.rivalPositionFraction=0;}
         }

@@ -26,6 +26,7 @@ public sealed class Idas3MenuFontSmoke : MonoBehaviour
     private void Start()
     {
         var args=Environment.GetCommandLineArgs();
+        if(Array.IndexOf(args,"-idas3-custom-menu-language-smoke")>=0){enabled=false;gameObject.AddComponent<Idas3CustomMenuLanguageSmoke>();return;}
         if(Array.IndexOf(args,"-idas3-updater-flow-smoke")>=0){enabled=false;gameObject.AddComponent<Idas3UpdaterFlowSmoke>();return;}
         int at=Array.IndexOf(args,"-idas3-menu-font-smoke");
         if(at<0||at+1>=args.Length){Application.Quit(2);return;}

@@ -29,12 +29,12 @@ public sealed partial class Idas8HakoneCourse
         foreach(var item in scenery){
             float d=(item.filter.transform.position-view.transform.position).sqrMagnitude;
             bool tree=item.source.kind=="tree";
-            int lod=tree?TreeLod(d,item.lod):(d<500*500?0:-1);
+            int lod=tree?TreeLod(d,item.lod,IdZero(LoadedCourse)&&!idZeroGeometryBaseline):(d<500*500?0:-1);
             if(lod<0){item.renderer.enabled=false;item.lod=lod;continue;}
             if(item.lod!=lod){item.lod=lod;item.renderer.enabled=true;
                 int index=item.source.meshes[lod];item.filter.sharedMesh=sourceMeshes[index];
                 item.renderer.sharedMaterial=materials[sourceMaterials[index]];}
-            if(tree&&lod!=2)item.filter.transform.rotation=item.authoredRotation;
+            if(tree&&!BillboardTree(lod))item.filter.transform.rotation=item.authoredRotation;
             else {Vector3 facing=view.transform.position-item.filter.transform.position;facing.y=0;
                 if(facing.sqrMagnitude>.01f)item.filter.transform.rotation=Quaternion.LookRotation(facing,Vector3.up);}
         }

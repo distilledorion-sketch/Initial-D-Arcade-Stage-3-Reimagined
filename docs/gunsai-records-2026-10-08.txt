@@ -1,0 +1,29 @@
+Gunsai local Time Attack records — 2026-10-08
+
+Extended the Odawara local-record migration to Gunsai (conditions 32/33).
+Both courses now require local course revision 1. Existing revision-0 times
+are backed up and excluded from the active rankings, model records, personal
+targets and historical imports. This applies to all cars, directions and
+weather, in all five saves and the legacy profile directory.
+
+As with Odawara, old rows cannot distinguish pre-.45 from post-.45 handling,
+so this is a one-time reset of all unversioned local Gunsai times. New
+revision-1 times survive restarts and save changes. Other courses are retained.
+Already-versioned Odawara records and their checkpoint metadata are preserved.
+
+The backup filename is now <filename>.before-idzero-revision-1.bak, replacing
+the Odawara-only suffix for future migrations. Existing Odawara-only backups
+remain untouched. This ensures a save that already received the earlier fix
+gets its own exact backup before removing Gunsai's old records.
+
+Gunsai best-time ghosts now use revision-1 filenames, preventing an old fast
+ghost from blocking a new valid best. Existing ghost files and replay archives
+are retained. Odawara's revision-1 ghost paths do not change.
+
+Validation: record/ghost storage regression tests, an upgrade fixture mixing
+revision-0 Gunsai with revision-1 Odawara, and the real native save-selection
+fixture across all five saves and legacy profiles. Evidence is stored under
+Verification/gunsai-records-20261008. Only private test saves were used.
+
+No handling, route names, course IDs, online scores or server policy changes.
+Native plugin rebuilt locally; no Desktop installation or GitHub publication.

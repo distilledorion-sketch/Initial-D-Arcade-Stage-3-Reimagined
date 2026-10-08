@@ -110,7 +110,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
                 audioOptions=Idas3GameOptions.Normalize(audioOptions);
             }
         }catch(Exception e){audioOptions=new Idas3GameOptions.Values();Debug.LogWarning("Replay uses default settings: "+e.Message);}
-        scene.HudOptions=audioOptions;ui.HudOptionsOverride=audioOptions;
+        Idas3MenuLocalization.SetLanguage(audioOptions.customMenuLanguage);scene.HudOptions=audioOptions;ui.HudOptionsOverride=audioOptions;
         var args = Environment.GetCommandLineArgs();
         int index = Array.IndexOf(args, "-idas3-replay-viewer");
         int library=Array.IndexOf(args,"-idas3-replay-library");
@@ -136,12 +136,14 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
                 if (!Application.isEditor && Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-enna-test") >= 0)
                     assets = File.ReadAllText(Path.Combine(Application.streamingAssetsPath, "d3-assets.txt")).Trim();
                 string storage = Path.Combine(Application.temporaryCachePath, "replay-viewer-session");
+                if (Idas3Native.Idas3SceneConfigureLanguage(audioOptions.arcadeTextLanguage) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 if (Idas3SceneInitialize(assets, storage, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 initialized = true;
                 if(Idas3Native.Idas3SceneSetSunGlare(audioOptions.sunGlare?1:0)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetMapDisplay(audioOptions.minimapDisplay)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetMapZoom(audioOptions.minimapZoom)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetMapSize(audioOptions.minimapSize)!=1)throw new InvalidOperationException(Idas3Native.Error());
+                if(Idas3Native.Idas3SceneSetLightsOffAdvantage(audioOptions.hideLightsOffAdvantage?1:0)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 audioOutput=gameObject.AddComponent<Idas3UnityAudio>();audioOutput.Initialize();
                 foreach (var pack in Idas3CourseCatalog.Packs)
                 {
@@ -209,30 +211,31 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     {
         GUI.enabled=picker==null;float w=Mathf.Min(900,width-24),h=Mathf.Min(560,height-24);
         GUILayout.BeginArea(new Rect((width-w)/2,(height-h)/2,w,h),GUI.skin.box);
-        GUILayout.BeginHorizontal();GUILayout.Label("REPLAYS — LOCAL LIBRARY");
-        if(GUILayout.Button("Open file…",GUILayout.Width(110)))RequestFile();
-        if(GUILayout.Button("Refresh",GUILayout.Width(90)))Browse();
-        if(GUILayout.Button(replay==null?"Close viewer":"Back",GUILayout.Width(110))){if(replay==null)Application.Quit();else browsing=false;}
+        GUILayout.BeginHorizontal();Idas3MenuGui.Label("REPLAYS — LOCAL LIBRARY");
+        if(Idas3MenuGui.Button("Open file…",GUILayout.Width(110)))RequestFile();
+        if(Idas3MenuGui.Button("Refresh",GUILayout.Width(90)))Browse();
+        if(Idas3MenuGui.Button(replay==null?"Close viewer":"Back",GUILayout.Width(110))){if(replay==null)Application.Quit();else browsing=false;}
         GUILayout.EndHorizontal();GUILayout.Space(12);
-        GUILayout.Label("Personal recordings stay on this computer. Only submitted Time Attack replays are uploaded.");
-        if(libraryFiles.Length==0)GUILayout.Label("No saved replays yet. Enable recording in Options > Replays, then finish a race.");
+        Idas3MenuGui.Label("Personal recordings stay on this computer. Only submitted Time Attack replays are uploaded.");
+        if(libraryFiles.Length==0)Idas3MenuGui.Label("No saved replays yet. Enable recording in Options > Replays, then finish a race.");
         int first=librarySelection/8*8;
         for(int i=first;i<Math.Min(first+8,libraryFiles.Length);i++){
             GUI.color=i==librarySelection?Color.yellow:Color.white;
-            if(GUILayout.Button(Path.GetFileNameWithoutExtension(libraryFiles[i]),GUILayout.Height(40))){librarySelection=i;Open(libraryFiles[i]);}
+            if(Idas3MenuGui.RawButton(Path.GetFileNameWithoutExtension(libraryFiles[i]),GUILayout.Height(40))){librarySelection=i;Open(libraryFiles[i]);}
         }
         GUI.color=Color.white;GUILayout.Space(10);GUILayout.BeginHorizontal();
-        if(GUILayout.Button("Previous",GUILayout.Width(100))&&first>0)librarySelection=Math.Max(0,first-8);
-        GUILayout.Label(libraryFiles.Length+" recordings · ↑ ↓ / D-pad to select · Enter / A to play · Esc / B to return");
-        if(GUILayout.Button("Next",GUILayout.Width(100))&&first+8<libraryFiles.Length)librarySelection=first+8;
-        GUILayout.EndHorizontal();if(message!=null)GUILayout.Label(message);GUILayout.EndArea();GUI.enabled=true;
+        if(Idas3MenuGui.Button("Previous",GUILayout.Width(100))&&first>0)librarySelection=Math.Max(0,first-8);
+        Idas3MenuGui.Label(Idas3MenuLocalization.Format("{0} recordings · ↑ ↓ / D-pad to select · Enter / A to play · Esc / B to return",libraryFiles.Length));
+        if(Idas3MenuGui.Button("Next",GUILayout.Width(100))&&first+8<libraryFiles.Length)librarySelection=first+8;
+        GUILayout.EndHorizontal();if(message!=null)Idas3MenuGui.Label(message);GUILayout.EndArea();GUI.enabled=true;
     }
     void RequestFile()
     {
         SilenceAudio();
         resumeAfterPicker=playing;playing=false;
         var result=new TaskCompletionSource<string>();picker=result.Task;
-        var thread=new Thread(()=>{try{result.SetResult(ChooseFile(libraryFolder));}catch(Exception e){result.SetException(e);}});
+        string dialogTitle=Idas3MenuLocalization.T("Open a downloaded replay");
+        var thread=new Thread(()=>{try{result.SetResult(ChooseFile(libraryFolder,dialogTitle));}catch(Exception e){result.SetException(e);}});
         thread.IsBackground=true;thread.SetApartmentState(ApartmentState.STA);thread.Start();
     }
     void Present()
@@ -259,7 +262,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
             if(Idas3ReplayFreeCamera(freePosition.x,freePosition.y,freePosition.z,target.x,target.y,target.z)!=1)throw new InvalidOperationException(Idas3Native.Error());
         }
         if (Idas3ReplayPose(p.tick, p.position.x, p.position.y, p.position.z, p.yaw, p.speed, p.gear, pitch, cameraMode, orbit, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
-        Status = Idas3Native.ReadStatus(); scene.HudOptions=audioOptions;scene.ShowGameHud=gameHudVisible; scene.ApplyFrame(); ui.ApplyFrame();
+        Status = Idas3Native.ReadStatus();scene.HudOptions=audioOptions;scene.ShowGameHud=gameHudVisible; scene.ApplyFrame(); ui.ApplyFrame();
     }
     void CycleCamera(){
         cameraMode=(cameraMode+1)%Cameras.Length;
@@ -278,16 +281,22 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         if(mouse?.leftButton.isPressed==true)return;
         if(key?.rKey.wasPressedThisFrame==true||pad?.rightStickButton.wasPressedThisFrame==true)ResetFreeCamera();
         var look=pad?.rightStick.ReadValue()??Vector2.zero;
-        freeYaw+=look.x*100*delta;freePitch-=look.y*100*delta;
-        if(mouse?.rightButton.isPressed==true){var d=mouse.delta.ReadValue();freeYaw+=d.x*.12f;freePitch-=d.y*.12f;}
-        freePitch=Mathf.Clamp(freePitch,-85,85);freeYaw=Mathf.Repeat(freeYaw,360);
+        look*=100*delta;
+        if(mouse?.rightButton.isPressed==true)look+=mouse.delta.ReadValue()*.12f;
         var stick=pad?.leftStick.ReadValue()??Vector2.zero;
         float x=stick.x+(key?.dKey.isPressed==true?1:0)-(key?.aKey.isPressed==true?1:0);
         float z=stick.y+(key?.wKey.isPressed==true?1:0)-(key?.sKey.isPressed==true?1:0);
         float y=(key?.eKey.isPressed==true||pad?.rightShoulder.isPressed==true?1:0)-(key?.qKey.isPressed==true||pad?.leftShoulder.isPressed==true?1:0);
-        var direction=Quaternion.Euler(freePitch,freeYaw,0)*new Vector3(x,0,z)+Vector3.up*y;
         float speed=freeSpeed*(key?.leftShiftKey.isPressed==true?4:1)*(key?.leftCtrlKey.isPressed==true?.25f:1);
-        freePosition+=Vector3.ClampMagnitude(direction,1)*speed*delta;
+        ApplyFreeCameraInput(new Vector3(x,y,z),look,speed*delta);
+    }
+    void ApplyFreeCameraInput(Vector3 movement,Vector2 look,float distance){
+        // Native main views use a right-handed look-at matrix: screen right
+        // is cross(forward, up), opposite Unity's Transform.right. Use that
+        // basis for keyboard, both sticks and mouse without mirroring the scene.
+        freeYaw=Mathf.Repeat(freeYaw-look.x,360);freePitch=Mathf.Clamp(freePitch-look.y,-85,85);
+        var direction=Quaternion.Euler(freePitch,freeYaw,0)*new Vector3(-movement.x,0,movement.z)+Vector3.up*movement.y;
+        freePosition+=Vector3.ClampMagnitude(direction,1)*distance;
         freePosition=new Vector3(Mathf.Clamp(freePosition.x,-999000,999000),Mathf.Clamp(freePosition.y,-999000,999000),Mathf.Clamp(freePosition.z,-999000,999000));
     }
     void Update()
@@ -362,51 +371,51 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         if (replay != null && !controlsVisible) return;
         float panelWidth = Mathf.Min(630, width - 24), panelX = (width - panelWidth) / 2;
         GUILayout.BeginArea(new Rect(panelX, 12, panelWidth, replay == null ? 135 : 80), GUI.skin.box);
-        GUILayout.BeginHorizontal(); GUILayout.Label("REPLAY VIEWER", GUILayout.Width(125));
+        GUILayout.BeginHorizontal(); Idas3MenuGui.Label("REPLAY VIEWER", GUILayout.Width(125));
         GUI.enabled = picker == null;
-        if (GUILayout.Button("Open replay…", GUILayout.Width(145)))
+        if (Idas3MenuGui.Button("Open replay…", GUILayout.Width(145)))
         {
             RequestFile();
         }
-        if (GUILayout.Button("Library", GUILayout.Width(60))) Browse();
-        GUILayout.FlexibleSpace(); if (GUILayout.Button("Close viewer", GUILayout.Width(120))) Application.Quit(); GUILayout.EndHorizontal();
+        if (Idas3MenuGui.Button("Replay library", GUILayout.Width(90))) Browse();
+        GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button("Close viewer", GUILayout.Width(120))) Application.Quit(); GUILayout.EndHorizontal();
         GUI.enabled = true;
-        if (replay != null) { var m = replay.Metadata; GUILayout.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + (m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + (m.night == 1 ? "Night" : "Day") + " / " + (m.weather == 1 ? "Wet" : "Dry") + "  ·  H / Select: hide controls"); }
-        if (message != null) GUILayout.Label(message);
+        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); }
+        if (message != null) Idas3MenuGui.Label(message);
         GUILayout.EndArea();
         if (replay == null) return;
         GUI.enabled = picker == null;
         float panelHeight=cameraMode==4?195:143;
         GUILayout.BeginArea(new Rect(panelX, height-panelHeight-12, panelWidth, panelHeight), GUI.skin.box);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button(playing ? "Pause" : "Play", GUILayout.Width(75))) TogglePlay();
-        if (GUILayout.Button("|<", GUILayout.Width(40))) Seek(0);
-        if (GUILayout.Button("−5s", GUILayout.Width(50))) Seek(seconds - 5);
-        if (GUILayout.Button("+5s", GUILayout.Width(50))) Seek(seconds + 5);
-        GUILayout.Label(Clock(seconds) + " / " + Clock(replay.Duration), GUILayout.Width(175));
-        GUILayout.FlexibleSpace(); if (GUILayout.Button("Camera: " + Cameras[cameraMode], GUILayout.Width(150))) CycleCamera();
+        if (Idas3MenuGui.Button(playing ? "Pause" : "Play", GUILayout.Width(75))) TogglePlay();
+        if (Idas3MenuGui.Button("|<", GUILayout.Width(40))) Seek(0);
+        if (Idas3MenuGui.Button("−5s", GUILayout.Width(50))) Seek(seconds - 5);
+        if (Idas3MenuGui.Button("+5s", GUILayout.Width(50))) Seek(seconds + 5);
+        Idas3MenuGui.Label(Clock(seconds) + " / " + Clock(replay.Duration), GUILayout.Width(175));
+        GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button(Idas3MenuLocalization.Format("Camera: {0}",Idas3MenuLocalization.T(Cameras[cameraMode])), GUILayout.Width(150))) CycleCamera();
         GUILayout.EndHorizontal();
         float slider=GUILayout.HorizontalSlider((float)seconds,0,(float)replay.Duration);
         // A repaint returns the same float even while the playback clock keeps
         // double precision. Only user movement is a seek, not float rounding.
         if(slider!=(float)seconds)Seek(slider);
         GUILayout.BeginHorizontal();
-        foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (GUILayout.Button(speed + "×", GUILayout.Width(45))) rate = speed; } GUI.color = Color.white;
-        GUILayout.Label(cameraMode==3&&!CanSwitchPov?"Space/A: pause   C/Y: camera   Q/E: orbit":"Space/A: pause   C/Y: camera");
-        if(CanSwitchPov&&GUILayout.Button(opponentPov?"POV: OPPONENT":"POV: YOU",GUILayout.Width(130)))SwitchPov();
+        foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (Idas3MenuGui.Button(speed + "×", GUILayout.Width(45))) rate = speed; } GUI.color = Color.white;
+        Idas3MenuGui.Label(cameraMode==3&&!CanSwitchPov?"Space/A: pause   C/Y: camera   Q/E: orbit":"Space/A: pause   C/Y: camera");
+        if(CanSwitchPov&&Idas3MenuGui.Button(opponentPov?"POV: OPPONENT":"POV: YOU",GUILayout.Width(130)))SwitchPov();
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
-        if(GUILayout.Button("Game HUD: "+(gameHudVisible?"ON":"OFF")+" (G / L3)"))gameHudVisible=!gameHudVisible;
-        if(GUILayout.Button("Hide replay overlay (H / Select)"))controlsVisible=false;
+        if(Idas3MenuGui.Button(Idas3MenuLocalization.Format("Game HUD: {0} (G / L3)",Idas3MenuLocalization.T(gameHudVisible?"ON":"OFF"))))gameHudVisible=!gameHudVisible;
+        if(Idas3MenuGui.Button("Hide replay overlay (H / Select)"))controlsVisible=false;
         GUILayout.EndHorizontal();
         if(cameraMode==4){
-            GUILayout.BeginHorizontal();GUILayout.Label("Move speed",GUILayout.Width(80));
-            freeSpeed=GUILayout.HorizontalSlider(freeSpeed,1,80);GUILayout.Label(freeSpeed.ToString("0")+" m/s",GUILayout.Width(60));
-            if(GUILayout.Button("Reset to car (R / R3)",GUILayout.Width(155)))ResetFreeCamera();GUILayout.EndHorizontal();
-            GUILayout.Label("WASD / left stick: move · Q/E / LB/RB: height · RMB / right stick: look");
-            GUILayout.Label("Shift: faster · Ctrl: slower · H / Select: restore overlay · G / L3: game HUD");
+            GUILayout.BeginHorizontal();Idas3MenuGui.Label("Move speed",GUILayout.Width(80));
+            freeSpeed=GUILayout.HorizontalSlider(freeSpeed,1,80);Idas3MenuGui.Label(freeSpeed.ToString("0")+" m/s",GUILayout.Width(60));
+            if(Idas3MenuGui.Button("Reset to car (R / R3)",GUILayout.Width(155)))ResetFreeCamera();GUILayout.EndHorizontal();
+            Idas3MenuGui.Label("WASD / left stick: move · Q/E / LB/RB: height · RMB / right stick: look");
+            Idas3MenuGui.Label("Shift: faster · Ctrl: slower · H / Select: restore overlay · G / L3: game HUD");
         }
-        GUILayout.Label(CanSwitchPov?"Tab / X: switch driver   ·   Esc / B: library   ·   Personal recording stays local":replay.Detailed ? "60 Hz capture · recorded RPM, speed, body, wheels, clocks and car appearance" : "LEGACY: RPM, body rotation, wheel animation and tuning were not recorded");
+        Idas3MenuGui.Label(CanSwitchPov?"Tab / X: switch driver   ·   Esc / B: library   ·   Personal recording stays local":replay.Detailed ? "60 Hz capture · recorded RPM, speed, body, wheels, clocks and car appearance" : "LEGACY: RPM, body rotation, wheel animation and tuning were not recorded");
         GUILayout.EndArea();
         GUI.enabled = true;
     }
@@ -419,9 +428,9 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     }
     [DllImport("comdlg32.dll", CharSet = CharSet.Unicode)] static extern bool GetOpenFileNameW([In, Out] OpenFileName data);
     [DllImport("comdlg32.dll")] static extern uint CommDlgExtendedError();
-    static string ChooseFile(string initialDirectory)
+    static string ChooseFile(string initialDirectory,string dialogTitle)
     {
-        var dialog = new OpenFileName{initialDir=Directory.Exists(initialDirectory)?initialDirectory:null};
+        var dialog = new OpenFileName{initialDir=Directory.Exists(initialDirectory)?initialDirectory:null,title=dialogTitle};
         dialog.size = Marshal.SizeOf(typeof(OpenFileName));
         dialog.file = Marshal.StringToHGlobalUni(new string('\0', dialog.maxFile));
         try

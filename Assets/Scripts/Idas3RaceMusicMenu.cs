@@ -192,10 +192,10 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     public void CancelDiagnosticCapture(){diagnosticTarget=null;}
     private void Styles()
     {
-        if(label!=null)return;
+        if(label!=null&&uiFont==Idas3MenuLocalization.Font)return;
         // Windows font families may not exist in a clean Wine/Proton prefix.
         // Ship the Japanese/Latin glyph data instead of relying on OS fallback.
-        uiFont=Resources.Load<Font>("Fonts/NotoSansJP-Regular");
+        uiFont=Idas3MenuLocalization.Font;
         if(uiFont==null){
             Debug.LogError("Sound Room's bundled font is missing; using the built-in fallback.");
             uiFont=Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -219,9 +219,9 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         Fill(new Rect(rect.x,rect.y,rect.width,1),color);Fill(new Rect(rect.x,rect.yMax-1,rect.width,1),color);
         Fill(new Rect(rect.x,rect.y,1,rect.height),color);Fill(new Rect(rect.xMax-1,rect.y,1,rect.height),color);
     }
-    private void Text(Rect rect,string text,GUIStyle style,Color? color=null)
+    private void Text(Rect rect,string text,GUIStyle style,Color? color=null,bool translate=true)
     {
-        var before=GUI.contentColor;GUI.contentColor=color??White;GUI.Label(rect,text??"",style);GUI.contentColor=before;
+        var before=GUI.contentColor;GUI.contentColor=color??White;Idas3MenuLocalization.Label(rect,text,style,translate);GUI.contentColor=before;
     }
     private bool Button(Rect rect,string text,bool active=false,GUIStyle style=null)
     {
@@ -260,7 +260,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         float x=safe.x+(safe.width-width*scale)*.5f,y=safe.yMax-(height+13)*scale;
         GUI.matrix=Matrix4x4.TRS(new Vector3(x,y,0),Quaternion.identity,new Vector3(scale,scale,1));
         Fill(new Rect(0,0,width,height),new Color(0,0,0,.72f));
-        Text(new Rect(8,1,width-16,height-2),"HOLD "+viewChangeLabel.ToUpperInvariant()+"  /  MUSIC SELECT",button,Yellow);
+        Text(new Rect(8,1,width-16,height-2),Idas3MenuLocalization.Format("HOLD {0}  /  MUSIC SELECT",viewChangeLabel.ToUpperInvariant()),button,Yellow);
         if(holdProgress>0){Fill(new Rect(0,height-2,width,2),Edge);Fill(new Rect(0,height-2,width*holdProgress,2),Yellow);}
     }
     private void DrawPicker()
@@ -282,7 +282,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
             var rect=new Rect(24,141+i*31,172,29);bool active=stageFilter==StageIds[i]&&!favoritesOnly;
             Fill(rect,active?Panel:Ink);if(active)Fill(new Rect(rect.x,rect.y,3,rect.height),Red);
             Text(new Rect(rect.x+12,rect.y+6,rect.width-20,20),StageLabels[i],artistStyle,active?White:Muted);
-            DiagnosticStageLabelsFit&=artistStyle.CalcSize(new GUIContent(StageLabels[i])).x<rect.width-20;
+            DiagnosticStageLabelsFit&=Idas3MenuLocalization.Style(artistStyle).CalcSize(new GUIContent(Idas3MenuLocalization.T(StageLabels[i]))).x<rect.width-20;
             if(GUI.Button(rect,GUIContent.none,GUIStyle.none)){BlurSearch();ChangeStage(StageIds[i]);}
         }
         if(Button(new Rect(24,522,172,32),"FAVORITES",favoritesOnly)){BlurSearch();favoritesOnly=!favoritesOnly;stageFilter=0;collectionFilter="";RebuildList(false);}
@@ -295,7 +295,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         if(query.Length==0&&!SearchFocused)Text(new Rect(241,119,368,23),"Search songs or artists",artistStyle,Muted);
         if(Button(new Rect(629,110,137,36),sortByTitle?"TITLE A–Z":"TRACK ORDER")){BlurSearch();sortByTitle=!sortByTitle;RebuildList(true);}
         string heading=collectionFilter.Length>0?collectionFilter:favoritesOnly?"Favorites":StageLabels[Array.IndexOf(StageIds,stageFilter)];
-        Text(new Rect(232,159,380,22),heading+"  /  "+visible.Count,artistStyle,Muted);
+        Text(new Rect(232,159,380,22),(collectionFilter.Length>0?heading:Idas3MenuLocalization.T(heading))+"  /  "+visible.Count,artistStyle,Muted);
         if(stageFilter==11&&Button(new Rect(614,153,152,30),"COLLECTION ›")){
             var names=new List<string>{""};foreach(var entry in entries)if(entry.stage==11&&!names.Contains(entry.collection))names.Add(entry.collection);
             collectionFilter=names[Wrap(names.IndexOf(collectionFilter)+1,names.Count)];RebuildList(false);BlurSearch();
@@ -334,19 +334,19 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         if(cover!=null)GUI.DrawTexture(artwork,cover,ScaleMode.ScaleToFit,true);
         else{
             Fill(new Rect(850,111,216,4),Red);
-            Text(new Rect(870,157,176,76),e.id==-1?"AUTOMATIC":e.id==Idas3CustomRaceMusic.AddId?"ADD MUSIC":e.stage==9?"CUSTOM\nMUSIC":e.stage==10?"SPECIAL\nSTAGE":"ARCADE\nSTAGE "+e.stage,confirmationStyle);
+            Text(new Rect(870,157,176,76),e.id==-1?"AUTOMATIC":e.id==Idas3CustomRaceMusic.AddId?"ADD MUSIC":e.stage==9?"CUSTOM\nMUSIC":e.stage==10?"SPECIAL\nSTAGE":Idas3MenuLocalization.Format("ARCADE\nSTAGE {0}",e.stage),confirmationStyle);
             Text(new Rect(870,288,176,24),"INITIAL D",small,Muted);
         }
-        Text(new Rect(822,339,270,46),e.title,songStyle);
-        Text(new Rect(822,387,270,20),e.artist,artistStyle,Muted);
+        Text(new Rect(822,339,270,46),e.id<0||e.id==Idas3CustomRaceMusic.AddId?Idas3MenuLocalization.T(e.title):e.title,songStyle,translate:false);
+        Text(new Rect(822,387,270,20),e.id<0||e.id==Idas3CustomRaceMusic.AddId?Idas3MenuLocalization.T(e.artist):e.artist,artistStyle,Muted,false);
         bool own=preview!=null&&preview.TrackId==e.id;
         float duration=own?preview.Duration:0,position=own?preview.Position:0;
         var waveform=own&&preview.Waveform!=null?preview.Waveform:e.waveform;
         var waveRect=new Rect(822,419,270,44);Fill(waveRect,Panel);
         if(waveform!=null&&waveform.Length>0){float step=waveRect.width/waveform.Length;for(int i=0;i<waveform.Length;++i){float h=Mathf.Clamp(waveform[i],.055f,1)*36;Fill(new Rect(waveRect.x+i*step,waveRect.center.y-h/2,Math.Max(1,step-1),h),duration>0&&i/(float)waveform.Length<=position/duration?Red:Muted);}}
         if(GUI.enabled&&duration>0&&Event.current.type==EventType.MouseDown&&waveRect.Contains(Event.current.mousePosition)){preview.Seek(duration*(Event.current.mousePosition.x-waveRect.x)/waveRect.width);Event.current.Use();BlurSearch();}
-        Text(new Rect(822,468,138,20),(position>0?DurationText(position):"0:00")+" / "+(duration>0?DurationText(duration):"PREVIEW"),small,Muted);
-        Text(new Rect(981,468,111,20),DurationText(e.duration)+" FULL",small,Muted);
+        Text(new Rect(822,468,138,20),(position>0?DurationText(position):"0:00")+" / "+(duration>0?DurationText(duration):Idas3MenuLocalization.T("PREVIEW")),small,Muted);
+        Text(new Rect(981,468,111,20),Idas3MenuLocalization.Format("{0} FULL",DurationText(e.duration)),small,Muted);
         bool enabled=GUI.enabled;
         GUI.enabled=enabled&&Previewable(e);
         if(Button(new Rect(822,494,42,34),"‹")){Navigate(-1);TogglePreview();BlurSearch();}
@@ -364,7 +364,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         const float x=318,y=220,width=484,height=220;
         Fill(new Rect(x,y,width,height),Ink);Frame(new Rect(x,y,width,height),Edge);Fill(new Rect(x,y,width,3),Red);
         Text(new Rect(x+22,y+20,width-44,36),"Delete song?",confirmationStyle);
-        Text(new Rect(x+22,y+69,width-44,50),deleteTitle,songStyle,Muted);
+        Text(new Rect(x+22,y+69,width-44,50),deleteTitle,songStyle,Muted,false);
         bool beforeEnabled=GUI.enabled;GUI.enabled=beforeEnabled&&!Busy;
         if(Button(new Rect(x+126,y+156,104,40),"NO",!deleteYes)){deleteYes=false;Activate();}
         if(Button(new Rect(x+244,y+156,104,40),"YES",deleteYes)){deleteYes=true;Activate();}
@@ -379,8 +379,8 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         bool enabled=GUI.enabled;GUI.enabled=enabled&&Previewable(e);
         if(Button(new Rect(238,rect.y+9,30,30),preview!=null&&preview.TrackId==e.id&&preview.Playing?"Ⅱ":"▶")){selection=index;TogglePreview();BlurSearch();}
         GUI.enabled=enabled;
-        Text(new Rect(278,rect.y+3,388,25),e.title,label);
-        Text(new Rect(279,rect.y+28,342,19),e.artist,small,Muted);
+        Text(new Rect(278,rect.y+3,388,25),e.id<0||e.id==Idas3CustomRaceMusic.AddId?Idas3MenuLocalization.T(e.title):e.title,label,translate:false);
+        Text(new Rect(279,rect.y+28,342,19),e.id<0||e.id==Idas3CustomRaceMusic.AddId?Idas3MenuLocalization.T(e.artist):e.artist,small,Muted,false);
         Text(new Rect(650,rect.y+28,74,19),current?"SELECTED":DurationText(e.duration),small,current?Yellow:Muted);
         if(e.id>=0&&!string.IsNullOrEmpty(e.key)&&Button(new Rect(727,rect.y+9,30,30),favorites.Contains(e.key)?"★":"☆")){if(selection!=index)StopPreview();selection=index;ToggleFavorite();BlurSearch();}
     }

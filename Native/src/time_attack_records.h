@@ -24,11 +24,13 @@ class TimeAttackRecords {
 public:
     bool load(const std::filesystem::path& file);
     bool save(const std::filesystem::path& file)const;
+    bool needsMigration()const{return needsMigration_;}
     TimeAttackBest best(unsigned condition,unsigned weather,unsigned car)const;
     TimeAttackEntry personalBest(unsigned condition,unsigned weather,unsigned car)const;
     void record(TimeAttackEntry entry);
     const std::vector<TimeAttackEntry>& entries()const{return entries_;}
 private:
     std::vector<TimeAttackEntry> entries_;
+    bool needsMigration_=false;
 };
 }

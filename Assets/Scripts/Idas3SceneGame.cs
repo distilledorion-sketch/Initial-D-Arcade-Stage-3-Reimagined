@@ -137,6 +137,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native"))
                 : Path.Combine(Application.streamingAssetsPath, "IDAS3");
             string saves = Path.Combine(Application.persistentDataPath, "userdata-unity-scene");
+            Idas3MenuLocalization.SetLanguage(Idas3MenuLocalization.LoadLanguage(saves));
+            if(Idas3Native.Idas3SceneSetCustomMenuLanguage(Idas3MenuLocalization.Language)!=1)throw new InvalidOperationException(Idas3Native.Error());
             var hakone=FindAnyObjectByType<Idas8HakoneCourse>();
             var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();
             bool ennaTest=enna!=null&&enna.testBuild;
@@ -189,6 +191,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 }
             }
             Directory.CreateDirectory(saves);
+            if (Idas3Native.Idas3SceneConfigureLanguage(Idas3GameOptions.LoadArcadeTextLanguage(saves)) != 1)
+                throw new InvalidOperationException(Idas3Native.Error());
             if (Idas3SceneInitialize(assets, saves, renderWidth, renderHeight) != 1)
                 throw new InvalidOperationException(Idas3Native.Error());
             ready = true;
@@ -549,6 +553,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void ApplyNativeOptions(Idas3GameOptions.Values values) => ApplyNativeOptions(values, true);
     private void ApplyNativeOptions(Idas3GameOptions.Values values, bool changeCamera)
     {
+        if(Idas3Native.Idas3SceneSetCustomMenuLanguage(values.customMenuLanguage)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if (!ready || stopping) return;
         if(Idas3ReplayLibrary.Idas3ReplayRecordingOptions(Idas3ReplayLibrary.RecordingFlags(values))!=1)throw new InvalidOperationException("Could not apply replay recording options.");
         var options = Idas3Native.ReadOptions();
@@ -581,6 +586,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             throw new InvalidOperationException("Could not apply minimap zoom. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetMapSize(values.minimapSize) != 1)
             throw new InvalidOperationException("Could not apply minimap size. " + Idas3Native.Error());
+        if (Idas3Native.Idas3SceneSetLightsOffAdvantage(values.hideLightsOffAdvantage?1:0) != 1)
+            throw new InvalidOperationException(Idas3Native.Error());
         if(scene!=null)scene.HudOptions=values.Clone();
         if(timeAttackGhost!=null)timeAttackGhost.ShowGhost=values.timeAttackGhost;
         wheelFeedback?.Stop();
@@ -1082,15 +1089,15 @@ public sealed class Idas3SceneGame : MonoBehaviour
         var title = new GUIStyle(GUI.skin.label) { fontSize=24, wordWrap=true };
         var body = new GUIStyle(GUI.skin.label) { fontSize=16, wordWrap=true, alignment=TextAnchor.UpperLeft };
         GUILayout.BeginArea(new Rect(panel.x+20, panel.y+16, width-40, height-32));
-        GUILayout.Label(failureTitle, title);
+        Idas3MenuGui.Label(failureTitle, title);
         GUILayout.Space(8);
         failureScroll = GUILayout.BeginScrollView(failureScroll);
         GUILayout.Label(failureReport ?? failure, body);
         GUILayout.EndScrollView();
         GUILayout.Space(8);
         if (!string.IsNullOrEmpty(failureReportPath))
-            GUILayout.Label("Error report saved to: " + failureReportPath, body);
-        if (GUILayout.Button("COPY ERROR DETAILS", GUILayout.Height(38)))
+            Idas3MenuGui.Label(Idas3MenuLocalization.Format("Error report saved to: {0}", failureReportPath), body);
+        if (Idas3MenuGui.Button("COPY ERROR DETAILS", GUILayout.Height(38)))
             GUIUtility.systemCopyBuffer = failureReport ?? failure;
         GUILayout.EndArea();
     }

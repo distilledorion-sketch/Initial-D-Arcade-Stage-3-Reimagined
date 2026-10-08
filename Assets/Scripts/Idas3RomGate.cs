@@ -39,6 +39,7 @@ public sealed class Idas3RomGate : MonoBehaviour
         // Deliberately applies to editor play, diagnostic flags, replay viewing,
         // legacy host and -idas3-skip-update-once as well as ordinary startup.
         Verified = false;
+        Idas3MenuLocalization.SetLanguage(Idas3MenuLocalization.LoadLanguage(Path.Combine(Application.persistentDataPath,"userdata-unity-scene")));
         var go = new GameObject("GDS-0033 startup check");
         DontDestroyOnLoad(go);
         Instance = go.AddComponent<Idas3RomGate>();
@@ -157,14 +158,14 @@ public sealed class Idas3RomGate : MonoBehaviour
         Fill(new Rect(0, 0, 1280, 720), Color.black);
         Fill(new Rect(160, 170, 960, 380), new Color(.04f, .045f, .05f));
         Fill(new Rect(160, 170, 960, 5), new Color(.89f, .08f, .16f));
-        GUI.Label(new Rect(195, 194, 880, 54), Checking ? "CHECKING GDS-0033" : "ROM REQUIRED", titleStyle);
-        GUI.Label(new Rect(198, 273, 875, 72), message, textStyle);
-        GUI.Label(new Rect(198, 351, 875, 62), RomFolder, pathStyle);
+        Idas3MenuLocalization.Label(new Rect(195, 194, 880, 54), Checking ? "CHECKING GDS-0033" : "ROM REQUIRED", titleStyle);
+        Idas3MenuLocalization.Label(new Rect(198, 273, 875, 72), message, textStyle);
+        Idas3MenuLocalization.Label(new Rect(198, 351, 875, 62), RomFolder, pathStyle, false);
         if (Checking)
         {
             Fill(new Rect(198, 439, 875, 8), new Color(.18f, .19f, .21f));
             Fill(new Rect(198, 439, 875 * Mathf.Clamp01(progress), 8), new Color(.89f, .08f, .16f));
-            GUI.Label(new Rect(198, 470, 875, 30), "ESC / B  QUIT", pathStyle);
+            Idas3MenuLocalization.Label(new Rect(198, 470, 875, 30), "ESC / B  QUIT", pathStyle);
         }
         else
         {
@@ -174,7 +175,7 @@ public sealed class Idas3RomGate : MonoBehaviour
                 var rect = new Rect(198 + i * 295, 445, 280, 56);
                 if (Event.current.type == EventType.MouseMove && rect.Contains(Event.current.mousePosition)) selected = i;
                 Fill(rect, selected == i ? new Color(.89f, .08f, .16f) : new Color(.11f, .12f, .14f));
-                if (GUI.Button(rect, labels[i], buttonStyle)) { selected = i; Activate(i); }
+                if (GUI.Button(rect,Idas3MenuLocalization.T(labels[i]),Idas3MenuLocalization.Style(buttonStyle))) { selected = i; Activate(i); }
             }
         }
     }

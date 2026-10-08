@@ -803,13 +803,13 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
             Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
-            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.36","0.3.95-community-replays.37","0.3.95-community-replays.38","0.3.95-community-replays.39","0.3.95-community-replays.40","0.3.95-community-replays.41","0.3.95-community-replays.42","0.3.95-community-replays.43","0.3.95-community-replays.44","0.3.95-community-replays.46","0.3.96","0.4.0","0.3.95-community-replays.045","0.3.95-community-replays.45 ",null}){
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.36","0.3.95-community-replays.37","0.3.95-community-replays.38","0.3.95-community-replays.39","0.3.95-community-replays.40","0.3.95-community-replays.41","0.3.95-community-replays.42","0.3.95-community-replays.43","0.3.95-community-replays.44","0.3.95-community-replays.45","0.3.95-community-replays.47","0.3.96","0.4.0","0.3.95-community-replays.046","0.3.95-community-replays.46 ",null}){
                 var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
                 Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
             }
             var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.36";
             previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
-            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.46";
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.47";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
@@ -828,7 +828,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             string saved=File.ReadAllText(Path.Combine(community,"pending.json"));Check(saved.Contains(fresh.id)&&!saved.Contains(old.id)&&!saved.Contains(imported.id)&&!saved.Contains(previousBuild.id)&&!saved.Contains(futureBuild.id),"Queue migration keeps only the exact-release run");
             Check(File.Exists(Path.Combine(community,fresh.id+".idr")),"Eligible queued replay is preserved");
             var menu=host.PauseMenu;menu.OpenAttractOptions();menu.SelectTab(5);menu.Navigate(1);Check(menu.DiagnosticSelection==2,"Controller reaches rankings");
-            menu.Navigate(1);Check(menu.DiagnosticSelection==3,"Controller reaches Discord presence");menu.Navigate(1);Check(menu.DiagnosticSelection==4,"Controller reaches Reset after Online options");menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==6,"Controller reaches Back without an import row");
+            menu.Navigate(1);Check(menu.DiagnosticSelection==3,"Controller reaches Discord presence");menu.Navigate(1);Check(menu.DiagnosticSelection==4,"Controller reaches lights-off advantage");menu.Navigate(1);Check(menu.DiagnosticSelection==5,"Controller reaches Reset after Online options");menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==7,"Controller reaches Back without an import row");
             menu.SetOpen(false);Finish(true,null);yield break;
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-local-check")>=0){

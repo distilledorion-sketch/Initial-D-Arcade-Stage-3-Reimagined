@@ -143,6 +143,9 @@ typedef void (IDAS3_UNITY_EVENT *Idas3UnityRenderEvent)(int eventId);
 IDAS3_UNITY_EXPORT uint32_t IDAS3_UNITY_CALL Idas3UnityVersion(void);
 // Scene port: synchronous simulation/presentation data on Unity's main thread.
 // No graphics device, external texture, render callback, or waveOut output.
+// 0 = English, 1 = original Japanese UI artwork. Call before scene initialization.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneConfigureLanguage(int language);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetCustomMenuLanguage(int language);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneInitialize(
     const char* assetRootUtf8,const char* saveRootUtf8,int width,int height);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStep(const Idas3UnityInput* input);
@@ -218,6 +221,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSunGlare(int enabled);
 // Replay-only world camera, applied by ReplayPose cameraMode4 before culling.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayFreeCamera(float x,float y,float z,float tx,float ty,float tz);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapSize(int size);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetLightsOffAdvantage(int hide);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapDisplay(int display);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty);

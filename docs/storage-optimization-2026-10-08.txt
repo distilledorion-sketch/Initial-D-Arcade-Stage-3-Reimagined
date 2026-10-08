@@ -1,0 +1,77 @@
+Lossless installed-size optimization (local, not published)
+
+Same-content comparison, decimal bytes:
+  Uncompressed player: 6,040,404,802
+  Optimized player:    4,158,115,885
+  Saved:              1,882,288,917 (31.16%)
+These compare the current development content, including the new localization
+assets, not an older release with fewer assets. Personal music, ROMs, saves and
+the development staging manifest are excluded.
+
+Verified combined ZIP comparison (Deflate level 9, same content):
+  Before: 2,469,576,023 bytes
+  After:  2,448,055,387 bytes
+  Saved:     21,520,636 bytes (about 0.87%).
+Downloads were already compressed, so the main benefit is installed size.
+Both archives passed CRC and full-file SHA256 inventory checks. The optimized
+archive contains 19,065 files. It is a private comparison artifact, not a hosted
+release; the existing base/additional-course split is still needed for GitHub.
+
+Unity player data:
+  930,614,922 loose bytes -> 146,518,288 byte data.unity3d archive.
+  BuildOptions.CompressWithLz4HC retains texture formats/resolutions, meshes,
+  fonts, alpha, animation frames and resource names. No lossy texture conversion.
+  Every one of the nine embedded files, including both serialized metadata and
+  pixel payloads, was independently decoded with UnityPy and compared by SHA256
+  to the same uncompressed build. All nine are byte-identical.
+
+Native texture/model banks:
+  693 files: 1,400,068,172 -> 301,875,889 bytes (1,098,192,283 saved).
+  File names and decoded IDAS3 formats remain unchanged. Source Native/data is
+  never rewritten. Only staged .idastex and .idasmesh files are packed.
+  Each file has IDASLZ41 magic, little-endian decoded length and fixed 256 KiB
+  block size, followed by stored-length/CRC32/payload blocks. Blocks that do not
+  shrink remain raw; whole files that do not shrink retain the legacy format.
+  The reader accepts both layouts, validates bounds/checksums/exact EOF, and
+  uses at most 512 KiB of scratch buffers. It does not extract files to disk.
+  Buffered word reads also avoid a separate stream read for every texture pixel.
+
+Build and update integration:
+  LZ4 v1.10.0 is pinned under Native/vendor/lz4; the BSD-2-Clause license ships
+  under data/third-party. HC is linked into the build tool, not the game.
+  Building Idas3Unity also builds pack_native_assets. Full player builds and
+  rebuilds stage/verify source data, then pack it through -CompressAssets.
+  The staging manifest includes shipping hashes/sizes and original source hashes.
+  Scripts-only rebuilds preserve the existing compression mode.
+  Older updaters support replacement but not deletion. Eight former loose Unity
+  data paths therefore ship as explicit zero-byte replacements; data.unity3d
+  contains their actual content. Do not omit these paths: doing so leaves the
+  old ~931 MB installed and breaks older required-file inventories. This also
+  keeps replacement/rollback within the existing installer transaction.
+  Release verification checks the UnityFS signature and all replacement paths.
+
+Validation:
+  - Legacy/raw and compressed native storage, block boundaries, random data,
+    EOF, size limits, malformed lengths, corrupt bytes and CRC reference vector.
+  - All 693 staged banks decode exactly to their original source bytes.
+  - All 17,071 staged native files have independently verified shipping hashes.
+  - All original car assets (35 cars, 1,916 textures, 659 selected instances)
+    and original RIP menus load through the production parser.
+  - All 45 Japanese UI banks retain IDs, fallback pixels and bounds.
+  - Actual compressed standalone player verifies the ROM gate, boots, renders
+    the original course/race/HUD/mirror and drives using isolated test saves.
+    Manual offscreen GPU captures are nonempty and were visually inspected.
+  - Existing native updater exercised with both full and patch packages:
+    28 checks, old payload replacement, save preservation and backup cleanup.
+  - 103 native storage checks, eight packaging/Unicode/in-place refusal checks,
+    and both full and scripts-only compressed build callbacks passed.
+
+Artifacts: Verification/storage-optimization (ignored private test output).
+Player: Builds/StorageOptimized. Desktop and GitHub were not changed.
+The private test ROM copy was removed after startup/race testing; it is not
+present in package inputs. Music encoding/loop points, physics and track content
+are unchanged. No claim of FPS improvement is made by this storage work.
+
+Reference APIs:
+https://docs.unity3d.com/6000.0/Documentation/ScriptReference/BuildOptions.CompressWithLz4HC.html
+https://github.com/lz4/lz4/tree/v1.10.0/lib

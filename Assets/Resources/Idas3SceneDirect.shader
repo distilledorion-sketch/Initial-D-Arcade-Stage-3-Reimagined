@@ -39,6 +39,7 @@ Shader "IDAS3/Original Scene Direct Material"
    #pragma fragment mainPS
    #pragma multi_compile_local _ IDAS_IMPORTED_COURSE
    #pragma multi_compile_instancing
+   #pragma multi_compile_local _ IDAS_IMPORTED_VERTEX_FACES
    #include "Idas3SceneCommon.cginc"
    ENDHLSL
   }

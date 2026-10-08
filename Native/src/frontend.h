@@ -62,6 +62,7 @@ public:
     // Non-ASCII driver names use the recovered alphabet rather than the UI face.
     std::function<void(std::span<std::uint32_t>,int,int,const std::string&,float,float,float,float)> paintSaveName;
     MenuFont menuFont;
+    std::array<MenuFont,2> localizedMenuFonts;
     // In-memory host lookup; menu painting never reads save files.
     std::function<TimeAttackBest(unsigned,unsigned,unsigned)> timeAttackBest;
     std::function<TimeAttackEntry(unsigned,unsigned,unsigned)> importedPersonalBest;

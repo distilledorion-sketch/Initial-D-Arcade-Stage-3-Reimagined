@@ -12,6 +12,7 @@
 #include "../tests/time_attack_completion_app_tests.inl"
 #include "../tests/finish_music_app_tests.inl"
 #include "../tests/imported_car_lighting_app_tests.inl"
+#include "../tests/night_battle_presentation_app_tests.inl"
 #include "../tests/driving_effects_app_tests.inl"
 #include "../tests/hud_drift_app_tests.inl"
 #include "../tests/imported_road_presentation_app_tests.inl"
@@ -354,6 +355,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
         if(scene==-2)return runTimeAttackCompletionAppTests(*r.app)==0?1:0;
         if(scene==-3)return runFinishMusicAppTests(*r.app)==0?1:0;
         if(scene==-4)return runImportedCarLightingAppTests(*r.app)==0?1:0;
+        if(scene==-17)return runNightBattlePresentationAppTests(*r.app)==0?1:0;
         if(scene==-11)return runDrivingEffectsAppTests(*r.app)==0?1:0;
         if(scene==-12)return runOnlineCollisionAppTests(*r.app)==0?1:0;
         if(scene==-13){const auto result=runHudDriftAppTests(*r.app);publish(r,0);return result==0?1:0;}
@@ -482,6 +484,18 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     default:return -1;}
 }
 
+int IDAS3_UNITY_CALL Idas3SceneSetCustomMenuLanguage(int language){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{idas3::setCustomMenuLanguage(language);return 1;}
+    catch(const std::exception& e){unityError(e.what());return 0;}
+}
+int IDAS3_UNITY_CALL Idas3SceneConfigureLanguage(int language){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(r.app&&language!=idas3::originalUiLanguage())throw std::logic_error("Restart the game to change arcade text language");
+        idas3::setOriginalUiLanguage(language);{std::lock_guard statusLock(r.statusMutex);r.error.clear();}return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
 int IDAS3_UNITY_CALL Idas3SceneInitialize(const char* assets,const char* saves,int width,int height){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
@@ -1116,6 +1130,11 @@ int IDAS3_UNITY_CALL Idas3SceneSetMapSize(int size){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app||size<0||size>2){unityError("Invalid minimap size");return 0;}
     r.app->hud.setMapSize(size);return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneSetLightsOffAdvantage(int hide){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||(hide!=0&&hide!=1)){unityError("Invalid lights-off advantage option");return 0;}
+    r.app->hud.setLightsOffAdvantage(hide!=0);return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneSetPerformance(int rainDetail){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

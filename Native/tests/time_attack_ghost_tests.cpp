@@ -40,6 +40,19 @@ int main(){
     check(!ghost.load(corrupt)&&ghost.replay.frames.empty(),"Trailing corrupt data accepted");
     {std::ofstream out(corrupt,std::ios::binary|std::ios::trunc);out<<"IDG1";for(int i=0;i<12;++i)out.put(char(255));}
     check(!ghost.load(corrupt),"Unbounded allocation accepted");
+    run.frames[0].position.x=1;run.finishTicks6000=100;
+    for(unsigned course:{16u,17u})for(bool reverse:{false,true})for(bool wet:{false,true}){
+        auto legacy=root/"slot_1"/"ghosts_v1"/("course_"+std::to_string(course)+(reverse?"_reverse":"_forward")+(wet?"_wet":"_dry")+".idghost");
+        const auto current=TimeAttackGhost::path(root/"slot_1",course,reverse,wet);
+        check(TimeAttackGhost::saveBest(legacy,run,0)==TimeAttackGhost::Saved::Replaced,"Legacy Gunsai/Odawara ghost fixture");
+        check(current!=legacy&&!ghost.load(current),"Old handling ghost returned after record reset");
+        run.finishTicks6000=200;
+        check(TimeAttackGhost::saveBest(current,run,1)==TimeAttackGhost::Saved::Replaced,"Old fast ghost blocked new slower record");
+        check(ghost.load(current)&&ghost.car==1&&ghost.replay.finishTicks6000==200,"Versioned Gunsai/Odawara ghost restart");
+        check(ghost.load(legacy)&&ghost.replay.finishTicks6000==100,"Archived ghost was modified");
+        run.finishTicks6000=100;
+    }
+    check(TimeAttackGhost::path(root,3,false,false)==root/"ghosts_v1"/"course_3_forward_dry.idghost","Unrelated ghost identity changed");
     std::cout<<"PASS "<<checks<<" personal-best ghost storage/interpolation checks\n";
     return 0;
 }

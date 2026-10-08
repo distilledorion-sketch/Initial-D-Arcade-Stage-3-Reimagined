@@ -6,6 +6,8 @@ from pathlib import Path
 import argparse, hashlib, json, re, zipfile
 
 REQUIRED={'InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data/globalgamemanagers','InitialDUnity_Data/Managed/Assembly-CSharp.dll'}
+RETIRED_UNITY_FILES=('globalgamemanagers','globalgamemanagers.assets','globalgamemanagers.assets.resS',
+                     'level0','resources.assets','resources.assets.resS','sharedassets0.assets','sharedassets0.assets.resS')
 PRIVATE={'userdata','userdata-unity-scene','community-times','replays','custom-music','custom music','admin-access.txt','identity.json','game-options.json','deploy.private.json','library.json','pending.json'}
 
 def inventory(z):
@@ -27,6 +29,15 @@ def inventory(z):
         with z.open(i) as f: sha=hashlib.file_digest(f,'sha256').hexdigest()
         result[name]={'path':name,'size':i.file_size,'sha256':sha}
     assert REQUIRED<=result.keys()
+    bundle='InitialDUnity_Data/data.unity3d'
+    if bundle in result:
+        with z.open(bundle) as stream:
+            assert stream.read(8)==b'UnityFS\0', 'Invalid compressed Unity player'
+        for name in RETIRED_UNITY_FILES:
+            path='InitialDUnity_Data/'+name
+            assert path in result and result[path]['size']==0, 'Missing legacy payload replacement: '+path
+    else:
+        assert result['InitialDUnity_Data/globalgamemanagers']['size']>0, 'Missing Unity player data'
     return result
 
 def build(base,target,base_version,target_version,out):

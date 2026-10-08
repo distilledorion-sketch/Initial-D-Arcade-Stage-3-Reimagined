@@ -7,6 +7,10 @@
 #include "math_types.h"
 
 namespace idas3 {
+// Set only before constructing a scene; loaded banks keep their language.
+void setOriginalUiLanguage(int language);
+int originalUiLanguage();
+std::filesystem::path localizedUiAssetPath(const std::filesystem::path& path);
 // Decoded, ordinary native assets. No guest addresses, BIOS or GPU commands.
 struct NativeImage {
     std::uint32_t width=0,height=0;
@@ -18,7 +22,10 @@ public:
     static NativeTextureBank load(const std::filesystem::path& path);
     const NativeImage& at(std::uint32_t index)const;
     std::size_t size()const{return images.size();}
+    // Source identity checks exclude appended localization textures.
+    std::size_t sourceSize()const{return sourceCount;}
 private:
+    std::size_t sourceCount=0;
     std::vector<NativeImage> images;
 };
 struct OriginalSpriteVertex {

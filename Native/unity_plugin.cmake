@@ -4,6 +4,7 @@ set_source_files_properties(src/unity_scene_capture.cpp src/unity_ui_capture.cpp
 get_target_property(IDAS3_APP_SOURCES InitialDRemake SOURCES)
 list(FILTER IDAS3_APP_SOURCES EXCLUDE REGEX "(^|/)main\\.cpp$")
 add_library(Idas3Unity SHARED src/unity_bridge.cpp src/unity_audio_output.cpp ${IDAS3_APP_SOURCES})
+add_dependencies(Idas3Unity pack_native_assets)
 target_include_directories(Idas3Unity PRIVATE src)
 target_compile_definitions(Idas3Unity PRIVATE IDAS3_UNITY_PLUGIN UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
 target_compile_options(Idas3Unity PRIVATE /W4 /fp:strict)

@@ -21,7 +21,30 @@ int runSharedImportAppTests(App& app){
     require(text.find("\"manual\":-1")!=std::string::npos&&text.find("\"points\":-1")!=std::string::npos,"Unknown historical details are explicit");
     require(text.find("\"splits\":[0,0,0,0]")!=std::string::npos,"Missing checkpoints remain missing");
     require(text==sharedPersonalImportJson(root)&&stamp==fs::last_write_time(second.path(0)),"Repeated read does not mutate saves");
+    // Exercise the real save-selection and displayed-ranking owners, including
+    // the legacy no-slot profile. These paths are all below private userdata.
+    for(int slot=-1;slot<int(LocalSaveSlots::count);++slot){
+        const auto directory=slot<0?root/"driver_profiles_v1":slots.profileDirectory(unsigned(slot));
+        fs::create_directories(directory);const auto file=directory/"hakone_personal_v1.csv";
+        const std::string oldCsv="condition,weather,car,finish_ticks6000\n18,0,1,1300000\n32,0,0,876541\n33,1,34,876542\n34,0,0,876543\n35,1,34,876544\n";
+        {std::ofstream out(file,std::ios::binary);out<<oldCsv;}
+        require(sharedPersonalImportJson(root).find("87654")==std::string::npos,"Historical import resurrected old Gunsai/Odawara handling");
+        app.useSaveSlot(slot);
+        for(unsigned condition=32;condition<36;++condition)
+            require(app.displayedTimeAttackRecords().best(condition,condition&1,(condition&1)?34:0).model==0,"Old Gunsai/Odawara times still visible after loading save");
+        require(app.displayedTimeAttackRecords().best(18,0,1).model==1300000,"Migration cleared Hakone");
+        auto archive=file;archive+=".before-idzero-revision-1.bak";std::ifstream backup(archive,std::ios::binary);
+        require(std::string(std::istreambuf_iterator<char>(backup),{})==oldCsv,"Save selection did not preserve exact legacy backup");
+        for(unsigned condition=32;condition<36;++condition)
+            app.importedPersonalRecords.record({condition,condition&1,(condition&1)?34u:0u,1500000+condition*1000});
+        require(app.importedPersonalRecords.save(file),"Post-reset personal best save");
+        app.useSaveSlot(slot<0?0:-1);app.useSaveSlot(slot);
+        for(unsigned condition=32;condition<36;++condition)
+            require(app.displayedTimeAttackRecords().best(condition,condition&1,(condition&1)?34:0).model==1500000+condition*1000&&!app.importedPersonalRecords.needsMigration(),"Returning to a save erased its new Gunsai/Odawara best");
+    }
+    app.useSaveSlot(0);
+    require(app.displayedTimeAttackRecords().best(6,0,0).model==1200000,"Original driver-card records changed during migration");
     std::ofstream(output/"personal-import.json")<<text;
-    std::ofstream(output/"shared-import-native.log")<<"PASS "<<checks<<" import selection, deduplication, missing metadata and read-only checks\n";
+    std::ofstream(output/"shared-import-native.log")<<"PASS "<<checks<<" import selection, deduplication, read-only import and all-save Gunsai/Odawara migration checks\n";
     return 0;
 }

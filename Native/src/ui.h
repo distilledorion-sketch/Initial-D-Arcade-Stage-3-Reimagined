@@ -20,13 +20,14 @@ class Frontend;
 // Presentation only: an online peer is not a Legend/Bunta battle owner.
 struct OnlineBattleHudState {
     bool active=false;
+    bool opponentHeadlights=true;
     std::uint32_t playerCar=0,rivalCar=0;
     std::string playerName,rivalName;
     float advantage=0,rivalPositionFraction=0;
     std::int32_t frame=0;
 };
 struct HudBattlePresentation {
-    bool online=false,mirrorEnabled=false;
+    bool online=false,mirrorEnabled=false,advantageHidden=false;
     float signedAdvantage=0;
     std::uint32_t profileMode=0,game2dCommands=0,portraitCommands=0,playerGlyphs=0,rivalGlyphs=0;
     std::uint32_t localMapMarkers=0,opponentMapMarkers=0,sectionCount=0,sectionCapacity=0,elapsed6000=0;
@@ -70,6 +71,7 @@ public:
     void loadOriginal(const std::filesystem::path& root);
     void resize(int w,int h);
     void setMapSize(int size){mapSize_=size>=0&&size<=2?size:0;}
+    void setLightsOffAdvantage(bool hide){hideLightsOffAdvantage_=hide;}
     void setMapDisplay(int display){mapDisplay_=display>=0&&display<=2?display:0;}
     void resetWaterCup(){waterCup_.reset();}
     void advanceWaterCup(float movement,const std::array<std::uint32_t,5>& cues){waterCup_.advance(movement,cues);}
@@ -85,6 +87,7 @@ public:
     // Submissions from the most recent actual paint, never a diagnostic redraw.
     const HudBattlePresentation& lastBattlePresentation()const{return battlePresentation_;}
 private:
+    bool hideLightsOffAdvantage_=true;
     friend struct CourseMapTestAccess;
 #if defined(IDAS3_PORTABLE_SCENE)
     std::vector<std::uint32_t> scenePixels_;

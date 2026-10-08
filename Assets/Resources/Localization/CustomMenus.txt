@@ -1,0 +1,638 @@
+# English source text<TAB>Japanese<TAB>Simplified Chinese. Literal \n is a line break.
+TEMPORARY DEVICE / {0}	一時デバイス / {0}	临时设备 / {0}
+ACTIVE / {0}	使用中 / {0}	当前设备 / {0}
+CONTROLLER / {0}	コントローラー / {0}	手柄 / {0}
+KEYBOARD {0} / shared across devices	キーボード {0} / 全デバイス共通	键盘 {0} / 所有设备共用
+REBIND {0}	割り当て：{0}	重新绑定：{0}
+Release buttons and leave axes at rest, then move an axis, pull a pedal, or press a controller button.	ボタンを離して軸を静止させてから、軸・ペダル・ボタンのどれかを操作してください。	松开按钮并让轴回到静止位置，然后移动轴、踩下踏板或按下手柄按钮。
+Release buttons and leave axes at rest, then press a key.	ボタンを離して軸を静止させてから、キーを押してください。	松开按钮并让轴回到静止位置，然后按下键盘按键。
+Press a button or move one axis/pedal. Escape cancels.	ボタン、軸、ペダルのどれか1つを操作してください。Escで取り消し。	按下按钮或移动一个轴或踏板。Esc取消。
+Press a key. Escape cancels.	キーを押してください。Escで取り消し。	请按下按键。Esc取消。
+Release the control, then choose another. Escape cancels.	操作を離して、別の入力を選んでください。Escで取り消し。	松开当前输入，然后选择其他按键。Esc取消。
+Binding changed. Apply to save.	割り当てを変更しました。適用で保存します。	绑定已更改。应用后保存。
+Binding changed.	割り当てを変更しました。	绑定已更改。
+Could not load options; using defaults. {0}	設定を読み込めないため初期設定を使います。{0}	无法加载设置，已使用默认值。{0}
+Could not apply options. {0}	設定を適用できませんでした。{0}	无法应用设置。{0}
+Could not save display settings. {0}	画面設定を保存できませんでした。{0}	无法保存显示设置。{0}
+Could not restore the display. {0}	画面設定を復元できませんでした。{0}	无法还原显示设置。{0}
+Connection stopped: {0}	接続を終了しました：{0}	连接已终止：{0}
+Could not return to the lobby: {0}	ロビーに戻れませんでした：{0}	无法返回大厅：{0}
+Could not load multiplayer race: {0}	対戦レースを読み込めませんでした：{0}	无法加载多人比赛：{0}
+Multiplayer stopped: {0}	対戦を停止しました：{0}	多人模式已停止：{0}
+The game build could not be identified. Restart the game and try again.	ゲームのビルドを識別できません。再起動して再試行してください。	无法识别游戏版本。请重启游戏后重试。
+Course download interrupted. Nothing was installed.	コースのダウンロードが中断しました。何もインストールされていません。	赛道下载中断。未安装任何内容。
+Course download verification failed. Nothing was installed.	コースの検証に失敗しました。何もインストールされていません。	赛道下载验证失败。未安装任何内容。
+Installer preparation timed out. The game remains open.	インストーラーの準備がタイムアウトしました。ゲームは続行できます。	安装程序准备超时。游戏仍保持打开。
+Add custom race music	カスタム曲を追加	添加自定义比赛音乐
+Open a downloaded replay	ダウンロードしたリプレイを開く	打开下载的回放
+VIEW CHANGE	視点切替	切换视角
+MOUNTAIN PASS	峠	山道
+Controller changed. Draft bindings are kept. APPLY saves all profiles.	コントローラーを変更しました。編集中の割り当ては保持されます。適用で全設定を保存。	手柄已更改。编辑中的绑定已保留。应用将保存所有预设。
+Binding unchanged.	割り当ては変更されませんでした。	绑定未更改。
+Display change reverted.	画面設定を元に戻しました。	显示设置已还原。
+CONTROLS SAVED — all edited device profiles	編集した全デバイスの操作設定を保存しました	已保存所有编辑过的设备操作设置
+Could not save controls.	操作設定を保存できませんでした。	无法保存操作设置。
+Review the new display settings.	新しい画面設定を確認してください。	请确认新的显示设置。
+OPTIONS SAVED	設定を保存しました	设置已保存
+Could not apply options.	設定を適用できませんでした。	无法应用设置。
+Defaults selected. Apply to save.	初期設定を選択しました。適用で保存します。	已选择默认设置。应用后保存。
+No controller active. Connect one or choose a connected device above.	コントローラーがありません。接続するか、上で接続済みデバイスを選んでください。	没有可用手柄。请连接手柄或在上方选择已连接的设备。
+Binding cleared. Apply to save.	割り当てを解除しました。適用で保存します。	绑定已清除。应用后保存。
+Could not clear this binding.	この割り当てを解除できません。	无法清除此绑定。
+Could not select that controller.	そのコントローラーを選択できません。	无法选择该手柄。
+{0}% MASTER VOLUME	全体音量 {0}%	主音量 {0}%
+KEEP THESE DISPLAY SETTINGS?	この画面設定を使用しますか？	保留这些显示设置？
+Confirm within {0} seconds.\nUnconfirmed changes will be reverted automatically.	{0}秒以内に確認してください。\n確認しないと元の設定に戻ります。	请在{0}秒内确认。\n未确认的更改将自动还原。
+REVERT	元に戻す	还原
+KEEP CHANGES	変更を保存	保留更改
+RETIRE THIS RACE?	リタイアしますか？	退出本场比赛？
+RESTART THIS RACE?	レースをやり直しますか？	重新开始本场比赛？
+QUIT INITIAL D?	INITIAL Dを終了しますか？	退出INITIAL D？
+LEAVE THIS ONLINE BATTLE?	この対戦を退出しますか？	退出本场在线对战？
+RETURN TO COURSE SELECT?	コース選択に戻りますか？	返回赛道选择？
+This counts as a time-out loss. After the results and rival dialogue, you can retry or choose another course.	タイムオーバーによる敗北になります。結果とライバルの会話の後、再挑戦やコース変更ができます。	这将计为超时落败。结果与对手对话结束后，可以重试或选择其他赛道。
+You will disconnect from the other driver and leave this battle.	相手との接続を切断し、対戦を退出します。	将与对手断开连接并退出对战。
+You will disconnect from the other driver. Your saved settings and progress will remain.	相手との接続を切断します。保存済みの設定と進行状況は残ります。	将与对手断开连接。已保存的设置和进度会保留。
+The current race attempt will be discarded. Your saved progress will remain.	現在のレースは破棄されます。保存済みの進行状況は残ります。	将放弃本次比赛。已保存的进度会保留。
+Choose a meter style.	メーターのスタイルを選択します。	选择仪表样式。
+Show a warning as the engine approaches its rev limit.	エンジンが回転数の上限に近づくと警告します。	转速接近上限时显示警告。
+Show accelerator and brake inputs.	アクセルとブレーキの入力を表示します。	显示油门和刹车输入。
+Show your driver name above the meter.	メーターの上にドライバー名を表示します。	在仪表上方显示车手名称。
+Choose a hanging ornament.	吊り下げアクセサリーを選択します。	选择悬挂挂饰。
+Could not save HUD customization.	HUD設定を保存できませんでした。	无法保存HUD自定义设置。
+Time / sections	時間・区間タイム	时间与分段
+Meter / gear	メーター・ギア	仪表与挡位
+Legend opponent	伝説のライバル	传说模式对手
+Online opponent	オンライン対戦相手	在线对手
+Minimap	ミニマップ	小地图
+Keychain	キーホルダー	钥匙扣
+Sound Room preferences could not be loaded.	音楽設定を読み込めませんでした。	无法加载音乐室设置。
+Sound Room preferences could not be saved.	音楽設定を保存できませんでした。	无法保存音乐室设置。
+ARCADE\nSTAGE {0}	ARCADE\nSTAGE {0}	ARCADE\nSTAGE {0}
+Check GitHub for the latest Windows release.	GitHubで最新のWindows版を確認します。	检查GitHub上的最新Windows版本。
+PLEASE WAIT…	お待ちください…	请稍候…
+INSTALL UPDATE	更新をインストール	安装更新
+UPDATES / REPAIR	更新・修復	更新与修复
+Checking GitHub for updates…	GitHubで更新を確認中…	正在检查GitHub更新…
+Additional course files are missing. Choose Full Repair to download and install them.	追加コースのファイルがありません。完全修復でダウンロードしてインストールしてください。	缺少新增赛道文件。请选择完整修复以下载并安装。
+Could not check GitHub. You can keep playing; try again in a minute.	GitHubを確認できません。プレイは続けられます。しばらくして再試行してください。	无法检查GitHub。您可以继续游戏，稍后重试。
+GitHub is limiting update checks. Try again later.	GitHubの確認回数制限中です。後で再試行してください。	GitHub已限制检查频率。请稍后重试。
+No public Windows release is available yet.	公開済みのWindows版はまだありません。	尚无公开的Windows版本。
+The latest release does not have a verified Windows download yet. Try again later.	最新版の確認済みWindows用ファイルがまだありません。後で再試行してください。	最新版本尚无已验证的Windows下载。请稍后重试。
+{0} is available. Download and install it now?	{0}が利用できます。今すぐダウンロードしてインストールしますか？	{0}已可用。现在下载并安装？
+You have the latest public Windows release.	最新の公開Windows版を使用しています。	您已安装最新的公开Windows版本。
+Your installed build is newer than the latest public Windows release.	インストール済みのビルドは公開最新版より新しいものです。	已安装的版本比最新公开Windows版本更新。
+Downloading the full update…	完全版の更新をダウンロード中…	正在下载完整更新…
+The update could not be applied. Your current game is unchanged. {0}	更新を適用できませんでした。現在のゲームは変更されていません。{0}	无法应用更新。当前游戏未被更改。{0}
+Preparing update…	更新を準備中…	正在准备更新…
+Downloading update…	更新をダウンロード中…	正在下载更新…
+Verifying the downloaded update…	ダウンロードした更新を検証中…	正在验证下载的更新…
+Downloading additional courses…	追加コースをダウンロード中…	正在下载新增赛道…
+Verifying additional courses…	追加コースを検証中…	正在验证新增赛道…
+Checking game files and preparing the update…	ゲームファイルを確認して更新を準備中…	正在检查游戏文件并准备更新…
+Checking game files… {0} / {1}	ゲームファイルを確認中… {0} / {1}	正在检查游戏文件… {0} / {1}
+Preparing the update. The game will restart automatically…	更新を準備しています。ゲームは自動的に再起動します…	正在准备更新。游戏将自动重启…
+Applying update and restarting…	更新を適用して再起動中…	正在应用更新并重启…
+Download interrupted. Please try again.	ダウンロードが中断しました。再試行してください。	下载中断。请重试。
+Download verification failed. Nothing was installed.	ダウンロードの検証に失敗しました。何もインストールされていません。	下载验证失败。未安装任何内容。
+Not enough disk space for the update download.	更新をダウンロードする空き容量が不足しています。	磁盘空间不足，无法下载更新。
+The bundled update installer is missing.	更新インストーラーが見つかりません。	缺少附带的更新安装程序。
+The installer could not start.	インストーラーを起動できませんでした。	无法启动安装程序。
+GDS-0033 verified.	GDS-0033を確認しました。	GDS-0033验证成功。
+Could not read gds-0033.chd. Check its permissions and try again.	gds-0033.chdを読み込めません。アクセス権を確認して再試行してください。	无法读取gds-0033.chd。请检查权限后重试。
+gds-0033.chd does not match the required GDS-0033 disc.	gds-0033.chdが必要なGDS-0033ディスクと一致しません。	gds-0033.chd与所需的GDS-0033光盘不匹配。
+Place gds-0033.chd in the rom folder.	gds-0033.chdをromフォルダーに入れてください。	请将gds-0033.chd放入rom文件夹。
+gds-0033.cue does not describe the required three-track disc.	gds-0033.cueが必要な3トラック構成と一致しません。	gds-0033.cue与所需的三轨光盘结构不匹配。
+Could not read GDS-0033. Check that the rom files are accessible.	GDS-0033を読み込めません。ROMファイルにアクセスできるか確認してください。	无法读取GDS-0033。请检查ROM文件是否可访问。
+GAME DEFAULT	ゲーム標準	游戏默认
+HOLD VIEW CHANGE TO SELECT MUSIC	視点切替の長押しで音楽選択	长按切换视角键选择音乐
+SELECT COURSE	コースを選択	选择赛道
+F1  ONLINE BATTLE	F1  オンライン対戦	F1  在线对战
+INITIAL D / ONLINE BATTLE	INITIAL D / オンライン対戦	INITIAL D / 在线对战
+Host a LAN room or enter the host's address.	LANルームを作成するか、ホストのアドレスを入力してください。	创建局域网房间或输入房主地址。
+Both drivers must be reachable on the same network.	両ドライバーが同じネットワークで通信できる必要があります。	双方车手必须能在同一网络上互相连接。
+{0} / 2 DRIVERS	{0} / 2人	{0} / 2名车手
+BATTLE FINISHED	対戦終了	对战结束
+AT  /  CHANGE	AT / 変更	自动挡 / 更改
+MT  /  CHANGE	MT / 変更	手动挡 / 更改
+BOOST {0} / CAR COLLISIONS {1}	ブースト {0} / 車同士の接触 {1}	追赶加速 {0} / 车辆碰撞 {1}
+WAITING FOR THE OTHER DRIVER…	相手を待っています…	正在等待对手…
+PRIVATE	非公開	私人
+COPY	コピー	复制
+ROOM FULL	満員	已满
+SEARCHING	検索中	搜索中
+CONNECTED	接続済み	已连接
+Other driver	対戦相手	对手车手
+Press Host to open a two-driver room.	対戦を作成して2人用ルームを開きます。	点击创建对战以开设双人房间。
+SYNCHRONIZING START	スタートを同期中	正在同步起跑
+Measuring connection	接続を計測中	正在测量连接
+High latency — contact corrections may be noticeable	遅延大 — 接触時の補正が目立つ場合があります	延迟较高，碰撞修正可能较明显
+Moderate latency	遅延中	中等延迟
+Low latency	遅延小	低延迟
+Each driver's course pick has a 50% chance.	両ドライバーのコースが50%の確率で選ばれます。	双方所选赛道各有50%的几率被选中。
+Share the room code. Both drivers must select Ready before the host starts.	ルームコードを共有してください。両者が準備完了になるとホストが開始できます。	分享房间代码。双方均准备好后，房主即可开始。
+Opponent found. Choose your car and course, then Ready. One driver's course is selected randomly.	相手が見つかりました。車とコースを選び、準備完了にしてください。コースはどちらかを抽選します。	已找到对手。选择车辆和赛道后准备。系统将随机选择一方的赛道。
+Quick Match cancelled.	クイックマッチを中止しました。	快速匹配已取消。
+Connection to the other driver was lost.	相手との接続が切れました。	与对手的连接已断开。
+The other driver left. Race ended; single-player progress was preserved.	相手が退出し、レースが終了しました。1人プレイの進行状況は保持されます。	对手已离开，比赛结束。单人游戏进度已保留。
+Room open. Share the room code with the second driver.	ルームを作成しました。対戦相手にコードを伝えてください。	房间已创建。请将房间代码分享给另一位车手。
+Both drivers need the same game build. Copy the complete Current folder to the other PC.	両者が同じビルドを使用する必要があります。Currentフォルダー全体を相手のPCにコピーしてください。	双方必须使用相同游戏版本。请将完整的Current文件夹复制到另一台电脑。
+Choose your car and course, then Ready. The game randomly selects one driver's complete course pick when the host starts.	車とコースを選んで準備完了にしてください。ホストが開始すると、どちらかのコース設定を抽選します。	选择车辆和赛道后准备。房主开始时，系统将随机采用一方的完整赛道设置。
+The other driver left the race.	相手がレースを退出しました。	对手已退出比赛。
+The other driver left the room.	相手がルームを退出しました。	对手已离开房间。
+Both drivers returned to the lobby. Choose Ready for another race.	両者がロビーに戻りました。再対戦するには準備完了を選んでください。	双方已返回大厅。准备后可再次比赛。
+The other driver left.	相手が退出しました。	对手已离开。
+Both drivers must choose Continue.	両者が「続ける」を選ぶ必要があります。	双方都必须选择继续。
+Returning both drivers to the lobby...	両者をロビーに戻しています…	正在让双方返回大厅…
+The network connection is unavailable.	ネットワークを利用できません。	网络连接不可用。
+The other driver did not complete the connection.	相手との接続が完了しませんでした。	对手未完成连接。
+The other driver did not return to the lobby.	相手がロビーに戻りませんでした。	对手未返回大厅。
+Connection to the other driver timed out.	相手との接続がタイムアウトしました。	与对手的连接超时。
+The second driver did not finish loading the race.	相手のレース読み込みが完了しませんでした。	另一位车手未完成比赛加载。
+Start acknowledgement was not received. Please reconnect and retry.	スタート確認を受信できませんでした。再接続して試してください。	未收到起跑确认。请重新连接后重试。
+TIME UP	タイムアップ	时间到
+YOU WIN	あなたの勝ち	您获胜了
+YOU LOSE	あなたの負け	您落败了
+Battle record could not be saved.	対戦記録を保存できませんでした。	无法保存对战记录。
+Room closed.	ルームを閉じました。	房间已关闭。
+Steam is unavailable. Sign in, then try Quick Match again.	Steamを利用できません。ログインして再度クイックマッチを試してください。	Steam不可用。请登录后重试快速匹配。
+Waiting for another driver — checking other open rooms…	対戦相手を待機中 — 他の公開ルームを確認しています…	等待其他车手，正在检查其他公开房间…
+Finding a compatible open battle…	参加できる公開対戦を検索中…	正在寻找兼容的公开对战…
+Finding nearby drivers…	近くのドライバーを検索中…	正在寻找附近车手…
+Searching the surrounding region…	周辺地域を検索中…	正在搜索周边地区…
+Searching all regions…	全地域を検索中…	正在搜索所有地区…
+No open battle found. Opening a room for another driver…	公開対戦が見つかりません。対戦相手を待つルームを作成中…	未找到公开对战。正在创建房间等待其他车手…
+Joining an open battle…	公開対戦に参加中…	正在加入公开对战…
+Waiting for another driver. Quick Match will connect you automatically.	対戦相手を待っています。クイックマッチが自動で接続します。	正在等待其他车手。快速匹配将自动连接。
+Opponent found. Choose your car and select Ready.	相手が見つかりました。車を選んで準備完了にしてください。	已找到对手。请选择车辆并准备。
+Steam disconnected. Sign in and try Quick Match again.	Steamが切断されました。ログインして再試行してください。	Steam已断开。请登录后重试快速匹配。
+Steam is reconnecting — keeping your search open…	Steamを再接続中 — 検索を継続しています…	Steam正在重新连接，搜索将继续…
+Steam could not reconnect. Sign in and try Quick Match again.	Steamを再接続できません。ログインして再試行してください。	Steam无法重新连接。请登录后重试快速匹配。
+Driver found — connecting both games…	相手が見つかりました — ゲームを接続中…	已找到车手，正在连接双方游戏…
+Room search timed out. Please try Quick Match again.	ルーム検索がタイムアウトしました。再度クイックマッチを試してください。	房间搜索超时。请重试快速匹配。
+That driver could not be reached.	そのドライバーに接続できません。	无法连接该车手。
+Creating the room timed out. Please try again.	ルーム作成がタイムアウトしました。再試行してください。	创建房间超时。请重试。
+Steam could not open the Quick Match room.	Steamでクイックマッチのルームを作成できませんでした。	Steam无法创建快速匹配房间。
+The Quick Match room closed. Please try again.	クイックマッチのルームが閉じました。再試行してください。	快速匹配房间已关闭。请重试。
+Room search timed out. Please try again.	ルーム検索がタイムアウトしました。再試行してください。	房间搜索超时。请重试。
+Room search interrupted — retrying…	検索が中断しました — 再試行中…	房间搜索中断，正在重试…
+That room filled or closed. Looking for another battle…	ルームが満員か終了しました。別の対戦を検索中…	该房间已满或关闭。正在寻找其他对战…
+COPY ERROR DETAILS	エラー詳細をコピー	复制错误详情
+Error report saved to: {0}	エラーレポートの保存先：{0}	错误报告已保存至：{0}
+AUDIO	音声	音频
+DISPLAY & GRAPHICS	画面・グラフィック	显示与画质
+GAMEPLAY	ゲーム設定	游戏设置
+CONTROLS	操作設定	按键设置
+STEERING & WHEEL	ステアリング	转向与方向盘
+ONLINE	オンライン	在线
+REPLAYS	リプレイ	回放
+HUD & MAP	HUD・マップ	HUD与地图
+UPDATES	アップデート	更新
+GAME SETTINGS	ゲーム設定	游戏设置
+OPTIONS	設定	设置
+RACE MENU	レースメニュー	比赛菜单
+PAUSED	ポーズ中	已暂停
+INITIAL D  /  ATTRACT SCREEN	INITIAL D  /  タイトル画面	INITIAL D  /  标题画面
+BACK TO ATTRACT	タイトルに戻る	返回标题画面
+LIVE RACE CONTINUES	レースは進行中です	比赛仍在进行
+TAKE A BREATHER	ひと休みしましょう	稍作休息
+RESUME	レースに戻る	继续比赛
+LEAVE ONLINE BATTLE	オンライン対戦を退出	退出在线对战
+QUIT GAME	ゲームを終了	退出游戏
+RESTART RACE	レースをやり直す	重新开始比赛
+RETIRE RACE	リタイア	退赛
+RETURN TO COURSE SELECT	コース選択に戻る	返回赛道选择
+THE BATTLE IS STILL ON	対戦は続いています	对战仍在进行
+YOUR NEXT CORNER CAN WAIT	準備ができたら再開	准备好后继续
+Opening this menu does not pause either driver. Return to the road when you are ready.	このメニューを開いても対戦は停止しません。準備ができたらレースに戻ってください。	打开此菜单不会暂停任何一方的比赛。准备好后请返回赛道。
+Your race is paused. Adjust your settings, check the controls, or return to the road.	レースを一時停止しています。設定や操作を確認してから再開できます。	比赛已暂停。您可以调整设置、查看操作或返回赛道。
+Leaving ends your participation in this battle.	退出すると、この対戦への参加を終了します。	退出后将结束您在本场对战中的比赛。
+Restarting or leaving discards the current race attempt.	やり直すか退出すると、現在のレースの記録は破棄されます。	重新开始或离开将放弃本次比赛记录。
+CAMERA	カメラ	镜头
+DISPLAY	画面	显示
+MASTER	全体音量	主音量
+MUSIC	音楽	音乐
+ENGINE	エンジン音	引擎音
+TIRE SQUEAL	タイヤ音	轮胎音
+EFFECTS / VOICES	効果音・ボイス	音效与语音
+MUTE WHEN UNFOCUSED	非アクティブ時に消音	后台静音
+ON	オン	开
+OFF	オフ	关
+RESET DEFAULTS	初期設定に戻す	恢复默认
+APPLY	適用	应用
+BACK	戻る	返回
+CANCEL	キャンセル	取消
+DONE	完了	完成
+YES	はい	是
+NO	いいえ	否
+CONTINUE	続ける	继续
+CONFIRM	決定	确认
+SELECT	選択	选择
+WINDOWED	ウィンドウ	窗口模式
+BORDERLESS	ボーダーレス	无边框
+FULLSCREEN	フルスクリーン	全屏
+BUMPER	バンパー	保险杠视角
+CHASE	追従	追尾视角
+NATURAL	ナチュラル	自然视角
+PREVIOUS	前へ	上一项
+PREVIOUS RESPONSE	以前の設定	旧版响应
+Replay library	リプレイ一覧	回放库
+RACE COURSE / {0}	対戦コース / {0}	比赛赛道 / {0}
+ADD MUSIC…	音楽を追加…	添加音乐…
+Import an MP3, OGG or WAV file from this PC	このPCからMP3・OGG・WAVを追加	从此电脑导入MP3、OGG或WAV文件
+Custom music library could not be opened.	カスタム曲のライブラリを開けませんでした。	无法打开自定义音乐库。
+The Custom Music folder could not be opened.	Custom Musicフォルダーを開けませんでした。	无法打开Custom Music文件夹。
+Use regular music files up to 100 MB.	100MB以下の通常の音楽ファイルを使用してください。	请使用不超过100MB的普通音乐文件。
+Custom Music holds up to 64 songs.	カスタム曲は64曲まで保存できます。	自定义音乐最多可保存64首歌曲。
+A file in Custom Music could not be read.	Custom Music内のファイルを読み込めませんでした。	无法读取Custom Music中的文件。
+Wait for the music import to finish.	音楽の追加が完了するまでお待ちください。	请等待音乐导入完成。
+Choose a custom song to delete.	削除するカスタム曲を選んでください。	请选择要删除的自定义歌曲。
+Song deleted.	曲を削除しました。	歌曲已删除。
+The song could not be deleted. Check that its files are writable.	曲を削除できません。ファイルの書き込み権限を確認してください。	无法删除歌曲。请检查文件是否可写。
+Song selected, but the preference could not be saved.	曲を選択しましたが、設定を保存できませんでした。	已选择歌曲，但无法保存设置。
+Choose custom music before starting the race.	レース開始前にカスタム曲を選んでください。	请在比赛开始前选择自定义音乐。
+This custom song is unavailable. Import it again or choose another song.	このカスタム曲は使用できません。追加し直すか、別の曲を選んでください。	此自定义歌曲不可用。请重新导入或选择其他歌曲。
+This song is unavailable.	この曲は使用できません。	此歌曲不可用。
+Loading song…	曲を読み込み中…	正在加载歌曲…
+This song could not be loaded.	曲を読み込めませんでした。	无法加载此歌曲。
+This song has an unsupported audio format.	この曲の音声形式には対応していません。	不支持此歌曲的音频格式。
+This song could not be decoded.	この曲をデコードできませんでした。	无法解码此歌曲。
+This song has invalid loop points.	この曲のループ位置が不正です。	此歌曲的循环位置无效。
+Choose music before starting the race.	レース開始前に曲を選んでください。	请在比赛开始前选择音乐。
+Choose an MP3, OGG or WAV file…	MP3・OGG・WAVファイルを選んでください…	请选择MP3、OGG或WAV文件…
+The music file picker could not open.	音楽ファイルの選択画面を開けませんでした。	无法打开音乐文件选择器。
+Use an MP3, OGG or WAV up to 100 MB (64 songs maximum).	100MB以下のMP3・OGG・WAVを使用してください（最大64曲）。	请使用不超过100MB的MP3、OGG或WAV文件（最多64首）。
+This song is already in Custom Music.	この曲は追加済みです。	此歌曲已在自定义音乐中。
+Importing music…	音楽を追加中…	正在导入音乐…
+This audio file could not be decoded. Try another MP3, OGG or WAV.	音声をデコードできません。別のMP3・OGG・WAVを試してください。	无法解码此音频文件。请尝试其他MP3、OGG或WAV文件。
+Music added.	音楽を追加しました。	音乐已添加。
+Music could not be saved. Check available disk space.	音楽を保存できませんでした。空き容量を確認してください。	无法保存音乐。请检查磁盘可用空间。
+Missing {0}.	{0}がありません。	缺少{0}。
+{0} does not match the required GDS-0033 disc.	{0}が必要なGDS-0033ディスクと一致しません。	{0}与所需的GDS-0033光盘不匹配。
+FLYCAST GAMEPAD	Flycast ゲームパッド	Flycast 手柄
+FLYCAST WHEEL	Flycast ハンドル	Flycast 方向盘
+DISPLAY MODE	画面モード	显示模式
+RESOLUTION	解像度	分辨率
+VERTICAL SYNC	垂直同期	垂直同步
+FRAME LIMIT	フレーム上限	帧率上限
+UNLIMITED	無制限	无限制
+ANTI-ALIASING	アンチエイリアス	抗锯齿
+QUALITY PRESET	画質プリセット	画质预设
+CUSTOM	カスタム	自定义
+ORIGINAL	オリジナル	原版
+BALANCED	バランス	均衡
+LOW	低	低
+WEATHER & SPRAY	天候・水しぶき	天气与水花
+FULL	すべて	完整
+REDUCED	軽量	精简
+IMPORTED SCENERY	追加コースの描画	新增赛道景物
+TRACK LIGHTING	コースの明るさ	赛道光照
+SUN GLARE	太陽のまぶしさ	阳光眩光
+SHOW FRAME RATE	FPSを表示	显示帧率
+Turn off VSync to use the frame limit.	フレーム上限を使うには垂直同期をオフにしてください。	关闭垂直同步后可设置帧率上限。
+Display changes must be confirmed within 15 seconds.	画面設定の変更は15秒以内に確認してください。	更改显示设置后请在15秒内确认。
+DEFAULT CAMERA	標準カメラ	默认镜头
+AI DRIVER DIFFICULTY	AIドライバーの難易度	AI车手难度
+NORMAL	ノーマル	普通
+HARD (+5% PACE)	ハード（速度 +5%）	困难（速度 +5%）
+EXPERT (+10% PACE)	エキスパート（速度 +10%）	专家（速度 +10%）
+TIME ATTACK GHOST	タイムアタックのゴースト	计时赛幽灵车
+FULL TUNE	フルチューン	完全改装
+999999 POINTS + UPGRADES	999999ポイント＋改造	999999点数＋升级
+ARCADE TEXT LANGUAGE	原作テキストの言語	原版文字语言
+CUSTOM MENU LANGUAGE	追加メニューの言語	自定义菜单语言
+JAPANESE	日本語	日语
+ENGLISH	英語	英语
+Choose a save, then a make and car for upgrades.	セーブを選び、メーカーと車種を選択して改造します。	选择存档，然后选择厂商和车辆进行升级。
+Finish the current screen and leave online play to use Full Tune.	現在の画面を終了し、オンライン対戦から退出してから使用してください。	请先完成当前画面并退出在线模式，再使用完全改装。
+Race your best saved run. New bests are saved with the ghost off, too.	保存された自己ベストと対戦します。オフでも自己ベストは保存されます。	与已保存的个人最佳记录竞速。关闭幽灵车仍会保存新纪录。
+Legend of the Streets only. Bunta Challenge keeps its original difficulty.	公道最速伝説のみ。文太に挑戦は原作の難易度のままです。	仅影响公路最速传说。文太挑战保留原版难度。
+Original menu and race text artwork. Apply, then restart the game. Separate from Custom Menu Language.	原作メニューとレースの文字画像。適用後に再起動してください。追加メニューの言語とは別設定です。	原版菜单和比赛中的文字贴图。应用后请重启游戏。与自定义菜单语言互不影响。
+Pause, online, music and other custom menus only. Apply to change now. Original arcade artwork stays unchanged.	ポーズ・オンライン・音楽などの追加メニューのみ。適用ですぐに切り替わります。原作の文字画像は変わりません。	仅影响暂停、在线、音乐等自定义菜单。应用后立即生效，不改变原版文字贴图。
+COMMUNITY TIMES	オンラインランキング	社区排行榜
+VIEW LEADERBOARDS	ランキングを見る	查看排行榜
+DISCORD RICH PRESENCE	Discordにプレイ状況を表示	Discord游戏状态
+New Time Attack submissions require a driving replay. Turning Community Times off stops uploads; existing submissions remain.	タイムの送信にはリプレイが必要です。オフにすると送信を停止します。送信済みの記録は残ります。	提交计时赛成绩需要比赛回放。关闭社区排行榜将停止上传，已提交的记录会保留。
+Shows your game activity in the Discord desktop app.	Discordデスクトップアプリにプレイ状況を表示します。	在Discord桌面应用中显示您的游戏状态。
+OPEN REPLAY LIBRARY	リプレイ一覧を開く	打开回放列表
+TIME ATTACK	タイムアタック	计时赛
+ON — REQUIRED FOR SHARING	オン（送信に必要）	开（上传必需）
+ONLINE BATTLES	オンライン対戦	在线对战
+LEGEND OF THE STREETS	公道最速伝説	公路最速传说
+Recording choices apply to the next race. Community Times always requires a Time Attack replay, even if optional recording is off.	録画設定は次のレースから適用されます。ランキング送信には録画設定にかかわらずリプレイが必要です。	录制设置从下一场比赛生效。无论是否开启录制，排行榜提交都需要计时赛回放。
+Finished recordings are saved on this computer.	完走したリプレイはこの端末に保存されます。	已完成的回放保存在此电脑上。
+Community times ready.	ランキング送信の準備完了。	社区排行榜已就绪。
+STEERING RESPONSE	ステアリング応答	转向响应
+RESPONSE PROFILE	応答プロファイル	响应预设
+DEADZONE	デッドゾーン	死区
+SMOOTHING	スムージング	平滑度
+WHEEL FORCE FEEDBACK	ハンドルのフォースフィードバック	方向盘力反馈
+FORCE FEEDBACK	フォースフィードバック	力反馈
+DEVICE	デバイス	设备
+STRENGTH	強さ	强度
+INVERT FORCE	フォースを反転	反转力反馈
+Deadzone is saved separately for each response profile.	デッドゾーンは各プロファイルに個別保存されます。	每种响应预设分别保存死区设置。
+Wheel feedback is unavailable.	フォースフィードバックを利用できません。	方向盘力反馈不可用。
+AUTOMATIC	自動	自动
+DISCONNECTED DEVICE	未接続のデバイス	设备未连接
+CONTROLLER & KEYBOARD	コントローラー・キーボード	手柄与键盘
+Control bindings are unavailable.	キー割り当てを利用できません。	按键绑定不可用。
+ACTION	操作	操作
+KEYBOARD 1	キーボード1	键盘1
+KEYBOARD 2	キーボード2	键盘2
+KEYBOARD 3	キーボード3	键盘3
+CONTROLLER	コントローラー	手柄
+Keyboard only. Select a controller above to edit its bindings.	キーボードのみ。上でコントローラーを選ぶと割り当てを変更できます。	仅使用键盘。在上方选择手柄以编辑绑定。
+Controller disconnected. Keyboard controls remain available.	コントローラーが切断されました。キーボードは使用できます。	手柄已断开。键盘操作仍可使用。
+Gear 1–6: Manual transmission. Scroll for more bindings. APPLY saves all devices.	1〜6速はMT用。スクロールで他の操作を表示。適用で全デバイスを保存。	1至6挡仅适用于手动挡。滚动查看更多绑定。应用将保存所有设备。
+REBIND	割り当てる	重新绑定
+CLEAR	解除	清除
+CLEAR SLOT	この割り当てを解除	清除此绑定
+Choose REBIND to assign a control, CLEAR to remove this slot, or BACK.\nRebinding waits up to 15 seconds. Leave controls at rest to cancel without assigning anything.	「割り当てる」で操作を登録、「解除」で削除、「戻る」で終了。\n入力待ちは15秒です。何も操作しなければ登録せずに取り消します。	选择重新绑定来分配操作，清除来删除绑定，或返回。\n等待输入最多15秒。不操作即可取消，不会分配任何按键。
+Assigned controller controls swap actions. APPLY saves your changes.	使用中のボタンは操作を入れ替えます。適用で変更を保存します。	已绑定的手柄按键将交换操作。应用后保存更改。
+Esc cancels. Keyboard conflicts must be cleared before reassignment.	Escで取り消し。重複するキーを解除してから割り当ててください。	Esc取消。请先清除冲突的键盘绑定，再重新分配。
+Accelerate	アクセル	加速
+Brake	ブレーキ	刹车
+Steer left	左にステア	向左转向
+Steer right	右にステア	向右转向
+Shift up	シフトアップ	升挡
+Shift down	シフトダウン	降挡
+Change camera	視点切替	切换镜头
+Pause	ポーズ	暂停
+Online menu	オンラインメニュー	在线菜单
+Toggle headlights	ライト切替	切换车灯
+Gear 1	1速	1挡
+Gear 2	2速	2挡
+Gear 3	3速	3挡
+Gear 4	4速	4挡
+Gear 5	5速	5挡
+Gear 6	6速	6挡
+Unbound	未設定	未绑定
+UNSAVED CHANGES — APPLY to save; leaving settings discards changes.	未保存の変更があります。適用で保存、設定を閉じると破棄します。	有未保存的更改。应用后保存，离开设置将放弃更改。
+Settings are saved on this computer.	設定はこの端末に保存されます。	设置保存在此电脑上。
+HUD CUSTOMIZATION SAVED	HUDの設定を保存しました	HUD自定义设置已保存
+HUD & MAP / SIZES	HUD・マップ / サイズ	HUD与地图 / 大小
+HUD APPEARANCE	HUDの外観	HUD外观
+EDIT HUD LAYOUT	HUD配置を編集	编辑HUD布局
+HUD SIZES	HUDのサイズ	HUD大小
+MINIMAP DISPLAY	ミニマップ表示	小地图显示
+MAP	マップ	地图
+WATER CUP	紙コップ	水杯
+MAP / WATER CUP SIZE	マップ・紙コップのサイズ	地图与水杯大小
+MINIMAP ZOOM OUT	ミニマップの縮小率	小地图缩放
+WIDEST (50%)	最大範囲（50%）	最广（50%）
+WIDER (75%)	広い範囲（75%）	较广（75%）
+TIME / SECTION TIMES	時間・区間タイム	时间与分段时间
+SPEEDOMETER / GEAR	メーター・ギア	仪表与挡位
+TIME ATTACK RECORDS	タイムアタック記録	计时赛记录
+LEGEND OPPONENT PANEL	伝説のライバル表示	传说模式对手面板
+ONLINE OPPONENT PANEL	オンライン対戦相手	在线对手面板
+REAR-VIEW MIRROR	バックミラー	后视镜
+TIME EXTENDED	タイム延長	时间延长
+ACCEPTING CHALLENGERS	乱入受付	接受挑战
+ORNAMENT / KEYCHAIN	アクセサリー・キーホルダー	挂饰与钥匙扣
+CUSTOMIZE HUD	HUDカスタマイズ	自定义HUD
+SETTINGS  /  HUD  /  CUSTOMIZE	設定 / HUD / カスタマイズ	设置 / HUD / 自定义
+LIVE PREVIEW	ライブプレビュー	实时预览
+PREVIEW	プレビュー	预览
+METER	メーター	仪表
+SHIFT LIGHTS	シフトランプ	换挡指示灯
+PEDAL INPUTS	ペダル入力	踏板输入
+DRIVER PLATE	ドライバープレート	车手名牌
+ORNAMENT	アクセサリー	挂饰
+ARCADE ONLY	追加メーターのみ	仅限新增仪表
+SWING PREVIEW	揺れのプレビュー	摆动预览
+DEMO  /  Sample engine speed and pedal inputs	デモ / エンジン回転数とペダル入力の例	演示 / 模拟转速与踏板输入
+The original race meter is selected.	原作メーターを選択しています。	已选择原版比赛仪表。
+Choose an ornament.	アクセサリーを選んでください。	请选择挂饰。
+Choose a meter.	メーターを選んでください。	请选择仪表。
+Restore the default HUD appearance.	HUDの外観を初期設定に戻します。	恢复默认HUD外观。
+Move and resize your meter, keychain and other HUD items.	メーターやキーホルダーなどの位置とサイズを変更します。	移动和缩放仪表、钥匙扣及其他HUD元素。
+Save HUD customization and return to settings.	HUD設定を保存して戻ります。	保存HUD自定义设置并返回。
+Return to settings without saving these changes.	変更を保存せずに設定へ戻ります。	不保存更改并返回设置。
+EDIT LAYOUT	配置を編集	编辑布局
+HUD EDITOR	HUDエディター	HUD编辑器
+Third person	三人称視点	第三人称
+Legend	伝説	传说
+Move X	左右に移動	水平移动
+Move Y	上下に移動	垂直移动
+Reset selected	選択項目をリセット	重置选中项
+Reset layout	配置をリセット	重置布局
+Save & return	保存して戻る	保存并返回
+SIZE	サイズ	大小
+Choose an ornament in Customize HUD to position it.	HUDカスタマイズでアクセサリーを選ぶと配置できます。	请先在HUD自定义中选择挂饰，再调整位置。
+SOUND ROOM	サウンドルーム	音乐室
+RACE MUSIC	レース音楽	比赛音乐
+LIBRARY	ライブラリ	曲库
+All songs	すべての曲	全部歌曲
+Arcade Stage 1	Arcade Stage 1	Arcade Stage 1
+Arcade Stage 2	Arcade Stage 2	Arcade Stage 2
+Arcade Stage 3	Arcade Stage 3	Arcade Stage 3
+Arcade Stage 4	Arcade Stage 4	Arcade Stage 4
+Arcade Stage 5	Arcade Stage 5	Arcade Stage 5
+Arcade Stage 6	Arcade Stage 6	Arcade Stage 6
+Arcade Stage 7	Arcade Stage 7	Arcade Stage 7
+Arcade Stage 8	Arcade Stage 8	Arcade Stage 8
+Special Stage	Special Stage	Special Stage
+The Arcade · S5	The Arcade · S5	The Arcade · S5
+Custom music	カスタム曲	自定义音乐
+FAVORITES	お気に入り	收藏
++ ADD MUSIC	＋ 音楽を追加	＋ 添加音乐
+ADD MUSIC	音楽を追加	添加音乐
+Search songs or artists	曲名・アーティストを検索	搜索歌曲或歌手
+TITLE A–Z	曲名順	按曲名排序
+TRACK ORDER	収録順	按曲目排序
+COLLECTION ›	コレクション ›	合集 ›
+No songs found	曲が見つかりません	未找到歌曲
+Loading music…	音楽を読み込み中…	正在加载音乐…
+Choose a song	曲を選んでください	请选择歌曲
+CUSTOM\nMUSIC	カスタム\n曲	自定义\n音乐
+SPECIAL\nSTAGE	SPECIAL\nSTAGE	SPECIAL\nSTAGE
+VOLUME	音量	音量
+DELETE	削除	删除
+USE FOR RACE	レースで使う	用于比赛
+Delete song?	この曲を削除しますか？	删除此歌曲？
+SELECTED	選択中	已选择
+LOADING…	読み込み中…	加载中…
+PLAY PREVIEW	試聴する	试听
+HOLD {0}  /  MUSIC SELECT	{0} 長押し / 音楽選択	长按 {0} / 选择音乐
+HOLD {0} FOR OPTIONS	{0} 長押しで設定	长按 {0} 打开设置
+{0} FULL	全曲 {0}	全曲 {0}
+ONLINE BATTLE	オンライン対戦	在线对战
+JOIN A BATTLE	対戦に参加	加入对战
+RACE RESULTS	レース結果	比赛结果
+QUICK MATCH	クイックマッチ	快速匹配
+LINK READY	接続準備完了	连接已就绪
+LINK OFFLINE	未接続	离线
+ROOM CONNECTED	ルームに接続中	已连接房间
+FINDING A DRIVER	対戦相手を検索中	正在寻找车手
+RETURNING TO LOBBY	ロビーに戻ります	返回大厅中
+RETURNING TO LOBBY…	ロビーに戻っています…	正在返回大厅…
+RACE FINISHED	レース終了	比赛结束
+ONLINE ACTIVITY	オンライン状況	在线活动
+QUEUING	マッチ待ち	排队中
+RACING	レース中	比赛中
+HOST PUBLIC BATTLE	公開対戦を作成	创建公开对战
+HOST A BATTLE	対戦を作成	创建对战
+HOST PRIVATE BATTLE	非公開対戦を作成	创建私人对战
+JOIN WITH CODE	コードで参加	通过代码加入
+JOIN WITH ADDRESS	アドレスで参加	通过地址加入
+BACK TO GAME	ゲームに戻る	返回游戏
+LAN DIRECT	LAN直接接続	局域网直连
+OPEN ROOMS	公開ルーム	公开房间
+REFRESH	更新	刷新
+RETRY STEAM	Steamを再接続	重试Steam连接
+DIRECT CONNECTION	直接接続	直接连接
+JOIN	参加	加入
+SEARCHING…	検索中…	搜索中…
+NO OPEN ROOMS	公開ルームはありません	没有公开房间
+ROOM CODE	ルームコード	房间代码
+HOST ADDRESS	ホストのアドレス	房主地址
+IP ADDRESS:PORT	IPアドレス:ポート	IP地址:端口
+EDIT	編集	编辑
+JOIN BATTLE	対戦に参加	加入对战
+ENTER ROOM CODE	ルームコードを入力	输入房间代码
+ENTER HOST ADDRESS	ホストのアドレスを入力	输入房主地址
+WAITING FOR A DRIVER	対戦相手を待っています	等待车手加入
+DRIVERS	ドライバー	车手
+YOU	あなた	您
+DRIVER	ドライバー	车手
+OPPONENT	対戦相手	对手
+OPPONENT / HOST	対戦相手 / ホスト	对手 / 房主
+YOU / HOST	あなた / ホスト	您 / 房主
+READY	準備完了	已准备
+NOT READY	準備中	未准备
+FINISHED	完走	已完赛
+SELECT CAR	車を選ぶ	选择车辆
+AT / CHANGE	AT / 変更	自动挡 / 更改
+MT / CHANGE	MT / 変更	手动挡 / 更改
+YOUR COURSE PICK	あなたのコース選択	您的赛道选择
+DIRECTION	方向	方向
+SURFACE	路面	路面
+TIME	時間帯	时段
+BOOST	ブースト	追赶加速
+CAR COLLISIONS	車同士の接触	车辆碰撞
+UPHILL	上り	上坡
+DOWNHILL	下り	下坡
+REVERSE	復路	反向
+CLOCKWISE	右回り	顺时针
+COUNTERCLOCKWISE	左回り	逆时针
+OUTBOUND	往路	去程
+INBOUND	復路	回程
+FORWARD	往路	正向
+SNOW	雪	雪地
+WET	ウェット	湿地
+DRY	ドライ	干地
+NIGHT	夜	夜晚
+DAY	昼	白天
+YOUR PICK SELECTED	あなたのコースに決定	已选中您的赛道
+OPPONENT PICK SELECTED	相手のコースに決定	已选中对手的赛道
+RACE COURSE	対戦コース	比赛赛道
+RESULT	結果	结果
+CANCEL SEARCH	検索を中止	取消搜索
+LEAVE ROOM	ルームを退出	离开房间
+RETURN TO LOBBY	ロビーに戻る	返回大厅
+RETURN TO RACE	レースに戻る	返回比赛
+SYNCING PICKS	選択を同期中	同步选择中
+CANCEL READY	準備完了を取り消す	取消准备
+START BATTLE	対戦開始	开始对战
+WAITING FOR HOST	ホストを待っています	等待房主
+GET READY	準備してください	请准备
+CONNECTION LOST	接続が切れました	连接已断开
+Race ended. No result recorded.	レースが終了しました。結果は記録されません。	比赛已结束。未记录结果。
+0 POINTS AWARDED	獲得ポイント：0	获得点数：0
+RETURN TO MENU	メニューに戻る	返回菜单
+MUSIC  / {0}	音楽 / {0}	音乐 / {0}
+ROOM / {0}	ルーム / {0}	房间 / {0}
+{0} / {1} OF 2 DRIVERS	{0} / {1}人（定員2人）	{0} / {1}/2名车手
+{0} / SAVE {1}	{0} / セーブ {1}	{0} / 存档 {1}
+{0} Lobby	{0} のロビー	{0} 的大厅
+REPLAYS — LOCAL LIBRARY	リプレイ — 保存済み一覧	回放 — 本地列表
+Open file…	ファイルを開く…	打开文件…
+Close viewer	ビューアを閉じる	关闭查看器
+Personal recordings stay on this computer. Only submitted Time Attack replays are uploaded.	個人のリプレイはこの端末に保存されます。送信したタイムアタックのリプレイのみアップロードされます。	个人回放保存在此电脑上。仅提交成绩的计时赛回放会被上传。
+No saved replays yet. Enable recording in Options > Replays, then finish a race.	保存済みリプレイはありません。設定の「リプレイ」で録画を有効にして完走してください。	暂无回放。请在设置的回放选项中启用录制，然后完成一场比赛。
+{0} recordings · ↑ ↓ / D-pad to select · Enter / A to play · Esc / B to return	{0}件 · ↑ ↓ / 十字キー：選択 · Enter / A：再生 · Esc / B：戻る	{0}个回放 · ↑ ↓ / 十字键选择 · Enter / A播放 · Esc / B返回
+NEXT	次へ	下一项
+REPLAY VIEWER	リプレイビューア	回放查看器
+Open replay…	リプレイを開く…	打开回放…
+PLAY	再生	播放
+Camera: {0}	カメラ：{0}	镜头：{0}
+Overhead	上空	俯视
+Orbit	周回	环绕
+Free camera	フリーカメラ	自由镜头
+H / Select: hide controls	H / Select：操作表示を隠す	H / Select：隐藏控制栏
+Space/A: pause   C/Y: camera   Q/E: orbit	Space/A：停止   C/Y：カメラ   Q/E：回転	Space/A：暂停   C/Y：镜头   Q/E：环绕
+Space/A: pause   C/Y: camera	Space/A：停止   C/Y：カメラ	Space/A：暂停   C/Y：镜头
+POV: OPPONENT	視点：相手	视角：对手
+POV: YOU	視点：あなた	视角：您
+Game HUD: {0} (G / L3)	ゲームHUD：{0}（G / L3）	游戏HUD：{0}（G / L3）
+Hide replay overlay (H / Select)	リプレイ操作を隠す（H / Select）	隐藏回放控制栏（H / Select）
+Move speed	移動速度	移动速度
+Reset to car (R / R3)	車の位置に戻す（R / R3）	重置到车辆（R / R3）
+WASD / left stick: move · Q/E / LB/RB: height · RMB / right stick: look	WASD / 左スティック：移動 · Q/E / LB/RB：高さ · 右クリック / 右スティック：視線	WASD / 左摇杆：移动 · Q/E / LB/RB：高度 · 鼠标右键 / 右摇杆：视角
+Shift: faster · Ctrl: slower · H / Select: restore overlay · G / L3: game HUD	Shift：速く · Ctrl：遅く · H / Select：操作表示 · G / L3：ゲームHUD	Shift：加速 · Ctrl：减速 · H / Select：恢复控制栏 · G / L3：游戏HUD
+Tab / X: switch driver   ·   Esc / B: library   ·   Personal recording stays local	Tab / X：ドライバー切替 · Esc / B：一覧 · 個人の録画は端末に保存	Tab / X：切换车手 · Esc / B：列表 · 个人回放仅存本地
+60 Hz capture · recorded RPM, speed, body, wheels, clocks and car appearance	60Hz録画 · 回転数、速度、車体、タイヤ、タイム、外観を記録	60Hz录制 · 记录转速、速度、车身、车轮、时间和车辆外观
+LEGACY: RPM, body rotation, wheel animation and tuning were not recorded	旧形式：回転数、車体回転、タイヤの動き、改造は未記録	旧格式：未记录转速、车身旋转、车轮动画和改装
+CHECK FOR UPDATES	更新を確認	检查更新
+CHECKING FOR UPDATES	更新を確認中	正在检查更新
+UPDATE AVAILABLE	更新があります	有可用更新
+UPDATE AVAILABLE — UPDATES	更新があります — 更新メニューへ	有可用更新 — 打开更新菜单
+UPDATE AVAILABLE — OPTIONS > UPDATES	更新あり — 設定 > 更新	有可用更新 — 设置 > 更新
+DOWNLOADING UPDATE	更新をダウンロード中	正在下载更新
+INSTALLING UPDATE	更新をインストール中	正在安装更新
+UPDATE CHECK	更新の確認	更新检查
+UPDATE	更新する	更新
+FULL REPAIR	完全修復	完整修复
+LATER	あとで	稍后
+CONTINUE TO GAME	ゲームを続ける	继续游戏
+INSTALLED VERSION	現在のバージョン	已安装版本
+Return to the title screen to check for updates.	タイトル画面に戻ってから更新を確認してください。	请返回标题画面检查更新。
+Update checking is unavailable.	更新を確認できません。	无法检查更新。
+Update: {0} MB    •    Full Repair: {1} MB	更新：{0} MB    •    完全修復：{1} MB	更新：{0} MB    •    完整修复：{1} MB
+Full Repair: {0} MB	完全修復：{0} MB	完整修复：{0} MB
+CHECKING GDS-0033	GDS-0033を確認中	正在检查GDS-0033
+Checking GDS-0033…	GDS-0033を確認中…	正在检查GDS-0033…
+ROM REQUIRED	ROMが必要です	需要ROM
+ESC / B  QUIT	ESC / B  終了	ESC / B  退出
+CHECK AGAIN	再確認	重新检查
+OPEN ROM FOLDER	ROMフォルダーを開く	打开ROM文件夹
+QUIT	終了	退出
+Could not access the rom folder. Check the game folder permissions.	romフォルダーにアクセスできません。ゲームフォルダーの権限を確認してください。	无法访问rom文件夹。请检查游戏文件夹权限。
+Could not verify GDS-0033. Try again.	GDS-0033を確認できませんでした。再試行してください。	无法验证GDS-0033。请重试。
+SAVE SELECT	セーブ選択	选择存档
+INITIAL D / SELECT A DRIVER	INITIAL D / ドライバー選択	INITIAL D / 选择车手
+USED	使用中	已用
+NEW DRIVER	新しいドライバー	新建车手
+EMPTY SLOT	空きスロット	空存档位
+LAST USED CAR	最後に使用した車	上次使用的车辆
+FILE	ファイル	存档
+CAR PREVIEW	車のプレビュー	车辆预览
+PLAY TIME	プレイ時間	游戏时间
+LEVEL	レベル	等级
+LAST PLAYED	最終プレイ	上次游玩
+CHANGE CAR	車を変更	更换车辆
+DELETE SAVE	セーブを削除	删除存档
+ARE YOU SURE?	本当によろしいですか？	确定要删除吗？
+COULD NOT DELETE SAVE	セーブを削除できません	无法删除存档
+ARROWS / STEERING	方向キー / ハンドル	方向键 / 方向盘
+ACCEL.	アクセル	油门
+↑ ↓  SELECT    ← →  CHANGE    ENTER / A  CONFIRM    ESC / B  BACK	↑ ↓ 選択    ← → 変更    ENTER / A 決定    ESC / B 戻る	↑ ↓ 选择    ← → 更改    ENTER / A 确认    ESC / B 返回
+↑ ↓  DEVICE / ACTION    ← →  DEVICE / SLOT    ENTER / A  REBIND    ESC / B  BACK	↑ ↓ デバイス・操作    ← → デバイス・割当    ENTER / A 設定    ESC / B 戻る	↑ ↓ 设备 / 操作    ← → 设备 / 绑定位    ENTER / A 绑定    ESC / B 返回
+STEERING: SELECT\nACCEL: EDIT / DONE\nBRAKE: BACK\nAPPLY to save	ハンドル：選択\nアクセル：編集 / 完了\nブレーキ：戻る\n適用で保存	方向盘：选择\n油门：编辑 / 完成\n刹车：返回\n应用后保存
+CHOOSE CATEGORY\n↑ ↓ / STEERING\nCONFIRM to edit\nBACK to categories	カテゴリー選択\n↑ ↓ / ハンドル\n決定で編集\n戻るでカテゴリーへ	选择分类\n↑ ↓ / 方向盘\n确认以编辑\n返回分类
+STEERING: CHANGE	ハンドル：変更	方向盘：更改
+STEERING  BROWSE    ACCELERATOR  SELECT    BRAKE  BACK	ハンドル：選択    アクセル：決定    ブレーキ：戻る	方向盘：浏览    油门：选择    刹车：返回
+STEERING  SELECT    ACCELERATOR  CONFIRM    BRAKE  CANCEL	ハンドル：選択    アクセル：決定    ブレーキ：取消	方向盘：选择    油门：确认    刹车：取消
+↑ ↓ / ← →  BROWSE    ENTER / A  SELECT    ESC / B  BACK	↑ ↓ / ← → 選択    ENTER / A 決定    ESC / B 戻る	↑ ↓ / ← → 浏览    ENTER / A 选择    ESC / B 返回
+↑ ↓  SELECT    ← →  CHANGE    ENTER / A  CONFIRM    ESC / B  CANCEL	↑ ↓ 選択    ← → 変更    ENTER / A 決定    ESC / B 取消	↑ ↓ 选择    ← → 更改    ENTER / A 确认    ESC / B 取消
+← → / ↑ ↓  ADJUST    ENTER / A  DONE    ESC / B  BACK	← → / ↑ ↓ 調整    ENTER / A 完了    ESC / B 戻る	← → / ↑ ↓ 调整    ENTER / A 完成    ESC / B 返回
+Drag to move • Slider / wheel / + / − for size • ↑ ↓ SELECT   ← → CHANGE   ENTER / A EDIT   ESC / B CANCEL	ドラッグ：移動 • スライダー / ホイール / ±：サイズ • ↑ ↓ 選択   ← → 変更   ENTER / A 編集   ESC / B 取消	拖动移动 • 滑块 / 滚轮 / ±调整大小 • ↑ ↓选择   ← →更改   ENTER / A编辑   ESC / B取消
+STEERING SELECT   ACCEL CONFIRM   BRAKE BACK	ハンドル：選択   アクセル：決定   ブレーキ：戻る	方向盘选择   油门确认   刹车返回
+↑ ↓ SONG   ← → COLLECTION   ENTER / A SELECT   P / Y PREVIEW   ESC / B BACK	↑ ↓ 曲   ← → コレクション   ENTER / A 決定   P / Y 試聴   ESC / B 戻る	↑ ↓ 歌曲   ← → 合集   ENTER / A 选择   P / Y 试听   ESC / B 返回
+↑ ↓ SELECT   ENTER / A CONFIRM   ESC / B BACK	↑ ↓ 選択   ENTER / A 決定   ESC / B 戻る	↑ ↓ 选择   ENTER / A 确认   ESC / B 返回
+LIGHTS-OFF ADVANTAGE	消灯時の車間距離	熄灯时的领先距离
+HIDDEN	非表示	隐藏
+VISIBLE	表示	显示
+Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.	夜のオンライン・LAN対戦で、相手がヘッドライトを消すと車間距離の数値を隠します。昼のレースには影響しません。	在夜间在线或局域网对战中，对手关闭车灯时隐藏距离数值。白天比赛不受影响。
