@@ -19,6 +19,8 @@ The community boards are not reset again in this release. Existing published rec
 
 Fresh installs: download Initial-D-Setup-0.3.95.46.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Existing players can use the in-game updater; patches support .20 through .45. This compression update replaces more files than a typical code-only patch.
 
+Setup hotfix (October 8): fix the fresh-install downloader failing with an empty `Join-Path` argument in Windows PowerShell 5.1. Resolve the installation folder after script initialization and preserve failure exit codes in the launcher. If setup failed, download the corrected Setup ZIP again. The game packages and update patches are unchanged.
+
 A verified original GDS-0033 dump is required and is not included. Personal ROMs, saves, replays and custom music are not included in release archives.
 
 ## 0.3.95-community-replays.45 - October 7, 2026

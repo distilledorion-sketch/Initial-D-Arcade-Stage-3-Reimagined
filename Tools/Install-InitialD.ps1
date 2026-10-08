@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$Destination=(Join-Path $PSScriptRoot 'Initial D Arcade Stage 3'))
+param([string]$Destination)
 $ErrorActionPreference='Stop'
 
 function Assert-PlainPath([string]$Path) {
@@ -53,13 +53,22 @@ function Expand-GameArchives([string[]]$Archives,[string]$Target) {
 
 # Dot-sourcing exposes only the validation/extraction functions for private tests.
 if($MyInvocation.InvocationName -eq '.'){return}
+# Windows PowerShell 5.1 can leave PSScriptRoot empty while binding parameter
+# defaults under -File. Resolve the default here, after script metadata is ready.
+$installerRoot=$PSScriptRoot
+if([string]::IsNullOrWhiteSpace($installerRoot)) {
+    $scriptPath=$MyInvocation.MyCommand.Path
+    if([string]::IsNullOrWhiteSpace($scriptPath)){throw 'Cannot locate the installer. Extract the setup ZIP and run Install Initial D.cmd.'}
+    $installerRoot=[IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($scriptPath))
+}
+if([string]::IsNullOrWhiteSpace($Destination)){$Destination=Join-Path $installerRoot 'Initial D Arcade Stage 3'}
 $Destination=[IO.Path]::GetFullPath($Destination)
 Assert-PlainPath $Destination
 if((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count){throw 'The installation folder must be empty. Existing players should use the game updater.'}
 $version='0.3.95-community-replays.46';$tag='v'+$version
 $repo='distilledorion-sketch/Initial-D-Arcade-Stage-3-Reimagined'
 $web=[Net.WebClient]::new();$web.Headers['User-Agent']='Initial-D-Setup';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
-$cache=Join-Path $PSScriptRoot ('.initial-d-download-'+[Guid]::NewGuid().ToString('N'))
+$cache=Join-Path $installerRoot ('.initial-d-download-'+[Guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($cache)|Out-Null
 try {
     Write-Host 'Checking the official release...'
