@@ -30,7 +30,7 @@ The checked-in configuration has a placeholder database ID. Production credentia
 
 ## Behavior
 
-- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.44`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
+- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.45`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
 - `REQUIRED_CLIENT_BUILD` is an exact version, not a minimum. The obsolete `MIN_CLIENT_BUILD` variable is ignored. A version mismatch returns permanent HTTP 409 with `code: "client_build_required"` and `requiredBuild`; clients discard that queued run and must complete a new Time Attack in the required build.
 - `/health` and `/api/v1/snapshot` expose `requiredBuild`. Changing this upload policy does not reset the season, delete scores, filter historical builds out of rankings, or restrict existing replay downloads. No migration is needed for the version change.
 - Historical-time imports and replay-less uploads are rejected.
@@ -104,6 +104,27 @@ there is no daily publishing job.
 `MAINTENANCE: "true"` keeps public reads available while returning retryable
 503 responses to writes and pausing scheduled cleanup. Use it for a short
 database cutover; remove it before normal service resumes.
+
+Migration `0010_idzero_handling_reset.sql` is the owner-requested .45 reset for
+Gunsai and Odawara only (course IDs 16/17, conditions 32–35). It removes every
+record for those courses across directions, weather, models, visibility and
+seasons, including replay metadata and D1 bytes. The existing cleanup trigger
+queues each associated R2 key. All other course records, installation identities,
+bans and the current season remain unchanged. A completion marker makes an
+accidental repeat preserve scores created after the reset. A narrow insert guard
+rejects .44 scores for these two courses, including uploads that were already
+in flight when maintenance began; later builds remain subject to the Worker's
+exact-version policy.
+
+For this cutover, first deploy maintenance and verify it publicly, export D1,
+and back up/verify the target replay objects and metadata. Apply only migration
+0010 (never rerun the older season reset), then verify the two courses are empty,
+other records/replay mappings are unchanged, and their object keys are queued.
+Publish the .45 game packages and reopen the Worker with
+`REQUIRED_CLIENT_BUILD: "0.3.95-community-replays.45"`. Verify old queued .44
+uploads are permanently rejected, allow the durable object cleanup to finish,
+and verify target objects are gone while sample unrelated replays still download.
+Keep the database export and replay backups outside the published release.
 
 Never restore historical data over the live database. First preserve and verify
 the current database, move live traffic to its verified copy, and restore only

@@ -1,4 +1,20 @@
-0.3.95-community-replays.44
+0.3.95-community-replays.45
+GUNSAI AND ODAWARA HANDLING UPDATE
+
+This update is required for new community Time Attack submissions. Both drivers must update for online races.
+
+- Gunsai now uses Stage 3 Usui handling in both directions and dry/wet conditions.
+- Odawara now uses Stage 3 Tsuchisaka handling, with powered acceleration increased by 27.05% over that setup. Its two-lap route and direction/weather options remain intact.
+- Reset the Gunsai and Odawara community leaderboards, including individual-car records, for the new handling. Previous uploaded runs and their replay downloads for these two tracks are removed. Other tracks and the current season are preserved.
+- Older builds and their queued runs cannot submit times to the refreshed boards. Personal saves, tuning, local records, local replays, custom music and original ROM files are preserved.
+
+Verified with route/collision/checkpoint and driving tests across both directions, dry/wet and automatic/manual gears, plus online simulations with latency, jitter and packet loss. Two-account Steam play was not newly tested.
+
+Fresh installs: download `Initial-D-Setup-0.3.95.45.zip`, extract it, and run `Install Initial D.cmd`. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Existing players can use the in-game updater; patches support .20 through .44.
+
+A verified original GDS-0033 dump is required and is not included.
+
+PREVIOUS UPDATE (.44)
 NEW COURSES, PAINTS AND REPLAY OPTIONS
 
 Fresh installs: download `Initial-D-Setup-0.3.95.44.zip`, extract it, and run `Install Initial D.cmd`. It downloads and verifies both game packages automatically. Manual installs: extract the Windows-x64 ZIP and the matching Additional-Courses ZIP into the same folder.

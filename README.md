@@ -9,7 +9,7 @@ JOIN DISCORD: https://discord.gg/mJCZ5AvBb
 
 ## Play
 
-1. Download `Initial-D-Setup-0.3.95.44.zip` from **Releases**.
+1. Download `Initial-D-Setup-0.3.95.45.zip` from **Releases**.
 2. Extract it and run `Install Initial D.cmd`. It downloads and verifies the game and additional courses into a new folder.
 3. Put your original **Initial D Arcade Stage 3 GDS-0033** dump in a `rom` folder beside `InitialDUnity.exe`.
 4. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. For a manual installation, extract both the `Windows-x64.zip` and the matching `Initial-D-Additional-Courses` ZIP into the same folder. Source-code ZIPs are the development project, not the playable build.
 
-**Current release:** `0.3.95-community-replays.44` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.45` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `.44` adds Gunsai and Odawara with leaderboard support, all factory paint colors on every car, replay free camera and independent HUD controls, and a sun-glare toggle. Both online drivers must update. This version is required for new community Time Attack submissions; existing records and replay downloads remain available.
+**Latest update:** `.45` changes Gunsai to Usui handling and Odawara to Tsuchisaka handling with stronger acceleration. The Gunsai and Odawara community leaderboards have been reset for the new physics; other tracks and the current season are preserved. Both online drivers must update, and this version is required for new community Time Attack submissions.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract both release ZIPs over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use one smaller changed-file patch that includes all required courses. Full Repair in `.44` or newer fetches both parts automatically; if an older updater falls back to its full download, the new game prompts for Full Repair to finish installing missing courses.
 

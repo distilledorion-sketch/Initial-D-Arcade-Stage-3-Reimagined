@@ -11,7 +11,11 @@
 
 namespace idas3::original {
 // Track data adapter; stepping remains in the existing original vehicle owner.
-struct ImportedDrivingRoad { OriginalPhysicsPath path; OriginalCollisionData collision; };
+struct ImportedDrivingRoad {
+    OriginalPhysicsPath path;
+    OriginalCollisionData collision;
+    float accelerationScale=1.f;
+};
 
 // Outer race initializer159870..159888: copy exactly272 drive words and
 // invalidate four saved wheel materials. Preserve the saved actor and suffix.

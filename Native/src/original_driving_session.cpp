@@ -157,11 +157,13 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
     next->parameters=next->data.parameters(effective,next->path);
     if(importedRoad){
         if(selection.rival||importedRoad->path.points.size()<21||importedRoad->path.points.size()>16000||
-            importedRoad->path.inclusiveLastIndex+1!=importedRoad->path.points.size()||importedRoad->collision.triangles.empty())
+            importedRoad->path.inclusiveLastIndex+1!=importedRoad->path.points.size()||importedRoad->collision.triangles.empty()||
+            !std::isfinite(importedRoad->accelerationScale)||importedRoad->accelerationScale<=0.f)
             throw std::invalid_argument("Invalid imported solo road");
         next->path=importedRoad->path;next->path.conditionCode=effective.conditionCode;
         next->collision=importedRoad->collision;
         next->parameters.road={effective.conditionCode,0,next->path.points,next->path.inclusiveLastIndex};
+        next->parameters.accelerationScale=importedRoad->accelerationScale;
     }
     // A solo/online car may retain its last Legend opponent in the save.
     // Road oil exclusions belong to this race's opponent, not that history.

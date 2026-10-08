@@ -61,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.44";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.45";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -235,7 +235,7 @@ public static class Idas3Build
             File.WriteAllText("Builds/IdZeroPreview/PREVIEW.txt",
                 "Gunsai and Odawara integration preview. Select either course in Time Attack or Online Battle.\n"+
                 "Odawara runs two laps, with different roads for clockwise/counterclockwise.\n"+
-                "Both tracks currently use the package's Myogi handling. Wet scenery is adapted from dry assets.\n"+
+                "Gunsai uses Usui handling; Odawara uses Tsuchisaka handling with 27.05% stronger powered acceleration. Wet scenery is adapted from dry assets.\n"+
                 "Uses separate saves under Initial D IdZero Preview. This build has not been published.\n");
         } finally {PlayerSettings.productName=product;AssetDatabase.SaveAssets();}
     }

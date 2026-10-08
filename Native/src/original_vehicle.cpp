@@ -37,8 +37,21 @@ OriginalVehicleStepResult stepOriginalVehicle(OriginalVehicleState& s,
     const idas3::OriginalTransmissionInputs transmissionInputs{
         in.pressedByte,in.automaticMode,in.gearEnabled,out.frameCoefficient,in.requestedGear};
     const auto sine=[](float argument,void* context){return static_cast<OriginalMath*>(context)->sinF32(argument);};
+    const auto* profile=&p.profile;
+    idas3::OriginalTransmissionProfile acceleratedProfile;
+    if(p.accelerationScale!=1.f&&in.gearEnabled&&s.controls.throttle>0.f){
+        acceleratedProfile=p.profile;
+        // E7F2..E8FA divides positive engine convergence by these rise values.
+        // Keep gear targets, falling response and neutral/idle recovery exact;
+        // changing the frame coefficient would also alter speed normalization.
+        for(unsigned gear=1;gear<=6;++gear){
+            const auto offset=32+4*gear;
+            acceleratedProfile.words[offset/4]=std::bit_cast<std::uint32_t>(p.profile.atByteOffset(offset)/p.accelerationScale);
+        }
+        profile=&acceleratedProfile;
+    }
     idas3::stepOriginalTransmission(s.transmission,drive,s.transmissionGlobals,
-        transmissionInputs,p.transmission,p.profile,sine,&math);
+        transmissionInputs,p.transmission,*profile,sine,&math);
     s.drive.setf(0x220,drive.field220);s.drive.setf(0x238,drive.velocity238);
     s.drive.setf(0x240,drive.delta240);s.drive.setu(0x400,drive.field400);
     s.loss.speedLoss0CAA9880=s.transmissionGlobals.loss9880;

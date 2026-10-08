@@ -1,11 +1,68 @@
 #include "imported_course.h"
 #include "original_host_input.h"
+#include "original_math.h"
 #include <iostream>
 using namespace idas3;using namespace idas3::original;
 void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}
+bool sameDrivingState(const OriginalVehicleState& a,const OriginalVehicleState& b){
+    // Compare defined fields, not struct padding. The transmission's ten-word
+    // layout is independently fixed by original_transmission.h.
+    return a.drive.words==b.drive.words&&
+        std::bit_cast<std::array<std::uint32_t,10>>(a.transmission)==std::bit_cast<std::array<std::uint32_t,10>>(b.transmission)&&
+        a.loss.speedLoss0CAA9880==b.loss.speedLoss0CAA9880&&a.loss.persistentPenalty0CAA9884==b.loss.persistentPenalty0CAA9884&&
+        a.tail.history0CAA98E0==b.tail.history0CAA98E0&&a.tail.throttleHistory0CAA99E0==b.tail.throttleHistory0CAA99E0&&
+        a.tail.steeringHistory0CAA9BE0==b.tail.steeringHistory0CAA9BE0;
+}
+unsigned checkAccelerationResponse(const OriginalVehicleState& captured,const OriginalVehicleParameters& configured,
+        const OriginalVehicleInputs& inputs,bool odawara,bool checkUnpowered){
+    const OriginalMath math{originalSinF32,originalCosF32,originalFiprDot3};
+    auto stockParameters=configured;stockParameters.accelerationScale=1.f;
+    auto stock=captured,tuned=captured;
+    const auto stockStep=stepOriginalVehicle(stock,inputs,stockParameters,math);
+    const auto tunedStep=stepOriginalVehicle(tuned,inputs,configured,math);
+    require(stockStep.frameCoefficient==tunedStep.frameCoefficient&&stockStep.motionScalar==tunedStep.motionScalar,
+        "Acceleration adjustment changed frame or steering coefficients");
+    require(stock.transmission.target14==tuned.transmission.target14&&stock.transmission.gear00==tuned.transmission.gear00,
+        "Acceleration adjustment changed RPM target or gear selection");
+    unsigned positive=0;
+    // +240 is this frame's propulsion response after the separately computed
+    // road/braking losses; total speed or lap time need not increase by 27.05%.
+    if(!odawara)require(sameDrivingState(stock,tuned),"Another imported course's driving response changed");
+    else if(stock.controls.throttle>0&&stock.transmission.gear00&&stock.drive.f(0x240)>.0001f){
+        // Compare against the previous 15.5% adjustment from the same state:
+        // another 10% means 1.155 * 1.10 = 1.2705, not an additive 25.5%.
+        auto previousParameters=configured;previousParameters.accelerationScale=1.155f;
+        auto previous=captured;stepOriginalVehicle(previous,inputs,previousParameters,math);
+        const float expected=previous.drive.f(0x240)*1.10f;
+        require(std::abs(tuned.drive.f(0x240)-expected)<=std::max(.000005f,std::abs(expected)*.0002f),
+            "Odawara propulsion response is not another 10% above the previous 15.5% adjustment");
+        require(tuned.drive.f(0x238)>stock.drive.f(0x238),"Odawara acceleration did not increase forward speed");
+        ++positive;
+    }
+    if(checkUnpowered){
+        // A warmed real state exercises coast/brake deceleration as well as
+        // neutral and a race-owned throttle suppression gate.
+        for(unsigned mode=0;mode<4;++mode){
+            OriginalHostInputState host;
+            const auto control=adaptOriginalHostInput(host,{0,mode>=2?1.f:0.f,mode==1?1.f:0.f,false,false},
+                inputs.automaticMode,mode!=2,inputs.elapsedFrames0C900E84);
+            auto a=captured,b=captured;
+            if(mode==3){a.drive.setu(0x1A8,1);b.drive.setu(0x1A8,1);}
+            stepOriginalVehicle(a,control,stockParameters,math);stepOriginalVehicle(b,control,configured,math);
+            require(sameDrivingState(a,b),"Acceleration adjustment changed coast, brake, neutral or suppressed-throttle behavior");
+            if(mode==2)require(a.transmission.gear00==0,"Neutral regression did not exercise disengaged driving");
+            else require(a.controls.throttle==0,"Unpowered regression did not suppress throttle");
+        }
+    }
+    return positive;
+}
 int main(int argc,char** argv)try{
     if(argc!=3)throw std::runtime_error("native_root imported_root");
     const auto course=ImportedCourse::load(argv[2]);int surfaces=0,ticks=0;
+    require(OriginalVehicleParameters{}.accelerationScale==1.f&&ImportedDrivingRoad{}.accelerationScale==1.f,
+        "Original and unspecified roads must preserve their acceleration response");
+    for(const auto& definition:importedCourseDefinitions)
+        require(definition.accelerationScale==(definition.id==17?1.2705f:1.f),"Only Odawara should receive the 27.05% acceleration adjustment");
     require(course.id==15?!course.lamps.empty():course.lamps.size()==(course.id==17?105:course.id==16?3:course.id==10?16:46),"Imported authored lamps were not loaded");
     if(course.id==15){
         // Independent surveyed points on the road-facing guardrail mesh, not
@@ -245,15 +302,21 @@ int main(int argc,char** argv)try{
             OriginalDrivingSelection selection;selection.physics=makeOriginalFreshTimeAttackSelection(0,course.handlingCondition(reverse),wet?OriginalWeather::Wet:OriginalWeather::Dry);selection.collisionVariant=unsigned(reverse);
             OriginalDrivingSession session;session.reset(argv[1],selection,spawn.position,spawn.angles,&road);session.enableRaceStart(2);OriginalHostInputState input;
             require(session.vehicle().drive.u(0x434)==unsigned(wet),"D3 wet handling flag not applied");
+            require(road.accelerationScale==(course.id==17?1.2705f:1.f)&&session.parameters().accelerationScale==road.accelerationScale,
+                "Imported road acceleration adjustment did not reach the driving session");
+            unsigned accelerationChecks=0;
             float maximumSpeed=0,maximumRpm=0;unsigned maximumGear=0,contacts=0;
             for(int t=0;t<600;t++){
-                auto effects=session.tick(adaptOriginalHostInput(input,{0,1,0,false,t==180||t==330},automatic,true,t));ticks++;
+                const auto controls=adaptOriginalHostInput(input,{0,1,0,false,t==180||t==330},automatic,true,t);
+                if(t%60==0)accelerationChecks+=checkAccelerationResponse(session.vehicle(),session.parameters(),controls,course.id==17,t==120);
+                auto effects=session.tick(controls);ticks++;
                 const auto& v=session.vehicle();maximumSpeed=std::max(maximumSpeed,v.drive.f(0x238));maximumRpm=std::max(maximumRpm,v.transmission.tach1c);maximumGear=std::max(maximumGear,v.transmission.gear00);
                 require(!effects.invalidScalarDiagnostics&&std::isfinite(v.drive.f(4)),"Original vehicle failed on imported road");
                 contacts+=effects.newImpactRecords.size();
             }
             std::cout<<"direction "<<reverse<<" wet "<<wet<<" automatic "<<automatic<<" speed "<<maximumSpeed<<" rpm "<<maximumRpm<<" gear "<<maximumGear<<'\n';
             require(maximumSpeed>4&&maximumRpm>2000&&maximumGear>1,"Imported race did not drive/shift with D3 vehicle");
+            if(course.id==17)require(accelerationChecks>0,"Odawara test did not exercise positive acceleration");
             // Hold into the edge intentionally: the existing wall solver must
             // stop lateral escape rather than letting the car fall off the strip.
             for(int t=0;t<180;t++){

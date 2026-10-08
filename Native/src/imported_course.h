@@ -210,7 +210,8 @@ struct ImportedCourse {
     }
     original::ImportedDrivingRoad drivingRoad(bool reverse)const{
         original::ImportedDrivingRoad road;road.path.points=centerFor(reverse);if(reverse)std::reverse(road.path.points.begin(),road.path.points.end());
-        road.path.inclusiveLastIndex=unsigned(road.path.points.size())-1;road.collision=reverse&&reverseCollision?*reverseCollision:collision;return road;
+        road.path.inclusiveLastIndex=unsigned(road.path.points.size())-1;road.collision=reverse&&reverseCollision?*reverseCollision:collision;
+        road.accelerationScale=importedCourseDefinition(id).accelerationScale;return road;
     }
     original::OriginalRacePath racePath(bool reverse)const{return {centerFor(reverse),leftFor(reverse),rightFor(reverse),reverse};}
     // Battle distances over the timed route; a circuit's lap repeats.
