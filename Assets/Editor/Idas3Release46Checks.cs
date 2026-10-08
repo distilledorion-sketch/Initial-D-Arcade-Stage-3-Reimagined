@@ -67,4 +67,8 @@ public static class Idas3Release46Checks {
             options=UnityEditor.BuildOptions.BuildScriptsOnly|UnityEditor.BuildOptions.CompressWithLz4HC});
         if(report.summary.result!=UnityEditor.Build.Reporting.BuildResult.Succeeded)throw new Exception("Release scripts build failed.");
     }
+    public static void CheckCompressedLayout(){
+        Idas3StorageUpdateChecks.Run();
+        Idas3CompressedPlayerLayout.StageCompatibility(UnityEditor.BuildTarget.StandaloneWindows64,Path.Combine(Output,"player/InitialDUnity.exe"));
+    }
 }

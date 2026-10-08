@@ -14,7 +14,7 @@ public sealed class Idas3CompressedPlayerLayout : IPostprocessBuildWithReport
     internal static readonly string[] RetiredLooseFiles = {
         "globalgamemanagers", "globalgamemanagers.assets", "globalgamemanagers.assets.resS",
         "level0", "resources.assets", "resources.assets.resS",
-        "sharedassets0.assets", "sharedassets0.assets.resS"
+        "sharedassets0.assets", "sharedassets0.assets.resS", "Resources/unity_builtin_extra"
     };
 
     public int callbackOrder => 90;
@@ -40,6 +40,7 @@ public sealed class Idas3CompressedPlayerLayout : IPostprocessBuildWithReport
         foreach (string name in RetiredLooseFiles) {
             string path = Path.Combine(data, name);
             Idas3UpdateStaging.NoLinks(path);
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllBytes(path, Array.Empty<byte>());
         }
     }

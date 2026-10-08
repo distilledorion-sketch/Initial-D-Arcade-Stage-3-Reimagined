@@ -7,7 +7,7 @@ import argparse, hashlib, json, re, zipfile
 
 REQUIRED={'InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data/globalgamemanagers','InitialDUnity_Data/Managed/Assembly-CSharp.dll'}
 RETIRED_UNITY_FILES=('globalgamemanagers','globalgamemanagers.assets','globalgamemanagers.assets.resS',
-                     'level0','resources.assets','resources.assets.resS','sharedassets0.assets','sharedassets0.assets.resS')
+                     'level0','resources.assets','resources.assets.resS','sharedassets0.assets','sharedassets0.assets.resS','Resources/unity_builtin_extra')
 PRIVATE={'userdata','userdata-unity-scene','community-times','replays','custom-music','custom music','admin-access.txt','identity.json','game-options.json','deploy.private.json','library.json','pending.json'}
 
 def inventory(z):
