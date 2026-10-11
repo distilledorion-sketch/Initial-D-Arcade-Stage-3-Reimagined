@@ -376,7 +376,7 @@ int main(int argc,char**argv) {
         unsigned paletteChoices=0;
         for(int make=0;make<7;++make)for(int car:Frontend::carsForMake(make)){
             Frontend colors;colors.stage=FrontendStage::Car;colors.make=make;colors.car=car;
-            const unsigned count=original::originalCarColorCounts.at(std::size_t(car));
+            const unsigned count=original::carPaintCount;
             colors.battleProfile.setu(16,unsigned(car));colors.battleProfile.setu(64,count-1);
             colors.battleProfile.setu(72,12345);
             colors.changeColor(1);colors.advance(7./60.);
@@ -384,25 +384,25 @@ int main(int argc,char**argv) {
             colors.advance(1./60.);
             for(unsigned next=0;next<count;++next){
                 colors.changeColor(1);colors.advance(1./60.);
-                require(colors.selectedColor()==next,"Factory color traversal disagrees with the original per-car count");
+                require(colors.selectedColor()==next,"Every car must traverse the complete shared paint palette");
                 require(colors.battleProfile.u(64)==count-1,"Preview color committed before confirmation");
                 ++paletteChoices;
             }
             colors.changeColor(1);colors.changeColor(-1);colors.advance(1./60.);
             require(colors.selectedColor()==0,"Simultaneous gear buttons must use the original positive-button priority");
             colors.changeColor(-1);colors.confirm();colors.advance(1./60.);
-            require(colors.battleProfile.u(64)==count-1,"Same-frame gear and confirmation failed to commit the final factory color");
-            require(colors.battleProfile.u(72)==12345,"Factory paint selection changed earned points");
+            require(colors.battleProfile.u(64)==count-1,"Same-frame gear and confirmation failed to commit the final shared paint");
+            require(colors.battleProfile.u(72)==12345,"Paint selection changed earned points");
         }
-        require(paletteChoices==181,"Frontend palette coverage must include all181 original factory colors");
+        require(paletteChoices==35u*original::carPaintCount,"Frontend palette coverage must include every shared paint on all35 cars");
         {
             Frontend remembered;remembered.stage=FrontendStage::Car;remembered.make=6;remembered.car=0;
             remembered.advance(8./60.);remembered.changeColor(-1);remembered.advance(1./60.);
-            require(remembered.selectedColor()==2,"AE86 reverse color wrap failed");
+            require(remembered.selectedColor()==original::carPaintCount-1,"AE86 reverse shared-paint wrap failed");
             remembered.change(1);remembered.battleProfile.setu(64,2);remembered.driverProfileLoaded();remembered.advance(1./60.);
             require(remembered.car==1&&remembered.selectedColor()==0,"New local car must use its source remembered preview color");
             remembered.changeColor(1);remembered.advance(1./60.);remembered.change(-1);remembered.advance(1./60.);
-            require(remembered.car==0&&remembered.selectedColor()==2,"Returning to a car lost its remembered preview color");
+            require(remembered.car==0&&remembered.selectedColor()==original::carPaintCount-1,"Returning to a car lost its remembered preview color");
         }
         {
             Frontend records;

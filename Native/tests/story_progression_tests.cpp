@@ -1,5 +1,6 @@
 #include "frontend.h"
 #include "local_driver_profiles.h"
+#include "original_car_color_catalog.h"
 #include "original_legend_progress.h"
 #include <chrono>
 #include <iostream>
@@ -47,12 +48,14 @@ int main(int argc,char** argv)try{
     // Native card storage must keep the confirmed source paint/transmission
     // fields alongside earned progress, and restore each car independently.
     const auto earned=store.load(0).profile;
+    constexpr unsigned lastPaint=original::carPaintCount-1;
     Frontend appearance;appearance.initialize(argv[1]);appearance.stage=FrontendStage::Car;
     appearance.make=6;appearance.car=0;appearance.battleProfile=earned;
     appearance.advance(8./60.);appearance.changeColor(-1);appearance.advance(1./60.);
-    require(appearance.selectedColor()==2&&appearance.battleProfile.u(64)==0,"Paint preview committed before the source confirmation event");
+    require(appearance.selectedColor()==lastPaint,"Reverse paint selection did not wrap across the shared palette");
+    require(appearance.battleProfile.u(64)==0,"Paint preview committed before the source confirmation event");
     appearance.confirm();appearance.advance(1./60.);
-    require(appearance.battleProfile.u(64)==2,"Confirmed factory color was not written to profile64");
+    require(appearance.battleProfile.u(64)==lastPaint,"Confirmed shared paint was not written to profile64");
     appearance.advance(162./60.);require(appearance.stage==FrontendStage::Car,"Car confirmation finished before164 updates");
     appearance.advance(1./60.);require(appearance.stage==FrontendStage::Transmission,"Car confirmation failed to enter Transmission");
     appearance.advance(15./60.);appearance.change(1);appearance.confirm();
@@ -65,16 +68,16 @@ int main(int argc,char** argv)try{
     for(unsigned i=116;i<147;++i)require(appearance.battleProfile.byte(i)==earned.byte(i),"Appearance selection changed recorded rival results");
     require(store.save(0,appearance.battleProfile),"Factory appearance and transmission save failed");
     LocalDriverProfiles reopened(directory);const auto restored=reopened.load(0);
-    require(restored.origin==LocalDriverProfiles::Origin::Saved&&restored.profile.u(64)==2&&restored.profile.u(68)==1,"Factory color/MT did not survive reopening the profile store");
+    require(restored.origin==LocalDriverProfiles::Origin::Saved&&restored.profile.u(64)==lastPaint&&restored.profile.u(68)==1,"Shared paint/MT did not survive reopening the profile store");
     Frontend restoredMenu;restoredMenu.stage=FrontendStage::Car;restoredMenu.make=6;restoredMenu.car=0;
     restoredMenu.advance(1./60.);restoredMenu.battleProfile=restored.profile;restoredMenu.driverProfileLoaded();restoredMenu.advance(7./60.);
-    require(restoredMenu.selectedColor()==2,"Profile loading during entry did not restore the saved factory preview");
+    require(restoredMenu.selectedColor()==lastPaint,"Profile loading during entry did not restore the saved shared-paint preview");
     Frontend other;other.stage=FrontendStage::Car;other.make=6;other.car=1;other.battleProfile=reopened.load(1).profile;
     other.advance(8./60.);other.changeColor(1);other.confirm();other.advance(1./60.);
     require(other.battleProfile.u(16)==1&&other.battleProfile.u(64)==1,"Second car color was not committed with its own identity");
     require(reopened.save(1,other.battleProfile),"Independent car color save failed");
     require(reopened.load(1).profile.u(64)==1&&reopened.load(1).profile.byte(116)==0&&reopened.load(1).profile.u(72)==0,"Second car inherited appearance or earned progress");
-    require(reopened.load(0).profile.u(64)==2&&reopened.load(0).profile.u(68)==1&&reopened.load(0).profile.u(72)==earned.u(72),"Saving another car overwrote its neighbor's color, transmission or points");
+    require(reopened.load(0).profile.u(64)==lastPaint&&reopened.load(0).profile.u(68)==1&&reopened.load(0).profile.u(72)==earned.u(72),"Saving another car overwrote its neighbor's color, transmission or points");
     std::filesystem::remove_all(directory);
     std::cout<<"PASS controlled31-rival result/save/restart chain, original secret unlock order, restored final-opponent menu, source Car/Transmission confirmation and independent saved factory colors/MT.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
