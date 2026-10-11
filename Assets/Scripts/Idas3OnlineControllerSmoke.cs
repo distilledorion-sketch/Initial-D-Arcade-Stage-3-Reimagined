@@ -210,7 +210,12 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         yield return WheelInput(confirm:true);
     }
     private IEnumerator WheelMenus(){
-        stage="wheel-menu-navigation";Pad();menuWheel=InputSystem.AddDevice<Joystick>();yield return Frames(8);
+        stage="wheel-menu-navigation";Pad();
+        // The isolated provider admits only explicitly described test devices.
+        InputSystem.RegisterLayoutMatcher("Joystick",new InputDeviceMatcher().WithInterface("Idas3Diagnostic").WithProduct("IDAS3 Wheel Menu Test"));
+        menuWheel=(Joystick)InputSystem.AddDevice(new InputDeviceDescription{
+            interfaceName="Idas3Diagnostic",manufacturer="Private input test",product="IDAS3 Wheel Menu Test",serial="wheel-menu-smoke"});
+        yield return Frames(8);
         string key=null;foreach(var choice in host.ControllerDevices.Choices)if(choice.label.EndsWith("device "+menuWheel.deviceId))key=choice.key;
         Check(key!=null&&host.ControllerDevices.Select(key),"Synthetic wheel selection");yield return Frames(6);
         Check(host.ControllerDevices.ActiveIsGeneric,"Wheel should use generic device menu path");
