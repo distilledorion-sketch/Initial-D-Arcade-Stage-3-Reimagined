@@ -112,6 +112,64 @@ internal static class EosTransportDriver {
         Advance();transport.Browse();transport.Leave();Pump();
         Check(transport.Rooms.Count==0&&!transport.IsBusy&&errors.Count==0,"A canceled search callback cannot repopulate stale room results");
     }
+    static Idas3EosTransport Queue(){
+        var transport=Create();transport.StartMatchmaking();Pump();
+        Until(()=>Lobby.Creates.Count==1,"empty search creates queue room");
+        Lobby.CompleteCreate(Result.Success,Room);Pump();
+        Until(()=>transport.InLobby,"queue room publishes attributes");
+        Lobby.AutomaticSearch=false;
+        Check(transport.IsMatching&&transport.IsBusy&&transport.RoomCode==Room,"Quick Match advertises its waiting room");
+        return transport;
+    }
+    static void LongQueue(){
+        var transport=Queue();
+        for(int i=0;i<4;++i){
+            Until(()=>Lobby.SearchCallbacks.Count==1,"next queue search");
+            Idas3EosPlatform.Now+=120;transport.Poll();Pump();
+            Lobby.CompleteSearch(Result.Success);Pump();transport.Poll();
+            Check(transport.IsMatching&&transport.InLobby&&transport.RoomCode==Room&&errors.Count==0,"Successful empty search keeps the same queue alive beyond the original three-minute limit");
+        }
+        Check(Lobby.Searches==5&&Lobby.Creates.Count==1&&Lobby.Destroys.Count==0,"Eight minutes of healthy searching does not recreate or abandon the queue room");
+        transport.CancelMatchmaking();Pump();
+        Check(!transport.IsMatching&&!transport.IsBusy&&!transport.InLobby&&Lobby.Destroys.Count==1,"Cancel still immediately exits and retires a long-running queue");
+        Lobby.CompleteDestroy(Result.Success);Pump();
+        Check(errors.Count==0,"Canceling the long queue does not report a timeout");
+    }
+    static void StalledQueue(bool creating){
+        var transport=Create();Lobby.AutomaticSearch=creating;transport.StartMatchmaking();Pump();
+        Check(creating?Lobby.Creates.Count==1:Lobby.SearchCallbacks.Count==1,"Quick Match request is held at the SDK boundary");
+        Idas3EosPlatform.Now+=181;transport.Poll();Pump();
+        Check(!transport.IsMatching&&!transport.IsBusy&&!transport.InLobby&&errors.Count==1&&errors[0].Contains("timed out"),"A stalled queue request still times out without waiting forever");
+        if(creating){
+            Lobby.CompleteCreate(Result.Success,Room);Pump();
+            Check(Lobby.Destroys.Count==1&&Lobby.Destroys[0]==Room,"A late successful queue creation is retired after the timeout");
+            Lobby.CompleteDestroy(Result.Success);Pump();
+        }else{
+            Lobby.CompleteSearch(Result.Success);Pump();
+            Check(Lobby.Creates.Count==0,"A late search response cannot create a room after the timeout");
+        }
+        Check(!transport.IsMatching&&!transport.InLobby&&errors.Count==1,"Late callbacks cannot revive an expired queue");
+    }
+    static void QueuePeerDeadline(bool attributes){
+        var transport=Queue();Until(()=>Lobby.SearchCallbacks.Count==1,"pending search before incoming peer");
+        Idas3EosPlatform.Now+=170;transport.Poll();Pump();
+        var room=Lobby.Rooms[Room];room.Members.Add("remote");
+        if(attributes)room.MemberAttributes["remote"]=new Dictionary<string,string>{{"build",transport.CompatibilityHash},{"name","Other driver"}};
+        Lobby.Notify(Room,"remote",LobbyMemberStatus.Joined);transport.Poll();Pump();
+        if(attributes){
+            var route=Route(transport);Check(route!=null,"Incoming queue peer passes current membership and access checks");
+            route.CloseFromSdk(); // Hold the fake route before handshake admission.
+            Idas3EosPlatform.Now+=20;transport.Poll();Pump();
+            Check(transport.InLobby&&transport.IsMatching&&errors.Count==0,"A late-arriving peer gets a fresh connection window beyond the original search deadline");
+            Lobby.CompleteSearch(Result.Success);Pump();
+            Idas3EosPlatform.Now+=26;transport.Poll();Pump();
+            Check(!transport.InLobby&&!transport.IsMatching&&errors.Count==1&&errors[0].Contains("Connecting to driver timed out"),"A late empty-search response cannot extend the peer's stalled connection deadline");
+        }else{
+            Lobby.CompleteSearch(Result.Success);Pump();
+            Idas3EosPlatform.Now+=11;transport.Poll();Pump();
+            Check(!transport.InLobby&&!transport.IsMatching&&errors.Count==1,"A peer that never publishes its build attributes cannot leave the queue stuck forever");
+        }
+    }
     static void InitialAccess(bool restricted){
         var api=Idas3EosPlatform.Handle.Sanctions;
         if(restricted)api.Set("local","RESTRICT_GAME_ACCESS");else api.AutomaticResult=Result.AccessDenied;
@@ -224,6 +282,7 @@ internal static class EosTransportDriver {
         case "sanctions-local":InitialAccess(true);break;case "sanctions-unavailable":InitialAccess(false);break;case "sanctions-peer":PeerAccess(false);break;case "sanctions-cancel-peer":PeerAccess(true);break;case "sanctions-cancel-init":CancelInitialAccess();break;case "sanctions-active-ban":RefreshAccess(false);break;case "sanctions-outage":RefreshAccess(true);break;case "sanctions-new-room":NewRoomAccess();break;
         case "sanctions-late-admission":DelayedAdmission();break;case "sanctions-departed-peer":DepartedBeforeClear();break;case "sanctions-native-load":LoadingRestriction();break;
         case "reset-initial":InitialReset(false);break;case "reset-write-failure":InitialReset(true);break;case "reset-live-local":LiveReset(false);break;case "reset-live-peer":LiveReset(true);break;case "reset-no-owner":ResetWithoutOwner();break;
+        case "queue-long":LongQueue();break;case "queue-stalled-search":StalledQueue(false);break;case "queue-stalled-create":StalledQueue(true);break;case "queue-peer-deadline":QueuePeerDeadline(true);break;case "queue-peer-missing-attributes":QueuePeerDeadline(false);break;
         default:throw new Exception("Unknown case");}
         Console.WriteLine("TOTAL\t"+checks);return 0;
     }catch(Exception error){Console.Error.WriteLine(error);return 1;}}

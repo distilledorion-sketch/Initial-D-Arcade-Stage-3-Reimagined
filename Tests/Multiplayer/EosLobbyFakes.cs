@@ -84,9 +84,10 @@ namespace Epic.OnlineServices.Lobby {
     }
     public sealed class LobbySearch {
         readonly List<FakeRoom> results;readonly List<LobbySearchSetParameterOptions> parameters;
-        internal LobbySearch(List<FakeRoom> rooms,List<LobbySearchSetParameterOptions> filters){results=rooms;parameters=filters;}
+        readonly LobbyInterface owner;
+        internal LobbySearch(LobbyInterface lobby,List<FakeRoom> rooms,List<LobbySearchSetParameterOptions> filters){owner=lobby;results=rooms;parameters=filters;}
         public Result SetParameter(ref LobbySearchSetParameterOptions options){parameters.Add(options);return Result.Success;}
-        public void Find(ref LobbySearchFindOptions options,object ignored,SearchCallback callback){var info=new LobbySearchFindCallbackInfo{ResultCode=Result.Success};callback(ref info);}
+        public void Find(ref LobbySearchFindOptions options,object ignored,SearchCallback callback){++owner.Searches;if(owner.AutomaticSearch){var info=new LobbySearchFindCallbackInfo{ResultCode=Result.Success};callback(ref info);}else owner.SearchCallbacks.Enqueue(callback);}
         public uint GetSearchResultCount(ref LobbySearchGetSearchResultCountOptions options)=>(uint)results.Count;
         public Result CopySearchResultByIndex(ref LobbySearchCopySearchResultByIndexOptions options,out LobbyDetails details){details=new LobbyDetails(results[(int)options.LobbyIndex]);return Result.Success;}
         public void Release(){}
@@ -102,6 +103,9 @@ namespace Epic.OnlineServices.Lobby {
         internal readonly Queue<JoinCallback> JoinCallbacks=new Queue<JoinCallback>();
         internal readonly Queue<DestroyCallback> DestroyCallbacks=new Queue<DestroyCallback>();
         internal readonly Queue<LeaveCallback> LeaveCallbacks=new Queue<LeaveCallback>();
+        internal readonly Queue<SearchCallback> SearchCallbacks=new Queue<SearchCallback>();
+        internal bool AutomaticSearch=true;
+        internal int Searches;
         internal MemberStatusCallback MemberStatus;
         internal LobbyUpdatedCallback Updated;
         internal MemberUpdatedCallback MemberUpdated;
@@ -124,7 +128,7 @@ namespace Epic.OnlineServices.Lobby {
             foreach(var item in edit.MemberAttributes)member[item.Key]=item.Value.AsUtf8;
             var info=new UpdateLobbyCallbackInfo{ResultCode=Result.Success};callback(ref info);
         }
-        public Result CreateLobbySearch(ref CreateLobbySearchOptions options,out LobbySearch search){search=new LobbySearch(SearchResults,SearchParameters);return Result.Success;}
+        public Result CreateLobbySearch(ref CreateLobbySearchOptions options,out LobbySearch search){search=new LobbySearch(this,SearchResults,SearchParameters);return Result.Success;}
         public Result CopyLobbyDetailsHandle(ref CopyLobbyDetailsHandleOptions options,out LobbyDetails details){if(Rooms.TryGetValue(options.LobbyId,out var room)){details=new LobbyDetails(room);return Result.Success;}details=null;return Result.NotFound;}
         internal void CompleteCreate(Result result,string id){
             if(result==Result.Success){var spec=Creates[Creates.Count-1];var room=new FakeRoom{Info=new LobbyDetailsInfo{LobbyId=id,LobbyOwnerUserId=new ProductUserId("local"),MaxMembers=2,AvailableSlots=1,PermissionLevel=spec.PermissionLevel}};room.Members.Add("local");Rooms[id]=room;}
@@ -133,6 +137,7 @@ namespace Epic.OnlineServices.Lobby {
         internal void CompleteJoin(Result result){var info=new JoinLobbyByIdCallbackInfo{ResultCode=result};JoinCallbacks.Dequeue()(ref info);}
         internal void CompleteDestroy(Result result){var info=new DestroyLobbyCallbackInfo{ResultCode=result};DestroyCallbacks.Dequeue()(ref info);}
         internal void CompleteLeave(Result result){var info=new LeaveLobbyCallbackInfo{ResultCode=result};LeaveCallbacks.Dequeue()(ref info);}
+        internal void CompleteSearch(Result result){var info=new LobbySearchFindCallbackInfo{ResultCode=result};SearchCallbacks.Dequeue()(ref info);}
         internal void Notify(string room,string user,LobbyMemberStatus state){var info=new LobbyMemberStatusReceivedCallbackInfo{LobbyId=room,TargetUserId=new ProductUserId(user),CurrentStatus=state};MemberStatus(ref info);}
     }
 }

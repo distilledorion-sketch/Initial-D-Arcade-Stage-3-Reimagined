@@ -15,6 +15,7 @@ namespace Idas3.Multiplayer
         internal const string Protocol = "idas3-eos-3-stat-resets", BuildKey = "build", KindKey = "kind", NameKey = "name", HostKey = "host";
         internal const string StatsResetFailed = "Online battle stats could not be reset. Online play is unavailable until the reset can be saved.";
         internal const string PeerStatsReset = "The other driver's battle stats were reset. Please rejoin the room.";
+        const int MatchmakingProgressTimeoutSeconds = 180;
         // Only the authenticated local player's record owner may write saves.
         // The transport/probe never acquires any administrator capability.
         internal Func<string, string[], string[], bool> ApplyStatsResets { get; set; }
@@ -182,7 +183,7 @@ namespace Idas3.Multiplayer
         {
             if (!CanStart()) return;
             Leave();
-            long token = Begin(match ? "Finding another driver" : code == null ? "Creating room" : "Joining room", match ? 180 : 60);
+            long token = Begin(match ? "Finding another driver" : code == null ? "Creating room" : "Joining room", match ? MatchmakingProgressTimeoutSeconds : 60);
             IsMatching = match;
             pendingRequest = StartRoomAsync(token, name, isPrivate, match, code, cancellation.Token, cleanupBarrier);
         }
@@ -213,7 +214,11 @@ namespace Idas3.Multiplayer
                     var candidates = await Search("queue", cancel);
                     EnsureCurrent(token, cancel);
                     RefreshMembership();
+                    EnsureCurrent(token, cancel);
                     if (Connected || members > 1) { await Task.Delay(500, cancel); continue; }
+                    // A healthy empty queue can wait indefinitely. Only stalled
+                    // requests expire; a peer's admission deadline is separate.
+                    deadline = Now + MatchmakingProgressTimeoutSeconds;
                     Idas3Room target = null;
                     foreach (var item in candidates) if (lobbyId == null || Idas3EosRoomRules.ShouldMerge(lobbyId, members, item.Code)) { target = item; break; }
                     if (target != null) {
@@ -413,7 +418,7 @@ namespace Idas3.Multiplayer
                         if (verifiedPeer != peer.ToString() || !sanctions.IsClearWithin(peer, Idas3EosSanctions.FreshSeconds)) {
                             if (checkingPeer != peer.ToString()) {
                                 checkingPeer = peer.ToString(); busy = "Checking driver access";
-                                if (!IsMatching) deadline = Now + 60;
+                                deadline = Now + 60;
                                 _ = VerifyPeerAccess(generation, lobbyId, peer);
                             }
                             return;
@@ -426,7 +431,7 @@ namespace Idas3.Multiplayer
                         if (lobbyId == null) return;
                         route = new Idas3EosP2P(this, peer, Clean(Get(details, NameKey, peer), "Driver"), lobbyId, CompatibilityHash, IsHost);
                         busy = "Connecting to driver";
-                        if (!IsMatching) deadline = Now + 45;
+                        deadline = Now + 45;
                     }
                 } finally { details.Release(); }
             } catch (Exception ex) { FailRoom(ex.Message); }

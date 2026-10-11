@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.49 - October 11, 2026
+
+Remove Quick Match's overall three-minute search limit. Both drivers must update for online races. Version .49 is required for new community Time Attack submissions.
+
+- Keep Quick Match searching while the service is responding, until a match is found or the player cancels.
+- Preserve timeouts for stalled requests and failed connections. Give an opponent found after a long wait a fresh connection window.
+- Preserve cancellation and cleanup when a delayed room response arrives after the search has ended.
+
+Existing players can use the in-game updater. Fresh installs: download Initial-D-Setup-0.3.95.49.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Changed-file patches support .20 through .48.
+
+Validation covers a simulated eight-minute queue, cancellation, stalled requests, late opponent connections, and existing online access checks. No leaderboard or ghost reset is included.
+
 ## 0.3.95-community-replays.48 - October 11, 2026
 
 Restore online player counts and add saved online usernames. Both drivers must update for online races. Version .48 is required for new community Time Attack submissions.
