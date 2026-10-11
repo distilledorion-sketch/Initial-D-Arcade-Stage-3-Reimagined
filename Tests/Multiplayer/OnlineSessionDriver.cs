@@ -159,10 +159,32 @@ internal static class OnlineSessionDriver
         }
         using(var f=new Fixture())Check(f.Session.RecentOpponentPlayerId=="","A new game session has no stored opponent history");
     }
+    static void UsernameAdmissionAndPresence(){
+        string previous=UnityEngine.PlayerPrefs.GetString(Idas3OnlineUsername.PreferenceKey,"");
+        try{
+            UnityEngine.PlayerPrefs.DeleteKey(Idas3OnlineUsername.PreferenceKey);
+            using(var f=new Fixture()){
+                Check(f.Session.RequiresOnlineUsername,"First online use requires a chosen username");
+                f.Session.HostRoom();f.Session.JoinRoom("ABC123");f.Session.QuickMatch();
+                Check(!f.Session.Busy&&!f.Session.InLobby&&f.Transport.Starts==0&&f.Session.ErrorText==Idas3OnlineUsername.Empty,"Missing name blocks host, join and Quick Match before provider operations");
+                Check(!f.Session.SaveOnlineUsername("<bad>",out var error)&&f.Session.RequiresOnlineUsername&&f.Transport.NameRefreshes==0,"Invalid username cannot admit a player or refresh provider identity");
+                Check(f.Session.SaveOnlineUsername("  Fixture racer  ",out error)&&f.Session.OnlineUsername=="Fixture racer"&&!f.Session.RequiresOnlineUsername&&f.Transport.NameRefreshes==1,"Saving a valid name normalizes it and refreshes the service display name");
+                f.Session.QuickMatch();
+                Check(f.Transport.Starts==1&&!f.Session.SaveOnlineUsername("Changed",out error)&&f.Session.OnlineUsername=="Fixture racer","Queued matchmaking permits admission but prevents mid-queue rename");
+                f.Session.CancelQuickMatch();
+                Check(f.Session.SaveOnlineUsername("Changed",out error)&&f.Session.OnlineUsername=="Changed","An idle player can rename after leaving the queue");
+                f.Session.PublishActivity=true;f.Session.SelectTransport(1);f.Session.SelectTransport(0);
+                var replacement=(Idas3EosTransport)Get(f.Session,"transport");
+                Check(replacement.PublishActivity,"Population publishing preference survives switching away from and back to online");
+            }
+            UnityEngine.PlayerPrefs.DeleteKey(Idas3OnlineUsername.PreferenceKey);
+            using(var f=new Fixture(false))Check(f.Session.SaveOnlineUsername("During sign-in",out var error)&&f.Session.Busy&&!f.Session.RequiresOnlineUsername,"First-use name can be saved while initial service sign-in is still pending");
+        }finally{UnityEngine.PlayerPrefs.SetString(Idas3OnlineUsername.PreferenceKey,previous);}
+    }
     static int Main(){
         try{
             bool relay=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-p2p-check")>=0;
-            if(!relay){Initialization();QueueCancellationAndErrors();HandshakeAndLan();PlayerIdentityDetails();}
+            if(!relay){Initialization();QueueCancellationAndErrors();HandshakeAndLan();PlayerIdentityDetails();UsernameAdmissionAndPresence();}
             RelayScope(relay);Console.WriteLine("TOTAL\t"+checks);return 0;
         }
         catch(Exception error){Console.Error.WriteLine(error);return 1;}

@@ -274,16 +274,16 @@ test('viewer download preserves metadata and every pose without installation ide
  assert.equal((await call('/api/admin/replay?id='+crypto.randomUUID()+'&format=package',null,auth)).status,404);
 });
 test('upload build policy accepts only the exact ROM-required release',()=>{
- assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.47');
+ assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.48');
  assert.equal(supportedBuild(REQUIRED_CLIENT_BUILD),true);
- for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.48','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
+ for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.49','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
  for(const required of ['',null,'invalid','0.3.95-community-replays.*'])assert.equal(supportedBuild(required,required),false);
 });
 test('nonmatching builds are permanently rejected before replay work and without database writes',async()=>{
  await call('/api/v1/register',{token:device});
  env.MIN_CLIENT_BUILD='0.3.95-community-replays.1'; // A stale variable cannot restore the old minimum policy.
  const before=db.prepare('SELECT total_changes() n').get().n;
- for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.48','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
+ for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.49','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
   const response=await uploadReplay(run({build}));assert.equal(response.status,409);
   const error=await response.json();assert.equal(error.code,'client_build_required');assert.equal(error.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(error.permanent,true);assert.ok(error.error.includes(REQUIRED_CLIENT_BUILD));
  }
@@ -394,7 +394,7 @@ test('configured exact release rejects both sides of its version and is exposed 
  const health=await(await call('/health')).json();assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(snapshot.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(snapshot.epoch,1);
  assert.equal(db.prepare('SELECT total_changes() n').get().n,before);
- for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.48'])assert.equal((await uploadReplay(run({build}))).status,409);
+ for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.49'])assert.equal((await uploadReplay(run({build}))).status,409);
  assert.equal((await uploadReplay(run())).status,200);
 });
 
@@ -480,6 +480,43 @@ test('activity surveys are not summed, cannot overwrite newer observations and e
   db.prepare("UPDATE settings SET value=? WHERE key='online_activity'").run(JSON.stringify({...activity,generatedAt}));
   assert.deepEqual(await(await call('/api/v1/activity')).json(),{available:false});
  }
+});
+
+test('EOS activity is authenticated and isolated from legacy Steam surveys',async()=>{
+ const activity={online:150,queuing:20,racing:80,age:0,limited:false};
+ assert.deepEqual(await(await call('/api/v2/activity')).json(),{available:false});
+ assert.equal((await call('/api/v2/activity',activity)).status,401);
+ assert.equal((await call('/api/v2/activity',activity,auth())).status,401);
+ await call('/api/v1/register',{token:device});
+ await call('/api/v1/activity',{online:15,queuing:0,racing:0,age:0,limited:false},auth());
+ assert.deepEqual(await(await call('/api/v2/activity')).json(),{available:false});
+ assert.equal((await call('/api/v2/activity',activity,auth())).status,200);
+ await call('/api/v1/activity',{online:30,queuing:2,racing:6,age:0,limited:false},auth());
+ const result=await(await call('/api/v2/activity')).json();
+ assert.equal(result.online,150);assert.equal(result.queuing,20);assert.equal(result.racing,80);
+ assert.equal((await(await call('/api/v1/activity')).json()).online,30);
+ assert.deepEqual(Object.keys(result).sort(),['available','generatedAt','limited','online','queuing','racing','validFor'].sort());
+ db.prepare('UPDATE devices SET blocked=1').run();
+ assert.equal((await call('/api/v2/activity',activity,auth())).status,403);
+ assert.ok(readFileSync(new URL('../src/index.html',import.meta.url),'utf8').includes("fetch('/api/v2/activity'"));
+});
+
+test('EOS activity bounds, expiry and newest-survey semantics are preserved',async()=>{
+ await call('/api/v1/register',{token:device});
+ const activity={online:200,queuing:80,racing:120,age:0,limited:true};
+ for(const extra of [{online:-1},{online:201},{online:2.5},{queuing:-1},{queuing:100},{age:31},{age:-1},{age:1.5},{limited:1}])assert.equal((await call('/api/v2/activity',{...activity,...extra},auth())).status,400);
+ assert.equal((await call('/api/v2/activity',activity,auth())).status,200);
+ await call('/api/v2/activity',activity,auth());
+ await call('/api/v2/activity',{online:3,queuing:1,racing:2,age:20,limited:false},auth());
+ let result=await(await call('/api/v2/activity')).json();
+ assert.equal(result.online,200);assert.equal(result.limited,true);assert.ok(result.validFor>40&&result.validFor<=45);
+ for(const generatedAt of [Math.floor(Date.now()/1000)-45,Math.floor(Date.now()/1000)+100]){
+  db.prepare("UPDATE settings SET value=? WHERE key='online_activity_eos'").run(JSON.stringify({...activity,generatedAt}));
+  assert.deepEqual(await(await call('/api/v2/activity')).json(),{available:false});
+ }
+ db.prepare("DELETE FROM settings WHERE key='online_activity_eos'").run();
+ assert.equal((await call('/api/v2/activity',{online:0,queuing:0,racing:0,age:0,limited:false},auth())).status,200);
+ result=await(await call('/api/v2/activity')).json();assert.equal(result.available,true);assert.equal(result.online,0);
 });
 
 test('object-backed upload appears immediately in both boards without growing replay tables',async()=>{

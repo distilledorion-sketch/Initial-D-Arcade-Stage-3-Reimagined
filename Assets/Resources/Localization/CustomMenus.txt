@@ -756,3 +756,16 @@ Online battle stats could not be reset. Online play is unavailable until the res
 The other driver's battle stats were reset. Please rejoin the room.	対戦相手の対戦成績がリセットされました。ルームに参加し直してください。	对手的对战数据已重置。请重新加入房间。
 An administrator reset your online battle stats. You can earn them again by racing.	管理者があなたのオンライン対戦成績をリセットしました。対戦を重ねて再び成績を積み上げることができます。	管理员已重置您的在线对战数据。您可以通过比赛重新积累。
 No local battle record owner is available.	この端末の対戦成績を管理する機能を利用できません。	无法使用本地对战记录管理功能。
+ONLINE USERNAME	オンラインユーザー名	在线用户名
+CHOOSE YOUR ONLINE NAME	オンラインで使う名前を選択	选择您的在线用户名
+CHANGE USERNAME	ユーザー名を変更	更改用户名
+TYPE A USERNAME	ユーザー名を入力	输入用户名
+SAVE USERNAME	ユーザー名を保存	保存用户名
+SPACE	空白	空格
+Other players will see this name in online battles. Use 1–16 characters.	オンライン対戦でほかのプレイヤーに表示される名前です。1～16文字で入力してください。	在线对战中的其他玩家会看到此名称。请输入1至16个字符。
+You can change this name later in Player Details.	この名前は後から「プレイヤー情報」で変更できます。	您可以稍后在“玩家信息”中更改此名称。
+Choose an online username before joining a battle.	対戦に参加する前にオンラインユーザー名を設定してください。	加入对战前，请先设置在线用户名。
+Use no more than 16 characters.	16文字以内で入力してください。	请勿超过16个字符。
+Use visible characters without formatting or angle brackets.	表示できる文字を使用してください。書式制御文字や山括弧（< >）は使用できません。	请使用可见字符，不要使用格式控制字符或尖括号（< >）。
+Your online username could not be saved. Please try again.	オンラインユーザー名を保存できませんでした。もう一度お試しください。	无法保存您的在线用户名。请重试。
+Leave the room or queue before changing your online username.	オンラインユーザー名を変更する前にルームまたはマッチングから退出してください。	更改在线用户名之前，请先退出房间或匹配队列。

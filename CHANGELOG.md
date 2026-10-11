@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.48 - October 11, 2026
+
+Restore online player counts and add saved online usernames. Both drivers must update for online races. Version .48 is required for new community Time Attack submissions.
+
+- Restore online, queuing and racing counts in Online Battle and on the leaderboard website using EOS activity. Counts cover players running this update, refresh periodically, expire disconnected players, and show a plus sign when the survey limit is reached.
+- Require an online username the first time a player opens Online. Save it across launches and use it in rooms, chat and race introductions.
+- Add **Change Username** under **Player Details**, available outside a room, queue or race. Renaming preserves the permanent Player ID used for moderation.
+- Support controller name entry, keyboard typing, and Japanese/Chinese names. Translate the new screen into Japanese and Simplified Chinese.
+- Keep the activity display visible while connecting, showing a dash until current counts are available. Separate EOS activity from reports sent by older Steam builds.
+
+Fresh installs: download Initial-D-Setup-0.3.95.48.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Existing players can use the in-game updater; changed-file patches support .20 through .47.
+
+Validation covers username persistence and input, online sessions and chat, EOS activity lifecycle, and actual Unity menu/controller rendering in English, Japanese and Chinese. Live EOS checks cover queuing, racing, departures and cleanup. Existing leaderboard records and ghosts are retained.
+
 ## 0.3.95-community-replays.47 - October 11, 2026
 
 Includes the completed game changes since .46. Both drivers must update for online races. Version .47 is required for new community Time Attack submissions.

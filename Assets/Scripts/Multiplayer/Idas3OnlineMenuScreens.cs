@@ -49,9 +49,68 @@ internal static class Idas3OnlineMenuScreens {
             typeof(Idas3MultiplayerMenu).GetField("codeEditing",Private).SetValue(menu,true);
             typeof(Idas3MultiplayerMenu).GetField("codeDraft",Private).SetValue(menu,"ID3-0123456789ABCDEF01234567");
             yield return Capture(menu,Path.Combine(root,"online-keyboard.png"));
+            yield return CheckUsername(menu,session,root);
             yield return CheckLobbyChat(menu,session,transport,root);
             File.WriteAllText(Path.Combine(root,"menu-screens-passed.txt"),"PASS actual Unity browser/code/chat renders; 0, 3, 4, 8 rooms; controller scroll to eighth row; shrinking list clamp; connected lobby, Japanese names, 40-message history, unread scroll preservation, local-send auto-scroll, and text-entry input safeguards. Isolated fake transport; no network, live population, or physical keyboard/IME input claimed.\n");
         }finally{menu.SetOpen(false);session.Dispose();UnityEngine.Object.Destroy(go);}
+    }
+    internal static IEnumerator RunUsernameOnly(string root){
+        Directory.CreateDirectory(root);Idas3OnlineUsernameChecks.Run();
+        var transport=new RoomsTransport();var session=new Idas3MultiplayerSession(0,Path.Combine(root,"menu-only-saves"));
+        typeof(Idas3MultiplayerSession).GetMethod("SetTransport",Private).Invoke(session,new object[]{transport});
+        var go=new GameObject("Isolated username menu render checks");var menu=go.AddComponent<Idas3MultiplayerMenu>();
+        menu.Initialize(session);menu.ManagedControlInput=true;OpenUsernameFixture(menu);
+        try{yield return CheckUsername(menu,session,root);}
+        finally{menu.SetOpen(false);session.Dispose();UnityEngine.Object.Destroy(go);}
+    }
+    static IEnumerator CheckUsername(Idas3MultiplayerMenu menu,Idas3MultiplayerSession session,string root){
+        string stored=PlayerPrefs.GetString(Idas3OnlineUsername.PreferenceKey,"");bool existed=PlayerPrefs.HasKey(Idas3OnlineUsername.PreferenceKey);
+        int language=Idas3MenuLocalization.Language;
+        try{
+            Set(menu,"codeEditing",false);Set(menu,"joinEntry",false);Call(menu,"BeginUsername");Set(menu,"usernameRequired",true);Set(menu,"usernameDraft","");
+            foreach(int selected in new[]{0,1,2}){
+                Idas3MenuLocalization.SetLanguage(selected);
+                yield return Capture(menu,Path.Combine(root,"online-username-"+selected+".png"));
+            }
+            Idas3MenuLocalization.SetLanguage(0);
+            var focus=(Idas3MenuFocus)Read(menu,"controllerFocus");
+            Check(menu.ControllerActionCount>60,"username keyboard must expose controller actions");
+            focus.Pointer("username-input");
+            menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);yield return null;
+            menu.ProcessMenuNavigation(0,0,true,false,false,Time.realtimeSinceStartupAsDouble);
+            yield return Capture(menu,Path.Combine(root,"online-username-controller-focus.png"));
+            Check(!(bool)Read(menu,"usernameTyping")&&menu.ControllerSelection=="username-key:0","controller field activation must focus onscreen keyboard without entering physical typing mode");
+            menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);yield return null;
+            menu.ProcessMenuNavigation(0,0,true,false,false,Time.realtimeSinceStartupAsDouble);
+            yield return Capture(menu,Path.Combine(root,"online-username-controller.png"));
+            Check((string)Read(menu,"usernameDraft")=="A","controller must insert a keyboard character once");
+            menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);yield return null;
+            menu.ProcessMenuNavigation(1,0,false,false,false,Time.realtimeSinceStartupAsDouble);yield return null;
+            Check(menu.ControllerSelection=="username-key:1","controller keyboard must navigate to next character");
+            Set(menu,"usernameDraft","日本の運転手");Set(menu,"usernameTyping",true);
+            Check(menu.CapturesTextInput&&menu.BlocksGameInput,"username typing must capture input");
+            menu.ProcessControlInput(true,true,false);menu.ProcessMenuNavigation(1,1,true,true,false,Time.realtimeSinceStartupAsDouble);
+            Check(menu.IsOpen&&(bool)Read(menu,"usernameTyping")&&(string)Read(menu,"usernameDraft")=="日本の運転手","typing must suppress menu and driving controls");
+            yield return Capture(menu,Path.Combine(root,"online-username-japanese-entry.png"),()=>Set(menu,"usernameTyping",true));
+            Call(menu,"EndUsernameTyping");Check(menu.CapturesTextInput,"closing text entry must retain release guard");
+            yield return null;yield return null;
+            menu.ProcessControlInput(false,false,false);menu.ProcessMenuNavigation(0,0,false,false,false,Time.realtimeSinceStartupAsDouble);
+            Check(!menu.CapturesTextInput,"neutral controls release username typing guard");
+            Call(menu,"BackFromMenu");Check(!menu.IsOpen&&!session.InLobby,"cancelling required name must return to the game");
+            OpenUsernameFixture(menu);Set(menu,"playerDetails",true);Call(menu,"BeginUsername");Set(menu,"usernameRequired",false);Call(menu,"BackFromMenu");
+            Check(menu.IsOpen&&(bool)Read(menu,"playerDetails")&&!(bool)Read(menu,"usernameOpen"),"cancelling a rename must retain Player Details");
+            Set(menu,"playerDetails",false);
+            Check(PlayerPrefs.HasKey(Idas3OnlineUsername.PreferenceKey)==existed&&PlayerPrefs.GetString(Idas3OnlineUsername.PreferenceKey,"")==stored,"menu fixtures must not change the saved username");
+            File.WriteAllText(Path.Combine(root,"username-menu-passed.txt"),"PASS actual Unity EN/JP/Chinese username modal renders, controller keyboard selection/insertion, input and release guards, first-use Cancel, rename Cancel, and untouched live preferences. Fake transport; no network or physical IME automation claimed.\n");
+        }finally{Idas3MenuLocalization.SetLanguage(language);Call(menu,"EndUsernameTyping");Set(menu,"usernameOpen",false);Set(menu,"usernameRequired",false);}
+    }
+    static void OpenUsernameFixture(Idas3MultiplayerMenu menu){
+        // This presentation fixture owns a fake room provider and intentionally
+        // omits the game/garage/native DLL. Session lifecycle and first-use
+        // matchmaking gates have their own production-session regression suite.
+        Set(menu,"previousCursorVisible",Cursor.visible);Set(menu,"previousCursorLock",Cursor.lockState);
+        Set(menu,"<IsOpen>k__BackingField",true);
+        ((Idas3MenuFocus)Read(menu,"controllerFocus")).Reset();
     }
     static object Read(object owner,string name)=>owner.GetType().GetField(name,Private).GetValue(owner);
     static void Set(object owner,string name,object value)=>owner.GetType().GetField(name,Private).SetValue(owner,value);

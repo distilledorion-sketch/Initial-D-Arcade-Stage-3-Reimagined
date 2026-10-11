@@ -27,6 +27,8 @@ namespace Idas3.Multiplayer
         private bool joinEntry;
         private bool playerDetails;
         private string playerDetailsNotice="";
+        private bool usernameOpen,usernameRequired,usernameTyping,usernameFocusRequested,usernameSubmitArmed;
+        private string usernameDraft="",usernameNotice="";
         private string lastRoomFocus;
         private float scrollDragY,scrollDragStart;
         private bool scrollDragging;
@@ -41,10 +43,10 @@ namespace Idas3.Multiplayer
         private int chatBlockThroughFrame=-1;
         private Idas3LobbyChatMessage lastChatMessage;
         private GUIStyle chatText,chatField;
-        private bool ShowLobbyChat=>!playerDetails&&session!=null&&session.InLobby&&!session.IsRacing&&!session.IsQuickMatching;
+        private bool ShowLobbyChat=>!playerDetails&&!usernameOpen&&session!=null&&session.InLobby&&!session.IsRacing&&!session.IsQuickMatching;
         private float ChatOffset=>ShowLobbyChat?ChatHeight:0;
         internal float CanvasHeight=>Height+ChatOffset;
-        internal bool CapturesTextInput=>chatEditing||chatReleaseBlocked||Time.frameCount<=chatBlockThroughFrame;
+        internal bool CapturesTextInput=>chatEditing||usernameTyping||chatReleaseBlocked||Time.frameCount<=chatBlockThroughFrame;
         internal int ControllerActionCount=>controllerFocus.Count;
         internal string ControllerSelection=>controllerFocus.Selected;
         private int blockThroughFrame=-1;
@@ -102,10 +104,11 @@ namespace Idas3.Multiplayer
             blockThroughFrame=Time.frameCount;
             if(open==IsOpen)return;
             IsOpen=open;
-            EndChatEditing();
+            EndChatEditing();EndUsernameTyping();usernameOpen=false;
             controllerFocus.Reset();codeEditing=false;scrollDragging=false;playerDetails=false;playerDetailsNotice="";
             if(open){
                 if(!DisconnectedFinishVisible)session?.OpenMenu();
+                if(session!=null&&session.RequiresOnlineUsername)BeginUsername();
                 previousCursorVisible=Cursor.visible;previousCursorLock=Cursor.lockState;
                 Cursor.lockState=CursorLockMode.None;Cursor.visible=true;
             }else{
@@ -119,6 +122,8 @@ namespace Idas3.Multiplayer
             session.ActivityRequested=IsOpen&&!DisconnectedFinishVisible;
             SynchronizeRaceVisibility();
             if(chatEditing&&!Input.GetKey(KeyCode.Return)&&!Input.GetKey(KeyCode.KeypadEnter))chatSubmitArmed=true;
+            if(usernameTyping&&!Input.GetKey(KeyCode.Return)&&!Input.GetKey(KeyCode.KeypadEnter))usernameSubmitArmed=true;
+            if(usernameTyping&&(InputCovered||!Application.isFocused))EndUsernameTyping();
             if(chatEditing&&(!ShowLobbyChat||!session.CanChat||InputCovered||!Application.isFocused))EndChatEditing();
             if(!ManagedControlInput&&chatReleaseBlocked&&!Input.anyKey&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
             if(ManagedControlInput)return;
@@ -135,7 +140,7 @@ namespace Idas3.Multiplayer
             if(CapturesTextInput)return;
             if(suppressClosingControls&&!Input.GetKey(KeyCode.F1)&&!Input.GetKey(KeyCode.Escape)&&!Input.GetMouseButton(0))suppressClosingControls=false;
             if(Input.GetKeyDown(KeyCode.F1))Toggle();
-            else if(IsOpen&&Input.GetKeyDown(KeyCode.Escape)){if(playerDetails){playerDetails=false;controllerFocus.Reset();}else if(codeEditing){codeEditing=false;controllerFocus.Reset();}else if(joinEntry){joinEntry=false;controllerFocus.Reset();}else SetOpen(false);}
+            else if(IsOpen&&Input.GetKeyDown(KeyCode.Escape))BackFromMenu();
         }
         internal void ProcessControlInput(bool onlineHeld,bool cancelHeld,bool blocked,bool navigationControlsHeld=false)
         {
@@ -150,10 +155,10 @@ namespace Idas3.Multiplayer
             if(suppressClosingControls&&!onlineHeld&&!cancelHeld&&!navigationHeld&&!Input.GetMouseButton(0))suppressClosingControls=false;
             // Release independently of navigation routing: another modal's
             // release guard can temporarily prevent ProcessMenuNavigation.
-            if(!chatEditing&&!onlineHeld&&!cancelHeld&&!navigationControlsHeld&&!Input.anyKey&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
+            if(!chatEditing&&!usernameTyping&&!onlineHeld&&!cancelHeld&&!navigationControlsHeld&&!Input.anyKey&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
             if(blocked||CapturesTextInput)return;
             if(onlinePressed)Toggle();
-            else if(IsOpen&&cancelPressed){if(playerDetails){playerDetails=false;controllerFocus.Reset();}else if(codeEditing){codeEditing=false;controllerFocus.Reset();}else if(joinEntry){joinEntry=false;controllerFocus.Reset();}else SetOpen(false);}
+            else if(IsOpen&&cancelPressed)BackFromMenu();
         }
         internal void ProcessMenuNavigation(int horizontal,int vertical,bool confirm,bool back,bool blocked,double now,bool wheel=false){
             steeringOnly=wheel;
@@ -163,12 +168,32 @@ namespace Idas3.Multiplayer
             if(!IsOpen)return;
             if(CapturesTextInput){
                 controllerFocus.Poll(horizontal,vertical,confirm,back,true,now);
-                if(!chatEditing&&!confirm&&!back&&horizontal==0&&vertical==0&&!previousOnlineHeld&&!previousCancelHeld&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
+                if(!chatEditing&&!usernameTyping&&!confirm&&!back&&horizontal==0&&vertical==0&&!previousOnlineHeld&&!previousCancelHeld&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
                 return;
             }
             if(controllerFocus.Poll(horizontal,vertical,confirm,back,blocked||InputCovered||Idas3MenuPointer.Active,now)){
-                if(playerDetails){playerDetails=false;controllerFocus.Reset();}else if(codeEditing){codeEditing=false;controllerFocus.Reset();}else if(joinEntry){joinEntry=false;controllerFocus.Reset();}else SetOpen(false);
+                BackFromMenu();
             }
+        }
+        private void BackFromMenu(){
+            if(usernameOpen){EndUsernameTyping();usernameOpen=false;controllerFocus.Reset();if(usernameRequired)SetOpen(false);}
+            else if(playerDetails){playerDetails=false;controllerFocus.Reset();}
+            else if(codeEditing){codeEditing=false;controllerFocus.Reset();}
+            else if(joinEntry){joinEntry=false;controllerFocus.Reset();}
+            else SetOpen(false);
+        }
+        private void BeginUsername(){
+            usernameDraft=session.OnlineUsername;usernameNotice="";usernameOpen=true;usernameRequired=session.RequiresOnlineUsername;
+            EndChatEditing();controllerFocus.Reset();
+        }
+        private void EndUsernameTyping(){
+            if(!usernameTyping)return;
+            usernameTyping=usernameFocusRequested=usernameSubmitArmed=false;
+            chatReleaseBlocked=true;chatBlockThroughFrame=Time.frameCount+1;controllerFocus.Reset();
+        }
+        private void SaveUsername(){
+            if(!session.SaveOnlineUsername(usernameDraft,out usernameNotice))return;
+            EndUsernameTyping();usernameOpen=false;controllerFocus.Reset();GUI.FocusControl(null);
         }
         private void SynchronizeRaceVisibility()
         {
@@ -354,7 +379,10 @@ namespace Idas3.Multiplayer
             if(IsOpen&&Event.current.type==EventType.Repaint)++DiagnosticRepaints;
             if(diagnostic){RenderTexture.active=diagnosticTarget;GL.PushMatrix();GL.LoadPixelMatrix(0,Screen.width,Screen.height,0);}
             try{
-                if(IsOpen){controllerFocus.SpatialVertical=codeEditing&&!steeringOnly;controllerFocus.Begin();}
+                if(IsOpen){
+                    if(session.RequiresOnlineUsername&&!usernameOpen&&!session.IsRacing)BeginUsername();
+                    controllerFocus.SpatialVertical=(codeEditing||usernameOpen)&&!steeringOnly;controllerFocus.Begin();
+                }
                 if(DisconnectedFinishVisible){if(Event.current.isKey)Event.current.Use();DisconnectedFinishView();return;}
                 // The game now paints its original result and Continue owners.
                 // Keep input capture, but do not cover them with an IMGUI panel.
@@ -377,12 +405,13 @@ namespace Idas3.Multiplayer
                 GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-Width*factor)*.5f,(Screen.height-height*factor)*.5f,0),Quaternion.identity,new Vector3(factor,factor,1));
                 Fill(new Rect(0,0,Width,height),Ink);Frame(new Rect(0,0,Width,height),Edge);Fill(new Rect(0,0,Width,4),Red);Fill(new Rect(0,98,Width,1),Edge);
                 if(chatEditing&&Event.current.type==EventType.MouseDown&&!new Rect(40,618,820,32).Contains(Event.current.mousePosition)){EndChatEditing();GUI.FocusControl(null);}
-                string screen=playerDetails?"PLAYER DETAILS":codeEditing||joinEntry?"JOIN A BATTLE":session.StateName=="Returning"||ResultsVisible?"RACE RESULTS":session.IsRacing?"RACE MENU":session.IsQuickMatching?"QUICK MATCH":session.InLobby?session.LobbyName:"ONLINE BATTLE";
+                string screen=usernameOpen?"ONLINE USERNAME":playerDetails?"PLAYER DETAILS":codeEditing||joinEntry?"JOIN A BATTLE":session.StateName=="Returning"||ResultsVisible?"RACE RESULTS":session.IsRacing?"RACE MENU":session.IsQuickMatching?"QUICK MATCH":session.InLobby?session.LobbyName:"ONLINE BATTLE";
                 Text(new Rect(26,18,560,43),screen,title);Text(new Rect(28,69,560,20),"INITIAL D / ONLINE BATTLE",small);HeaderStatus();
-                if(!playerDetails&&!codeEditing&&session.HasOnlinePlayerDetails&&ActionButton(new Rect(417,61,182,28),"PLAYER DETAILS")){
+                if(!usernameOpen&&!playerDetails&&!codeEditing&&session.HasOnlinePlayerDetails&&ActionButton(new Rect(417,61,182,28),"PLAYER DETAILS")){
                     playerDetails=true;playerDetailsNotice="";EndChatEditing();controllerFocus.Reset();
                 }
-                if(!codeEditing&&!ResultsVisible&&session.StateName!="Returning"&&ActionButton(new Rect(841,26,32,32),"×")){if(joinEntry){joinEntry=false;controllerFocus.Reset();}else SetOpen(false);}
+                if(!usernameOpen&&!codeEditing&&!ResultsVisible&&session.StateName!="Returning"&&ActionButton(new Rect(841,26,32,32),"×")){if(joinEntry){joinEntry=false;controllerFocus.Reset();}else SetOpen(false);}
+                if(usernameOpen){UsernameView();return;}
                 if(playerDetails){PlayerDetailsView();return;}
                 if(codeEditing)CodeEntryView();else{
                     if(joinEntry&&!session.InLobby)JoinView();else if(session.IsQuickMatching)SearchView();else if(session.InLobby)RoomView();else BrowserView();
@@ -399,8 +428,10 @@ namespace Idas3.Multiplayer
             Text(new Rect(619,65,214,24),session.TransportName.ToUpperInvariant()+(session.PrivateRoom?" / "+Idas3MenuLocalization.T("PRIVATE"):"")+(session.InLobby&&session.PingMilliseconds>=0?" / "+session.PingMilliseconds+" ms":""),small);
         }
         private void PlayerDetailsView(){
-            Section(new Rect(26,126,848,133),"YOUR ONLINE PLAYER ID");
-            PlayerIdRow(195,session.OnlinePlayerId);
+            Section(new Rect(26,116,848,150),"YOUR ONLINE PLAYER ID");
+            Text(new Rect(48,164,560,28),session.OnlineUsername,label,translate:false);
+            if(ActionButton(new Rect(647,158,204,32),"CHANGE USERNAME",session.CanChangeOnlineUsername))BeginUsername();
+            PlayerIdRow(210,session.OnlinePlayerId);
             Section(new Rect(26,277,848,164),session.HasCurrentOpponentPlayerId?"CURRENT OPPONENT":"RECENT OPPONENT");
             Text(new Rect(48,332,790,28),string.IsNullOrEmpty(session.RecentOpponentPlayerId)?Idas3MenuLocalization.T("No online opponent yet."):session.RecentOpponentPlayerName,label,translate:false);
             PlayerIdRow(378,session.RecentOpponentPlayerId);
@@ -408,6 +439,43 @@ namespace Idas3.Multiplayer
             if(playerDetailsNotice.Length!=0)Text(new Rect(48,521,790,26),playerDetailsNotice,small,Green);
             Fill(new Rect(26,553,848,1),Edge);
             if(ActionButton(new Rect(26,570,220,35),"BACK")){playerDetails=false;controllerFocus.Reset();}
+        }
+        private void UsernameView(){
+            string previousDraft=usernameDraft;
+            Section(new Rect(26,116,848,404),"CHOOSE YOUR ONLINE NAME");
+            Text(new Rect(48,170,790,40),"Other players will see this name in online battles. Use 1–16 characters.",wrapped);
+            var input=new Rect(48,220,803,48);var e=Event.current;
+            if(usernameTyping&&e.type==EventType.MouseDown&&!input.Contains(e.mousePosition)){EndUsernameTyping();GUI.FocusControl(null);}
+            if(usernameTyping){
+                if(e.type==EventType.KeyDown&&e.keyCode==KeyCode.Escape){EndUsernameTyping();GUI.FocusControl(null);e.Use();}
+                else if(e.type==EventType.KeyDown&&(e.keyCode==KeyCode.Return||e.keyCode==KeyCode.KeypadEnter)){
+                    if(!string.IsNullOrEmpty(Input.compositionString))usernameSubmitArmed=false;
+                    else{if(usernameSubmitArmed)SaveUsername();e.Use();}
+                }
+                GUI.SetNextControlName("idas3-online-username");var old=GUI.backgroundColor;GUI.backgroundColor=Raised;
+                usernameDraft=GUI.TextField(input,usernameDraft,128,Idas3MenuLocalization.Style(field));GUI.backgroundColor=old;
+                if(usernameFocusRequested){GUI.FocusControl("idas3-online-username");usernameFocusRequested=false;}
+                Frame(input,Red);
+            }else if(ActionButton(input,usernameDraft.Length==0?"TYPE A USERNAME":usernameDraft,true,false,"username-input",usernameDraft.Length==0)){
+                // A pad/wheel selects the on-screen keyboard. Mouse/Enter can
+                // focus native text entry (including Japanese/Chinese IME).
+                if(e.type==EventType.Repaint&&!Input.GetKey(KeyCode.Return)&&!Input.GetKey(KeyCode.KeypadEnter))controllerFocus.Pointer("username-key:0");
+                else{usernameTyping=usernameFocusRequested=true;usernameSubmitArmed=false;controllerFocus.Reset();}
+            }
+            const string characters="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890-_";
+            for(int i=0;i<characters.Length;++i){char c=characters[i];
+                if(ActionButton(new Rect(48+(i%13)*62,284+(i/13)*38,54,32),c.ToString(),!usernameTyping,false,"username-key:"+i,false)&&usernameDraft.Length<Idas3OnlineUsername.MaxCodeUnits)usernameDraft+=c;
+            }
+            if(ActionButton(new Rect(48,484,250,28),"DELETE",!usernameTyping&&usernameDraft.Length>0))usernameDraft=Idas3OnlineUsername.DeleteLast(usernameDraft);
+            if(ActionButton(new Rect(324,484,250,28),"CLEAR",!usernameTyping&&usernameDraft.Length>0))usernameDraft="";
+            if(ActionButton(new Rect(601,484,250,28),"SPACE",!usernameTyping&&usernameDraft.Length<Idas3OnlineUsername.MaxCodeUnits))usernameDraft+=" ";
+            if(usernameDraft!=previousDraft)usernameNotice="";
+            bool valid=Idas3OnlineUsername.TryNormalize(usernameDraft,out _,out string validation);
+            string notice=usernameNotice.Length>0?usernameNotice:usernameDraft.Length>0&&!valid?validation:"You can change this name later in Player Details.";
+            Text(new Rect(48,526,803,28),notice,small);
+            if(ActionButton(new Rect(26,566,400,38),"CANCEL"))BackFromMenu();
+            if(ActionButton(new Rect(462,566,412,38),"SAVE USERNAME",valid,true))SaveUsername();
+            if(e.type==EventType.KeyDown||e.type==EventType.KeyUp)e.Use();
         }
         private void PlayerIdRow(float y,string id){
             bool available=!string.IsNullOrEmpty(id);
@@ -418,7 +486,7 @@ namespace Idas3.Multiplayer
         }
         private void Activity(float y){
             var a=session.Activity;
-            if(a.Available){
+            if(a.Available||session.TransportIndex==0){
                 Text(new Rect(28,y+10,210,24),"ONLINE ACTIVITY",small);
                 string[] values={a.Format(a.Online),a.Format(a.Queuing),a.Format(a.Racing)},names={"ONLINE","QUEUING","RACING"};
                 for(int i=0;i<3;++i){float x=421+i*153;if(i>0)Fill(new Rect(x-15,y+5,1,31),Edge);Text(new Rect(x,y,70,38),values[i],number);Text(new Rect(x+72,y+13,79,22),names[i],small);}

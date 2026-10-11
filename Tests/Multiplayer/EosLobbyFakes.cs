@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
+namespace UnityEngine { public static class Time { public static double realtimeSinceStartupAsDouble => Idas3.Multiplayer.Idas3EosPlatform.Now; } }
+
 namespace Epic.OnlineServices {
     public enum Result {Success,NoChange,NotFound,AccessDenied,ServiceFailure,TimedOut,TooManyRequests,LobbyTooManyPlayers,LobbyInvalidSession,OperationWillRetry}
     public static class Common {public static bool IsOperationComplete(Result result)=>result!=Result.OperationWillRetry;}
@@ -135,6 +137,14 @@ namespace Epic.OnlineServices.Lobby {
     }
 }
 namespace Idas3.Multiplayer {
+    // Activity has its own SDK integration checks; keep this transport fixture
+    // focused on cancellation, sanctions, and authenticated race membership.
+    internal sealed class Idas3EosActivity : IDisposable {
+        internal Idas3EosActivity(Idas3EosTransport owner, Epic.OnlineServices.Lobby.LobbyInterface lobby, Epic.OnlineServices.ProductUserId user, Func<double> clock) {}
+        internal Idas3OnlineActivity Snapshot => default;
+        internal void Poll(bool publish, bool requested, string state) {}
+        public void Dispose() {}
+    }
     internal sealed class FakeEosHandle {
         internal readonly Epic.OnlineServices.Lobby.LobbyInterface Lobby=new Epic.OnlineServices.Lobby.LobbyInterface();
         internal readonly Epic.OnlineServices.Sanctions.SanctionsInterface Sanctions=new Epic.OnlineServices.Sanctions.SanctionsInterface();
@@ -157,7 +167,7 @@ namespace Idas3.Multiplayer {
         internal Epic.OnlineServices.Result ResultCode{get;}
         internal Idas3EosServiceException(Epic.OnlineServices.Result result,string operation):base(operation+" failed ("+result+")."){ResultCode=result;}
     }
-    internal sealed class Idas3EosOnlineConfig {internal static Idas3EosOnlineConfig Load()=>new Idas3EosOnlineConfig();internal static string PlayerName()=>"Fixture driver";}
+    internal sealed class Idas3EosOnlineConfig {internal static bool DiagnosticRun=>false;internal static Idas3EosOnlineConfig Load()=>new Idas3EosOnlineConfig();internal static string PlayerName()=>"Fixture driver";}
     internal sealed class Idas3EosP2P:IDisposable {
         readonly Idas3EosTransport owner;
         internal bool Connected{get;private set;}=true;

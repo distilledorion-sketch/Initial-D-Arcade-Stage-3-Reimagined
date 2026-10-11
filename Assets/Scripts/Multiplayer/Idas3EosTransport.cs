@@ -28,6 +28,7 @@ namespace Idas3.Multiplayer
         LobbyInterface lobby;
         Idas3EosP2P route;
         Idas3EosSanctions sanctions;
+        Idas3EosActivity activity;
         string lobbyId, originalOwner, busy, build = "";
         string checkingPeer, verifiedPeer;
         long generation;
@@ -68,6 +69,11 @@ namespace Idas3.Multiplayer
         public bool IsHost => lobbyId != null && originalOwner == LocalId;
         public string LocalId { get; private set; } = "";
         public string LocalName { get; private set; } = "Driver";
+        internal void RefreshPlayerName()
+        {
+            if (InLobby || IsMatching) throw new InvalidOperationException("Leave the room or queue before changing your online username.");
+            LocalName = Idas3EosOnlineConfig.PlayerName();
+        }
         public string RemoteId => Connected ? route.RemoteId : "";
         public string RemoteName => Connected ? route.RemoteName : "";
         public string ConnectionType => route?.ConnectionType ?? "unknown";
@@ -83,8 +89,7 @@ namespace Idas3.Multiplayer
         public bool ActivityRequested { get; set; }
         public string ActivityState { get; set; } = "online";
         public bool PublishActivity { get; set; }
-        // EOS lobby search is not a reliable global player census.
-        public Idas3OnlineActivity Activity => default;
+        public Idas3OnlineActivity Activity => activity?.Snapshot ?? default;
         public string BuildCompatibility {
             get => build;
             set {
@@ -122,6 +127,7 @@ namespace Idas3.Multiplayer
                 ApplyLocalStatResets();
                 if (!Current(token)) return;
                 lobby = Idas3EosPlatform.Handle.GetLobbyInterface();
+                if (activity == null && !Idas3EosOnlineConfig.DiagnosticRun) activity = new Idas3EosActivity(this, lobby, Idas3EosPlatform.User, () => UnityEngine.Time.realtimeSinceStartupAsDouble);
                 Subscribe(); Available = true; initializing = false;
                 nextAccessRefresh = Now + Idas3EosSanctions.FreshSeconds;
                 Status = "Online ready. Find a match, host a room, or enter a room code.";
@@ -435,6 +441,7 @@ namespace Idas3.Multiplayer
             PollAccess();
             if (InLobby && Now >= nextMembership) { nextMembership = Now + 1; RefreshMembership(); }
             route?.Poll();
+            activity?.Poll(PublishActivity, ActivityRequested, ActivityState);
         }
         public void Send(byte[] data, bool reliable)
         {
@@ -519,6 +526,7 @@ namespace Idas3.Multiplayer
             if (disposed) return;
             Leave(); disposed = true; Available = false; live.Remove(this);
             sanctions?.Dispose();
+            activity?.Dispose();
             Unsubscribe();
         }
         void Unsubscribe()
@@ -652,7 +660,14 @@ namespace Idas3.Multiplayer
         void EnsureCurrent(long token, CancellationToken cancel) { cancel.ThrowIfCancellationRequested(); if (!Current(token)) throw new OperationCanceledException(); }
         void FailRoom(string detail) { Leave(); Fail(detail); }
         void Fail(string detail) { Status = detail; Error?.Invoke(detail); }
-        static async Task Pace(string kind, double interval, CancellationToken cancel)
+        internal static bool TryPace(string kind, double interval)
+        {
+            double now = Now;
+            if (nextRequests.TryGetValue(kind, out double next) && next > now) return false;
+            nextRequests[kind] = now + interval;
+            return true;
+        }
+        internal static async Task Pace(string kind, double interval, CancellationToken cancel)
         {
             double now = Now;
             double start = nextRequests.TryGetValue(kind, out double next) ? Math.Max(now, next) : now;

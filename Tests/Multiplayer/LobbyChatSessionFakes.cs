@@ -6,6 +6,15 @@ using System.Collections.Generic;
 using System.IO;
 
 namespace UnityEngine {
+    // In-memory preferences only; never touches Unity or a player's registry.
+    public static class PlayerPrefs {
+        static readonly Dictionary<string,string> values=new Dictionary<string,string>{{"idas3.online.name","Fixture driver"}};
+        public static string GetString(string key,string fallback="")=>values.TryGetValue(key,out var value)?value:fallback;
+        public static bool HasKey(string key)=>values.ContainsKey(key);
+        public static void SetString(string key,string value){values[key]=value;}
+        public static void DeleteKey(string key){values.Remove(key);}
+        public static void Save(){}
+    }
     public static class Time {public static double realtimeSinceStartupAsDouble;}
     public static class Application {
         public static string dataPath=>Path.Combine(Path.GetTempPath(),"idas3-chat-fixture-unavailable");
@@ -50,6 +59,9 @@ public static class Idas3CourseCatalog {
     public static readonly string[] Packs=new string[9],Slugs=new string[9];
 }
 namespace Idas3.Multiplayer {
+    internal static class Idas3EosOnlineConfig {
+        internal static bool DiagnosticRun=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-p2p-check")>=0;
+    }
     public class ChatFixtureTransport:IIdas3Transport {
         public string Kind {get;set;}="Fixture";
         public bool Available {get;set;}=true;
@@ -80,6 +92,7 @@ namespace Idas3.Multiplayer {
 #if !IDAS3_ONLINE_SESSION_TEST
     // The fixture never initializes cloud services or opens a Relay route.
     public sealed class Idas3EosTransport:ChatFixtureTransport,IIdas3OnlineActivityTransport {
+        internal void RefreshPlayerName(){}
         internal Func<string,string[],string[],bool> ApplyStatsResets {get;set;}
         public bool IsBusy=>false;
         public bool PublishActivity {get;set;}

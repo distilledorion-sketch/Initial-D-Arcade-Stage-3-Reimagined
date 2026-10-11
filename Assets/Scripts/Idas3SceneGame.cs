@@ -220,7 +220,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             multiplayer = new Idas3MultiplayerSession(Status.car,saves);
             multiplayerMenu = gameObject.AddComponent<Idas3MultiplayerMenu>();
             multiplayerMenu.Initialize(multiplayer);
-            if(!diagnosticMode)multiplayer.InitializeOnlinePresence();
+            if(!diagnosticMode){multiplayer.InitializeOnlinePresence();multiplayer.PublishActivity=!Application.isEditor;}
             gameOptions = new Idas3GameOptions();
             gameOptions.Changed += ApplyNativeOptions;
             gameOptions.Initialize(saves);

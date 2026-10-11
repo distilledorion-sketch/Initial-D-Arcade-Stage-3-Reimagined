@@ -30,7 +30,7 @@ The checked-in configuration has a placeholder database ID. Production credentia
 
 ## Behavior
 
-- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.47`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
+- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.48`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
 - `REQUIRED_CLIENT_BUILD` is an exact version, not a minimum. The obsolete `MIN_CLIENT_BUILD` variable is ignored. A version mismatch returns permanent HTTP 409 with `code: "client_build_required"` and `requiredBuild`; clients discard that queued run and must complete a new Time Attack in the required build.
 - `/health` and `/api/v1/snapshot` expose `requiredBuild`. Changing this upload policy does not reset the season, delete scores, filter historical builds out of rankings, or restrict existing replay downloads. No migration is needed for the version change.
 - Historical-time imports and replay-less uploads are rejected.
@@ -168,6 +168,6 @@ ghost invalidation are handled separately by the .47 game update.
 
 ## Online activity
 
-The public page polls `/api/v1/activity` every 15 seconds while visible. Starting in .21, a game client with Community Times enabled and Steam initialized shares fresh game-scoped Steam surveys using its existing installation token. Reports contain only aggregate online/queuing/racing counts, the search-limit flag, and sample age; no Steam identities, names, room codes or locations are sent. Diagnostics do not publish.
+The public page polls `/api/v2/activity` every 15 seconds while visible. Updated EOS clients with Community Times enabled share a fresh product-scoped activity survey using their existing installation token. Reports contain only aggregate online/queuing/racing counts, the search-limit flag, and sample age; no player IDs, names, room codes or locations are sent. Diagnostics do not publish. EOS presence itself is independent of the Community Times setting, so turning off leaderboard sharing does not remove a connected player from the in-game population survey.
 
-The service retains only the newest survey in `settings.online_activity` (no schema migration). Reports are not summed across observers. The same activity namespace includes older compatible clients. A survey expires after 45 seconds; without a reporting client the page shows a dash rather than claiming zero. A plus sign indicates Steam's search limit. Client surveys are informational and are not authoritative anti-cheat or verified concurrent-user analytics.
+The service retains only the newest EOS survey in `settings.online_activity_eos` (no schema migration). Legacy Steam surveys continue to use `/api/v1/activity` and their separate `online_activity` setting; they cannot overwrite the EOS website count. Reports are not summed across observers. A survey expires after 45 seconds; without a reporting client the page shows a dash rather than claiming zero. A plus sign indicates the EOS search limit of 200 results. Only clients with the activity publisher installed can be counted; earlier EOS clients do not publish presence. Client surveys are informational and are not authoritative anti-cheat or verified concurrent-user analytics.

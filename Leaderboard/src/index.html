@@ -23,7 +23,7 @@ async function refreshActivity(){
  activityBusy=true;
  const started=performance.now(),controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
  try{
-  const response=await fetch('/api/v1/activity',{cache:'no-store',signal:controller.signal});
+  const response=await fetch('/api/v2/activity',{cache:'no-store',signal:controller.signal});
   if(!response.ok)throw new Error('Activity unavailable');
   const data=await response.json();
   clearTimeout(activityExpiry);

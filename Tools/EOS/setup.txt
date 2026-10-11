@@ -40,6 +40,20 @@ use an Epic account, an Epic sign-in page or the Epic Games Launcher. The SDK
 stores the identity under the current operating-system user. The game's test
 cache-profile argument does not create a second player identity on Windows.
 
+The first time a player opens Online, they choose a saved online display name.
+Player Details lets them change it outside a room or queue. Names are not
+unique account identifiers: moderation continues to use the authenticated
+EOS Player ID, including after a name change.
+
+Player counts use separate one-member activity lobbies in the product's
+idas3-activity-v1 bucket. They contain only a state and freshness timestamp;
+they are never race rooms and do not open a P2P connection. Owners are deduped,
+stale activity expires, and a capped survey displays a plus sign. Presence
+counts require updated clients; the original .47 release did not publish it.
+The Community Times setting controls aggregate website reporting, not whether
+a connected player appears in the game's EOS activity count. Diagnostics use
+isolated activity buckets and never contribute to production totals.
+
 Public rooms and Quick Match use separate EOS lobby search buckets containing
 the protocol/build compatibility hash. Quick Match searches for an open room,
 then hosts one if needed; a total room-ID ordering joins simultaneous hosts.

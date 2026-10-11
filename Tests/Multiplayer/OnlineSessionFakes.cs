@@ -34,7 +34,8 @@ namespace Idas3.Multiplayer
         public event Action<byte[]> Message;
         public event Action PeerChanged;
         public event Action<string> Error;
-        internal int Initializations,Polls,Starts,Cancellations,Leaves,Disposals;
+        internal int Initializations,Polls,Starts,Cancellations,Leaves,Disposals,NameRefreshes;
+        internal void RefreshPlayerName(){++NameRefreshes;}
         internal bool FinishInitialization,ReentrantCancellation;
         internal Action PollAction;
         internal readonly List<byte[]> Sent=new List<byte[]>();

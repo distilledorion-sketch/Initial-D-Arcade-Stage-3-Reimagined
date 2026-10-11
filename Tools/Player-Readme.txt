@@ -1,3 +1,19 @@
+0.3.95-community-replays.48
+
+Restore online player counts and add saved online usernames. Both drivers must update to race together online. Version .48 is required for new community Time Attack submissions.
+
+- Restore the online, queuing and racing player counts in the Online Battle menu, with EOS activity also shown on the leaderboard website.
+- Keep the player-count display visible while connecting. Unavailable counts show a dash; capped surveys show a plus sign. Earlier EOS builds do not publish activity, so the count reflects players using this update.
+- Ask players to choose an online username the first time they open Online. Save the name for future launches and use it in rooms, chat and race introductions.
+- Add Change Username under Player Details, available outside a room, queue or race. Names can be changed without changing the Player ID used for moderation.
+- Support controller name entry, keyboard typing, and Japanese/Chinese names. Add Japanese and Simplified Chinese translations for the new screen.
+
+Existing players can use the in-game updater. Fresh installs: download Initial-D-Setup-0.3.95.48.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Changed-file patches support .20 through .47.
+
+Validation includes username persistence and validation, online-session and chat regressions, EOS activity lifecycle checks, and actual Unity menu/controller checks in English, Japanese and Chinese. No new leaderboard reset is included.
+
+PREVIOUS UPDATE (.47)
+
 0.3.95-community-replays.47
 
 EOS ONLINE, ODAWARA RESET AND GAME FIXES

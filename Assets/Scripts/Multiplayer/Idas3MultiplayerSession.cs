@@ -181,6 +181,25 @@ namespace Idas3.Multiplayer
         public string RoomCode => transport?.RoomCode ?? "";
         public string TransportName => transport?.Kind ?? "Online";
         public bool HasOnlinePlayerDetails => transport is Idas3EosTransport;
+        public string OnlineUsername => Idas3OnlineUsername.Saved;
+        public bool RequiresOnlineUsername => (transport is Idas3EosTransport || transport == null && TransportIndex == 0) &&
+            !Idas3EosOnlineConfig.DiagnosticRun && OnlineUsername.Length == 0;
+        public bool CanChangeOnlineUsername => HasOnlinePlayerDetails && !InLobby && !Busy && !nativeRace && !DisconnectedFinish;
+        public bool SaveOnlineUsername(string input, out string error)
+        {
+            error = "Leave the room or queue before changing your online username.";
+            // Initial service sign-in may still be running while the first-use
+            // prompt is open. It reads this preference when authentication ends.
+            if (!HasOnlinePlayerDetails || InLobby || IsQuickMatching || nativeRace || DisconnectedFinish ||
+                Busy && !RequiresOnlineUsername) return false;
+            if (!Idas3OnlineUsername.TrySave(input, out error)) return false;
+            ((Idas3EosTransport)transport).RefreshPlayerName(); ClearError(); return true;
+        }
+        bool RequireOnlineUsername()
+        {
+            if (!RequiresOnlineUsername) return true;
+            ErrorText = Idas3OnlineUsername.Empty; return false;
+        }
         public string OnlinePlayerId => HasOnlinePlayerDetails ? transport.LocalId : "";
         // One admitted opponent, retained only for this game session so a
         // disconnect does not remove the ID needed for a moderation report.
@@ -190,7 +209,8 @@ namespace Idas3.Multiplayer
         public bool HasCurrentOpponentPlayerId => HasOnlinePlayerDetails && HandshakeComplete &&
             transport.Connected && RecentOpponentPlayerId.Length != 0 && transport.RemoteId == RecentOpponentPlayerId;
         public bool ActivityRequested {get;set;}
-        internal bool PublishActivity {set {if(transport is IIdas3OnlineActivityTransport activity)activity.PublishActivity=value&&string.IsNullOrEmpty(matchmakingTestScope);}}
+        bool publishActivity;
+        internal bool PublishActivity {set {publishActivity=value;if(transport is IIdas3OnlineActivityTransport activity)activity.PublishActivity=value&&string.IsNullOrEmpty(matchmakingTestScope);}}
         public Idas3OnlineActivity Activity=>transport is IIdas3OnlineActivityTransport activity?activity.Activity:default;
         public string LobbyName=>Idas3LobbyNames.ForHost(IsHost?transport?.LocalName:remoteName);
         public string ResultText { get; private set; } = "";
@@ -271,7 +291,7 @@ namespace Idas3.Multiplayer
         {
             if (transport != null) { LeaveRoom(); transport.Message -= Receive; transport.PeerChanged -= PeerChanged; transport.Error -= Fail; transport.Dispose(); }
             if (next is Idas3EosTransport online) online.ApplyStatsResets = ApplyAdministrativeStatsResets;
-            impairment.Clear();transport = next; transport.Message += Receive; transport.PeerChanged += PeerChanged; transport.Error += Fail;
+            impairment.Clear();transport = next; PublishActivity=publishActivity; transport.Message += Receive; transport.PeerChanged += PeerChanged; transport.Error += Fail;
             state = "Offline"; localNonce = Nonce();
         }
         bool ApplyAdministrativeStatsResets(string playerId, string[] levelIds, string[] fullIds)
@@ -304,7 +324,7 @@ namespace Idas3.Multiplayer
         public bool PrivateRoom => transport is IIdas3PrivateRoomTransport privacy && privacy.PrivateRoom;
         public void HostRoom(bool privateRoom = false)
         {
-            OpenMenu(); if (nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
+            OpenMenu(); if (!RequireOnlineUsername() || nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
             if (privateRoom && !SupportsPrivateRooms) return;
             ResetPeer(); localNonce = Nonce(); ClearError(); state = "Connecting"; operationAt=Now;
             if(privateRoom) ((IIdas3PrivateRoomTransport)transport).HostPrivate(Idas3LobbyNames.ForHost(transport.LocalName));
@@ -313,13 +333,13 @@ namespace Idas3.Multiplayer
         }
         public void JoinRoom(string code)
         {
-            OpenMenu(); if (nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
+            OpenMenu(); if (!RequireOnlineUsername() || nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
             ResetPeer(); localNonce=Nonce(); ClearError(); state="Connecting"; operationAt=Now; transport.Join(code);
         }
         public void RefreshRooms() { OpenMenu(); if (!nativeRace && !DisconnectedFinish && Available && !InLobby && !Busy) { ClearError(); transport.Browse(); } }
         public void QuickMatch()
         {
-            OpenMenu();if(nativeRace||DisconnectedFinish||!Available||Busy||InLobby||!(transport is IIdas3MatchmakingTransport matchmaking))return;
+            OpenMenu();if(!RequireOnlineUsername()||nativeRace||DisconnectedFinish||!Available||Busy||InLobby||!(transport is IIdas3MatchmakingTransport matchmaking))return;
             ResetPeer();localNonce=Nonce();ClearError();state="Matching";ResultText="";
             if(transport is IIdas3QueuedMatchmakingTransport queued){quickMatch=null;queued.StartMatchmaking();return;}
             quickMatch=new Idas3QuickMatch(matchmaking,()=>Now,()=>UnityEngine.Random.value,Idas3LobbyNames.ForHost(transport.LocalName));

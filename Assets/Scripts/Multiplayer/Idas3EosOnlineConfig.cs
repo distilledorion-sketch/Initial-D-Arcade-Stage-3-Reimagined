@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using System.Text;
 using Epic.OnlineServices.Platform;
 using UnityEngine;
@@ -61,8 +60,6 @@ namespace Idas3.Multiplayer
         }
         internal static bool ForceRelay => DiagnosticRun && Array.IndexOf(System.Environment.GetCommandLineArgs(), "-idas3-probe-force-relay") >= 0;
 
-        [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)]
-        static extern int Idas3SceneCopyHudDriverName([Out] byte[] destination, int capacity);
         public static string PlayerName()
         {
             var args = System.Environment.GetCommandLineArgs();
@@ -72,12 +69,10 @@ namespace Idas3.Multiplayer
                 role = Array.IndexOf(args, "-idas3-multiplayer-role");
                 if (role >= 0 && role + 1 < args.Length && (args[role + 1] == "host" || args[role + 1] == "join")) return args[role + 1] == "host" ? "SMOKE HOST" : "SMOKE JOIN";
             }
-            string name = PlayerPrefs.GetString("idas3.online.name", "");
-            if (string.IsNullOrWhiteSpace(name)) {
-                try { var bytes = new byte[256]; int length = Idas3SceneCopyHudDriverName(bytes, bytes.Length); if (length > 0 && length <= bytes.Length) name = Encoding.UTF8.GetString(bytes, 0, length); }
-                catch (DllNotFoundException) { } catch (EntryPointNotFoundException) { }
-            }
-            return Idas3EosTransport.Clean(name, "Driver", 32);
+            // Services may initialize before the first-use name prompt. The
+            // session prevents matchmaking until a chosen name has been saved.
+            string name = Idas3OnlineUsername.Saved;
+            return name.Length == 0 ? "Driver" : name;
         }
     }
 }

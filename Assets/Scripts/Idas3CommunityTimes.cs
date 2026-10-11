@@ -16,7 +16,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
-    public const string RequiredSubmissionBuild="0.3.95-community-replays.47";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.48";
     public const int FirstReplaySeason=2;
     [Serializable] public sealed class Run {
         public string id,ruleset,build;
@@ -227,7 +227,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     [Serializable] internal sealed class ActivityReport {public int online,queuing,racing,age;public bool limited;}
     internal static ActivityReport PrepareActivity(Idas3.Multiplayer.Idas3OnlineActivity activity,double now,double last){
         double age=now-activity.ObservedAt;
-        if(!activity.Available||activity.Online<1||activity.ObservedAt==last||double.IsNaN(age)||age<0||age>30)return null;
+        if(!activity.Available||activity.Online<0||activity.Online>200||activity.Queuing<0||activity.Queuing>activity.Online||activity.Racing<0||activity.Racing>activity.Online||activity.Queuing+activity.Racing>activity.Online||activity.ObservedAt==last||double.IsNaN(age)||age<0||age>30)return null;
         return new ActivityReport{online=activity.Online,queuing=activity.Queuing,racing=activity.Racing,limited=activity.Limited,age=(int)Math.Ceiling(age)};
     }
     private IEnumerator ShareActivity(){
@@ -235,13 +235,12 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         while(host!=null){
             var session=host.MultiplayerSession;
             bool share=host.Ready&&options.Current.communityTimes&&registered;
-            if(session!=null)session.PublishActivity=share;
             var activity=session?.Activity??default;
             var report=PrepareActivity(activity,Time.realtimeSinceStartupAsDouble,last);
             if(share&&report!=null){
                 last=activity.ObservedAt;
                 // Own request state: uploads and ranking refreshes may run concurrently.
-                using(var request=new UnityWebRequest(ServiceUrl+"/api/v1/activity","POST")){
+                using(var request=new UnityWebRequest(ServiceUrl+"/api/v2/activity","POST")){
                     request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(JsonUtility.ToJson(report)));
                     request.downloadHandler=new DownloadHandlerBuffer();request.timeout=8;
                     request.SetRequestHeader("Content-Type","application/json");request.SetRequestHeader("Authorization","Bearer "+credential);
