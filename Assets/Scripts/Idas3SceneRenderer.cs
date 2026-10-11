@@ -61,7 +61,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public int MirrorViewExcludedVertices { get; private set; }
     public int UploadedTextureCount => textureCache.Count;
     private Camera main, mirror, backdrop, canvasClear;
-    private Shader sceneShader, directSceneShader, opaqueAlphaDepthShader;
+    private Shader sceneShader, directSceneShader, headlightShader, opaqueAlphaDepthShader;
     private bool geometryStageBaseline;
     private bool rangeReuseBaseline;
     private CommandBuffer opaqueAlphaDepth, mirrorAlphaDepth;
@@ -166,6 +166,8 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         if (sceneShader == null || !sceneShader.isSupported) throw new InvalidOperationException("Original Unity scene shader is unavailable.");
         directSceneShader = Resources.Load<Shader>("Idas3SceneDirect");
         if (directSceneShader == null || !directSceneShader.isSupported) throw new InvalidOperationException("Direct Unity scene shader is unavailable.");
+        headlightShader = Resources.Load<Shader>("Idas3Headlight");
+        if (headlightShader == null || !headlightShader.isSupported) throw new InvalidOperationException("Projected headlight shader is unavailable.");
         geometryStageBaseline = Array.IndexOf(arguments, "-idas3-geometry-stage-baseline") >= 0;
         rangeReuseBaseline = Array.IndexOf(arguments, "-idas3-range-reuse-baseline") >= 0;
         opaqueAlphaDepthShader = Shader.Find("Hidden/IDAS3/Opaque Alpha Depth");
@@ -243,6 +245,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public unsafe void ApplyFrame()
     {
         if (!initialized) throw new InvalidOperationException("Initialize the Unity scene renderer first.");
+        Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
         UploadedVertexCount = GeometryUploadCount = MaterialUpdateCount = 0;
         MainViewExcludedRanges = MainViewExcludedVertices = MirrorViewExcludedRanges = MirrorViewExcludedVertices = 0;
         var frame = new SceneFrame { size = 256 };
@@ -288,6 +291,10 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             foreach (uint list in SourceListOrder)
             for (int i = 0; i < frame.rangeCount; ++i)
             {
+                // First-time mesh/material uploads can span several seconds.
+                // Pump only the encrypted route; never dispatch game callbacks
+                // while native frame pointers are being consumed.
+                if ((i & 63) == 0) Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
                 var range = *(SceneRange*)IntPtr.Add(frame.ranges, i * 64);
                 uint nativeList = (range.flags & 1) != 0 ? (range.pcw >> 24) & 7 : 0;
                 if (nativeList != list || range.count == 0 || range.viewMask == 0) continue;
@@ -605,6 +612,11 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         // is exactly the vertex shader's output, including both camera views.
         Shader wanted = !geometryStageBaseline && cullMode < 2 && (!original || (r.pcw & 2) != 0)
             ? directSceneShader : sceneShader;
+        // lightobj chunk 7's original noLight, destination-color projector.
+        // Keep other emissive effects and course materials on their own path.
+        if ((r.flags & 7) == 3 && r.pcw == 0x8a00071eu && (r.gmp & 512) != 0 &&
+            r.tsp >> 29 == 2 && ((r.tsp >> 26) & 7) == 1 && ((r.tsp >> 22) & 3) == 2)
+            wanted = headlightShader;
         if (m.shader != wanted) m.shader = wanted;
         m.renderQueue = queue;
         // SetInt aliases SetFloat in Unity. Source material words require the
@@ -675,6 +687,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         if (id >= textureRecords.Length) return Texture2D.whiteTexture;
         ulong key = ((ulong)id << 32) | sampler;
         if (textureCache.TryGetValue(key, out var ready)) return ready;
+        Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
         var image = textureRecords[id];
         if (image.width == 0 || image.height == 0 || image.width > 2048 || image.height > 2048 || image.argb == IntPtr.Zero ||
             image.pixelCount != (ulong)image.width * image.height || image.pixelCount > 4194304)

@@ -31,7 +31,7 @@ namespace Idas3.Multiplayer
         public void Start()
         {
             if(IsActive || transport.InLobby || transport.IsBusy)return;
-            if(!transport.Available){Failed?.Invoke("Steam is unavailable. Sign in, then try Quick Match again.");return;}
+            if(!transport.Available){Failed?.Invoke("Online services are unavailable. Retry online, then try Quick Match again.");return;}
             attempted.Clear();joinFailures=searchFailures=0;occupiedAt=serviceLostAt=-1;searchBegan=now();
             Search(false);
         }
@@ -82,12 +82,12 @@ namespace Idas3.Multiplayer
         {
             if(!IsActive)return;
             if(handshakeComplete) {stage=Stage.Idle;Status="Opponent found. Choose your car and select Ready.";Matched?.Invoke();return;}
-            if(!transport.Available){Stop("Steam disconnected. Sign in and try Quick Match again.");return;}
+            if(!transport.Available){Stop("Online services disconnected. Retry online and try Quick Match again.");return;}
             double time=now();
             if (transport is IIdas3MatchmakingServiceState service && !service.ServiceConnected) {
                 if (serviceLostAt < 0) serviceLostAt = time;
-                Status = "Steam is reconnecting — keeping your search open…";
-                if (time-serviceLostAt > 60) Stop("Steam could not reconnect. Sign in and try Quick Match again.");
+                Status = "Online services are reconnecting — keeping your search open…";
+                if (time-serviceLostAt > 60) Stop("Online services could not reconnect. Retry online and try Quick Match again.");
                 return;
             }
             if (serviceLostAt >= 0) {
@@ -114,7 +114,7 @@ namespace Idas3.Multiplayer
             case Stage.Hosting:
                 if(transport.IsBusy){if(time>deadline)HandleTransportError("Creating the room timed out. Please try again.");break;}
                 if(transport.InLobby&&transport.IsHost)WaitForDriver();
-                else Stop("Steam could not open the Quick Match room.");break;
+                else Stop("The online service could not open the Quick Match room.");break;
             case Stage.Waiting:
                 if(!transport.InLobby||!transport.IsHost){Stop("The Quick Match room closed. Please try again.");break;}
                 if(time>=nextSearch&&!transport.IsBusy)Search(true);break;
@@ -133,7 +133,7 @@ namespace Idas3.Multiplayer
                 if (serviceLostAt < 0) serviceLostAt = now();
                 if (!transport.InLobby) { stage=Stage.Retry; nextSearch=now()+1; transport.Leave(); }
                 else { stage=Stage.Waiting; nextSearch=now()+1; }
-                Status="Steam is reconnecting — keeping your search open…";
+                Status="Online services are reconnecting — keeping your search open…";
             } else if ((stage==Stage.Searching||stage==Stage.Hosting||stage==Stage.WaitingSearch) && transport.Available && ++searchFailures<=5) {
                 if (transport.Connected || transport.InLobby && transport.RoomMembers>1) {
                     // A search result can arrive after a driver has entered.

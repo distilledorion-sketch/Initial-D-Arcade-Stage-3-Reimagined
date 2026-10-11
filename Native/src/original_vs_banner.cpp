@@ -38,8 +38,8 @@ std::string battleRecord(std::uint32_t battles,std::uint32_t wins){
 float battleCounterExtra(std::uint32_t value){
     return float(std::max(int(std::to_string(value).size())-3,0))*18.f;
 }
-float battleRecordWidth(std::uint32_t battles,std::uint32_t wins){
-    return 367.f+battleCounterExtra(battles)+battleCounterExtra(std::min(wins,battles));
+float battleRecordWidth(std::uint32_t battles,std::uint32_t wins,float labelWidth){
+    return labelWidth+battleCounterExtra(battles)+battleCounterExtra(std::min(wins,battles));
 }
 // Exact visible English labels in the original localized namekana textures.
 // The corresponding source string bytes are Japanese texture lookup keys;
@@ -94,6 +94,7 @@ constexpr std::uint32_t courseAdvanceWords[]{0x3ed70a3c,0,0x3eb851e8,0x3ea8f5c0,
 float sourceWord(std::uint32_t value){return std::bit_cast<float>(value);}
 constexpr int restingVsChunk = 119;
 constexpr int backdropChunk = 120;
+constexpr int boostOffChunk = 81, boostOffFlashChunk = 82;
 }
 
 bool OriginalVsBanner::available(const std::filesystem::path& root) {
@@ -107,6 +108,7 @@ bool OriginalVsBanner::available(const std::filesystem::path& root) {
 
 void OriginalVsBanner::load(const std::filesystem::path& root) {
     if (loaded_) return;
+    battleRecordLayout_={};
     const auto folder = root / directory;
     model_ = NativeModel::load(folder / "start2d.idasmesh");
     textures_ = NativeTextureBank::load(folder / "textures" / "textures.idastex");
@@ -124,6 +126,25 @@ void OriginalVsBanner::load(const std::filesystem::path& root) {
             bounds[2]=std::max(bounds[2],x);bounds[3]=std::max(bounds[3],y);
         }
         chunkBounds_[i]=std::isfinite(bounds[0])?bounds:std::array<float,4>{};
+    }
+    // English uses four stat-label quads; Japanese uses six (戦, 勝, 勝率,
+    // decimal and percent). The localization import centers the entire label
+    // chunk on its English anchor, while digits retain their own origin.
+    // Recover the Japanese columns from that loaded artwork and remove only
+    // the shared anchor shift. Keep all source glyphs, colors and spacing.
+    std::vector<std::array<float,2>> recordLabels;
+    for(const auto& batch:model_.chunks[83].batches)
+        for(std::size_t i=0;i+3<batch.vertices.size();i+=4){
+            float left=std::numeric_limits<float>::infinity(),right=-left;
+            for(unsigned j=0;j<4;++j){left=std::min(left,batch.vertices[i+j].position.x);right=std::max(right,batch.vertices[i+j].position.x);}
+            recordLabels.push_back({left,right});
+        }
+    std::sort(recordLabels.begin(),recordLabels.end());
+    if(recordLabels.size()==6){
+        const float origin=recordLabels.front()[0]*unitsPerPixel-54.f;
+        battleRecordLayout_={origin,recordLabels.back()[1]*unitsPerPixel-origin,
+            recordLabels[1][0]*unitsPerPixel-origin,recordLabels[4][0]*unitsPerPixel-origin,
+            recordLabels[5][0]*unitsPerPixel-origin+2.f,(recordLabels[0][1]+recordLabels[1][0])*.5f};
     }
     // Measure the actual source title ink once; authored rectangles include
     // transparent padding that must not become the height of imported lettering.
@@ -235,7 +256,7 @@ OriginalVsBattleRecordPlacement OriginalVsBanner::battleRecordPlacement(unsigned
     if(!setup_.showVersus||text.empty())return {};
     // Match the original stat sprites, while fitting long network counters
     // into the existing name area and retaining its animation.
-    const float naturalWidth=battleRecordWidth(setup_.battles[side],setup_.wins[side]);
+    const float naturalWidth=battleRecordWidth(setup_.battles[side],setup_.wins[side],battleRecordLayout_.width);
     const float scale=std::min(1.f,412.f/naturalWidth);
     const float rowWidth=naturalWidth*scale;
     const auto& name=names_[side];
@@ -307,6 +328,11 @@ std::string OriginalVsBanner::decodeName(const std::vector<std::uint16_t>& name)
 std::vector<int> OriginalVsBanner::chunks() const {
     std::vector<int> out;
     if (setup_.drawBackdrop) out.push_back(backdropChunk);
+    if(setup_.boostOff&&setup_.showVersus){
+        out.push_back(boostOffChunk);
+        // 14D6C6 reads the same owner+8 counter reset by 14B700 at phase1.
+        if(phaseTick_%30u<=9u)out.push_back(boostOffFlashChunk);
+    }
     if(setup_.showBattleRecords&&!setup_.compactHeader){if(setup_.showVersus)out.push_back(restingVsChunk);return out;}
     if(setup_.customCourseName.empty())out.push_back(courseChunk[setup_.course]);
     if(setup_.compactHeader){}
@@ -353,7 +379,10 @@ OriginalVsMetadataPlacement OriginalVsBanner::projectedMetadataPlacement(int chu
     // the identity pushes in14C380 remove that pose for this header.
     const float scale=sourceWord(0x3cd413ce),bankX=sourceWord(0xc04ccccc),bankY=sourceWord(0x40199999);
     float x,y;
-    if(chunk==courseChunk[headerCourse()]){
+    if(chunk==boostOffChunk||chunk==boostOffFlashChunk){
+        // 14D69A positions the warning independently of the course header.
+        x=bankX*scale;y=(bankY-.48f)*scale;
+    }else if(chunk==courseChunk[headerCourse()]){
         x=(bankX-.15f)*scale;y=(bankY+.06f+.65f)*scale;
     }else{
         x=bankX*scale;x+=sourceWord(courseAdvanceWords[headerCourse()])*scale;
@@ -398,6 +427,7 @@ OriginalVsMetadataPlacement OriginalVsBanner::importedTitlePlacement() const {
 OriginalVsMetadataPlacement OriginalVsBanner::metadataPlacement(int chunk) const {
     const auto& bounds=chunkBounds_.at(std::size_t(chunk));
     OriginalVsMetadataPlacement out{chunk,20.f,8.f,bounds[2]-bounds[0],bounds[3]-bounds[1]};
+    if(chunk==boostOffChunk||chunk==boostOffFlashChunk)return projectedMetadataPlacement(chunk);
     if(setup_.compactHeader){
         out=projectedMetadataPlacement(chunk);
         if(!setup_.customCourseName.empty()){
@@ -520,7 +550,7 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
         if(side<2){
             const auto battles=setup_.battles[side],wins=std::min(setup_.wins[side],battles);
             const float extraBattles=battleCounterExtra(battles),extraWins=battleCounterExtra(wins);
-            const float scale=bounds.width/battleRecordWidth(battles,wins);
+            const float scale=bounds.width/battleRecordWidth(battles,wins,battleRecordLayout_.width);
             SpritePlacement p;p.scale=unitsPerPixel*fit*scale;p.invertY=true;p.authoredHeight=0;
             p.offsetX=(float(width)-640.f*fit)*.5f+bounds.left*fit;
             p.offsetY=(float(height)-480.f*fit)*.5f+(bounds.top+scale)*fit;
@@ -528,7 +558,8 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
             auto labels=model_.chunks[83];
             for(auto& batch:labels.batches)for(auto& vertex:batch.vertices){
                 const float x=vertex.position.x;
-                vertex.position.x+=(extraBattles+(x>2.f?extraWins:0.f))/unitsPerPixel;
+                vertex.position.x+=(-battleRecordLayout_.origin+extraBattles+
+                    (x>battleRecordLayout_.secondLabelThreshold?extraWins:0.f))/unitsPerPixel;
             }
             compositeOriginalMenuChunk(target,width,height,textures_,labels,p);
             const auto number=[&](std::uint32_t value,float right,float advance){
@@ -540,10 +571,10 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
                 }
             };
             number(battles,54.f+extraBattles,18.f);
-            number(wins,207.f+extraBattles+extraWins,18.f);
+            number(wins,battleRecordLayout_.winRight+extraBattles+extraWins,18.f);
             const auto tenths=battles?std::uint64_t(wins)*1000/battles:0;
-            number(unsigned(tenths/10),315.f+extraBattles+extraWins,14.f);
-            number(unsigned(tenths%10),341.f+extraBattles+extraWins,18.f);
+            number(unsigned(tenths/10),battleRecordLayout_.percentRight+extraBattles+extraWins,14.f);
+            number(unsigned(tenths%10),battleRecordLayout_.tenthsRight+extraBattles+extraWins,18.f);
             continue;
         }
         const auto& text=side==2?setup_.customCourseName:displayBattleRecords_[side];

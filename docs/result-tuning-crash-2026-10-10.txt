@@ -1,0 +1,65 @@
+POST-RACE TUNING PREVIEW CRASH - October 10, 2026
+
+Reported screenshot
+Version 0.3.95-community-replays.46, Race 3, InvalidOperationException:
+invalid vector subscript at Idas3SceneGame.Update offset 0x947.
+The published assembly MVID 9df055ddb0dd41d6a2526d7f83679aec matches the
+preserved .46 player. Cecil maps that offset to constructing the exception
+after Idas3SceneStep returns failure. The message is copied from native code.
+Race 3 is Finished, rather than the third race or a track identifier.
+
+Reproduced cause
+A saved car can retain advanced engine upgrades while its basic package
+tuning is unfinished. The source renewal/package-change operations produce
+this state and the remake accepts it from a saved profile. The current App
+does not appear to initiate the original card-renewal workflow itself.
+
+When the last basic part is awarded, the profile's basic-step byte becomes
+the next performance-upgrade index. The remaining basic-completion animation
+starts the preview before sending its completion-focus event. The preview
+previously treated that performance index as a basic part. The real App
+reproduced invalid vector subscript with index 57 in a ten-step package,
+engine level 63, on the fifth resumed result visit.
+
+Fix
+originalTuningPreviewFocus returns the intended completion focus, zero, when
+the basic-complete flag is set. It does not access the former basic-step
+table or modify the profile. Part-specific previews before completion and
+performance/optional previews retain their existing behavior.
+
+The screenshot alone does not establish this player's car/profile or exact
+trigger. This is a reproduced and fixed path matching its exception and
+finished-race state, not a claim that every possible vector exception is fixed.
+
+Validation
+- Expanded full_tune_tests: 438 Full Tune sequences, 146 ordinary car/package
+  progressions, 111 high-engine renewal continuations, 44,175 preview starts.
+  Preserves points and unrelated saved progress. Registered in CTest; passed.
+- Original preview parity: 76,388 focus/rotation cases, 7,770 plate checks,
+  42,000 matrices, 3,625,904 original instructions passed.
+- New result_tuning_application_tests reproduced the exact exception before
+  the fix. Afterward English and Japanese each passed 13,009 checks through
+  five result/upgrade/Continue/frontend visits. Uses actual App owners and
+  car rendering with isolated saves. The critical preview frame preserves
+  every profile word, and final points/upgrades persist.
+- Japanese Time Attack flow: 630 checks; all 45 localized banks and 1,928
+  model batches have matching chunk counts and valid texture references.
+- Separate audio, score-reference and collision audits found no matching
+  failure. No audio, language or collision production changes were made.
+
+Build and desktop
+Native Windows build succeeded. Updated only Idas3Unity.dll in Builds/Current
+and C:/Users/Chris/Desktop/Current, with both prior DLLs backed up. The installed
+DLL initialized, rendered 120 frames and shut down successfully using isolated
+diagnostic saves. Existing game saves/settings were not edited. The previous
+FOV, lobby and lighting updates remain included. No GitHub release was made.
+New DLL SHA256:
+F970F0415A6269462F15BFF425565C08C3A62C6A8AD340EC7BB1FEFCCC02D5D6
+
+Evidence
+Verification/finish-crash-20261010 (build, CTest, installation, desktop smoke)
+Verification/crash-audit-profiles-20261010 (reproduction, progression, parity)
+Verification/result-tuning-app-before-20261010 (failing App/executable)
+Verification/result-tuning-app-after-en-20261010
+Verification/result-tuning-app-after-ja-20261010
+Verification/crash-audit-time-attack-ja-20261010

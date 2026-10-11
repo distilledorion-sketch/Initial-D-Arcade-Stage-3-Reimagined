@@ -5,6 +5,7 @@
 #include "unity_ui_capture.h"
 #include "imported_course.h"
 #include "native_multiplayer.h"
+#include "native_load_keepalive.h"
 #include "multiplayer_battle_record.h"
 #include "ui.h"
 #include "audio.h"
@@ -451,6 +452,7 @@ struct App {
     OriginalChaseCamera bumperCamera;
     OriginalChaseFrame previousBumperFrame;
     OriginalDrivingView drivingView=OriginalDrivingView::Bumper;
+    int cameraFovPercent=100;
     void setDrivingView(OriginalDrivingView view){
         if(drivingView!=view){naturalCamera.reset();drivingView=view;}
     }
@@ -507,7 +509,7 @@ struct App {
         if(course.closed){distance=std::fmod(distance,course.length);if(distance<0)distance+=course.length;}
         return course.sample(distance);
     }
-    fs::path ghostPath()const{return userdataRoot()/(runKey()+".csv");}
+    fs::path ghostPath()const{return TimeAttackGhost::telemetryPath(userdataRoot(),runKey(),importedCourse?importedCourse->id:unsigned(courseIndex));}
     fs::path personalGhostPath()const{
         const auto directory=activeSaveSlot<0?userdataRoot()/"driver_profiles_v1":saveSlots.profileDirectory(unsigned(activeSaveSlot));
         return TimeAttackGhost::path(directory,importedCourse?importedCourse->id:unsigned(courseIndex),reverse,wet);
@@ -555,6 +557,17 @@ struct App {
     void loadLocalTimeAttackRecords(TimeAttackRecords& store,const fs::path& path){
         if(store.load(path)&&store.needsMigration()&&!store.save(path))
             status("Could not archive old Gunsai/Odawara records; original file retained");
+    }
+    void migrateLocalTimeAttackHistory(){
+        // Migrate the cabinet file and every save up front, including slots the
+        // player does not select this session. Loading restored older CSVs later
+        // still filters their retired revisions before any ranking can use them.
+        loadLocalTimeAttackRecords(records,userdataRoot()/"time_attack_records_v1.csv");
+        for(int slot=-1;slot<int(LocalSaveSlots::count);++slot){
+            const auto directory=slot<0?userdataRoot()/"driver_profiles_v1":saveSlots.profileDirectory(unsigned(slot));
+            TimeAttackRecords personal;loadLocalTimeAttackRecords(personal,directory/"hakone_personal_v1.csv");
+        }
+        if(!TimeAttackGhost::removeRetiredOdawaraGhosts(userdataRoot()))status("Some old Odawara ghosts could not be removed; they will not be used");
     }
     void useSaveSlot(int slot){
         activeSaveSlot=slot;saveSlotSeconds=0;
@@ -1110,6 +1123,7 @@ struct App {
         if(!advance){previousRival=rivalVehicle;previousRivalPitch=rivalPitch;previousRivalRoll=rivalRoll;previousRivalWheels=rivalWheels;previousRivalBodyWorld=rivalBodyWorld;}
     }
     void load(){
+        idas3::serviceLoadKeepAlive();
         if(importedCourse){
             course=importedCourse->course(reverse);
             hasOriginalScenery=catalogScenery=false;sceneWet=wet;courseObjects.reset();courseBillboards.reset();courseCrows.reset();
@@ -1117,7 +1131,7 @@ struct App {
             chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
             auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));
             previous=vehicle;segment=0;progress=trackStart;steering=0;cameraReady=false;clock.reset();best=Replay{};bestTime=0;
-            loadSelectedCar();texturesPending=true;return;
+            loadSelectedCar();idas3::serviceLoadKeepAlive();texturesPending=true;return;
         }
         if(courseIndex==8)wet=true;
         if(OriginalCourseCrows::availableFor(unsigned(courseIndex),night,wet)){
@@ -1157,7 +1171,7 @@ struct App {
         trackStart=2.f;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();
         configureCar();auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));previous=vehicle;segment=spawn.segmentIndex;progress=trackStart;steering=0;cameraReady=false;clock.reset();
         best=Replay{};bestTime=0;if(!multiplayer.active&&best.load(ghostPath().string())&&!best.frames.empty())bestTime=best.finishTicks6000?double(best.finishTicks6000)/6000:double(best.frames.back().tick)/60;
-        loadSelectedCar();
+        loadSelectedCar();idas3::serviceLoadKeepAlive();
     }
     void resetHudDrift(){
         hudDrift.reset();hudDriftPoseKnown=false;
@@ -1477,7 +1491,7 @@ struct App {
             rememberSaveCar(activeSaveSlot,unsigned(frontend.car));
     }
     void saveSettings(){if(multiplayer.active)return;flushProfiles();std::ofstream out(userdataRoot()/"settings.txt");out<<courseIndex<<' '<<profile<<' '<<reverse<<' '<<wet<<' '<<night<<' '<<automatic<<' '<<audio.enabled<<' '<<audio.musicTrack<<'\n';std::ofstream native(userdataRoot()/"native_selection.txt");native<<frontend.make<<' '<<frontend.car<<'\n';}
-    void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");useSaveSlot(-1);loadLocalTimeAttackRecords(records,userdataRoot()/"time_attack_records_v1.csv");frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
+    void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");migrateLocalTimeAttackHistory();useSaveSlot(-1);frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
         selectedRaceMusic=loadRaceMusicSelection(userdataRoot(),audio.musicTrack);
     }
     void commands(double dt){
@@ -2501,11 +2515,11 @@ struct App {
         if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
         const auto previousColor=frontend.selectedColor();
         const auto previousStage=frontend.stage;
-        // Keep a covered Mode owner from changing the lobby's car snapshot.
-        // Other owners must still finish their accepted transitions: the
-        // challenger presentation also blocks controls while Rival exits.
+        // Keep the lobby's saved-car snapshot stable without freezing Mode's
+        // entry fade or preventing its selection score from starting.
+        // Other owners still finish their accepted transitions.
         const bool coveredMode=hostDrivingControlsBlocked&&frontend.stage==FrontendStage::Mode;
-        frontend.advance(coveredMode?0:dt);
+        frontend.advance(dt,coveredMode);
         if(frontend.takeSaveCarPreviewReset()){
             loadedProfileCar=-1;
             if(frontend.changingSavedCar&&frontend.stage==FrontendStage::Car)loadSelectedProfile();
@@ -2857,6 +2871,7 @@ struct App {
         setup.night=night;setup.wet=wet;setup.snow=courseIndex==8;
         setup.profile=frontend.battleProfile;setup.enemy=battle?battleProfile.u(24):0u;
         setup.showVersus=battle||multiplayer.active;
+        setup.boostOff=multiplayer.active&&authorityRace&&!authorityRace->setup().boost;
         if(multiplayer.active){
             setup.localNameUtf8=multiplayer.localName;setup.opponentNameUtf8=multiplayer.remoteName;
             setup.showBattleRecords=true;
@@ -3363,6 +3378,12 @@ struct App {
             // when the low shot is less than a metre above an uphill surface.
             if(importedCourse)renderer.nearClip=.1f;
         }
+        // Local main-view lens adjustment, after the authored/dynamic camera
+        // chooses its FOV. Keep 100% bit-identical and leave the independently
+        // authored rear-view, showcase and menu projections untouched.
+        if(!menu&&!vsActive&&cameraFovPercent!=100)
+            renderer.verticalFieldOfView=std::clamp(2.f*std::atan(std::tan(renderer.verticalFieldOfView*.5f)*
+                (float(cameraFovPercent)/100.f)),pi/6.f,2.f*pi/3.f);
         auto& mesh=raceMesh;mesh.vertices.clear();mesh.ranges.clear();mesh.vertices.reserve(140000);
         static const bool copyCourseBaseline=std::getenv("IDAS3_COPY_COURSE_BASELINE")!=nullptr;
         mesh.borrowCachedGeometry=renderer.sceneCapture()!=nullptr&&!copyCourseBaseline;

@@ -1,6 +1,7 @@
 #include "unity_scene_capture.h"
 #include "renderer.h"
 #include "unity_ui_capture.h"
+#include "native_load_keepalive.h"
 #if defined(IDAS3_PORTABLE_SCENE)
 #include "../android/scene_matrix.h"
 #else
@@ -15,9 +16,9 @@
 namespace idas3 {
 void UnitySceneCapture::loadTextures(const NativeTextureBank& bank,bool append){
     if(!append)images_.clear();
-    for(unsigned i=0;i<bank.size();++i)images_.push_back(bank.at(i));
+    for(unsigned i=0;i<bank.size();++i){serviceLoadKeepAlive();images_.push_back(bank.at(i));}
     textures_.clear();textures_.reserve(images_.size());
-    for(const auto& image:images_)textures_.push_back({image.width,image.height,image.argb.size(),image.argb.data()});
+    for(const auto& image:images_){serviceLoadKeepAlive();textures_.push_back({image.width,image.height,image.argb.size(),image.argb.data()});}
     ++frame_.textureGeneration;
 }
 void UnitySceneCapture::capture(const Renderer& r,const Mesh& mesh,Vec3 eye,Vec3 target,bool night,bool wet,

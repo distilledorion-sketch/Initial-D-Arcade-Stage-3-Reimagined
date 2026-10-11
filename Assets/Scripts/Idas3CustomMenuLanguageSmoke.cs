@@ -8,7 +8,7 @@ using UnityEngine;
 using Idas3.Multiplayer;
 
 // Opt-in isolated player diagnostic; renders production menu owners, never
-// connects to Steam or writes to the player's real settings/save directory.
+// connects to online services or writes to the player's real settings/save directory.
 public sealed class Idas3CustomMenuLanguageSmoke:MonoBehaviour
 {
     sealed class Platform:Idas3GameOptions.IPlatform {
@@ -67,7 +67,7 @@ public sealed class Idas3CustomMenuLanguageSmoke:MonoBehaviour
                     if(!font.GetCharacterInfo(c,out var glyph,18,FontStyle.Normal)||glyph.advance<=0)throw new Exception("Missing glyph "+((int)c).ToString("X4"));++glyphs;
                 }
             }
-            pause.OpenAttractOptions();pause.SelectTab(2);for(int i=0;i<5;++i)pause.Navigate(1);
+            pause.OpenAttractOptions();pause.SelectTab(2);for(int i=0;i<6;++i)pause.Navigate(1);
             Debug.Log("Custom menu capture: settings language "+language);
             pause.RequestDiagnosticCapture(target);while(!pause.DiagnosticCaptureReady)yield return null;
             Save(target,"settings-"+language);

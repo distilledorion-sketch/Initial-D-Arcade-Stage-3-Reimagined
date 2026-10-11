@@ -1,5 +1,6 @@
 #include "native_assets.h"
 #include "native_asset_storage.h"
+#include "native_load_keepalive.h"
 #include "unity_ui_capture.h"
 #include <algorithm>
 #include <atomic>
@@ -152,6 +153,7 @@ NativeTextureBank NativeTextureBank::load(const std::filesystem::path& path){
     }
     bank.images.resize(count);std::size_t total=0;
     for(std::uint32_t i=0;i<count;i++){
+        serviceLoadKeepAlive();
         auto index=reader.u32(),w=reader.u32(),h=reader.u32(),size=reader.u32();
         if(index>=count||!bank.images[index].argb.empty()||!w||!h||w>2048||h>2048||std::uint64_t(w)*h*4!=size)throw std::runtime_error("Invalid native texture record");
         total+=size;if(total>256*1024*1024)throw std::runtime_error("Native texture bank budget exceeded");
@@ -169,6 +171,7 @@ NativeModel NativeModel::load(const std::filesystem::path& path){
     auto count=reader.u32();if(!count||count>8192)throw std::runtime_error("Invalid native model chunk count");
     NativeModel model;model.chunks.resize(count);std::size_t totalVertices=0,totalIndices=0,totalRaw=0;
     for(std::uint32_t i=0;i<count;i++){
+        serviceLoadKeepAlive();
         auto& chunk=model.chunks[i];chunk.index=reader.u32();chunk.sourceOffset=reader.u32();chunk.sourceSize=reader.u32();auto batches=reader.u32();
         if(chunk.index!=i||batches>32768)throw std::runtime_error("Invalid native model chunk");
         for(auto& w:chunk.header)w=reader.u32();
@@ -176,6 +179,7 @@ NativeModel NativeModel::load(const std::filesystem::path& path){
         if(!emptyMarker&&(chunk.header[0]!=0x100||chunk.header[6]!=chunk.sourceSize))throw std::runtime_error("Original model header mismatch");
         chunk.batches.resize(batches);
         for(auto& batch:chunk.batches){
+            serviceLoadKeepAlive();
             batch.sourceOffset=reader.u32();auto nv=reader.u32(),ni=reader.u32(),rawSize=reader.u32();
             totalVertices+=nv;totalIndices+=ni;totalRaw+=rawSize;
             if(ni%3||nv>1000000||ni>3000000||rawSize>64000000||totalVertices>4000000||totalIndices>12000000||totalRaw>256*1024*1024)throw std::runtime_error("Native model geometry budget exceeded");
@@ -190,6 +194,7 @@ NativeModel NativeModel::load(const std::filesystem::path& path){
             std::vector<std::uint8_t> original(rawSize);reader.bytes(original.data(),original.size());
             // Validate independent preserved source XYZ/header and UV words on import.
             for(std::size_t vi=0;vi<nv;vi++){
+                if((vi&16383u)==0)serviceLoadKeepAlive();
                 auto readWord=[&](std::size_t off){const auto* p=original.data()+vi*stride+off;return std::uint32_t(p[0])|(std::uint32_t(p[1])<<8)|(std::uint32_t(p[2])<<16)|(std::uint32_t(p[3])<<24);};
                 const auto& v=batch.vertices[vi];
                 if(v.header!=readWord(0)||std::bit_cast<std::uint32_t>(v.position.x)!=readWord(4)||std::bit_cast<std::uint32_t>(v.position.y)!=readWord(8)||std::bit_cast<std::uint32_t>(v.position.z)!=readWord(12))throw std::runtime_error("Native vertex disagrees with original source");

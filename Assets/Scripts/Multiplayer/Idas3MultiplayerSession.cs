@@ -33,7 +33,7 @@ namespace Idas3.Multiplayer
     {
         const uint Magic = 0x504D3349;
         const ushort Protocol = 11;
-        enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs }
+        enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs, LobbyChat }
         // Retain this diagnostic property name; shared simulation is now the
         // normal online path, including rooms with car collisions switched off.
         public bool ExperimentalAuthority { get; } = true;
@@ -53,6 +53,12 @@ namespace Idas3.Multiplayer
         string matchmakingTestScope = "";
         readonly Idas3PlayerInfo[] players = { new Idas3PlayerInfo(), new Idas3PlayerInfo() };
         readonly List<Idas3Room> emptyRooms = new List<Idas3Room>();
+        readonly Idas3LobbyChat lobbyChat=new Idas3LobbyChat();
+        static readonly UTF8Encoding ChatEncoding=new UTF8Encoding(false,true);
+        public const int LobbyChatMaxCharacters=Idas3LobbyChat.MaxCharacters;
+        public IReadOnlyList<Idas3LobbyChatMessage> LobbyChatMessages=>lobbyChat.Messages;
+        public event Action LobbyChatChanged;
+        public bool CanChat=>HandshakeComplete&&InLobby&&transport.Connected&&state=="Lobby"&&!nativeRace&&!HasCourseDraw&&!Busy;
         ulong localNonce, remoteNonce, raceId;
         ulong returnRaceId;
         uint returnRevision;
@@ -157,12 +163,12 @@ namespace Idas3.Multiplayer
         public bool InLobby => transport != null && !string.IsNullOrEmpty(transport.RoomCode);
         public bool IsHost => transport != null && transport.IsHost;
         public bool IsRacing => nativeRace;
-        public bool IsQuickMatching => quickMatch != null && quickMatch.IsActive;
+        public bool IsQuickMatching => transport is IIdas3QueuedMatchmakingTransport queued && queued.IsMatching || quickMatch != null && quickMatch.IsActive;
         bool matchAnnounced;
         public bool ChallengerPending { get; private set; }
         public event Action ChallengerFound;
         public void CompleteChallengerPresentation(){ChallengerPending=false;}
-        public bool Busy => IsQuickMatching || state == "Connecting" || state == "Loading" || state == "Returning" || (transport is Idas3SteamTransport steam && steam.IsBusy);
+        public bool Busy => IsQuickMatching || state == "Connecting" || state == "Loading" || state == "Returning" || (transport is IIdas3MatchmakingTransport matchmaking && matchmaking.IsBusy);
         public bool LocalReady => localReady;
         public bool CanReady => HandshakeComplete&&matchAnnounced&&!ChallengerPending&&!nativeRace&&!HasCourseDraw&&!Busy&&
             (IsHost||acknowledgedLocalPlayerSerial>=localSelectionSerial);
@@ -170,13 +176,22 @@ namespace Idas3.Multiplayer
         public bool HandshakeComplete { get; private set; }
         public bool RaceReleased { get; private set; }
         public string StateName => state;
-        public string StatusText => IsQuickMatching ? quickMatch.Status : state=="Returning" || !string.IsNullOrEmpty(ErrorText) ? status : Busy && transport != null ? transport.Status : status;
+        public string StatusText => IsQuickMatching ? transport is IIdas3QueuedMatchmakingTransport ? transport.Status : quickMatch.Status : state=="Returning" || !string.IsNullOrEmpty(ErrorText) ? status : Busy && transport != null ? transport.Status : status;
         public string ErrorText { get; private set; } = "";
         public string RoomCode => transport?.RoomCode ?? "";
-        public string TransportName => transport?.Kind ?? "Steam";
+        public string TransportName => transport?.Kind ?? "Online";
+        public bool HasOnlinePlayerDetails => transport is Idas3EosTransport;
+        public string OnlinePlayerId => HasOnlinePlayerDetails ? transport.LocalId : "";
+        // One admitted opponent, retained only for this game session so a
+        // disconnect does not remove the ID needed for a moderation report.
+        public string RecentOpponentPlayerId { get; private set; } = "";
+        public string RecentOpponentPlayerName { get; private set; } = "";
+        public string StatsResetNotice { get; private set; } = "";
+        public bool HasCurrentOpponentPlayerId => HasOnlinePlayerDetails && HandshakeComplete &&
+            transport.Connected && RecentOpponentPlayerId.Length != 0 && transport.RemoteId == RecentOpponentPlayerId;
         public bool ActivityRequested {get;set;}
-        internal bool PublishActivity {set {if(transport is Idas3SteamTransport steam)steam.PublishActivity=value&&string.IsNullOrEmpty(matchmakingTestScope);}}
-        public Idas3OnlineActivity Activity=>transport is Idas3SteamTransport steam?steam.Activity:default;
+        internal bool PublishActivity {set {if(transport is IIdas3OnlineActivityTransport activity)activity.PublishActivity=value&&string.IsNullOrEmpty(matchmakingTestScope);}}
+        public Idas3OnlineActivity Activity=>transport is IIdas3OnlineActivityTransport activity?activity.Activity:default;
         public string LobbyName=>Idas3LobbyNames.ForHost(IsHost?transport?.LocalName:remoteName);
         public string ResultText { get; private set; } = "";
         public bool DisconnectedFinish { get; private set; }
@@ -248,22 +263,36 @@ namespace Idas3.Multiplayer
         public void InitializeOnlinePresence()
         {
             if(DisconnectedFinish)return;
-            if (transport == null) SetTransport(TransportIndex == 0 ? (IIdas3Transport)new Idas3SteamTransport() : new Idas3TcpTransport());
+            if (transport == null) SetTransport(TransportIndex == 0 ? (IIdas3Transport)new Idas3EosTransport() : new Idas3TcpTransport());
             if (transport is IIdas3MatchmakingTransport matchmaking) matchmaking.BuildCompatibility=Idas3BuildCompatibility.ForMatchmaking(Compatibility())+matchmakingTestScope;
             if (!Available) { ClearError(); transport.Initialize(); }
         }
         void SetTransport(IIdas3Transport next)
         {
             if (transport != null) { LeaveRoom(); transport.Message -= Receive; transport.PeerChanged -= PeerChanged; transport.Error -= Fail; transport.Dispose(); }
+            if (next is Idas3EosTransport online) online.ApplyStatsResets = ApplyAdministrativeStatsResets;
             impairment.Clear();transport = next; transport.Message += Receive; transport.PeerChanged += PeerChanged; transport.Error += Fail;
             state = "Offline"; localNonce = Nonce();
+        }
+        bool ApplyAdministrativeStatsResets(string playerId, string[] levelIds, string[] fullIds)
+        {
+            const string notice = "An administrator reset your online battle stats. You can earn them again by racing.";
+            bool changed = records.ApplyAdministrativeResets(playerId, levelIds, fullIds, () => {
+                // A frozen race must never commit its old record after reset.
+                // The neutral finish awards no result; already-settled tuning
+                // points stay with the car, independently of online history.
+                if (nativeRace && !recordCommitted) DisconnectRace(notice);
+                else if (InLobby || nativeRace || IsQuickMatching) LeaveRoom();
+            });
+            if (changed) { StatsResetNotice = notice; localReady = remoteReady = false; }
+            return changed;
         }
         public void SelectTransport(int index)
         {
             if (nativeRace || DisconnectedFinish || InLobby || Busy || index < 0 || index > 1) return;
             if (TransportIndex == index && Available) return;
             TransportIndex = index;
-            SetTransport(index == 0 ? (IIdas3Transport)new Idas3SteamTransport() : new Idas3TcpTransport()); OpenMenu();
+            SetTransport(index == 0 ? (IIdas3Transport)new Idas3EosTransport() : new Idas3TcpTransport()); OpenMenu();
         }
         public void ConfigureLocalTest(int port, string name)
         {
@@ -292,6 +321,7 @@ namespace Idas3.Multiplayer
         {
             OpenMenu();if(nativeRace||DisconnectedFinish||!Available||Busy||InLobby||!(transport is IIdas3MatchmakingTransport matchmaking))return;
             ResetPeer();localNonce=Nonce();ClearError();state="Matching";ResultText="";
+            if(transport is IIdas3QueuedMatchmakingTransport queued){quickMatch=null;queued.StartMatchmaking();return;}
             quickMatch=new Idas3QuickMatch(matchmaking,()=>Now,()=>UnityEngine.Random.value,Idas3LobbyNames.ForHost(transport.LocalName));
             quickMatch.Failed+=Fail;
             quickMatch.Matched+=()=>{state="Lobby";status="Opponent found. Choose your car and course, then Ready. One driver's course is selected randomly.";};
@@ -301,15 +331,42 @@ namespace Idas3.Multiplayer
         {
             if(!IsQuickMatching)return;LeaveRoom();status="Quick Match cancelled.";
         }
-        internal void ConfigureQuickMatchSmokeScope()
+        void CancelMatchmaking()
         {
-            if(InLobby||Busy||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-quick-check")<0)
-                throw new InvalidOperationException("Quick Match test scope requires an idle diagnostic session.");
+            quickMatch?.Cancel();
+            if(transport is IIdas3QueuedMatchmakingTransport queued&&queued.IsMatching)queued.CancelMatchmaking();
+        }
+        internal void ConfigureOnlineSmokeScope()
+        {
+            var args=Environment.GetCommandLineArgs();
+            if(InLobby||Busy||Array.IndexOf(args,"-idas3-multiplayer-online-check")<0&&Array.IndexOf(args,"-idas3-multiplayer-unity-check")<0)
+                throw new InvalidOperationException("Online test scope requires an idle diagnostic session.");
             // An isolated build key prevents automated tests from joining or
             // advertising to any real player's compatible room search.
-            matchmakingTestScope="-quick-smoke-"+Guid.NewGuid().ToString("N");
+            matchmakingTestScope="-online-smoke-"+Guid.NewGuid().ToString("N");
+        }
+        internal void ConfigureP2pSmokeScope(string scope)
+        {
+            var args=Environment.GetCommandLineArgs();
+            if(nativeRace||DisconnectedFinish||InLobby||Busy||Array.IndexOf(args,"-idas3-multiplayer-p2p-check")<0&&Array.IndexOf(args,"-idas3-multiplayer-relay-check")<0)
+                throw new InvalidOperationException("Online P2P test scope requires an idle diagnostic session.");
+            if(scope==null||scope.Length<6||scope.Length>64)
+                throw new ArgumentException("Online P2P test scope must contain 6–64 ASCII letters, digits, hyphens or underscores.",nameof(scope));
+            foreach(char c in scope)if(!(c>='A'&&c<='Z'||c>='a'&&c<='z'||c>='0'&&c<='9'||c=='-'||c=='_'))
+                throw new ArgumentException("Online P2P test scope must contain 6–64 ASCII letters, digits, hyphens or underscores.",nameof(scope));
+            // Both isolated players need the same discovery key. Finish any
+            // idle cleanup before the next OpenMenu initializes that identity.
+            LeaveRoom();matchmakingTestScope="-p2p-smoke-"+scope;PublishActivity=false;
         }
         public void ClearError() { ErrorText=""; }
+        public bool SendLobbyChat(string text)
+        {
+            if(!CanChat||!lobbyChat.TryLocal(Clean(transport.LocalName),text,Now,out string clean))return false;
+            byte[] content=ChatEncoding.GetBytes(clean);
+            Send(Packet.LobbyChat,w=>{w.Write(returnRaceId);w.Write(lobbyChat.LocalSequence);w.Write((ushort)content.Length);w.Write(content);});
+            if(!CanChat)return false;
+            LobbyChatChanged?.Invoke();return true;
+        }
         public void SetReady(bool value)
         {
             if (!CanReady || localReady==value) return;
@@ -447,6 +504,9 @@ namespace Idas3.Multiplayer
                         Require(host!=IsHost && name.Length<=128 && car>=0 && car<35,"Invalid driver handshake.");
                         if (HandshakeComplete) { Require(sender==remoteNonce,"Driver session changed unexpectedly."); break; }
                         remoteNonce=sender;remoteName=Clean(name);RemoteSavedCar=helloCar;remoteCar=car;remoteRecord=helloRecord;remotePlayerSerial=helloSerial;RemoteChoice=helloChoice;HandshakeComplete=true;state="Lobby";
+                        if(HasOnlinePlayerDetails && transport.Connected && !string.IsNullOrEmpty(transport.RemoteId)) {
+                            RecentOpponentPlayerId=transport.RemoteId;RecentOpponentPlayerName=remoteName;
+                        }
                         status="Choose your car and course, then Ready. The game randomly selects one driver's complete course pick when the host starts.";
                         if(IsHost)SendLobby(); break;
                     case Packet.Lobby:
@@ -487,6 +547,16 @@ namespace Idas3.Multiplayer
                             }else remoteReady=ready&&playerRev==revision;
                         }
                         SendLobby();break;
+                    case Packet.LobbyChat:
+                        ulong chatRound=r.ReadUInt64(),chatSequence=r.ReadUInt64();
+                        int chatSize=r.ReadUInt16();
+                        Require(chatSize>0&&chatSize<=Idas3LobbyChat.MaxUtf8Bytes&&m.Length-m.Position==chatSize,"Invalid lobby chat message.");
+                        string chatText=ChatEncoding.GetString(r.ReadBytes(chatSize));
+                        Require(chatText.Length<=LobbyChatMaxCharacters,"Lobby chat message is too long.");
+                        // Chat has no sender/name fields. The admitted peer and
+                        // nonce-checked session determine who authored it.
+                        if(CanChat&&chatRound==returnRaceId&&lobbyChat.TryRemote(remoteName,chatText,chatSequence,Now))LobbyChatChanged?.Invoke();
+                        break;
                     case Packet.Load:
                         Require(!IsHost&&!nativeRace&&localReady&&remoteReady,"Unexpected race start.");
                         ulong incomingRace=r.ReadUInt64();Require(incomingRace!=0,"Invalid race identity.");
@@ -625,7 +695,7 @@ namespace Idas3.Multiplayer
             if(ResultPeerLeft)return;
             ResultPeerLeft=true;HandshakeComplete=false;pendingPings.Clear();
             leaving=true;
-            try{quickMatch?.Cancel();transport?.Leave();impairment.Clear();}
+            try{CancelMatchmaking();transport?.Leave();impairment.Clear();}
             finally{leaving=false;}
             // A completed race keeps its result and awards, even if the other
             // driver chooses No while this driver is reading the points page.
@@ -701,25 +771,32 @@ namespace Idas3.Multiplayer
         {
             if(polling||transport==null)return;polling=true;
             try {
-                if(transport is Idas3SteamTransport steam){steam.ActivityRequested=ActivityRequested;steam.ActivityState=Idas3OnlineActivity.StateFor(nativeRace,state,IsQuickMatching,InLobby,HandshakeComplete,DisconnectedFinish);}
+                if(transport is IIdas3OnlineActivityTransport activity){activity.ActivityRequested=ActivityRequested;activity.ActivityState=Idas3OnlineActivity.StateFor(nativeRace,state,IsQuickMatching,InLobby,HandshakeComplete,DisconnectedFinish);}
                 impairment.Flush(transport);transport.Poll();} finally {polling=false;}
         }
         void BeforeFrameCore()
         {
-            // The neutral finish blocks race work, but Steam presence still
-            // reports this connected client as online after leaving its peer.
-            if(DisconnectedFinish){if(transport is Idas3SteamTransport&&Available)PollTransport();return;}
-            if(transport==null||!Available){if(nativeRace)DisconnectRace("The network connection is unavailable.");return;}
+            // Keep service initialization, cleanup and presence progressing
+            // while a neutral finish blocks further race work.
+            if(DisconnectedFinish){PollTransport();return;}
+            if(transport==null){if(nativeRace)DisconnectRace("The network connection is unavailable.");return;}
             PollTransport();
             if(DisconnectedFinish)return;
+            if(!Available){if(nativeRace)DisconnectRace("The network connection is unavailable.");return;}
             quickMatch?.Tick(HandshakeComplete);
+            // Creating a service-hosted room completes before a peer route
+            // exists. Waiting alone must not expire the connection handshake.
+            if(state=="Connecting"&&InLobby&&IsHost&&!transport.Connected&&!IsQuickMatching&&
+                !(transport is IIdas3MatchmakingTransport matchmaking&&matchmaking.IsBusy)){
+                state="Lobby";status="Room open. Share the room code with the second driver.";
+            }
             // Announce only an admitted, compatible peer, once per connection.
             // Transport retries and lobby membership alone are not a match.
             if(HandshakeComplete&&!matchAnnounced&&!nativeRace){
                 matchAnnounced=true;ChallengerPending=true;ChallengerFound?.Invoke();
             }
             double now=Now;
-            if(state=="Connecting" && now-operationAt>35) {Fail("The other driver did not complete the connection.");return;}
+            if(state=="Connecting" && !(transport is IIdas3MatchmakingTransport pending&&pending.IsBusy) && now-operationAt>35) {Fail("The other driver did not complete the connection.");return;}
             if(!HandshakeComplete)return;
             if(state=="Returning"&&now-operationAt>30){Fail("The other driver did not return to the lobby.");return;}
             if(now-lastHeard>(state=="Loading"?60:15)) {Fail("Connection to the other driver timed out.");return;}
@@ -843,6 +920,7 @@ namespace Idas3.Multiplayer
         }
         void ResetPeer()
         {
+            lobbyChat.Clear();
             matchAnnounced=false;ChallengerPending=false;
             HandshakeComplete=false;helloSent=false;remoteNonce=0;localReady=remoteReady=false;bestRtt=double.MaxValue;PingMilliseconds=-1;recentRtt.Clear();RecentRttMilliseconds=JitterMilliseconds=0;
             remoteLoaded=releaseAck=false;releaseAt=0;lastPing=0;
@@ -852,6 +930,7 @@ namespace Idas3.Multiplayer
             remoteRecord=Idas3BattleRecord.Fresh;
             raceId=returnRaceId=0;returnRevision=0;retiredRaceIds.Clear();
             LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
+            LobbyChatChanged?.Invoke();
         }
         void StopRace()
         {
@@ -881,7 +960,7 @@ namespace Idas3.Multiplayer
                 catch(Exception stop){terminalFailure=new InvalidOperationException("Could not stop the disconnected native race.",stop);}
             }
             leaving=true;
-            try {quickMatch?.Cancel();transport?.Leave();}
+            try {CancelMatchmaking();transport?.Leave();}
             catch(Exception e){Debug.LogWarning("IDAS3 disconnect cleanup: "+e.Message);}
             finally {impairment.Clear();leaving=false;}
             RaceDisconnected?.Invoke();
@@ -890,13 +969,13 @@ namespace Idas3.Multiplayer
         {
             if(disposing||leaving||DisconnectedFinish)return;
             if(nativeRace){DisconnectRace(message);return;}
-            if(IsQuickMatching&&quickMatch.HandleTransportError(message))return;
+            if(quickMatch!=null&&quickMatch.IsActive&&quickMatch.HandleTransportError(message))return;
             LeaveRoom();ErrorText=message;status=message;Debug.LogWarning("IDAS3 multiplayer: "+message);
         }
         public void LeaveRoom()
         {
             if(leaving)return;leaving=true;
-            try { quickMatch?.Cancel();if(HandshakeComplete){Send(Packet.Leave);PollTransport();}StopRace();transport?.Leave();ResetPeer();DisconnectedFinish=false;terminalFailure=null;ResultText="";state="Offline";status="Room closed."; }
+            try { CancelMatchmaking();if(HandshakeComplete){Send(Packet.Leave);PollTransport();}StopRace();transport?.Leave();ResetPeer();DisconnectedFinish=false;terminalFailure=null;ResultText="";state="Offline";status="Room closed."; }
             finally {leaving=false;}
         }
         public void Dispose()

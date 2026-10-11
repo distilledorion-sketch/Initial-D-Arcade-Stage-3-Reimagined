@@ -74,7 +74,7 @@ public sealed class Idas3MultiplayerPresentationSmoke : MonoBehaviour
         pendingPeer=Path.GetFullPath(peer);pendingRole=role;
         if(!SamePath(saves,pendingSaves)||SamePath(pendingRoot,pendingPeer)||!File.Exists(Path.Combine(pendingRoot,"ISOLATED_MULTIPLAYER_TEST.txt")))
             throw new IOException("Presentation fixtures require the newly configured private multiplayer save directory.");
-        if(Array.IndexOf(args,"-idas3-multiplayer-steam-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-quick-check")>=0)
+        if(Array.IndexOf(args,"-idas3-multiplayer-online-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-unity-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-quick-check")>=0)
             throw new ArgumentException("Presentation fixtures require the isolated two-peer LAN diagnostic.");
         expectReturn=Array.IndexOf(args,"-idas3-multiplayer-return-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-finish-music-check")>=0;
         expectDisconnect=Array.IndexOf(args,"-idas3-multiplayer-disconnect-check")>=0;

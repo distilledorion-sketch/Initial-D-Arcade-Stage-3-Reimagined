@@ -34,7 +34,9 @@ void battleRecords(OriginalVsBanner& banner,const std::filesystem::path& root){
 
     setup.compactHeader=true;setup.showBattleRecords=true;banner.begin(setup);
     check(!banner.metadataPlacements().empty(),"Online compact header missing course and conditions");
-    for(const auto& p:banner.metadataPlacements())check(p.left>=0&&p.top>=0&&p.left+p.width<=640&&p.top+p.height<=60,"Compact header outside original title bounds");
+    // Localized Myogi's source quad has 0.402px of transparent top padding.
+    const float headerTop=originalUiLanguage()==1?-.5f:0.f;
+    for(const auto& p:banner.metadataPlacements())check(p.left>=0&&p.top>=headerTop&&p.left+p.width<=640&&p.top+p.height<=60,"Compact header outside original title bounds");
     setup.compactHeader=false;
     setup.showBattleRecords=true;setup.battles={400,99};setup.wins={217,85};banner.begin(setup);
     check(banner.displayBattleRecord(0)=="400 BATTLE(S)  217 WIN(S)  54.2%","400/217 screenshot record must truncate54.25 to54.2");
@@ -73,14 +75,15 @@ void battleRecords(OriginalVsBanner& banner,const std::filesystem::path& root){
         for(unsigned side=0;side<2;++side){
             const auto p=banner.battleRecordPlacement(side);
             check(p.left>=16&&p.left+p.width<=624&&p.top>100&&p.top+p.height<480&&p.opacity==1,"Settled record row left the640x480 safe area");
-            unsigned white=0,lavender=0;
+            unsigned white=0,green=0,lavender=0;
             for(int y=std::max(0,int(top+p.top*fit));y<std::min(height,int(std::ceil(top+(p.top+p.height+2)*fit)));++y)
                 for(int x=std::max(0,int(left+p.left*fit));x<std::min(width,int(std::ceil(left+(p.left+p.width)*fit)));++x){
                     const auto color=pixels[std::size_t(y)*width+x];
                     if((color>>24)>0&&(color&255)>180&&((color>>8)&255)>180&&((color>>16)&255)>180)++white;
+                    if((color>>24)>0&&((color>>8)&255)>180&&(color&255)<80&&((color>>16)&255)<80)++green;
                     if((color>>24)>0&&((color>>16)&255)>100&&int(color&255)-int((color>>16)&255)>20)++lavender;
                 }
-            check(white>50,"Original stat row produced no readable white glyphs at tested aspect ratio");
+            check((originalUiLanguage()==1?green:white)>50,"Original stat row lost its language's numeric ink at tested aspect ratio");
             check(lavender>20,"Battle stats lost their original lavender atlas gradient");
         }
     }
@@ -99,6 +102,58 @@ void battleRecords(OriginalVsBanner& banner,const std::filesystem::path& root){
     std::fill(hidden.begin(),hidden.end(),0);banner.paint(hidden,640,480);
     check(std::all_of(hidden.begin(),hidden.end(),[](auto p){return p==0;}),"Disabled VS still painted online record rows");
 }
+
+void recordColumnCapture(OriginalVsBanner& banner){
+    const bool japanese=originalUiLanguage()==1;
+    // Independent bounds from the original stat-label quads: English83 and
+    // Japan Rev C82. The Japanese import adds a30.5px anchor translation,
+    // which must not move the label columns relative to the separate digits.
+    const std::vector<std::array<float,2>> labels=japanese?
+        std::vector<std::array<float,2>>{{254,274},{191,219},{170,198},{278,306},{135,163},{54,82}}:
+        std::vector<std::array<float,2>>{{315,335},{339,367},{207,273},{54,154}};
+    OriginalVsBannerSetup setup;setup.drawBackdrop=false;setup.showBattleRecords=true;
+    setup.localNameUtf8="PLAYER";setup.opponentNameUtf8="RIVAL";
+    for(const auto values:std::array<std::array<std::uint32_t,2>,5>{{{400,217},{99,100},{0,17},{4294967295u,4294967294u},{10000,5000}}}){
+        setup.battles={values[0],values[0]};setup.wins={values[1],values[1]};banner.begin(setup);
+        for(unsigned i=0;i<152;++i)banner.tick();
+        const auto battles=values[0],wins=std::min(values[0],values[1]);
+        const float extraBattles=18.f*std::max(0,int(std::to_string(battles).size())-3);
+        const float extraWins=18.f*std::max(0,int(std::to_string(wins).size())-3);
+        const float natural=(japanese?306.f:367.f)+extraBattles+extraWins;
+        const float scale=std::min(1.f,412.f/natural);
+        std::vector<std::array<float,2>> expected;
+        for(const auto& label:labels){const auto shift=extraBattles+(label[0]>(japanese?100.f:200.f)?extraWins:0.f);expected.push_back({label[0]+shift,label[1]+shift});}
+        auto number=[&](std::uint32_t value,float right,float advance){
+            const auto digits=std::to_string(value);float x=right-float(digits.size())*advance;
+            for(char digit:digits){(void)digit;expected.push_back({x,x+20});x+=advance;}
+        };
+        number(battles,54+extraBattles,18);
+        number(wins,(japanese?135.f:207.f)+extraBattles+extraWins,18);
+        const auto tenths=battles?std::uint64_t(wins)*1000/battles:0;
+        number(unsigned(tenths/10),(japanese?254.f:315.f)+extraBattles+extraWins,14);
+        number(unsigned(tenths%10),(japanese?280.f:341.f)+extraBattles+extraWins,18);
+        Idas3UiEnable(1);Idas3UiBeginFrame(640,480);
+        std::vector<std::uint32_t> pixels(640*480);unityUiClear(pixels.data(),640,480);
+        banner.paint(pixels,640,480);unityUiSubmit(pixels.data(),640,480,false,false,true);
+        UnityUiFrame frame{sizeof(frame)};check(Idas3UiGetFrame(&frame)==1,"Missing battle record capture");
+        std::vector<UnityUiVertex> vertices(frame.vertexCount);
+        check(Idas3UiCopyVertices(vertices.data(),int(vertices.size()))==int(vertices.size()),"Missing record geometry");
+        for(unsigned side=0;side<2;++side){
+            const auto row=banner.battleRecordPlacement(side);
+            check(std::abs(row.width-natural*scale)<.001f,"Stat row width did not follow localized labels");
+            std::vector<std::array<float,2>> actual;
+            for(std::size_t i=0;i+5<vertices.size();i+=6){
+                float left=INFINITY,right=-INFINITY,top=INFINITY,bottom=-INFINITY;
+                for(unsigned j=0;j<6;++j){const auto& v=vertices[i+j];left=std::min(left,v.x);right=std::max(right,v.x);top=std::min(top,v.y);bottom=std::max(bottom,v.y);}
+                if(top>=row.top-1&&bottom<=row.top+row.height+2)actual.push_back({(left-row.left)/scale,(right-row.left)/scale});
+            }
+            check(actual.size()==expected.size(),"Stat labels or digits missing from Unity capture");
+            for(std::size_t i=0;i<expected.size();++i)check(std::abs(actual[i][0]-expected[i][0])<.002f&&std::abs(actual[i][1]-expected[i][1])<.002f,
+                "Localized stat column overlaps or separates from its number at quad "+std::to_string(i));
+        }
+        Idas3UiEnable(0);
+    }
+}
 }
 
 void importedHeaders(OriginalVsBanner& banner,const std::filesystem::path& root){
@@ -107,7 +162,10 @@ void importedHeaders(OriginalVsBanner& banner,const std::filesystem::path& root)
     for(bool night:{false,true})for(bool wet:{false,true}){
         OriginalVsBannerSetup setup;setup.course=course;setup.direction=direction;
         setup.night=night;setup.wet=wet;setup.compactHeader=true;setup.drawBackdrop=false;setup.showVersus=false;
-        banner.begin(setup);const auto source=banner.metadataPlacements();
+        // Imported titles deliberately use the Irohazaka header baseline,
+        // regardless of the original course used for their handling.
+        auto reference=setup;reference.course=5;banner.begin(reference);
+        const auto source=banner.metadataPlacements();
         float firstHeight=0;
         for(unsigned name=0;name<2;++name){
             setup.customCourseName=name?"SADAMINE":"HAKONE";banner.begin(setup);
@@ -127,12 +185,73 @@ void importedHeaders(OriginalVsBanner& banner,const std::filesystem::path& root)
         }
     }
 }
+void boostWarning(OriginalVsBanner& banner,const std::filesystem::path& output){
+    OriginalVsBannerSetup setup;setup.drawBackdrop=false;setup.compactHeader=true;
+    setup.showBattleRecords=true;setup.localNameUtf8="PLAYER";setup.opponentNameUtf8="RIVAL";
+    const auto count=[&](int chunk){const auto draws=banner.chunks();return std::count(draws.begin(),draws.end(),chunk);};
+    banner.begin(setup);check(!count(81)&&!count(82),"Boost warning appeared with boost enabled");
+    setup.boostOff=true;banner.begin(setup);
+    for(unsigned tick=0;tick<=241;++tick){
+        check(count(81)==1,"Boost-off base must stay visible throughout introduction");
+        // Recovered owner+8 starts at0, reaches21, then resets at phase1.
+        const auto counter=tick<22?tick:tick-22;
+        check(count(82)==(counter%30<=9?1:0),"Boost warning blink differs from original counter");
+        banner.tick();
+    }
+    setup.showVersus=false;banner.begin(setup);
+    check(!count(81)&&!count(82),"Solo introduction displayed boost warning");
+    setup.showVersus=true;
+    for(const auto size:std::array<std::array<int,2>,4>{{{640,480},{1280,720},{2560,1080},{800,600}}}){
+        const int width=size[0],height=size[1];
+        const float fit=std::min(width/640.f,height/480.f);
+        std::vector<std::uint32_t> enabled(std::size_t(width)*height,0xff34485bu),disabled=enabled;
+        setup.boostOff=true;banner.begin(setup);for(unsigned i=0;i<152;++i)banner.tick();
+        const auto boxes=banner.metadataPlacements();
+        const auto found=std::find_if(boxes.begin(),boxes.end(),[](const auto& p){return p.chunk==81;});
+        check(found!=boxes.end(),"Boost warning has no placement");const auto box=*found;
+        check(box.left>440&&box.left+box.width<625&&box.top>65&&box.top+box.height<110,
+            "Boost warning is outside its original upper-right placement");
+        banner.paint(enabled,width,height);
+        setup.boostOff=false;banner.begin(setup);for(unsigned i=0;i<152;++i)banner.tick();
+        banner.paint(disabled,width,height);
+        unsigned changed=0;
+        const float left=(width-640*fit)*.5f+box.left*fit,top=(height-480*fit)*.5f+box.top*fit;
+        for(int y=0;y<height;++y)for(int x=0;x<width;++x)if(enabled[std::size_t(y)*width+x]!=disabled[std::size_t(y)*width+x]){
+            ++changed;check(x>=left-1&&x<=left+box.width*fit+1&&y>=top-1&&y<=top+box.height*fit+1,
+                "Boost option moved or repainted another intro element");
+        }
+        check(changed>300,"Original Boost Off artwork did not render");
+        if(!output.empty()&&width==1280){
+            std::filesystem::create_directories(output);
+            std::ofstream image(output/"boost-off.ppm",std::ios::binary);image<<"P6\n"<<width<<' '<<height<<"\n255\n";
+            for(auto pixel:enabled){const char rgb[]{char(pixel>>16),char(pixel>>8),char(pixel)};image.write(rgb,3);}
+            check(bool(image),"Could not write Boost Off rendering evidence");
+        }
+        for(const std::string name:{"HAKONE","ODAWARA","GUNSAI"}){
+            setup.customCourseName=name;setup.boostOff=true;banner.begin(setup);
+            const auto imported=banner.metadataPlacements();
+            const auto warning=std::find_if(imported.begin(),imported.end(),[](const auto& p){return p.chunk==81;});
+            check(warning!=imported.end()&&warning->left==box.left&&warning->top==box.top&&
+                warning->width==box.width&&warning->height==box.height,"Imported title shifted Boost Off warning");
+        }
+        setup.customCourseName.clear();
+    }
+    setup.boostOff=false;banner.begin(setup);check(!count(81)&&!count(82),"Boost warning survived an enabled rematch");
+}
 
 int main(int argc, char** argv) try {
     const std::filesystem::path root = argc > 1 ? argv[1] : ".";
+    if(argc>3)setOriginalUiLanguage(std::stoi(argv[3]));
     check(OriginalVsBanner::available(root), "Start banner assets are not imported");
     OriginalVsBanner banner;
     banner.load(root);
+    // Keep the warning's rule, timing, pixel and aspect checks independently
+    // runnable for focused validation, alongside the full localized suite.
+    if(argc>4&&std::string(argv[4])=="--boost-only"){
+        boostWarning(banner,argv[2]);
+        std::cout<<"PASS "<<checks<<" focused Boost Off checks for language "<<originalUiLanguage()<<".\n";
+        return 0;
+    }
 
     if(argc>2){
         const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
@@ -228,7 +347,9 @@ int main(int argc, char** argv) try {
     check(lit > 2000, "The start banner painted almost nothing");
     ++checks;
     battleRecords(banner,root);
+    recordColumnCapture(banner);
     importedHeaders(banner,root);
+    boostWarning(banner,argc>2?std::filesystem::path(argv[2]):std::filesystem::path{});
     // Unity enables command capture before loading assets. Measurements must
     // still produce pixels, without exporting their temporary surfaces/textures.
     Idas3UiEnable(1);Idas3UiBeginFrame(640,480);

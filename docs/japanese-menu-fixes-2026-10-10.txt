@@ -1,0 +1,66 @@
+JAPANESE MENU AND PRE-RACE CORRECTIONS - October 10, 2026
+
+Pre-race battle records
+The Japanese label mesh contains different columns from the English one.
+The localization importer also centers that mesh, while the separate digits
+keep their original origin. The renderer previously placed every number at
+English coordinates, overlapping Japanese labels and separating the decimal.
+
+The VS renderer now derives Japanese columns from the loaded artwork and
+removes its shared anchor translation. Its natural row width follows the
+Japanese labels. Extra space for large counters shifts the complete win/rate
+group. Original green digits, lavender labels, name animations and Boost Off
+artwork remain intact. The English comparison render is pixel-identical.
+
+Tuning-package menu
+The Japanese import omitted the rival-face bank because it contains portraits.
+Import only its 26 verified type/name text chunks. Preserve all 36 other
+chunks, all 35 original textures and every existing localization bank.
+The card now displays the original Japanese type and character-name artwork.
+The importer supports a selective --bank update without rebuilding other banks.
+
+Custom menu messages
+Add missing Japanese and Simplified Chinese translations for pre-race loading,
+the online result/Continue status messages and four music import errors.
+Native online captions now use the custom-menu language and its bundled font,
+including battle level/points, draw, save failure, waiting, peer left/ready,
+and leave instructions. Rebuild the two native glyph atlases for these labels.
+The original arcade artwork language remains a separate setting. Driver names
+and song metadata are not translated. Captions fit their available width.
+
+Validation
+- Full banner suite: 32,106 English and 32,126 Japanese checks. Checks real
+  captured label/digit geometry for both players, ordinary and maximum totals,
+  numeric ink, row width and source-timed animation.
+- Boost warning App checks: 532 English and 533 Japanese, including rematches.
+- Actual online result/Continue/returned-lobby flow: 21,400 checks per arcade
+  language, including localized caption pixels, unchanged underlying artwork,
+  awarded points/profile persistence, audible SELECT and cleared lobby fade.
+- Native custom save menus: all three languages render, with artwork setting,
+  identity data and default deletion choice preserved.
+- Japanese asset regression: missing tuning bank fails before the addition;
+  all 46 banks pass afterward, including 26 text mappings, exact preservation
+  of other chunks and original textures, bounds and texture references.
+  Verified again against the staged losslessly compressed asset files.
+- Catalog: 660 unique keys, correct placeholders and bundled JP/SC glyph
+  coverage. Unity editor checked 1,320 translated entries; player build passed.
+- Fresh captures reviewed for Japanese mode/car/course, results, Continue and
+  ranking menus. No equivalent column overlap found outside the VS records.
+  Existing full frontend_tests independently fails in both languages on its
+  unrelated factory-color traversal assertion; it was not changed here.
+
+Build
+Builds/Current contains the new compressed Unity player, native plugin,
+caption fonts and localized tuning bank. Two new tuning asset files store
+290,315 bytes instead of 2,737,216 bytes and decode identically.
+Native plugin SHA256:
+AFF8BEEBA01C60C240A7ED0B2856EC800F1D4D4B137F98E775EF2209CF32C53C
+
+Evidence
+Verification/japanese-vs-layout-20261010 (banner checks and before/after images)
+Verification/japanese-menus-20261010 (menu audit, tuning bank regression)
+Verification/japanese-menus-20261010/root (result flow, player build, staging,
+deployment plan and any completed desktop installation report)
+
+No GitHub push or release was made. Desktop installation requires closing the
+running Desktop/Current game; its status is recorded by root/install-report.json.

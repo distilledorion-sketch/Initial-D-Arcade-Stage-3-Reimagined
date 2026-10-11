@@ -55,7 +55,7 @@ public sealed class Idas3MultiplayerHudSmoke
         var args=Environment.GetCommandLineArgs();string actualRoot=Arg(args,"-idas3-multiplayer-smoke");
         if(string.IsNullOrEmpty(actualRoot)||!SamePath(directory,actualRoot)||Arg(args,"-idas3-multiplayer-role")!=role||
             (role!="host"&&role!="join")||Array.IndexOf(args,"-idas3-multiplayer-showcase-check")<0||
-            Array.IndexOf(args,"-idas3-multiplayer-steam-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-quick-check")>=0||
+            Array.IndexOf(args,"-idas3-multiplayer-online-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-unity-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-quick-check")>=0||
             !File.Exists(Path.Combine(directory,"ISOLATED_MULTIPLAYER_TEST.txt"))||!Directory.Exists(Path.Combine(directory,"userdata")))
             throw new InvalidOperationException("Race HUD check requires the explicit isolated two-peer showcase diagnostic.");
         if(active==null){active=new Idas3MultiplayerHudSmoke{root=Path.GetFullPath(directory),role=role};active.report.role=role;}

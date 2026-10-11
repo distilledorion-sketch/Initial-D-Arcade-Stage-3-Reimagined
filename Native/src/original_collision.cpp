@@ -1,4 +1,5 @@
 #include "original_collision.h"
+#include "native_load_keepalive.h"
 #include <cmath>
 #include <fstream>
 #include <limits>
@@ -30,6 +31,7 @@ std::int32_t outsideTriangleEdge(const OriginalCollisionData& data,std::int32_t 
 }
 }
 OriginalCollisionData OriginalCollisionData::load(const std::filesystem::path& source){
+    serviceLoadKeepAlive();
     std::ifstream file(source,std::ios::binary|std::ios::ate);
     if(!file)throw std::runtime_error("Original RCL1 collision data unavailable");
     const auto length=file.tellg();if(length<48||length>16*1024*1024)throw std::runtime_error("Invalid RCL1 collision size");
@@ -42,7 +44,10 @@ OriginalCollisionData OriginalCollisionData::load(const std::filesystem::path& s
         const auto count=read32(bytes,countOffset),offset=read32(bytes,offsetOffset);
         if(count>1000000||offset!=cursor||std::uint64_t(count)*stride>bytes.size()-cursor)throw std::runtime_error("Invalid RCL1 section bounds");
         target.resize(count);
-        for(std::size_t i=0;i<count;++i)for(std::size_t word=0;word<stride/4;++word)target[i][word]=read32(bytes,cursor+i*stride+word*4);
+        for(std::size_t i=0;i<count;++i){
+            if((i&16383u)==0)serviceLoadKeepAlive();
+            for(std::size_t word=0;word<stride/4;++word)target[i][word]=read32(bytes,cursor+i*stride+word*4);
+        }
         cursor+=count*stride;
     };
     decode(out.materials,8,12,36);decode(out.vertices,16,20,32);
@@ -50,6 +55,7 @@ OriginalCollisionData OriginalCollisionData::load(const std::filesystem::path& s
     if(triangles>1000000||offset!=cursor||std::uint64_t(triangles)*16>bytes.size()-cursor)throw std::runtime_error("Invalid RCL1 triangle bounds");
     out.triangles.resize(triangles);
     for(std::size_t i=0;i<triangles;++i)for(std::size_t pair=0;pair<4;++pair){
+        if(pair==0&&(i&16383u)==0)serviceLoadKeepAlive();
         const auto word=read32(bytes,cursor+i*16+pair*4);
         out.triangles[i][pair*2]=std::bit_cast<std::int16_t>(std::uint16_t(word));
         out.triangles[i][pair*2+1]=std::bit_cast<std::int16_t>(std::uint16_t(word>>16));

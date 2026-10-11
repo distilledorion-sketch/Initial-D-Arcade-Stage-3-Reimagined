@@ -1,52 +1,64 @@
-INITIAL D - F1 MULTIPLAYER TEST
+INITIAL D - F1 ONLINE RACING
 
 Open InitialDUnity.exe and press F1.
 
 QUICK MATCH
-Select STEAM ONLINE > QUICK MATCH for automatic opponent finding. The game
-joins a compatible open room, or hosts and waits if none is available.
-CANCEL SEARCH stops discovery and closes the room it created. If two players
-start searching together, their waiting rooms converge on one room.
-After connecting, select cars and READY as usual; the host starts the race.
-Quick Match uses exact build compatibility: update BOTH complete game folders.
+Select ONLINE > QUICK MATCH to find another compatible driver through Epic
+Online Services. CANCEL SEARCH stops waiting. After connecting, choose cars and
+courses, select READY on both PCs, then let the host start the race.
+Both drivers must use the same complete game build.
 
-For Steam online races, each PC needs a different signed-in Steam account
-and the same complete Current folder. Keep steam_appid.txt (480) beside
-the executable. One driver selects STEAM ONLINE > HOST A BATTLE. The
-second refreshes the room list or enters the host's ID3- room code.
-Choose cars, select READY on both PCs, then the host selects START BATTLE.
-Close F1 to drive. The original countdown starts after both PCs load.
+PLAY WITH FRIENDS
+One driver selects ONLINE > HOST A BATTLE. A private room can be joined using
+its room code; a public room also appears in the room list. The second driver
+enters the code or selects the public room. Choose cars and courses, select
+READY on both PCs, then the host selects START BATTLE. Close F1 to drive.
+The original countdown begins after both games finish loading.
 
-LAN DIRECT uses the address and port displayed by the host. Both PCs
-must be reachable on the local network; default TCP port 27035.
+Neither Steam nor an Epic account or launcher is required to play. The game
+authenticates automatically and tries a direct connection between drivers.
+Epic relay is available when a direct connection cannot be established.
+Restrictive outbound firewall policies can still block the connection.
+An unconfigured build can use LAN; the publisher must configure EOS before
+public internet matches can work.
+If initialization fails, check the internet connection and use RETRY ONLINE.
 
-VERIFIED IN THIS BUILD
-- Two actual Unity game processes connected, agreed on AE86/BNR34 cars,
-  readied, started together, drove for over10 seconds and exchanged over
-  350 snapshots each. The remote car and rearview mirror were visible.
-- The actual Unity player initialized the real Steam App480 API, created
-  its own two-slot room, rendered the F1 menu and left cleanly.
-- Native tests cover the180-tick countdown, original physics, remote wheels
-  and lamps, malformed packets, timeout, and save preservation.
-- Protocol checks include600ms delay, incompatible builds, ready changes,
-  stale snapshots, disconnect cleanup and win/lose/draw/time-up outcomes.
+LAN DIRECT
+Enter the address and port displayed by the host. Both PCs must be reachable
+on the local network; the default TCP port is 27035. If Windows asks, allow
+the game on your private network.
 
-A full online race between two Steam accounts on separate PCs has not
-yet been tested here. Local two-client proof and Steam room creation are
-separate checks; they do not establish internet/relay performance.
+RACE AND SAVE BEHAVIOR
+Online races share a verified simulation with prediction and rollback. The
+host chooses whether car collisions are enabled. Saved cars retain tuning,
+appearance and transmission; single-player progress is preserved. Existing
+per-car online battle history remains available after this service change.
 
-CURRENT LIMITS
-This is a noncolliding race test: cars pass through each other. Saved cars keep their upgrades, appearance and transmission through the original handling. Card progress and
-single-player records are preserved. Remote car engine sound and contact
-shadows are not yet added. A disconnect shows a neutral FINISH screen:
-CONNECTION LOST, no result recorded, and 0 points awarded. It records no win
-or loss. Enter/A, Escape/B or RETURN TO MENU leaves this screen. After a
-normal completed race, RETURN TO LOBBY (also Enter/A or Escape/B after
-releasing the control) returns both players to their existing room. Both
-drivers choose Ready again for the next race. A disconnected room needs
-reconnecting; host migration is not implemented.
+A disconnect shows CONNECTION LOST, no result recorded, and 0 points awarded.
+No win or loss is recorded. Enter/A, Escape/B or RETURN TO MENU leaves that
+screen. After a completed race, RETURN TO LOBBY keeps both drivers connected
+for another race. Choose READY again before starting. A disconnected room
+must be joined again; host migration is not implemented.
 
-F1 captures controls while open, but an online race keeps running.
-Press C or controller Y to change between bumper and chase cameras.
-Use LEAVE ROOM before returning to the single-player menus.
+F1 captures controls while open, but an online race keeps running. Press C
+or controller Y to change camera. Use LEAVE ROOM before returning to the
+single-player menus.
 
+VALIDATION SCOPE
+The repository includes deterministic checks for service cancellation,
+discovery recovery, compatibility and lobby chat. Native race checks cover
+synchronization, rollback, disconnect handling, rematches and save preservation.
+Those checks do not by themselves establish live EOS service behavior.
+
+The opt-in blank-scene OnlineProbe can exercise private/public/Quick Match,
+cancel-and-retry, and a twelve-second loading pause. It records the actual
+direct or relayed connection type, validates reliable packet order/content,
+and can require a relayed connection. The full-game P2P smoke uses private
+scoped rooms and isolated game saves for a real race and optional rematch.
+
+Each live test requires a nondefault -idas3-online-profile for separate local
+cache data. This does not guarantee a separate EOS identity: Device ID can
+identify the same OS user across cache profiles. The probes reject duplicate
+product-user identities before creating or joining test rooms. Use two OS
+users or two PCs when necessary; never delete the player's Device ID for a test.
+A local two-client pass does not prove reliability across all home networks.

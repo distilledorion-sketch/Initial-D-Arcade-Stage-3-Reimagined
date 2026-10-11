@@ -1,0 +1,105 @@
+HISTORICAL — superseded by Epic Online Services. See Tools/EOS/setup.txt.
+This document records the earlier Unity prototype, not the current backend.
+
+Unity online replacement — 2026-10-11
+
+The remake now uses Unity Authentication, Multiplayer Services sessions,
+Matchmaker and encrypted Relay for its ONLINE transport. LAN DIRECT retains
+the existing local network transport. Native race simulation and save formats
+are unchanged. Steam is no longer a runtime or build dependency.
+
+Cloud configuration
+  Organization: 20067664339255 (banditnobank)
+  Project: Initial D Arcade Stage 3 Reimagined
+  Project ID: f58d0132-315c-422f-9baf-0e7cc4fdf8ac
+  Environment: production
+  Environment ID: 5b0e682f-e645-4aa7-92e6-57db6d87bfdb
+  Queue: idas3-online (active, default, one player per ticket)
+  Pool: idas3-duel (active, default, client/peer-to-peer hosting)
+  Pool timeout: 120 seconds
+  Match: exactly two teams of one player, no backfill
+  Compatibility: Players.CustomData.compatibility equality across all players
+  Dashboard configuration source: Tools/UnityOnline/idas3-online.mmq
+
+The project ID and environment are public client configuration, not credentials.
+The client signs in anonymously and keeps its Unity identity locally. The two
+players do not need Steam accounts or router port forwarding for Relay. A
+network that blocks Unity's services or outbound traffic can still prevent
+connections; Relay does not override firewall policy.
+
+Public rooms use build-filtered session discovery. Private rooms are entered
+using their room code. Quick Match submits tickets to the configured queue.
+Network peers must also prove membership of the same two-player session before
+the existing game handshake or race messages are accepted. Lobby chat, saved
+cars, course choice, Ready and the native race remain owned by the existing
+session controller.
+
+Packages and protocol
+  Multiplayer Services: 2.4.0
+  Transport: declared 2.7.4; Unity 6000.6 resolves 6.6.0 (packages-lock.json)
+  JSON: Unity's Newtonsoft package 3.2.2 is shared with Discord RPC
+  Assets/Resources/Idas3UnityOnline.json chooses production/idas3-online/dtls
+  The transport also supports encrypted WSS when configured in that resource.
+  WSS is not an automatic fallback.
+
+Important lifecycle constraints
+  Network state is polled on the Unity main thread. Native asset loading and
+  managed course/texture loading also service Relay at most every 100 ms.
+  Received events are copied into a bounded queue and dispatched only after
+  loading returns; the callback must never reenter native gameplay or the SDK.
+  This keeps the allocation and transport acknowledgments alive during course
+  loading. Separate-PC/network testing is still required before release.
+  Canceled requests clear local state immediately, then retire old cloud
+  membership before issuing a replacement join/create request. Old async
+  completions must never remove the replacement room membership.
+  Room and activity requests share rate gates. Retrying a failed create/join
+  first retires only membership carrying that request's exact attempt token.
+
+SDK limitation
+  MPS 2.4 registers a session handle only after initialization and property
+  writes finish. A partial failed creation can therefore have cloud membership
+  without an exposed SDK handle. The exact-attempt cleanup deletes/removes that
+  membership and disposes our route, but cannot stop an inaccessible internal
+  SDK heartbeat. Requests are paced and retries bounded. SDK-owned subscription,
+  refresh and heartbeat calls are outside the client request gates.
+
+Verification artifacts live in Verification/unity-online-20261011. The blank
+probe uses isolated authentication profiles and scoped compatibility values;
+it cannot join regular players. It checks private codes, public discovery or
+Quick Match using two real cloud clients, reliable payload order/content,
+unreliable input-sized payload content and coordinated departure. A probe pass
+is not itself proof of complete race behavior or different-PC determinism.
+
+Verified against real cloud services on this PC
+  private-3: private room host/join cancellation and immediate retry; coordinator
+    then paused its main thread for 12.02 seconds, made 118 keepalive calls, and
+    resumed with all 24 reliable payloads intact and no gameplay callback during
+    the pause. Unreliable receipts were 60/60 and 58/60, with no duplicates.
+  public-2: actual public room discovery and joining, all 24 reliable and 60
+    unreliable messages each way, clean coordinated departure.
+  queue-2: real Matchmaker ticket cancellation/retry and a two-player match,
+    opposite host roles, all 24 reliable and 60 unreliable messages each way.
+  race-1: real native Myogi race through Relay, both clients passed.
+  race-odawara-2: real native Odawara race, 2771/2830 assertions passed; 262/255
+    loading keepalive calls and clean departure. The largest main-thread gaps
+    were 3.62/3.58 seconds. These gaps are diagnostic, not an FPS benchmark.
+  race-rematch: both native Relay clients passed the full results/continue
+    flow, retained the connected lobby, cars and course/music choices, started
+    and drove a second race, then handled guest No and host acknowledgment.
+    Both per-role reports passed (29845/29253 assertions). All 271 ordinary
+    personal save files had identical before/after hashes.
+  Local checks: 10 native callback, 18 request pacing/cleanup, 50 session
+    lifecycle, 51 lobby chat, 16 fallback discovery, 85 Discord/shared JSON, and
+    4270 localization checks. Localization checks cover catalog and formatting,
+    not a new rendered Japanese/Chinese screenshot comparison.
+
+Test authentication and game saves use isolated profiles/directories. Probe
+compatibility scopes prevent matching regular players. Failed earlier attempts
+remain in the verification directory as evidence; the numbered reruns above
+are the corrected results. No GitHub release or desktop installation was made
+by this online migration task.
+
+Legacy Steamworks and the duplicate Discord JSON assembly are preserved under
+ThirdParty, outside Unity's imported assets. They must not be shipped in the
+new player. Existing-user update manifests must remove obsolete Steam files
+while preserving saves and user-supplied game data.

@@ -2,6 +2,34 @@
 
 ## Unreleased
 
+## 0.3.95-community-replays.47 - October 11, 2026
+
+Includes the completed game changes since .46. Both drivers must update for online races. Version .47 is required for new community Time Attack submissions.
+
+- Replace Steam online services with Epic Online Services matchmaking and peer-to-peer connections, with relay fallback when a direct connection cannot be made. Public rooms, private room codes, Quick Match and LAN remain available. No Steam, Epic account sign-in or Epic Launcher is required.
+- Add online Player Details with a verified Player ID and administrator online bans through EOS sanctions.
+- Correct the Water Cup HUD shape, rim and water surface to match the supplied reference while retaining its motion and spill effects.
+- Reset Odawara community leaderboards, individual-car records and their uploaded ghosts/replays for the updated handling. Clear old Odawara local cabinet and save-slot Time Attack records and personal-best ghosts when the updated game loads them. Other tracks and the current season are preserved; old builds and their queued runs cannot repopulate the cleared boards.
+- Add administrator resets for online battle level/aura or full battle stats through EOS sanctions. Apply each reset once across all 35 car models, reapply it when older records are restored, and let players earn progress again. Preserve cars, tuning and Time Attack records. Both drivers need the updated build.
+- Correct Japanese pre-race battle-record spacing so battle counts, wins and win percentages align with their original Japanese labels, including large totals. Preserve the original Japanese artwork and colors.
+- Restore the Japanese type and character-name text on tuning-package cards while retaining the original portraits.
+- Translate the remaining custom online loading/result/Continue messages and music-import errors into Japanese and Simplified Chinese. Keep original arcade text and custom-menu language settings independent.
+- Restore the original flashing "Boost Off!" warning during online and LAN race introductions when boost is disabled. Read the confirmed match rules so the warning stays accurate after lobby changes and rematches.
+- Fix a post-race crash when basic tuning completes on a saved car with advanced engine upgrades. The completion preview now uses the completed-car view instead of interpreting a performance-upgrade index as a basic part. Existing upgrades and points are retained.
+- Add a saved Field of View slider under Gameplay, adjustable from 50% to 200% in 1% steps. 100% retains each camera's original view; wider settings reveal more road in races and replays. Rear-view mirrors, HUD layout and original menu/cinematic cameras retain their original framing.
+- Add pre-race text chat to online and LAN lobbies, with driver names, scrollable room history and Enter-to-send. Keep chat through connected rematches; typing does not change race settings or ready a driver.
+- Restore the original menu music and animated background when both drivers return to the lobby after an online race. Let the menu finish fading in while keeping its timer, car selection and profile changes frozen behind the lobby. Reduce the lobby's background dimming.
+- Improve headlight visibility at night on all nine imported courses. Retain the original projected beam and add a bounded brightness lift inside it so dark imported road textures no longer make the headlights look dim. Original D3 courses and daytime lighting are unchanged.
+- Restore Odawara's night streetlamp lenses and subtle glows at all 105 authored fixture positions, while retaining the light they cast onto the road, scenery and cars. Correct the local lamp update that left glowing bulbs without road illumination. Daytime appearance is unchanged.
+- Fix imported night lighting cutting across uphill roads at camera height by preserving authored lighting normals. Keep Gunsai/Odawara scenery lights fixed in world space so distant lamp pools no longer switch on as they enter the camera's nearest-eight selection; use a small spatial lookup to limit rendering cost.
+- Give Odawara Myogi's per-car acceleration and top-speed settings while retaining Tsuchisaka steering, drift, braking and cornering-loss settings. Replace the previous 27.05% acceleration boost. Apply the same setup to solo and online races, both directions and dry/wet conditions.
+
+Fresh installs: download Initial-D-Setup-0.3.95.47.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Existing players can use the in-game updater; changed-file patches support .20 through .46.
+
+Validation covers native gameplay regressions, update/install fixtures, actual Unity builds, and online transport, record-reset and save-recovery checks. EOS service checks cover distinct Windows/Linux identities and direct/relayed connections; a full EOS race/rematch across two PCs has not been verified.
+
+Cars, tuning, settings, other-course records, personal replay-library recordings and custom music are preserved. A verified original GDS-0033 dump is required and is not included.
+
 ## 0.3.95-community-replays.46 - October 8, 2026
 
 Includes the completed changes since .45. Update both drivers for online races; .46 is required for new community Time Attack submissions.

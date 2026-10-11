@@ -9,6 +9,28 @@ REQUIRED={'InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data/globalgamema
 RETIRED_UNITY_FILES=('globalgamemanagers','globalgamemanagers.assets','globalgamemanagers.assets.resS',
                      'level0','resources.assets','resources.assets.resS','sharedassets0.assets','sharedassets0.assets.resS','Resources/unity_builtin_extra')
 PRIVATE={'userdata','userdata-unity-scene','community-times','replays','custom-music','custom music','admin-access.txt','identity.json','game-options.json','deploy.private.json','library.json','pending.json'}
+# Exact obsolete files verified in the .46 release inventory. Old installers
+# leave omitted files untouched; the EOS player has no Steam runtime reference.
+# This exception does not add deletion instructions or allow directory prefixes.
+RETIRED_STEAM_FILES=frozenset({
+    'InitialDUnity_Data/Managed/com.rlabrecque.steamworks.net.dll',
+    'InitialDUnity_Data/Plugins/Steamworks.NET.txt',
+    'InitialDUnity_Data/Plugins/x86_64/steam_api64.dll',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/controller_generic.vdf',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/controller_ps4.vdf',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/controller_ps5.vdf',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/controller_switch_pro.vdf',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/controller_xbox360.vdf',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/controller_xboxone.vdf',
+    'InitialDUnity_Data/StreamingAssets/SteamInput/steam_input_manifest.vdf',
+    'steam_appid.txt',
+})
+
+def validate_file_removals(before,after):
+    omitted=set(before)-set(after)
+    unexpected=omitted-RETIRED_STEAM_FILES
+    assert not unexpected, ('Unsupported file removals; only the exact retired Steam files may be omitted.', sorted(unexpected))
+    return sorted(omitted)
 
 def inventory(z):
     result={};folded=set()
@@ -47,7 +69,7 @@ def build(base,target,base_version,target_version,out):
     assert not dest.exists(),dest
     with zipfile.ZipFile(base) as old,zipfile.ZipFile(target) as new:
         before=inventory(old);after=inventory(new)
-        assert not before.keys()-after.keys(),'File removals require a full release until explicit removal manifests are supported.'
+        retired=validate_file_removals(before,after)
         files=[]
         for name,record in after.items():files.append(dict(record,included=before.get(name)!=record))
         manifest=dict(schema=1,baseVersion=base_version,targetVersion=target_version,files=files)
@@ -65,7 +87,7 @@ def build(base,target,base_version,target_version,out):
                 source=patch if f['included'] else old
                 with source.open(f['path']) as stream: assert hashlib.file_digest(stream,'sha256').hexdigest()==f['sha256']
     sha=hashlib.file_digest(dest.open('rb'),'sha256').hexdigest()
-    report=dict(archive=str(dest),bytes=dest.stat().st_size,sha256=sha,changedFiles=sum(f['included'] for f in files),totalFiles=len(files),reconstructedTargetVerified=True)
+    report=dict(archive=str(dest),bytes=dest.stat().st_size,sha256=sha,changedFiles=sum(f['included'] for f in files),totalFiles=len(files),reconstructedTargetVerified=True,retiredSteamFilesOmitted=retired)
     dest.with_suffix('.report.json').write_text(json.dumps(report,indent=2))
     print(json.dumps(report),flush=True)
     return report

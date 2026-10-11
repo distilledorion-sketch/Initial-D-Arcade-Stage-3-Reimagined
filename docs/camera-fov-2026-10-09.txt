@@ -1,0 +1,58 @@
+FIELD OF VIEW SLIDER - October 9, 2026
+
+Options > Gameplay > Field of View, immediately below Default Camera.
+Range: 50% to 200%, with 1% mouse-button, keyboard and controller steps.
+The slider rounds pointer adjustments to whole percentages. Apply saves the
+preference in game-options.json; Back discards drafts. Reset proposes 100%.
+Old preferences without the field retain 100% without rewriting the file.
+English, Japanese and Simplified Chinese labels/help are included.
+
+100% preserves each authored camera projection exactly. Other values scale
+the tangent of its half-angle, then clamp the result to 30..120 vertical degrees.
+This retains differences between Bumper, Chase and Natural, including Natural's
+speed response. Regular replay views and freecam use the same preference.
+
+The native camera changes before scene capture, scenery effects and projection
+generation. Unity receives the same view/projection for shader rendering and
+culling; this is not a stretch or a metadata-only fieldOfView change. Mirror,
+HUD, original menus/results and pre-race showcase retain their original framing.
+No physics, replay identity, saved-car profile or network race setting changes.
+
+Initial 150% validation
+- Managed compilation passed with zero errors (23 existing API warnings).
+- 68 focused settings/controller checks passed. Separate original/custom
+  language-row navigation and translated-placeholder checks also passed.
+- 1,608 actual DLL checks passed: all three driving and five replay cameras,
+  main/mirror projection agreement, exact default restoration, invalid input,
+  unchanged title, showcase, returned lobby and simulation state.
+- Unity Windows build succeeded via Idas3CameraFovBuild.Build.
+- Actual Unity player passed 285 checks with nine screenshots: Bumper, Chase
+  and Natural at 50/100/150 percent, draft isolation, exact original restore,
+  native/Unity GPU projection and culling agreement, unchanged mirror and a
+  frozen race. Visually inspected the original/wide Chase pair. The diagnostic
+  uses isolated saves and omits the pause overlay from scene captures.
+Evidence: Verification/fov-20261009, Verification/camera-fov-20261009 and
+Verification/camera-fov-native-20261009.
+Built native plugin SHA256:
+6BD572E6D7126F7A7D47B53A5897F819C92319843E2A5DFD141334BFAE419CC4
+The staged local player is Builds/Current/InitialDUnity.exe.
+
+200% extension requested later the same day
+- Increased the saved option, slider and native API maximum to 200%, retaining
+  1% adjustment and the original 100% default.
+- 76 focused settings/controller checks and 1,731 actual DLL checks passed.
+  Native checks cover all three driving and five replay cameras at the new
+  limit. 200% remains below the 120-degree cap for all three driving cameras.
+- Unity Windows build succeeded. New native plugin SHA256:
+  3CCE6729B5F11DE14AE7CCF734BD1E29677BBF05EF916600404F911793F2CABB
+Evidence: Verification/fov200-20261009, Verification/camera-fov200-20261009
+and Verification/camera-fov200-native-20261009.
+- Installed the current local build to C:/Users/Chris/Desktop/Current. Full
+  baseline comparison covered 19,069 game files; only four files changed
+  (151,412,895 bytes), with backups and verified replacement hashes. This also
+  installs the completed lobby chat/returned-lobby presentation changes.
+- The installed desktop player passed 366 checks and captured twelve views,
+  including 200% in Bumper, Chase and Natural. Test saves were isolated; original
+  saves/settings, ROM, custom music and personal replays remained unchanged.
+  Deployment and verification report: Verification/fov200-20261009/install-report.json.
+  GitHub has not been updated.

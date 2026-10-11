@@ -1,0 +1,5 @@
+{
+  "Environment": "production",
+  "QueueName": "idas3-online",
+  "Protocol": "dtls"
+}

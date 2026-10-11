@@ -30,6 +30,9 @@
    float _ImportedShadowOnly,_ImportedShadowUv,_ImportedAuthoredNormals;
    float4 _ImportedAreaFog,_ImportedAreaFogColor;
    float _ImportedPs2Lighting;
+   float4 _ImportedLampGrid;
+   StructuredBuffer<uint2> _ImportedLampCells;
+   StructuredBuffer<float4> _ImportedLampLights;
    float4 _ImportedNightAmbient;
    float4 _ImportedUntexturedShadow;
    float4 _ImportedSunDirection,_ImportedFogColor,_ImportedFogRange;
@@ -66,20 +69,34 @@ float3 courseRgb(uint word){return float3((word>>16)&255,(word>>8)&255,word&255)
 float3 idasNativeNightAmbient(){return float3(.22,.25,.34);}
 // The same bounded point-light evaluator serves D3 fallback scenery,
 // imported road surfaces, and imported-course car lighting.
-float3 idasCourseLampLight(float3 world,float3 normal){
- float3 result=0;
- [unroll]for(uint i=0;i<8;++i){
-  float3 toLamp=F(14+i).xyz-world;
+float3 idasPointLampLight(float4 lamp,float3 world,float3 normal){
+  float3 toLamp=lamp.xyz-world;
   float d2=dot(toLamp,toLamp),invD=rsqrt(max(d2,1e-5));
   float3 direction=toLamp*invD;
-  float edge=saturate(1-d2*F(14+i).w);
+  float edge=saturate(1-d2*lamp.w);
   float down=smoothstep(.05,.40,direction.y);
   float diffuse=.12+.88*saturate(dot(normal,direction));
-  float strength=F(14+i).w>0?1.6*edge*edge*down*diffuse/(1+.018*d2):0;
-  result+=float3(1,.91,.76)*strength;
- }
+  float strength=lamp.w>0?1.6*edge*edge*down*diffuse/(1+.018*d2):0;
+  return float3(1,.91,.76)*strength;
+}
+float3 idasCourseLampLight(float3 world,float3 normal){
+ float3 result=0;
+ [unroll]for(uint i=0;i<8;++i)result+=idasPointLampLight(F(14+i),world,normal);
  return result;
 }
+#if defined(IDAS_IMPORTED_COURSE)
+float3 idasImportedLampLight(float3 world,float3 normal){
+ if(_ImportedLampGrid.z<=0)return idasCourseLampLight(world,normal);
+ // Match LampCellSize in Idas8ImportedLampLighting. Every intersecting
+ // influence sphere is in the cell, so crossing a cell cannot clip a pool.
+ int2 cell=(int2)floor((world.xz-_ImportedLampGrid.xy)/32);
+ if(any(cell<0)||any(cell>=(int2)_ImportedLampGrid.zw))return 0;
+ uint2 span=_ImportedLampCells[cell.y*(uint)_ImportedLampGrid.z+cell.x];
+ float3 result=0;
+ [loop]for(uint i=0;i<span.y;++i)result+=idasPointLampLight(_ImportedLampLights[span.x+i],world,normal);
+ return result;
+}
+#endif
 // Decode the source ELAN words, retaining quantized directions, separate
 // diffuse/specular masks, material routing and upper-floatword attenuation.
 void courseColors(inout float4 base,inout float4 offset,float3 viewPosition,float3 viewNormal,float gloss){
@@ -286,9 +303,14 @@ float4 mainPS(P v):SV_TARGET{
   // PCT surfaces have no authored normal; recover their face normal for
   // lamp response instead of leaving the original baked road unlit.
   float3 normal=dot(v.n,v.n)>.01?normalize(v.n):normalize(cross(ddy(v.world),ddx(v.world)));
-  if(dot(normal,v.world-eye.xyz)>0)normal=-normal;
+  // IDZero authors upward lighting normals even on sloping road meshes.
+  // Flipping them against the eye cuts the lamp pool at camera height and
+  // moves that cutoff as the car climbs. Preserve these authored directions.
+  if((_ImportedAuthoredNormals==0||dot(v.n,v.n)<=.01)&&dot(normal,v.world-eye.xyz)>0)normal=-normal;
   float3 ambient=_ImportedPs2Lighting!=0?_ImportedNightAmbient.rgb:idasNativeNightAmbient();
-  tint=max(tint,ambient)+idasCourseLampLight(v.world,normal);
+  // Visible lamp lenses/coronas do not light the surrounding geometry.
+  // Keep the point-light contribution on the road and nearby scenery.
+  tint=max(tint,ambient)+idasImportedLampLight(v.world,normal);
  }
  color.rgb*=tint;
  // PCT meshes already contain baked lighting. Only authored normal-bearing

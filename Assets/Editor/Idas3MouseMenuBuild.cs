@@ -14,6 +14,5 @@ public static class Idas3MouseMenuBuild
             scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
             target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Mouse menu build failed");
-        File.WriteAllText(Path.GetDirectoryName(output)+"/steam_appid.txt","480\n");
     }
 }

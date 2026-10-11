@@ -91,7 +91,9 @@ public:
     void enableHakoneCourse(const std::filesystem::path& root,int id=hakoneCourse);
     std::vector<int> courseChoices()const;
     void initialize(const std::filesystem::path& rootPath,bool preloadArtwork=false);
-    void advance(double seconds);
+    // A covering lobby keeps Mode's entry fade, artwork and music alive,
+    // while its input, profile countdown and exit transition stay suspended.
+    void advance(double seconds,bool modeCovered=false);
     void change(int delta);
     void changeColor(int delta);
     unsigned selectedColor()const;

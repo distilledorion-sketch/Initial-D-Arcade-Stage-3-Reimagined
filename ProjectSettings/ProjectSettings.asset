@@ -149,7 +149,7 @@ PlayerSettings:
   loadStoreDebugModeEnabled: 0
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
-  bundleVersion: 0.3.95-community-replays.46
+  bundleVersion: 0.3.95-community-replays.47
   preloadedAssets: []
   metroInputSource: 0
   wsaTransparentSwapchain: 0
@@ -693,12 +693,12 @@ PlayerSettings:
   activeInputHandler: 2
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId: 
+  cloudProjectId: f58d0132-315c-422f-9baf-0e7cc4fdf8ac
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName: 
-  organizationId: 
-  cloudEnabled: 0
+  projectName: Initial D Arcade Stage 3 Reimagined
+  organizationId: 20067664339255
+  cloudEnabled: 1
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
   platformRequiresReadableAssets: 0

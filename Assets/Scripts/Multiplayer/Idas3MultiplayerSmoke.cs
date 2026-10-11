@@ -14,14 +14,14 @@ namespace Idas3.Multiplayer
         private static Idas3MultiplayerSmoke active;
         private static string pendingRoot,pendingRole,pendingAddress,pendingPeerRoot;
         private static int pendingPort,pendingCourse;
-        private static bool pendingSteamCheck,pendingQuickCheck,pendingPauseCheck,pendingShowcaseCheck,pendingCourseDrawCheck,pendingMusicCheck,pendingDisconnectCheck,pendingReturnCheck,pendingFinishMusicCheck;
+        private static bool pendingOnlineCheck,pendingPauseCheck,pendingShowcaseCheck,pendingCourseDrawCheck,pendingMusicCheck,pendingDisconnectCheck,pendingReturnCheck,pendingFinishMusicCheck;
         private Idas3SceneGame host;
         private Idas3MultiplayerSession session;
         private Idas3MultiplayerMenu menu;
         private Idas3PreRaceSmoke showcaseObserver;
         private string root,role,address,peerRoot,phase="initializing";
         private int port,course,checks,pulse,maxPeerRanges,maxPeerMainRanges;
-        private bool finished,frozen,driving,raceObserved,steamCheck,quickCheck,pauseCheck,showcaseCheck,courseDrawCheck,musicCheck,disconnectCheck,returnCheck,finishMusicCheck;
+        private bool finished,frozen,driving,raceObserved,onlineCheck,pauseCheck,showcaseCheck,courseDrawCheck,musicCheck,disconnectCheck,returnCheck,finishMusicCheck;
         private bool returnCheckInProgress,acceleratedReturnWait;
         private bool lobbyAutoClosed,liveMenuReopened,secondLobbyAutoClosed;
         private bool? priorDiagnosticFocus;
@@ -61,7 +61,8 @@ namespace Idas3.Multiplayer
         private static Idas3RaceChoice HostCoursePick=>new Idas3RaceChoice(0,false,false,false);
         private static Idas3RaceChoice GuestCoursePick=>new Idas3RaceChoice(3,true,true,true);
 
-        [Serializable] private class RoomNotice {public string role,code,phase,utc;public int port,course;}
+        [Serializable] private class RoomNotice {public string role,code,phase,utc,probeScope;public int port,course;}
+        [Serializable] private class IdentityNotice {public string role,probeScope,identityHash;}
         [Serializable] private class Progress {
             public ulong localTicks,remoteTicks;
             public long received,sent;
@@ -80,9 +81,12 @@ namespace Idas3.Multiplayer
         }
         [Serializable] private class Report {
             public string schema="idas3-two-client-smoke-v1",applicationVersion=Application.version,role,phase,error,unityVersion,device,roomCode;
-            public string scope="Two real Unity processes using normal LAN loopback/session APIs and isolated original-handling profiles; host car0/join car8, ready/start/countdown, real unscaled frame delta, at least600 source race ticks and10 observed wall seconds, peer geometry and coordinated leave. World captures use diagnostic AA1; the actual menu uses a temporary AA1 screen or its real OnGUI Repaint in an AA1 target. Remote snapshot clock offset includes transport delay. This does not establish internet/Steam relay quality or arbitrary-network reliability.";
-            public bool passed,shutdownComplete,peerLeft,menuInputBlocked,steamRuntimeCheck,quickMatchRuntimeCheck;
-            public bool lobbyAutoClosed,liveMenuReopened,secondLobbyAutoClosed;
+            public string scope="Two real Unity processes using normal LAN loopback/session APIs and isolated original-handling profiles; host car0/join car8, ready/start/countdown, real unscaled frame delta, at least600 source race ticks and10 observed wall seconds, peer geometry and coordinated leave. World captures use diagnostic AA1; the actual menu uses a temporary AA1 screen or its real OnGUI Repaint in an AA1 target. Remote snapshot clock offset includes transport delay. This does not establish internet Relay quality or arbitrary-network reliability.";
+            public bool passed,shutdownComplete,peerLeft,menuInputBlocked,onlineRuntimeCheck;
+            public bool lobbyAutoClosed,liveMenuReopened,secondLobbyAutoClosed,p2pRaceCheck;
+            public string transportName,largestConnectedGapPhase,connectionType;
+            public double maxConnectedFrameGapSeconds,hostStartCallSeconds;
+            public long loadKeepAlivePumps;
             public int checks,course,maxPeerRanges,maxPeerMainRanges;
             public double elapsedSeconds;
             public bool authorityEnabled,menuPixelsChecked,mirrorInputFixture,boostEnabled,collisionsEnabled;
@@ -103,38 +107,52 @@ namespace Idas3.Multiplayer
             public Shot[] captures;
             public Progress[] trajectory;
         }
+        private readonly System.Diagnostics.Stopwatch diagnosticClock=System.Diagnostics.Stopwatch.StartNew();
+        private double lastDiagnosticFrame=-1,maxConnectedFrameGapSeconds,hostStartCallSeconds;
+        private long loadKeepAlivePumpsAtStart;
+        private bool previousFrameConnected;
+        private string largestConnectedGapPhase="";
+        private static bool P2pRaceCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-p2p-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-relay-check")>=0;
+        private static string P2pScope=>Argument(Environment.GetCommandLineArgs(),"-idas3-probe-scope","");
         private static bool WorldOnly=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-world-only")>=0;
         private static bool ObserveStartOnly=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-observe-start")>=0;
         private static bool ChallengerCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-challenger-check")>=0;
         private string roomCode;
+        private string connectionType="unknown";
         private bool peerLeft,menuInputBlocked;
 
         public static bool Configure(ref string saves)
         {
             var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-multiplayer-smoke");
             if(at<0)return false;
+            if(Array.IndexOf(args,"-idas3-multiplayer-steam-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-quick-check")>=0)
+                throw new ArgumentException("The old service diagnostic has been retired. Use -idas3-multiplayer-online-check for a private online room check.");
             if(Array.IndexOf(args,"-idas3-scene-smoke")>=0)throw new ArgumentException("Use one scene diagnostic per process.");
             if(at+1>=args.Length)throw new ArgumentException("Multiplayer smoke needs a NEW output directory.");
             pendingRoot=Path.GetFullPath(args[at+1]);
             if(Directory.Exists(pendingRoot)||File.Exists(pendingRoot))throw new IOException("Use a NEW multiplayer output directory: "+pendingRoot);
             pendingRole=Argument(args,"-idas3-multiplayer-role","").ToLowerInvariant();
             if(pendingRole!="host"&&pendingRole!="join")throw new ArgumentException("Multiplayer role must be host or join.");
-            pendingQuickCheck=Array.IndexOf(args,"-idas3-multiplayer-quick-check")>=0;
             pendingPauseCheck=Array.IndexOf(args,"-idas3-multiplayer-pause-check")>=0;
             pendingShowcaseCheck=Array.IndexOf(args,"-idas3-multiplayer-showcase-check")>=0;
             pendingCourseDrawCheck=Array.IndexOf(args,"-idas3-multiplayer-course-draw-check")>=0;
             pendingMusicCheck=Array.IndexOf(args,"-idas3-multiplayer-music-check")>=0;
             pendingDisconnectCheck=Array.IndexOf(args,"-idas3-multiplayer-disconnect-check")>=0;
             pendingFinishMusicCheck=Array.IndexOf(args,"-idas3-multiplayer-finish-music-check")>=0;
-            pendingReturnCheck=pendingFinishMusicCheck||Array.IndexOf(args,"-idas3-multiplayer-return-check")>=0;
-            pendingSteamCheck=pendingQuickCheck||Array.IndexOf(args,"-idas3-multiplayer-steam-check")>=0;
-            if(pendingSteamCheck&&pendingRole!="host")throw new ArgumentException("Steam runtime smoke uses only its own host room.");
+            pendingReturnCheck=pendingFinishMusicCheck||LobbyChatCheck||Array.IndexOf(args,"-idas3-multiplayer-return-check")>=0;
+            pendingOnlineCheck=Array.IndexOf(args,"-idas3-multiplayer-online-check")>=0||Array.IndexOf(args,"-idas3-multiplayer-unity-check")>=0;
+            if(pendingOnlineCheck&&pendingRole!="host")throw new ArgumentException("Online runtime smoke uses only its own private host room.");
+            if(pendingOnlineCheck&&P2pRaceCheck)throw new ArgumentException("Choose one online service diagnostic per process.");
+            if(P2pRaceCheck&&ChallengerCheck)throw new ArgumentException("Online P2P race diagnostics use private rooms, not public matchmaking.");
+            if((pendingOnlineCheck||P2pRaceCheck)&&Idas3EosOnlineConfig.AuthenticationProfile=="default")
+                throw new ArgumentException("Online diagnostics require a separate -idas3-online-profile so the normal online identity is not used.");
             pendingAddress=Argument(args,"-idas3-multiplayer-address","");
-            if(pendingRole=="join"&&string.IsNullOrWhiteSpace(pendingAddress))throw new ArgumentException("Join diagnostic needs -idas3-multiplayer-address.");
+            if(pendingRole=="join"&&!P2pRaceCheck&&string.IsNullOrWhiteSpace(pendingAddress))throw new ArgumentException("Join diagnostic needs -idas3-multiplayer-address.");
             pendingPeerRoot=Argument(args,"-idas3-multiplayer-peer-output","");
             if(pendingPeerRoot.Length>0)pendingPeerRoot=Path.GetFullPath(pendingPeerRoot);
-            if(pendingDisconnectCheck&&(pendingPeerRoot.Length==0||pendingSteamCheck))throw new ArgumentException("Disconnect check requires two isolated LAN peers and their output directories.");
-            if(pendingReturnCheck&&(pendingPeerRoot.Length==0||pendingSteamCheck||pendingDisconnectCheck))throw new ArgumentException("Return-to-lobby check requires two isolated LAN peers and must run separately from disconnect/Steam checks.");
+            if(P2pRaceCheck&&pendingPeerRoot.Length==0)throw new ArgumentException("Online P2P race diagnostics need -idas3-multiplayer-peer-output for the other isolated client.");
+            if(pendingDisconnectCheck&&(pendingPeerRoot.Length==0||pendingOnlineCheck))throw new ArgumentException("Disconnect check requires two isolated peers and their output directories.");
+            if(pendingReturnCheck&&(pendingPeerRoot.Length==0||pendingOnlineCheck||pendingDisconnectCheck))throw new ArgumentException("Return-to-lobby check requires two isolated peers and must run separately from disconnect/online-service checks.");
             pendingPort=IntegerArgument(args,"-idas3-multiplayer-port",27830,1024,65535);
             pendingCourse=IntegerArgument(args,"-idas3-multiplayer-course",0,0,Idas3CourseCatalog.Count-1);
             Directory.CreateDirectory(pendingRoot);saves=Path.Combine(pendingRoot,"userdata");Directory.CreateDirectory(saves);
@@ -157,8 +175,7 @@ namespace Idas3.Multiplayer
             active=game.gameObject.AddComponent<Idas3MultiplayerSmoke>();
             active.host=game;active.session=owner;active.root=pendingRoot;active.role=pendingRole;
             active.address=pendingAddress;active.peerRoot=pendingPeerRoot;active.port=pendingPort;active.course=pendingCourse;
-            active.steamCheck=pendingSteamCheck;
-            active.quickCheck=pendingQuickCheck;
+            active.onlineCheck=pendingOnlineCheck;
             active.pauseCheck=pendingPauseCheck;
             active.showcaseCheck=pendingShowcaseCheck;
             active.courseDrawCheck=pendingCourseDrawCheck;
@@ -168,6 +185,7 @@ namespace Idas3.Multiplayer
             active.finishMusicCheck=pendingFinishMusicCheck;
             active.priorDiagnosticFocus=game.DiagnosticFocusOverride;game.DiagnosticFocusOverride=true;
             active.began=Time.realtimeSinceStartupAsDouble;
+            active.loadKeepAlivePumpsAtStart=Idas3OnlineTransportPump.NativeLoadKeepAlivePumps;
         }
         internal static bool PreparePhysicalInput(ref Func<KeyCode,bool> key,ref Idas3ControlBindings.PadState pad)
         {
@@ -225,6 +243,11 @@ namespace Idas3.Multiplayer
         private void Update()
         {
             if(finished)return;
+            double diagnosticNow=diagnosticClock.Elapsed.TotalSeconds;
+            if(lastDiagnosticFrame>=0&&previousFrameConnected&&diagnosticNow-lastDiagnosticFrame>maxConnectedFrameGapSeconds){
+                maxConnectedFrameGapSeconds=diagnosticNow-lastDiagnosticFrame;largestConnectedGapPhase=phase;
+            }
+            lastDiagnosticFrame=diagnosticNow;previousFrameConnected=session.HandshakeComplete||session.IsRacing;
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-profile")>=0){QualitySettings.vSyncCount=0;Application.targetFrameRate=240;}
             if(host.Failure!=null){Finish(false,host.Failure);return;}
             double timeout=returnCheck?360:240;
@@ -310,16 +333,21 @@ namespace Idas3.Multiplayer
         {
             yield return Frames(5);Check(host.Ready,"Native game did not initialize.");
             menu=FindFirstObjectByType<Idas3MultiplayerMenu>();Check(menu!=null,"Multiplayer menu component is missing.");
-            if(quickCheck){yield return QuickMatchRuntimeCheck();yield break;}
-            if(steamCheck){yield return SteamRuntimeCheck();yield break;}
-            session.ConfigureLocalTest(port,role=="host"?"SMOKE HOST":"SMOKE JOIN");
+            if(onlineCheck){yield return OnlineRuntimeCheck();yield break;}
+            if(P2pRaceCheck){
+                session.ConfigureP2pSmokeScope(P2pScope);session.OpenMenu();
+                yield return Until(()=>session.Available,45,"Epic online services did not initialize for the isolated race.");
+                Check(session.TransportIndex==0&&session.SupportsPrivateRooms,"Online P2P race did not select a private-room online transport.");
+                yield return CheckOnlineIdentity();
+            }else session.ConfigureLocalTest(port,role=="host"?"SMOKE HOST":"SMOKE JOIN");
             if(course>=11){host.GameOptions.BeginEdit();host.GameOptions.Draft.replayOnline=true;Check(host.GameOptions.ApplyDraft(),"Enable online replay recording");}
-            Check(session.Available,"LAN diagnostic transport is unavailable.");
+            Check(session.Available,"The diagnostic transport is unavailable.");
             session.SetCar(role=="host"?0:8);
             if(ChallengerCheck)session.SetRaceOptions(course,false,course==8,course==4||course==8);
             if(role=="host"){
-                Phase("hosting");if(ChallengerCheck)session.QuickMatch();else session.HostRoom();
-                yield return Until(()=>session.InLobby&&!string.IsNullOrEmpty(session.RoomCode),20,"Host room did not open.");
+                Phase("hosting");if(ChallengerCheck)session.QuickMatch();else session.HostRoom(P2pRaceCheck);
+                yield return Until(()=>session.InLobby&&!string.IsNullOrEmpty(session.RoomCode),P2pRaceCheck?45:20,"Host room did not open.");
+                if(P2pRaceCheck)Check(session.PrivateRoom,"Online P2P diagnostic must create a private room.");
                 roomCode=session.RoomCode;
                 if(ChallengerCheck){
                     var overlay=host.GetComponent<Idas3ChallengerOverlay>();
@@ -336,9 +364,25 @@ namespace Idas3.Multiplayer
                 }
                 session.SetRaceOptions(course,false,course==8,course==4||course==8);
                 File.WriteAllText(Path.Combine(root,"room.json"),JsonUtility.ToJson(new RoomNotice{
-                    role=role,code=roomCode,phase="room-open",port=port,course=course,utc=DateTime.UtcNow.ToString("O")},true));
-            }else{Phase("joining");if(ChallengerCheck)session.QuickMatch();else session.JoinRoom(address);}
+                    role=role,code=roomCode,phase="room-open",port=P2pRaceCheck?0:port,course=course,utc=DateTime.UtcNow.ToString("O"),probeScope=P2pRaceCheck?P2pScope:""},true));
+            }else{
+                Phase("joining");
+                if(P2pRaceCheck){
+                    string noticePath=Path.Combine(peerRoot,"room.json");
+                    yield return Until(()=>File.Exists(noticePath),60,"The private P2P host did not publish its room.");
+                    var notice=JsonUtility.FromJson<RoomNotice>(File.ReadAllText(noticePath));
+                    Check(notice!=null&&notice.role=="host"&&notice.probeScope==P2pScope&&!string.IsNullOrEmpty(notice.code),"The room notice belongs to a different Online P2P diagnostic.");
+                    address=notice.code;
+                }
+                if(ChallengerCheck)session.QuickMatch();else session.JoinRoom(address);
+            }
             yield return Until(()=>session.HandshakeComplete&&PeerConnected(),90,"Two-client handshake did not complete.");
+            if(P2pRaceCheck){
+                connectionType=OnlineTransport().ConnectionType;
+                Check(connectionType=="direct"||connectionType=="relayed","EOS did not report the established peer connection type.");
+                if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-probe-force-relay")>=0)
+                    Check(connectionType=="relayed","The forced-relay race did not establish a relayed connection.");
+            }
             if(ChallengerCheck){
                 var overlay=host.GetComponent<Idas3ChallengerOverlay>();
                 yield return Until(()=>overlay.Active,5,"Admitted peer did not announce challenger");
@@ -367,6 +411,7 @@ namespace Idas3.Multiplayer
             roomCode=session.RoomCode;Phase("car-agreement");
             session.SetCar(role=="host"?0:8);
             yield return Until(CarSelectionAgrees,20,"Both player slots did not agree on car0/car8.");
+            if(LobbyChatCheck)yield return VerifyLobbyChat(false);
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-boost-check")>=0){
                 session.SetReady(true);
                 yield return Until(()=>session.Players[0].Ready&&session.Players[1].Ready,15,"Boost test readiness did not settle");
@@ -442,7 +487,7 @@ namespace Idas3.Multiplayer
             }
             if(courseDrawCheck)yield return CheckIndependentCoursePicks();
             if(HeadlightsCheck){
-                Check(peerRoot.Length>0&&!steamCheck&&!courseDrawCheck,"Headlight check requires two isolated LAN peers.");
+                Check(peerRoot.Length>0&&!onlineCheck&&!courseDrawCheck,"Headlight check requires two isolated peers.");
                 var choice=new Idas3RaceChoice(course,false,false,HeadlightsNight);
                 session.SetRaceOptions(choice.Course,choice.Reverse,choice.Wet,choice.Night);
                 yield return Until(()=>session.CanReady&&session.RemoteChoice.Equals(choice),20,"Headlight fixture conditions did not synchronize.");
@@ -476,7 +521,7 @@ namespace Idas3.Multiplayer
             Check(menu.IsOpen,"Lobby must remain open before starting the auto-close regression.");
             if(role=="host"){
                 yield return Until(()=>session.CanStart,30,"Both drivers did not become ready.");
-                session.StartRace();
+                double loadingAt=diagnosticClock.Elapsed.TotalSeconds;session.StartRace();hostStartCallSeconds=diagnosticClock.Elapsed.TotalSeconds-loadingAt;
             }
             yield return Until(()=>session.IsRacing,30,"Native multiplayer loading did not start.");
             if(ChallengerCheck){
@@ -492,8 +537,8 @@ namespace Idas3.Multiplayer
             if(course>=9){
                 var choice=session.SelectedChoice;
                 bool specialStage=course>=11&&course<=14;
-                uint expected=(specialStage?1048576u:course==10?524288u:course==15?16777216u:0u)|(course>=12&&course<=14?2097152u<<(course-12):0u)|16384u|(choice.Reverse?32768u:0u)|(choice.Night?65536u:0u)|(choice.Wet?131072u:0u);
-                Check((host.Status.flags&(16498688u|16777216u))==expected,"Imported native course/conditions differ from lobby");
+                uint expected=(specialStage?1048576u:course==10?524288u:course==15?16777216u:course==16?33554432u:course==17?67108864u:0u)|(course>=12&&course<=14?2097152u<<(course-12):0u)|16384u|(choice.Reverse?32768u:0u)|(choice.Night?65536u:0u)|(choice.Wet?131072u:0u);
+                Check((host.Status.flags&(16498688u|16777216u|33554432u|67108864u))==expected,"Imported native course/conditions differ from lobby");
                 if(specialStage){var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();Check(enna!=null&&enna.LoadedCourseId==course,"Enna online scenery missing");enna.VerifyPresentation();}
                 else {Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedCourse==Idas8HakoneCourse.CourseName(expected),"Imported online course identity mismatch");
                 Check(FindAnyObjectByType<Idas8HakoneCourse>().LoadedVariant==Idas8HakoneCourse.Variant(expected),"Hakone online scenery variant missing");}
@@ -753,6 +798,7 @@ namespace Idas3.Multiplayer
                 Check(session.LocalSnapshot.sequence==0&&session.RemoteSnapshot.sequence==0&&session.SnapshotsSent==0&&session.RemoteSnapshotsReceived==0,"Return retained a prior race snapshot stream.");
                 Check(!host.PauseMenu.IsOpen&&!host.RaceMusicMenu.IsOpen,"Return left another input overlay active.");
                 Check(SaveFingerprint()==report.saveFingerprint,"Returning to connected lobby modified private saves.");
+                if(LobbyChatCheck)yield return VerifyLobbyChat(true);
                 yield return CaptureMenu("returned-connected-lobby");
                 File.WriteAllText(Path.Combine(root,"returned-lobby-verified.json"),"{\"ready\":true}");
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"returned-lobby-verified.json")),20,"Peer did not verify its reset lobby before re-ready.");
@@ -905,65 +951,62 @@ namespace Idas3.Multiplayer
                 Check(report.windowCardVisible&&menu.DiagnosticRepaints>0,"Actual window does not contain the neutral disconnect card.");
             }finally{if(picture!=null)Destroy(picture);QualitySettings.antiAliasing=oldAa;}
         }
-        private IEnumerator QuickMatchRuntimeCheck()
+        private Idas3EosTransport OnlineTransport()
         {
-            session.ConfigureQuickMatchSmokeScope();session.OpenMenu();
-            Check(session.Available,"Steam is unavailable for the Quick Match runtime check.");
-            menu.SetOpen(true);yield return Frames(3);yield return CaptureMenu("quick-match-browser");
-            session.QuickMatch();Check(session.IsQuickMatching,"Quick Match did not begin searching.");
-            session.CancelQuickMatch();yield return new WaitForSecondsRealtime(1);
-            Check(!session.IsQuickMatching&&!session.InLobby,"A cancelled search created or joined a room.");
-            session.QuickMatch();Phase("quick-match-search");
-            yield return Until(()=>session.IsQuickMatching&&session.InLobby&&session.IsHost,35,"Quick Match did not host after finding no compatible rooms.");
-            roomCode=session.RoomCode;Phase("quick-match-waiting");
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-activity-check")>=0){
-                yield return Until(()=>session.Activity.Available&&session.Activity.Queuing==1,45,"Isolated Steam presence did not count the queuing player.");
-                Check(session.Activity.Online==1&&session.Activity.Racing==0,"Presence counted unrelated Spacewar players or duplicate memberships.");
-                File.WriteAllText(Path.Combine(root,"activity-queuing.json"),JsonUtility.ToJson(session.Activity,true));
-            }
-            yield return new WaitForSecondsRealtime(6);
-            Check(session.IsQuickMatching&&session.InLobby&&session.RoomCode==roomCode,"Waiting search lost or replaced its own room.");
-            Check(!session.HandshakeComplete&&!session.IsRacing,"Isolated matchmaking unexpectedly admitted another player.");
-            menuInputBlocked=menu.BlocksGameInput;Check(menuInputBlocked,"Quick Match menu did not capture input.");
-            yield return CaptureMenu("quick-match-waiting");
-            session.CancelQuickMatch();yield return Frames(12);
-            Check(!session.IsQuickMatching&&!session.InLobby&&!session.IsRacing,"Cancel Search did not leave the hosted lobby.");
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-activity-check")>=0){
-                yield return Until(()=>session.Activity.Available&&session.Activity.Online==1&&session.Activity.Queuing==0,45,"Leaving matchmaking did not update Steam presence.");
-                File.WriteAllText(Path.Combine(root,"activity-online.json"),JsonUtility.ToJson(session.Activity,true));
-            }
-            Phase("quick-match-cancelled");yield return CaptureMenu("quick-match-cancelled");
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-activity-check")>=0){
-                // The existing unique quick-smoke build key also isolates this
-                // manual host room from every ordinary player's browser.
-                session.HostRoom();yield return Until(()=>session.InLobby&&session.IsHost,30,"Manual lobby after Quick Match cancel failed.");
-                yield return CaptureMenu("manual-lobby");session.LeaveRoom();yield return Frames(5);
-                Check(!session.InLobby,"Manual test lobby did not close");
-            }
-            Finish(true,null);
+            var field=typeof(Idas3MultiplayerSession).GetField("transport",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            var online=field?.GetValue(session) as Idas3EosTransport;
+            Check(online!=null,"P2P diagnostic requires the actual EOS transport.");
+            return online;
         }
-        private IEnumerator SteamRuntimeCheck()
+        private IEnumerator CheckOnlineIdentity()
         {
-            Phase("steam-initialization");session.OpenMenu();
-            yield return Until(()=>session.Available,20,"Official Steam runtime did not initialize in the Unity player.");
-            Check(session.TransportIndex==0,"Steam check unexpectedly selected another transport.");
-            session.HostRoom();
-            yield return Until(()=>session.InLobby&&session.IsHost&&!string.IsNullOrEmpty(session.RoomCode),30,"Steam did not create this diagnostic's host lobby.");
+            string local=OnlineTransport().LocalId;
+            Check(!string.IsNullOrWhiteSpace(local),"EOS did not return a local product user.");
+            string identity;
+            using(var hash=System.Security.Cryptography.SHA256.Create())
+                identity=BitConverter.ToString(hash.ComputeHash(System.Text.Encoding.UTF8.GetBytes(local))).Replace("-","").ToLowerInvariant();
+            string ownPath=Path.Combine(root,"online-identity.json");
+            Check(!File.Exists(ownPath),"The diagnostic identity notice already exists.");
+            File.WriteAllText(ownPath+".new",JsonUtility.ToJson(new IdentityNotice{role=role,probeScope=P2pScope,identityHash=identity}));
+            File.Move(ownPath+".new",ownPath);
+            string peerPath=Path.Combine(peerRoot,"online-identity.json");
+            yield return Until(()=>File.Exists(peerPath),45,"The other diagnostic did not publish an EOS identity.");
+            var other=JsonUtility.FromJson<IdentityNotice>(File.ReadAllText(peerPath));
+            Check(other!=null&&other.role==(role=="host"?"join":"host")&&other.probeScope==P2pScope&&!string.IsNullOrEmpty(other.identityHash),"The EOS identity notice belongs to a different diagnostic.");
+            Check(other.identityHash!=identity,"Both diagnostic processes authenticated as the same EOS product user. Separate cache profiles do not guarantee separate Device IDs; use two OS users or two PCs. No normal identity was changed.");
+        }
+        private IEnumerator OnlineRuntimeCheck()
+        {
+            // Cloud smoke creates only an isolated private room, never a public
+            // matchmaking ticket. The session must set its scope before sign-in.
+            session.ConfigureOnlineSmokeScope();
+            Phase("online-initialization");session.OpenMenu();
+            yield return Until(()=>session.Available,45,"Epic online services did not initialize: "+session.ErrorText);
+            Check(session.TransportIndex==0,"Online check unexpectedly selected another transport.");
+            Check(session.SupportsPrivateRooms,"Online transport does not support private rooms.");
+            CheckIsolatedActivity();
+            session.HostRoom(true);
+            yield return Until(()=>session.InLobby&&session.IsHost&&!string.IsNullOrEmpty(session.RoomCode),45,"Online provider did not create this diagnostic's private room.");
+            Check(session.PrivateRoom,"Online diagnostic room must stay private.");
             roomCode=session.RoomCode;
-            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-profile")>=0){
-                var transport=(Idas3SteamTransport)typeof(Idas3MultiplayerSession).GetField("transport",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(session);
-                var costs=transport.DiagnosticMembershipCost();
-                File.WriteAllText(Path.Combine(root,"steam-membership-cost.txt"),string.Format(System.Globalization.CultureInfo.InvariantCulture,
-                    "Own-room live Steam read-only query pair: {0:F6} ms/check; cached identity guard: {1:F6} ms/check; iterations: {2}. No second Steam account or Internet race.\n",costs[0],costs[1],costs[2]));
-            }
             File.WriteAllText(Path.Combine(root,"room.json"),JsonUtility.ToJson(new RoomNotice{
-                role=role,code=roomCode,phase="steam-own-room",port=0,course=session.Course,utc=DateTime.UtcNow.ToString("O")},true));
-            Phase("steam-menu");menu.SetOpen(true);yield return Frames(4);
-            menuInputBlocked=menu.BlocksGameInput;Check(menuInputBlocked,"Steam menu did not capture game input.");
+                role=role,code=roomCode,phase="online-own-private-room",port=0,course=session.Course,utc=DateTime.UtcNow.ToString("O")},true));
+            Phase("online-menu");menu.SetOpen(true);yield return Frames(4);
+            menuInputBlocked=menu.BlocksGameInput;Check(menuInputBlocked,"Online menu did not capture game input.");
             yield return CaptureMenu("lobby");yield return Frames(60);
+            CheckIsolatedActivity();
+            Check(!session.HandshakeComplete&&!session.IsRacing,"Private diagnostic unexpectedly admitted another player.");
             menu.SetOpen(false);session.LeaveRoom();yield return Frames(8);
-            Check(!session.InLobby&&!session.IsRacing,"Steam diagnostic did not leave its own lobby.");
-            Phase("steam-complete");Finish(true,null);
+            Check(!session.InLobby&&!session.IsRacing,"Online diagnostic did not leave its own room.");
+            Phase("online-complete");Finish(true,null);
+        }
+        private void CheckIsolatedActivity()
+        {
+            // This scope never publishes presence and is unique to this run.
+            // A completed empty query may show zero; failed queries stay unknown.
+            var activity=session.Activity;
+            Check(!activity.Available||!activity.Limited&&activity.Online==0&&activity.Queuing==0&&activity.Racing==0,
+                "Isolated diagnostic reported player activity outside its empty scope.");
         }
         private void PeerGeometry(out int ranges,out int mainRanges)
         {
@@ -1037,7 +1080,7 @@ namespace Idas3.Multiplayer
                     remoteSnapshotMinusLocalSeconds=remoteOffset});
             }
         }
-        [Serializable] private class ChallengerReport {public bool passed;public int announcements;public string role;public string scope="Private two-process matchmaking discovery over real TCP. Original challenge banner, background search/offline controls, cancellation, one notification and safe course/lobby transition. Steam internet discovery is not claimed.";}
+        [Serializable] private class ChallengerReport {public bool passed;public int announcements;public string role;public string scope="Private two-process matchmaking discovery over real TCP. Original challenge banner, background search/offline controls, cancellation, one notification and safe course/lobby transition. Internet service discovery is not claimed.";}
         private IEnumerator CaptureChallenger(string name,int width=0,int height=0)
         {
             var overlay=host.GetComponent<Idas3ChallengerOverlay>();
@@ -1149,10 +1192,11 @@ namespace Idas3.Multiplayer
                 Check(shots[shots.Count-1].screenCaptureVisible&&!MenuHeaderVisible(picture),"Actual showcase window is blank or covered by the lobby header.");
             }finally{if(picture!=null)Destroy(picture);QualitySettings.antiAliasing=oldAa;}
         }
-        private static bool MenuHeaderVisible(Texture2D picture)
+        private bool MenuHeaderVisible(Texture2D picture)
         {
-            float scale=Mathf.Min(1.5f,Mathf.Min(picture.width/940f,picture.height/652f));
-            float left=(picture.width-900*scale)*.5f,top=(picture.height-620*scale)*.5f;
+            float height=menu.CanvasHeight;
+            float scale=Mathf.Min(1.5f,Mathf.Min(picture.width/940f,picture.height/(height+32)));
+            float left=(picture.width-900*scale)*.5f,top=(picture.height-height*scale)*.5f;
             int y=Mathf.Clamp(picture.height-1-Mathf.RoundToInt(top+2*scale),0,picture.height-1);
             int accent=0,total=0;
             for(int x=Mathf.RoundToInt(left+10*scale);x<left+890*scale;x+=4){
@@ -1204,7 +1248,7 @@ namespace Idas3.Multiplayer
             var report=new Report{passed=passed,error=error,role=role,phase=phase,shutdownComplete=stopped,peerLeft=peerLeft,
                 lobbyAutoClosed=lobbyAutoClosed,liveMenuReopened=liveMenuReopened,secondLobbyAutoClosed=secondLobbyAutoClosed,
                 menuInputBlocked=menuInputBlocked,checks=checks,course=course,roomCode=roomCode,unityVersion=Application.unityVersion,device=SystemInfo.graphicsDeviceName,
-                steamRuntimeCheck=steamCheck,quickMatchRuntimeCheck=quickCheck,releaseObservedUtc=releaseObservedUtc,firstPoseObservedUtc=firstPoseObservedUtc,
+                onlineRuntimeCheck=onlineCheck,p2pRaceCheck=P2pRaceCheck,transportName=session.TransportName,connectionType=connectionType,maxConnectedFrameGapSeconds=maxConnectedFrameGapSeconds,hostStartCallSeconds=hostStartCallSeconds,largestConnectedGapPhase=largestConnectedGapPhase,loadKeepAlivePumps=Idas3OnlineTransportPump.NativeLoadKeepAlivePumps-loadKeepAlivePumpsAtStart,releaseObservedUtc=releaseObservedUtc,firstPoseObservedUtc=firstPoseObservedUtc,
                 releaseObservedUnixMilliseconds=releaseObservedUnixMilliseconds,releaseObservedRealtime=releaseObservedAt,
                 releaseLocalTick=releaseLocalTick,releaseRemoteTick=releaseRemoteTick,firstLocalTick=firstLocalTick,firstRemoteTick=firstRemoteTick,
                 firstPoseObservedRealtime=firstPoseObservedAt,observedRaceWallSeconds=raceObserved?lastPoseObservedAt-firstPoseObservedAt:0,
@@ -1220,11 +1264,11 @@ namespace Idas3.Multiplayer
                 peakLocalSpeed=peakLocalSpeed,peakRemoteSpeed=peakRemoteSpeed,finalLocal=lastLocal,finalRemote=lastRemote,captures=shots.ToArray(),trajectory=progress.ToArray()};
             if(WorldOnly)report.scope="Two real Unity players using normal TCP/session APIs and " +
                 (session.ExperimentalAuthority?"shared native authority with verified peer digests":"interpolated remote poses without shared authority") +
-                ", isolated profiles and configured outgoing packet impairment. Game world cameras render to diagnostic targets; hidden-window IMGUI pixel verification is explicitly omitted. Race clocks, car geometry, lobby state, and disconnect/return checks are exercised as requested. This is not a two-account Steam internet test.";
+                ", isolated profiles and configured outgoing packet impairment. Game world cameras render to diagnostic targets; hidden-window IMGUI pixel verification is explicitly omitted. Race clocks, car geometry, lobby state, and disconnect/return checks are exercised as requested. This is not an internet Relay test.";
             if(MirrorCheck)report.scope+=" Private input fixture delays the guest throttle for 60 source ticks and holds steering neutral to put the opponent behind the host; mirror visibility requires reviewing the captures.";
             if(ContactMotionCheck)report.scope+=" Thirty-second private braking/merge fixture requires actual native car contact. Motion sampled at end of rendered frame with camera and projected opponent-body coordinates; this does not establish display-panel ghosting.";
-            if(steamCheck)report.scope="Official Steam transport initialized inside the real Unity player, created its own host lobby, rendered the actual F1 menu and left its own lobby. No other rooms or contacts were joined. This validates Steam runtime binding and lobby/menu lifecycle, not a second Steam peer or internet relay performance.";
-            if(quickCheck)report.scope="Actual Unity Quick Match with real Steam and a unique diagnostic build key: cancel in-flight discovery, restart, empty-search host fallback, periodic waiting-room discovery, actual F1 browser/waiting/cancel screenshots and hosted cancellation. No other player's room can match the diagnostic key. This does not prove an online match between two Steam accounts.";
+            if(P2pRaceCheck)report.scope="Two real Unity game processes using production Epic Online Services P2P, private scoped room admission and separate test cache profiles and verified distinct EOS identities. Existing native car agreement, course loading, ready/start/countdown, shared simulation, at least ten seconds of observed driving, received snapshots, peer geometry and coordinated leaving checks run with isolated game saves. The longest main-thread frame gap while connected and host start-call duration are measured. This tests the observed course-loading pause, not every slow-PC duration or arbitrary-network latency.";
+            if(onlineCheck)report.scope="Epic Online Services initialized inside the real player with an isolated build key, created one private host room, rendered the actual F1 menu and left that room. No public matchmaking ticket or other player room was used. This validates service initialization and private-room lifecycle; it does not validate a second peer, a completed match or internet Relay performance.";
             return report;
         }
         private void Finish(bool passed,string error)
@@ -1242,8 +1286,10 @@ namespace Idas3.Multiplayer
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying=false;
 #else
-            Application.Quit(passed?0:1);
+            if(P2pRaceCheck||onlineCheck)StartCoroutine(QuitAfterServiceCleanup(passed));
+            else Application.Quit(passed?0:1);
 #endif
         }
+        private IEnumerator QuitAfterServiceCleanup(bool passed){yield return new WaitForSecondsRealtime(5);Application.Quit(passed?0:1);}
     }
 }

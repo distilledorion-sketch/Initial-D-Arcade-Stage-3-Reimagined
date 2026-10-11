@@ -1,0 +1,48 @@
+Imported-course headlight correction - October 9, 2026
+
+Problem
+The original lightobj chunk 7 headlight projector uses destination-color plus
+one blending. Its output is roadRGB * (1 + beamRGB). On darker imported road
+textures this produces little visible illumination even with the source
+headlight enabled. The native projection, texture, dimensions and source
+headlight switch were present.
+
+Change
+Idas3SceneRenderer recognizes the original emissive/noLight projector by its
+source material words and selects Idas3Headlight. The first pass retains the
+existing source shading and blend/depth state. A second pass uses the same
+geometry and source texture to add:
+
+    0.35 * beamRGB * (1 - destinationRGB)
+
+This lifts dark road areas within the existing beam, with less added light as
+the destination approaches white. Source masks, road projection, texture fade,
+source on/off submission and depth visibility remain authoritative. RGB-only
+fill leaves destination alpha unchanged. There are no new dynamic lights and
+no whole-scene exposure/ambient change. The extra draw uses the existing small
+projector mesh, not the scenery meshes.
+
+The existing native F(7).w flag enables the fill only in imported night races
+and replays. It resets in original D3 tracks, menus and daytime. This covers
+Hakone, Sadamine, Enna Skyline, Shin Myogi, Shin Usui, Momiji Line, Tsubaki Line,
+Gunsai and Odawara. Native physics/plugin and runtime course assets are unchanged.
+The preceding stationary streetlamp and authored-normal corrections are retained.
+
+Validation
+Opt-in -idas3-imported-headlight-check compares the same frozen native frame
+with fill enabled, disabled, the previous original material shader, projectors
+hidden, and a zero view mask. It renders the complete main/mirror/HUD camera
+stack and saves image pairs and measurements without changing personal saves.
+Verification/imported-headlights-20261009 contains the build log, individual
+player reports and installation manifest. See verified.json for completed cases.
+Completed: 15 standalone scenarios passed on D3D11 / Radeon RX 9070 XT. These
+cover all nine imported night courses, base Akina at night, Hakone/Odawara in
+daylight and Hakone/Enna/Odawara on wet roads. Every source-shader comparison
+and hidden-projector/zero-mask comparison was pixel-identical. Night imports
+gained visible illumination; the three original/day controls had no changed
+pixels. Total diagnostic assertions: 54,399.
+Installed in C:/Users/Chris/Desktop/Current with a successful isolated startup
+check. Personal files were unchanged and the native plugin checksum matches
+the prior Desktop build. Installation backups and hashes are in the proof folder.
+Short offscreen checks do not establish full-lap performance or multiplayer
+end-to-end behavior. No GitHub release is made by this local correction.

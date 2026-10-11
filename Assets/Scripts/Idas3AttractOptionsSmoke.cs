@@ -366,7 +366,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720),new Vector2Int(1920,800)}){
             yield return Resize(size.x,size.y,false);yield return Capture("updates-available-"+size.x+"x"+size.y,size.x,size.y);
         }
-        menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);for(int row=0;row<3;++row)menu.Navigate(1);Check(menu.DiagnosticSelection==4,"Full Tune remains available in Gameplay");
+        menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);for(int row=0;row<4;++row)menu.Navigate(1);Check(menu.DiagnosticSelection==5,"Full Tune remains available in Gameplay");
         menu.Back();Check(menu.CategoryFocused,"Back returns to categories");menu.Back();yield return Release();
         yield return Until(()=>menu.AttractPromptVisible,3,"Returned to title prompt");yield return Capture("updates-title-notice");
         pulse=13;yield return Until(()=>host.Status.frontendStage!=0,8,"Game can start after update check");
@@ -758,10 +758,10 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(options.Current.aiDifficulty==0,"Default AI must remain Normal");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=-1}).aiDifficulty==0,"Negative AI setting");
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{aiDifficulty=99}).aiDifficulty==2,"AI setting cap");
-            menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);
+            menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);menu.Navigate(1);
             menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==1,"Controller did not choose Hard");
             menu.NavigateHorizontal(1);Check(options.Draft.aiDifficulty==2,"Controller did not choose Expert");
-            Check(options.Current.aiDifficulty==0,"Unapplied difficulty leaked");for(int row=2;row<menu.OptionRows+2;++row)menu.Navigate(1);menu.Activate();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);
+            Check(options.Current.aiDifficulty==0,"Unapplied difficulty leaked");for(int row=3;row<menu.OptionRows+2;++row)menu.Navigate(1);menu.Activate();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);menu.Navigate(1);
             Check(options.Current.aiDifficulty==2&&Idas3SceneModeFlowValue(34)==2,"Difficulty not applied to native owner");
             var reloaded=new Idas3GameOptions(new OptionsTestPlatform());reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
             Check(reloaded.Current.aiDifficulty==2,"Difficulty did not persist");

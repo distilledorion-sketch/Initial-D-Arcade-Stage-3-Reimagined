@@ -99,6 +99,8 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         Debug.Log("HAKONE condition loaded: "+selected+" / "+data.source);
     }
     void ClearScene(){
+        ClearLampLightingGrid();
+        ClearLampGlows();
         foreach(Transform child in transform){child.gameObject.SetActive(false);Destroy(child.gameObject);}
         if(sourceMeshes!=null)foreach(var mesh in sourceMeshes)Destroy(mesh);
         if(materials!=null)foreach(var material in materials)Destroy(material);
@@ -169,6 +171,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-sadamine-boundary-check")>=0;
         materials=new Material[data.materials.Length];
         for(int i=0;i<materials.Length;i++) {
+            Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
             var s=data.materials[i]; var m=new Material(directShader){name=s.name}; materials[i]=m;
             m.EnableKeyword("IDAS_IMPORTED_COURSE");
             if(direct)m.EnableKeyword("IDAS_IMPORTED_VERTEX_FACES");
@@ -209,11 +212,13 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             Magic(r,"HKN2"); int count=r.ReadInt32(); if(count!=data.shapes) throw new InvalidDataException("Shape count");
             sourceMeshes=new Mesh[count]; sourceMaterials=new int[count];
             for(int shape=0;shape<count;shape++) {
+                Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
                 int mat=r.ReadInt32(),nv=r.ReadInt32(),nt=r.ReadInt32();
                 if(mat<0||mat>=materials.Length||nv<0||nv>2000000||nt<0||nt>6000000) throw new InvalidDataException("Mesh header");
                 Matrix4x4 matrix=Matrix4x4.identity; for(int row=0;row<3;row++) for(int col=0;col<4;col++) matrix[row,col]=r.ReadSingle();
                 var vertices=new Vector3[nv]; var normals=new Vector3[nv]; var uv=new Vector2[nv]; var uv2=new Vector2[nv]; var colors=new Color32[nv];
                 for(int i=0;i<nv;i++) {
+                    if((i&4095)==0)Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
                     vertices[i]=matrix.MultiplyPoint3x4(Vec(r)); normals[i]=matrix.MultiplyVector(Vec(r)); uv[i]=new Vector2(r.ReadSingle(),r.ReadSingle()); uv2[i]=new Vector2(r.ReadSingle(),r.ReadSingle());
                     colors[i]=new Color32(r.ReadByte(),r.ReadByte(),r.ReadByte(),r.ReadByte());
                 }
@@ -278,6 +283,8 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             item.renderer.shadowCastingMode=ShadowCastingMode.Off; item.renderer.receiveShadows=false; scenery.Add(item);
         }
         Debug.Log("HAKONE scenery placements: "+scenery.Count);
+        LoadLampGlows();
+        LoadLampLightingGrid();
         if(direct)Debug.Log($"IDZero tree buffers {LoadedCourse}: vertices {treeVerticesBefore} -> {treeVerticesAfter}; index bytes {treeIndexBytesBefore} -> {treeIndexBytesAfter}");
     }
     internal static int SceneryDirection(string course,string material){

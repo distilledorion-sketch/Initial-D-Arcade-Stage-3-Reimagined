@@ -30,7 +30,7 @@ The checked-in configuration has a placeholder database ID. Production credentia
 
 ## Behavior
 
-- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.46`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
+- New runs require a matching detailed replay, current season and exactly game build `0.3.95-community-replays.47`. The game still requires a verified original ROM. Older builds, future builds and alternate version strings cannot submit times.
 - `REQUIRED_CLIENT_BUILD` is an exact version, not a minimum. The obsolete `MIN_CLIENT_BUILD` variable is ignored. A version mismatch returns permanent HTTP 409 with `code: "client_build_required"` and `requiredBuild`; clients discard that queued run and must complete a new Time Attack in the required build.
 - `/health` and `/api/v1/snapshot` expose `requiredBuild`. Changing this upload policy does not reset the season, delete scores, filter historical builds out of rankings, or restrict existing replay downloads. No migration is needed for the version change.
 - Historical-time imports and replay-less uploads are rejected.
@@ -135,6 +135,36 @@ season and both top-ten cutoffs; preserves original score metadata; verifies the
 expanded replay hash and complete R2 readback; and commits the score, object
 mapping and pruning together. It never modifies the historical source. Remove
 temporary recovery access after verifying the restored boards and replays.
+
+### Odawara .47 handling reset
+
+Migration `0011_odawara_handling_reset_47.sql` clears only Odawara (course 17,
+conditions 34–35), across both directions, weather settings, all car models,
+visibility, rulesets and seasons. It preserves Gunsai and every other course,
+identities, bans and the current season. Replay mappings and D1 replay data are
+removed with the scores; the existing durable queue removes their R2 objects.
+A completion marker prevents a repeat from erasing new post-reset times.
+
+Before applying only migration 0011, enable maintenance, export and validate
+the database, and download and verify every target replay. Inventory R2 keys
+against known current and historical Odawara run IDs to include identifiable
+orphaned upload attempts. Never infer an unknown object's course from its
+filename or delete unrelated objects. Keep backups outside the release.
+
+Verify the frozen cutover preserves all non-Odawara rows and replay mappings,
+then publish .47 and reopen with the existing exact global upload gate set to
+`0.3.95-community-replays.47`. The database insert guard also rejects delayed
+pre-.47 Odawara uploads that passed the old Worker before maintenance. It
+accepts canonical numeric suffixes 47 and higher in the current build family;
+changing the build family requires reviewing this guard. Future submissions
+remain subject to the Worker's exact-version gate.
+
+After cleanup, verify every target object is absent, old public replay URLs
+return 404, and the website overall/model boards and game snapshot contain no
+old Odawara rows. All public responses already use `Cache-Control: no-store`;
+there is no separate KV leaderboard or ghost store. Other course samples must
+still download with unchanged replay hashes. Local in-game boards and local
+ghost invalidation are handled separately by the .47 game update.
 
 ## Online activity
 

@@ -521,7 +521,7 @@ void Frontend::advanceAttractChild(){
         enterAttractChild(next);
     }
 }
-void Frontend::advance(double seconds) {
+void Frontend::advance(double seconds,bool modeCovered) {
     if(!std::isfinite(seconds) || seconds<0)throw std::invalid_argument("Invalid menu frame duration");
     synchronizeStage();
     if(stage==FrontendStage::Car)synchronizeCarousel();
@@ -671,6 +671,18 @@ void Frontend::advance(double seconds) {
             return false;
         }
         if(stage==FrontendStage::Mode){
+            if(modeCovered){
+                modeConfirmPending=false;
+                // Finishing Init's reveal cannot commit a choice or change
+                // the saved-car snapshot. Never tick the interactive phases
+                // here: their timer and accepted confirmations own profile
+                // writes and the transition out of Mode.
+                if(modeTransition.phase468==0)
+                    original::tickOriginalModeMenuTransition(modeTransition,{false,std::uint32_t(gameMode)});
+                original::stepOriginalModeMenu(modeState);
+                original::advanceOriginalModeMenuDraw(modeTransition);
+                return false;
+            }
             modeTransition.profilePoints72=battleProfile.u(72);modeTransition.profileFlags1180=battleProfile.u(1180);
             const auto events=original::tickOriginalModeMenuTransition(modeTransition,{modeConfirmPending,std::uint32_t(gameMode)});
             modeConfirmPending=false;gameMode=original::OriginalGameMode(modeTransition.selected564);

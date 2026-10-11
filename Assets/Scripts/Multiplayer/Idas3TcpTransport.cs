@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Idas3.Multiplayer
 {
     // Direct two-player transport, also used by the real two-process test.
-    // It carries the exact same session messages as the Steam transport.
+    // It carries the exact same session messages as the online P2P transport.
     public sealed class Idas3TcpTransport : IIdas3Transport
     {
         const int MaxMessage = 4096, MaxQueuedBytes = 131072;

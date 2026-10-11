@@ -16,6 +16,5 @@ public static class Idas3IdZeroPerformanceBuild
             scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
             target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
         if(result.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("IDZero performance player failed");
-        File.WriteAllText(Path.Combine(Path.GetDirectoryName(output),"steam_appid.txt"),"480\n");
     }
 }

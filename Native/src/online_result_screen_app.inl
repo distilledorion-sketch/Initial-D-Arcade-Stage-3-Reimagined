@@ -73,22 +73,30 @@ bool renderOnlineResult(){
     const int width=renderer.width,height=renderer.height;
     const float fit=std::min(width/640.f,height/480.f),left=(width-640*fit)*.5f,top=(height-480*fit)*.5f;
     const std::uint32_t* overlay=nullptr;
+    // These captions belong to the remake's online flow. Keep their language
+    // independent of the original arcade artwork selected for the panels.
+    const int language=customMenuLanguage();
+    const bool localized=language&&frontend.localizedMenuFonts[language-1].ready();
+    const auto& captionFont=localized?frontend.localizedMenuFonts[language-1]:onlineResultFont;
+    const auto tr=[&](std::string_view text){return std::string(localized?customMenuText(text):text);};
     auto caption=[&](std::span<std::uint32_t> canvas,const std::string& text,float x,float y,float size){
-        onlineResultFont.paint(canvas,width,height,text,left+x*fit,top+y*fit,size*fit,0xffffffff,0xff000000,fit);
+        const float measured=captionFont.width(text,size),available=616.f-x;
+        if(measured>available)size*=available/measured;
+        captionFont.paint(canvas,width,height,text,left+x*fit,top+y*fit,size*fit,0xffffffff,0xff000000,fit);
     };
     if(onlineResult.page==1){
         hud.resize(width,height);overlay=hud.paintResult(onlineResultPoints,{},false,false,true);
         auto canvas=std::span<std::uint32_t>(const_cast<std::uint32_t*>(overlay),std::size_t(width)*height);
-        caption(canvas,"BATTLE LEVEL "+std::to_string(onlineResultLevel)+"   "+(onlineResultBattlePoints>=0?"+":"")+std::to_string(onlineResultBattlePoints)+" PTS",24,463,12);
-        if(onlineResult.recordFailed)caption(canvas,"BATTLE RECORD COULD NOT BE SAVED",24,4,12);
-        if(onlineResultPoints.draw)caption(canvas,"DRAW",432,38,28);
+        caption(canvas,tr("BATTLE LEVEL")+" "+std::to_string(onlineResultLevel)+"   "+(onlineResultBattlePoints>=0?"+":"")+std::to_string(onlineResultBattlePoints)+" "+tr("PTS"),24,463,12);
+        if(onlineResult.recordFailed)caption(canvas,tr("BATTLE RECORD COULD NOT BE SAVED"),24,4,12);
+        if(onlineResultPoints.draw)caption(canvas,tr("DRAW"),432,38,28);
     }else{
         onlineResultPixels.assign(std::size_t(width)*height,0u);unityUiClear(onlineResultPixels.data(),width,height);
         onlineContinueArtwork.paintChoice(onlineResultPixels,width,height,original::OriginalLegendChoiceKind::Continue,
             unsigned(onlineResult.selected),onlineResult.countdown);
         const char* status=onlineResult.peerLeft?"THE OTHER DRIVER LEFT":onlineResult.decision==1?"WAITING FOR THE OTHER DRIVER...":onlineResult.peerReady?"OPPONENT READY":"";
-        if(*status)caption(onlineResultPixels,status,24,432,18);
-        if(onlineResult.decision==1)caption(onlineResultPixels,"ESC / B  LEAVE",24,457,13);
+        if(*status)caption(onlineResultPixels,tr(status),24,432,18);
+        if(onlineResult.decision==1)caption(onlineResultPixels,tr("ESC / B  LEAVE"),24,457,13);
         overlay=onlineResultPixels.data();
     }
     renderer.screenFadeArgb=onlineResult.page==1?onlineResult.pointsFrame.fadeAlpha<<24:0;

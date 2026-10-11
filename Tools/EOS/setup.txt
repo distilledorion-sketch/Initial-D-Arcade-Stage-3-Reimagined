@@ -1,0 +1,82 @@
+EOS desktop multiplayer setup
+
+The active internet provider is Epic Online Services (EOS). LAN remains a
+separate option. Unity Matchmaker/Relay and Steam are not runtime fallbacks.
+The historical Unity implementation is archived outside Assets.
+
+Runtime package
+---------------
+Packages/manifest.json references the local com.initiald.eos-sdk package in
+ThirdParty/EOS. Its unmodified C# SDK and Windows/Linux x64 native libraries
+come from the official EOS Unity plugin. ThirdParty/EOS/README.txt records
+the source release, checksums and licenses. The full plugin, its managers,
+samples and editor automation are not included in the player.
+
+Local game-client configuration
+-------------------------------
+Copy Idas3EosOnline.example.json into Assets/Resources/Idas3EosOnline.json and
+fill it using the project's EOS Product Settings > SDK Download & Credentials.
+The configuration is intentionally ignored by Git. The game-client credential
+is included in the compiled game; never substitute an organization, admin,
+trusted-server or deployment-service credential. The build helper validates
+the configuration before building.
+
+Client policy: Custom, User required enabled, only these actions enabled:
+  lobbies:connect
+  lobbies:readLobby
+  lobbies:findLobbies
+  sanctions:findActiveSanctionsForAnyUser
+The sanctions permission reads the compact active restrictions for either
+driver. It cannot create, edit or remove bans. See moderation.txt for the
+administrator workflow and the action names this game enforces.
+The Connect service's trusted-server account-query actions are not needed.
+Do not enable Epic Account Services, social overlay, launcher enforcement,
+commerce or billing features for this multiplayer integration.
+
+Player connection
+-----------------
+EOS Connect Device ID signs the local player in automatically. This does not
+use an Epic account, an Epic sign-in page or the Epic Games Launcher. The SDK
+stores the identity under the current operating-system user. The game's test
+cache-profile argument does not create a second player identity on Windows.
+
+Public rooms and Quick Match use separate EOS lobby search buckets containing
+the protocol/build compatibility hash. Quick Match searches for an open room,
+then hosts one if needed; a total room-ID ordering joins simultaneous hosts.
+This is matchmaking implemented using EOS lobby discovery, not a hosted skill
+rating or ticket-queue service.
+
+Private rooms are unlisted and require their randomly generated room code.
+Only verified members of the same compatible two-player lobby can establish
+the P2P socket. The transport tries a direct route first and permits EOS relay
+fallback. An authenticated peer must complete the game's handshake before
+game messages are delivered.
+
+During synchronous native loading, the SDK and network queues are serviced
+without dispatching gameplay callbacks. Bounded buffering prioritizes reliable
+messages over stale position snapshots. Normal polling rechecks membership
+before gameplay resumes. Leaving or canceling a request also retires any lobby
+that finishes creating/joining afterward; cleanup failure blocks another join.
+
+Build and verification
+----------------------
+Idas3OnlineBuild.BuildProbe builds the isolated Windows transport probe.
+Idas3OnlineBuild.BuildCurrent builds the existing staged game directory and
+preserves its native data. Root diagnostic outputs are under Verification.
+
+Offline tests under Tests/Multiplayer cover packet limits/corruption, automatic
+authentication callbacks, room membership and game-session lifecycle. Their
+faked SDK boundaries do not prove service connectivity. Use actual EOS client
+tests to verify authentication, public/private discovery, Quick Match, packet
+delivery, cancellation and loading stalls.
+
+Two simultaneous Windows game copies under one Windows user share the EOS
+Device ID. A valid live two-player test needs distinct verified EOS identities,
+such as another device/OS profile. A disposable isolated Linux diagnostic can
+also be used, but its credential directory must be on a Linux filesystem with
+secure permissions, not a Windows-mounted directory exposing mode 0777.
+Always compare actual returned identity hashes before accepting a test.
+
+Never run multiplayer diagnostics against the user's real save directory.
+Never include game ROM files, personal saves or diagnostic credentials in a
+source commit or public test artifact.

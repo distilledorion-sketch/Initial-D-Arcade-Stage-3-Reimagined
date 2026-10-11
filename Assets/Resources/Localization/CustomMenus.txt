@@ -1,4 +1,12 @@
 # English source text<TAB>Japanese<TAB>Simplified Chinese. Literal \n is a line break.
+LOBBY CHAT	ロビーチャット	大厅聊天
+TYPE A MESSAGE	メッセージを入力	输入消息
+SEND	送信	发送
+ENTER TO SEND / ESC TO STOP TYPING	Enterで送信 / Escで入力終了	Enter发送 / Esc结束输入
+Pre-race messages / visible to both drivers	レース前の会話 / 両プレイヤーに表示	赛前消息 / 双方车手可见
+Chat is available when both drivers are in the lobby.	両プレイヤーがロビーにいるとチャットできます。	双方车手都在大厅时可以聊天。
+Say hello or agree on the next race.	挨拶や次のレースの相談をしましょう。	打个招呼，或商量下一场比赛。
+Wait a moment before sending another message.	次のメッセージを送信するまで少しお待ちください。	请稍等片刻再发送下一条消息。
 TEMPORARY DEVICE / {0}	一時デバイス / {0}	临时设备 / {0}
 ACTIVE / {0}	使用中 / {0}	当前设备 / {0}
 CONTROLLER / {0}	コントローラー / {0}	手柄 / {0}
@@ -113,6 +121,14 @@ Host a LAN room or enter the host's address.	LANルームを作成するか、�
 Both drivers must be reachable on the same network.	両ドライバーが同じネットワークで通信できる必要があります。	双方车手必须能在同一网络上互相连接。
 {0} / 2 DRIVERS	{0} / 2人	{0} / 2名车手
 BATTLE FINISHED	対戦終了	对战结束
+BATTLE LEVEL	対戦レベル	对战等级
+PTS	ポイント	点数
+BATTLE RECORD COULD NOT BE SAVED	対戦記録を保存できませんでした	无法保存对战记录
+DRAW	引き分け	平局
+THE OTHER DRIVER LEFT	相手が退出しました	对手已离开
+WAITING FOR THE OTHER DRIVER...	相手を待っています…	正在等待对手…
+OPPONENT READY	相手は準備完了	对手已准备
+ESC / B  LEAVE	ESC / B  退出	ESC / B  退出
 AT  /  CHANGE	AT / 変更	自动挡 / 更改
 MT  /  CHANGE	MT / 変更	手动挡 / 更改
 BOOST {0} / CAR COLLISIONS {1}	ブースト {0} / 車同士の接触 {1}	追赶加速 {0} / 车辆碰撞 {1}
@@ -130,6 +146,7 @@ High latency — contact corrections may be noticeable	遅延大 — 接触時�
 Moderate latency	遅延中	中等延迟
 Low latency	遅延小	低延迟
 Each driver's course pick has a 50% chance.	両ドライバーのコースが50%の確率で選ばれます。	双方所选赛道各有50%的几率被选中。
+RANDOM SELECTION: {0}'S PICK. Loading both cars, then the showcase and countdown.	抽選結果：{0}さんのコース。車両を読み込み、紹介演出とカウントダウンを開始します。	随机结果：采用{0}的赛道设置。正在加载双方车辆，随后展示车辆并倒计时。
 Share the room code. Both drivers must select Ready before the host starts.	ルームコードを共有してください。両者が準備完了になるとホストが開始できます。	分享房间代码。双方均准备好后，房主即可开始。
 Opponent found. Choose your car and course, then Ready. One driver's course is selected randomly.	相手が見つかりました。車とコースを選び、準備完了にしてください。コースはどちらかを抽選します。	已找到对手。选择车辆和赛道后准备。系统将随机选择一方的赛道。
 Quick Match cancelled.	クイックマッチを中止しました。	快速匹配已取消。
@@ -265,6 +282,10 @@ Use an MP3, OGG or WAV up to 100 MB (64 songs maximum).	100MB以下のMP3・OGG�
 This song is already in Custom Music.	この曲は追加済みです。	此歌曲已在自定义音乐中。
 Importing music…	音楽を追加中…	正在导入音乐…
 This audio file could not be decoded. Try another MP3, OGG or WAV.	音声をデコードできません。別のMP3・OGG・WAVを試してください。	无法解码此音频文件。请尝试其他MP3、OGG或WAV文件。
+Use mono/stereo audio up to 48 kHz, 10 minutes and 64 MB decoded.	48kHz以下、10分以内、展開後64MB以下のモノラルまたはステレオ音声を使用してください。	请使用不超过48kHz、10分钟且解码后不超过64MB的单声道或立体声音频。
+Audio samples could not be read.	音声サンプルを読み込めませんでした。	无法读取音频采样数据。
+The music file changed during import. Try again.	追加中に音楽ファイルが変更されました。もう一度お試しください。	音乐文件在导入期间发生了变化。请重试。
+Invalid audio samples.	音声サンプルが不正です。	音频采样数据无效。
 Music added.	音楽を追加しました。	音乐已添加。
 Music could not be saved. Check available disk space.	音楽を保存できませんでした。空き容量を確認してください。	无法保存音乐。请检查磁盘可用空间。
 Missing {0}.	{0}がありません。	缺少{0}。
@@ -292,6 +313,8 @@ SHOW FRAME RATE	FPSを表示	显示帧率
 Turn off VSync to use the frame limit.	フレーム上限を使うには垂直同期をオフにしてください。	关闭垂直同步后可设置帧率上限。
 Display changes must be confirmed within 15 seconds.	画面設定の変更は15秒以内に確認してください。	更改显示设置后请在15秒内确认。
 DEFAULT CAMERA	標準カメラ	默认镜头
+FIELD OF VIEW	視野角	视野角
+100% keeps each camera's original view. Higher values show more road. Apply to save.	100%で各カメラの元の視野を維持します。値を上げると、より広い範囲の道路が見えます。「適用」で保存します。	100%保留各镜头的原始视野。数值越高，能看到的道路范围越广。点击“应用”保存。
 AI DRIVER DIFFICULTY	AIドライバーの難易度	AI车手难度
 NORMAL	ノーマル	普通
 HARD (+5% PACE)	ハード（速度 +5%）	困难（速度 +5%）
@@ -482,6 +505,48 @@ LAN DIRECT	LAN直接接続	局域网直连
 OPEN ROOMS	公開ルーム	公开房间
 REFRESH	更新	刷新
 RETRY STEAM	Steamを再接続	重试Steam连接
+RETRY ONLINE	オンラインに再接続	重新连接在线服务
+Online services are not initialized.	オンラインサービスは未接続です。	在线服务尚未初始化。
+Connecting to online services…	オンラインサービスに接続中…	正在连接在线服务…
+Online ready. Find a match, host a room, or enter a room code.	オンライン接続完了。対戦検索、ルーム作成、またはコード入力で参加できます。	在线服务已就绪。可寻找对手、创建房间或输入房间代码。
+Online ready.	オンライン接続完了。	在线服务已就绪。
+Online services are not connected.	オンラインサービスに接続されていません。	未连接在线服务。
+Online services are busy. Retrying…	オンラインサービスが混み合っています。再試行中…	在线服务繁忙。正在重试…
+Online initialization failed: {0}	オンライン接続に失敗しました：{0}	在线服务初始化失败：{0}
+Could not connect online: {0}	オンラインに接続できません：{0}	无法连接在线服务：{0}
+Room search failed: {0}	ルーム検索に失敗しました：{0}	房间搜索失败：{0}
+Online transport failed: {0}	オンライン通信に失敗しました：{0}	在线通信失败：{0}
+Enter a valid room code.	正しいルームコードを入力してください。	请输入有效的房间代码。
+Finding another driver…	対戦相手を検索中…	正在寻找对手…
+Creating room…	ルームを作成中…	正在创建房间…
+Joining room…	ルームに参加中…	正在加入房间…
+Finding rooms…	ルームを検索中…	正在搜索房间…
+Connecting to driver…	対戦相手に接続中…	正在连接对手…
+Room {0} — connecting to driver…	ルーム {0} — 対戦相手に接続中…	房间 {0} — 正在连接对手…
+Room {0} — waiting for another driver.	ルーム {0} — 対戦相手を待っています。	房间 {0} — 正在等待另一位车手。
+No open rooms found. You can host one.	公開ルームが見つかりません。ルームを作成できます。	未找到公开房间。您可以创建房间。
+Found {0} open room(s).	公開ルームが{0}件見つかりました。	找到{0}个公开房间。
+Connected to {0}.	{0}に接続しました。	已连接到{0}。
+Finding another driver timed out. Please retry.	対戦相手の検索がタイムアウトしました。再試行してください。	寻找对手超时。请重试。
+Creating room timed out. Please retry.	ルーム作成がタイムアウトしました。再試行してください。	创建房间超时。请重试。
+Joining room timed out. Please retry.	ルームへの参加がタイムアウトしました。再試行してください。	加入房间超时。请重试。
+Finding rooms timed out. Please retry.	ルーム検索がタイムアウトしました。再試行してください。	房间搜索超时。请重试。
+Connecting to driver timed out. Please retry.	相手への接続がタイムアウトしました。再試行してください。	连接对手超时。请重试。
+The online room has closed.	オンラインルームが閉じました。	在线房间已关闭。
+The room membership or game build changed. Please reconnect.	ルームの参加者またはゲームのビルドが変更されました。再接続してください。	房间成员或游戏版本已更改。请重新连接。
+This room uses a different game build or room configuration.	このルームは異なるビルドまたはルーム設定を使用しています。	此房间使用不同的游戏版本或房间设置。
+A game message exceeded the online packet limit.	ゲーム通信のデータ量が上限を超えました。	游戏消息超出了在线数据包大小限制。
+Online sign-in expired. Restart the game to reconnect.	オンライン認証の有効期限が切れました。ゲームを再起動して再接続してください。	在线登录已过期。请重启游戏以重新连接。
+The game build identity is not ready.	ゲームのビルド情報を取得できません。	游戏版本标识尚未就绪。
+The Relay connection expired. Please reconnect.	中継サーバーとの接続が切れました。再接続してください。	中继连接已过期。请重新连接。
+The other driver disconnected.	相手との接続が切れました。	对手已断开连接。
+The other driver stopped responding.	相手からの応答がありません。	对手已停止响应。
+The reliable online message buffer is full. Please reconnect.	オンライン通信の送信待ちデータが上限に達しました。再接続してください。	在线消息缓冲区已满。请重新连接。
+The incoming online message buffer is full. Please reconnect.	オンライン通信の受信待ちデータが上限に達しました。再接続してください。	在线消息接收缓冲区已满。请重新连接。
+Reliable online messages timed out. Please reconnect.	オンライン通信の送信がタイムアウトしました。再接続してください。	在线消息发送超时。请重新连接。
+The remote driver could not be authenticated for this room.	相手のルーム参加を認証できませんでした。	无法验证对手的房间身份。
+Online services are unavailable. Retry online, then try Quick Match again.	オンラインサービスを利用できません。再接続してからクイックマッチを試してください。	在线服务不可用。请重新连接后重试快速匹配。
+Online services are reconnecting — keeping your search open…	オンラインサービスに再接続中 — 検索を継続しています…	在线服务正在重新连接，搜索将继续…
 DIRECT CONNECTION	直接接続	直接连接
 JOIN	参加	加入
 SEARCHING…	検索中…	搜索中…
@@ -636,3 +701,58 @@ LIGHTS-OFF ADVANTAGE	消灯時の車間距離	熄灯时的领先距离
 HIDDEN	非表示	隐藏
 VISIBLE	表示	显示
 Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.	夜のオンライン・LAN対戦で、相手がヘッドライトを消すと車間距離の数値を隠します。昼のレースには影響しません。	在夜间在线或局域网对战中，对手关闭车灯时隐藏距离数值。白天比赛不受影响。
+
+Find a driver with Quick Match, or create a room for friends.	クイックマッチで対戦相手を探すか、友達用のルームを作成できます。	通过快速匹配寻找对手，或创建房间与好友比赛。
+
+# EOS online connection status
+Leave the room or queue before changing the game build.	ゲームのビルドを変更する前に、ルームまたはマッチ待ちから退出してください。	更改游戏版本前，请先退出房间或匹配队列。
+Could not subscribe to online rooms.	オンラインルームの更新を受信できませんでした。	无法接收在线房间更新。
+This room uses a different game build or online identity.	このルームはゲームのビルドまたはオンラインIDが一致しません。	此房间的游戏版本或在线身份不匹配。
+The room is no longer available.	このルームは利用できなくなりました。	此房间已不可用。
+Online room has an invalid player list.	オンラインルームの参加者情報が無効です。	在线房间的玩家列表无效。
+The other driver is using a different game build.	対戦相手のゲームのビルドが異なります。	对手使用的游戏版本不同。
+The previous online room could not be closed. Restart the game to reconnect.	前のオンラインルームを閉じられませんでした。ゲームを再起動して接続し直してください。	无法关闭之前的在线房间。请重启游戏后重新连接。
+Online sign-in is reconnecting. Please retry shortly.	オンライン認証に再接続しています。少し待ってから再試行してください。	正在重新连接在线身份验证。请稍后重试。
+Both game clients are using the same online identity. Use different devices or operating-system accounts.	両方のゲームが同じオンラインIDを使用しています。別の端末またはOSアカウントを使用してください。	两个游戏客户端正在使用同一在线身份。请使用不同的设备或操作系统账户。
+Could not register online connection notifications.	オンライン接続の通知を登録できませんでした。	无法注册在线连接通知。
+The reliable online send queue is full.	オンラインの送信バッファがいっぱいです。	在线可靠发送队列已满。
+The online connection stopped accepting messages.	オンライン接続がメッセージを受信できなくなりました。	在线连接已停止接收消息。
+Online packet processing failed: {0}	オンライン通信の処理に失敗しました：{0}	在线数据包处理失败：{0}
+Connecting to the other driver timed out.	対戦相手への接続がタイムアウトしました。	连接对手超时。
+The reliable online receive buffer is full. Please reconnect.	オンラインの受信バッファがいっぱいです。接続し直してください。	在线可靠接收缓冲区已满。请重新连接。
+Restart the game after changing online service settings.	オンラインサービスの設定を変更した後は、ゲームを再起動してください。	更改在线服务设置后，请重启游戏。
+Online services are shutting down.	オンラインサービスを終了しています。	在线服务正在关闭。
+Online SDK could not create the game client.	オンラインサービスのゲームクライアントを作成できませんでした。	在线服务无法创建游戏客户端。
+Online services returned an invalid player identity.	オンラインサービスから無効なプレイヤーIDが返されました。	在线服务返回了无效的玩家身份。
+Online service event buffer is full. Please reconnect.	オンラインサービスのイベントバッファがいっぱいです。接続し直してください。	在线服务事件缓冲区已满。请重新连接。
+The online player identity changed. Restart the game.	オンラインのプレイヤーIDが変更されました。ゲームを再起動してください。	在线玩家身份已改变。请重启游戏。
+Online room has an unsupported player limit.	このオンラインルームの参加人数設定には対応していません。	此在线房间的玩家人数上限不受支持。
+Online room belongs to a different game build.	このオンラインルームは別のゲームビルド用です。	此在线房间属于其他游戏版本。
+Online room no longer contains this player.	このプレイヤーはオンラインルームから退出しています。	此玩家已不在在线房间中。
+Online room owner is missing.	オンラインルームのホストが見つかりません。	找不到在线房间的房主。
+Online room owner changed. Please rejoin.	オンラインルームのホストが変更されました。参加し直してください。	在线房间的房主已更改。请重新加入。
+The peer connection closed ({0}).	対戦相手との接続が閉じられました（{0}）。	对手连接已关闭（{0}）。
+Could not accept the other driver ({0}).	対戦相手の接続を受け付けられませんでした（{0}）。	无法接受对手连接（{0}）。
+Sending an online message failed ({0}).	オンラインメッセージの送信に失敗しました（{0}）。	在线消息发送失败（{0}）。
+Receiving an online packet failed ({0}).	オンラインデータの受信に失敗しました（{0}）。	在线数据包接收失败（{0}）。
+Online service settings are missing from this build.	このビルドにはオンラインサービスの設定がありません。	此版本缺少在线服务设置。
+PLAYER DETAILS	プレイヤー情報	玩家信息
+YOUR ONLINE PLAYER ID	あなたのオンラインプレイヤーID	您的在线玩家ID
+CURRENT OPPONENT	現在の対戦相手	当前对手
+RECENT OPPONENT	直前の対戦相手	最近的对手
+No online opponent yet.	オンライン対戦の履歴はありません。	尚无在线对手。
+Copy a Player ID when reporting a problem to the game moderators.	ゲームの管理者に問題を報告する場合は、プレイヤーIDをコピーしてください。	向游戏管理员报告问题时，请复制玩家ID。
+Player ID copied.	プレイヤーIDをコピーしました。	已复制玩家ID。
+Not available	取得できません	暂无
+Online play is restricted for this player. Contact the game administrator with your Player ID.	このプレイヤーのオンラインプレイは制限されています。プレイヤーIDを添えてゲーム管理者にお問い合わせください。	此玩家的在线游戏权限已受限。请提供您的玩家ID并联系游戏管理员。
+The other driver's online access is restricted.	対戦相手のオンラインプレイは制限されています。	对手的在线游戏权限已受限。
+Online access could not be verified. Please retry shortly.	オンラインプレイの利用権限を確認できませんでした。少し待ってから再試行してください。	无法验证在线游戏权限。请稍后重试。
+Checking online access…	オンラインプレイの利用権限を確認中…	正在验证在线游戏权限…
+Checking driver access…	対戦相手の利用権限を確認中…	正在验证对手的游戏权限…
+Checking driver access timed out. Please retry.	対戦相手の利用権限の確認がタイムアウトしました。再試行してください。	验证对手的游戏权限超时。请重试。
+Verifying online access failed ({0}).	オンラインプレイの利用権限を確認できませんでした（{0}）。	验证在线游戏权限失败（{0}）。
+Administrative battle resets must be permanent. Contact the game administrator with your Player ID.	管理者による対戦成績のリセット指示は、無期限に設定する必要があります。プレイヤーIDを添えてゲーム管理者にお問い合わせください。	管理员的对战数据重置指令必须设为永久有效。请提供您的玩家ID并联系游戏管理员。
+Online battle stats could not be reset. Online play is unavailable until the reset can be saved.	オンライン対戦成績をリセットできませんでした。リセット内容を保存できるまで、オンラインプレイは利用できません。	无法重置在线对战数据。在成功保存重置结果之前，无法进行在线游戏。
+The other driver's battle stats were reset. Please rejoin the room.	対戦相手の対戦成績がリセットされました。ルームに参加し直してください。	对手的对战数据已重置。请重新加入房间。
+An administrator reset your online battle stats. You can earn them again by racing.	管理者があなたのオンライン対戦成績をリセットしました。対戦を重ねて再び成績を積み上げることができます。	管理员已重置您的在线对战数据。您可以通过比赛重新积累。
+No local battle record owner is available.	この端末の対戦成績を管理する機能を利用できません。	无法使用本地对战记录管理功能。

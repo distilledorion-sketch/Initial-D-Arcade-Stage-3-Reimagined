@@ -2,6 +2,12 @@
 #include "imported_course_catalog.h"
 #include <bit>
 #include <fstream>
+#if defined(_WIN32)
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 
 namespace idas3 {
 namespace {
@@ -17,11 +23,66 @@ bool valid(const Replay& run,unsigned car){
     }
     return run.finishTicks6000<=run.frames.back().tick*100;
 }
+// 0 is absent, 1 is an ordinary entry, -1 is an error or a linked/wrong type.
+// Check every directory beneath the supplied save root before removing a file.
+int plainEntry(const std::filesystem::path& path,bool directory){
+    std::error_code ec;const auto status=std::filesystem::symlink_status(path,ec);
+    if(ec==std::errc::no_such_file_or_directory||status.type()==std::filesystem::file_type::not_found)return 0;
+    if(ec||(directory?!std::filesystem::is_directory(status):!std::filesystem::is_regular_file(status)))return -1;
+#if defined(_WIN32)
+    const auto attributes=GetFileAttributesW(path.c_str());
+    if(attributes==INVALID_FILE_ATTRIBUTES||(attributes&FILE_ATTRIBUTE_REPARSE_POINT))return -1;
+#endif
+    return 1;
+}
+int plainSubdirectory(const std::filesystem::path& root,const std::filesystem::path& relative){
+    auto current=root;const int base=plainEntry(current,true);if(base!=1)return base;
+    for(const auto& part:relative){current/=part;const int entry=plainEntry(current,true);if(entry!=1)return entry;}
+    return 1;
+}
+bool removeRetiredFile(const std::filesystem::path& path){
+    const int entry=plainEntry(path,false);if(entry==0)return true;if(entry<0)return false;
+    std::error_code ec;std::filesystem::remove(path,ec);return !ec;
+}
+bool removeRetiredCopies(const std::filesystem::path& path){
+    bool success=true;
+    for(const char* suffix:{"",".tmp",".previous"}){auto copy=path;copy+=suffix;if(!removeRetiredFile(copy))success=false;}
+    return success;
+}
 }
 std::filesystem::path TimeAttackGhost::path(const std::filesystem::path& profiles,unsigned course,bool reverse,bool wet){
     const auto revision=localTimeAttackRevision(course);
     return profiles/"ghosts_v1"/("course_"+std::to_string(course)+(reverse?"_reverse":"_forward")+(wet?"_wet":"_dry")+
         (revision?"_r"+std::to_string(revision):"")+".idghost");
+}
+std::filesystem::path TimeAttackGhost::telemetryPath(const std::filesystem::path& saves,const std::string& runKey,unsigned course){
+    return saves/(runKey+(course==17?"_r"+std::to_string(localTimeAttackRevision(course)):"")+".csv");
+}
+bool TimeAttackGhost::removeRetiredOdawaraGhosts(const std::filesystem::path& saves){
+    if(saves.empty())return false;
+    const int root=plainEntry(saves,true);if(root==0)return true;if(root<0)return false;
+    bool success=true;
+    for(int slot=-1;slot<5;++slot){
+        const auto relative=slot<0?std::filesystem::path("driver_profiles_v1")/"ghosts_v1":
+            std::filesystem::path("saves")/("slot_"+std::to_string(slot+1))/"driver_profiles_v1"/"ghosts_v1";
+        const int directory=plainSubdirectory(saves,relative);
+        if(directory<0){success=false;continue;}if(directory==0)continue;
+        for(bool reverse:{false,true})for(bool wet:{false,true})for(unsigned revision=0;revision<localTimeAttackRevision(17);++revision){
+            const auto file=saves/relative/(std::string("course_17")+(reverse?"_reverse":"_forward")+(wet?"_wet":"_dry")+
+                (revision?"_r"+std::to_string(revision):"")+".idghost");
+            if(!removeRetiredCopies(file))success=false;
+        }
+    }
+    // Older native builds also kept per-model best telemetry beside the cabinet
+    // CSV. It is a ghost, not a user-selected .idreplay archive. Current Odawara
+    // writes use _r2, so retries never remove runs earned after the reset.
+    for(const char* owner:{"original_race_v3_","development_v01_"})for(bool reverse:{false,true})for(bool wet:{false,true})
+    for(unsigned car=0;car<35;++car)for(bool automatic:{false,true}){
+        const auto file=saves/(std::string(owner)+"odawara"+(reverse?"_rev":"_fwd")+(wet?"_wet":"_dry")+"_car"+
+            std::to_string(car)+(automatic?"_at":"_mt")+".csv");
+        if(!removeRetiredCopies(file))success=false;
+    }
+    return success;
 }
 bool TimeAttackGhost::load(const std::filesystem::path& path){
     replay=Replay{};car=0;

@@ -32,6 +32,7 @@ public static class Idas3ControllerMenuChecks
             for(int i=0;i<7;++i)menu.Navigate(1);menu.Activate();Check(!options.HasUnsavedChanges&&options.Current.masterVolume<volume,"Apply via menu navigation");
             menu.Back();menu.Back();Check(!menu.IsOpen,"Exit settings");
             CheckCameraOptions(Path.Combine(root,"camera-options"));
+            CheckCameraFovOptions(Path.Combine(root,"camera-fov"));
             CheckOptionCategories(Path.Combine(root,"categories"));
             menu.SetWheelNavigation(true);menu.OpenAttractOptions();menu.Activate();
             float music=options.Draft.musicVolume;menu.NavigateHorizontal(1);menu.Activate();Check(menu.WheelEditing,"Pedal enters wheel value edit");
@@ -126,6 +127,64 @@ public static class Idas3ControllerMenuChecks
             options.BeginEdit();options.ResetDraft();Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==2,"Reset defaults must propose Bumper without changing the saved camera");
         }finally{UnityEngine.Object.DestroyImmediate(go);}
     }
+    public static void RunCameraFovChecks(){
+        checks=0;string proof=Path.GetFullPath("Verification/camera-fov200-20261009");
+        string root=Path.Combine(proof,"settings-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
+        CheckCameraFovOptions(root);
+        CheckOptionCategories(Path.Combine(root,"categories"));
+        File.WriteAllText(Path.Combine(proof,"managed-options-checks.txt"),"PASS "+checks+" checks; FOV persistence, draft/cancel/reset, bounds, controller/wheel steps and seven-row category navigation. Isolated preferences: "+root+"\n");
+        Debug.Log("PASS camera FOV options checks "+checks);
+    }
+    private static void CheckCameraFovOptions(string root){
+        Directory.CreateDirectory(root);string file=Path.Combine(root,"game-options.json");
+        const string legacy="{\"version\":1,\"defaultCamera\":2,\"musicVolume\":0.4}";
+        File.WriteAllText(file,legacy);
+        var options=new Idas3GameOptions(new Platform());options.Initialize(root);
+        Check(options.Current.cameraFovPercent==100&&!options.HasUnsavedChanges,"Legacy settings must retain each camera's original FOV");
+        Check(File.ReadAllText(file)==legacy,"Loading legacy FOV settings must not rewrite the preferences file");
+        Check(new Idas3GameOptions.Values().cameraFovPercent==100,"Fresh FOV must default to 100 percent");
+        foreach(int value in new[]{int.MinValue,-1,0,49,50,67,100,149,150,151,199,200,201,int.MaxValue}){
+            var candidate=options.Current.Clone();candidate.cameraFovPercent=value;
+            var normalized=Idas3GameOptions.Normalize(candidate);
+            Check(normalized.cameraFovPercent==Math.Max(50,Math.Min(200,value)),"FOV normalization failed for "+value);
+            Check(candidate.cameraFovPercent==value,"Normalizing FOV mutated the input settings");
+        }
+        foreach(int percent in new[]{50,67,100,150,200}){
+            string folder=Path.Combine(root,"saved-"+percent);var saved=new Idas3GameOptions(new Platform());saved.Initialize(folder);
+            saved.BeginEdit();saved.Draft.cameraFovPercent=percent;saved.Draft.defaultCamera=2;saved.Draft.musicVolume=.4f;
+            Check(saved.ApplyDraft(),"FOV fixture Apply failed for "+percent);
+            var reload=new Idas3GameOptions(new Platform());reload.Initialize(folder);
+            Check(reload.Current.cameraFovPercent==percent&&reload.Current.defaultCamera==2&&reload.Current.musicVolume==.4f,"FOV persistence changed the field or unrelated settings");
+        }
+        var go=new GameObject("Private FOV menu checks");
+        try{
+            var menu=go.AddComponent<Idas3PauseMenu>();menu.Initialize(options);menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);
+            Check(menu.OptionRows==7,"Gameplay must expose all seven rows");menu.Navigate(1);
+            Check(menu.DiagnosticSelection==2,"FOV must follow Default Camera");
+            menu.NavigateHorizontal(1);Check(options.Draft.cameraFovPercent==101&&options.Current.cameraFovPercent==100&&options.HasUnsavedChanges,"FOV right must edit only the draft by one percent");
+            menu.NavigateHorizontal(-1);Check(options.Draft.cameraFovPercent==100&&!options.HasUnsavedChanges,"FOV left must restore the exact prior draft");
+            for(int i=0;i<60;++i)menu.NavigateHorizontal(-1);
+            Check(options.Draft.cameraFovPercent==50,"Controller FOV minimum must clamp without wrapping");
+            for(int i=0;i<160;++i)menu.NavigateHorizontal(1);
+            Check(options.Draft.cameraFovPercent==200,"Controller FOV maximum must clamp without wrapping");
+            Check(options.Draft.defaultCamera==2&&options.Draft.aiDifficulty==0,"FOV row changed a neighbouring option");
+            menu.Back();menu.Back();Check(!menu.IsOpen&&options.Current.cameraFovPercent==100&&File.ReadAllText(file)==legacy,"Back must discard unapplied FOV without writing");
+            menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);menu.NavigateHorizontal(-1);
+            var expected=options.Current.Clone();expected.cameraFovPercent=99;
+            for(int row=2;row<menu.OptionRows+2;++row)menu.Navigate(1);menu.Activate();
+            Check(!options.HasUnsavedChanges&&Idas3GameOptions.Equivalent(options.Current,expected),"FOV menu Apply changed unrelated settings or omitted change tracking");
+            var reloaded=new Idas3GameOptions(new Platform());reloaded.Initialize(root);
+            Check(Idas3GameOptions.Equivalent(reloaded.Current,expected),"FOV menu Apply did not survive reload");
+            menu.SetWheelNavigation(true);menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.NavigateHorizontal(1);
+            Check(menu.DiagnosticSelection==2&&options.Draft.cameraFovPercent==99,"Wheel steering must focus FOV before editing it");
+            menu.Activate();Check(menu.WheelEditing,"Wheel accelerator must enter FOV editing");
+            menu.NavigateHorizontal(-1);Check(options.Draft.cameraFovPercent==98&&options.Current.cameraFovPercent==99,"Wheel FOV adjustment must be one percent and remain a draft");
+            menu.Back();Check(!menu.WheelEditing&&menu.DiagnosticSelection==2,"Wheel brake must leave FOV editing without leaving the row");
+            for(int row=2;row<menu.OptionRows+2;++row)menu.NavigateHorizontal(1);menu.Activate();
+            expected.cameraFovPercent=98;Check(Idas3GameOptions.Equivalent(options.Current,expected),"Wheel must reach Apply and persist FOV without changing other fields");
+            options.BeginEdit();options.ResetDraft();Check(options.Draft.cameraFovPercent==100&&options.Current.cameraFovPercent==98,"Reset Defaults must propose original FOV without immediately applying it");
+        }finally{UnityEngine.Object.DestroyImmediate(go);}
+    }
     private static void CheckLightsOffAdvantage(string root){
         Directory.CreateDirectory(root);File.WriteAllText(Path.Combine(root,"game-options.json"),"{\"version\":1}");
         var options=new Idas3GameOptions(new Platform());options.Initialize(root);
@@ -149,8 +208,8 @@ public static class Idas3ControllerMenuChecks
             select(Idas3PauseMenu.Category.Graphics,8);menu.Activate();expected.trackLighting=1-expected.trackLighting;
             select(Idas3PauseMenu.Category.Graphics,9);menu.Activate();expected.sunGlare=!expected.sunGlare;
             select(Idas3PauseMenu.Category.Graphics,10);menu.Activate();expected.showFps=!expected.showFps;
-            select(Idas3PauseMenu.Category.Gameplay,1);menu.Activate();expected.aiDifficulty=1;
-            select(Idas3PauseMenu.Category.Gameplay,2);menu.Activate();expected.timeAttackGhost=!expected.timeAttackGhost;
+            select(Idas3PauseMenu.Category.Gameplay,2);menu.Activate();expected.aiDifficulty=1;
+            select(Idas3PauseMenu.Category.Gameplay,3);menu.Activate();expected.timeAttackGhost=!expected.timeAttackGhost;
             select(Idas3PauseMenu.Category.Steering,0);menu.Activate();expected.controllerResponse=1;
             menu.Navigate(1);menu.NavigateHorizontal(1);expected.SteeringDeadzone=.14f;
             menu.Navigate(1);menu.NavigateHorizontal(1);expected.steeringSmoothing=.01f;
@@ -184,7 +243,7 @@ public static class Idas3ControllerMenuChecks
             Check(Idas3GameOptions.Equivalent(reload.Current,expected),"Relocated preferences did not survive reload");
             select(Idas3PauseMenu.Category.Audio,5);menu.Activate();menu.Back();menu.Back();
             Check(!menu.IsOpen&&Idas3GameOptions.Equivalent(options.Current,expected),"Cancel applied a relocated setting");
-            menu.OpenAttractOptions();select(Idas3PauseMenu.Category.Gameplay,3);menu.FullTuneAvailable=false;menu.Activate();
+            menu.OpenAttractOptions();select(Idas3PauseMenu.Category.Gameplay,4);menu.FullTuneAvailable=false;menu.Activate();
             Check(!menu.TryConsumeCommand(out _),"Unavailable Full Tune activated");
             menu.FullTuneAvailable=true;menu.Activate();
             Check(menu.TryConsumeCommand(out var command)&&command==Idas3PauseMenu.Command.FullTune,"Full Tune action was lost");

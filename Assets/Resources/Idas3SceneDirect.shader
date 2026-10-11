@@ -22,6 +22,7 @@ Shader "IDAS3/Original Scene Direct Material"
   _ImportedAreaFogColor("Imported area fog color",Color)=(0,0,0,1)
   _ImportedSky("Imported sky",Float)=0
   _ImportedNight("Imported night scenery",Float)=0
+  _ImportedLampGrid("Stationary lamp grid bounds",Vector)=(0,0,0,0)
   _ImportedPs2Lighting("PS2 baked color and linear fog",Float)=0
   _ImportedNightAmbient("Imported night ambient",Vector)=(.22,.25,.34,0)
   _ImportedSkyFollowXZ("Sky follows camera XZ",Float)=0

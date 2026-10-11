@@ -58,16 +58,16 @@ bool TimeAttackRecords::load(const std::filesystem::path& file){
         const auto current=localTimeAttackRevision(e.condition/2);
         // Do not rewrite data created by a newer game with unknown semantics.
         if(revision>current)return false;
-        if(revision<current){loaded.needsMigration_=true;continue;}
+        if(revision<current){loaded.needsMigration_=true;if(e.condition/2==17)loaded.odawaraRevision2Migration_=true;continue;}
         loaded.record(e);
     }
-    if(!in.eof())return false;entries_=std::move(loaded.entries_);needsMigration_=loaded.needsMigration_;return true;
+    if(!in.eof())return false;entries_=std::move(loaded.entries_);needsMigration_=loaded.needsMigration_;odawaraRevision2Migration_=loaded.odawaraRevision2Migration_;return true;
 }
 bool TimeAttackRecords::save(const std::filesystem::path& file)const{
     if(needsMigration_){
-        // Separate from the earlier Odawara-only backup: a save may already
-        // contain valid revision-1 Odawara runs alongside revision-0 Gunsai.
-        auto archive=file;archive+=".before-idzero-revision-1.bak";
+        // Keep each reset's original file separately. In particular, an older
+        // revision-1 backup must not suppress the requested Odawara reset copy.
+        auto archive=file;archive+=odawaraRevision2Migration_?".before-odawara-revision-2.bak":".before-idzero-revision-1.bak";
         std::error_code error;
         // Keep the original CSV for recovery; never overwrite an earlier archive.
         if(!std::filesystem::is_regular_file(archive,error)){

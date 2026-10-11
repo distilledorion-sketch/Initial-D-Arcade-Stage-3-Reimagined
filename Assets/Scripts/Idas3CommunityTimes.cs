@@ -9,14 +9,14 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.Networking;
 
-// HTTP service is optional and independent of Steam, the simulation and saves.
+// HTTP service is optional and independent of multiplayer, the simulation and saves.
 // No network wait is ever made from the game's Update or native render lock.
 public sealed class Idas3CommunityTimes : MonoBehaviour
 {
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
-    public const string RequiredSubmissionBuild="0.3.95-community-replays.46";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.47";
     public const int FirstReplaySeason=2;
     [Serializable] public sealed class Run {
         public string id,ruleset,build;

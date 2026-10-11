@@ -1,0 +1,40 @@
+{
+  "$schema": "https://ugs-config-schemas.unity3d.com/v1/matchmaker/matchmaker-queue.schema.json",
+  "name": "idas3-online",
+  "enabled": true,
+  "maxPlayersPerTicket": 1,
+  "defaultPool": {
+    "name": "idas3-duel",
+    "enabled": true,
+    "timeoutSeconds": 120,
+    "matchHosting": {
+      "type": "MatchId"
+    },
+    "matchLogic": {
+      "name": "IDAS3 compatible duel",
+      "backfillEnabled": false,
+      "matchDefinition": {
+        "teams": [
+          {
+            "name": "Driver",
+            "teamCount": { "min": 2, "max": 2 },
+            "playerCount": { "min": 1, "max": 1 },
+            "teamRules": []
+          }
+        ],
+        "matchRules": [
+          {
+            "name": "Same game build",
+            "type": "Equality",
+            "source": "Players.CustomData.compatibility",
+            "enableRule": true,
+            "not": false,
+            "relaxations": []
+          }
+        ]
+      }
+    },
+    "variants": []
+  },
+  "filteredPools": []
+}

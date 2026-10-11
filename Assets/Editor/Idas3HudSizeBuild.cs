@@ -8,6 +8,5 @@ public static class Idas3HudSizeBuild {
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var result=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
         if(result.summary.result!=BuildResult.Succeeded)throw new Exception("HUD size player build failed");
-        File.WriteAllText(Path.GetDirectoryName(output)+"/steam_appid.txt","480\n");
     }
 }

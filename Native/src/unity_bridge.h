@@ -159,6 +159,10 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float 
 // Exactly 35 values: 1..99 for a valid record, 0 when unavailable.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneShutdown(void);
+// Register/clear on the Unity main thread. The callback must not call native
+// game APIs, dispatch gameplay events or throw across the unmanaged boundary.
+typedef void (IDAS3_UNITY_CALL *Idas3LoadKeepAliveCallback)(void);
+IDAS3_UNITY_EXPORT void IDAS3_UNITY_CALL Idas3SceneSetLoadKeepAlive(Idas3LoadKeepAliveCallback callback);
 // Read-only replay presentation. Start requires separate replay-viewer-session storage.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weather,int night,int car,int manual);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayHud(int elapsed6000,int finish6000,const int* splits,int count,const int* glyphs,int glyphCount);
@@ -207,6 +211,8 @@ IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3NormalizeMusicPreview(float* samp
 // are host-persisted; these calls never write settings/profiles themselves.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetOptions(Idas3Options* options);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneApplyOptions(const Idas3Options* options);
+// Main driving/replay projection only; 50..200%, 100 preserves authored FOV.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetCameraFov(int percent);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetTireVolume(float value);
 IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetTireVolume();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetControllerResponse(int response);

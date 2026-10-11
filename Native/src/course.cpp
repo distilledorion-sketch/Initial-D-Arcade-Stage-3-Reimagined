@@ -1,4 +1,5 @@
 #include "course.h"
+#include "native_load_keepalive.h"
 #include <array>
 #include <bit>
 #include <cstdint>
@@ -30,6 +31,7 @@ std::string sha256(std::vector<unsigned char> b) {
     b.push_back(0x80); while(b.size()%64!=56) b.push_back(0);
     for(int i=7;i>=0;--i) b.push_back(static_cast<unsigned char>(bits>>(i*8)));
     for(std::size_t off=0;off<b.size();off+=64) {
+        if((off&65535u)==0)serviceLoadKeepAlive();
         std::uint32_t w[64]{};
         for(int i=0;i<16;++i) { const auto* p=b.data()+off+i*4; w[i]=(std::uint32_t(p[0])<<24)|(std::uint32_t(p[1])<<16)|(std::uint32_t(p[2])<<8)|p[3]; }
         for(int i=16;i<64;++i) { auto a=w[i-15],z=w[i-2]; w[i]=w[i-16]+(std::rotr(a,7)^std::rotr(a,18)^(a>>3))+w[i-7]+(std::rotr(z,17)^std::rotr(z,19)^(z>>10)); }
@@ -58,6 +60,7 @@ std::vector<Vec3> readPath(const std::filesystem::path& path,std::vector<unsigne
         throw std::runtime_error("Invalid course path header: "+path.string());
     std::vector<Vec3> result; result.reserve(count);
     for(std::uint32_t i=0;i<count;++i) {
+        if((i&16383u)==0)serviceLoadKeepAlive();
         const auto* p=data.data()+8+std::size_t(i)*12;
         Vec3 v{std::bit_cast<float>(u32(p)),std::bit_cast<float>(u32(p+4)),std::bit_cast<float>(u32(p+8))};
         if(!std::isfinite(v.x)||!std::isfinite(v.y)||!std::isfinite(v.z) ||
@@ -89,6 +92,7 @@ Course Course::load(const std::filesystem::path& pathRoot,const std::string& cou
     if(orientation<0) { std::swap(c.left,c.right);c.sourceEdgesSwapped=true; }
     c.cumulative.reserve(c.points.size());c.cumulative.push_back(0);
     for(std::size_t i=0;i<c.points.size();++i) {
+        if((i&16383u)==0)serviceLoadKeepAlive();
         const float width=idas3::length(c.right[i]-c.left[i]);
         if(width<0.05f || width>200) throw std::runtime_error("Invalid course boundary width");
         if(i) { const float step=idas3::length(c.points[i]-c.points[i-1]);

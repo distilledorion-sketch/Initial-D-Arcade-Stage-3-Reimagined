@@ -21,7 +21,7 @@ public static class Idas3JapaneseUiChecks
             var options=new Idas3GameOptions(new Platform());options.Initialize(root);
             Check(options.Current.arcadeTextLanguage==0&&Idas3GameOptions.LoadArcadeTextLanguage(root)==0,"Older settings did not retain English");
             var menu=go.AddComponent<Idas3PauseMenu>();menu.Initialize(options);menu.OpenAttractOptions();menu.SelectTab(2);
-            for(int row=0;row<4;++row)menu.Navigate(1);
+            for(int row=0;row<5;++row)menu.Navigate(1);
             menu.NavigateHorizontal(1);
             Check(options.Draft.arcadeTextLanguage==1&&options.Current.arcadeTextLanguage==0&&options.HasUnsavedChanges,"Language edit bypassed Apply");
             Check(Idas3GameOptions.LoadArcadeTextLanguage(root)==0,"Unapplied language reached startup");

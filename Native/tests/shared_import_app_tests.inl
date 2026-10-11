@@ -33,7 +33,7 @@ int runSharedImportAppTests(App& app){
         for(unsigned condition=32;condition<36;++condition)
             require(app.displayedTimeAttackRecords().best(condition,condition&1,(condition&1)?34:0).model==0,"Old Gunsai/Odawara times still visible after loading save");
         require(app.displayedTimeAttackRecords().best(18,0,1).model==1300000,"Migration cleared Hakone");
-        auto archive=file;archive+=".before-idzero-revision-1.bak";std::ifstream backup(archive,std::ios::binary);
+        auto archive=file;archive+=".before-odawara-revision-2.bak";std::ifstream backup(archive,std::ios::binary);
         require(std::string(std::istreambuf_iterator<char>(backup),{})==oldCsv,"Save selection did not preserve exact legacy backup");
         for(unsigned condition=32;condition<36;++condition)
             app.importedPersonalRecords.record({condition,condition&1,(condition&1)?34u:0u,1500000+condition*1000});
@@ -42,9 +42,40 @@ int runSharedImportAppTests(App& app){
         for(unsigned condition=32;condition<36;++condition)
             require(app.displayedTimeAttackRecords().best(condition,condition&1,(condition&1)?34:0).model==1500000+condition*1000&&!app.importedPersonalRecords.needsMigration(),"Returning to a save erased its new Gunsai/Odawara best");
     }
+    // Seed the actual cabinet and every save with the previous released epoch.
+    // Startup must migrate unselected slots too, without touching current Gunsai.
+    const std::string previousEpoch="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3,course_revision\n"
+        "18,0,1,1300000,1,2,3,4,221,1,1,0,0,0,0\n"
+        "32,0,0,1200000,1,2,3,4,221,1,1,0,0,0,1\n"
+        "33,1,34,1300000,1,2,3,4,221,1,1,0,0,0,1\n"
+        "34,0,0,876543,1,2,3,4,221,1,1,0,0,0,1\n"
+        "35,1,34,876544,1,2,3,4,221,1,1,0,0,0,1\n";
+    {std::ofstream out(root/"time_attack_records_v1.csv",std::ios::binary);out<<previousEpoch;}
+    for(int slot=-1;slot<int(LocalSaveSlots::count);++slot){
+        const auto directory=slot<0?root/"driver_profiles_v1":slots.profileDirectory(unsigned(slot));
+        {std::ofstream out(directory/"hakone_personal_v1.csv",std::ios::binary);out<<previousEpoch;}
+        fs::create_directories(directory/"ghosts_v1");
+        for(const char* file:{"course_17_forward_dry.idghost","course_17_reverse_wet_r1.idghost.previous","course_17_reverse_wet_r2.idghost","course_16_forward_dry_r1.idghost"})
+            {std::ofstream out(directory/"ghosts_v1"/file);out<<"Ghost migration ownership fixture";}
+    }
+    require(sharedPersonalImportJson(root).find("87654")==std::string::npos,"Read-only shared import resurrected revision-1 Odawara rows");
+    app.migrateLocalTimeAttackHistory();
+    require(app.records.best(34,0,0).course==0&&app.records.best(35,1,34).course==0&&app.records.best(32,0,0).model==1200000,"Cabinet migration did not isolate Odawara from Gunsai");
+    for(int slot=-1;slot<int(LocalSaveSlots::count);++slot){
+        const auto directory=slot<0?root/"driver_profiles_v1":slots.profileDirectory(unsigned(slot));
+        TimeAttackRecords migrated;require(migrated.load(directory/"hakone_personal_v1.csv")&&!migrated.needsMigration(),"Startup left an unselected save on the retired epoch");
+        app.useSaveSlot(slot);
+        require(app.displayedTimeAttackRecords().best(34,0,0).course==0&&app.displayedTimeAttackRecords().best(35,1,34).course==0,"Revision-1 Odawara remained on an in-game local board");
+        require(app.displayedTimeAttackRecords().best(32,0,0).model==1200000&&app.displayedTimeAttackRecords().best(33,1,34).model==1300000&&app.displayedTimeAttackRecords().best(18,0,1).model==1300000,"Targeted reset changed Gunsai or Hakone local boards");
+        require(!fs::exists(directory/"ghosts_v1"/"course_17_forward_dry.idghost")&&!fs::exists(directory/"ghosts_v1"/"course_17_reverse_wet_r1.idghost.previous"),"Startup left retired best ghosts in an unselected save");
+        require(fs::is_regular_file(directory/"ghosts_v1"/"course_17_reverse_wet_r2.idghost")&&fs::is_regular_file(directory/"ghosts_v1"/"course_16_forward_dry_r1.idghost"),"Startup deleted current Odawara or Gunsai ghosts");
+    }
+    {std::ofstream out(slots.profileDirectory(4)/"hakone_personal_v1.csv",std::ios::binary);out<<previousEpoch;}
+    app.useSaveSlot(4);
+    require(app.displayedTimeAttackRecords().best(34,0,0).course==0&&app.displayedTimeAttackRecords().best(35,1,34).course==0,"Restored pre-reset records bypassed in-game board filtering");
     app.useSaveSlot(0);
     require(app.displayedTimeAttackRecords().best(6,0,0).model==1200000,"Original driver-card records changed during migration");
     std::ofstream(output/"personal-import.json")<<text;
-    std::ofstream(output/"shared-import-native.log")<<"PASS "<<checks<<" import selection, deduplication, read-only import and all-save Gunsai/Odawara migration checks\n";
+    std::ofstream(output/"shared-import-native.log")<<"PASS "<<checks<<" import selection, deduplication, read-only import, all-save legacy migrations and targeted Odawara revision-2 board/ghost reset checks\n";
     return 0;
 }

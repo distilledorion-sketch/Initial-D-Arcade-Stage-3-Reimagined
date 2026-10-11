@@ -25,12 +25,19 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     private readonly List<int> verifiedControllerResponses=new List<int>();
     private readonly List<float> verifiedSteeringSmoothing=new List<float>();
     private readonly List<CameraObservation> cameraObservations=new List<CameraObservation>();
+    private readonly List<FovObservation> fovObservations=new List<FovObservation>();
     private string lastCameraCaptureHash;
     private bool NaturalCameraCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-natural-camera-check")>=0;
+    private bool FovCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-fov-check")>=0;
     private bool SceneOnlyCapture=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-scene-only-capture")>=0;
     [Serializable] private class CameraObservation {
         public string name,imageSha256;public uint view,playerRanges;public ulong simulationTicks;
         public Vector3 eye,target,up;public float verticalFov;
+    }
+    [Serializable] private class FovObservation {
+        public uint view;public int percent;public ulong simulationTicks;
+        public float authoredFov,actualFov,expectedFov,unityDegrees,projectionError,cullingError,mirrorFov;
+        public bool mirrorPresent;public string imageSha256;
     }
     [Serializable] private class Observation {
         public string name;public ulong localTicks,remoteTicks;public long received,sent;
@@ -45,6 +52,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         public int[] verifiedControllerResponses;
         public float[] verifiedSteeringSmoothing;
         public CameraObservation[] cameras;
+        public FovObservation[] fov;
     }
     private sealed class OptionsTestPlatform : Idas3GameOptions.IPlatform {
         public int Width=>1280;public int Height=>720;public int DisplayMode=>0;public double Now=>0;
@@ -102,6 +110,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(options.Current.controllerResponse==0&&Idas3Native.Idas3SceneGetControllerResponse()==0,"Fresh game did not default to Flycast gamepad response");
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate injected pause controls");yield return Frames(3);driving=true;pulse=116;
         yield return Until(()=>((host.Status.flags&1)==0)&&host.Status.simulationTicks>200,35,"Offline race did not start");
+        if(FovCheck){yield return FovChecks();Finish(true,null);yield break;}
         if(NaturalCameraCheck){yield return NaturalCameraChecks();Finish(true,null);yield break;}
         var wheelState=new Idas3Native.WheelState{size=(uint)Marshal.SizeOf<Idas3Native.WheelState>()};
         Check(wheelState.size==40&&Idas3Native.Idas3SceneGetWheelState(ref wheelState)==1&&wheelState.version==1,"Wheel telemetry native ABI");
@@ -214,6 +223,64 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         yield return CameraControl(0);yield return CameraControl(1);yield return CameraControl(2,true);
         Check(options.Current.defaultCamera==2&&JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath)).defaultCamera==2,"Runtime camera cycle overwrote the Natural preference");
         Check(JsonUtility.ToJson(host.ControlBindings.Current)==bindingsBefore,"Camera cycling changed driving bindings");Observe("natural-resumed-and-cycled");
+    }
+    private static Matrix4x4 ReadNativeProjection(IntPtr words,int view=0){
+        var values=new float[16];Marshal.Copy(IntPtr.Add(words,view*92*sizeof(float)),values,0,16);
+        var matrix=new Matrix4x4();for(int row=0;row<4;++row)for(int column=0;column<4;++column)matrix[row,column]=values[column*4+row];return matrix;
+    }
+    private static float MatrixError(Matrix4x4 actual,Matrix4x4 expected){
+        float largest=0,scale=1;for(int row=0;row<4;++row)for(int column=0;column<4;++column){
+            largest=Mathf.Max(largest,Mathf.Abs(actual[row,column]-expected[row,column]));scale=Mathf.Max(scale,Mathf.Abs(expected[row,column]));
+        }return largest/scale;
+    }
+    private IEnumerator FovChecks(){
+        yield return Until(()=>host.Status.racePhase==2,15,"FOV fixture did not reach a running race");
+        Check(options.Current.cameraFovPercent==100,"Fresh FOV preference must retain the authored camera");
+        pulse=27;yield return Frames(5);Check(menu.IsOpen&&(host.Status.flags&2)!=0,"FOV fixture could not pause the race");
+        driving=false;ulong frozen=host.Status.simulationTicks;
+        float speed=host.Status.speedMetresPerSecond,rpm=host.Status.rpm;
+        var original=options.Current.Clone();string bindings=JsonUtility.ToJson(host.ControlBindings.Current);
+        var scene=host.GetComponent<Idas3SceneRenderer>();var unity=scene.MainCamera;
+        string saved=File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null;
+        var beforeDraft=scene.CurrentFrame.mainCamera;Matrix4x4 beforeVp=ReadNativeProjection(scene.CurrentFrame.frameConstants);
+        options.BeginEdit();options.Draft.cameraFovPercent=150;yield return Frames(4);
+        Check(options.Current.cameraFovPercent==100&&options.HasUnsavedChanges&&scene.CurrentFrame.mainCamera.verticalFov==beforeDraft.verticalFov&&MatrixError(ReadNativeProjection(scene.CurrentFrame.frameConstants),beforeVp)==0,"Unapplied FOV draft changed the live projection");
+        options.BeginEdit();yield return Frames(3);
+        Check(options.Draft.cameraFovPercent==100&&!options.HasUnsavedChanges&&(File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null)==saved,"Discarding the FOV draft changed the preference or save file");
+        for(uint view=0;view<3;++view){
+            options.BeginEdit();options.Draft.defaultCamera=(int)view;options.Draft.cameraFovPercent=100;
+            Check(options.ApplyDraft(),"Could not apply the authored FOV baseline");yield return Frames(4);CheckCamera(view);
+            var baseline=scene.CurrentFrame;var camera=baseline.mainCamera;var mirror=baseline.mirrorCamera;
+            Matrix4x4 baselineVp=ReadNativeProjection(baseline.frameConstants);
+            Matrix4x4 mirrorVp=baseline.viewCount>1?ReadNativeProjection(baseline.frameConstants,1):Matrix4x4.identity;
+            Check(camera.viewport.x==0&&camera.viewport.y==0&&camera.viewport.z==baseline.width&&camera.viewport.w==baseline.height,"Race FOV check requires the normal full main-camera viewport");
+            foreach(int percent in new[]{50,100,150,200}){
+                options.BeginEdit();options.Draft.cameraFovPercent=percent;Check(options.ApplyDraft(),"Could not apply FOV "+percent);yield return Frames(4);CheckCamera(view);
+                var frame=scene.CurrentFrame;var actual=frame.mainCamera;
+                float expected=percent==100?camera.verticalFov:Mathf.Clamp(2*Mathf.Atan(Mathf.Tan(camera.verticalFov*.5f)*(percent/100f)),30*Mathf.Deg2Rad,120*Mathf.Deg2Rad);
+                Check(Mathf.Abs(actual.verticalFov-expected)<.00001f,"FOV percent did not scale the authored aperture for view "+view);
+                Check((actual.eye-camera.eye).sqrMagnitude<.00000001f&&(actual.target-camera.target).sqrMagnitude<.00000001f&&(actual.up-camera.up).sqrMagnitude<.00000001f,"FOV changed the frozen camera pose");
+                Check(actual.viewport==camera.viewport&&actual.aspect==camera.aspect&&actual.nearClip==camera.nearClip&&actual.farClip==camera.farClip,"FOV changed viewport, aspect or clipping planes");
+                Check(frame.width==baseline.width&&frame.height==baseline.height&&frame.viewCount==baseline.viewCount,"FOV changed the render canvas or mirror ownership");
+                Matrix4x4 nativeVp=ReadNativeProjection(frame.frameConstants);
+                float projectionError=MatrixError(unity.projectionMatrix*unity.worldToCameraMatrix,nativeVp),cullingError=MatrixError(unity.cullingMatrix,nativeVp);
+                Check(projectionError<.00001f&&cullingError<.00001f&&Mathf.Abs(unity.fieldOfView-actual.verticalFov*Mathf.Rad2Deg)<.0001f,"Unity FOV metadata, GPU projection and culling diverged from the native camera");
+                float verticalScale=1/Mathf.Tan(actual.verticalFov*.5f);
+                Check(Mathf.Abs(unity.projectionMatrix.m11-verticalScale)<.0001f&&Mathf.Abs(unity.projectionMatrix.m00-verticalScale/actual.aspect)<.0001f,"Projected aperture did not match the reported vertical FOV and aspect");
+                if(percent==100)Check(actual.verticalFov==camera.verticalFov&&MatrixError(nativeVp,baselineVp)==0,"100 percent did not preserve the exact original projection");
+                if(frame.viewCount>1){
+                    Check(frame.mirrorCamera.verticalFov==mirror.verticalFov&&(frame.mirrorCamera.eye-mirror.eye).sqrMagnitude<.00000001f&&MatrixError(ReadNativeProjection(frame.frameConstants,1),mirrorVp)==0,"Main FOV changed the independent mirror camera");
+                    Check(MatrixError(scene.MirrorCamera.cullingMatrix,mirrorVp)<.00001f,"Mirror culling diverged while main FOV changed");
+                }
+                Check(host.Status.simulationTicks==frozen&&host.Status.speedMetresPerSecond==speed&&host.Status.rpm==rpm,"Changing FOV advanced or modified the frozen race");
+                yield return CaptureCamera("fov-view-"+view+"-"+percent);
+                fovObservations.Add(new FovObservation{view=view,percent=percent,simulationTicks=frozen,authoredFov=camera.verticalFov,actualFov=actual.verticalFov,expectedFov=expected,unityDegrees=unity.fieldOfView,projectionError=projectionError,cullingError=cullingError,mirrorPresent=frame.viewCount>1,mirrorFov=frame.mirrorCamera.verticalFov,imageSha256=lastCameraCaptureHash});
+            }
+        }
+        options.BeginEdit();options.Draft.defaultCamera=original.defaultCamera;options.Draft.cameraFovPercent=100;Check(options.ApplyDraft(),"Could not restore default FOV");yield return Frames(4);
+        Check(Idas3GameOptions.Equivalent(original,options.Current)&&JsonUtility.ToJson(host.ControlBindings.Current)==bindings,"FOV checks changed unrelated preferences or controls");
+        Check(host.Status.simulationTicks==frozen&&options.Current.cameraFovPercent==100,"Restoring default FOV altered the race clock");
+        Observe("fov-restored-default-paused");
     }
     private IEnumerator OptionsChecks(Idas3MultiplayerSession session=null){
         Idas3WheelFeedbackChecks.Run(root);
@@ -518,7 +585,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     }
     private void WriteReport(bool passed,string error,bool stopped){File.WriteAllText(Path.Combine(root,online?"pause-options-report.json":"report.json"),JsonUtility.ToJson(new Report{
         passed=passed,error=error,online=online,shutdownComplete=stopped,checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,options=options.Current,
-        observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),cameras=cameraObservations.ToArray(),scope=NaturalCameraCheck?
+        observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),cameras=cameraObservations.ToArray(),fov=fovObservations.ToArray(),scope=FovCheck?
+        "Isolated actual Unity/native race frozen through the ordinary pause owner. Unapplied/cancelled FOV drafts preserve live projection. Production options apply 50/100/150/200 percent to all three authored driving cameras; native camera FOV and VP agree with Unity projection/culling, pose and simulation remain fixed, and any rear-view mirror stays unchanged. Restores authored 100 percent and original view. Scene captures use Camera.Render and omit the managed pause overlay; no live online route or replay camera is exercised.":NaturalCameraCheck?
         "Isolated actual Unity/native race: existing C/controller-Y view control cycles Bumper 0, Chase 1 and Natural 2; Gameplay DEFAULT CAMERA navigates, cancels, applies and reloads Natural without changing other settings or bindings. Native and Unity camera frames stay finite, external views include the player car, and Natural stays stable while paused and resumes with the race. Chase/Natural scene captures omit the managed pause overlay at one frozen simulation tick. No diagnostic camera pose or physics changes are used. "+(SceneOnlyCapture?"Scene-only capture explicitly skips menu OnGUI screenshots; menu appearance is not visually validated.":"Options captures use actual OnGUI Repaint. The no-capture flag skips all screenshot checks."):
         "Actual game/options owners with isolated saves; keyboard/controller input traverses the normal SceneGame pause router. Controller response/deadzone checks use normal gameplay-row navigation and APPLY, native setters/getters, per-response persistence, bounds and isolated legacy JSON migration. Steering smoothing uses the sixth Gameplay slider, one-percent navigation, BACK cancellation, APPLY, native range checks, legacy-off defaults and global save/reload; online clocks and packets are checked while smoothing options remain open. Wheel rows and persistence are tested with live feedback disabled; enabled persistence uses a platform without hardware output. Focus loss uses its diagnostic override through normal managed/native gates. Options images use real OnGUI Repaint on AA1 target. Online snapshots use normal two-client LAN transport; this is not Steam internet or OS Alt-Tab event coverage."},true));}
     private void Finish(bool passed,string error){

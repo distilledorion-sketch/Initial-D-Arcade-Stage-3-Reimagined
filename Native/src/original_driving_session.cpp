@@ -154,7 +154,7 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
     next->fsca=OriginalFscaTable::load(dataRoot/"fsca_table.bin");
     next->rivalData=OriginalRivalData::load(root/"data/original_rival");
     next->collision=OriginalCollisionData::load(dataRoot/originalCollisionFile(selection.physics.conditionCode,selection.collisionVariant));
-    next->parameters=next->data.parameters(effective,next->path);
+    next->parameters=next->data.parameters(effective,next->path,importedRoad?importedRoad->speedCondition:std::nullopt);
     if(importedRoad){
         if(selection.rival||importedRoad->path.points.size()<21||importedRoad->path.points.size()>16000||
             importedRoad->path.inclusiveLastIndex+1!=importedRoad->path.points.size()||importedRoad->collision.triangles.empty()||

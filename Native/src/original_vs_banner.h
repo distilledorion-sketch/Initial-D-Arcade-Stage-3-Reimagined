@@ -51,6 +51,9 @@ struct OriginalVsBannerSetup {
     std::array<std::uint32_t,2> battles{}, wins{};
     std::string customCourseName;
     bool compactHeader=false;
+    // The agreed online race rule, supplied after the numerical race is ready.
+    // Leave false for solo introductions, replays and uninitialized lobbies.
+    bool boostOff=false;
 };
 struct OriginalVsMetadataPlacement {
     int chunk=0;
@@ -103,6 +106,10 @@ private:
     NativeTextureBank textures_;
     NativeTextureBank nameFont_;
     NativeTextureBank recordFont_,importedTitles_;
+    struct BattleRecordLayout {
+        float origin=0,width=367,winRight=207,percentRight=315,tenthsRight=341;
+        float secondLabelThreshold=2;
+    } battleRecordLayout_;
     std::array<std::uint16_t,9216> nameIndices_{};
     std::array<std::uint32_t,9216> nameUnicode_{};
     std::array<std::array<std::uint8_t,2>,221> profileGlyphs_{};

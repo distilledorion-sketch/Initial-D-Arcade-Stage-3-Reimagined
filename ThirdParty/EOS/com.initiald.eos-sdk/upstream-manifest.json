@@ -1,0 +1,25 @@
+{
+  "upstream": "https://github.com/EOS-Contrib/eos_plugin_for_unity",
+  "release": "v6.2.0",
+  "releaseCommit": "65e44063d5f908002e74a3080343fb0be561dacb",
+  "archiveUrl": "https://github.com/EOS-Contrib/eos_plugin_for_unity/releases/download/v6.2.0/com.playeveryware.eos-6.2.0.tgz",
+  "archiveSha256": "aafe5a1cc278f2f65e0373777706d0a1028eea49b9548ef4a7520cc50f647c4b",
+  "sdkVersion": "1.19.2.1-58105819",
+  "modifications": [
+    "Created minimal desktop Unity package manifest.",
+    "Native importer metadata enables each binary only for its matching x64 player; the game manually loads editor binaries for safe unload between play sessions.",
+    "C# SDK source, native binary contents, and original notices are unchanged."
+  ],
+  "binaries": [
+    {
+      "path": "Runtime/Windows/x64/EOSSDK-Win64-Shipping.dll",
+      "bytes": 19548600,
+      "sha256": "ab25af350c48856633d671a16e8469277f9acee39186d69fe5b2a26100d738e8"
+    },
+    {
+      "path": "Runtime/Linux/libEOSSDK-Linux-Shipping.so",
+      "bytes": 26700576,
+      "sha256": "05c88b7adb10bfe3dc89d133af7318422838ab6909c06dcd3e74bd2af4ac2309"
+    }
+  ]
+}

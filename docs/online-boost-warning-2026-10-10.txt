@@ -1,0 +1,61 @@
+ONLINE BOOST OFF WARNING - October 10, 2026
+
+Request
+Display the original arcade Boost Off! warning during the two-car online
+introduction, so players and recordings show the rule selected for the match.
+
+Implementation
+Reuse start2d chunks 81 and 82 (textures 11 and 12). The English and Japanese
+warning assets are identical. Chunk 81 remains visible and chunk 82 supplies
+the original dark flashing overlay for the first 10 ticks of each 30-tick
+cycle. The counter is the original VS owner's phase counter, including its
+reset when entering phase 1. Presentation advances at the existing 60 Hz rate.
+
+Position follows the original 14D69A draw translation and 145EC0 bank matrix,
+including authored depth. At 640x480 its bounds are approximately
+(447.26,70.69)-(620.97,103.34). Existing UI fitting handles other resolutions;
+imported course titles do not shift the warning.
+
+beginVsBanner reads the initialized authority race's boost setting. It does
+not guess from absent/default lobby state. Existing ready/revision checks
+invalidate readiness when boost changes, and the race setup freezes that
+agreed setting. Both local player slots and connected rematches use this path.
+The normal VS owner removes the warning at introduction completion, before
+the countdown. Offline introductions and replay playback do not acquire it.
+No rule, physics, profile or transport protocol change is required.
+
+Validation
+- Real App/render-command tests passed 532 English and 533 Japanese checks:
+  both slots, Off/On/Off rematches, actual warning texture submission,
+  removal after frame 240, no-authority/offline/replay suppression, and
+  unchanged authority frame/digest, profiles and isolated save contents.
+- Source-execution comparison passed in both UI languages: 482 boost/frame
+  cases, 330 warning layouts and 288 existing course/condition layouts each.
+  Executes the original counter advance, draw branches and projection math.
+  The rule getter, bounded integer quotient helper and GPU submission are
+  explicit test boundaries. Warning projection tolerance is 0.03 pixels
+  because the host flattens the authored quad's tiny depth variation.
+- Pixel checks cover warning visibility, unchanged surrounding UI and
+  imported-title independence at 640x480, 1280x720, 2560x1080 and 800x600.
+  English full banner tests passed 31,924 checks; Japanese focused warning
+  tests passed 30,574 checks. The focused mode is --boost-only;
+  older English-only stat-color assumptions do not apply to Japanese assets.
+- Native application checks use isolated fixtures, not a new two-account
+  Steam session. Existing reliable lobby-rule transport was reviewed.
+
+Desktop
+Updated only Idas3Unity.dll in Builds/Current and Desktop/Current after
+backing up both prior DLLs. All three source/staged/desktop hashes match.
+The installed desktop DLL initialized, rendered 120 frames and shut down
+successfully using isolated diagnostic saves. Personal files were untouched.
+
+Evidence
+Verification/boost-off-20261010 contains builds, App reports, source-oracle
+logs and rendered preview frames. The native-only desktop installation has
+its own backups and installed-DLL startup report there.
+
+Native DLL SHA256
+4C7FB9545E1E2BC5DE4B75A6C6F752FC63C28ADBBA7D07823A63EB57FC31570B
+
+Publication
+Local change only; no GitHub push or release in this task.

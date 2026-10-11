@@ -61,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.46";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.47";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -313,9 +313,6 @@ public static class Idas3Build
             }
         }
         // Post-build staging avoids importing 14,376 native assets into Unity.
-        string steamApi = Path.Combine(Path.GetDirectoryName(output), "InitialDUnity_Data/Plugins/x86_64/steam_api64.dll");
-        if (!File.Exists(steamApi)) throw new FileNotFoundException("Steam's official Windows x64 runtime was not included in the player.", steamApi);
-        File.WriteAllText(Path.Combine(Path.GetDirectoryName(output), "steam_appid.txt"), "480\n", new System.Text.UTF8Encoding(false));
         string destination = Path.Combine(Path.GetDirectoryName(output), Path.GetFileNameWithoutExtension(output)+"_Data/StreamingAssets/IDAS3");
         string script = Path.Combine(project, "Tools/Stage-GameData.ps1");
         var start = new ProcessStartInfo("powershell.exe") {

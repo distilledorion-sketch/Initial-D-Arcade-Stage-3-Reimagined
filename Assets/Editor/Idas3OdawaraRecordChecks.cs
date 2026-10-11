@@ -8,6 +8,7 @@ public static class Idas3OdawaraRecordChecks
 {
     static string output="Verification/odawara-records-directions";
     public static void RunGunsai(){output="Verification/gunsai-records-20261008";Run();}
+    public static void RunReset(){output="Verification/odawara-reset-20261011";Run();}
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneInitialize([MarshalAs(UnmanagedType.LPUTF8Str)]string assets,[MarshalAs(UnmanagedType.LPUTF8Str)]string saves,int width,int height);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneShutdown();
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneModeFlowFixture(int scene);

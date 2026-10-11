@@ -1,0 +1,40 @@
+HISTORICAL CONFIGURATION — the active game now uses EOS P2P.
+Do not deploy this queue for the current EOS build.
+
+IDAS3 Matchmaker queue configuration
+
+idas3-online.mmq is the Unity Matchmaker queue authoring format used by the
+Multiplayer Services 2.4.0 editor deployment tools. It describes one enabled
+queue and one default pool. Each ticket contains one player; every match
+requires exactly two single-player teams. Backfill and compatibility-rule
+relaxation are disabled.
+
+Use this configuration in the same Unity project and environment selected by
+the game's Idas3UnityOnlineConfig. The queue name is idas3-online. Deploying
+this file changes the cloud queue; merely saving or validating it does not.
+For manual Dashboard setup, the pool's matchmaking rules are the matchLogic
+object in the file. Select Match ID hosting. Relay is configured by the MPS
+session network options in the game, rather than a Relay hosting type here.
+
+The client supplies the compatibility value through
+MatchmakerOptions.PlayerProperties["compatibility"]. MPS 2.4.0 converts that
+dictionary's PlayerProperty.Value values to player customData when creating
+the ticket. The match-level Equality rule deliberately has no reference:
+Unity compares the compatibility values of every matched player. A rule only
+on each one-player team would not compare the two opponents.
+
+Evidence checked on 2026-10-11:
+- Official schema:
+  https://ugs-config-schemas.unity3d.com/v1/matchmaker/matchmaker-queue.schema.json
+- Equality without a reference compares all source values:
+  https://docs.unity.com/ugs/manual/matchmaker/manual/matchmaking-rules-rules
+- MPS 2.4.0 package source:
+  Editor/Matchmaker/Authoring/Core/Parser/IMatchmakerConfigParser.cs (.mmq)
+  Editor/Matchmaker/Authoring/Core/Model/QueueConfig.cs (MatchId hosting)
+  Editor/Matchmaker/Authoring/Core/Model/RuleBasedMatchDefinition.cs (rule model)
+  Editor/Matchmaker/Authoring/IO/CustomContractResolver.cs (camelCase JSON)
+  Runtime/Multiplayer/Matchmaking/MatchmakerManager.cs (player customData)
+  Runtime/Multiplayer/Matchmaking/Matchmaker.cs (Match ID CreateOrJoinAsync)
+
+Local schema validation confirms document shape. It does not prove that a
+cloud deployment succeeded or that two players completed a live match.

@@ -10,11 +10,11 @@ using UnityEngine.InputSystem.LowLevel;
 using Idas3.Multiplayer;
 
 // Private opt-in regression: provider input must recover after the online
-// overlay closes. Steam initialization is an explicit second-run option.
+// overlay closes. EOS online initialization is an explicit second-run option.
 public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
 {
     private static string pendingRoot;
-    private static bool pendingSteam,pendingRequirePhysical;
+    private static bool pendingOnline,pendingRequirePhysical;
     private static bool InputOnly=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-input-check-no-captures")>=0;
     private static int pendingPhysicalSlot=-1;
     private static Idas3OnlineControllerSmoke active;
@@ -25,7 +25,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     private string root, profile, stage="initializing";
     private KeyCode physicalKey;
     private int pulse, checks,physicalSlot=-1;
-    private bool finished, steam,requirePhysical;
+    private bool finished, online,requirePhysical;
     private double began;
     private readonly List<Observation> observations=new List<Observation>();
     private readonly List<Census> censuses=new List<Census>();
@@ -59,7 +59,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     [Serializable] private sealed class EndpointCheck { public string stage;public bool passed;public int baselineConnected;public string[] missing; }
     [Serializable] private sealed class Report
     {
-        public bool passed,shutdownComplete,steam,requirePhysical;
+        public bool passed,shutdownComplete,online,requirePhysical;
         public int checks,physicalSlot;
         public string error,scope;
         public Observation[] observations;
@@ -73,8 +73,12 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     public static bool Configure(ref string saves)
     {
         var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-online-controller-smoke");if(at<0)return false;
+        if(Array.IndexOf(args,"-idas3-online-controller-steam")>=0)
+            throw new ArgumentException("Use -idas3-online-controller-online for the current online-service controller check.");
         if(at+1>=args.Length)throw new ArgumentException("Online controller diagnostic needs a fresh output directory.");
-        pendingRoot=Path.GetFullPath(args[at+1]);pendingSteam=Array.IndexOf(args,"-idas3-online-controller-steam")>=0;
+        pendingRoot=Path.GetFullPath(args[at+1]);pendingOnline=Array.IndexOf(args,"-idas3-online-controller-online")>=0||Array.IndexOf(args,"-idas3-online-controller-unity")>=0;
+        if(pendingOnline&&Idas3EosOnlineConfig.AuthenticationProfile=="default")
+            throw new ArgumentException("Online diagnostics require a separate -idas3-online-profile.");
         pendingRequirePhysical=Array.IndexOf(args,"-idas3-online-controller-require-physical")>=0;pendingPhysicalSlot=-1;
         int slotAt=Array.IndexOf(args,"-idas3-online-controller-physical-slot");
         if(slotAt>=0)
@@ -93,12 +97,12 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     public static void Attach(Idas3SceneGame game)
     {
         if(pendingRoot==null)return;active=game.gameObject.AddComponent<Idas3OnlineControllerSmoke>();
-        active.host=game;active.root=pendingRoot;active.steam=pendingSteam;active.requirePhysical=pendingRequirePhysical;active.physicalSlot=pendingPhysicalSlot;active.began=Time.realtimeSinceStartupAsDouble;
+        active.host=game;active.root=pendingRoot;active.online=pendingOnline;active.requirePhysical=pendingRequirePhysical;active.physicalSlot=pendingPhysicalSlot;active.began=Time.realtimeSinceStartupAsDouble;
         active.StartCoroutine(active.Guard(active.Run()));
     }
     internal static Idas3ControllerDevices IsolatedProvider()
     {
-        if(pendingRoot==null||pendingSteam||pendingRequirePhysical)return null;
+        if(pendingRoot==null||pendingOnline||pendingRequirePhysical)return null;
         uint NoXInput(uint slot,out Idas3Native.PadState state){state=default;return 1167;}
         return new Idas3ControllerDevices(()=>Time.realtimeSinceStartupAsDouble,NoXInput,
             device=>device.description.manufacturer=="Private input test");
@@ -305,10 +309,10 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     private IEnumerator Run()
     {
         yield return Frames(5);Check(host.Ready,"Game did not initialize");host.DiagnosticFocusOverride=true;
-        if(steam||requirePhysical)yield return Until(HasForeground,45,"Bring the private game window to the Windows foreground for the physical/Steam input check");
+        if(online||requirePhysical)yield return Until(HasForeground,45,"Bring the private game window to the Windows foreground for the physical/online input check");
         yield return Frames(15);
         menu=host.GetComponent<Idas3MultiplayerMenu>();Check(menu!=null,"Online menu missing");
-        if(!steam)host.MultiplayerSession.ConfigureLocalTest(29834,"Private controller test");
+        if(!online)host.MultiplayerSession.ConfigureLocalTest(29834,"Private controller test");
         string key=null;
         if(physicalSlot>=0){key="xinput:"+physicalSlot;yield return Frames(6);}
         else
@@ -332,20 +336,21 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         for(int cycle=0;cycle<3;++cycle)
         {
             stage="cycle-"+cycle+"-opening";
-            if(steam||requirePhysical){yield return Until(HasForeground,45,"F1 check requires the actual Windows foreground game window");
+            if(online||requirePhysical){yield return Until(HasForeground,45,"F1 check requires the actual Windows foreground game window");
                 Check(Application.isFocused,"F1 path requires the real player window to be focused");}
             physicalKey=KeyCode.F1;yield return Frames(4);Observe(stage);Check(menu.IsOpen,"Mapped F1 did not open online menu");
             physicalKey=KeyCode.None;yield return Frames(6);
             if(cycle==0)
             {
                 CensusInputs("after-first-online-initialization");
-                if(steam||requirePhysical)for(int settle=1;settle<=5;++settle)
+                if(online||requirePhysical)for(int settle=1;settle<=5;++settle)
                 {
                     double until=Time.realtimeSinceStartupAsDouble+1;
                     while(Time.realtimeSinceStartupAsDouble<until)yield return null;
-                    CensusInputs("steam-settle-"+settle);
+                    CensusInputs("online-settle-"+settle);
                 }
-                Check(host.MultiplayerSession.Available,steam?"Steam initialization failed: "+host.MultiplayerSession.ErrorText:"LAN transport unavailable");
+                if(online)yield return Until(()=>host.MultiplayerSession.Available,45,"EOS online initialization failed: "+host.MultiplayerSession.ErrorText);
+                else Check(host.MultiplayerSession.Available,"LAN transport unavailable");
                 CheckPhysicalEndpoints("after-five-second-settle");
             }
             Observe("cycle-"+cycle+"-open");Check(host.DiagnosticSubmittedInput.rightTrigger==0,"Driving leaked through open online menu");
@@ -365,7 +370,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
             physicalKey=KeyCode.None;Pad(.6f,-.35f);yield return Frames(5);
         }
         CensusInputs("after-online-close-recovery");CheckPhysicalEndpoints("after-online-close-recovery");Check(!host.MultiplayerSession.InLobby&&!host.MultiplayerSession.IsRacing,"Diagnostic unexpectedly entered an online room/race");
-        if(physicalSlot<0&&!steam){
+        if(physicalSlot<0&&!online){
             yield return ReconnectControls();
             if(!InputOnly){yield return ControllerMenus();if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-online-menu-screens")>=0)yield return Idas3.Multiplayer.Idas3OnlineMenuScreens.Run(root);yield return WheelMenus();}
         }
@@ -377,13 +382,13 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         try{if(host.Ready)Observe(passed?"final":"failure");}catch(Exception){}
         try{if(menuWheel!=null&&menuWheel.added)InputSystem.RemoveDevice(menuWheel);if(gamepad!=null&&gamepad.added)InputSystem.RemoveDevice(gamepad);host.DiagnosticFocusOverride=null;host.StopNative();stopped=!host.Ready;}
         catch(Exception failure){passed=false;error=(error??"")+failure;}
-        File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed&&stopped,shutdownComplete=stopped,steam=steam,requirePhysical=requirePhysical,physicalSlot=physicalSlot,checks=checks,error=error,
+        File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed&&stopped,shutdownComplete=stopped,online=online,requirePhysical=requirePhysical,physicalSlot=physicalSlot,checks=checks,error=error,
             observations=observations.ToArray(),censuses=censuses.ToArray(),endpointChecks=endpointChecks.ToArray(),scope=(physicalSlot>=0?
                 "Private actual Unity player using the selected physical XInput slot. Live raw-to-native pad connection, throttle and steering are compared before/after F1; no physical input is fabricated or assumed nonzero. ":
                 "Private actual Unity player. Synthetic Gamepad events pass through the real provider/bindings/native input; held and fresh analog inputs are compared after closing. ")+
                 "F1, Escape and programmatic close paths plus keyboard recovery. Synthetic LAN run uses the explicit diagnostic focus override and isolated device discovery, then tests replacement-device recovery in an open online menu and independent analog release during the native race. "+
                 (InputOnly?"Input-only run; no UI rendering or on-screen navigation claim. ":"Also tests Select/A/B navigation, on-screen code entry, empty local room hosting/leaving and settings categories. ")+
-                "No peer or public matchmaking. Explicit Steam/physical modes require real foreground focus and do not host rooms. When requirePhysical is true, every baseline connected DLL/slot must remain connected after five-second settling and each close; values may change."},true));
+                "No peer or public matchmaking. Explicit online/physical modes require real foreground focus and do not host rooms. When requirePhysical is true, every baseline connected DLL/slot must remain connected after five-second settling and each close; values may change."},true));
         Debug.Log((passed?"PASS":"FAIL")+" online controller recovery "+error);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying=false;

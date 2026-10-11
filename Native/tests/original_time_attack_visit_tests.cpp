@@ -94,7 +94,8 @@ void mapArtworkAndTrace(const std::filesystem::path& root,const std::filesystem:
 }
 }
 int main(int argc,char** argv){try{
-    require(argc==3,"Arguments: native root, isolated output folder");
+    require(argc==3||argc==4,"Arguments: native root, isolated output folder, optional arcade language (0 English, 1 Japanese)");
+    if(argc==4)setOriginalUiLanguage(std::stoi(argv[3]));
     const std::filesystem::path root=argv[1],out=argv[2];std::filesystem::create_directories(out);
     OriginalTimeAttackVisit visit;require(OriginalTimeAttackVisit::available(root),"Extracted original visit assets available");visit.load(root);
     mapArtworkAndTrace(root,out);

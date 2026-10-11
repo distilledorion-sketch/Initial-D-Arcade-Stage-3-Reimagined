@@ -33,10 +33,20 @@ namespace Idas3.Multiplayer
         }
         [Serializable] private sealed class State
         {
-            public int version=1,car;
+            public int version=2,car;
             public Idas3BattleRecord record=Idas3BattleRecord.Fresh;
             public uint experience;
             public Receipt[] receipts=Array.Empty<Receipt>();
+            public string[] appliedResetKeys=Array.Empty<string>();
+        }
+        // Keep the original field order and shape: adding v2 fields to the
+        // object serialized for a v1 checksum would reject every old save.
+        [Serializable] private sealed class LegacyState
+        {
+            public int version,car;
+            public Idas3BattleRecord record;
+            public uint experience;
+            public Receipt[] receipts;
         }
         [Serializable] private sealed class FileEnvelope
         {
@@ -88,19 +98,26 @@ namespace Idas3.Multiplayer
             if(experience>99)throw new InvalidDataException("Invalid next online battle experience.");
             var receipts=new Receipt[state.receipts.Length+1];Array.Copy(state.receipts,receipts,state.receipts.Length);
             receipts[receipts.Length-1]=new Receipt{raceId=id,won=won,opponent=opponent};
-            var next=new State{car=car,record=after,experience=experience,receipts=receipts};Write(car,next,primaryValid);return after;
+            var next=new State{car=car,record=after,experience=experience,receipts=receipts,appliedResetKeys=state.appliedResetKeys};Write(car,next,primaryValid);return after;
         }
         private static void Validate(Idas3BattleRecord record)
         {if(!record.Valid)throw new InvalidDataException("Invalid online battle record.");}
         private static string Hash(State state)
         {
-            using(var sha=SHA256.Create())return Convert.ToBase64String(sha.ComputeHash(new UTF8Encoding(false).GetBytes(JsonUtility.ToJson(state))));
+            object hashed=state.version==1?(object)new LegacyState{version=1,car=state.car,record=state.record,experience=state.experience,receipts=state.receipts}:state;
+            return HashJson(hashed);
+        }
+        private static string HashJson(object value)
+        {
+            using(var sha=SHA256.Create())return Convert.ToBase64String(sha.ComputeHash(new UTF8Encoding(false).GetBytes(JsonUtility.ToJson(value))));
         }
         private State ReadFile(string path,int car)
         {
             var envelope=JsonUtility.FromJson<FileEnvelope>(File.ReadAllText(path));var state=envelope?.state;
-            if(state==null||state.version!=1||state.car!=car||state.experience>99||state.receipts==null||envelope.sha256!=Hash(state))
+            if(state==null||(state.version!=1&&state.version!=2)||state.car!=car||state.experience>99||state.receipts==null||envelope.sha256!=Hash(state))
                 throw new InvalidDataException("Invalid online record file: "+path);
+            if(state.version==1)state.appliedResetKeys=Array.Empty<string>();
+            else ValidateResetKeys(state.appliedResetKeys);
             Validate(state.record);var ids=new HashSet<string>(StringComparer.Ordinal);
             foreach(var receipt in state.receipts){
                 if(receipt==null||!ulong.TryParse(receipt.raceId,NumberStyles.None,CultureInfo.InvariantCulture,out ulong id)||id==0||
@@ -111,6 +128,17 @@ namespace Idas3.Multiplayer
             return state;
         }
         private State Load(int car,out bool primaryValid)
+        {
+            FilePath(car); // Reject invalid car IDs before journal recovery can write.
+            var floor=LoadModerationJournal(out bool repair);
+            if(repair)WriteModerationJournal(floor);
+            var state=LoadStoredState(car,out primaryValid);
+            if(ApplyResetFloor(state,floor.resetKeys)){
+                Write(car,state,primaryValid);primaryValid=true;
+            }
+            return state;
+        }
+        private State LoadStoredState(int car,out bool primaryValid)
         {
             string file=FilePath(car);primaryValid=false;LastRecovery=null;Exception failure=null;
             if(File.Exists(file))try{var state=ReadFile(file,car);primaryValid=true;return state;}catch(Exception error)when(error is IOException||error is InvalidDataException||error is ArgumentException){failure=error;}

@@ -4,9 +4,10 @@
 #include <iostream>
 
 int main(int argc,char** argv)try{
-    if(argc!=3)throw std::runtime_error("Native root and new evidence directory required");
+    if(argc!=3&&argc!=4)throw std::runtime_error("Native root, new evidence directory and optional arcade language required");
     const auto root=fs::absolute(argv[1]),out=fs::absolute(argv[2]);
     if(fs::exists(out))throw std::runtime_error("Preserve existing evidence");fs::create_directories(out);
+    setOriginalUiLanguage(argc==4?std::stoi(argv[3]):0);
     unsigned checks=0;auto check=[&](bool value,const char* why){++checks;if(!value)throw std::runtime_error(why);};
     for(unsigned fps:{30,60,120,144,240}){
         OnlineResultScreen screen;screen.begin(2000,14000);FixedClock clock;
@@ -29,6 +30,8 @@ int main(int argc,char** argv)try{
     }
     auto app=std::make_unique<App>();app->root=root;app->saveRoot=out/"userdata";app->validationMode=true;app->settings();
     app->frontend.initialize(root,true);app->hud.loadOriginal(root);app->audio.configure(root);
+    check(app->renderer.initializeSceneCapture(640,480),"Menu capture renderer");
+    app->demoPreparationStarted=true;
     app->originalCamera=OriginalChaseCamera::load(root);app->bumperCamera=OriginalChaseCamera::load(root,OriginalDrivingView::Bumper);
     app->saveSlots=LocalSaveSlots(app->saveRoot/"saves");app->activeSaveSlot=0;
     app->profiles=LocalDriverProfiles(app->saveSlots.profileDirectory(0));
@@ -67,6 +70,37 @@ int main(int argc,char** argv)try{
         app->onlineResult.input(true,false,0,0);
         for(unsigned tick=0;tick<40;++tick)app->advanceOnlineResult(1./60.);
         check(app->onlineResult.page==2&&app->onlineContinueArtwork.loaded(),"Original Continue artwork was not opened");
+        if(slot==0&&winner==0){
+            const auto savedScreen=app->onlineResult;
+            const auto savedProfile=app->frontend.battleProfile.words;
+            const int arcadeLanguage=originalUiLanguage();
+            for(unsigned message=0;message<3;++message){
+                app->onlineResult=savedScreen;
+                app->onlineResult.peerLeft=message==0;app->onlineResult.peerReady=message==1;
+                app->onlineResult.decision=message==2?1:0;
+                std::vector<std::uint32_t> english;
+                for(int language=0;language<3;++language){
+                    setCustomMenuLanguage(language);check(app->renderOnlineResult(),"Localized Continue render failed");
+                    const auto& pixels=app->onlineResultPixels;
+                    if(!language)english=pixels;
+                    else{
+                        unsigned changed=0;
+                        for(unsigned i=0;i<pixels.size();++i)if(pixels[i]!=english[i]){
+                            ++changed;const auto x=i%640,y=i/640;
+                            check(x>=23&&x<617&&y>=431,"Custom language changed arcade artwork or clipped a caption");
+                        }
+                        check(changed>50,"Online status caption did not switch language");
+                    }
+                    check(originalUiLanguage()==arcadeLanguage&&app->frontend.battleProfile.words==savedProfile,
+                        "Online caption language changed artwork setting or driver profile");
+                    std::ofstream image(out/("continue-"+std::to_string(message)+"-language-"+std::to_string(language)+".ppm"),std::ios::binary);
+                    image<<"P6\n640 480\n255\n";
+                    for(auto pixel:pixels){const char rgb[]{char(pixel>>16),char(pixel>>8),char(pixel)};image.write(rgb,3);}
+                    check(bool(image),"Could not write online caption evidence");
+                }
+            }
+            setCustomMenuLanguage(0);app->onlineResult=savedScreen;
+        }
         for(unsigned selected:{0,1}){
             unsigned labels=0;
             for(int y=0;y<480;y+=8)for(int x=0;x<640;x+=8){
@@ -93,6 +127,20 @@ int main(int argc,char** argv)try{
         check(app->menu&&app->frontend.stage==FrontendStage::Mode&&!app->multiplayer.active,"Post-race exit must return to mode selection");
         auto restored=app->frontend.battleProfile;restored.setu(1176,offline.u(1176));
         check(restored.words==offline.words,"Exit replaced offline driver's profile beyond initializing its menu timer");
+        const auto lobbyProfile=app->frontend.battleProfile.words;
+        const auto songs=app->audio.selectionStatistics().songsStarted;
+        app->setHostDrivingControlsBlocked(true);
+        unsigned audible=0;
+        for(unsigned frame=0;frame<32;++frame){
+            app->commands(1./60.);check(app->render(1./60.),"Returned lobby render");app->updateAudioScene();
+            for(unsigned sample=0;sample<735;++sample){const auto pcm=app->audio.renderStereo(0,0,0,0,false);audible+=pcm[0]!=0||pcm[1]!=0;}
+        }
+        check(app->renderer.sceneCapture()->frame().screenFadeArgb==0,"Returned lobby retained Mode's black entry fade");
+        check(app->audio.selectionPlaying()&&app->audio.selectionStatistics().cue==unsigned(original::OriginalSelectionMusicCue::Select)&&
+            app->audio.selectionStatistics().songsStarted==songs+1&&audible>0,"Returned lobby did not start its original SELECT score exactly once");
+        check(app->frontend.battleProfile.words==lobbyProfile&&app->frontend.stage==FrontendStage::Mode,
+            "Returned lobby presentation changed the saved car or selected a game mode");
+        app->setHostDrivingControlsBlocked(false);
     }
     // The current offline car also retains its award on restore.
     app->frontend.car=0;app->loadedProfileCar=0;app->frontend.battleProfile=offline;
@@ -103,9 +151,15 @@ int main(int argc,char** argv)try{
     // lobby wait must not invalidate the full profile already read by C#.
     original::OriginalBattleProfile lobbyCar,afterWait;
     check(app->onlineCarProfile(0,lobbyCar)==1,"Returned active save is missing");
-    check(app->renderer.initializeSceneCapture(640,480),"Menu capture renderer");
     app->demoPreparationStarted=true;app->setHostDrivingControlsBlocked(true);
-    for(unsigned frame=0;frame<120;++frame)check(app->render(.25),"Covered mode render");
+    const auto menuSamples=app->audio.selectionSamplePosition();unsigned lobbyAudible=0;
+    for(unsigned frame=0;frame<160;++frame){
+        check(app->render(.25),"Covered mode render");app->updateAudioScene();
+        for(unsigned sample=0;sample<11025;++sample){const auto pcm=app->audio.renderStereo(0,0,0,0,false);lobbyAudible+=pcm[0]!=0||pcm[1]!=0;}
+    }
+    check(app->renderer.sceneCapture()->frame().screenFadeArgb==0,"Covered Mode remained dark after forty seconds");
+    check(app->audio.selectionPlaying()&&app->audio.selectionStatistics().cue==unsigned(original::OriginalSelectionMusicCue::Select)&&
+        app->audio.selectionSamplePosition()>menuSamples&&lobbyAudible>0,"Covered Mode stopped its menu music");
     check(app->onlineCarProfile(0,afterWait)==1&&afterWait.words==lobbyCar.words,
         "Covered Mode changed the saved-car snapshot before rematch");
     check(app->frontend.stage==FrontendStage::Mode,"Covered Mode auto-selected a game mode");
@@ -145,6 +199,6 @@ int main(int argc,char** argv)try{
             owner->leaveMultiplayer();check(!owner->authorityResultFrame,"Result frame survived a rematch reset");
         }
     }
-    std::ofstream(out/"PASS.txt")<<checks<<" native result/garage/persistence/mode-return assertions\n";
+    std::ofstream(out/"PASS.txt")<<checks<<" native result/garage/persistence/mode-return assertions; returned lobby clears the source fade, plays SELECT once, and retains its complete saved-car snapshot through forty seconds of audible covered presentation\n";
     std::cout<<"PASS "<<checks<<" online result application checks\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

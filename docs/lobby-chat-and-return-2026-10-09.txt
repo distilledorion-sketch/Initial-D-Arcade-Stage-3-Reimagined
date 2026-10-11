@@ -1,0 +1,56 @@
+LOBBY CHAT AND RETURN PRESENTATION - October 9, 2026
+
+Requested behavior
+Pre-race text chat in the online lobby. Restore music and the visible background
+in the lobby reached after results, points and Continue.
+
+Implemented
+- Reliable room-local chat over the existing Steam and LAN transports. Driver
+  attribution comes from the admitted peer, not message payloads. Up to 160 UTF-16
+  characters per message and 40 messages in memory; bounded UTF-8 packets, replay
+  rejection, sanitizing and flood limits. No external chat service or chat log.
+- Scrollable lobby panel, Enter/Send, Escape to stop typing, Japanese/Chinese
+  labels and Unicode messages. Typing blocks menu navigation, Ready, F1, mapped
+  Pause and music shortcuts. IME confirmation does not also send the message.
+- History survives connected rematches and clears when the peer/room resets.
+- Fixed the returned Mode screen being advanced with zero elapsed time behind
+  the lobby. That had held its initial black fade and prevented SELECT music
+  from starting. Covered Mode now advances visual/music clocks and entry fade
+  while its interactive timer, confirmations and saved profile remain frozen.
+- Reduced lobby background dimming from 82% to 30%.
+
+Verification
+- Tests/Multiplayer/test_lobby_chat.py: 52 production-model checks passed.
+- Tests/Multiplayer/test_lobby_chat_session.py: 51 production-session packet
+  checks passed against explicit Unity/Steam boundary fakes.
+- Full managed compilation passed with no errors (existing API warnings).
+- Native online_result_application_tests: 678 checks passed, including eight
+  outcome/slot returns, audible SELECT exactly once, cleared fade and an
+  unchanged complete saved-car snapshot during a forty-second lobby wait.
+  Evidence: Verification/online-lobby-presentation-20261009/PASS.txt.
+- Actual Unity menu diagnostic: six chat screenshots and input/scrolling checks
+  passed, including Japanese driver names/messages. Evidence:
+  Verification/lobby-chat-20261009/ui-b/lobby-chat-menu-passed.txt.
+- Two real isolated Unity LAN players: initial bidirectional chat, natural
+  results/points/Continue, preserved conversation, new bidirectional messages,
+  second race, and No/leave flow passed. Host 39,436 checks; guest 38,053 checks.
+  Evidence: Verification/lobby-chat-20261009/lan-{host,join}-b/report.json,
+  lobby-chat-report.json and return-lobby-report.json.
+
+Limits and unrelated diagnostic failures
+- LAN runtime used world-only capture because hidden test windows did not issue
+  lobby IMGUI repaints in the first paired attempt. Actual chat UI was verified
+  separately with the menu diagnostic. Physical IME input and two-account Steam
+  internet play were not exercised.
+- The broader controller diagnostic fails AFTER passing chat tests at Synthetic
+  wheel selection: its isolated-device filter requires manufacturer Private
+  input test, while its existing synthetic Joystick supplies none. Chat does
+  not change device registration. This unrelated fixture was left unchanged.
+- The broader native frontend test stops at its existing factory-color traversal
+  assertion. The default uncovered frontend path was not changed by this fix.
+
+Local build
+Builds/Current/InitialDUnity.exe, via Idas3LobbyUpdateBuild.Build.
+Native plugin SHA256:
+841954E66A4CE22CA533D118992710CED1A43A98F7390C50D1A77413D347E6A1
+No desktop installation or GitHub publication is part of this change.

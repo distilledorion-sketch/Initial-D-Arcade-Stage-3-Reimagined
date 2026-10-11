@@ -15,6 +15,7 @@ struct ImportedDrivingRoad {
     OriginalPhysicsPath path;
     OriginalCollisionData collision;
     float accelerationScale=1.f;
+    std::optional<std::uint32_t> speedCondition{};
 };
 
 // Outer race initializer159870..159888: copy exactly272 drive words and

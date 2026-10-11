@@ -8,5 +8,8 @@ before StartsWith. Discord may omit the optional small image in its reply.
 Patched source is included under ThirdParty/DiscordRPC. Rebuild using:
 dotnet build ThirdParty/DiscordRPC/DiscordRPC.csproj -c Release -p:TargetFrameworks=netstandard2.0
 
-Newtonsoft.Json 13.0.3, netstandard2.0 assembly from the official NuGet package.
+Newtonsoft.Json is supplied by Unity's com.unity.nuget.newtonsoft-json 3.2.2
+package (13.0.2 with Unity AOT support), shared with Multiplayer Services.
+The former standalone 13.0.3 assembly is preserved outside Unity import paths
+under ThirdParty/DiscordLegacyJson to avoid duplicate assembly resolution.
 MIT license: Newtonsoft.Json-LICENSE.txt

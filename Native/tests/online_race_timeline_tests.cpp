@@ -250,6 +250,14 @@ int main(int argc,char** argv)try{
             for(unsigned slot=0;slot<2;++slot){
                 const auto grid=selected.imported->onlineSpawn(scenario&1,slot);
                 require(sim.car(slot).selection().physics.conditionCode==selected.imported->handlingCondition(scenario&1),"Both online cars use the imported course handling selection");
+                if(selected.imported->id==17){
+                    auto speedSelection=sim.car(slot).selection().physics;speedSelection.conditionCode=scenario&1;
+                    const auto data=OriginalPhysicsData::load(root/"data/original_physics/tables.bin");
+                    const auto path=data.loadPath(root/"data/original_physics",speedSelection.conditionCode);
+                    require(sim.car(slot).parameters().frame.table0C28451C==data.parameters(speedSelection,path).frame.table0C28451C,
+                        "Both online cars must use their own Myogi speed coefficient");
+                    require(sim.car(slot).parameters().accelerationScale==1.f,"Online Odawara retained the old acceleration multiplier");
+                }
                 require(std::abs(sim.car(slot).actor().f(0)-grid.position[0])<1&&std::abs(sim.car(slot).actor().f(8)-grid.position[2])<1,"Online car initialized on wrong track");
                 require(sim.rules(slot).rules().goalIndex==selected.imported->rules(scenario&1).goalIndex,"Online finish gate is not Hakone");
             }

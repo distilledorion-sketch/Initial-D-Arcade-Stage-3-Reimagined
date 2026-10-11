@@ -67,4 +67,21 @@ namespace Idas3.Multiplayer
         bool ServiceConnected { get; }
     }
 
+    // Managed matchmaking allocates a pair through a service queue rather than
+    // asking clients to race one another to create and discover rooms.
+    public interface IIdas3QueuedMatchmakingTransport
+    {
+        bool IsMatching { get; }
+        void StartMatchmaking();
+        void CancelMatchmaking();
+    }
+
+    public interface IIdas3OnlineActivityTransport
+    {
+        bool ActivityRequested { set; }
+        string ActivityState { set; }
+        bool PublishActivity { set; }
+        Idas3OnlineActivity Activity { get; }
+    }
+
 }

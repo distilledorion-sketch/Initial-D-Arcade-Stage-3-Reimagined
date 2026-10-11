@@ -102,6 +102,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         bool gateBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-baseline")>=0;
         bool geometryBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-geometry-stage-baseline")>=0;
         foreach(var name in manifest.textureNames){
+            Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
             Require(Path.GetFileName(name)==name,"Enna texture name");
             var texture=new Texture2D(2,2,TextureFormat.RGBA32,true);textures.Add(texture);
             Require(texture.LoadImage(File.ReadAllBytes(Path.Combine(root,"textures",name+".png"))),"Enna texture decode");
@@ -125,13 +126,16 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
             string signature=Encoding.ASCII.GetString(r.ReadBytes(4));bool partFlags=signature=="ENN2";
             Require(partFlags||signature=="ENN1","Special Stage geometry signature");int count=r.ReadInt32();Require(count>0&&count<512,"Enna model count");
             for(int model=0;model<count;++model){
+                Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
                 string name=Str(r);int np=r.ReadInt32();Require(np>=0&&np<512,"Enna part count");var parts=new List<Part>();models.Add(name,parts);
                 for(int p=0;p<np;++p){
+                    Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
                     int material=r.ReadInt32(),nv=r.ReadInt32(),ni=r.ReadInt32();
                     int flags=partFlags?r.ReadInt32():0;
                     Require(material>=0&&material<manifest.textureNames.Length&&nv>=0&&nv<1000000&&ni>=0&&ni<3000000&&ni%3==0&&(flags&~3)==0,"Enna mesh header");
                     var vertices=new Vector3[nv];var uv=new Vector2[nv];var colors=new Color32[nv];var indices=new int[ni];
                     for(int v=0;v<nv;++v){
+                        if((v&4095)==0)Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
                         // Raw PS2 coordinates: D3's captured camera matrices
                         // already own handedness. Do not apply the Editor-only Z flip.
                         vertices[v]=Vec(r);uv[v]=new Vector2(r.ReadSingle(),r.ReadSingle());

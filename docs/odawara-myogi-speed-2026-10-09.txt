@@ -1,0 +1,44 @@
+Odawara: Myogi speed with Tsuchisaka handling — October 9, 2026
+
+Replaced Odawara's Tsuchisaka speed coefficient plus 1.2705 acceleration
+multiplier with Myogi's original per-car/per-direction speed coefficient.
+The acceleration multiplier is now 1. Steering, drift retention, braking,
+cornering/contact loss and weather handling still come from Tsuchisaka.
+Car-specific gear/RPM profiles and saved upgrade modifiers are preserved.
+Odawara still owns its authored route, collision, two laps and course IDs.
+
+The original speed coefficient controls physical gear speeds, propulsion
+response and normalized speed/shift calculations together. It is selected
+independently of the handling condition at session reset, rather than
+scaling total velocity each frame. Solo and both online cars use the same
+session path. Other imported and original courses retain their existing
+coefficient selection.
+
+Validation:
+- 280 parameter combinations covering all 35 cars, both directions,
+  dry/wet and tuning-table endpoints, with Tsuchisaka handling comparisons.
+- 280 full-vehicle straight-line traces, covering every car, direction,
+  automatic/manual and tuning endpoints: 3,395,826 simulated frames.
+  Speed, gear and tach traces matched original Myogi exactly, including
+  acceleration from rest and convergence to a stable terminal speed.
+  This is a flat-road comparison; actual lap speed depends on corners,
+  slopes and collisions. It does not give every car one universal top speed.
+- Odawara and Gunsai road/collision/checkpoint/finish checks and 6,240
+  driving ticks each across direction/weather/transmission combinations.
+- Original data-reference and integrated driving-session regressions pass.
+- Four online scenarios passed 115,200 confirmed peer frames with
+  50/100/200/250 ms latency, jitter, packet loss and deterministic rollback.
+  Two-account Steam/Unity transport was not newly tested.
+
+The native plugin in Assets/Plugins/x86_64 was rebuilt. Evidence and the
+previous plugin are under Verification/odawara-myogi-speed-20261009.
+At the user's request, the tested plugin was also installed into
+C:/Users/Chris/Desktop/Current. Its SHA-256 matches the tested plugin, and
+the actual Desktop .46 executable passed isolated native startup and clean
+shutdown checks. Personal save/settings/music/replay files were preserved.
+The previous DLL and BUILD INFO.json are in desktop-backup under the proof
+folder; desktop-install.json records the installation. This remains a local
+development change and has not been published to GitHub.
+Before publishing these new physics, coordinate the required client build
+and Odawara leaderboard/local-record/ghost revision policy so old handling
+times are not mixed with the new setup. No live records were reset here.

@@ -23,7 +23,7 @@ public static class Idas3CustomMenuLanguageChecks
             var platform=new Platform();var settings=new Idas3GameOptions(platform);settings.Initialize(root);
             Check(settings.Current.customMenuLanguage==0,"Old settings must retain English custom menus");
             var menu=go.AddComponent<Idas3PauseMenu>();menu.Initialize(settings);menu.OpenAttractOptions();menu.SelectTab(2);
-            for(int i=0;i<5;++i)menu.Navigate(1);
+            for(int i=0;i<6;++i)menu.Navigate(1);
             menu.NavigateHorizontal(1);
             Check(settings.Draft.customMenuLanguage==1&&settings.Current.customMenuLanguage==0&&Idas3MenuLocalization.Language==0,"Draft language escaped Apply");
             Check(settings.ApplyDraft(),settings.LastError);

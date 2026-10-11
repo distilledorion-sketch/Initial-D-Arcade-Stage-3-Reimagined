@@ -1,4 +1,4 @@
-"""Bake only the translated save-menu glyphs from the bundled OFL fonts.
+"""Bake translated native custom-menu glyphs from the bundled OFL fonts.
 
 The original arcade artwork and original ASCII menu atlas are unchanged.
 Source of truth for translations: Assets/Resources/Localization/CustomMenus.txt.
@@ -12,7 +12,10 @@ ROOT=Path(__file__).resolve().parents[2]
 KEYS=['SAVE SELECT','INITIAL D / SELECT A DRIVER','USED','NEW DRIVER','EMPTY SLOT',
       'LAST USED CAR','FILE','CAR PREVIEW','PLAY TIME','LEVEL','LAST PLAYED','CONTINUE',
       'CHANGE CAR','DELETE SAVE','ARE YOU SURE?','COULD NOT DELETE SAVE','NO','YES',
-      'ARROWS / STEERING','ACCEL.','Brake','SELECT','CONFIRM','BACK']
+      'ARROWS / STEERING','ACCEL.','Brake','SELECT','CONFIRM','BACK',
+      'BATTLE LEVEL','PTS','BATTLE RECORD COULD NOT BE SAVED','DRAW',
+      'THE OTHER DRIVER LEFT','WAITING FOR THE OTHER DRIVER...',
+      'OPPONENT READY','ESC / B  LEAVE']
 rows={row.split('\t')[0].upper():row.split('\t') for row in
       (ROOT/'Assets/Resources/Localization/CustomMenus.txt').read_text(encoding='utf-8').splitlines()
       if row and not row.startswith('#')}

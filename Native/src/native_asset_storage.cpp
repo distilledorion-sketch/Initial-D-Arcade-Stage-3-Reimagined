@@ -1,4 +1,5 @@
 #include "native_asset_storage.h"
+#include "native_load_keepalive.h"
 #include "lz4.h"
 #include <algorithm>
 #include <bit>
@@ -49,6 +50,7 @@ NativeAssetReader::NativeAssetReader(const std::filesystem::path& path):input_(p
     if (packed_) encoded_.resize(decoded_.size());
 }
 void NativeAssetReader::refill() {
+    serviceLoadKeepAlive();
     if (!remaining_) throw std::runtime_error("Truncated native asset");
     available_=std::min(remaining_,nativeAssetBlockSize);cursor_=0;
     if (!packed_) {readExact(input_,decoded_.data(),available_);return;}

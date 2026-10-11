@@ -8,6 +8,7 @@ using UnityEngine;
 public sealed class Idas3GameOptions
 {
     public const float MaximumVolume=2;
+    public const int MinimumCameraFovPercent=50,MaximumCameraFovPercent=200;
     [Serializable] public sealed class Values
     {
         public int version=1;
@@ -16,6 +17,7 @@ public sealed class Idas3GameOptions
         public int displayMode,width=1280,height=720;
         public bool vSync=true;
         public int frameRateLimit=60,antiAliasing=4,defaultCamera,controllerResponse;
+        public int cameraFovPercent=100;
         public int steeringSettingsVersion=1;
         public int aiDifficulty;
         public int customMenuLanguage; // English / Japanese / Simplified Chinese; custom menus only.
@@ -295,6 +297,7 @@ public sealed class Idas3GameOptions
         if(value.antiAliasing!=0&&value.antiAliasing!=2&&value.antiAliasing!=4&&value.antiAliasing!=8)value.antiAliasing=4;
         if(value.frameRateLimit!=0)value.frameRateLimit=Math.Max(30,Math.Min(360,value.frameRateLimit));
         if(value.defaultCamera<0||value.defaultCamera>2)value.defaultCamera=0;
+        value.cameraFovPercent=Math.Max(MinimumCameraFovPercent,Math.Min(MaximumCameraFovPercent,value.cameraFovPercent));
         value.aiDifficulty=Math.Max(0,Math.Min(2,value.aiDifficulty));
         if(!Idas3ArcadeMeterCatalog.IsValidStyle(value.hudMeterStyle))value.hudMeterStyle=0;
         if(value.hudMeterLayout==-1)value.hudMeterLayout=value.HudOffset(2)==Vector2.zero&&value.HudSizePercent(2)==100?1:0;
@@ -351,7 +354,7 @@ public sealed class Idas3GameOptions
     public static bool Equivalent(Values a,Values b)=>a!=null&&b!=null&&
         a.masterVolume==b.masterVolume&&a.musicVolume==b.musicVolume&&a.engineVolume==b.engineVolume&&a.effectsVolume==b.effectsVolume&&a.tireVolume==b.tireVolume&&a.audioSettingsVersion==b.audioSettingsVersion&&
         !DisplayChanged(a,b)&&a.vSync==b.vSync&&a.frameRateLimit==b.frameRateLimit&&a.antiAliasing==b.antiAliasing&&
-        a.aiDifficulty==b.aiDifficulty&&a.arcadeTextLanguage==b.arcadeTextLanguage&&a.customMenuLanguage==b.customMenuLanguage&&a.defaultCamera==b.defaultCamera&&a.controllerResponse==b.controllerResponse&&a.timeAttackGhost==b.timeAttackGhost&&
+        a.aiDifficulty==b.aiDifficulty&&a.arcadeTextLanguage==b.arcadeTextLanguage&&a.customMenuLanguage==b.customMenuLanguage&&a.defaultCamera==b.defaultCamera&&a.cameraFovPercent==b.cameraFovPercent&&a.controllerResponse==b.controllerResponse&&a.timeAttackGhost==b.timeAttackGhost&&
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&
         a.steeringDeadzonePrevious==b.steeringDeadzonePrevious&&a.steeringDeadzoneWheel==b.steeringDeadzoneWheel&&
         a.steeringSmoothing==b.steeringSmoothing&&

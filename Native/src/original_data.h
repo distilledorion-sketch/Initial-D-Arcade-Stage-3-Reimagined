@@ -1,6 +1,7 @@
 #pragma once
 #include "original_initialization.h"
 #include <filesystem>
+#include <optional>
 #include <vector>
 
 namespace idas3::original {
@@ -38,8 +39,10 @@ class OriginalPhysicsData {
 public:
     static OriginalPhysicsData load(const std::filesystem::path& tablesFile);
     OriginalPhysicsPath loadPath(const std::filesystem::path& dataRoot,std::uint32_t conditionCode) const;
+    // An imported course can borrow another course's speed coefficient while
+    // retaining selection's steering/loss tables and path. Default is original.
     OriginalVehicleParameters parameters(const OriginalPhysicsSelection& selection,
-        const OriginalPhysicsPath& path) const;
+        const OriginalPhysicsPath& path,std::optional<std::uint32_t> speedCondition={}) const;
     OriginalInitializationInputs initialization(const OriginalPhysicsSelection& selection,
         std::array<float,3> position,std::array<float,3> angles) const;
     // Expose actual car dimensions/other record words for the contact lift.

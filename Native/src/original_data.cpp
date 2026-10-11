@@ -107,12 +107,18 @@ std::array<std::uint32_t,11> OriginalPhysicsData::carRecord(std::uint32_t index)
     if(index>=35)throw std::invalid_argument("Original vehicle index outside35 cars");
     std::array<std::uint32_t,11> record{};for(std::size_t i=0;i<11;++i)record[i]=word(0x0C283F18+index*44+std::uint32_t(i*4));return record;
 }
-OriginalVehicleParameters OriginalPhysicsData::parameters(const OriginalPhysicsSelection& s,const OriginalPhysicsPath& path) const{
+OriginalVehicleParameters OriginalPhysicsData::parameters(const OriginalPhysicsSelection& s,const OriginalPhysicsPath& path,
+        std::optional<std::uint32_t> speedCondition) const{
     validateSelection(s);
+    if(speedCondition&&(*speedCondition>=18||(*speedCondition&1u)!=(s.conditionCode&1u)))
+        throw std::invalid_argument("Speed donor must be an original condition with the selected direction");
     if(path.conditionCode!=s.conditionCode||path.inclusiveLastIndex!=word(0x0C283E88+s.conditionCode*8)||path.points.size()!=path.inclusiveLastIndex+1)
         throw std::invalid_argument("Selected original path and physics condition disagree");
     OriginalVehicleParameters p;const auto index=(s.conditionCode/2)*140+s.vehicleIndex*4;
-    p.frame.table0C28451C=scalar(0x0C28451C+s.conditionCode*140+s.vehicleIndex*4);
+    // The original per-course/per-car coefficient sets physical gear speeds
+    // and propulsion response. Keep its normalized-speed/shift calculations
+    // consistent; all steering, drift, loss and surface tables remain on s.
+    p.frame.table0C28451C=scalar(0x0C28451C+speedCondition.value_or(s.conditionCode)*140+s.vehicleIndex*4);
     p.frame.table0C28866C=scalar(0x0C28866C+s.upgradeIndex0C9015F0*4);
     p.frame.global0C9015E4=s.progressEnabled0C9015E4;p.frame.global0C9015D4=s.progressMode0C9015D4;p.frame.global0C901650=s.progress0C901650;
     p.angular.carRecord0C283F18_08=scalar(0x0C283F18+s.vehicleIndex*44+8);p.angular.carRecord0C283F18_0C=scalar(0x0C283F18+s.vehicleIndex*44+12);

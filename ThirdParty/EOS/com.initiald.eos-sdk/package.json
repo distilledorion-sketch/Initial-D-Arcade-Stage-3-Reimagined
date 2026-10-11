@@ -1,0 +1,8 @@
+{
+  "name": "com.initiald.eos-sdk",
+  "version": "1.19.2",
+  "displayName": "EOS SDK Desktop Runtime (Initial D Packaging)",
+  "description": "Unmodified Epic EOS SDK 1.19.2.1-58105819 C# bindings and Windows/Linux x64 native runtime, extracted from official EOS Plugin for Unity v6.2.0. No samples, overlays, RTC helpers, or editor automation.",
+  "unity": "2021.3",
+  "license": "See Runtime/EOS_SDK/license.txt"
+}

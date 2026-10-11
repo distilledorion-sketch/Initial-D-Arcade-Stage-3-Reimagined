@@ -91,6 +91,11 @@ MAPPINGS = {
     'lecture': ranges((0, 1, 0), (22, 22, 22), (30, 36, 30)),
     'rival_scene': {19:18},
     'gasstand': {10:7, 11:8, 12:9},
+    # Type label plus the text chunks referenced by tuning_course/tables.bin's
+    # nameSelectors. The portraits, frames, and unused name slots stay English.
+    'v3sK00rivalface': {i:i for i in (3, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+                                    44, 45, 46, 47, 49, 50, 51, 52, 53, 54,
+                                    55, 56, 57, 59, 60, 61)},
 }
 # Same-ID text banks; deliberately exclude portraits and the keyboard grids,
 # whose Japanese layout does not match the existing input controller.
@@ -126,9 +131,25 @@ def anchor(chunk, original):
         batch['source_vertex_bytes'] = bytes(raw)
 
 
-def import_ui(english, japanese, output):
+def import_ui(english, japanese, output, banks=None):
+    # A targeted import must not rebuild other reviewed localization banks.
+    selected = None
+    if banks:
+        selected = set()
+        for bank in banks:
+            relative = Path(bank)
+            if relative.anchor or '..' in relative.parts or relative.suffix != '.idasmesh':
+                raise ValueError(f'Expected a relative .idasmesh bank: {bank}')
+            if relative.stem not in IDENTITY | MAPPINGS.keys():
+                raise ValueError(f'Unreviewed localization bank: {bank}')
+            if not (english/relative).is_file() or not (japanese/relative).is_file():
+                raise FileNotFoundError(f'Bank is missing in English or Japanese input: {bank}')
+            selected.add(relative.as_posix())
+        paths = [english/relative for relative in sorted(selected)]
+    else:
+        paths = sorted(english.rglob('*.idasmesh'))
     audit = []
-    for path in sorted(english.rglob('*.idasmesh')):
+    for path in paths:
         relative = path.relative_to(english)
         source = japanese/relative
         if not source.is_file() or path.stem not in IDENTITY | MAPPINGS.keys():
@@ -177,8 +198,15 @@ def import_ui(english, japanese, output):
                           textures=len(textures), mapping=changes,
                           english_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
                           japanese_sha256=hashlib.sha256(source.read_bytes()).hexdigest()))
-    (output.parent/'manifest.json').write_text(json.dumps(dict(version=1, language='ja',
-        source='Initial D Arcade Stage 3 Japan Rev C / GDS-0032C', banks=audit), indent=2)+'\n', encoding='utf-8')
+    manifest_path = output.parent/'manifest.json'
+    manifest = dict(version=1, language='ja',
+                    source='Initial D Arcade Stage 3 Japan Rev C / GDS-0032C', banks=[])
+    if selected is not None and manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+        manifest['banks'] = [bank for bank in manifest['banks'] if bank['asset'] not in selected]
+    manifest['banks'] = sorted(manifest['banks'] + audit, key=lambda bank: bank['asset'])
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2)+'\n', encoding='utf-8')
     print(f'{len(audit)} UI banks; {sum(len(x["mapping"]) for x in audit)} mapped elements')
 
 
@@ -187,5 +215,6 @@ if __name__ == '__main__':
     parser.add_argument('--english', type=Path, required=True)
     parser.add_argument('--japanese', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--bank', action='append', help='Import only this relative .idasmesh bank; preserve other banks and manifest entries (repeatable)')
     args = parser.parse_args()
-    import_ui(args.english, args.japanese, args.output)
+    import_ui(args.english, args.japanese, args.output, args.bank)

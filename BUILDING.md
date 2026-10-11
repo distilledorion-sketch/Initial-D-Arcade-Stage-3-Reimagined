@@ -13,7 +13,7 @@ git clone https://github.com/distilledorion-sketch/Initial-D-Arcade-Stage-3-Reim
 cd Initial-D-Arcade-Stage-3-Reimagined
 ```
 
-The full runtime data is included. An original Initial D Arcade Stage 3 **GDS-0033** dump is required to play and is not included or copied by the build. Allow disk space for the checkout, Git objects, Unity's Library cache and the built player. Steamworks.NET is included as a local Unity package with its existing license.
+The full runtime data is included. An original Initial D Arcade Stage 3 **GDS-0033** dump is required to play and is not included or copied by the build. Allow disk space for the checkout, Git objects, Unity's Library cache and the built player. The minimal EOS SDK is included as a local Unity package with its original notices. Internet-enabled builds also require the locally ignored game-client configuration described in [Tools/EOS/setup.txt](Tools/EOS/setup.txt); never use an administrator credential.
 
 ## Native plugin
 

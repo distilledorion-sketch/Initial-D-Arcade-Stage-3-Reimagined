@@ -1,0 +1,141 @@
+Online bans
+===========
+
+The game reads active EOS sanctions for its signed-in player and verified
+opponent. Administrator ban creation and removal stay in Epic's Developer
+Portal. The player build never contains a moderation administrator credential.
+
+Required client permission
+--------------------------
+In the game's Product Settings, select Clients (beside SDK Download &
+Credentials). Under Client policies, edit Initial D Player Multiplayer.
+Keep User required enabled and the existing lobby permissions. Enable only
+Sanctions > findActiveSanctionsForAnyUser for this feature, then save.
+
+Do not grant the player client createSanction, updateSanction, deleteSanction,
+findAllSanctions or trusted-server permissions. The compact active-sanctions
+read is sufficient to check both drivers.
+
+Identify a player
+-----------------
+Open Online Battle > Player Details. Copy the online Player ID, not a driver
+name, room code, leaderboard device ID or Steam ID. The panel includes your
+own ID and the current or most recently admitted online opponent's name and
+ID. Only one recent opponent is retained, in memory until the game closes.
+Display names are labels and can change; the EOS Player ID is the ban target.
+
+Create a ban
+------------
+In the game's Epic Developer Portal, open Epic Online Services > Trust and
+Safety > Sanctions. Select the Live deployment used by this build.
+Create a sanction for the copied Product User ID with action
+RESTRICT_GAME_ACCESS, a reason, and the desired temporary or permanent
+duration. Confirm it is Active, not Pending. The game also recognizes the
+custom action ONLINE_PLAY as the same online-play restriction.
+
+To unban, open the player's profile from the sanctions list. On its Sanctions
+page, select the sanction's menu > Close, enter a reason, and confirm Close.
+An active sanction's duration cannot be edited in place through the portal;
+close it and create the intended replacement if a duration needs changing.
+
+Behavior and limits
+-------------------
+Both actions above restrict EOS online play in this game. Offline play and
+LAN are separate. Chat-only and other unrelated actions do not cause an
+online ban. RESTRICT_MATCHMAKING is not used as a full-online restriction.
+
+The game checks before online entry and before admitting a peer, then
+refreshes active connections every 45 seconds. Known bans close the connection.
+Short service outages may use a recent successful check for an existing
+connection for at most 180 seconds; they never turn an unknown or failed
+first check into permission.
+An unban is recognized after a successful fresh query; Retry Online is
+available after the restriction screen. Expiration comes from EOS, not the
+player's adjustable system clock.
+
+EOS Device ID authentication is account-free. These bans target the current
+online identity; they are not hardware bans or proof of a person's identity.
+The implementation checks both drivers, but modified clients and replacement
+identities remain limitations of client-enforced, account-free P2P play.
+The separate community-leaderboard moderation system is unchanged.
+
+Official references
+-------------------
+https://dev.epicgames.com/docs/epic-online-services/eos-fundamentals/client-and-client-policy/client-policy-guide
+https://dev.epicgames.com/docs/epic-online-services/trust-and-safety/sanctions-interface/sanctions-guide/set-up-sanctions
+https://dev.epicgames.com/docs/epic-online-services/trust-and-safety/sanctions-interface/sanctions-guide/manage-sanctions
+
+Administrative battle-stat resets
+================================
+
+An administrator can reset a player's online battle level/aura or full battle
+history through the same EOS Sanctions page. This feature does not create any
+sanctions or reset any players automatically. Create a reset only for the
+intended player's current online Product User ID, copied from Player Details.
+Both drivers must use an updated build that supports administrative resets;
+older clients cannot join the updated build's EOS rooms.
+
+Choose the reset scope
+----------------------
+RESET_BATTLE_LEVEL resets all 35 car models to battle level 1, zero battle
+experience and zero win streak. This also resets the level-based aura. Battle
+and win totals are retained.
+
+RESET_BATTLE_STATS resets all 35 car models to battle level 1, zero battle
+experience, zero win streak, zero battles and zero wins.
+
+Neither action deletes cars, tuning, tuning points, save slots, Time Attack
+records or replays. These actions do not ban the player from future racing.
+Players can earn battle levels, aura, streaks and records again after a reset.
+
+Create and retain a reset marker
+--------------------------------
+In the Live deployment's Sanctions page, create a sanction for the current
+Product User ID with the exact action above, a reason and Permanent duration.
+Confirm that it is Active, not Pending. Use a new sanction for every requested
+reset, including a second reset of the same scope for the same player.
+
+Keep reset sanctions permanently active. Do not close, expire or remove them
+after the player reconnects. Each sanction's unique ID is the reset marker;
+editing a reason or reopening the same sanction does not request another reset.
+An active marker lets the game reapply the reset if an older record file or
+backup is restored. Removing it can let an older restored file escape the reset.
+Temporary reset sanctions are rejected with an administrator-contact message.
+
+The existing findActiveSanctionsForAnyUser permission is sufficient. Do not
+grant sanction creation, modification or removal permissions to the player
+client, and do not ship an administrator credential with the game.
+
+What the player sees
+--------------------
+The reset is applied when the updated game next successfully checks that
+player's active EOS sanctions, before admitting them to online play. Existing
+connections refresh their checks every 45 seconds; a service outage can delay
+detection under the existing access-check grace period. An offline player is
+reset when they next connect and pass the check.
+
+If a reset is detected during an unfinished race, the race ends neutrally with
+no battle result or race points awarded. The player must reconnect to race
+again. A lobby connection also closes when its reset policy changes. A notice
+explains that an administrator reset the battle stats and they can be earned
+again by racing. If the reset cannot be saved, online play stays unavailable
+until it can be saved successfully.
+
+Each reset marker is saved with the affected battle records so normal restarts
+do not repeatedly erase newly earned progress. Restoring an older record or
+recovering an older backup causes any missing active reset to be applied again.
+Previously recorded race receipts are retained to prevent old results from
+being credited again after the reset.
+
+Enforcement limits
+------------------
+Reset sanctions target the current EOS identity, not a person or hardware.
+Replacement identities, modified clients and deliberately edited local files
+remain limitations of client-enforced, account-free P2P play. Each driver
+independently checks the other's EOS reset markers before accepting their
+record state; this does not make local battle records server-authoritative.
+Offline play and LAN do not query EOS reset sanctions. The separate community
+leaderboard moderation system is unchanged.
+
+Sanction field and permission reference:
+https://dev.epicgames.com/docs/web-api-ref/sanctions-web-apis?lang=en-US

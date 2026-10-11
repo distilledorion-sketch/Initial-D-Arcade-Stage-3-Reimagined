@@ -1,0 +1,47 @@
+Odawara local leaderboard and best-ghost reset
+2026-10-11
+
+Odawara (course 17, conditions 34 and 35) now uses local Time Attack
+revision 2. Its revision-0 and revision-1 rows are excluded whenever CSV
+records are loaded, including restored older files. Gunsai remains on
+revision 1; all other course revisions remain unchanged. All 35 car models,
+both directions and both weather partitions are covered. Day/night and
+transmission share these local ranking partitions, as before.
+
+Game startup migrates these files before displaying local rankings:
+  userdata/time_attack_records_v1.csv
+  userdata/driver_profiles_v1/hakone_personal_v1.csv
+  userdata/saves/slot_1..slot_5/driver_profiles_v1/hakone_personal_v1.csv
+Save selection retains the same revision check, so restoring an old save
+later cannot restore old Odawara bests. Successful migration preserves a
+byte-exact .before-odawara-revision-2.bak CSV beside the original. Earlier
+migration archives are not overwritten. A failed archive leaves the source
+file intact while old rows remain excluded from the loaded record set.
+
+Startup deletes retired Odawara personal best ghosts under the legacy and
+five slot profile directories: ghosts_v1/course_17_{forward,reverse}_{dry,wet}
+with either no revision suffix or _r1, including .tmp and .previous copies.
+New best ghosts use _r2.idghost, allowing a slower first post-reset run.
+The old per-car best telemetry CSVs named original_race_v3_odawara_* and
+development_v01_odawara_* are also removed, across both routes, weather,
+35 models and both transmissions. New Odawara best telemetry uses _r2.csv.
+Cleanup retries safely on later launches and never removes revision-2 runs.
+Unexpected linked paths or non-file entries are refused, not traversed.
+
+Gunsai and other-course ghosts, tuning, car profiles, online battle history,
+and optional replays/*.idreplay archives are not reset. Replay archives are
+separate recordings and are not used as personal-best ghosts.
+
+Verification:
+  Native time_attack_records and time_attack_ghost tests cover all local
+  store locations, all car/direction/weather partitions, exact backups,
+  restored revision-1 files, slower new records, retired ghost variants,
+  preservation of unrelated courses/current ghosts/replay archives,
+  repeat cleanup and refusal to recursively remove unexpected directories.
+  Idas3OdawaraRecordChecks.RunReset exercises the actual native startup,
+  save-selection, displayed ranking and shared-import owners in isolated
+  userdata, plus existing managed course/direction checks.
+
+Rebuild Idas3Unity.dll and include it in the next player/update package.
+The separately managed online service reset controls community records and
+their server replay objects; this migration handles local records/ghosts.

@@ -1,0 +1,95 @@
+Gunsai / Odawara night lamp presentation
+
+Imported night scenery uses vertex colours plus point-light illumination.
+The initial local lamp update incorrectly disabled the latter for IDZero,
+leaving glowing fixtures but no streetlamp light on the road. Restore the
+existing point-light evaluator for imported night road and scenery and remove
+the disabling flag. Visible lamp lenses/coronas are a separate effect and
+cannot replace surface illumination. Original D3, earlier imported tracks,
+projected car headlights and lamp lighting on cars keep their existing paths.
+
+Odawara's 105 PathV light anchors were imported only as illumination positions.
+Recover their RGB and downward directions, plus the source LightGlare atlas.
+Recover 1,320 actual lamp-lens triangles beside those anchors, using the two
+authored lens UV swatches, face orientation and proximity. All 105 fixtures
+have lens faces. This avoids making whole pole/railing materials emissive.
+One small combined mesh draws white/warm lenses and a restrained corona with
+depth testing, distance fog and independent main/mirror camera orientation.
+No realtime Unity lights, shadows, bloom pass or per-frame mesh rebuilds.
+Glow size/brightness are an adaptation; exact IDZero image parity is not claimed.
+
+Gunsai's light PathV has only three black editor placeholders at y=0, about
+29 m below the road. They are excluded from the visual effect. Its gate
+lighting stays baked; no streetlights are invented at the placeholder positions.
+
+Regenerate presentation metadata with:
+  python Tools/Export-IdZeroLampGlows.py <IDZero package/data> RuntimeAssets
+This leaves scene geometry, collision and driving data untouched. Only night
+lamp-glows.json and Odawara's 131,200-byte source glare atlas are added.
+Older course packs without this optional file still load.
+
+Asset recovery verification: Verification/idzero-lamps-20261009
+Illumination correction: Verification/idzero-lamp-illumination-20261009
+The production-loader editor diagnostic renders both courses in day/night,
+dry/wet and both viewing directions. It verifies the single night glow mesh,
+all lens geometry, mirror-only frame constants and occlusion behind a wall.
+The original checks missed the lost road illumination. A regression check now
+disables only point-light data while leaving the bulbs/coronas enabled, and
+compares an asphalt region in dry/wet conditions. Night road pixels must get
+brighter with the lights; daytime images must remain identical. This check
+fails on the previous local build's shader. Correction results are kept in
+the illumination-before/after folders beside the original proof.
+All 28 day captures and 12 Gunsai night captures remain pixel-identical to
+the preceding local build. The new night test detects zero road contribution
+before the correction; afterwards all 120,000 asphalt pixels in the sampled
+region brighten when point lights are enabled, in both dry and wet conditions.
+The 63 editor captures include matching main/mirror frame selection and
+occlusion checks. Odawara before/after images were also visually reviewed.
+The player was rebuilt with compressed Unity resources, retaining the already
+verified runtime course packs. The native DLL remains the preceding Myogi-
+speed/Tsuchisaka-handling Odawara update. Standalone rendering and Desktop
+installation results are recorded in the correction verification folder.
+These are targeted rendering checks, not full-lap performance benchmarks.
+No GitHub release or leaderboard changes were made for this lighting fix.
+
+The corrected standalone Odawara night race passed 331 checks. Its captures
+show lit bulbs, illuminated road/scenery and the rear-view mirror. Installed
+the three changed player files in C:/Users/Chris/Desktop/Current with backups
+and SHA-256 verification. The installed build passed all three ROM/native
+startup checks and shut down cleanly. Personal files remained unchanged.
+
+Distance and uphill cutoff correction
+
+Two further causes were reproduced in the production shaders. First, only the
+eight lamps closest to the main camera lit scenery, so visible lamp pools
+appeared/disappeared with camera movement. Second, the imported night shader
+flipped authored normals against the eye. IDZero often supplies upward normals
+on sloping road meshes; negating these at eye height produced a hard horizontal
+cut through their illumination. Preserve authored normals on these surfaces;
+retain geometric normal orientation for meshes without authored normals.
+
+For IDZero night scenery, build a small immutable spatial index from lamps.bin.
+Each 32 m cell includes every lamp whose 26 m influence can intersect it; there
+is no nearest-light count limit or distance-to-camera switch. Evaluate the
+existing smooth attenuation per fragment and keep the existing distance fog.
+Odawara uses 1,188 cells, 728 references and 21,152 GPU bytes; occupied cells
+average 2.54 lamp references (maximum 13), rather than evaluating all 105 lamps
+for every pixel. No extra draw calls, realtime shadows or per-frame rebuilding.
+Older packs without lamps.bin retain the fallback. Daytime and non-IDZero
+course paths retain their previous behavior, as does near-car lighting.
+
+Proof: Verification/idzero-lamp-distance-20261009 and the distance-final editor
+captures under Verification/idzero-lamps-20261009. The old selection changed
+543,519 pixels in a fixed view; the uphill-normal fixture changed 161,396 pixels
+when only the shading eye height changed. Regression checks require both to
+remain unchanged after the fix. The grid is checked against every source lamp's
+influence and a render that evaluates all lamps, including main/mirror views.
+
+Both corrected regression captures have zero changed pixels; the spatial
+render matches the all-lamp reference with zero channel error. All 28 day and
+12 Gunsai night comparison captures remain identical. The rebuilt player passed
+331 isolated night-race checks. In the 60-frame sample, median GPU time was
+1.6606 ms versus 1.6582 ms previously (not a full-course performance claim).
+The three changed player files were installed to Desktop/Current with backups
+and checksum verification. All three installed startup checks passed; personal
+files and the native handling DLL remain unchanged. Not published to GitHub.

@@ -48,9 +48,6 @@ public static class Idas3PrivateShifterChecks {
         var sample=new Idas3ControllerDevices.RigSample{key="physical-shifter",profile="shifter",controls=new[]{gate}};
         uint Rig(bool connected){migrated.Poll(_=>false,new Idas3ControlBindings.PadState{connected=true},0,Array.Empty<Idas3ControllerControl>(),connected?new[]{sample}:Array.Empty<Idas3ControllerDevices.RigSample>());var frame=new Idas3Native.FrameInput();migrated.ApplyDriving(ref frame);return(frame.flags>>8)&7;}
         Rig(true);gate.value=1;Check(Rig(true)==6,"Auxiliary H-shifter lost its gear");Check(Rig(false)==0,"Disconnected shifter retained stale gear");Check(Rig(true)==0,"Reconnected held shifter bypassed guard");gate.value=0;Rig(true);gate.value=1;Check(Rig(true)==6,"Shifter did not recover after release");
-        Check(!Idas3SteamTransport.PublicNamespace(Idas3SteamTransport.RoomNamespace(true)),"Private room uses public discovery namespace");
-        Check(Idas3SteamTransport.PublicNamespace(Idas3SteamTransport.RoomNamespace(false)),"Public room lost discovery");
-        Check(Idas3SteamTransport.RoomType(true)==Steamworks.ELobbyType.k_ELobbyTypeInvisible,"Code-only room cannot be joined without invite");
         var transport=new FakeRooms();transport.entries.Add(new Idas3Room{Code="private",Private=true,Members=1,Capacity=2,Order=1});
         transport.entries.Add(new Idas3Room{Code="public",Members=1,Capacity=2,Order=2});
         var queue=new Idas3QuickMatch(transport,()=>0,()=>0,"Test");queue.Start();queue.Tick(false);Check(transport.joined=="public","Quick Match selected private room");queue.Cancel();
@@ -64,7 +61,7 @@ public static class Idas3PrivateShifterChecks {
             menu.Activate();Check(mapper.IsCapturing,"Gear 6 rebind action failed");mapper.CancelCapture();
         }finally{UnityEngine.Object.DestroyImmediate(go);}
         Idas3WheelRigChecks.Run();Idas3HeadlightBindingChecks.Run();
-        File.WriteAllText(Path.Combine(root,"PASS.txt"),"PASS "+checks+" private room and direct gear checks. Synthetic devices; no physical H-shifter or second Steam account.\n");Debug.Log("PASS "+checks+" private room and direct gear checks");
+        File.WriteAllText(Path.Combine(root,"PASS.txt"),"PASS "+checks+" private room exclusion and direct gear checks. Synthetic devices and discovery; no physical H-shifter or live online service.\n");Debug.Log("PASS "+checks+" private room and direct gear checks");
     }
 }
 

@@ -5,8 +5,71 @@
 #include <iomanip>
 using namespace idas3::reference;
 using namespace idas3;
+namespace {
+void boostWarningReference(const char* image,OriginalVsBanner& banner,const NativeModel& model){
+ constexpr unsigned owner=0xd000000,bank=0xd001000,positions=0xd002000,models=0xd003000,
+     locals=0xd006000,stack=0xd010000,stop=0xf000000;
+ RefMemory m(image);unsigned draws=0,frames=0;std::size_t instructions=0;
+ for(bool boostOff:{false,true}){
+  m.clear();m.zeroRegion(owner,0x20000);m.zeroRegion(0xc98ad0c,12);m.zeroRegion(0xce00000,0x10000);
+  m.write16(0xc98ad0e,32);m.write32(0xc98ad10,0xce00000);m.write32(0xc98ad14,0xce00000);
+  m.write32(owner+36,bank);m.write32(owner+160,0xc31ee90);
+  m.write32(bank,0xc38a8ec);m.write32(bank+56,positions);m.write32(bank+60,models);
+  m.writeFloat(bank+72,1.f);m.writeFloat(bank+76,1.f);
+  for(unsigned i=0;i<121;++i){m.write32(models+4*i,0xd004000+4*i);for(unsigned j=0;j<3;++j)m.write32(positions+12*i+4*j,m.read32(0xc145408+4*j));}
+  RefCpu angle(m);angle.r[4]=4096;angle.r[15]=stack;angle.pr=stop;instructions+=angle.run(0xc1fa280,stop,100000);m.write32(bank+80,angle.fr[0]);
+  OriginalVsBannerSetup setup;setup.compactHeader=true;setup.drawBackdrop=false;setup.boostOff=boostOff;banner.begin(setup);
+  // Execute the actual online/VS draw tail, including its -0.48 translation,
+  // bank virtual call145EC0, source math and counter modulo30. The external
+  // rule getter, signed quotient helper and GPU submission are boundaries.
+  for(unsigned tick=0;tick<=240;++tick){
+   const auto actual=banner.metadataPlacements();std::vector<int> drawn;
+   m.write32(locals+12,locals+4);m.write32(locals+16,locals+8);
+   RefCpu c(m);c.r[11]=owner;c.r[14]=locals;c.r[15]=stack;c.setFloat(13,0.f);
+   c.callHooks[0xc16de40]=[&](auto& cpu){cpu.r[0]=boostOff?1u:0u;};
+   // This FPSCR/double-mode library helper is outside the scalar interpreter.
+   // All tested inputs are small nonnegative counters with exact quotient;
+   // execute the original remainder subtraction and <=9 branch after it.
+   c.callHooks[0xc2223b8]=[](auto& cpu){
+    if(cpu.r[4]>240||cpu.r[5]!=30)throw std::runtime_error("Unexpected boost warning quotient inputs");
+    cpu.fpul=cpu.r[4]/cpu.r[5];
+   };
+   c.callHooks[0xc1d7120]=[&](auto& cpu){
+    const int chunk=int((cpu.r[4]-0xd004000)/4);drawn.push_back(chunk);
+    const auto found=std::find_if(actual.begin(),actual.end(),[&](auto b){return b.chunk==chunk;});
+    if(found==actual.end())throw std::runtime_error("Original boost warning chunk missing at tick "+std::to_string(tick));
+    float left=INFINITY,top=INFINITY,right=-INFINITY,bottom=-INFINITY;
+    for(const auto& batch:model.chunks.at(chunk).batches)for(const auto& v:batch.vertices){
+     const float values[]{v.position.x,v.position.y,v.position.z,1.f};float p[4]{};
+     for(unsigned row=0;row<4;++row)for(unsigned col=0;col<4;++col)p[row]+=std::bit_cast<float>(cpu.xf[row+4*col])*values[col];
+     const float sx=320.f+320.f*std::bit_cast<float>(0x3fe7c3b5u)*p[0]/-p[2],sy=240.f-240.f*std::bit_cast<float>(0x401a8279u)*p[1]/-p[2];
+     if(!std::isfinite(sx)||!std::isfinite(sy))throw std::runtime_error("Nonfinite original boost warning projection");
+     left=std::min(left,sx);right=std::max(right,sx);top=std::min(top,sy);bottom=std::max(bottom,sy);
+    }
+    // The host flattens the authored quad's <0.000005 depth variation.
+    // The resulting rectangle must stay within0.03pixels of every original
+    // projected edge; this does not permit an arbitrary host placement.
+    if(std::abs(found->left-left)>.03f||std::abs(found->top-top)>.03f||
+       std::abs(found->width-(right-left))>.03f||std::abs(found->height-(bottom-top))>.03f)
+     throw std::runtime_error("Boost warning projection differs from executed source at tick "+std::to_string(tick));
+    ++draws;
+   };
+   instructions+=c.run(0xc14d69a,0xc14d6f2,100000);
+   std::vector<int> host;for(const auto& p:actual)if(p.chunk==81||p.chunk==82)host.push_back(p.chunk);
+   if(host!=drawn)throw std::runtime_error("Boost warning blink/rule differs from executed owner at tick "+std::to_string(tick));
+   if(m.read16(0xc98ad0c)!=0)throw std::runtime_error("Boost warning matrix stack imbalance");
+   ++frames;
+   RefCpu advance(m);advance.r[4]=owner;advance.r[15]=stack;advance.pr=stop;
+   instructions+=advance.run(0xc14b700,stop,10000);banner.tick();
+  }
+ }
+ std::cerr<<"PASS "<<frames<<" boost-rule/intro-frame cases and "<<draws<<" warning layouts, "<<instructions
+          <<" original instructions. Original owner blink and bank projection executed; rule getter, signed quotient and GPU submission are boundaries.\n";
+}
+}
 int main(int argc,char**argv)try{
- if(argc!=3)throw std::runtime_error("canonical image and native root required");
+ if(argc!=3&&argc!=4)throw std::runtime_error("canonical image, native root and optional language0/1 required");
+ if(argc==4)setOriginalUiLanguage(std::stoi(argv[3]));
  RefMemory m(argv[1]);
  OriginalVsBanner banner;banner.load(argv[2]);
  const auto model=NativeModel::load(std::filesystem::path(argv[2])/"data/original_assets/hud/start2d/start2d.idasmesh");
@@ -74,4 +137,5 @@ int main(int argc,char**argv)try{
   if(m.read16(0xc98ad0c)!=0)throw std::runtime_error("matrix stack imbalance");
  }
  std::cerr<<"PASS "<<draws<<" absolute title/condition layouts, "<<instructions<<" original instructions. Actual camera projection and model matrices executed; GPU submission remains a boundary.\n";
+ boostWarningReference(argv[1],banner,model);
 }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}

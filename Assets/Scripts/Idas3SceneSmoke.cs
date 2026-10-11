@@ -599,7 +599,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         yield return Capture("race-hud",true);
         var menu=host.GetComponent<Idas3PauseMenu>();menu.SetOpen(true);yield return Frames(4);
         menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);
-        for(int row=0;row<4;++row)menu.Navigate(1);
+        for(int row=0;row<5;++row)menu.Navigate(1);
         yield return Frames(3);yield return Capture("language-option",false);
         Check(Idas3Native.Idas3SceneReturnToCourse()==1,"Language test could not return to course selection");
         menu.SetOpen(false);yield return Frames(60);
@@ -1229,6 +1229,9 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         foreach(var camera in renderStack)camera.enabled=true;
         scene.VerifyViewCulling(Check);
         Check(host.Status.speedMetresPerSecond>1,"Performance warmup did not accelerate the original car.");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-imported-headlight-check")>=0)
+            Idas3ImportedHeadlightChecks.Run(scene,hires,root,perfCourse,perfCourse>=9&&(scene.CurrentFrame.frameConstants!=IntPtr.Zero)&&
+                (perfNight||perfCourse>=11&&perfCourse<=14),Check);
         if(captureScreens&&perfWet)yield return Capture("wet-moving-bumper",true);
         if(captureScreens&&perfLegend)yield return Capture("legend-mirror-moving",true);
         if(captureScreens&&manualRender&&!perfWet&&!perfLegend)yield return Capture("dry-moving-bumper",true);

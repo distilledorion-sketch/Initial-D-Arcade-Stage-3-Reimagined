@@ -3,6 +3,7 @@
 #define NOMINMAX
 #endif
 #include "unity_bridge.h"
+#include "native_load_keepalive.h"
 #include "music_loudness.h"
 #include "unity_scene_capture.h"
 #include "unity_audio_output.h"
@@ -782,7 +783,11 @@ int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count
     }
     return 1;
 }
+void IDAS3_UNITY_CALL Idas3SceneSetLoadKeepAlive(Idas3LoadKeepAliveCallback callback){
+    idas3::setLoadKeepAlive(callback);
+}
 int IDAS3_UNITY_CALL Idas3SceneShutdown(){
+    idas3::setLoadKeepAlive(nullptr);
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{if(r.sceneMode){destroyApp(r,true);publish(r,0);r.sceneMode=false;}return 1;}
     catch(const std::exception& e){unityError(e.what());return 0;}
@@ -1037,6 +1042,12 @@ int IDAS3_UNITY_CALL Idas3SceneApplyOptions(const Idas3Options* options){
         publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown options apply error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3SceneSetCameraFov(int percent){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app){unityError("Camera FOV requires initialized Unity scene mode");return 0;}
+    if(percent<50||percent>200){unityError("Camera FOV must be between 50 and 200 percent");return 0;}
+    r.app->cameraFovPercent=percent;return 1;
 }
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetTireVolume(float value){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

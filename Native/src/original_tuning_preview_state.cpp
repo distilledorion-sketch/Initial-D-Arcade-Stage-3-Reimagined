@@ -22,7 +22,13 @@ std::array<std::uint8_t,5> originalTuningPreviewPlateDigits(const OriginalBattle
 std::optional<unsigned> originalTuningPreviewFocus(const OriginalBattleProfile& p,
     const OriginalTuningData& data,OriginalTuningChildKind kind){
     const auto car=p.u(16),package=unsigned(p.byte(152));const auto& d=data.car(car);unsigned slot;
-    if(kind==OriginalTuningChildKind::basic)slot=d.packages.at(package).steps.at(p.byte(153)).words[0];
+    if(kind==OriginalTuningChildKind::basic){
+        // Basic completion reuses byte153 as the performance cursor before
+        // command11 starts the preview. The result owner then emits focusZero;
+        // use that completion focus without indexing the former basic table.
+        if(p.u(1180)&0x400u)return 0;
+        slot=d.packages.at(package).steps.at(p.byte(153)).words[0];
+    }
     else if(kind==OriginalTuningChildKind::optionalPart)slot=d.optional.at(p.byte(154)).words[1];
     else return std::nullopt;
     if(slot==9){

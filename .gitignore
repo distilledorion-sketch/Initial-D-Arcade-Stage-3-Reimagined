@@ -51,3 +51,7 @@ leaderboard-backup*.sql
 Tests/Updates/installer-*/
 Tests/Updates/handoff-*/
 Tests/Updates/*-report.json
+
+# Local EOS game-client configuration; distribute in players, not source history.
+/Assets/Resources/Idas3EosOnline.json
+/Assets/Resources/Idas3EosOnline.json.meta
