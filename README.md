@@ -9,7 +9,7 @@ JOIN DISCORD: https://discord.gg/mJCZ5AvBb
 
 ## Play
 
-1. Download `Initial-D-Setup-0.3.95.49.zip` from **Releases**.
+1. Download `Initial-D-Setup-0.3.95.50.zip` from **Releases**.
 2. Extract it and run `Install Initial D.cmd`. It downloads and verifies the game and additional courses into a new folder.
 3. Put your original **Initial D Arcade Stage 3 GDS-0033** dump in a `rom` folder beside `InitialDUnity.exe`.
 4. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. For a manual installation, extract both the `Windows-x64.zip` and the matching `Initial-D-Additional-Courses` ZIP into the same folder. Source-code ZIPs are the development project, not the playable build.
 
-**Current release:** `0.3.95-community-replays.49` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.50` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `.49` removes Quick Match's overall three-minute search limit. Healthy searches continue until a match is found or you cancel; stalled requests and failed connections still time out. Both online drivers must update; this build is required for new community Time Attack submissions.
+**Latest update:** `.50` lets Quick Match find waiting public hosts as well as queued players, and improves EOS connection startup, access verification and diagnostics. Both online drivers must update; this build is required for new community Time Attack submissions.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract both release ZIPs over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use one smaller changed-file patch that includes all required courses. Full Repair in `.44` or newer fetches both parts automatically; if an older updater falls back to its full download, the new game prompts for Full Repair to finish installing missing courses.
 

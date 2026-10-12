@@ -1,3 +1,19 @@
+0.3.95-community-replays.50
+
+Restore Quick Match discovery of waiting public hosts and improve EOS connection startup. Both drivers must update for online races. Version .50 is required for new community Time Attack submissions.
+
+- Let Quick Match find waiting public hosts as well as other Quick Match players, restoring a shared matchmaking pool. Prefer public hosts and keep paired drivers in their room. Preserve private-room exclusion and build compatibility checks; filter manual browser results before the search limit.
+- Keep the online connection listener ready while player access checks finish and between rooms. Only the verified room opponent can be accepted.
+- Retry early EOS connection failures within the existing connection deadline instead of immediately closing the room. Established connections, access denials and cancellation retain their existing behavior.
+- Recheck access when a slow connection outlasts the initial verification, withholding game messages until the checks finish instead of rejecting an otherwise valid connection solely because its cached check expired.
+- Add connection-stage and routing diagnostics without recording player identities, room codes or credentials.
+
+Existing players can use the in-game updater. Fresh installs: download Initial-D-Setup-0.3.95.50.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Changed-file patches support .20 through .49.
+
+Validation covers discovery, access verification and connection regressions, plus live Windows/Linux transport checks with direct and relayed connections and Quick Match joining a public host. The reported widespread timeout was not reproduced; a full online race/rematch across two PCs has not been verified. No leaderboard or ghost reset is included.
+
+PREVIOUS UPDATE (.49)
+
 0.3.95-community-replays.49
 
 Remove Quick Match's overall three-minute search limit. Both drivers must update for online races. Version .49 is required for new community Time Attack submissions.

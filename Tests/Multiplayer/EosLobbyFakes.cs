@@ -2,13 +2,33 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace UnityEngine { public static class Time { public static double realtimeSinceStartupAsDouble => Idas3.Multiplayer.Idas3EosPlatform.Now; } }
+namespace UnityEngine {
+    public static class Time { public static double realtimeSinceStartupAsDouble => Idas3.Multiplayer.Idas3EosPlatform.Now; }
+    public static class Debug { internal static readonly List<string> Logs=new List<string>(); public static void Log(object value){Logs.Add(value.ToString());} }
+}
 
 namespace Epic.OnlineServices {
     public enum Result {Success,NoChange,NotFound,AccessDenied,ServiceFailure,TimedOut,TooManyRequests,LobbyTooManyPlayers,LobbyInvalidSession,OperationWillRetry}
     public static class Common {public static bool IsOperationComplete(Result result)=>result!=Result.OperationWillRetry;}
     public enum ComparisonOp {Equal,Greaterthanorequal}
     public sealed class ProductUserId {readonly string id;public ProductUserId(string value){id=value;}public bool IsValid()=>!string.IsNullOrEmpty(id);public static ProductUserId FromString(string value)=>string.IsNullOrEmpty(value)?null:new ProductUserId(value);public override string ToString()=>id;}
+}
+namespace Epic.OnlineServices.P2P {
+    public struct SocketId { public string SocketName; }
+    public struct AddNotifyPeerConnectionRequestOptions { public ProductUserId LocalUserId; public SocketId? SocketId; }
+    public struct OnIncomingConnectionRequestInfo { public ProductUserId LocalUserId,RemoteUserId; public SocketId? SocketId; }
+    public delegate void RequestCallback(ref OnIncomingConnectionRequestInfo info);
+    public sealed class P2PInterface {
+        internal readonly List<AddNotifyPeerConnectionRequestOptions> Listeners=new List<AddNotifyPeerConnectionRequestOptions>();
+        internal readonly List<ulong> Removed=new List<ulong>();
+        internal RequestCallback Callback;
+        internal ulong NextNotification=1;
+        internal int Accepts;
+        public ulong AddNotifyPeerConnectionRequest(ref AddNotifyPeerConnectionRequestOptions options,object ignored,RequestCallback callback){Listeners.Add(options);Callback=callback;return NextNotification;}
+        public void RemoveNotifyPeerConnectionRequest(ulong id){Removed.Add(id);Callback=null;}
+        internal void Request(string peer,string socket){var info=new OnIncomingConnectionRequestInfo{LocalUserId=new ProductUserId("local"),RemoteUserId=new ProductUserId(peer),SocketId=new SocketId{SocketName=socket}};Callback?.Invoke(ref info);}
+        public void AcceptConnection(){++Accepts;}
+    }
 }
 namespace Epic.OnlineServices.Lobby {
     public enum LobbyMemberStatus {Joined,Promoted,Left,Kicked,Closed}
@@ -153,8 +173,10 @@ namespace Idas3.Multiplayer {
     internal sealed class FakeEosHandle {
         internal readonly Epic.OnlineServices.Lobby.LobbyInterface Lobby=new Epic.OnlineServices.Lobby.LobbyInterface();
         internal readonly Epic.OnlineServices.Sanctions.SanctionsInterface Sanctions=new Epic.OnlineServices.Sanctions.SanctionsInterface();
+        internal readonly Epic.OnlineServices.P2P.P2PInterface P2P=new Epic.OnlineServices.P2P.P2PInterface();
         internal Epic.OnlineServices.Lobby.LobbyInterface GetLobbyInterface()=>Lobby;
         internal Epic.OnlineServices.Sanctions.SanctionsInterface GetSanctionsInterface()=>Sanctions;
+        internal Epic.OnlineServices.P2P.P2PInterface GetP2PInterface()=>P2P;
     }
     internal static class Idas3EosPlatform {
         internal static readonly FakeEosHandle Handle=new FakeEosHandle();
@@ -180,10 +202,12 @@ namespace Idas3.Multiplayer {
         internal string LocalResetStamp{get;}internal string RemoteResetStamp{get;}
         internal long BufferedEvents=>0;
         internal bool Disposed;internal int Polls;
+        internal static bool AutomaticAdmission=true;
+        internal bool Announced;
         internal byte[] PendingMessage;
         internal Idas3EosP2P(Idas3EosTransport transport,Epic.OnlineServices.ProductUserId peer,string name,string room,string build,bool host){owner=transport;RemoteId=peer.ToString();RemoteName=name;LocalResetStamp=owner.ResetStamp(Idas3EosPlatform.User);RemoteResetStamp=owner.ResetStamp(peer);}
         internal bool KeepAliveOnly()=>true;
-        internal void Poll(){++Polls;if(PendingMessage!=null){var data=PendingMessage;PendingMessage=null;owner.Deliver(this,data);}}
+        internal void Poll(){++Polls;if(AutomaticAdmission&&Connected&&!Announced&&owner.Admitted(this)){Announced=true;owner.AnnounceAdmission(this);}if(Announced&&PendingMessage!=null){var data=PendingMessage;PendingMessage=null;owner.Deliver(this,data);}}
         internal void SendGame(byte[] data,bool reliable){}
         internal void CloseFromSdk(){Connected=false;}
         public void Dispose(){Disposed=true;Connected=false;}

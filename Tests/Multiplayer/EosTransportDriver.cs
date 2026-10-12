@@ -68,7 +68,7 @@ internal static class EosTransportDriver {
         return room;
     }
     static FakeRoom Admit(Idas3EosTransport transport){
-        var room=SeedPeer(transport);Pump();
+        var room=SeedPeer(transport);Pump();transport.Poll();
         Check(transport.Connected&&Route(transport)!=null,"Production membership and sanctions validation create a route only for the actual compatible clear member");return room;
     }
     static void StaleNotification(){
@@ -90,9 +90,10 @@ internal static class EosTransportDriver {
         Check(route.Disposed&&!transport.InLobby&&errors.Count==1&&errors[0].Contains("owner changed"),"Unexpected SDK host migration closes the old race authority instead of silently assigning another host");
     }
     static void PeerDeparture(){
-        var transport=Create();Admit(transport);var route=Route(transport);var events=new List<string>();
-        transport.PeerChanged+=()=>events.Add("peer");transport.Error+=detail=>events.Add("error");transport.Admitted(route);
+        var transport=Create();var events=new List<string>();
+        transport.PeerChanged+=()=>events.Add("peer");transport.Error+=detail=>events.Add("error");Admit(transport);var route=Route(transport);
         Check(events.Count==1&&events[0]=="peer","Successful route admission notifies the session once");events.Clear();
+        transport.Admitted(route);transport.AnnounceAdmission(route);Check(events.Count==0,"Repeated admission polling cannot announce a second connection");
         route.CloseFromSdk();transport.RouteFailed(route,"The other driver left the room.");
         Check(!transport.InLobby&&!transport.Connected&&events.Count==2&&events[0]=="peer"&&events[1]=="error","A closed SDK route still reports peer departure before its error after clearing room state");
         transport.RouteFailed(route,"Late duplicate close");transport.Leave();
@@ -108,7 +109,8 @@ internal static class EosTransportDriver {
         }
         transport.Browse();Check(transport.IsBusy&&transport.Rooms.Count==0,"Public browser waits for the SDK search result");Pump();
         Check(transport.Rooms.Count==1&&transport.Rooms[0].Code=="ID3-"+0.ToString("X24")&&!transport.IsBusy,"Public browser excludes own, wrong-capacity, full, private, incompatible, queue and malformed-code results");
-        Check(Lobby.SearchParameters.Count==2&&Lobby.SearchParameters[0].Parameter.Value.AsUtf8.Contains(transport.CompatibilityHash.Substring(0,32))&&Lobby.SearchParameters[1].Parameter.Value.AsInt64==1,"Discovery requests the exact compatibility bucket and an available player slot");
+        Check(Lobby.SearchParameters.Count==3&&Lobby.SearchParameters[0].Parameter.Value.AsUtf8.Contains(transport.CompatibilityHash.Substring(0,32))&&Lobby.SearchParameters[1].Parameter.Value.AsInt64==1,"Discovery requests the exact compatibility bucket and an available player slot");
+        Check(Lobby.SearchParameters[2].Parameter.Key==Idas3EosTransport.KindKey&&Lobby.SearchParameters[2].Parameter.Value.AsUtf8=="room"&&Lobby.SearchParameters[2].ComparisonOp==ComparisonOp.Equal,"Browse asks EOS to filter manual rooms before the result limit so waiting queues cannot crowd out public hosts");
         Advance();transport.Browse();transport.Leave();Pump();
         Check(transport.Rooms.Count==0&&!transport.IsBusy&&errors.Count==0,"A canceled search callback cannot repopulate stale room results");
     }
@@ -150,7 +152,53 @@ internal static class EosTransportDriver {
         }
         Check(!transport.IsMatching&&!transport.InLobby&&errors.Count==1,"Late callbacks cannot revive an expired queue");
     }
+    static FakeRoom Discoverable(Idas3EosTransport transport,string code,string kind){
+        var room=new FakeRoom{Info=new LobbyDetailsInfo{LobbyId=code,LobbyOwnerUserId=new ProductUserId("other"),MaxMembers=2,AvailableSlots=1,PermissionLevel=LobbyPermissionLevel.Publicadvertised}};
+        room.Attributes["build"]=transport.CompatibilityHash;room.Attributes["kind"]=kind;room.Attributes["name"]="Public battle";room.Attributes["host"]="Other driver";
+        Lobby.SearchResults.Add(room);return room;
+    }
+    static void SharedBattleBucket(){
+        var manual=Create();manual.Host("Public battle");string manualBucket=Lobby.Creates[0].BucketId;
+        Advance();var queued=Create();queued.StartMatchmaking();Pump();
+        Check(Lobby.Creates.Count==2&&Lobby.Creates[1].BucketId==manualBucket,"Manual public rooms and Quick Match publish to the same compatible battle bucket");
+        Check(Lobby.SearchParameters[0].Parameter.Value.AsUtf8==manualBucket,"A single Quick Match search can discover either battle type in the shared bucket");
+    }
+    static void QuickMatchManual(bool preferManual){
+        var transport=Create();Discoverable(transport,OtherRoom,"room");
+        if(preferManual)Discoverable(transport,Room,"queue");
+        transport.StartMatchmaking();Pump();
+        Check(Lobby.Joins.Count==1&&Lobby.Joins[0]==OtherRoom,preferManual?"Quick Match prefers a manually hosted public room even when a queue candidate has a lower ID":"Quick Match finds an ordinary public waiting host");
+        Check(Lobby.Creates.Count==0&&Lobby.Searches==1&&Lobby.SearchParameters.Count==2,"Finding a public host requires one paced search and creates no extra queue room");
+    }
+    static void WaitingQueueManual(bool arrivingPeer){
+        var transport=Queue();Until(()=>Lobby.SearchCallbacks.Count==1,"pending shared discovery search");
+        Discoverable(transport,OtherRoom,"room");
+        if(arrivingPeer){
+            Idas3EosP2P.AutomaticAdmission=false;var room=Lobby.Rooms[Room];room.Members.Add("remote");
+            room.MemberAttributes["remote"]=new Dictionary<string,string>{{"build",transport.CompatibilityHash},{"name","Arriving driver"}};
+            Lobby.Notify(Room,"remote",LobbyMemberStatus.Joined);transport.Poll();Pump();
+            Check(transport.RoomMembers==2&&!transport.Connected,"An incoming peer occupies the queue room before game admission");
+        }
+        Lobby.CompleteSearch(Result.Success);Pump();
+        if(arrivingPeer){
+            Check(transport.RoomCode==Room&&Lobby.Destroys.Count==0&&Lobby.Joins.Count==0&&errors.Count==0,"A delayed public-room result cannot move a queue host after a peer has arrived");
+        }else{
+            Check(Lobby.Destroys.Count==1&&Lobby.Destroys[0]==Room,"A waiting queue host may leave for a manual public host with a larger room ID");
+            Lobby.CompleteDestroy(Result.Success);Pump();Until(()=>Lobby.Joins.Count==1,"join public host after queue cleanup");
+            Check(Lobby.Joins[0]==OtherRoom&&errors.Count==0,"Joining a manual room still waits for successful retirement of the old queue room");
+        }
+    }
+    static void QuickMatchExclusions(){
+        var transport=Create();
+        for(int i=0;i<7;++i){
+            var room=Discoverable(transport,"ID3-"+(i+4).ToString("X24"),"room");
+            switch(i){case 0:room.Info.PermissionLevel=LobbyPermissionLevel.Joinviapresence;break;case 1:room.Info.AvailableSlots=0;break;case 2:room.Info.MaxMembers=1;break;case 3:room.Attributes["build"]="different-build";break;case 4:room.Attributes["kind"]="unknown";break;case 5:room.Info.LobbyOwnerUserId=new ProductUserId("local");break;case 6:room.Attributes.Remove("kind");break;}
+        }
+        transport.StartMatchmaking();Pump();
+        Check(Lobby.Joins.Count==0&&Lobby.Creates.Count==1,"Quick Match excludes private, full, wrong-capacity, incompatible, unknown-kind, own and missing-kind rooms");
+    }
     static void QueuePeerDeadline(bool attributes){
+        Idas3EosP2P.AutomaticAdmission=false;
         var transport=Queue();Until(()=>Lobby.SearchCallbacks.Count==1,"pending search before incoming peer");
         Idas3EosPlatform.Now+=170;transport.Poll();Pump();
         var room=Lobby.Rooms[Room];room.Members.Add("remote");
@@ -214,11 +262,66 @@ internal static class EosTransportDriver {
         transport.HostPrivate("Stale local clearance");Pump();
         Check(Lobby.Creates.Count==0&&!transport.InLobby&&errors.Count==1,"A stale clear result cannot use admitted-peer outage grace to create a new room");
     }
-    static void DelayedAdmission(){
-        var transport=Create();Admit(transport);var route=Route(transport);int changed=0;transport.PeerChanged+=()=>++changed;
-        Idas3EosPlatform.Now+=46;transport.Admitted(route);
-        Check(route.Disposed&&!transport.InLobby&&!transport.Connected&&changed==0,"Slow P2P negotiation cannot announce a peer whose required fresh clearance expired");
-        Check(errors.Count==1&&errors[0]==Idas3EosSanctions.Unavailable,"Late admission fails as verification expiry rather than a false ban");
+    static Idas3EosTransport BeginDelayedAdmission(out Idas3EosP2P route){
+        var transport=Create();Idas3EosP2P.AutomaticAdmission=false;
+        Idas3EosPlatform.Now+=20;SeedPeer(transport);Pump();route=Route(transport);
+        Check(route!=null&&!transport.Connected&&transport.RemoteId=="","A wire-ready route cannot expose a connected peer before final access admission");
+        Idas3EosPlatform.Handle.Sanctions.Automatic=false;
+        Idas3EosPlatform.Now+=30;Check(!transport.Admitted(route),"Expired admission snapshots trigger fresh access verification rather than rejecting a slow connection");
+        return transport;
+    }
+    static void DelayedAdmission(string outcome){
+        var transport=BeginDelayedAdmission(out var route);int changed=0,delivered=0;
+        transport.PeerChanged+=()=>{++changed;Check(transport.Connected&&route.Announced,"Session connection callback runs after both transport authorization and route sending are enabled");};
+        transport.Message+=data=>++delivered;
+        var api=Idas3EosPlatform.Handle.Sanctions;route.PendingMessage=new byte[]{1};Idas3EosP2P.AutomaticAdmission=true;transport.Poll();
+        Check(api.Requests.Count==4&&api.Requests[2].Options.TargetUserId.ToString()=="local"&&api.Requests[3].Options.TargetUserId.ToString()=="remote","Final admission refreshes local and peer access concurrently");
+        Check(!route.Disposed&&transport.InLobby&&!transport.Connected&&changed==0&&delivered==0,"Fresh verification holds the route and buffered packets without exposing a peer or delivering game data");
+        if(outcome=="timeout"){
+            double initialDeadline=(double)typeof(Idas3EosTransport).GetField("deadline",Hidden).GetValue(transport);
+            Idas3EosPlatform.Now+=20;transport.Poll();
+            Check((double)typeof(Idas3EosTransport).GetField("deadline",Hidden).GetValue(transport)==initialDeadline,"Repeated admission polls never extend the final access deadline");
+            Idas3EosPlatform.Now+=16;transport.Poll();Pump();
+            Check(route.Disposed&&!transport.Connected&&!transport.InLobby&&changed==0&&delivered==0&&errors.Count==1,"A stalled final access query fails closed within its bounded query window");return;
+        }
+        if(outcome=="cancel")transport.Leave();
+        if(outcome=="peer-ban")api.Set("remote","ONLINE_PLAY");
+        if(outcome=="local-ban")api.Set("local","ONLINE_PLAY");
+        if(outcome=="reset")api.SetRecords("remote",ResetCommand("updated-peer"));
+        if(outcome=="depart")Lobby.Rooms[Room].Members.Remove("remote");
+        Idas3EosPlatform.Now+=20;
+        api.Complete(2,Result.Success);Pump();
+        Check(!transport.Connected&&changed==0&&delivered==0,"One completed access response cannot authorize the connection while its peer check is pending");
+        api.Complete(3,outcome=="error"?Result.AccessDenied:Result.Success);Pump();transport.Poll();Pump();
+        if(outcome=="success"){
+            Check(transport.Connected&&!route.Disposed&&changed==1&&delivered==1&&errors.Count==0,"Fresh allowed snapshots admit and deliver the retained packet after the original connection deadline");
+            transport.Poll();Check(changed==1&&delivered==1,"Deferred admission and buffered delivery occur exactly once");
+        }else{
+            Check(route.Disposed&&!transport.InLobby&&!transport.Connected&&changed==0&&delivered==0,"Rejected, canceled, reset or departed final admission never delivers a game packet");
+            Check(outcome=="cancel"?errors.Count==0:errors.Count==1,"Canceled completion stays silent and genuine final admission failure is surfaced once");
+            if(outcome=="local-ban")Check(!transport.Available,"A local restriction also disables online availability");
+            if(outcome=="error")Check(errors[0].Contains("AccessDenied"),"Final admission service rejection preserves the actionable SDK result");
+        }
+    }
+    static void EarlyPeerListener(bool failure){
+        var p2p=Idas3EosPlatform.Handle.P2P;var api=Idas3EosPlatform.Handle.Sanctions;api.Automatic=false;
+        if(failure)p2p.NextNotification=0;
+        var transport=new Idas3EosTransport{BuildCompatibility="fixture-build"};transport.Error+=errors.Add;transport.Initialize();
+        Check(p2p.Listeners.Count==1&&p2p.Listeners[0].LocalUserId.ToString()=="local"&&!p2p.Listeners[0].SocketId.HasValue,"An all-socket listener is installed for the authenticated local user before asynchronous access checks");
+        if(failure){
+            Check(!transport.Available&&!transport.IsBusy&&api.Requests.Count==0&&errors.Count==1,"Failure to register the early listener keeps the service unavailable and surfaces a retryable error");
+            p2p.NextNotification=2;transport.Initialize();Check(p2p.Listeners.Count==2&&api.Requests.Count==1,"A failed registration can be retried without claiming listener readiness");
+        }else Check(api.Requests.Count==1&&!transport.Available,"The listener already exists while initial local access is still pending");
+        p2p.Request("untrusted-peer","unrelated-socket");Pump();
+        Check(p2p.Accepts==0&&Route(transport)==null&&!transport.Connected,"The early listener never accepts an unsolicited peer or constructs an unauthorized route");
+        api.Complete(0,Result.Success);Pump();Check(transport.Available,"Successful registration and access checking enable the online service");
+        int count=p2p.Listeners.Count;transport.Initialize();transport.Leave();transport.Initialize();
+        Check(p2p.Listeners.Count==count&&p2p.Removed.Count==0,"Repeated initialization and leaving a room keep the single early listener alive");
+        api.Automatic=true;SeedPeer(transport);Pump();transport.Poll();transport.Leave();
+        Check(p2p.Listeners.Count==count&&p2p.Removed.Count==0,"Creating and retiring a verified route preserves the transport-wide listener");
+        transport.Dispose();transport.Dispose();
+        Check(p2p.Removed.Count==1&&p2p.Removed[0]==p2p.NextNotification,"Transport disposal removes the early notification exactly once");
+        foreach(string log in UnityEngine.Debug.Logs)Check(!log.Contains("untrusted-peer")&&!log.Contains("unrelated-socket")&&!log.Contains(Room),"Connection diagnostics omit peer identities and room/socket values");
     }
     static void DepartedBeforeClear(){
         var transport=Create();var api=Idas3EosPlatform.Handle.Sanctions;api.Automatic=false;var room=SeedPeer(transport);
@@ -280,9 +383,11 @@ internal static class EosTransportDriver {
     static int Main(string[] args){SynchronizationContext.SetSynchronizationContext(context);try{
         switch(args[0]){case "cancel-create":CancelCreate();break;case "cancel-join":CancelJoin();break;case "cleanup-failure":FailedCleanup();break;case "request-error":RequestFailure();break;case "dispose-create":DisposedCreate();break;case "stale-left":StaleNotification();break;case "removed-peer":LoadingRevocation(false);break;case "replaced-peer":LoadingRevocation(true);break;case "owner-changed":OwnerChanged();break;case "peer-departure":PeerDeparture();break;case "public-search":PublicSearch();break;
         case "sanctions-local":InitialAccess(true);break;case "sanctions-unavailable":InitialAccess(false);break;case "sanctions-peer":PeerAccess(false);break;case "sanctions-cancel-peer":PeerAccess(true);break;case "sanctions-cancel-init":CancelInitialAccess();break;case "sanctions-active-ban":RefreshAccess(false);break;case "sanctions-outage":RefreshAccess(true);break;case "sanctions-new-room":NewRoomAccess();break;
-        case "sanctions-late-admission":DelayedAdmission();break;case "sanctions-departed-peer":DepartedBeforeClear();break;case "sanctions-native-load":LoadingRestriction();break;
+        case "sanctions-late-admission":DelayedAdmission("success");break;case "sanctions-admission-error":DelayedAdmission("error");break;case "sanctions-admission-peer-ban":DelayedAdmission("peer-ban");break;case "sanctions-admission-local-ban":DelayedAdmission("local-ban");break;case "sanctions-admission-reset":DelayedAdmission("reset");break;case "sanctions-admission-cancel":DelayedAdmission("cancel");break;case "sanctions-admission-timeout":DelayedAdmission("timeout");break;case "sanctions-admission-depart":DelayedAdmission("depart");break;case "sanctions-departed-peer":DepartedBeforeClear();break;case "sanctions-native-load":LoadingRestriction();break;
+        case "early-listener":EarlyPeerListener(false);break;case "early-listener-failure":EarlyPeerListener(true);break;
         case "reset-initial":InitialReset(false);break;case "reset-write-failure":InitialReset(true);break;case "reset-live-local":LiveReset(false);break;case "reset-live-peer":LiveReset(true);break;case "reset-no-owner":ResetWithoutOwner();break;
         case "queue-long":LongQueue();break;case "queue-stalled-search":StalledQueue(false);break;case "queue-stalled-create":StalledQueue(true);break;case "queue-peer-deadline":QueuePeerDeadline(true);break;case "queue-peer-missing-attributes":QueuePeerDeadline(false);break;
+        case "queue-shared-bucket":SharedBattleBucket();break;case "queue-public-host":QuickMatchManual(false);break;case "queue-prefers-public":QuickMatchManual(true);break;case "queue-waiting-public":WaitingQueueManual(false);break;case "queue-peer-before-public":WaitingQueueManual(true);break;case "queue-public-exclusions":QuickMatchExclusions();break;
         default:throw new Exception("Unknown case");}
         Console.WriteLine("TOTAL\t"+checks);return 0;
     }catch(Exception error){Console.Error.WriteLine(error);return 1;}}

@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 
+namespace UnityEngine { public static class Debug { public static readonly List<string> Messages = new List<string>(); public static void Log(object value) { Messages.Add(value.ToString()); } } }
+
 // SDK/platform/owner test boundary. The actual P2P lifecycle and packet
 // reassembly implementation compile unchanged into this executable.
 namespace Epic.OnlineServices {
-    public enum Result { Success, NoChange, NotFound, LimitExceeded, TooManyRequests, ServiceFailure }
+    public enum Result { Success, NoChange, NotFound, LimitExceeded, TooManyRequests, ServiceFailure, NoConnection, InvalidAuth, InvalidUser, InvalidParameters, AccessDenied }
     public sealed class ProductUserId {
         readonly string value;
         public ProductUserId(string value) { this.value = value; }
@@ -15,6 +17,7 @@ namespace Epic.OnlineServices.P2P {
     public enum RelayControl { ForceRelays, AllowRelays }
     public enum PacketReliability { ReliableOrdered, UnreliableUnordered }
     public enum NetworkConnectionType { DirectConnection, RelayedConnection }
+    public enum ConnectionClosedReason { Unknown, ClosedByLocalUser, ClosedByPeer, TimedOut, TooManyConnections, InvalidMessage, InvalidData, ConnectionFailed, ConnectionClosed, NegotiationFailed, UnexpectedError, ConnectionIgnored }
     public struct SocketId { public string SocketName; }
     public struct SetRelayControlOptions { public RelayControl RelayControl; }
     public struct SetPacketQueueSizeOptions { public ulong IncomingPacketQueueMaxSizeBytes, OutgoingPacketQueueMaxSizeBytes; }
@@ -22,7 +25,7 @@ namespace Epic.OnlineServices.P2P {
     public struct AddNotifyPeerConnectionClosedOptions { public ProductUserId LocalUserId; public SocketId SocketId; }
     public struct AddNotifyPeerConnectionEstablishedOptions { public ProductUserId LocalUserId; public SocketId SocketId; }
     public struct OnIncomingConnectionRequestInfo { public ProductUserId RemoteUserId; public SocketId? SocketId; }
-    public struct OnRemoteConnectionClosedInfo { public ProductUserId RemoteUserId; public SocketId? SocketId; public string Reason; }
+    public struct OnRemoteConnectionClosedInfo { public ProductUserId RemoteUserId; public SocketId? SocketId; public ConnectionClosedReason Reason; }
     public struct OnPeerConnectionEstablishedInfo { public ProductUserId RemoteUserId; public SocketId? SocketId; public NetworkConnectionType NetworkType; }
     public struct AcceptConnectionOptions { public ProductUserId LocalUserId, RemoteUserId; public SocketId SocketId; }
     public struct CloseConnectionOptions { public ProductUserId LocalUserId, RemoteUserId; public SocketId SocketId; }
@@ -47,25 +50,36 @@ namespace Epic.OnlineServices.P2P {
         readonly Queue<Packet> incoming = new Queue<Packet>();
         internal readonly List<Packet> Sent = new List<Packet>();
         internal string Socket;
-        internal int Closed, Removed;
+        internal int Closed, Removed, Accepted;
+        internal Result AcceptResult = Result.Success, SendResult = Result.Success;
+        ClosedCallback closedCallback;
+        EstablishedCallback establishedCallback;
+        internal void NotifyEstablished(NetworkConnectionType type) {
+            var info = new OnPeerConnectionEstablishedInfo { RemoteUserId = new ProductUserId("peer"), SocketId = new SocketId { SocketName = Socket }, NetworkType = type };
+            establishedCallback(ref info);
+        }
+        internal void NotifyClosed(ConnectionClosedReason reason, string user = "peer", string socket = null) {
+            var info = new OnRemoteConnectionClosedInfo { RemoteUserId = new ProductUserId(user), SocketId = new SocketId { SocketName = socket ?? Socket }, Reason = reason };
+            closedCallback(ref info);
+        }
         internal void Inject(byte[] data, byte channel, string user = "peer", string socket = null) {
             incoming.Enqueue(new Packet { User = user, Socket = socket ?? Socket, Channel = channel, Data = data });
         }
         public Result SetRelayControl(ref SetRelayControlOptions options) => Result.Success;
         public Result SetPacketQueueSize(ref SetPacketQueueSizeOptions options) => Result.Success;
         public ulong AddNotifyPeerConnectionRequest(ref AddNotifyPeerConnectionRequestOptions options, object ignored, RequestCallback callback) => 1;
-        public ulong AddNotifyPeerConnectionClosed(ref AddNotifyPeerConnectionClosedOptions options, object ignored, ClosedCallback callback) => 2;
-        public ulong AddNotifyPeerConnectionEstablished(ref AddNotifyPeerConnectionEstablishedOptions options, object ignored, EstablishedCallback callback) => 3;
+        public ulong AddNotifyPeerConnectionClosed(ref AddNotifyPeerConnectionClosedOptions options, object ignored, ClosedCallback callback) { closedCallback=callback; return 2; }
+        public ulong AddNotifyPeerConnectionEstablished(ref AddNotifyPeerConnectionEstablishedOptions options, object ignored, EstablishedCallback callback) { establishedCallback=callback; return 3; }
         public void RemoveNotifyPeerConnectionRequest(ulong id) { ++Removed; }
         public void RemoveNotifyPeerConnectionClosed(ulong id) { ++Removed; }
         public void RemoveNotifyPeerConnectionEstablished(ulong id) { ++Removed; }
-        public Result AcceptConnection(ref AcceptConnectionOptions options) { Socket = options.SocketId.SocketName; return Result.Success; }
+        public Result AcceptConnection(ref AcceptConnectionOptions options) { ++Accepted; Socket = options.SocketId.SocketName; return AcceptResult; }
         public Result CloseConnection(ref CloseConnectionOptions options) { ++Closed; return Result.Success; }
         public Result SendPacket(ref SendPacketOptions options) {
             var bytes = new byte[options.Data.Count];
             Array.Copy(options.Data.Array, options.Data.Offset, bytes, 0, bytes.Length);
             Sent.Add(new Packet { User = options.RemoteUserId.ToString(), Socket = options.SocketId.SocketName, Channel = options.Channel, Data = bytes });
-            return Result.Success;
+            return SendResult;
         }
         public Result ReceivePacket(ref ReceivePacketOptions options, ref ProductUserId sender, ref SocketId socket, out byte channel, ArraySegment<byte> buffer, out uint length) {
             channel = 0; length = 0;
@@ -82,11 +96,13 @@ namespace Idas3.Multiplayer {
         internal readonly Dictionary<string, string> Stamps = new Dictionary<string, string> { { "local", "local-reset-1" }, { "peer", "peer-reset-1" } };
         internal readonly List<byte[]> Received = new List<byte[]>();
         internal int Admissions;
+        internal bool AdmissionAllowed = true;
         internal string Failure;
         internal Action<Idas3EosP2P> OnAdmit;
         internal string ResetStamp(Epic.OnlineServices.ProductUserId user) => Stamps[user.ToString()];
         internal static string Hash(string value) => "12345678901234567890123456789012";
-        internal void Admitted(Idas3EosP2P route) { ++Admissions; OnAdmit?.Invoke(route); }
+        internal bool Admitted(Idas3EosP2P route) { return AdmissionAllowed; }
+        internal void AnnounceAdmission(Idas3EosP2P route) { ++Admissions; OnAdmit?.Invoke(route); }
         internal void Deliver(Idas3EosP2P route, byte[] data) { Received.Add(data); }
         internal void RouteFailed(Idas3EosP2P route, string detail) { Failure = detail; route.Dispose(); }
     }
@@ -100,6 +116,6 @@ namespace Idas3.Multiplayer {
         internal static P2PTestPlatform Handle;
         internal static double Now;
         internal static void Check(Epic.OnlineServices.Result result, string message) { if (result != Epic.OnlineServices.Result.Success) throw new Exception(message); }
-        internal static void Defer(Action action) { throw new NotSupportedException("No notification callback is used by these scenarios."); }
+        internal static void Defer(Action action) { action(); }
     }
 }

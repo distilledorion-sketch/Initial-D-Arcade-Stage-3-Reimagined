@@ -1,9 +1,11 @@
-"""Exercise production EOS P2P reset handshakes and pre-admission buffering.
+"""Exercise production EOS P2P retries, reset handshakes and admission buffering.
 
 Compile the real P2P and packet framing implementations. Only the SDK, platform,
 and owner boundary are fake; no live service, player identity, or save is used.
 The owner callback tests disposal before delivery; full transport policy refresh
 and sanctions enforcement are covered separately by test_eos_transport.py.
+SDK callback tests reproduce early rejection, bounded retry and cancellation;
+they do not establish the cause of a particular user's network failure.
 """
 import argparse
 import hashlib

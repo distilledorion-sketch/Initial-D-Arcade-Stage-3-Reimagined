@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Epic.OnlineServices;
 using Epic.OnlineServices.Lobby;
+using Epic.OnlineServices.P2P;
 
 namespace Idas3.Multiplayer
 {
@@ -27,17 +28,20 @@ namespace Idas3.Multiplayer
         static string cleanupFailure;
         static double nextNativePump;
         LobbyInterface lobby;
+        P2PInterface p2p;
         Idas3EosP2P route;
+        Idas3EosP2P pendingAdmission;
         Idas3EosSanctions sanctions;
         Idas3EosActivity activity;
         string lobbyId, originalOwner, busy, build = "";
         string checkingPeer, verifiedPeer;
         long generation;
-        bool disposed, initializing, privateRoom, peerAdmitted, checkingAccess;
+        bool disposed, initializing, privateRoom, peerAdmitted, admissionAnnounced, admissionAccessReady, checkingAccess;
         int members;
         double deadline, nextMembership;
         double nextAccessRefresh;
-        ulong memberNotify, updateNotify, memberUpdateNotify;
+        ulong memberNotify, updateNotify, memberUpdateNotify, incomingRequestNotify;
+        string diagnosticStage = "idle";
         Task pendingRequest = Task.CompletedTask, cleanupBarrier = Task.CompletedTask;
         CancellationTokenSource cancellation;
         public static long NativeLoadKeepAlivePumps { get; private set; }
@@ -66,7 +70,7 @@ namespace Idas3.Multiplayer
         public string Kind => "EOS P2P";
         public bool Available { get; private set; }
         public bool ServiceConnected => Available && Idas3EosPlatform.SignedIn;
-        public bool Connected => lobbyId != null && route != null && route.Connected;
+        public bool Connected => peerAdmitted && lobbyId != null && route != null && route.Connected;
         public bool IsHost => lobbyId != null && originalOwner == LocalId;
         public string LocalId { get; private set; } = "";
         public string LocalName { get; private set; } = "Driver";
@@ -100,7 +104,9 @@ namespace Idas3.Multiplayer
             }
         }
         internal string CompatibilityHash => Hash(Protocol + "|" + build);
-        string Bucket(string kind) => "id3-" + CompatibilityHash.Substring(0, 32) + "-" + kind;
+        // Manual public hosts and Quick Match are one pool of compatible
+        // battles. Kind stays an attribute for browser/merge behavior.
+        string BattleBucket => "id3-" + CompatibilityHash.Substring(0, 32) + "-battle";
         public event Action<byte[]> Message;
         public event Action PeerChanged;
         public event Action<string> Error;
@@ -111,6 +117,7 @@ namespace Idas3.Multiplayer
             if (Available) return true;
             if (initializing) return false;
             initializing = true; deadline = Now + 60;
+            Stage("initialize");
             Status = "Connecting to online services…";
             _ = InitializeAsync(++generation);
             return false;
@@ -121,7 +128,9 @@ namespace Idas3.Multiplayer
                 await Idas3EosPlatform.InitializeAsync(Idas3EosOnlineConfig.Load());
                 if (!Current(token)) return;
                 LocalId = Idas3EosPlatform.User.ToString(); LocalName = Idas3EosOnlineConfig.PlayerName();
+                ListenForPeerRequests();
                 if (sanctions == null) sanctions = new Idas3EosSanctions();
+                Stage("local-access");
                 Status = "Checking online access…";
                 await sanctions.RequireAllowed(Idas3EosPlatform.User, true);
                 if (!Current(token)) return;
@@ -131,8 +140,22 @@ namespace Idas3.Multiplayer
                 if (activity == null && !Idas3EosOnlineConfig.DiagnosticRun) activity = new Idas3EosActivity(this, lobby, Idas3EosPlatform.User, () => UnityEngine.Time.realtimeSinceStartupAsDouble);
                 Subscribe(); Available = true; initializing = false;
                 nextAccessRefresh = Now + Idas3EosSanctions.FreshSeconds;
+                Stage("ready");
                 Status = "Online ready. Find a match, host a room, or enter a room code.";
-            } catch (Exception ex) { if (Current(token)) { initializing = false; Available = false; Fail(AccessFailure(ex, "Online initialization failed: ")); } }
+            } catch (Exception ex) { if (Current(token)) { initializing = false; Available = false; DiagnosticFailure(ex); Fail(AccessFailure(ex, "Online initialization failed: ")); } }
+        }
+        void ListenForPeerRequests()
+        {
+            if (incomingRequestNotify != 0) return;
+            Stage("peer-listener");
+            p2p = Idas3EosPlatform.Handle.GetP2PInterface();
+            // EOS silently ignores an early connection request when there is
+            // no listener. Keep one installed before asynchronous access checks
+            // and between rooms. Observing a request never authorizes it: only
+            // the verified route may accept its exact peer and socket.
+            var options = new AddNotifyPeerConnectionRequestOptions { LocalUserId = Idas3EosPlatform.User, SocketId = null };
+            incomingRequestNotify = p2p.AddNotifyPeerConnectionRequest(ref options, null, (ref OnIncomingConnectionRequestInfo info) => { });
+            if (incomingRequestNotify == 0) throw new InvalidOperationException("Could not register online connection notifications.");
         }
         void Subscribe()
         {
@@ -184,6 +207,7 @@ namespace Idas3.Multiplayer
             if (!CanStart()) return;
             Leave();
             long token = Begin(match ? "Finding another driver" : code == null ? "Creating room" : "Joining room", match ? MatchmakingProgressTimeoutSeconds : 60);
+            Stage(match ? "matchmaking" : code == null ? "room-create" : "room-join");
             IsMatching = match;
             pendingRequest = StartRoomAsync(token, name, isPrivate, match, code, cancellation.Token, cleanupBarrier);
         }
@@ -203,7 +227,7 @@ namespace Idas3.Multiplayer
                 // after cancellation. Never turn failed retirement into success.
                 throw;
             }
-            catch (Exception ex) { if (Current(token)) { Leave(); Fail(AccessFailure(ex, "Could not connect online: ")); } }
+            catch (Exception ex) { if (Current(token)) { DiagnosticFailure(ex); Leave(); Fail(AccessFailure(ex, "Could not connect online: ")); } }
         }
         async Task MatchLoop(long token, CancellationToken cancel)
         {
@@ -220,7 +244,13 @@ namespace Idas3.Multiplayer
                     // requests expire; a peer's admission deadline is separate.
                     deadline = Now + MatchmakingProgressTimeoutSeconds;
                     Idas3Room target = null;
-                    foreach (var item in candidates) if (lobbyId == null || Idas3EosRoomRules.ShouldMerge(lobbyId, members, item.Code)) { target = item; break; }
+                    foreach (var item in candidates) {
+                        // Manual hosts stay put, so any of them can receive a
+                        // queued driver. Ordering is only needed when both
+                        // waiting hosts can leave to merge their queue rooms.
+                        if (!item.QuickMatch) { target = item; break; }
+                        if (target == null && (lobbyId == null || Idas3EosRoomRules.ShouldMerge(lobbyId, members, item.Code))) target = item;
+                    }
                     if (target != null) {
                         if (lobbyId != null) await RetireCurrentRoom();
                         EnsureCurrent(token, cancel);
@@ -246,7 +276,7 @@ namespace Idas3.Multiplayer
                 // disabled. Inviteonly requires an EOS invitation and would
                 // reject a player entering our shareable room code.
                 PermissionLevel = isPrivate ? LobbyPermissionLevel.Joinviapresence : LobbyPermissionLevel.Publicadvertised,
-                BucketId = Bucket(kind), DisableHostMigration = true, EnableJoinById = true, LobbyId = requested,
+                BucketId = BattleBucket, DisableHostMigration = true, EnableJoinById = true, LobbyId = requested,
                 PresenceEnabled = false, EnableRTCRoom = false, AllowInvites = false, RejoinAfterKickRequiresInvite = true };
             lobby.CreateLobby(ref options, null, (ref CreateLobbyCallbackInfo info) => { var copy = info; Idas3EosPlatform.Defer(() => complete.TrySetResult(copy)); });
             var result = await complete.Task;
@@ -344,10 +374,16 @@ namespace Idas3.Multiplayer
             var create = new CreateLobbySearchOptions { MaxResults = 50 };
             Idas3EosPlatform.Check(lobby.CreateLobbySearch(ref create, out LobbySearch search), "Creating room search");
             try {
-                var bucket = new LobbySearchSetParameterOptions { Parameter = new AttributeData { Key = LobbyInterface.SEARCH_BUCKET_ID, Value = new AttributeDataValue { AsUtf8 = Bucket(kind) } }, ComparisonOp = ComparisonOp.Equal };
+                var bucket = new LobbySearchSetParameterOptions { Parameter = new AttributeData { Key = LobbyInterface.SEARCH_BUCKET_ID, Value = new AttributeDataValue { AsUtf8 = BattleBucket } }, ComparisonOp = ComparisonOp.Equal };
                 Idas3EosPlatform.Check(search.SetParameter(ref bucket), "Setting room search");
                 var slots = new LobbySearchSetParameterOptions { Parameter = new AttributeData { Key = LobbyInterface.SEARCH_MINSLOTSAVAILABLE, Value = new AttributeDataValue { AsInt64 = 1 } }, ComparisonOp = ComparisonOp.Greaterthanorequal };
                 Idas3EosPlatform.Check(search.SetParameter(ref slots), "Setting room vacancies");
+                if (kind == "room") {
+                    // Filter before EOS applies its result limit, so waiting
+                    // queue lobbies cannot crowd manual hosts out of Browse.
+                    var manual = new LobbySearchSetParameterOptions { Parameter = new AttributeData { Key = KindKey, Value = new AttributeDataValue { AsUtf8 = "room" } }, ComparisonOp = ComparisonOp.Equal };
+                    Idas3EosPlatform.Check(search.SetParameter(ref manual), "Setting room type");
+                }
                 var done = new TaskCompletionSource<Result>();
                 var find = new LobbySearchFindOptions { LocalUserId = Idas3EosPlatform.User };
                 search.Find(ref find, null, (ref LobbySearchFindCallbackInfo info) => { var result = info.ResultCode; Idas3EosPlatform.Defer(() => done.TrySetResult(result)); });
@@ -361,9 +397,11 @@ namespace Idas3.Multiplayer
                     try {
                         var info = Info(details);
                         string id = info.LobbyId.ToString();
+                        string roomKind = Get(details, KindKey);
+                        bool acceptedKind = roomKind == "room" || kind == "queue" && roomKind == "queue";
                         if (!ValidCode(id) || info.MaxMembers != 2 || info.AvailableSlots != 1 || info.PermissionLevel != LobbyPermissionLevel.Publicadvertised ||
-                            info.LobbyOwnerUserId?.ToString() == LocalId || Get(details, BuildKey) != CompatibilityHash || Get(details, KindKey) != kind) continue;
-                        roomsFound.Add(new Idas3Room { Code = id, Name = Clean(Get(details, NameKey), "Race room"), HostName = Clean(Get(details, HostKey), "Driver"), Members = 1, Capacity = 2, Order = Order(id), QuickMatch = kind == "queue" });
+                            info.LobbyOwnerUserId?.ToString() == LocalId || Get(details, BuildKey) != CompatibilityHash || !acceptedKind) continue;
+                        roomsFound.Add(new Idas3Room { Code = id, Name = Clean(Get(details, NameKey), "Race room"), HostName = Clean(Get(details, HostKey), "Driver"), Members = 1, Capacity = 2, Order = Order(id), QuickMatch = roomKind == "queue" });
                     } finally { details.Release(); }
                 }
                 roomsFound.Sort((a, b) => string.CompareOrdinal(a.Code, b.Code));
@@ -418,6 +456,7 @@ namespace Idas3.Multiplayer
                         if (verifiedPeer != peer.ToString() || !sanctions.IsClearWithin(peer, Idas3EosSanctions.FreshSeconds)) {
                             if (checkingPeer != peer.ToString()) {
                                 checkingPeer = peer.ToString(); busy = "Checking driver access";
+                                Stage("peer-access");
                                 deadline = Now + 60;
                                 _ = VerifyPeerAccess(generation, lobbyId, peer);
                             }
@@ -430,18 +469,19 @@ namespace Idas3.Multiplayer
                         ApplyLocalStatResets();
                         if (lobbyId == null) return;
                         route = new Idas3EosP2P(this, peer, Clean(Get(details, NameKey, peer), "Driver"), lobbyId, CompatibilityHash, IsHost);
+                        Stage("peer-connect");
                         busy = "Connecting to driver";
                         deadline = Now + 45;
                     }
                 } finally { details.Release(); }
-            } catch (Exception ex) { FailRoom(ex.Message); }
+            } catch (Exception ex) { DiagnosticFailure(ex); FailRoom(ex.Message); }
         }
         public void Poll()
         {
             if (disposed) return;
             Idas3EosPlatform.Tick(true);
             sanctions?.Poll();
-            if ((initializing || busy != null) && Now > deadline) { string description = initializing ? "Online initialization" : busy; Leave(); Fail(description + " timed out. Please retry."); }
+            if ((initializing || busy != null) && Now > deadline) { string description = initializing ? "Online initialization" : busy; Diagnostic("timeout"); Leave(); Fail(description + " timed out. Please retry."); }
             if (Idas3EosPlatform.Failure != null && InLobby) { FailRoom(Idas3EosPlatform.Failure); return; }
             PollAccess();
             if (InLobby && Now >= nextMembership) { nextMembership = Now + 1; RefreshMembership(); }
@@ -454,20 +494,60 @@ namespace Idas3.Multiplayer
             if (data.Length < 1 || data.Length > MaxPayloadBytes) { FailRoom("A game message exceeded the online packet limit."); return; }
             route.SendGame(data, reliable);
         }
-        internal void Admitted(Idas3EosP2P source)
+        internal bool Admitted(Idas3EosP2P source)
         {
-            if (route != source || lobbyId == null) return;
+            if (route != source || lobbyId == null || !source.Connected) return false;
+            if (peerAdmitted) return true;
+            if (pendingAdmission != null && !admissionAccessReady) return false;
             if (!sanctions.IsClearWithin(Idas3EosPlatform.User, Idas3EosSanctions.FreshSeconds) ||
                 !sanctions.IsClearWithin(ProductUserId.FromString(source.RemoteId), Idas3EosSanctions.FreshSeconds)) {
-                FailRoom(Idas3EosSanctions.Unavailable); return;
+                if (pendingAdmission == null) {
+                    pendingAdmission = source; admissionAccessReady = false;
+                    busy = "Checking driver access"; deadline = Now + 60;
+                    Stage("admission-access");
+                    _ = VerifyAdmissionAccess(generation, lobbyId, source);
+                } else FailRoom(Idas3EosSanctions.Unavailable);
+                return false;
             }
             if (source.LocalResetStamp != ResetStamp(Idas3EosPlatform.User) ||
                 source.RemoteResetStamp != ResetStamp(ProductUserId.FromString(source.RemoteId))) {
-                FailRoom(PeerStatsReset); return;
+                FailRoom(PeerStatsReset); return false;
             }
-            peerAdmitted = true;
+            peerAdmitted = true; pendingAdmission = null;
             busy = null; IsMatching = false; Status = "Connected to " + source.RemoteName + ".";
+            Stage("admitted");
+            return true;
+        }
+        internal void AnnounceAdmission(Idas3EosP2P source)
+        {
+            if (route != source || !Connected || admissionAnnounced) return;
+            // The route enables game sending before this callback, so the
+            // session's synchronous first hello is retained after admission.
+            admissionAnnounced = true;
             PeerChanged?.Invoke();
+        }
+        async Task VerifyAdmissionAccess(long token, string room, Idas3EosP2P source)
+        {
+            try {
+                // Parallel verification avoids aging the local snapshot while
+                // waiting for a second sequential service request. Existing
+                // in-flight queries are shared by the sanctions adapter.
+                await Task.WhenAll(sanctions.RequireAllowed(Idas3EosPlatform.User, true, true),
+                    sanctions.RequireAllowed(ProductUserId.FromString(source.RemoteId), false, true));
+                if (!Current(token) || lobbyId != room || route != source || pendingAdmission != source) return;
+                ApplyLocalStatResets();
+                if (!Current(token) || route != source) return;
+                admissionAccessReady = true;
+                nextAccessRefresh = Now + Idas3EosSanctions.FreshSeconds;
+                // Normal Poll rechecks current membership and reset stamps
+                // before authorizing the route or delivering buffered data.
+            } catch (Exception ex) {
+                if (!Current(token) || lobbyId != room || route != source || pendingAdmission != source) return;
+                DiagnosticFailure(ex);
+                if (ex is Idas3EosStatsResetException || sanctions.IsBlocked(Idas3EosPlatform.User))
+                    BlockLocalAccess(ex is Idas3EosStatsResetException ? StatsResetFailed : Idas3EosSanctions.LocalRestriction);
+                else FailRoom(AccessFailure(ex, "Could not verify connection: "));
+            }
         }
         internal void Deliver(Idas3EosP2P source, byte[] data) { if (route == source && Connected) Message?.Invoke(data); }
         internal void RouteFailed(Idas3EosP2P source, string detail) { if (route == source) FailRoom(detail); }
@@ -476,6 +556,7 @@ namespace Idas3.Multiplayer
             string old = lobbyId; bool host = IsHost;
             lobbyId = null; originalOwner = null; members = 0;
             checkingPeer = verifiedPeer = null;
+            pendingAdmission = null; admissionAccessReady = false;
             route?.Dispose(); route = null;
             if (old != null) await Retire(old, host);
         }
@@ -507,7 +588,7 @@ namespace Idas3.Multiplayer
             // A closed route has already changed Connected to false by the
             // time its failure reaches us. Remember admission so every peer
             // departure still notifies the session exactly once.
-            bool notify = peerAdmitted; peerAdmitted = false;
+            bool notify = admissionAnnounced; peerAdmitted = admissionAnnounced = false;
             ++generation; cancellation?.Cancel(); cancellation?.Dispose(); cancellation = null;
             initializing = false; busy = null; IsMatching = false;
             checkingAccess = false;
@@ -533,6 +614,8 @@ namespace Idas3.Multiplayer
             sanctions?.Dispose();
             activity?.Dispose();
             Unsubscribe();
+            if (incomingRequestNotify != 0) p2p.RemoveNotifyPeerConnectionRequest(incomingRequestNotify);
+            incomingRequestNotify = 0;
         }
         void Unsubscribe()
         {
@@ -576,7 +659,7 @@ namespace Idas3.Multiplayer
                 // A result for a departed/replaced driver cannot admit a peer.
                 RefreshMembership();
             } catch (Exception ex) {
-                if (Current(token) && lobbyId == room && checkingPeer == peer.ToString()) FailRoom(ex.Message);
+                if (Current(token) && lobbyId == room && checkingPeer == peer.ToString()) { DiagnosticFailure(ex); FailRoom(ex.Message); }
             }
         }
         void PollAccess()
@@ -593,7 +676,7 @@ namespace Idas3.Multiplayer
             if (Connected && (!sanctions.IsClearWithin(Idas3EosPlatform.User, age) || !sanctions.IsClearWithin(peer, age))) {
                 BlockLocalAccess(Idas3EosSanctions.Unavailable); return;
             }
-            if (!checkingAccess && Now >= nextAccessRefresh) _ = RefreshAccess(generation);
+            if (pendingAdmission == null && !checkingAccess && Now >= nextAccessRefresh) _ = RefreshAccess(generation);
         }
         async Task RefreshAccess(long token)
         {
@@ -662,6 +745,10 @@ namespace Idas3.Multiplayer
             busy = description; deadline = Now + seconds; Status = description + "…"; return ++generation;
         }
         bool Current(long token) => !disposed && generation == token;
+        void Stage(string stage) { diagnosticStage = stage; Diagnostic("started"); }
+        void Diagnostic(string outcome) => UnityEngine.Debug.Log("[IDAS3 EOS] stage=" + diagnosticStage + " outcome=" + outcome);
+        void DiagnosticFailure(Exception error) => Diagnostic(error is Idas3EosServiceException service ? service.ResultCode.ToString() :
+            error is Idas3EosRestrictedException ? "restricted" : error is Idas3EosStatsResetException ? "reset-failed" : "failed");
         void EnsureCurrent(long token, CancellationToken cancel) { cancel.ThrowIfCancellationRequested(); if (!Current(token)) throw new OperationCanceledException(); }
         void FailRoom(string detail) { Leave(); Fail(detail); }
         void Fail(string detail) { Status = detail; Error?.Invoke(detail); }

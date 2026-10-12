@@ -16,15 +16,19 @@ namespace Idas3.Multiplayer
         readonly SocketId socket;
         readonly string socketName;
         readonly byte[] hello, expectedHello;
+        readonly int helloBuildEnd;
         readonly byte[] receive = new byte[Idas3EosPackets.PacketLimit];
         readonly Queue<Pending> outgoing = new Queue<Pending>();
         readonly LinkedList<Received> incoming = new LinkedList<Received>();
         readonly Idas3EosPackets.Reassembler reliable = new Idas3EosPackets.Reassembler(true), unreliable = new Idas3EosPackets.Reassembler(false);
         ulong requestNotify, closedNotify, establishedNotify;
-        int outgoingBytes, incomingBytes;
+        int outgoingBytes, incomingBytes, connectionRetries;
+        int helloQueued, controlReceived, controlRejected, foreignPackets, mismatchKinds;
         uint nextReliable = 1, nextUnreliable = 1;
-        bool disposed, announced, helloReceived, ackReceived, pumping;
-        double started, nextHello, nextHeartbeat, lastReceive, sendBlockedSince;
+        bool disposed, announced, helloReceived, ackReceived, pumping, established;
+        double started, nextHello, nextHeartbeat, lastReceive, sendBlockedSince, retryConnectionAt;
+        Result? lastControlSendFailure;
+        Result? lastControlSendResult;
         string failure;
         internal bool Connected => !disposed && failure == null && helloReceived && ackReceived;
         internal string RemoteId { get; }
@@ -45,6 +49,7 @@ namespace Idas3.Multiplayer
             LocalResetStamp = owner.ResetStamp(local); RemoteResetStamp = owner.ResetStamp(remote);
             hello = Encoding.UTF8.GetBytes("ID3EOS2:" + compatibility + ":" + (host ? "H" : "C") + ":" + LocalResetStamp);
             expectedHello = Encoding.UTF8.GetBytes("ID3EOS2:" + compatibility + ":" + (host ? "C" : "H") + ":" + RemoteResetStamp);
+            helloBuildEnd = 8 + Encoding.UTF8.GetByteCount(compatibility);
             started = lastReceive = Idas3EosPlatform.Now;
             var relay = new SetRelayControlOptions { RelayControl = Idas3EosOnlineConfig.ForceRelay ? RelayControl.ForceRelays : RelayControl.AllowRelays };
             Idas3EosPlatform.Check(p2p.SetRelayControl(ref relay), "Configuring peer routing");
@@ -58,30 +63,79 @@ namespace Idas3.Multiplayer
             var closed = new AddNotifyPeerConnectionClosedOptions { LocalUserId = local, SocketId = socket };
             closedNotify = p2p.AddNotifyPeerConnectionClosed(ref closed, null, (ref OnRemoteConnectionClosedInfo info) => {
                 var copy = info;
-                Idas3EosPlatform.Defer(() => { if (!disposed && Same(copy.RemoteUserId, copy.SocketId)) failure = "The peer connection closed (" + copy.Reason + ")."; });
+                Idas3EosPlatform.Defer(() => { if (!disposed && Same(copy.RemoteUserId, copy.SocketId)) ConnectionClosed(copy.Reason); });
             });
             var established = new AddNotifyPeerConnectionEstablishedOptions { LocalUserId = local, SocketId = socket };
             establishedNotify = p2p.AddNotifyPeerConnectionEstablished(ref established, null, (ref OnPeerConnectionEstablishedInfo info) => {
                 var copy = info;
                 Idas3EosPlatform.Defer(() => {
-                    if (!disposed && Same(copy.RemoteUserId, copy.SocketId)) ConnectionType = copy.NetworkType == NetworkConnectionType.DirectConnection ? "direct" : copy.NetworkType == NetworkConnectionType.RelayedConnection ? "relayed" : "unknown";
+                    if (!disposed && Same(copy.RemoteUserId, copy.SocketId)) {
+                        this.established = true;
+                        ConnectionType = copy.NetworkType == NetworkConnectionType.DirectConnection ? "direct" : copy.NetworkType == NetworkConnectionType.RelayedConnection ? "relayed" : "unknown";
+                        Trace("established routing=" + ConnectionType);
+                    }
                 });
             });
             if (requestNotify == 0 || closedNotify == 0 || establishedNotify == 0) { Dispose(); throw new InvalidOperationException("Could not register online connection notifications."); }
+            Trace("ready role=" + (host ? "host" : "guest") + " relay=" + relay.RelayControl);
             Accept();
+        }
+        static void Trace(string detail) => UnityEngine.Debug.Log("IDAS3 EOS P2P " + detail);
+        static void Count(ref int value) { if (value < 65535) ++value; }
+        void HandshakeTimedOut()
+        {
+            failure = "Connecting to the other driver timed out.";
+            Trace("handshake-timeout routing=" + ConnectionType + " established=" + established +
+                " hello=" + helloReceived + " ack=" + ackReceived + " helloQueued=" + helloQueued +
+                " controlRx=" + controlReceived + " rejected=" + controlRejected + " foreign=" + foreignPackets +
+                " lastSend=" + (lastControlSendResult.HasValue ? lastControlSendResult.Value.ToString() : "none") + " retries=" + connectionRetries);
+        }
+        void RejectedControl(uint length)
+        {
+            Count(ref controlRejected);
+            // Compare bounded byte fields only; never decode or log untrusted
+            // payloads, identities, room codes, or policy fingerprints.
+            int kind = 1;
+            if (length >= 8 && length <= receive.Length && Equal(receive, expectedHello, 8)) {
+                int end = Array.IndexOf(receive, (byte)':', 8, (int)length - 8);
+                if (end >= 0) {
+                    if (end != helloBuildEnd || !Equal(receive, expectedHello, end)) kind = 2;
+                    else if (length <= end + 2 || receive[end + 1] != expectedHello[end + 1] || receive[end + 2] != (byte)':') kind = 4;
+                    else kind = 8;
+                }
+            }
+            if ((mismatchKinds & kind) != 0) return;
+            mismatchKinds |= kind;
+            Trace("control-rejected category=" + (kind == 1 ? "protocol" : kind == 2 ? "build" : kind == 4 ? "role" : "reset"));
+        }
+        void ConnectionClosed(ConnectionClosedReason reason)
+        {
+            Trace("closed reason=" + reason + " admitted=" + announced + " handshake=" + Connected);
+            // The other client's member data/access query can finish later than
+            // ours. EOS may close the first attempt before its listener is ready.
+            // Re-accept only this verified peer, within the original deadline.
+            // A completed wire handshake or admitted route is never restarted.
+            if (failure == null && !announced && !Connected && Idas3EosPlatform.Now - started < 40 &&
+                (reason == ConnectionClosedReason.ConnectionIgnored || reason == ConnectionClosedReason.ConnectionFailed)) {
+                if (retryConnectionAt == 0) retryConnectionAt = Idas3EosPlatform.Now + Math.Min(4, 1 << Math.Min(connectionRetries, 2));
+                return;
+            }
+            failure = "The peer connection closed (" + reason + ").";
         }
         bool Same(ProductUserId user, SocketId? id) => user != null && user.ToString() == RemoteId && id.HasValue && id.Value.SocketName.ToString() == socketName;
         void Accept()
         {
+            if (disposed || failure != null || !Connected && Idas3EosPlatform.Now - started > 40) return;
             // `remote` comes only from the exact compatible lobby's membership;
             // no request can authorize a different PUID or a previous room.
             var options = new AcceptConnectionOptions { LocalUserId = local, RemoteUserId = remote, SocketId = socket };
             var result = p2p.AcceptConnection(ref options);
+            Trace("accept result=" + result + " retry=" + connectionRetries);
             if (result != Result.Success && result != Result.NoChange) failure = "Could not accept the other driver (" + result + ").";
         }
         internal void SendGame(byte[] data, bool ordered)
         {
-            if (!Connected) return;
+            if (!Connected || !announced) return;
             if (ordered) {
                 if (outgoing.Count >= 256 || outgoingBytes + data.Length > 1024 * 1024) { failure = "The reliable online send queue is full."; return; }
                 outgoing.Enqueue(new Pending { Data = (byte[])data.Clone(), Id = nextReliable }); nextReliable = Idas3EosPackets.Next(nextReliable); outgoingBytes += data.Length;
@@ -99,7 +153,18 @@ namespace Idas3.Multiplayer
             var options = new SendPacketOptions { LocalUserId = local, RemoteUserId = remote, SocketId = socket,
                 Channel = channel, Data = new ArraySegment<byte>(bytes), Reliability = ordered ? PacketReliability.ReliableOrdered : PacketReliability.UnreliableUnordered,
                 AllowDelayedDelivery = ordered, DisableAutoAcceptConnection = true };
-            return p2p.SendPacket(ref options);
+            var result = p2p.SendPacket(ref options);
+            if (channel == 0) {
+                lastControlSendResult = result;
+                if (result == Result.Success) lastControlSendFailure = null;
+                else {
+                    if (lastControlSendFailure != result) Trace("control-send result=" + result);
+                    lastControlSendFailure = result;
+                    if (result != Result.NoConnection && result != Result.LimitExceeded && result != Result.TooManyRequests)
+                        failure = "Sending an online control message failed (" + result + ").";
+                }
+            }
+            return result;
         }
         void FlushOutgoing()
         {
@@ -128,7 +193,14 @@ namespace Idas3.Multiplayer
         void PumpPackets()
         {
             double now = Idas3EosPlatform.Now;
-            if (!Connected && now >= nextHello) { Send(hello, 0, true); nextHello = now + 1; }
+            if (failure != null) return;
+            if (!Connected && now - started > 40) { HandshakeTimedOut(); return; }
+            if (retryConnectionAt != 0) {
+                if (now < retryConnectionAt) return;
+                retryConnectionAt = 0; ++connectionRetries; Accept(); nextHello = 0;
+                if (failure != null) return;
+            }
+            if (!Connected && now >= nextHello) { if (Send(hello, 0, true) == Result.Success) Count(ref helloQueued); nextHello = now + 1; }
             if (Connected && now >= nextHeartbeat) { Send(new byte[] { 3 }, 0, false); nextHeartbeat = now + 1; }
             FlushOutgoing();
             var options = new ReceivePacketOptions { LocalUserId = local, MaxDataSizeBytes = (uint)receive.Length };
@@ -138,12 +210,14 @@ namespace Idas3.Multiplayer
                 var result = p2p.ReceivePacket(ref options, ref sender, ref source, out byte channel, new ArraySegment<byte>(receive), out uint length);
                 if (result == Result.NotFound) break;
                 if (result != Result.Success) { failure = "Receiving an online packet failed (" + result + ")."; break; }
-                if (!Same(sender, source)) continue;
+                if (!Same(sender, source)) { Count(ref foreignPackets); continue; }
                 lastReceive = now;
                 if (channel == 0) {
+                    Count(ref controlReceived);
                     if (length == expectedHello.Length && Equal(receive, expectedHello, (int)length)) { helloReceived = true; Send(new byte[] { 1 }, 0, true); }
                     else if (length == 1 && receive[0] == 1) ackReceived = true;
                     else if (length == 1 && receive[0] == 2) { failure = "The other driver left the room."; break; }
+                    else if (length != 1 || receive[0] != 3) RejectedControl(length);
                     // Channel zero also carries liveness packets. Invalid control
                     // data never authorizes a game payload or changes the peer.
                     continue;
@@ -158,7 +232,7 @@ namespace Idas3.Multiplayer
                 BufferMessage(data, channel == 1);
                 if (failure != null) break;
             }
-            if (!Connected && now - started > 40) failure = "Connecting to the other driver timed out.";
+            if (!Connected && now - started > 40) HandshakeTimedOut();
             if (Connected && now - lastReceive > 45) failure = "The other driver stopped responding.";
         }
         internal void Poll()
@@ -166,8 +240,10 @@ namespace Idas3.Multiplayer
             KeepAliveOnly();
             if (disposed) return;
             if (failure != null) { owner.RouteFailed(this, failure); return; }
-            if (Connected && !announced) { announced = true; owner.Admitted(this); }
-            while (!disposed && Connected && incoming.Count != 0) { var data = incoming.First.Value.Data; incoming.RemoveFirst(); incomingBytes -= data.Length; owner.Deliver(this, data); }
+            if (Connected && !announced && owner.Admitted(this)) {
+                announced = true; Trace("handshake-complete routing=" + ConnectionType); owner.AnnounceAdmission(this);
+            }
+            while (!disposed && Connected && announced && incoming.Count != 0) { var data = incoming.First.Value.Data; incoming.RemoveFirst(); incomingBytes -= data.Length; owner.Deliver(this, data); }
         }
         void BufferMessage(byte[] data, bool ordered)
         {
