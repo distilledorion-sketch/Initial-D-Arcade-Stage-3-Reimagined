@@ -103,6 +103,61 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
     }
     private static uint NoXInput(uint slot, out Idas3Native.PadState state)
     { state = default; return 1167; } // ERROR_DEVICE_NOT_CONNECTED
+    internal static void RunStartDescriptorChecks(string root,Action<bool,string> check)
+    {
+        var wheel=(Joystick)InputSystem.AddDevice(HidDescription(true));
+        double now=0;
+        try
+        {
+            using(var devices=new Idas3ControllerDevices(()=>now,NoXInput,device=>device==wheel))
+            {
+                devices.Initialize(Path.Combine(root,"start-hid-device"));
+                void Sample(byte buttons,byte hat)
+                {
+                    InputSystem.QueueStateEvent(wheel,new HidState{report=16,x=32768,y=32768,pedal=65535,buttons=buttons,hat=hat});
+                    InputSystem.Update();now+=.1;devices.Tick(false);
+                }
+                Sample(0,8);
+                string key=null;
+                foreach(var choice in devices.Choices)
+                    if(choice.connected&&choice.label.Contains("Descriptor Wheel"))key=choice.key;
+                check(key!=null,"Synthetic descriptor wheel was not discovered");
+                check(devices.Select(key),"Synthetic descriptor wheel was not selected");
+                Sample(0,8);
+                Idas3ControllerControl second=null,up=null;
+                foreach(var control in devices.Controls)
+                {
+                    if(control.path=="button2")second=control;
+                    if(control.fallbackButtons==1)up=control;
+                }
+                check(second!=null,"Descriptor second button is missing");
+                check(up!=null,"Descriptor hat up control is missing");
+                var bindings=new Idas3ControlBindings();bindings.Initialize(Path.Combine(root,"start-hid-binding"));
+                bindings.SelectControllerProfile(devices.ActiveProfileKey,devices.ActiveName,true);
+                check(bindings.TrySetDraftControl(Idas3ControlBindings.ActionId.Start,second,1,0)&&bindings.ApplyDraft(),
+                    "Could not save descriptor second button as Start");
+                bindings.Poll(_=>false,new Idas3ControlBindings.PadState{connected=true},now,devices.Controls);
+                Sample(2,8);check(devices.TryRead(out var raw)&&(raw.buttons&0x2000)!=0&&second.fallbackButtons==0x2000,
+                    "Descriptor second button did not emit its raw B alias");
+                bindings.Poll(_=>false,raw,now,devices.Controls);
+                var frame=new Idas3Native.FrameInput{padConnected=1,padButtons=raw.buttons};bindings.ApplyMenu(ref frame,true);
+                check(bindings.StartHeld&&(frame.padButtons&0x10)!=0&&(frame.padButtons&0x2000)==0,
+                    "Bound second button did not become Start without B");
+                Sample(0,8);bindings.Poll(_=>false,new Idas3ControlBindings.PadState{connected=true},now,devices.Controls);
+                bindings.BeginEdit();
+                check(bindings.TrySetDraftControl(Idas3ControlBindings.ActionId.Start,up,1,0)&&bindings.ApplyDraft(),
+                    "Could not save descriptor hat up as Start");
+                bindings.Poll(_=>false,new Idas3ControlBindings.PadState{connected=true},now,devices.Controls);
+                Sample(0,0);check(devices.TryRead(out raw)&&(raw.buttons&1)!=0,
+                    "Descriptor hat up did not emit its raw direction bit");
+                bindings.Poll(_=>false,raw,now,devices.Controls);
+                frame=new Idas3Native.FrameInput{padConnected=1,padButtons=raw.buttons};bindings.ApplyMenu(ref frame,true);
+                check(bindings.StartHeld&&(frame.padButtons&0x10)!=0&&(frame.padButtons&1)==0,
+                    "Bound hat up did not become Start without navigation");
+            }
+        }
+        finally { if(wheel.added)InputSystem.RemoveDevice(wheel); }
+    }
     internal static void PreparePhysicalInput(ref Func<KeyCode,bool> key)
     { if(active!=null&&!active.finished)key=active.KeyHeld; }
     private bool KeyHeld(KeyCode key)=>physicalKey!=KeyCode.None&&key==physicalKey;
@@ -152,9 +207,12 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
         string alphaKey=DeviceKey("Alpha"),betaKey=DeviceKey("Beta"),genericKey=DeviceKey("Wheel");
         Check(alphaKey!=betaKey&&betaKey!=genericKey,"Distinct controllers share selector keys");
         yield return Select("automatic");
+        // Automatic selection retains a live source for 0.5 real seconds to
+        // avoid Steam Input duplicate-device churn. Frames are not a clock.
+        yield return new WaitForSecondsRealtime(.65f);
         Pad(beta,new GamepadState().WithButton(GamepadButton.West));yield return Frames(6);
         Check(host.ControllerDevices.ActiveName.Contains("Beta"),"Automatic mode did not select the controller receiving input");
-        Pad(beta,new GamepadState());yield return Frames(6);
+        Pad(beta,new GamepadState());yield return new WaitForSecondsRealtime(.65f);
         Check(host.ControllerDevices.ActiveName.Contains("Beta"),"A resting generic pedal stole automatic selection");
         Pad(alpha,new GamepadState().WithButton(GamepadButton.North));yield return Frames(6);
         Check(host.ControllerDevices.ActiveName.Contains("Alpha"),"Automatic mode did not switch to a second active controller");
@@ -203,6 +261,22 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
 
         yield return Select(genericKey);string genericProfile=host.ControllerDevices.ActiveProfileKey;
         Check(host.ControllerDevices.ActiveIsGeneric,"Joystick was not exposed as a generic controller");yield return Capture("generic-device");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0){
+            menu.BeginBindingCapture(Idas3ControlBindings.ActionId.Start,Idas3ControlBindings.Slot.Controller);yield return Frames(4);
+            Check(bindings.IsCapturing,"Generic Start capture did not arm");
+            Wheel(1,0,1u<<4);yield return Frames(4);
+            Check(!bindings.IsCapturing&&bindings.Draft.actions[(int)Idas3ControlBindings.ActionId.Start].controlPath=="trigger",
+                "Joystick trigger button was not captured as Start");
+            Wheel();yield return Frames(4);Check(bindings.ApplyDraft(),"Generic Start did not save");
+            menu.SetOpen(false);yield return Frames(5);
+            Wheel(1,0,1u<<4);yield return Frames(12);
+            Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Joystick trigger Start or its raw-A alias broke offline pause");
+            ulong startPauseTicks=host.Status.simulationTicks;yield return Frames(8);
+            Check(menu.IsOpen&&host.Status.simulationTicks==startPauseTicks,"Held joystick trigger Start double-activated menu A");
+            Wheel();yield return Frames(4);Wheel(1,0,1u<<4);yield return Frames(12);
+            Check(!menu.IsOpen&&(host.Status.flags&2)==0,"Joystick trigger Start did not resume after release");
+            Wheel();yield return Frames(4);menu.SetOpen(true);menu.SelectTab(3);yield return Frames(4);
+        }
         menu.BeginBindingCapture(Idas3ControlBindings.ActionId.Accelerate,Idas3ControlBindings.Slot.Controller);yield return Frames(8);
         Check(bindings.IsCapturing,"Resting pedal rebound itself or blocked capture");Wheel(-1);yield return Frames(4);
         Check(!bindings.IsCapturing&&bindings.Draft.actions[0].controlPath.Contains("pedal"),"Rest-at-one pedal was not captured");Wheel();yield return Frames(5);
