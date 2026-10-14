@@ -654,10 +654,11 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             }
         }
         GUI.EndScrollView();
-        Text(new Rect(288,deviceControls?524:514,702,18),"Gear 1–6: Manual transmission. Scroll for more bindings. APPLY saves all devices.",small);
+        Text(new Rect(288,deviceControls?524:514,702,18),"Gear 1–6: Manual. Start: digital buttons only. Scroll for more. APPLY saves all devices.",small);
     }
     private void BindingChoiceView(){
-        ModalFrame(Idas3ControlBindings.ActionName(captureAction).ToUpperInvariant(),"Choose REBIND to assign a control, CLEAR to remove this slot, or BACK.\nRebinding waits up to 15 seconds. Leave controls at rest to cancel without assigning anything.");
+        ModalFrame(Idas3ControlBindings.ActionName(captureAction).ToUpperInvariant(),"Choose REBIND to assign a control, CLEAR to remove this slot, or BACK.\n"+
+            (captureAction==Idas3ControlBindings.ActionId.Start?"Start accepts controller buttons and ordinary keyboard keys; axes and pedals are unavailable.":"Rebinding waits up to 15 seconds. Leave controls at rest to cancel without assigning anything."));
         string[] choices={"REBIND","CLEAR","BACK"};
         for(int i=0;i<3;++i)if(Button(new Rect(247+i*184,404,174,48),choices[i],bindingChoiceSelection==i)){bindingChoiceSelection=i;ActivateBindingChoice();}
     }

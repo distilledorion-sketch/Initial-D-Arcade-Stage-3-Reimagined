@@ -2,6 +2,7 @@
 #define IDAS3_UNITY_EXPORT
 #include "unity_bridge.h"
 #include <windows.h>
+#include <Xinput.h>
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <filesystem>
@@ -61,7 +62,7 @@ int main(int argc,char** argv)try{
  pixels(static_cast<ID3D11Texture2D*>(Idas3UnityGetTexture()),device.Get(),context.Get(),output/"attract.bmp");
  input.flags=0;const auto frozen=s.renderedFrames;for(unsigned i=0;i<6;++i)s=tick();require(s.renderedFrames==frozen,"Unfocused attract advanced");
  input.flags=1;key(VK_F5,true);s=tick();key(VK_F5,false);require(!(s.flags&1)&&(s.flags&16),"TimeAttack did not launch original handling");
- key('W',true);for(unsigned i=0;i<240;++i)s=tick();require(s.simulationTicks>=240,"Fixed60Hz solver not running");require(std::isfinite(s.speedMetresPerSecond)&&s.speedMetresPerSecond>1,"Original vehicle did not accelerate");
+ key('W',true);for(unsigned i=0;i<900&&s.simulationTicks<240;++i)s=tick();require(s.simulationTicks>=240,"Fixed60Hz solver not running after race countdown");require(std::isfinite(s.speedMetresPerSecond)&&s.speedMetresPerSecond>1,"Original vehicle did not accelerate");
  pixels(static_cast<ID3D11Texture2D*>(Idas3UnityGetTexture()),device.Get(),context.Get(),output/"akina-driving.bmp");
  input.flags=0;s=tick();require(s.flags&2,"Race focus loss did not pause");const auto paused=s.simulationTicks;
  for(unsigned i=0;i<6;++i)s=tick();require(s.simulationTicks==paused,"Unfocused race advanced");
@@ -70,10 +71,16 @@ int main(int argc,char** argv)try{
  const auto repeat=Idas3UnityQueueFrame(&input);s=issue(repeat);callback(repeat);require(status().renderedFrames==s.renderedFrames,"Duplicate event rendered again");
  const auto after=pixels(static_cast<ID3D11Texture2D*>(Idas3UnityGetTexture()),device.Get(),context.Get(),output/"paused.bmp");require(before==after,"Paused repaint changed pixels");
  key(VK_ESCAPE,true);s=tick();key(VK_ESCAPE,false);require(!(s.flags&2),"Escape did not unpause");
+ input.padConnected=1;input.padButtons=XINPUT_GAMEPAD_START;s=tick();require((s.flags&2)!=0,"Connected pad Start did not pause the offline race");
+ const auto startHeldTicks=s.simulationTicks;
+ for(unsigned i=0;i<6;++i){s=tick();require((s.flags&2)!=0&&s.simulationTicks==startHeldTicks,"Held pad Start toggled pause or advanced simulation");}
+ input.padButtons=0;s=tick();input.padButtons=XINPUT_GAMEPAD_START;s=tick();require((s.flags&2)==0,"Pad Start did not resume after release and repress");
+ input.padButtons=XINPUT_GAMEPAD_START;input.padConnected=0;s=tick();require((s.flags&2)==0,"Disconnected pad Start paused the race");
+ input.padButtons=0;s=tick();
  const auto generation=s.textureGeneration;input.width=800;input.height=600;s=tick();require(s.width==800&&s.height==600&&s.textureGeneration>generation,"Target resize failed");input.width=input.height=0;
  s=issue(Idas3UnityQueueShutdown());require(s.state==0&&!Idas3UnityGetTexture(),"Shutdown left game/texture alive");require(fs::exists(output/"userdata/settings.txt"),"Settings not saved to isolated root");
  s=issue(Idas3UnityQueueInitialize(assets.c_str(),saves.c_str(),seed.Get(),640,480,0));require(s.state==1&&(s.flags&1)&&s.simulationTicks==0,"Editor restart state leaked");
  issue(Idas3UnityQueueShutdown());FreeLibrary(library);
- std::ofstream report(output/"bridge-smoke.txt");report<<"PASS "<<checks<<" C ABI checks: actual App attract, original TimeAttack, focus pause, duplicate events, paused pixels, shared-device resize, isolated settings and stop/restart. WARP only; no window/audio device. Unity Editor itself not exercised.\n";
+ std::ofstream report(output/"bridge-smoke.txt");report<<"PASS "<<checks<<" C ABI checks: actual App attract, original TimeAttack, focus pause, connected pad Start pause/hold/repress, disconnected pad protection, duplicate events, paused pixels, shared-device resize, isolated settings and stop/restart. WARP only; no window/audio device. Unity Editor itself not exercised.\n";
  std::cout<<"PASS "<<checks<<" Unity native bridge checks\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}
