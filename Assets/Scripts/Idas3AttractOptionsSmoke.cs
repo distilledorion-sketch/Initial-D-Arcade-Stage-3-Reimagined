@@ -310,7 +310,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             updates.Activate();updates.AcceptUpdate();
             Check(updates.State==Idas3Updates.CheckState.Preparing||updates.State==Idas3Updates.CheckState.Downloading,"Confirmed update starts cache preparation or file download");
             yield return Until(()=>updates.State==Idas3Updates.CheckState.Unavailable,40,"Invalid update did not report an error");
-            Check(updates.Message.Contains("archive")||updates.Message.Contains("Central Directory"),"Downloaded/checksummed data reached ZIP validation: "+updates.Message);
+            Check(updates.FailureDetails.Contains("archive")||updates.FailureDetails.Contains("Central Directory"),"Downloaded/checksummed data reached ZIP validation: "+updates.FailureDetails);
             Check(Convert.ToBase64String(before)==Convert.ToBase64String(File.ReadAllBytes(executable)),"Invalid archive leaves installed executable intact");
             updates.ContinueToGame();Check(host.Ready&&!updates.WindowVisible,"Continue after rejected update");
             observations.Add("Real GitHub file download, background SHA-256 verification and external helper rejection of invalid ZIP; no installed files changed.");

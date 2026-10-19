@@ -288,7 +288,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private void Adjust(int row,int direction){
         var v=options.Draft;
         if(tab==6){
-            if(row==1&&!v.communityTimes)v.replayTimeAttack=!v.replayTimeAttack;
+            if(row==1)v.replayTimeAttack=!v.replayTimeAttack;
             if(row==2)v.replayOnline=!v.replayOnline;
             if(row==3)v.replayLegend=!v.replayLegend;
             return;
@@ -536,14 +536,14 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(Button(new Rect(282,256,692,39),"VIEW LEADERBOARDS",selection==2)){selection=2;Application.OpenURL(Idas3CommunityTimes.ServiceUrl);}
             ChoiceRow(2,"DISCORD RICH PRESENCE",v.discordPresence?"ON":"OFF");
             ChoiceRow(3,"LIGHTS-OFF ADVANTAGE",v.hideLightsOffAdvantage?"HIDDEN":"VISIBLE");
-            Text(new Rect(288,436,681,48),selection==4?"Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.":selection==3?"Shows your game activity in the Discord desktop app.":"New Time Attack submissions require a driving replay. Turning Community Times off stops uploads; existing submissions remain.",wrapped);
+            Text(new Rect(288,436,681,48),selection==4?"Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.":selection==3?"Shows your game activity in the Discord desktop app.":"Community Times shares race times only. Replays stay on this computer. Turning sharing off stops new submissions; posted times remain.",wrapped);
             Text(new Rect(288,490,681,45),CommunityStatus,wrapped);
         }else if(tab==6){
             if(Button(new Rect(282,197,692,39),"OPEN REPLAY LIBRARY",selection==1))queued=Command.Replays;
-            ChoiceRow(1,"TIME ATTACK",v.communityTimes?"ON — REQUIRED FOR SHARING":v.replayTimeAttack?"ON":"OFF");
+            ChoiceRow(1,"TIME ATTACK",v.replayTimeAttack?"ON":"OFF");
             ChoiceRow(2,"ONLINE BATTLES",v.replayOnline?"ON":"OFF");
             ChoiceRow(3,"LEGEND OF THE STREETS",v.replayLegend?"ON":"OFF");
-            Text(new Rect(288,436,681,40),"Recording choices apply to the next race. Community Times always requires a Time Attack replay, even if optional recording is off.",wrapped);
+            Text(new Rect(288,436,681,40),"Recording choices apply to the next race. You can share Time Attack results with recording turned off.",wrapped);
             Text(new Rect(288,481,681,55),ReplayStatus,wrapped);
         }else if(tab==3)ControlsView();
         else if(tab==4){

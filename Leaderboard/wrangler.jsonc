@@ -15,7 +15,12 @@
   "vars": {
     "RULESET": "d3-community-v1",
     "RETAIN_TOP_TEN": "true",
-    "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.50"
+    "DISABLE_REPLAYS": "true",
+    "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.51",
+    "EOS_CLIENT_ID": "REPLACE_WITH_YOUR_EOS_CLIENT_ID",
+    "EOS_PRODUCT_ID": "REPLACE_WITH_YOUR_EOS_PRODUCT_ID",
+    "EOS_SANDBOX_ID": "REPLACE_WITH_YOUR_EOS_SANDBOX_ID",
+    "EOS_DEPLOYMENT_ID": "REPLACE_WITH_YOUR_EOS_DEPLOYMENT_ID"
   },
   "rules": [
     {
@@ -56,6 +61,22 @@
       "namespace_id": "1003",
       "simple": {
         "limit": 5,
+        "period": 60
+      }
+    },
+    {
+      "name": "ONLINE_LIMIT",
+      "namespace_id": "1004",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    },
+    {
+      "name": "ONLINE_AUTH_LIMIT",
+      "namespace_id": "1005",
+      "simple": {
+        "limit": 600,
         "period": 60
       }
     }

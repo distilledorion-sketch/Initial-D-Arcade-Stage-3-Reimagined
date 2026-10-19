@@ -45,6 +45,14 @@ Player Details lets them change it outside a room or queue. Names are not
 unique account identifiers: moderation continues to use the authenticated
 EOS Player ID, including after a name change.
 
+Online access also calls the community service's authenticated player-directory
+endpoint. It records chosen names for private offline lookup and checks local
+bans alongside EOS sanctions, independently of the Community Times toggle.
+Deploy Leaderboard/migrations/0012_online_players.sql and the Worker with the
+matching EOS client/product/sandbox/deployment IDs before distributing a player
+that uses idas3-eos-4-player-directory. Leaderboard/README.md documents setup;
+Tools/EOS/moderation.txt documents private username search and offline bans.
+
 Player counts use separate one-member activity lobbies in the product's
 idas3-activity-v1 bucket. They contain only a state and freshness timestamp;
 they are never race rooms and do not open a P2P connection. Owners are deduped,

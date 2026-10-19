@@ -51,6 +51,11 @@ public sealed class Idas3Updates : MonoBehaviour
     private int windowOpenedFrame;
     private CursorLockMode previousLock;
     private GUIStyle windowTitle,windowText,windowButton;
+    private GUIStyle failureText,failureButton;
+    private Vector2 failureScroll;
+    private bool errorCopied;
+    internal string FailureDetails {get;private set;}="";
+    private bool HasFailureDetails=>State==CheckState.Unavailable&&!string.IsNullOrEmpty(FailureDetails);
     private System.Diagnostics.Process installer;
     internal Action InstallOverride;
     internal Func<bool,IEnumerator> DownloadOverride;
@@ -105,6 +110,7 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     public void CheckNow(){
         if(!CanCheck)return;
+        ClearFailure();
         nextCheck=Time.realtimeSinceStartupAsDouble+60;
         State=CheckState.Checking;Message="Checking GitHub for updates…";
         StartCoroutine(FetchLatest());
@@ -128,6 +134,7 @@ public sealed class Idas3Updates : MonoBehaviour
         }
     }
     internal void ApplyResponse(long code,string json,bool failed=false){
+        ClearFailure();
         var result=Evaluate(InstalledVersion,code,json,failed);
         State=result.state;AvailableVersion=result.version;ReleaseUrl=result.url;Message=result.message;
         fullUrl=result.downloadUrl;fullHash=result.hash;fullBytes=result.bytes;
@@ -212,6 +219,7 @@ public sealed class Idas3Updates : MonoBehaviour
     private void BeginInstall(bool full){
         if(State!=CheckState.Available&&!(full&&State==CheckState.Current))return;
         if(fullUrl==null||!TryCompareVersions(AvailableVersion,InstalledVersion,out int order)||order<0)return;
+        ClearFailure();
         repair=full;SelectDownload(full);
         if(InstallOverride!=null){InstallOverride();return;}
         cancelled=false;StartCoroutine(GuardInstall(CreateDownload()));
@@ -229,7 +237,7 @@ public sealed class Idas3Updates : MonoBehaviour
                     SelectDownload(true);Message="Downloading the full update…";
                     routine=CreateDownload();pendingInstallation=routine;continue;
                 }
-                State=CheckState.Unavailable;Message="The update could not be applied. Your current game is unchanged. "+failure.Message;
+                SetInstallFailure(failure);
                 yield break;
             }
             if(!more){(routine as IDisposable)?.Dispose();pendingInstallation=null;yield break;}
@@ -323,11 +331,7 @@ public sealed class Idas3Updates : MonoBehaviour
         }
         string planPath;
         try{planPath=preparation.GetAwaiter().GetResult();}catch(Idas3UpdateStaging.PatchRejectedException error){throw new PatchUnavailableException(error.Message);}
-        var start=new System.Diagnostics.ProcessStartInfo(helper){
-            Arguments=Quote(planPath),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=session
-        };
-        installer=System.Diagnostics.Process.Start(start);
-        if(installer==null)throw new IOException("The installer could not start.");
+        installer=StartInstaller(helper,planPath,session);
         installerLaunched=true;
         Message="Preparing the update. The game will restart automatically…";
         double helperStarted=Time.realtimeSinceStartupAsDouble;
@@ -365,6 +369,37 @@ public sealed class Idas3Updates : MonoBehaviour
         });
     }
     private static string Quote(string value)=>"\""+value.Replace("\"","\\\"")+"\"";
+    internal sealed class InstallerLaunchException : IOException {
+        internal readonly int NativeCode;
+        internal InstallerLaunchException(Exception cause):base("Windows could not start the update installer. Your current game has not been changed.",cause){
+            NativeCode=cause is System.ComponentModel.Win32Exception win32?win32.NativeErrorCode:0;
+        }
+    }
+    internal static System.Diagnostics.Process StartInstaller(string helper,string plan,string session){
+        // Keep the same non-elevated native launch. A blocked executable must
+        // report its Windows error, never retry through a security bypass.
+        try{
+            return System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(helper){
+                Arguments=Quote(plan),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=session
+            })??throw new IOException("The installer could not start.");
+        }catch(Exception error)when(error is System.ComponentModel.Win32Exception||error is IOException||error is UnauthorizedAccessException){
+            throw new InstallerLaunchException(error);
+        }
+    }
+    private void ClearFailure(){FailureDetails="";failureScroll=Vector2.zero;errorCopied=false;}
+    internal void SetInstallFailure(Exception failure){
+        var launch=failure as InstallerLaunchException;
+        Message=launch!=null?launch.Message:"The update could not be applied. Your current game is unchanged.";
+        if(launch!=null&&launch.NativeCode!=0)Message+="\n"+Idas3MenuLocalization.T("Windows error")+": "+launch.NativeCode;
+        FailureDetails="Initial D update error\nInstalled: "+InstalledVersion+"\nUpdate: "+AvailableVersion+
+            (launch!=null?"\nStage: starting installer\nWindows error: "+launch.NativeCode:"")+"\n\n"+failure;
+        State=CheckState.Unavailable;failureScroll=Vector2.zero;errorCopied=false;actionSelected=2;
+    }
+    private void FailureAction(int action){
+        if(action==0){GUIUtility.systemCopyBuffer=FailureDetails;errorCopied=true;}
+        else if(action==1)Application.OpenURL(LatestReleaseUrl);
+        else ContinueToGame();
+    }
     private void Update(){
         if(!WindowVisible||Time.frameCount<=windowOpenedFrame||!Application.isFocused)return;
         var keyboard=Keyboard.current;var pad=Gamepad.current;
@@ -372,6 +407,11 @@ public sealed class Idas3Updates : MonoBehaviour
         bool right=(keyboard?.rightArrowKey.wasPressedThisFrame??false)||(pad?.dpad.right.wasPressedThisFrame??false);
         bool confirm=(keyboard?.enterKey.wasPressedThisFrame??false)||(pad?.buttonSouth.wasPressedThisFrame??false)||(pad?.startButton.wasPressedThisFrame??false);
         bool back=(keyboard?.escapeKey.wasPressedThisFrame??false)||(pad?.buttonEast.wasPressedThisFrame??false);
+        if(HasFailureDetails){
+            float scroll=(keyboard?.downArrowKey.isPressed??false)||(pad?.dpad.down.isPressed??false)?1:0;
+            if((keyboard?.upArrowKey.isPressed??false)||(pad?.dpad.up.isPressed??false))--scroll;
+            failureScroll.y=Mathf.Max(0,failureScroll.y+scroll*300*Time.unscaledDeltaTime);
+        }
         HandleWindowInput(left,right,confirm,back);
     }
     internal void HandleWindowInput(bool left,bool right,bool confirm,bool back){
@@ -380,6 +420,9 @@ public sealed class Idas3Updates : MonoBehaviour
             if(State==CheckState.Current&&actionSelected==0)actionSelected=1;
             if(back||confirm&&actionSelected==2)ContinueToGame();
             else if(confirm){if(actionSelected==1)AcceptRepair();else AcceptUpdate();}
+        }else if(HasFailureDetails){
+            if(left)actionSelected=(actionSelected+2)%3;if(right)actionSelected=(actionSelected+1)%3;
+            if(back)ContinueToGame();else if(confirm)FailureAction(actionSelected);
         }else if(State==CheckState.Downloading&&back)cancelled=true;
         else if(State==CheckState.Unavailable&&(back||confirm))ContinueToGame();
     }
@@ -390,14 +433,30 @@ public sealed class Idas3Updates : MonoBehaviour
             windowTitle=new GUIStyle(GUI.skin.label){fontSize=27,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};
             windowText=new GUIStyle(GUI.skin.label){fontSize=17,wordWrap=true,alignment=TextAnchor.MiddleCenter};
             windowButton=new GUIStyle(GUI.skin.button){fontSize=20,fontStyle=FontStyle.Bold};
+            failureText=new GUIStyle(windowText){fontSize=15,alignment=TextAnchor.UpperLeft,richText=false};
+            failureButton=new GUIStyle(windowButton){fontSize=17,wordWrap=true};
         }
         GUI.depth=-32000;var matrix=GUI.matrix;var color=GUI.color;
         GUI.color=new Color(0,0,0,.96f);GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),Texture2D.whiteTexture);GUI.color=Color.white;
-        float scale=Mathf.Min(1.5f,Mathf.Min(Screen.width/680f,Screen.height/390f));
-        GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-640*scale)/2,(Screen.height-330*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
-        GUI.Box(new Rect(0,0,640,330),GUIContent.none);
-        Idas3MenuLocalization.Label(new Rect(20,18,600,50),State==CheckState.Checking?"CHECKING FOR UPDATES":State==CheckState.Available?"UPDATE AVAILABLE":State==CheckState.Downloading?"DOWNLOADING UPDATE":State==CheckState.Preparing?"INSTALLING UPDATE":"UPDATE CHECK",windowTitle);
-        Idas3MenuLocalization.Label(new Rect(30,76,580,80),Message,windowText);
+        float height=HasFailureDetails?460:330;
+        float scale=Mathf.Min(1.5f,Mathf.Min(Screen.width/680f,Screen.height/(height+60)));
+        GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-640*scale)/2,(Screen.height-height*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
+        GUI.Box(new Rect(0,0,640,height),GUIContent.none);
+        Idas3MenuLocalization.Label(new Rect(20,18,600,50),HasFailureDetails?"UPDATE FAILED":State==CheckState.Checking?"CHECKING FOR UPDATES":State==CheckState.Available?"UPDATE AVAILABLE":State==CheckState.Downloading?"DOWNLOADING UPDATE":State==CheckState.Preparing?"INSTALLING UPDATE":"UPDATE CHECK",windowTitle);
+        if(HasFailureDetails){
+            Idas3MenuLocalization.Label(new Rect(30,76,580,88),Message,failureText);
+            Idas3MenuLocalization.Label(new Rect(30,170,580,24),"Error details",failureText);
+            var style=Idas3MenuLocalization.Style(failureText);
+            float textHeight=Mathf.Max(148,style.CalcHeight(new GUIContent(FailureDetails),550)+8);
+            failureScroll=GUI.BeginScrollView(new Rect(30,196,580,152),failureScroll,new Rect(0,0,550,textHeight));
+            GUI.Label(new Rect(0,0,550,textHeight),FailureDetails,style);GUI.EndScrollView();
+            Idas3MenuLocalization.Label(new Rect(30,354,580,36),errorCopied?"Update error details copied.":"Copy the error details for troubleshooting, or download the update manually.",failureText);
+            for(int i=0;i<3;i++){
+                GUI.color=actionSelected==i?new Color(1,.85f,.3f):Color.white;
+                if(GUI.Button(new Rect(25+i*200,395,190,48),Idas3MenuLocalization.T(i==0?"COPY DETAILS":i==1?"MANUAL DOWNLOAD":"CONTINUE TO GAME"),Idas3MenuLocalization.Style(failureButton)))FailureAction(i);
+            }
+            GUI.color=Color.white;
+        }else Idas3MenuLocalization.Label(new Rect(30,76,580,80),Message,windowText);
         if(State==CheckState.Available||State==CheckState.Current){
             Idas3MenuLocalization.Label(new Rect(30,157,580,58),State==CheckState.Available?
                 "Update: "+((patchUrl!=null?patchBytes:fullBytes+contentBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB":
@@ -416,7 +475,7 @@ public sealed class Idas3Updates : MonoBehaviour
             GUI.Box(new Rect(60,171,520,25),GUIContent.none);GUI.DrawTexture(new Rect(64,175,512*progress,17),Texture2D.whiteTexture);
             Idas3MenuLocalization.Label(new Rect(60,204,520,30),(progress*100).ToString("0")+"%  /  "+(activeBytes/1048576d).ToString("0")+" MB",windowText);
             if(GUI.Button(new Rect(220,256,200,45),Idas3MenuLocalization.T("CANCEL"),Idas3MenuLocalization.Style(windowButton)))cancelled=true;
-        }else if(State==CheckState.Unavailable){if(GUI.Button(new Rect(200,245,240,48),Idas3MenuLocalization.T("CONTINUE TO GAME"),Idas3MenuLocalization.Style(windowButton)))ContinueToGame();}
+        }else if(State==CheckState.Unavailable&&!HasFailureDetails){if(GUI.Button(new Rect(200,245,240,48),Idas3MenuLocalization.T("CONTINUE TO GAME"),Idas3MenuLocalization.Style(windowButton)))ContinueToGame();}
         GUI.matrix=matrix;GUI.color=color;
     }
 

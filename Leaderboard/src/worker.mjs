@@ -1,4 +1,6 @@
 import html from './index.html';
+import {replaysDisabled,legacyRunMetadata,purgeReplayObjects} from './times-only.mjs';
+import {verifyConnectIdentity,checkOnlinePlayer,searchOnlinePlayers,moderateOnlinePlayer} from './online-players.mjs';
 import {COURSES,validateRun,publicRun,rankedSql,sha,token,sameSecret,REQUIRED_CLIENT_BUILD,supportedBuild} from './core.mjs';
 import {MAX_REPLAY,validateReplay,replayCsv,decodeReplay,compressReplay} from './replay.mjs';
 import {readStoredReplay,storeObjectReplay,moveReplayToObjectStorage,replayKey} from './replay-storage.mjs';
@@ -34,8 +36,14 @@ async function handle(request,env){
  const url=new URL(request.url),path=url.pathname;
  if(env.MAINTENANCE==='true'&&request.method!=='GET')return json({error:'Leaderboard maintenance. Your game will retry this upload.'},503,{'Retry-After':'60'});
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
- if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:env.REPLAYS?'object':'database',retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:env.MAINTENANCE==='true'});
+ if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:replaysDisabled(env)?'disabled':env.REPLAYS?'object':'database',replayUploads:!replaysDisabled(env),replayDownloads:!replaysDisabled(env),retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:env.MAINTENANCE==='true'});
  const ip=request.headers.get('CF-Connecting-IP')||'local';
+ if(path==='/api/v1/online/player'&&request.method==='POST'){
+  await limit(env.ONLINE_AUTH_LIMIT,'online-auth:'+ip);
+  const playerId=await verifyConnectIdentity(request,env);
+  await limit(env.ONLINE_LIMIT,'online-player:'+playerId);
+  return json(await checkOnlinePlayer(env,playerId,await body(request)));
+ }
  const eosActivity=path==='/api/v2/activity';
  const activityKey=eosActivity?'online_activity_eos':'online_activity';
  if((path==='/api/v1/activity'||eosActivity)&&request.method==='GET'){
@@ -70,6 +78,24 @@ async function handle(request,env){
    return json({ok:true},200,{'Set-Cookie':`idas_admin=${t}; HttpOnly; Secure; SameSite=Strict; Path=/api/admin; Max-Age=43200`});
   }
   const session=await admin(request,env);
+  if(replaysDisabled(env)&&(path==='/api/admin/replay'||path==='/api/admin/replay-storage'))return json({error:'Leaderboard replays are disabled.',code:'replays_disabled'},410);
+  if(path==='/api/admin/replay-purge'&&request.method==='POST'){
+   const x=await body(request);
+   if(!replaysDisabled(env)||x.confirm!=='DELETE ALL LEADERBOARD REPLAYS'||typeof x.reason!=='string'||x.reason.trim().length<3||x.reason.length>300)return json({error:'Replay deletion requires disabled replays, confirmation and reason.'},400);
+   const result=await purgeReplayObjects(env);
+   await cleanupReplayObjects(env,500);
+   await env.DB.prepare('INSERT INTO audit(created_at,action,target,reason) VALUES (?,?,?,?)').bind(now(),'delete leaderboard replays',String(result.removed)+' objects',x.reason.trim()).run();
+   return json({ok:true,...result});
+  }
+  if(path==='/api/admin/online-players'&&request.method==='GET'){
+   await limit(env.PUBLIC_LIMIT,'online-directory:'+ip);
+   return json(await searchOnlinePlayers(env,url.searchParams));
+  }
+  if(path==='/api/admin/online-player'&&request.method==='POST'){
+   await limit(env.WRITE_LIMIT,'online-moderation:'+session.token_hash);
+   return json(await moderateOnlinePlayer(env,await body(request)));
+  }
+
   if(path==='/api/admin/replay-objects'&&request.method==='GET'){
    if(!env.REPLAYS)return json({error:'Object storage is not configured.'},503);
    const cursor=url.searchParams.get('cursor');
@@ -138,15 +164,18 @@ async function handle(request,env){
   const d=await env.DB.prepare('SELECT id,blocked FROM devices WHERE token_hash=?').bind(hash).first();
   return d.blocked?json({error:'This installation is blocked.'},403):json({player:d.id});
  }
- if((path==='/api/v1/runs'||path==='/api/v2/runs')&&request.method==='POST'){
+ if((path==='/api/v1/runs'||path==='/api/v2/runs'||path==='/api/v3/runs')&&request.method==='POST'){
   await limit(env.PUBLIC_LIMIT,'upload:'+ip);
-  if(path==='/api/v1/runs')return json({error:'A replay is required. Update the game to upload new Time Attack runs.'},426);
+  if(path==='/api/v1/runs')return json({error:'Update the game to upload new Time Attack runs.'},426);
+  if(path==='/api/v3/runs'&&!replaysDisabled(env))return json({error:'Time-only submissions are not enabled.'},426);
   const bearer=/^Bearer ([a-f0-9]{64})$/.exec(request.headers.get('Authorization')||'');if(!bearer)return json({error:'Installation authentication required.'},401);
   const d=await env.DB.prepare('SELECT id,blocked FROM devices WHERE token_hash=?').bind(await sha(bearer[1])).first();
   if(!d)return json({error:'Unknown installation.'},401);if(d.blocked)return json({error:'This installation is blocked.'},403);
   await limit(env.WRITE_LIMIT,'device:'+d.id);
   let payload,replay=null,replayHash='';
-  if(path==='/api/v2/runs'){
+  if(path==='/api/v3/runs')payload=await body(request);
+  else if(replaysDisabled(env))payload=await legacyRunMetadata(request);
+  else if(path==='/api/v2/runs'){
    const data=await rawBody(request,MAX_REPLAY+8196);
    if(data.length<4)throw new Error('Invalid replay envelope.');
    const size=new DataView(data.buffer).getUint32(0,true);
@@ -154,17 +183,20 @@ async function handle(request,env){
    payload=JSON.parse(new TextDecoder().decode(data.subarray(4,4+size)));replay=data.slice(4+size);
   }
   const x=validateRun(payload,env.RULESET);
+  if(x.imported!==0)return json({error:'Invalid Time Attack submission: historical imports are not accepted.'},400);
   const requiredBuild=env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD;
   // Permanent rejection lets updated clients discard ineligible old queued
   // races instead of retrying them forever and blocking new finishes.
   if(!supportedBuild(x.build,requiredBuild))return json({error:`Only game build ${requiredBuild} can submit times. Install that build and complete a new Time Attack.`,code:'client_build_required',requiredBuild,permanent:true},409);
-  const rawReplay=await decodeReplay(replay);validateReplay(rawReplay,x);replayHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',rawReplay)),v=>v.toString(16).padStart(2,'0')).join('');
-  if(new DataView(replay.buffer,replay.byteOffset,replay.byteLength).getUint32(0,true)!==0x32474449)replay=await compressReplay(rawReplay);
+  if(!replaysDisabled(env)){
+   const rawReplay=await decodeReplay(replay);validateReplay(rawReplay,x);replayHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',rawReplay)),v=>v.toString(16).padStart(2,'0')).join('');
+   if(new DataView(replay.buffer,replay.byteOffset,replay.byteLength).getUint32(0,true)!==0x32474449)replay=await compressReplay(rawReplay);
+  }
   const existing=await env.DB.prepare('SELECT * FROM runs WHERE id=?').bind(x.id).first();
   if(existing){
    if(existing.device_id!==d.id)return json({error:'Run ID already used.'},409);
-   if(replay&&(existing.replay_sha256!==replayHash||existing.ticks!==x.ticks6000||existing.condition!==x.condition||existing.weather!==x.weather||existing.car!==x.car||existing.glyphs!==JSON.stringify(x.nameGlyphs)||existing.splits!==JSON.stringify(x.splits)||existing.manual!==x.manual||existing.night!==x.night||existing.points!==x.points||existing.build!==x.build||existing.epoch!==x.epoch))return json({error:'Run ID already used with different data.'},409);
-   return json({ok:true,duplicate:true,replay:!!existing.replay_size});
+   if((replay&&existing.replay_sha256!==replayHash)||existing.ruleset!==x.ruleset||existing.imported!==x.imported||existing.ticks!==x.ticks6000||existing.condition!==x.condition||existing.weather!==x.weather||existing.car!==x.car||existing.glyphs!==JSON.stringify(x.nameGlyphs)||existing.splits!==JSON.stringify(x.splits)||existing.manual!==x.manual||existing.night!==x.night||existing.points!==x.points||existing.build!==x.build||existing.epoch!==x.epoch)return json({error:'Run ID already used with different data.'},409);
+   return json({ok:true,duplicate:true,replay:!replaysDisabled(env)&&!!existing.replay_size});
   }
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   if(x.epoch!==epoch)return json({error:'This run belongs to an earlier season.'},409);
@@ -173,7 +205,7 @@ async function handle(request,env){
   const insert=env.DB.prepare('INSERT INTO runs(id,device_id,ruleset,epoch,condition,weather,car,ticks,glyphs,splits,manual,night,points,build,created_at,imported,replay_size,replay_sha256) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(x.id,d.id,env.RULESET,epoch,x.condition,x.weather,x.car,x.ticks6000,JSON.stringify(x.nameGlyphs),JSON.stringify(x.splits),x.manual,x.night,x.points,x.build,createdAt,x.imported,replay?.length||0,replayHash);
   const statements=[insert];
   let objectKey=null;
-  if(env.REPLAYS){
+  if(replay&&env.REPLAYS){
    const identity={id:x.id,device_id:d.id,replay_sha256:replayHash,replay_size:replay.length};
    objectKey=replayKey(identity).replace(/\.idr$/,`-${crypto.randomUUID()}.idr`);
    try{await storeObjectReplay(env,identity,replay,objectKey);}
@@ -185,7 +217,7 @@ async function handle(request,env){
    }
    statements.push(env.DB.prepare('INSERT INTO replay_objects(run_id,object_key) VALUES (?,?)').bind(x.id,objectKey));
   }
-  else for(let at=0,part=0;at<replay.length;at+=1000000,part++)statements.push(env.DB.prepare('INSERT INTO replay_chunks(run_id,part,data) VALUES (?,?,?)').bind(x.id,part,replay.slice(at,at+1000000).buffer));
+  else if(replay)for(let at=0,part=0;at<replay.length;at+=1000000,part++)statements.push(env.DB.prepare('INSERT INTO replay_chunks(run_id,part,data) VALUES (?,?,?)').bind(x.id,part,replay.slice(at,at+1000000).buffer));
   if(retentionEnabled(env))statements.push(pruneStatement(env));
   try{await env.DB.batch(statements);}
   catch(error){
@@ -198,9 +230,10 @@ async function handle(request,env){
   const retained=!!await env.DB.prepare('SELECT id FROM runs WHERE id=?').bind(x.id).first();
   // A cleanup failure must not make a successfully committed time look failed.
   try{await cleanupReplayObjects(env);}catch{console.warn('Replay cleanup pending.');}
-  return json({ok:true,replay:retained,retained});
+  return json({ok:true,replay:!replaysDisabled(env)&&retained,retained});
  }
  if(path==='/api/v1/replay'&&request.method==='GET'){
+  if(replaysDisabled(env))return json({error:'Leaderboard replays are disabled.',code:'replays_disabled'},410);
   await limit(env.PUBLIC_LIMIT,'replay:'+ip);
   const id=url.searchParams.get('id');if(!/^[-a-f0-9]{36}$/.test(id||''))return json({error:'Invalid run ID.'},400);
   // Apply the public board's visibility rules before reading any replay blobs.
@@ -216,14 +249,17 @@ async function handle(request,env){
   if(!Number.isInteger(condition)||condition<0||condition>=COURSES.length*2||![0,1].includes(weather)||!Number.isInteger(car)||car< -1||car>34)return json({error:'Invalid board.'},400);
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   const rows=(await env.DB.prepare(`WITH ranked AS (SELECT r.*,ROW_NUMBER() OVER(PARTITION BY r.device_id,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank FROM runs r JOIN devices d ON r.device_id=d.id WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.hidden=0 AND d.blocked=0 AND (?=-1 OR r.car=?)) SELECT * FROM ranked WHERE personal_rank=1 ORDER BY ticks,created_at,id LIMIT 10`).bind(env.RULESET,epoch,condition,weather,car,car).all()).results;
-  return json({entries:rows.map(publicRun),epoch,generatedAt:now()});
+  return json({entries:rows.map(r=>({...publicRun(r),...(replaysDisabled(env)?{replayAvailable:false}:{})})),epoch,generatedAt:now()});
  }
- if(path==='/api/v1/snapshot'&&request.method==='GET'){
+ if((path==='/api/v1/snapshot'||path==='/api/v2/snapshot')&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'read:'+ip);
   if(url.searchParams.get('ruleset')!==env.RULESET)return json({error:'Update the game to use this leaderboard.'},409);
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   const rows=(await env.DB.prepare(rankedSql).bind(env.RULESET,epoch,url.searchParams.get('imports')==='1'?1:0).all()).results;
-  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,entries:rows.map(publicRun)});
+  // Released clients reject the entire v1 snapshot if replayAvailable is false.
+  // Preserve that legacy validation bit only here; downloads always return 410.
+  // Website boards and updated clients use truthful availability (v2 snapshot).
+  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replaysEnabled:!replaysDisabled(env),entries:rows.map(r=>({...publicRun(r),...(replaysDisabled(env)?{replayAvailable:path==='/api/v1/snapshot'}:{})}))});
  }
  return json({error:'Not found.'},404);
 }
@@ -234,5 +270,6 @@ export default {
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(now()).run();
   if(retentionEnabled(env))await env.DB.batch([pruneStatement(env)]);
   await cleanupReplayObjects(env,500);
+  if(replaysDisabled(env))await purgeReplayObjects(env);
  }
 };

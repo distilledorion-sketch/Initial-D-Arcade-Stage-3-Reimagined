@@ -1,3 +1,18 @@
+0.3.95-community-replays.51
+
+Time Attack leaderboards now accept race times without uploading recordings. Existing posted times are preserved; all previously stored leaderboard replays have been removed.
+
+- Stop leaderboard replay uploads and remove replay download controls. Local replay recording remains optional, with updated English, Japanese and Chinese menu text.
+- Add private administrator lookup by current or previous online username, including offline registered players. Persistent Player IDs keep bans attached when a name changes. Players enter the directory after connecting with this update.
+- Enforce directory bans alongside Epic sanctions before matchmaking and during online play. Both drivers must update to .51 to race together.
+- Fix clipped updater errors with a readable summary, Windows error number, scrollable details, Copy Details and a manual-download link. Keep the game open if the installer cannot start.
+
+Existing players can use the in-game updater. Fresh installs: download Initial-D-Setup-0.3.95.51.zip, extract it, and run Install Initial D.cmd. Manual installs: extract both the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Changed-file patches support .20 through .50. Version .51 is required for new community Time Attack submissions.
+
+Personal saves, local replays and ghosts are preserved. No leaderboard time reset is included.
+
+PREVIOUS UPDATE (.50)
+
 0.3.95-community-replays.50
 
 Restore Quick Match discovery of waiting public hosts and improve EOS connection startup. Both drivers must update for online races. Version .50 is required for new community Time Attack submissions.

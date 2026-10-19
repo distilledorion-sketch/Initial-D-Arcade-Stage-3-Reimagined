@@ -18,7 +18,42 @@ public sealed class Idas3UpdaterFlowSmoke : MonoBehaviour
     private float began;
     private bool stopped;
     private static FieldInfo Field(string name)=>typeof(Idas3Updates).GetField(name,BindingFlags.Instance|BindingFlags.NonPublic);
-    private void Start(){StartCoroutine(Run());}
+    private void Start(){StartCoroutine(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updater-error-ui-smoke")>=0?RenderFailureUI():Run());}
+    [Serializable] private sealed class UIReport {public bool passed,clipboardVerified;public string[] screenshots;public string details;}
+    private IEnumerator RenderFailureUI(){
+        var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-updater-error-ui-smoke");
+        string folder=Path.GetFullPath(args[at+1]);
+        if(!File.Exists(Path.Combine(folder,"ISOLATED_UPDATE_TEST.txt"))||File.Exists(Path.Combine(folder,"ui-report.json")))
+            throw new IOException("Use a fresh isolated updater UI fixture.");
+        updates=gameObject.AddComponent<Idas3Updates>();updates.Initialize(false);
+        var captures=new List<string>();bool clipboardVerified=false;
+        string longPath=@"C:\Users\Example\AppData\Local\Temp\InitialDUpdates\0123456789abcdef0123456789abcdef";
+        string native="ApplicationName='"+longPath+"\\install.exe', CommandLine='\""+longPath+"\\install.plan\"', CurrentDirectory='"+longPath+"', Native error= Access is denied.";
+        foreach(int language in new[]{0,1,2})foreach(var size in new[]{new Vector2Int(640,480),new Vector2Int(1280,720)}){
+            Screen.SetResolution(size.x,size.y,false);yield return new WaitForSecondsRealtime(.5f);
+            Idas3MenuLocalization.SetLanguage(language);
+            updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v99.0.0"));updates.Activate();
+            updates.SetInstallFailure(new Idas3Updates.InstallerLaunchException(new System.ComponentModel.Win32Exception(5,native)));
+            yield return null;yield return new WaitForEndOfFrame();
+            string name="error-"+language+"-"+Screen.width+"x"+Screen.height+".png";
+            var picture=ScreenCapture.CaptureScreenshotAsTexture();File.WriteAllBytes(Path.Combine(folder,name),picture.EncodeToPNG());Destroy(picture);captures.Add(name);
+            if(!clipboardVerified){
+                string previous=GUIUtility.systemCopyBuffer;
+                try{
+                    updates.HandleWindowInput(false,true,false,false);updates.HandleWindowInput(false,false,true,false);
+                    yield return null;
+                    clipboardVerified=(GUIUtility.systemCopyBuffer??"").Replace("\r\n","\n")==updates.FailureDetails.Replace("\r\n","\n");
+                }finally{GUIUtility.systemCopyBuffer=previous;}
+                if(!clipboardVerified){
+                    File.WriteAllText(Path.Combine(folder,"ui-report.json"),JsonUtility.ToJson(new UIReport{passed=false,screenshots=captures.ToArray(),details="Player clipboard did not preserve copied error details."},true));
+                    Application.Quit(1);yield break;
+                }
+            }
+            updates.ContinueToGame();
+        }
+        File.WriteAllText(Path.Combine(folder,"ui-report.json"),JsonUtility.ToJson(new UIReport{passed=true,clipboardVerified=clipboardVerified,screenshots=captures.ToArray(),details="Synthetic Windows error 5 used only to check rendering; not a diagnosis of the reported user's launch failure."},true));
+        Application.Quit();
+    }
     private IEnumerator Run()
     {
         try{
@@ -47,7 +82,7 @@ public sealed class Idas3UpdaterFlowSmoke : MonoBehaviour
         }catch(Exception e){error=e.ToString();stopped=true;Save(false);Application.Quit(1);yield break;}
         while(!stopped){
             Observe();
-            if(updates.State==Idas3Updates.CheckState.Unavailable){error=updates.Message;stopped=true;Save(false);Application.Quit(1);yield break;}
+            if(updates.State==Idas3Updates.CheckState.Unavailable){error=string.IsNullOrEmpty(updates.FailureDetails)?updates.Message:updates.FailureDetails;stopped=true;Save(false);Application.Quit(1);yield break;}
             if(Time.realtimeSinceStartup-began>120){error="Updater flow exceeded two minutes.";stopped=true;Save(false);Application.Quit(1);yield break;}
             yield return null;
         }

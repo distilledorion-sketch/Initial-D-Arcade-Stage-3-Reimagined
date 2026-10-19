@@ -216,7 +216,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         if(Idas3MenuGui.Button("Refresh",GUILayout.Width(90)))Browse();
         if(Idas3MenuGui.Button(replay==null?"Close viewer":"Back",GUILayout.Width(110))){if(replay==null)Application.Quit();else browsing=false;}
         GUILayout.EndHorizontal();GUILayout.Space(12);
-        Idas3MenuGui.Label("Personal recordings stay on this computer. Only submitted Time Attack replays are uploaded.");
+        Idas3MenuGui.Label("Personal recordings stay on this computer. Community Times uploads race times only.");
         if(libraryFiles.Length==0)Idas3MenuGui.Label("No saved replays yet. Enable recording in Options > Replays, then finish a race.");
         int first=librarySelection/8*8;
         for(int i=first;i<Math.Min(first+8,libraryFiles.Length);i++){

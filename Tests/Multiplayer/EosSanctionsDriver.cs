@@ -29,7 +29,7 @@ internal static class EosSanctionsDriver {
     static PlayerSanction Reset(string action,string reference,long placed=100,long expires=0)=>
         new PlayerSanction{Action=action,ReferenceId=reference,TimePlaced=placed,TimeExpires=expires};
     static void ResetPolicies(){
-        var reader=new Idas3EosSanctions();
+        var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());
         Throws<InvalidOperationException>(()=>reader.LevelResetIds(Peer),"Unknown level-reset policy is not treated as empty");
         Throws<InvalidOperationException>(()=>reader.FullResetIds(null),"Missing reset-policy identity is rejected");
         Api.SetRecords("remote",Reset("RESET_BATTLE_LEVEL","level-z"),Reset("RESET_BATTLE_STATS","full-b",99),
@@ -55,7 +55,7 @@ internal static class EosSanctionsDriver {
         reader.Dispose();Throws<InvalidOperationException>(()=>reader.LevelResetIds(Peer),"Disposed reset-policy cache cannot be reused");
     }
     static void ResetFailures(){
-        var reader=new Idas3EosSanctions();
+        var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());
         Api.SetRecords("remote",Reset("RESET_BATTLE_LEVEL","level-old"),Reset("RESET_BATTLE_STATS","full-old"),Reset("ONLINE_PLAY",null));
         var task=reader.RequireAllowed(Peer,false);Complete(0);Failed<Idas3EosRestrictedException>(task,"An online ban still applies when reset commands coexist");
         Check(reader.LevelResetIds(Peer)[0]=="level-old"&&reader.FullResetIds(Peer)[0]=="full-old","A complete banned-player response still publishes its reset policy");
@@ -71,16 +71,16 @@ internal static class EosSanctionsDriver {
         Idas3EosPlatform.Now+=11;Api.Set("remote");task=reader.RequireAllowed(Peer,false);Complete(3);Allowed(task,"Only a successful complete response replaces old policy");
         Check(!reader.IsBlocked(Peer)&&reader.LevelResetIds(Peer).Length==0&&reader.FullResetIds(Peer).Length==0,"A verified empty response clears the cached current policy");
         foreach(string reference in new[]{null,"","with space","has.dot","non-ascii-\u00e9",new string('a',129)}){
-            reader=new Idas3EosSanctions();Api.SetRecords("remote",Reset("RESET_BATTLE_STATS",reference));
+            reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());Api.SetRecords("remote",Reset("RESET_BATTLE_STATS",reference));
             task=reader.RequireAllowed(Peer,false);Complete(Api.Requests.Count-1);Failed<InvalidOperationException>(task,"Invalid reset reference fails closed: "+(reference??"null"));
             Throws<InvalidOperationException>(()=>reader.FullResetIds(Peer),"Invalid reset references cannot publish a known policy");reader.Dispose();
         }
-        reader=new Idas3EosSanctions();Api.SetRecords("remote",Reset("RESET_BATTLE_STATS",new string('A',126)+"_-"));
+        reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());Api.SetRecords("remote",Reset("RESET_BATTLE_STATS",new string('A',126)+"_-"));
         task=reader.RequireAllowed(Peer,false);Complete(Api.Requests.Count-1);Allowed(task,"The bounded ASCII reset-ID format accepts its maximum length");
         Check(reader.FullResetIds(Peer)[0].Length==128,"Maximum reset-ID length is preserved exactly");reader.Dispose();
     }
     static void Cache(){
-        var reader=new Idas3EosSanctions();var task=reader.RequireAllowed(Peer,false);
+        var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());var task=reader.RequireAllowed(Peer,false);
         Check(Api.Requests.Count==1&&Api.Requests[0].Options.TargetUserId.ToString()=="remote"&&Api.Requests[0].Options.LocalUserId.ToString()=="local","SDK query uses the real target and signed-in local product IDs");
         var same=reader.RequireAllowed(Peer,false);Check(Api.Requests.Count==1,"Concurrent requests for the same user share one SDK query");
         Api.Set("remote","MUTE","CUSTOM_WARNING");Api.Complete(0,Result.OperationWillRetry);Pump();Check(!task.IsCompleted,"SDK retry notifications do not complete or reject access");
@@ -97,7 +97,7 @@ internal static class EosSanctionsDriver {
         Check(Api.Requests.Count==2,"Pacing prevents another SDK call during retry interval");
     }
     static void Restriction(){
-        var reader=new Idas3EosSanctions();Api.Set("remote","MUTE","ONLINE_PLAY");var task=reader.RequireAllowed(Peer,false);Complete(0);
+        var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());Api.Set("remote","MUTE","ONLINE_PLAY");var task=reader.RequireAllowed(Peer,false);Complete(0);
         Failed<Idas3EosRestrictedException>(task,"Online-play sanction blocks the opponent");
         Check(reader.IsBlocked(Peer)&&!reader.IsClearWithin(Peer,180),"Active SDK ban cannot be expired by an old TimeExpires field");
         Idas3EosPlatform.Now+=46;task=reader.RequireAllowed(Peer,false);Complete(1,Result.ServiceFailure);Failed<Idas3EosServiceException>(task,"A failed refresh of a known ban stays an error");
@@ -111,7 +111,7 @@ internal static class EosSanctionsDriver {
     }
     static void Malformed(){
         foreach(string failure in new[]{"target","requester","copy-error","copy-null","empty-action","excess-count"}){
-            var reader=new Idas3EosSanctions();Api.CopyResult=Result.Success;Api.NullCopyAt=-1;Api.CountOverride=null;Api.Set("remote","ONLINE_PLAY");
+            var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());Api.CopyResult=Result.Success;Api.NullCopyAt=-1;Api.CountOverride=null;Api.Set("remote","ONLINE_PLAY");
             var task=reader.RequireAllowed(Peer,false);int index=Api.Requests.Count-1;
             if(failure=="copy-error")Api.CopyResult=Result.NotFound;
             if(failure=="copy-null")Api.NullCopyAt=0;
@@ -123,7 +123,7 @@ internal static class EosSanctionsDriver {
         }
     }
     static void Timeouts(){
-        var reader=new Idas3EosSanctions();var first=reader.RequireAllowed(Peer,false);Idas3EosPlatform.Now+=35;reader.Poll();
+        var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());var first=reader.RequireAllowed(Peer,false);Idas3EosPlatform.Now+=35;reader.Poll();
         Failed<InvalidOperationException>(first,"A missing SDK callback times out without hanging initialization");
         var second=reader.RequireAllowed(Peer,false);Check(Api.Requests.Count==2,"An expired query can start a fresh retry");
         Api.Set("remote","ONLINE_PLAY");Complete(0);Check(!second.IsCompleted&&!reader.IsBlocked(Peer),"Late expired callback cannot complete or poison the replacement query");
@@ -133,13 +133,13 @@ internal static class EosSanctionsDriver {
         Check(!reader.IsClearWithin(Peer,45),"An expired deferred response does not update last-clear time");
     }
     static void DisposalAndBounds(){
-        var reader=new Idas3EosSanctions();Failed<InvalidOperationException>(reader.RequireAllowed(null,true),"Null identity is rejected");
+        var reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());Failed<InvalidOperationException>(reader.RequireAllowed(null,true),"Null identity is rejected");
         Failed<InvalidOperationException>(reader.RequireAllowed(new ProductUserId(""),true),"Invalid identity is rejected");
         Idas3EosPlatform.SignedIn=false;Failed<InvalidOperationException>(reader.RequireAllowed(Peer,false),"Signed-out identity is rejected");Idas3EosPlatform.SignedIn=true;
         Check(Api.Requests.Count==0,"Invalid identity paths never contact the SDK");
         var task=reader.RequireAllowed(Peer,false);reader.Dispose();Failed<OperationCanceledException>(task,"Disposal cancels the pending access decision");
         Complete(0);Check(!reader.IsClearWithin(Peer,180),"Late disposed callback cannot resurrect cached permission");
-        reader=new Idas3EosSanctions();var pending=new List<Task>();for(int i=0;i<32;++i)pending.Add(reader.RequireAllowed(new ProductUserId("peer-"+i),false));
+        reader=new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());var pending=new List<Task>();for(int i=0;i<32;++i)pending.Add(reader.RequireAllowed(new ProductUserId("peer-"+i),false));
         int issued=Api.Requests.Count;Failed<InvalidOperationException>(reader.RequireAllowed(new ProductUserId("overflow"),false),"Full pending cache rejects excess parallel access checks");
         Check(Api.Requests.Count==issued,"Pending entries are never evicted to bypass cache bound");Complete(1);Allowed(pending[0],"One bounded-cache request completes");
         var added=reader.RequireAllowed(new ProductUserId("overflow"),false);Check(Api.Requests.Count==issued+1&&!added.IsCompleted,"A completed oldest entry can be evicted to allow a new request");reader.Dispose();

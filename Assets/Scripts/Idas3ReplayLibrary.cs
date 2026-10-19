@@ -18,7 +18,7 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] public static extern int Idas3ReplayRecordingOptions(uint flags);
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] static extern int Idas3LocalReplayRead(int part, byte[] bytes, int capacity);
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] static extern void Idas3LocalReplayAck();
-    public static uint RecordingFlags(Idas3GameOptions.Values v) => (v.replayTimeAttack?1u:0)|(v.replayOnline?2u:0)|(v.replayLegend?4u:0)|(v.communityTimes?8u:0);
+    public static uint RecordingFlags(Idas3GameOptions.Values v) => (v.replayTimeAttack?1u:0)|(v.replayOnline?2u:0)|(v.replayLegend?4u:0);
     public void Initialize(Idas3SceneGame owner, Idas3PauseMenu view, string saves)
     {
         host=owner;menu=view;Folder=Path.Combine(saves,"replays");

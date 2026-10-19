@@ -1,9 +1,33 @@
 Online bans
 ===========
 
-The game reads active EOS sanctions for its signed-in player and verified
-opponent. Administrator ban creation and removal stay in Epic's Developer
-Portal. The player build never contains a moderation administrator credential.
+The game checks active EOS sanctions and the private online-player directory
+for its signed-in player and verified opponent. The player build never contains
+a moderation administrator credential.
+
+Find and ban an offline player by username
+-----------------------------------------
+Open https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev/admin
+and sign in with the existing private admin key. Under Online players, search
+the beginning of a current or previous online username (case-insensitive), or
+paste a full Player ID. Results show previous names, full ID, first/last seen,
+build, and local ban status. Last seen is historical, not current presence.
+
+Choose the exact account, select Ban, confirm its Player ID, and supply a reason.
+The ban is saved even when the player is offline and is enforced when they next
+connect with an updated client. Use Unban on the same row to remove it. Both
+actions enter the audit log. Duplicate usernames are possible: a name alone is
+not proof that a result is the reported account. Renaming never removes a ban.
+
+The directory starts recording players when they connect with this update.
+It cannot recover historical identities from screenshots or expired rooms.
+Names are registered using an EOS-signed identity token; a client cannot choose
+another account's Player ID. Name history and moderation reasons are private.
+
+Directory bans and Epic sanctions are independent. An active ban from either
+blocks online play; removing one does not remove the other. Older builds do
+not check directory bans and cannot join this update's EOS rooms. Use an Epic
+sanction as described below when enforcement against older builds is needed.
 
 Required client permission
 --------------------------
@@ -24,8 +48,8 @@ own ID and the current or most recently admitted online opponent's name and
 ID. Only one recent opponent is retained, in memory until the game closes.
 Display names are labels and can change; the EOS Player ID is the ban target.
 
-Create a ban
-------------
+Create an Epic sanction
+-----------------------
 In the game's Epic Developer Portal, open Epic Online Services > Trust and
 Safety > Sanctions. Select the Live deployment used by this build.
 Create a sanction for the copied Product User ID with action

@@ -26,6 +26,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public string schema="idas3-mode-flow-smoke-v1",applicationVersion,error,scope;
         public bool passed,shutdownComplete; public int checks; public string[] captures;
     }
+    [Serializable] private class CommunityQueue {public Idas3CommunityTimes.Run[] runs;}
     private static string pendingRoot; private static Idas3ModeFlowSmoke active;
     private Idas3SceneGame host; private string root; private int checks; private uint padPulse;
     private bool finished,frozen; private double began; private long submittedFrames; private readonly List<string> captures=new List<string>();
@@ -718,8 +719,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             host.GameOptions.Current.communityTimes=true;
             var community=host.gameObject.AddComponent<Idas3CommunityTimes>();
             string storage=Path.Combine(root,"community");community.Initialize(host,host.GameOptions,host.PauseMenu,storage,true);
-            yield return Until(()=>community.PendingCount==1,1200,"Background community queue commit");
-            Check(Directory.GetFiles(storage,"*.idr").Length==1,"Completed shared replay persisted before acknowledgment");
+            yield return Until(()=>community.PendingCount==1,1200,"Community time queue commit");
+            Check(Directory.GetFiles(storage,"*.idr").Length==0,"Time queued without a replay upload cache");
             var pending=File.ReadAllText(Path.Combine(storage,"pending.json"));Check(pending.Contains(Application.version),"Queue keeps current build policy");
             community.StopAllCoroutines();
             Finish(true,null);yield break;
@@ -731,7 +732,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             Check(Idas3CommunityTimes.UsableCommunitySnapshot(cache),"New replay-backed records remain visible");
             cache.epoch=1;entry.epoch=1;Check(!Idas3CommunityTimes.UsableCommunitySnapshot(cache),"Old season cache rejected");
             cache.epoch=2;entry.epoch=2;entry.build="0.3.94-player-replays.4";Check(!Idas3CommunityTimes.UsableCommunitySnapshot(cache),"Old build cache rejected");
-            entry.build=Application.version;entry.replayAvailable=false;Check(!Idas3CommunityTimes.UsableCommunitySnapshot(cache),"Pre-replay cache rejected");
+            entry.build=Application.version;entry.replayAvailable=false;Check(Idas3CommunityTimes.UsableCommunitySnapshot(cache),"Time-only snapshot accepted");
             entry.replayAvailable=true;
             Check(!Idas3CommunityTimes.UseCommunityRecords(true,cache,10,0),"Offline startup does not trust a disk cache");
             Check(Idas3CommunityTimes.UseCommunityRecords(true,cache,10,85),"Successful current fetch enables remote records");
@@ -788,7 +789,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             var menu=host.PauseMenu;menu.OpenAttractOptions();menu.SelectTab(6);Check(menu.SelectedTab==6,"Replays category selectable");menu.Activate();
             Check(menu.TryConsumeCommand(out var command)&&command==Idas3PauseMenu.Command.Replays,"Controller can open library");
             host.GameOptions.Draft.communityTimes=true;host.GameOptions.Draft.replayTimeAttack=false;menu.Navigate(1);menu.Activate();
-            Check(!host.GameOptions.Draft.replayTimeAttack&&host.GameOptions.Draft.TimeAttackReplayRequired,"Required capture cannot be disabled");
+            Check(host.GameOptions.Draft.replayTimeAttack&&host.GameOptions.Draft.TimeAttackReplayRequired,"Local capture can be enabled while sharing times");
+            menu.Activate();Check(!host.GameOptions.Draft.replayTimeAttack&&!host.GameOptions.Draft.TimeAttackReplayRequired,"Local capture can be disabled while sharing times");
             menu.Navigate(1);menu.Activate();Check(host.GameOptions.Draft.replayOnline,"Controller toggles online capture");menu.Navigate(1);menu.Activate();Check(host.GameOptions.Draft.replayLegend,"Controller toggles Legend capture");
             menu.Back();Check(menu.DiagnosticSelection==0,"Back returns to categories");menu.Navigate(-1);Check(menu.SelectedTab==5,"Other categories remain reachable");menu.SelectTab(6);
             yield return Capture("replays-options");
@@ -797,19 +799,19 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-policy-check")>=0){
             yield return Frames(3);frozen=true;
             var fresh=new Idas3CommunityTimes.Run{id=Guid.NewGuid().ToString(),ruleset=Idas3CommunityTimes.Ruleset,build=Application.version,epoch=2,replayVersion=2,condition=0,weather=0,car=0,ticks6000=120000,nameGlyphs=new[]{181,166,180,181,220},splits=new[]{40000,80000,120000,0}};
-            var old=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));old.id=Guid.NewGuid().ToString();old.replayVersion=1;
+            var old=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));old.id=Guid.NewGuid().ToString();old.replayVersion=1;old.build="0.3.95-community-replays.49";
             var imported=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));imported.id=Guid.NewGuid().ToString();imported.imported=1;
-            Check(Idas3CommunityTimes.Uploadable(fresh)&&!Idas3CommunityTimes.Uploadable(old)&&!Idas3CommunityTimes.Uploadable(imported),"Only fresh replay-backed runs are uploadable");
+            Check(Idas3CommunityTimes.Uploadable(fresh)&&!Idas3CommunityTimes.Uploadable(old)&&!Idas3CommunityTimes.Uploadable(imported),"Only current-build non-imported times are uploadable");
             foreach(string build in new[]{"0.3.93-replay-detail.1","0.3.94-player-replays.4","0.3.95-community-replays.0","0.3.95-other.99","invalid",null})Check(!Idas3CommunityTimes.SupportedBuild(build),"Older/unknown build rejected: "+build);
             foreach(string build in new[]{Application.version,"0.3.95-community-replays.2","0.3.95-community-replays.10","0.3.95","0.3.96","0.4.0"})Check(Idas3CommunityTimes.SupportedBuild(build),"Current/newer build accepted: "+build);
             Check(Application.version==Idas3CommunityTimes.RequiredSubmissionBuild&&Idas3CommunityTimes.SubmissionBuild(Application.version),"Current player exactly matches the upload release");
-            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.36","0.3.95-community-replays.37","0.3.95-community-replays.38","0.3.95-community-replays.39","0.3.95-community-replays.40","0.3.95-community-replays.41","0.3.95-community-replays.42","0.3.95-community-replays.43","0.3.95-community-replays.44","0.3.95-community-replays.45","0.3.95-community-replays.46","0.3.95-community-replays.47","0.3.95-community-replays.48","0.3.95-community-replays.49","0.3.95-community-replays.51","0.3.96","0.4.0","0.3.95-community-replays.050","0.3.95-community-replays.50 ",null}){
+            foreach(string build in new[]{"0.3.95-community-replays.1","0.3.95-community-replays.36","0.3.95-community-replays.37","0.3.95-community-replays.38","0.3.95-community-replays.39","0.3.95-community-replays.40","0.3.95-community-replays.41","0.3.95-community-replays.42","0.3.95-community-replays.43","0.3.95-community-replays.44","0.3.95-community-replays.45","0.3.95-community-replays.46","0.3.95-community-replays.47","0.3.95-community-replays.48","0.3.95-community-replays.49","0.3.95-community-replays.50","0.3.95-community-replays.52","0.3.96","0.4.0","0.3.95-community-replays.050","0.3.95-community-replays.50 ",null}){
                 var wrongBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));wrongBuild.build=build;
                 Check(!Idas3CommunityTimes.SubmissionBuild(build)&&!Idas3CommunityTimes.Uploadable(wrongBuild),"Only exact build can submit: "+build);
             }
             var previousBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousBuild.id=Guid.NewGuid().ToString();previousBuild.build="0.3.95-community-replays.36";
             previousBuild.ticks6000=60000;previousBuild.splits=new[]{20000,40000,60000,0};
-            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.51";
+            var futureBuild=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));futureBuild.id=Guid.NewGuid().ToString();futureBuild.build="0.3.95-community-replays.52";
             var previousSeason=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(fresh));previousSeason.id=Guid.NewGuid().ToString();previousSeason.epoch=1;
             Check(!Idas3CommunityTimes.Uploadable(previousBuild)&&!Idas3CommunityTimes.Uploadable(previousSeason),"Old build and season queues cannot re-enter rankings");
             Check(Idas3CommunityTimes.Flatten(new Idas3CommunityTimes.Snapshot{ruleset=Idas3CommunityTimes.Ruleset,entries=new[]{old,imported}}).Length==28,"Existing leaderboard history remains readable");
@@ -826,7 +828,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             var client=host.gameObject.AddComponent<Idas3CommunityTimes>();client.Initialize(host,host.GameOptions,host.PauseMenu,community,true);client.StopAllCoroutines();
             Check(client.PendingCount==1,"Faster old-release time is discarded without blocking the current-release queue");
             string saved=File.ReadAllText(Path.Combine(community,"pending.json"));Check(saved.Contains(fresh.id)&&!saved.Contains(old.id)&&!saved.Contains(imported.id)&&!saved.Contains(previousBuild.id)&&!saved.Contains(futureBuild.id),"Queue migration keeps only the exact-release run");
-            Check(File.Exists(Path.Combine(community,fresh.id+".idr")),"Eligible queued replay is preserved");
+            Check(!File.Exists(Path.Combine(community,fresh.id+".idr")),"Obsolete replay cache removed while its eligible queued time is preserved");
             var menu=host.PauseMenu;menu.OpenAttractOptions();menu.SelectTab(5);menu.Navigate(1);Check(menu.DiagnosticSelection==2,"Controller reaches rankings");
             menu.Navigate(1);Check(menu.DiagnosticSelection==3,"Controller reaches Discord presence");menu.Navigate(1);Check(menu.DiagnosticSelection==4,"Controller reaches lights-off advantage");menu.Navigate(1);Check(menu.DiagnosticSelection==5,"Controller reaches Reset after Online options");menu.Navigate(1);menu.Navigate(1);Check(menu.DiagnosticSelection==7,"Controller reaches Back without an import row");
             menu.SetOpen(false);Finish(true,null);yield break;
@@ -859,19 +861,19 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
             var uploading=host.gameObject.AddComponent<Idas3CommunityTimes>();uploading.Initialize(host,host.GameOptions,menu,community);
             yield return Frames(3);
             string queued=File.ReadAllText(Path.Combine(community,"pending.json"));
-            Check(queued.Contains("\"replayVersion\":2"),"Replay version persisted with queued time");
-            var replayFiles=Directory.GetFiles(community,"*.idr");Check(replayFiles.Length==1,"Matching replay persisted before network upload");
-            string submittedId=Path.GetFileNameWithoutExtension(replayFiles[0]);
+            Check(queued.Contains("\"replayVersion\":0"),"Time-only result persisted before network upload");
+            Check(Directory.GetFiles(community,"*.idr").Length==0,"No recording queued for network upload");
+            string submittedId=JsonUtility.FromJson<CommunityQueue>(queued).runs[0].id;
             // Recreate the uploader before its initial network delay expires:
-            // the finish was acknowledged, so only disk can recover the pair.
+            // the finish was acknowledged, so only disk can recover the time.
             uploading.StopAllCoroutines();Destroy(uploading);yield return Frames(1);
             uploading=host.gameObject.AddComponent<Idas3CommunityTimes>();uploading.Initialize(host,host.GameOptions,menu,community);
-            Check(uploading.PendingCount==1,"Restart reloads the acknowledged time/replay pair from disk");
+            Check(uploading.PendingCount==1,"Restart reloads the acknowledged time from disk");
             double deadline=Time.realtimeSinceStartupAsDouble+60;
             while(Time.realtimeSinceStartupAsDouble<deadline&&!File.Exists(Path.Combine(community,"snapshot.json")))yield return null;
             Check(File.Exists(Path.Combine(community,"snapshot.json")),"Unity HTTPS registration/upload/download completed");
             var downloaded=JsonUtility.FromJson<Idas3CommunityTimes.Snapshot>(File.ReadAllText(Path.Combine(community,"snapshot.json")));
-            Check(Array.Exists(downloaded.entries,r=>r.id==submittedId&&r.replayAvailable),"Uploaded native finish has server-attached replay");
+            Check(Array.Exists(downloaded.entries,r=>r.id==submittedId&&!r.replayAvailable),"Uploaded native finish is ranked without a replay");
             Check(File.ReadAllText(Path.Combine(community,"pending.json")).Contains("\"runs\":[]"),"Acknowledged upload removed from durable queue");
             Check(Directory.GetFiles(community,"*.idr").Length==0,"Acknowledged replay file removed from queue");
             Finish(true,null);yield break;

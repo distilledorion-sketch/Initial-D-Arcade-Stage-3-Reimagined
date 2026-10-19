@@ -1,5 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+
+#if !PRODUCTION_DIRECTORY
+// Keep the existing sanctions/transport suites focused on their own production
+// behavior. The directory suite instead compiles the real implementation.
+namespace Idas3.Multiplayer {
+    internal sealed class Idas3OnlinePlayerDirectory : IIdas3OnlineAccessPolicy {
+        bool disposed;
+        public bool IsBlocked(string playerId)=>false;
+        public bool IsClearWithin(string playerId,double age)=>!disposed;
+        public Task RequireAllowed(string playerId,bool local,bool force)=>disposed?
+            Task.FromException(new OperationCanceledException()):Task.CompletedTask;
+        public void Poll(){}
+        public void Dispose(){disposed=true;}
+    }
+}
+#endif
 
 // External SDK boundary only. Tests execute the production sanctions adapter,
 // including deferred callbacks, cache policy and transport admission decisions.

@@ -6,7 +6,8 @@ import {sha,validateRun,supportedBuild,COURSES,REQUIRED_CLIENT_BUILD} from '../s
 import {decodeReplay,compressReplay} from '../src/replay.mjs';
 import {replayKey} from '../src/replay-storage.mjs';
 import {recoverRun} from '../src/recovery.mjs';
-const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';").replace("'./core.mjs'",JSON.stringify(new URL('../src/core.mjs',import.meta.url).href)).replace("'./replay.mjs'",JSON.stringify(new URL('../src/replay.mjs',import.meta.url).href)).replace("'./replay-storage.mjs'",JSON.stringify(new URL('../src/replay-storage.mjs',import.meta.url).href)).replace("'./retention.mjs'",JSON.stringify(new URL('../src/retention.mjs',import.meta.url).href));
+import {legacyRunMetadata,purgeReplayObjects} from '../src/times-only.mjs';
+const source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';").replace("'./times-only.mjs'",JSON.stringify(new URL('../src/times-only.mjs',import.meta.url).href)).replace("'./core.mjs'",JSON.stringify(new URL('../src/core.mjs',import.meta.url).href)).replace("'./replay.mjs'",JSON.stringify(new URL('../src/replay.mjs',import.meta.url).href)).replace("'./replay-storage.mjs'",JSON.stringify(new URL('../src/replay-storage.mjs',import.meta.url).href)).replace("'./retention.mjs'",JSON.stringify(new URL('../src/retention.mjs',import.meta.url).href)).replace("'./online-players.mjs'",JSON.stringify(new URL('../src/online-players.mjs',import.meta.url).href));
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
 const secret='a'.repeat(64),device='b'.repeat(64);
@@ -23,6 +24,7 @@ function objectStorage(){
    objects.set(key,stored);return {size:stored.length};
   },
   async delete(keys){for(const key of Array.isArray(keys)?keys:[keys])objects.delete(key);},
+  async list({prefix,limit}){const keys=[...objects.keys()].filter(k=>k.startsWith(prefix)).sort();return {objects:keys.slice(0,limit).map(key=>({key,size:objects.get(key).length})),truncated:keys.length>limit};},
   async get(key){const stored=objects.get(key);return stored?{size:stored.length,async arrayBuffer(){return stored.slice().buffer;}}:null;}
  };
  return objects;
@@ -174,7 +176,7 @@ test('fresh IDs from an old season cannot bypass a ranking reset',async()=>{awai
 test('legacy upload endpoint rejects live and historical times without inserting anything',async()=>{
  await call('/api/v1/register',{token:device});
  for(const x of [run(),run({imported:1,manual:-1,night:-1,points:-1,splits:[0,0,0,0]})]){
-  const response=await call('/api/v1/runs',x,auth());assert.equal(response.status,426);assert.match((await response.json()).error,/replay is required/);
+  const response=await call('/api/v1/runs',x,auth());assert.equal(response.status,426);assert.match((await response.json()).error,/Update the game/);
  }
  assert.equal(db.prepare('SELECT count(*) n FROM runs').get().n,0);
 });
@@ -274,16 +276,16 @@ test('viewer download preserves metadata and every pose without installation ide
  assert.equal((await call('/api/admin/replay?id='+crypto.randomUUID()+'&format=package',null,auth)).status,404);
 });
 test('upload build policy accepts only the exact ROM-required release',()=>{
- assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.50');
+ assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.51');
  assert.equal(supportedBuild(REQUIRED_CLIENT_BUILD),true);
- for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.51','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
+ for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.52','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
  for(const required of ['',null,'invalid','0.3.95-community-replays.*'])assert.equal(supportedBuild(required,required),false);
 });
 test('nonmatching builds are permanently rejected before replay work and without database writes',async()=>{
  await call('/api/v1/register',{token:device});
  env.MIN_CLIENT_BUILD='0.3.95-community-replays.1'; // A stale variable cannot restore the old minimum policy.
  const before=db.prepare('SELECT total_changes() n').get().n;
- for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.51','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
+ for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.52','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
   const response=await uploadReplay(run({build}));assert.equal(response.status,409);
   const error=await response.json();assert.equal(error.code,'client_build_required');assert.equal(error.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(error.permanent,true);assert.ok(error.error.includes(REQUIRED_CLIENT_BUILD));
  }
@@ -394,7 +396,7 @@ test('configured exact release rejects both sides of its version and is exposed 
  const health=await(await call('/health')).json();assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(snapshot.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(snapshot.epoch,1);
  assert.equal(db.prepare('SELECT total_changes() n').get().n,before);
- for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.51'])assert.equal((await uploadReplay(run({build}))).status,409);
+ for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.52'])assert.equal((await uploadReplay(run({build}))).status,409);
  assert.equal((await uploadReplay(run())).status,200);
 });
 
@@ -841,4 +843,105 @@ test('all shared car paints validate and out-of-range paint is rejected',async()
  const x=run(),bytes=replayFor(x);
  for(const color of [0,7,15,16,92]){new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).setUint32(36,color,true);assert.doesNotThrow(()=>validateReplay(bytes,x));}
  for(const color of [93,0xffffffff]){new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength).setUint32(36,color,true);assert.throws(()=>validateReplay(bytes,x),/appearance/);}
+});
+
+const disableReplayStorage=()=>db.exec(readFileSync(new URL('../migrations/0013_disable_leaderboard_replays.sql',import.meta.url),'utf8'));
+const submitTime=x=>call('/api/v3/runs',x,auth());
+test('time-only JSON submissions preserve precision, authenticate, and never access object storage',async()=>{
+ await call('/api/v1/register',{token:device});env.DISABLE_REPLAYS='true';disableReplayStorage();
+ env.REPLAYS={async put(){throw Error('must not store');},async get(){throw Error('must not read');}};
+ const x=run();const response=await submitTime(x);assert.equal(response.status,200);assert.equal((await response.json()).replay,false);
+ assert.equal((await submitTime(x)).status,200);assert.equal(db.prepare('SELECT COUNT(*) n FROM runs').get().n,1);
+ assert.equal(db.prepare('SELECT replay_size FROM runs').get().replay_size,0);
+ const data=await(await call('/api/v2/snapshot?ruleset=d3-community-v1')).json();
+ assert.equal(data.entries[0].ticks6000,x.ticks6000);assert.equal(data.entries[0].replayAvailable,false);assert.equal(data.replaysEnabled,false);
+ assert.equal((await call('/api/v3/runs',run())).status,401);
+ assert.equal((await submitTime({...x,ticks6000:x.ticks6000+1,splits:[300000,600000,900000,x.ticks6000+1]})).status,409);
+ assert.equal((await submitTime(run({imported:1}))).status,400);
+ for(const bad of [{build:'0.3.95-community-replays.49'},{epoch:2},{car:35},{mode:1},{splits:[0,0,0,0]}])assert.notEqual((await submitTime(run(bad))).status,200);
+ for(const table of ['replays','replay_chunks','replay_objects'])assert.equal(db.prepare('SELECT COUNT(*) n FROM '+table).get().n,0);
+});
+test('time-only mode rejects blocked installations, limits writes and keeps exact build policy',async()=>{
+ await call('/api/v1/register',{token:device});env.DISABLE_REPLAYS='true';
+ db.exec('UPDATE devices SET blocked=1');assert.equal((await submitTime(run())).status,403);
+ db.exec('UPDATE devices SET blocked=0');env.WRITE_LIMIT={async limit(){return {success:false};}};
+ assert.equal((await submitTime(run())).status,429);assert.equal(db.prepare('SELECT COUNT(*) n FROM runs').get().n,0);
+});
+test('legacy uploads discard recordings but still commit and acknowledge times',async()=>{
+ await call('/api/v1/register',{token:device});env.DISABLE_REPLAYS='true';const objects=objectStorage();disableReplayStorage();
+ const x=run();assert.equal((await uploadReplay(x,new Uint8Array([1,2,3]))).status,200);
+ assert.equal(objects.size,0);assert.equal((await uploadReplay(x,new Uint8Array([4,5]))).status,200);
+ assert.equal((await uploadReplay({...x,points:1})).status,409);
+});
+test('metadata prefix reader handles fragmented boundaries and cancels without reading replay bytes',async()=>{
+ const x=run(),json=new TextEncoder().encode(JSON.stringify(x)),prefix=new Uint8Array(4+json.length);new DataView(prefix.buffer).setUint32(0,json.length,true);prefix.set(json,4);
+ let reads=0,cancelled=false;
+ const stream=new ReadableStream({pull(c){if(reads<prefix.length)c.enqueue(prefix.slice(reads,++reads));else throw Error('Recording must not be read');},cancel(){cancelled=true;}},{highWaterMark:0});
+ assert.deepEqual(await legacyRunMetadata(new Request('https://example.test',{method:'POST',body:stream,duplex:'half'})),x);
+ assert.equal(cancelled,true);assert.equal(reads,prefix.length);
+ await assert.rejects(legacyRunMetadata(new Request('https://example.test',{method:'POST',body:new Uint8Array([2,0,0,0,255,255])})),SyntaxError);
+ for(const bytes of [new Uint8Array([1,2]),new Uint8Array([0,0,0,0]),new Uint8Array([255,255,255,255]),new Uint8Array([4,0,0,0,123])]){
+  await assert.rejects(legacyRunMetadata(new Request('https://example.test',{method:'POST',body:bytes})),/Invalid/);
+ }
+});
+test('replay removal migration preserves every score and identity while emptying all replay stores',async()=>{
+ await call('/api/v1/register',{token:device});const objects=objectStorage(),a=run(),b=run({condition:35,car:3});
+ await uploadReplay(a);await uploadReplay(b);
+ db.prepare('INSERT INTO replays(run_id,data) VALUES(?,?)').run(a.id,new Uint8Array(44));
+ db.prepare('INSERT INTO replay_chunks(run_id,part,data) VALUES(?,?,?)').run(b.id,0,new Uint8Array(44));
+ db.prepare('UPDATE runs SET hidden=1,reason=? WHERE id=?').run('kept moderation',b.id);
+ const scores=()=>db.prepare('SELECT * FROM runs ORDER BY id').all().map(({replay_size,replay_sha256,...x})=>x);
+ const before=scores(),devices=db.prepare('SELECT * FROM devices').all(),settings=db.prepare('SELECT * FROM settings').all();
+ disableReplayStorage();disableReplayStorage();
+ assert.deepEqual(scores(),before);assert.deepEqual(db.prepare('SELECT * FROM devices').all(),devices);
+ for(const x of settings)assert.deepEqual(db.prepare('SELECT * FROM settings WHERE key=?').get(x.key),x);
+ for(const table of ['replays','replay_chunks','replay_objects'])assert.equal(db.prepare('SELECT COUNT(*) n FROM '+table).get().n,0);
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM runs WHERE replay_size<>0 OR replay_sha256<>''").get().n,0);
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM audit WHERE action='disable leaderboard replays'").get().n,1);
+ assert.throws(()=>db.prepare('INSERT INTO replay_objects VALUES(?,?)').run(a.id,'replays/v1/stale'),/disabled/);
+ assert.throws(()=>db.prepare('INSERT INTO replays VALUES(?,?)').run(a.id,new Uint8Array(44)),/disabled/);
+ assert.throws(()=>db.prepare('INSERT INTO replay_chunks VALUES(?,?,?)').run(a.id,0,new Uint8Array(44)),/disabled/);
+ assert.throws(()=>db.prepare('UPDATE runs SET replay_size=44 WHERE id=?').run(a.id),/disabled/);
+ assert.equal((await uploadReplay(run())).status,503); // stale Worker cannot commit a replay
+ env.DISABLE_REPLAYS='true';await worker.scheduled({},env);assert.equal(objects.size,0);
+ assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+test('disabled downloads cannot access legacy bytes, while old and new clients keep seeing rankings',async()=>{
+ await call('/api/v1/register',{token:device});const x=run();await uploadReplay(x);const a=await login();env.DISABLE_REPLAYS='true';
+ for(const path of ['/api/v1/replay?id='+x.id,'/api/admin/replay?id='+x.id])assert.equal((await call(path,null,a)).status,410);
+ assert.equal((await move(x.id,a)).status,410);
+ const old=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(old.entries[0].replayAvailable,true);assert.equal(old.replaysEnabled,false);
+ for(const path of ['/api/v2/snapshot?ruleset=d3-community-v1','/api/v1/board?condition=0&weather=0']){
+  const result=await(await call(path)).json();assert.equal(result.entries[0].id,x.id);assert.equal(result.entries[0].replayAvailable,false);
+ }
+ const health=await(await call('/health')).json();assert.equal(health.replayStorage,'disabled');assert.equal(health.replayUploads,false);assert.equal(health.replayDownloads,false);
+});
+test('time-only retention accepts future submissions and preserves each model top ten',async()=>{
+ const {objects}=await topTenFixture();env.DISABLE_REPLAYS='true';disableReplayStorage();await worker.scheduled({},env);
+ assert.equal(objects.size,0);assert.equal((await(await submitTime(shortRun(0,120000))).json()).retained,false);
+ assert.equal((await(await submitTime(shortRun(1,150000))).json()).retained,true);
+ assert.equal((await(await submitTime(shortRun(0,80000))).json()).retained,true);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs').get().n,11);assert.equal(objects.size,0);
+});
+test('replay purge requires admin, same origin, disabled mode and explicit scope; catches only replay orphans',async()=>{
+ const objects=objectStorage();objects.set('replays/v1/orphan',new Uint8Array(11));objects.set('unrelated/keep',new Uint8Array(3));
+ const payload={confirm:'DELETE ALL LEADERBOARD REPLAYS',reason:'Owner requested removal'},a=await login();
+ assert.equal((await call('/api/admin/replay-purge',payload)).status,403);
+ assert.equal((await call('/api/admin/replay-purge',payload,{Origin:'https://example.test'})).status,401);
+ assert.equal((await call('/api/admin/replay-purge',payload,a)).status,400);
+ env.DISABLE_REPLAYS='true';assert.equal((await call('/api/admin/replay-purge',{reason:'missing confirmation'},a)).status,400);
+ assert.equal((await call('/api/admin/replay-purge',payload,{...a,Origin:'https://other.test'})).status,403);
+ const result=await(await call('/api/admin/replay-purge',payload,a)).json();assert.equal(result.removed,1);assert.equal(result.bytes,11);
+ assert.deepEqual([...objects.keys()],['unrelated/keep']);
+ objects.set('replays/v1/late-upload',new Uint8Array(2));await worker.scheduled({},env);assert.deepEqual([...objects.keys()],['unrelated/keep']);
+});
+test('replay purge handles pagination and retries partial deletion without touching scores',async()=>{
+ const objects=objectStorage();env.DISABLE_REPLAYS='true';for(let i=0;i<501;i++)objects.set('replays/v1/'+i,new Uint8Array(1));
+ let r=await purgeReplayObjects(env);assert.equal(r.removed,500);assert.equal(r.more,true);
+ r=await purgeReplayObjects(env);assert.equal(r.removed,1);assert.equal(r.more,false);assert.equal(objects.size,0);
+});
+test('website and admin omit replay downloads and exports',()=>{
+ const html=readFileSync(new URL('../src/index.html',import.meta.url),'utf8');
+ assert.doesNotMatch(html,/<th>REPLAY<\/th>|Download replay|Download for 3D viewer|Export CSV|href=['"]\/api\/(v1|admin)\/replay/);
+ assert.match(html,/Time Attack results continue to post normally/);
 });

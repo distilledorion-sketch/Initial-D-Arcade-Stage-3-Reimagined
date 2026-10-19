@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.95-community-replays.51 - October 18, 2026
+
+- Disable community leaderboard replay storage, uploads and downloads, and remove existing online recordings while preserving posted times. New clients submit results without replay files; existing clients can continue posting times. Personal replays and local ghosts are unaffected.
+- Add private online-player search by current or previous username, with persistent Player IDs and last-seen history. Admins can ban or unban a registered account while it is offline; renaming preserves the ban. Players enter the directory when they next connect using this update.
+- Enforce online-directory bans alongside Epic sanctions before matchmaking and during connected play. Updated clients use a separate compatible-room protocol; existing Epic sanctions continue to apply.
+- Fix clipped updater errors: show a short failure summary and Windows launch error number, with scrollable full details, Copy Details, and a manual-download link.
+- Add Japanese and Chinese text for the updater error screen. Keep the existing non-elevated installer launch and leave the game open when the helper cannot start.
+
 ## 0.3.95-community-replays.50 - October 11, 2026
 
 Restore Quick Match discovery of waiting public hosts and improve EOS connection startup. Both drivers must update for online races. Version .50 is required for new community Time Attack submissions.

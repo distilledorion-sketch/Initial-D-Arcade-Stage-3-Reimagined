@@ -1,6 +1,6 @@
 # Community leaderboard service
 
-Cloudflare Workers + D1 backend for Time Attack rankings, replay downloads and moderation. The game already points at the public community service; players do not need to deploy this directory.
+Cloudflare Workers + D1 backend for Time Attack rankings and moderation. The game already points at the public community service; players do not need to deploy this directory.
 
 ## Local tests
 
@@ -27,6 +27,50 @@ The tests use an in-memory database and never submit to the public service.
 8. To connect a separate game distribution, change `ServiceUrl` in `Assets/Scripts/Idas3CommunityTimes.cs` and rebuild.
 
 The checked-in configuration has a placeholder database ID. Production credentials, admin keys, installation credentials, database exports and private deployment settings are not included.
+
+## Time-only leaderboard (current policy)
+
+`DISABLE_REPLAYS: "true"` disables replay storage, uploads and all public/admin
+replay downloads. Existing times, seasons, installation identities, bans and
+online player-directory data are preserved. New finishes still use the exact
+required client build, installation authentication, checkpoint/metadata
+validation and the existing overall/per-model top-ten retention policy.
+Historical imports and personal battle records remain rejected.
+
+Updated clients post small JSON results to `POST /api/v3/runs` and read
+`GET /api/v2/snapshot`. They no longer capture, compress or cache replay files
+for leaderboard uploads. Old pending times can upload without their recordings.
+Personal replay archives and local ghosts are separate and unaffected.
+
+Released clients can continue posting to `/api/v2/runs`: only the envelope's
+bounded JSON prefix is consumed, and its recording stream is cancelled without
+being decoded or stored. Those clients may still attempt to transmit replay
+bytes until updated. Replay telemetry is no longer used for server validation.
+
+Public boards and v2 snapshots report `replayAvailable: false`. The v1 snapshot
+keeps its legacy `replayAvailable` validation bit true solely because released
+clients otherwise reject every ranking; its `replaysEnabled` policy is false,
+and replay URLs return HTTP 410 regardless of that compatibility bit.
+
+For the owner-requested cutover, deploy with `DISABLE_REPLAYS: "true"`, briefly
+pause writes with `MAINTENANCE`, save a score/identity metadata inventory, and
+apply **only** `0013_disable_leaderboard_replays.sql` to the existing database.
+It removes D1 replay bytes, object mappings and replay metadata without deleting
+a time. Database triggers reject replay writes from stale in-flight Workers.
+Reopen writes immediately, then use authenticated, same-origin
+`POST /api/admin/replay-purge` with `confirm: "DELETE ALL LEADERBOARD REPLAYS"`
+and a reason to drain R2 in batches. The sweep is restricted to `replays/v1/`
+and includes orphaned upload attempts. Scheduled cleanup also sweeps this
+namespace to catch late writes. Keep the private R2 binding until cleanup is
+verified complete; do not re-enable the old upload mode against these guards.
+
+Verify the complete score/identity metadata inventory is unchanged and all D1
+replay tables, replay-size/hash fields, the deletion queue and the R2 replay
+prefix are empty. The public site must have no replay controls, old replay URLs
+must return 410, and both snapshot versions must still return posted times.
+
+The sections below describe the earlier replay-backed deployment and historical
+migrations. Their replay-upload/download behavior is superseded by this policy.
 
 ## Behavior
 
@@ -171,3 +215,100 @@ ghost invalidation are handled separately by the .47 game update.
 The public page polls `/api/v2/activity` every 15 seconds while visible. Updated EOS clients with Community Times enabled share a fresh product-scoped activity survey using their existing installation token. Reports contain only aggregate online/queuing/racing counts, the search-limit flag, and sample age; no player IDs, names, room codes or locations are sent. Diagnostics do not publish. EOS presence itself is independent of the Community Times setting, so turning off leaderboard sharing does not remove a connected player from the in-game population survey.
 
 The service retains only the newest EOS survey in `settings.online_activity_eos` (no schema migration). Legacy Steam surveys continue to use `/api/v1/activity` and their separate `online_activity` setting; they cannot overwrite the EOS website count. Reports are not summed across observers. A survey expires after 45 seconds; without a reporting client the page shows a dash rather than claiming zero. A plus sign indicates the EOS search limit of 200 results. Only clients with the activity publisher installed can be counted; earlier EOS clients do not publish presence. Client surveys are informational and are not authoritative anti-cheat or verified concurrent-user analytics.
+
+## Online player directory and bans
+
+Migration `0012_online_players.sql` adds a separate EOS player directory and name
+history. It does not reset or remove scores, ghosts, installation identities,
+existing bans, or admin sessions. Apply only this new migration when upgrading
+an existing service. Do not rerun the older leaderboard-reset migrations.
+
+Configure the four nonsecret Worker variables `EOS_CLIENT_ID`, `EOS_PRODUCT_ID`,
+`EOS_SANDBOX_ID`, and `EOS_DEPLOYMENT_ID` to match the approved game client's
+EOS configuration. The checked-in values are placeholders and intentionally
+reject online checks. The Worker also requires the `ONLINE_AUTH_LIMIT` (600
+requests/minute per IP before signature verification) and `ONLINE_LIMIT` (60
+requests/minute per verified player) bindings in the example configuration.
+The separate IP limit accommodates players sharing a network. No EOS client secret or sanctions-admin
+credential is required or accepted by this backend.
+
+Updated clients call `POST /api/v1/online/player` with an EOS **Connect ID token**
+in `Authorization: Bearer <token>` and JSON:
+
+```json
+{"username":"Example","build":"0.3.95-community-replays.51","targetPlayerId":"0123456789abcdef0123456789abcdef"}
+```
+
+Only `username`, `build`, and optional `targetPlayerId` are accepted. The
+requesting identity comes solely from the verified token's `sub` claim.
+The token is verified with RS256 against Epic's fixed Connect JWKS endpoint
+`https://api.epicgames.dev/auth/v1/oauth/jwks`, using a bounded key cache and
+refresh cooldown. Verification requires the expected audience, product,
+sandbox, deployment, Epic issuer origin, issue time and expiry; a supplied
+not-before time is also checked. Token-supplied key URLs are never followed.
+Auth/Epic account tokens and leaderboard installation tokens are not accepted.
+See [Epic's Connect reference](https://dev.epicgames.com/docs/epic-online-services/eos-fundamentals/connect-interface/connect-reference).
+
+The response is a versioned policy result:
+
+```json
+{"version":1,"playerId":"0123456789abcdef0123456789abcdef","blocked":false,"status":"allowed","targetPlayerId":"","targetBlocked":false,"targetStatus":"","checkedAt":1792000000}
+```
+
+`status` and a requested `targetStatus` are either `allowed` or `blocked`.
+Without a target, both target ID and target status are empty strings. Clients
+must validate the version, returned IDs and explicit statuses; missing fields,
+failed authentication, rate limits or service errors
+are not permission to connect. The service checks self and target independently
+and returns only their policy status, never names, aliases or private reasons.
+An unknown ID has no local directory ban; it is not automatically registered
+by a target lookup. Epic sanctions remain a separate required client check.
+
+Missing, null, empty or whitespace-only `username` performs a policy-only check
+without creating a record or overwriting a saved name. This supports the
+first-use username prompt and diagnostic clients. A chosen username registers
+the authenticated player and updates their name, last-seen time and reported
+build, independently of the Community Times sharing setting. Unchanged name/build
+metadata writes occur at most once per 60 seconds; new or changed names/builds
+update immediately. Every request still reads current self/peer ban status.
+Names are trimmed,
+NFC-normalized and limited to 16 Unicode scalars; controls, format characters,
+invalid surrogate values, unassigned characters, line separators, angle brackets,
+and names consisting only of whitespace/nonspacing/enclosing marks are rejected.
+Name history uses an indexed Unicode uppercase search key and preserves display
+spelling. Names are player-chosen, nonunique, and are not proof of identity.
+Renaming never clears a ban. The database allows at most 24 genuinely new names
+per player in a rolling 24-hour period; reusing a previous name or refreshing
+current metadata does not consume another slot. This limits growth while
+preserving every previous alias. A new name beyond the limit returns HTTP 400
+with `code: "online_name_change_limit"` and leaves the directory unchanged.
+Policy-only requests remain available to check bans. JWTs, IP addresses and
+room chat are not stored.
+
+The existing private admin session provides:
+
+- `GET /api/admin/online-players?q=...&page=0`: exact full Player ID or
+  case-insensitive current/previous name prefix; an empty query lists recent
+  players. Results contain `players`, `page` and `hasMore`. Each player has
+  `playerId`, `username`, `aliases`, `aliasesTruncated`, `firstSeen`, `lastSeen`,
+  `build`, `blocked`, `banReason`, and `bannedAt`. Timestamps are Unix seconds;
+  `bannedAt` is null when unblocked. Pages contain at most 50 players, and each
+  history response at most 50 previous names. Older names remain searchable.
+  Duplicate names return all matching identities across pages.
+- `POST /api/admin/online-player` with `playerId`, boolean `blocked`, and a
+  reason of 3–300 Unicode scalars. A valid admin cookie and matching Origin are
+  required. Ban/unban and its audit entry commit atomically. Unknown,
+  unregistered Player IDs cannot be banned through this endpoint.
+
+There is no public directory or delete endpoint. All results use `no-store`.
+Directory entries appear only after updated clients register; this cannot
+reconstruct names or identities from matches played before the directory
+existed. The last-seen timestamp records a service check, not verified playtime
+or a live-presence guarantee. The build string is informational.
+
+These are this game's own bans enforced by updated clients, not new Epic
+sanctions or hardware bans. Older or modified clients may not enforce them,
+and a newly created Device ID account is a different identity. Keep the
+existing EOS sanctions enforcement. Do not deploy this feature as an
+anti-cheat guarantee, or ban an ambiguous name without checking its Player ID
+against the report.

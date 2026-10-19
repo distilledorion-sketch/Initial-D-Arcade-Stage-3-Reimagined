@@ -13,7 +13,7 @@ namespace Idas3.Multiplayer
     public sealed class Idas3EosTransport : IIdas3MatchmakingTransport, IIdas3PrivateRoomTransport,
         IIdas3MatchmakingServiceState, IIdas3QueuedMatchmakingTransport, IIdas3OnlineActivityTransport
     {
-        internal const string Protocol = "idas3-eos-3-stat-resets", BuildKey = "build", KindKey = "kind", NameKey = "name", HostKey = "host";
+        internal const string Protocol = "idas3-eos-4-player-directory", BuildKey = "build", KindKey = "kind", NameKey = "name", HostKey = "host";
         internal const string StatsResetFailed = "Online battle stats could not be reset. Online play is unavailable until the reset can be saved.";
         internal const string PeerStatsReset = "The other driver's battle stats were reset. Please rejoin the room.";
         const int MatchmakingProgressTimeoutSeconds = 180;
@@ -129,7 +129,7 @@ namespace Idas3.Multiplayer
                 if (!Current(token)) return;
                 LocalId = Idas3EosPlatform.User.ToString(); LocalName = Idas3EosOnlineConfig.PlayerName();
                 ListenForPeerRequests();
-                if (sanctions == null) sanctions = new Idas3EosSanctions();
+                if (sanctions == null) sanctions = new Idas3EosSanctions(new Idas3OnlinePlayerDirectory());
                 Stage("local-access");
                 Status = "Checking online access…";
                 await sanctions.RequireAllowed(Idas3EosPlatform.User, true);

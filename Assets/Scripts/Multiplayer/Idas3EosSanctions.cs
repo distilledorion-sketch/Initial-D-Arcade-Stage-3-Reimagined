@@ -6,8 +6,16 @@ using Epic.OnlineServices.Sanctions;
 
 namespace Idas3.Multiplayer
 {
-    // Read-only enforcement. Sanction creation/removal belongs in the administrator's
-    // Epic portal, never in a credential or endpoint shipped with the game.
+    internal interface IIdas3OnlineAccessPolicy : IDisposable
+    {
+        bool IsBlocked(string playerId);
+        bool IsClearWithin(string playerId, double age);
+        Task RequireAllowed(string playerId, bool local, bool force);
+        void Poll();
+    }
+
+    // Read-only enforcement of both Epic sanctions and the private player
+    // directory. No administrator credential is shipped with the game.
     internal sealed class Idas3EosSanctions : IDisposable
     {
         internal const double FreshSeconds = 45, GraceSeconds = 180, RetrySeconds = 10;
@@ -26,9 +34,14 @@ namespace Idas3.Multiplayer
             internal TaskCompletionSource<bool> Pending;
         }
         readonly Dictionary<string, Entry> entries = new Dictionary<string, Entry>(StringComparer.Ordinal);
+        readonly IIdas3OnlineAccessPolicy directory;
         bool disposed;
 
-        internal bool IsBlocked(ProductUserId user) => user != null && entries.TryGetValue(user.ToString(), out Entry entry) && entry.Known && entry.Blocked;
+        internal Idas3EosSanctions(IIdas3OnlineAccessPolicy directory)
+        { this.directory = directory ?? throw new ArgumentNullException(nameof(directory)); }
+
+        internal bool IsBlocked(ProductUserId user) => user != null && (directory.IsBlocked(user.ToString()) ||
+            entries.TryGetValue(user.ToString(), out Entry entry) && entry.Known && entry.Blocked);
         internal string[] LevelResetIds(ProductUserId user) => ResetIds(user, false);
         internal string[] FullResetIds(ProductUserId user) => ResetIds(user, true);
         string[] ResetIds(ProductUserId user, bool full)
@@ -42,15 +55,18 @@ namespace Idas3.Multiplayer
         internal bool IsClearWithin(ProductUserId user, double age)
         {
             return !disposed && user != null && entries.TryGetValue(user.ToString(), out Entry entry) &&
-                entry.Known && !entry.Blocked && Idas3EosPlatform.Now - entry.CheckedAt < age;
+                entry.Known && !entry.Blocked && Idas3EosPlatform.Now - entry.CheckedAt < age && directory.IsClearWithin(user.ToString(), age);
         }
         internal async Task RequireAllowed(ProductUserId user, bool local, bool force = false)
         {
-            if (await Query(user, force)) throw new Idas3EosRestrictedException(local ? LocalRestriction : PeerRestriction);
+            var epic = Query(user, force);
+            await Task.WhenAll(epic, directory.RequireAllowed(user?.ToString(), local, force));
+            if (epic.Result) throw new Idas3EosRestrictedException(local ? LocalRestriction : PeerRestriction);
         }
         internal void Poll()
         {
             if (disposed) return;
+            directory.Poll();
             // Completion may synchronously leave/dispose the transport, so use
             // a bounded snapshot rather than enumerating a mutable collection.
             foreach (Entry entry in new List<Entry>(entries.Values)) {
@@ -167,6 +183,7 @@ namespace Idas3.Multiplayer
         public void Dispose()
         {
             disposed = true;
+            directory.Dispose();
             foreach (var entry in entries.Values) entry.Pending?.TrySetCanceled();
             entries.Clear();
         }

@@ -33,7 +33,7 @@ public sealed class Idas3GameOptions
         public bool communityTimes=true;
         public bool replayTimeAttack=true,replayOnline,replayLegend;
         public bool timeAttackGhost=true;
-        public bool TimeAttackReplayRequired=>communityTimes||replayTimeAttack;
+        public bool TimeAttackReplayRequired=>replayTimeAttack;
         public int rainDetail,importedSceneryDetail;
         public int trackLighting=1; // 0 = original, 1 = balanced scenery exposure.
         public bool sunGlare=true;

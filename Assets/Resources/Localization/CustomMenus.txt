@@ -81,6 +81,15 @@ Check GitHub for the latest Windows release.	GitHubで最新のWindows版を確�
 PLEASE WAIT…	お待ちください…	请稍候…
 INSTALL UPDATE	更新をインストール	安装更新
 UPDATES / REPAIR	更新・修復	更新与修复
+UPDATE FAILED	更新に失敗しました	更新失败
+COPY DETAILS	詳細をコピー	复制详情
+MANUAL DOWNLOAD	手動でダウンロード	手动下载
+Error details	エラー詳細	错误详情
+Update error details copied.	更新エラーの詳細をコピーしました。	已复制更新错误详情。
+Windows could not start the update installer. Your current game has not been changed.	Windowsで更新インストーラーを起動できませんでした。現在のゲームは変更されていません。	Windows 无法启动更新安装程序。当前游戏未被更改。
+Copy the error details for troubleshooting, or download the update manually.	問題の調査用にエラー詳細をコピーするか、更新を手動でダウンロードしてください。	请复制错误详情以便排查问题，或手动下载更新。
+The update could not be applied. Your current game is unchanged.	更新を適用できませんでした。現在のゲームは変更されていません。	无法应用更新。当前游戏未被更改。
+Windows error	Windowsエラー	Windows 错误
 Checking GitHub for updates…	GitHubで更新を確認中…	正在检查GitHub更新…
 Additional course files are missing. Choose Full Repair to download and install them.	追加コースのファイルがありません。完全修復でダウンロードしてインストールしてください。	缺少新增赛道文件。请选择完整修复以下载并安装。
 Could not check GitHub. You can keep playing; try again in a minute.	GitHubを確認できません。プレイは続けられます。しばらくして再試行してください。	无法检查GitHub。您可以继续游戏，稍后重试。
@@ -335,14 +344,14 @@ Pause, online, music and other custom menus only. Apply to change now. Original 
 COMMUNITY TIMES	オンラインランキング	社区排行榜
 VIEW LEADERBOARDS	ランキングを見る	查看排行榜
 DISCORD RICH PRESENCE	Discordにプレイ状況を表示	Discord游戏状态
-New Time Attack submissions require a driving replay. Turning Community Times off stops uploads; existing submissions remain.	タイムの送信にはリプレイが必要です。オフにすると送信を停止します。送信済みの記録は残ります。	提交计时赛成绩需要比赛回放。关闭社区排行榜将停止上传，已提交的记录会保留。
+Community Times shares race times only. Replays stay on this computer. Turning sharing off stops new submissions; posted times remain.	コミュニティタイムは走行タイムのみを送信します。リプレイはこの端末に保存されます。共有をオフにすると新規送信は停止しますが、送信済みのタイムは残ります。	社区排行榜仅上传比赛成绩。回放保存在此电脑上。关闭分享会停止提交新成绩，已提交的成绩会保留。
 Shows your game activity in the Discord desktop app.	Discordデスクトップアプリにプレイ状況を表示します。	在Discord桌面应用中显示您的游戏状态。
 OPEN REPLAY LIBRARY	リプレイ一覧を開く	打开回放列表
 TIME ATTACK	タイムアタック	计时赛
 ON — REQUIRED FOR SHARING	オン（送信に必要）	开（上传必需）
 ONLINE BATTLES	オンライン対戦	在线对战
 LEGEND OF THE STREETS	公道最速伝説	公路最速传说
-Recording choices apply to the next race. Community Times always requires a Time Attack replay, even if optional recording is off.	録画設定は次のレースから適用されます。ランキング送信には録画設定にかかわらずリプレイが必要です。	录制设置从下一场比赛生效。无论是否开启录制，排行榜提交都需要计时赛回放。
+Recording choices apply to the next race. You can share Time Attack results with recording turned off.	録画設定は次のレースから適用されます。録画をオフにしてもタイムアタックの結果を共有できます。	录制设置从下一场比赛生效。关闭录制后仍可分享计时赛成绩。
 Finished recordings are saved on this computer.	完走したリプレイはこの端末に保存されます。	已完成的回放保存在此电脑上。
 Community times ready.	ランキング送信の準備完了。	社区排行榜已就绪。
 STEERING RESPONSE	ステアリング応答	转向响应
@@ -615,7 +624,7 @@ ROOM / {0}	ルーム / {0}	房间 / {0}
 REPLAYS — LOCAL LIBRARY	リプレイ — 保存済み一覧	回放 — 本地列表
 Open file…	ファイルを開く…	打开文件…
 Close viewer	ビューアを閉じる	关闭查看器
-Personal recordings stay on this computer. Only submitted Time Attack replays are uploaded.	個人のリプレイはこの端末に保存されます。送信したタイムアタックのリプレイのみアップロードされます。	个人回放保存在此电脑上。仅提交成绩的计时赛回放会被上传。
+Personal recordings stay on this computer. Community Times uploads race times only.	個人のリプレイはこの端末に保存されます。コミュニティタイムは走行タイムのみを送信します。	个人回放保存在此电脑上。社区排行榜仅上传比赛成绩。
 No saved replays yet. Enable recording in Options > Replays, then finish a race.	保存済みリプレイはありません。設定の「リプレイ」で録画を有効にして完走してください。	暂无回放。请在设置的回放选项中启用录制，然后完成一场比赛。
 {0} recordings · ↑ ↓ / D-pad to select · Enter / A to play · Esc / B to return	{0}件 · ↑ ↓ / 十字キー：選択 · Enter / A：再生 · Esc / B：戻る	{0}个回放 · ↑ ↓ / 十字键选择 · Enter / A播放 · Esc / B返回
 NEXT	次へ	下一项

@@ -10,7 +10,7 @@ public static class Idas3PlayerReplayTests
         Idas3ReplayDetailTests.Run();
         string root=Path.GetFullPath("Verification/player-replays-20260919");Directory.CreateDirectory(root);
         var v=new Idas3GameOptions.Values{replayTimeAttack=false,replayOnline=false,replayLegend=false,communityTimes=true};
-        Check(v.TimeAttackReplayRequired&&Idas3ReplayLibrary.RecordingFlags(v)==8,"Sharing must force capture");
+        Check(!v.TimeAttackReplayRequired&&Idas3ReplayLibrary.RecordingFlags(v)==0,"Sharing times does not force local recording");
         v.communityTimes=false;Check(!v.TimeAttackReplayRequired&&Idas3ReplayLibrary.RecordingFlags(v)==0,"All optional recording disabled");
         v.replayOnline=v.replayLegend=true;Check(Idas3ReplayLibrary.RecordingFlags(v)==6,"Personal flags separate from upload flag");
         var restored=JsonUtility.FromJson<Idas3GameOptions.Values>(JsonUtility.ToJson(v));Check(restored.replayOnline&&restored.replayLegend&&!restored.communityTimes,"Options round trip");
