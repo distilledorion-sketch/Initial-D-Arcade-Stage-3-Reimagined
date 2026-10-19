@@ -2,6 +2,7 @@
 
 ## 0.3.95-community-replays.51 - October 18, 2026
 
+- Verify installer downloads using .NET SHA-256 without requiring the PowerShell `Get-FileHash` module.
 - Disable community leaderboard replay storage, uploads and downloads, and remove existing online recordings while preserving posted times. New clients submit results without replay files; existing clients can continue posting times. Personal replays and local ghosts are unaffected.
 - Add private online-player search by current or previous username, with persistent Player IDs and last-seen history. Admins can ban or unban a registered account while it is offline; renaming preserves the ban. Players enter the directory when they next connect using this update.
 - Enforce online-directory bans alongside Epic sanctions before matchmaking and during connected play. Updated clients use a separate compatible-room protocol; existing Epic sanctions continue to apply.

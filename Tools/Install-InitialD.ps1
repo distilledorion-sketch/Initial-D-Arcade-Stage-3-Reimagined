@@ -3,6 +3,20 @@
 param([string]$Destination)
 $ErrorActionPreference='Stop'
 
+function Get-GameFileHash([string]$Path) {
+    # Use the .NET runtime already required by this installer. Some Windows
+    # PowerShell installations cannot load the Get-FileHash module.
+    $algorithm=[Security.Cryptography.SHA256]::Create()
+    $inputStream=$null
+    try {
+        $inputStream=[IO.File]::OpenRead([IO.Path]::GetFullPath($Path))
+        return [BitConverter]::ToString($algorithm.ComputeHash($inputStream)).Replace('-','').ToLowerInvariant()
+    } finally {
+        if($inputStream){$inputStream.Dispose()}
+        $algorithm.Dispose()
+    }
+}
+
 function Assert-PlainPath([string]$Path) {
     for($part=[IO.Path]::GetFullPath($Path);$part;$part=[IO.Path]::GetDirectoryName($part)) {
         if((Test-Path -LiteralPath $part) -and ((Get-Item -LiteralPath $part -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {throw 'Installation paths must not contain links.'}
@@ -84,7 +98,7 @@ try {
         if(([IO.DriveInfo]::new([IO.Path]::GetPathRoot($cache))).AvailableFreeSpace -lt $asset.size+128MB){throw 'Not enough disk space for the download.'}
         $path=Join-Path $cache $name;Write-Host ("Downloading {0} ({1:N0} MB)..." -f $name,($asset.size/1MB))
         $web.DownloadFile($expected,$path)
-        if((Get-Item -LiteralPath $path).Length -ne $asset.size -or ('sha256:'+(Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()) -cne $asset.digest){throw 'Download checksum mismatch. Nothing was installed.'}
+        if((Get-Item -LiteralPath $path).Length -ne $asset.size -or ('sha256:'+(Get-GameFileHash $path)) -cne $asset.digest){throw 'Download checksum mismatch. Nothing was installed.'}
         $archives+=$path
     }
     Write-Host 'Installing game and course files...'
