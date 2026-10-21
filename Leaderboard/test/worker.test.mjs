@@ -765,6 +765,33 @@ test('maintenance keeps boards readable and submissions retryable without changi
  assert.equal((await(await uploadReplay(shortRun(0,80000))).json()).retained,true);
 });
 
+test('full outage blocks all service routes before storage or identity verification and is reversible',async()=>{
+ await call('/api/v1/register',{token:device});
+ const originalDb=env.DB;
+ env.SERVICE_OFFLINE='true';
+ env.DB={prepare(){throw new Error('Storage must not be accessed while offline');}};
+ env.REPLAYS={list(){throw new Error('Replay storage must not be accessed while offline');}};
+ for(const path of ['/','/admin','/api/v1/board?condition=0&weather=0','/api/v2/snapshot?ruleset=d3-community-v1','/api/v2/activity','/api/admin/online-players','/unknown']){
+  const response=await call(path);
+  assert.equal(response.status,503,path);
+  assert.equal(response.headers.get('Retry-After'),'60');
+  assert.equal(response.headers.get('Cache-Control'),'no-store');
+  if(path==='/')assert.match(await response.text(),/Temporarily offline/);
+ }
+ for(const path of ['/api/v1/register','/api/v3/runs','/api/v1/online/player','/api/admin/login']){
+  const response=await worker.fetch(new Request('https://example.test'+path,{method:'POST',body:'invalid json'}),env);
+  assert.equal(response.status,503,path);
+  assert.equal((await response.json()).code,'service_maintenance');
+ }
+ const health=await(await call('/health')).json();
+ assert.equal(health.ok,false);assert.equal(health.offline,true);assert.equal(health.maintenance,true);
+ await worker.scheduled({},env);
+ env.SERVICE_OFFLINE='false';env.DB=originalDb;delete env.REPLAYS;
+ assert.equal((await call('/api/v1/board?condition=0&weather=0')).status,200);
+ assert.equal((await(await call('/health')).json()).offline,false);
+ assert.equal(db.prepare('SELECT count(*) n FROM devices').get().n,1);
+});
+
 function historicalSource(){
  const historical=new DatabaseSync(':memory:');
  for(const table of ['runs','replays','replay_chunks']){

@@ -34,9 +34,14 @@ async function downloadReplay(env,run,asPackage){
 }
 async function handle(request,env){
  const url=new URL(request.url),path=url.pathname;
+ const offline=env.SERVICE_OFFLINE==='true';
+ if(offline&&!(request.method==='GET'&&path==='/health')){
+  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response('<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Initial D — Maintenance</title><style>body{background:#101114;color:#eee;font:1.15rem system-ui;max-width:38rem;margin:15vh auto;padding:2rem}h1{color:#fff}</style><h1>Temporarily offline</h1><p>The community service is being updated. Please try again later.</p><p>Your saved times have been preserved.</p></html>',{status:503,headers:{...headers,'Content-Type':'text/html; charset=utf-8','Retry-After':'60','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'"}});
+  return json({error:'Community service maintenance. Please try again later.',code:'service_maintenance'},503,{'Retry-After':'60'});
+ }
  if(env.MAINTENANCE==='true'&&request.method!=='GET')return json({error:'Leaderboard maintenance. Your game will retry this upload.'},503,{'Retry-After':'60'});
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
- if(request.method==='GET'&&path==='/health')return json({ok:true,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:replaysDisabled(env)?'disabled':env.REPLAYS?'object':'database',replayUploads:!replaysDisabled(env),replayDownloads:!replaysDisabled(env),retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:env.MAINTENANCE==='true'});
+ if(request.method==='GET'&&path==='/health')return json({ok:!offline,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:replaysDisabled(env)?'disabled':env.REPLAYS?'object':'database',replayUploads:!replaysDisabled(env),replayDownloads:!replaysDisabled(env),retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:offline||env.MAINTENANCE==='true',offline});
  const ip=request.headers.get('CF-Connecting-IP')||'local';
  if(path==='/api/v1/online/player'&&request.method==='POST'){
   await limit(env.ONLINE_AUTH_LIMIT,'online-auth:'+ip);
@@ -266,7 +271,7 @@ async function handle(request,env){
 export default {
  async fetch(request,env){try{return await handle(request,env);}catch(e){if(e instanceof Response)return e;return json({error:e instanceof SyntaxError?'Invalid request JSON.':e.message?.startsWith('Invalid')||e.message?.startsWith('Incomplete')||e.message==='Request too large.'?e.message:'Service temporarily unavailable.'},e instanceof SyntaxError||/^(Invalid|Incomplete|Request too large)/.test(e.message||'')?400:503);}},
  async scheduled(event,env){
-  if(env.MAINTENANCE==='true')return;
+  if(env.SERVICE_OFFLINE==='true'||env.MAINTENANCE==='true')return;
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(now()).run();
   if(retentionEnabled(env))await env.DB.batch([pruneStatement(env)]);
   await cleanupReplayObjects(env,500);

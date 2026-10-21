@@ -4,13 +4,30 @@ Cloudflare Workers + D1 backend for Time Attack rankings and moderation. The gam
 
 ## Local tests
 
-Use Node.js with `node:sqlite` support (Node 22.13+):
+Use Node.js 24.22.1 or a later patched 24.x release (see `.node-version`).
+This is the local test/deployment runtime; the deployed service runs on
+Cloudflare Workers, and the Windows game does not bundle Node.js or PHP.
 
 ```powershell
 node --test test/*.test.mjs
 ```
 
 The tests use an in-memory database and never submit to the public service.
+
+## Maintenance
+
+Set the Worker secret `MAINTENANCE` to `true` to pause writes and scheduled
+cleanup while keeping rankings readable. Set `SERVICE_OFFLINE` to `true` for
+a full service outage: all routes except `GET /health` return HTTP 503 with
+`Retry-After: 60`, and scheduled work stops before accessing storage.
+The health response reports `offline: true` and `ok: false` during that outage.
+Neither mode deletes scores or player records. Restore both values to `false`
+after maintenance to reopen the service.
+
+These switches do not disable Epic Online Services itself. Existing game
+versions can use EOS lobbies without this service, and already-connected
+peer-to-peer races do not pass through the leaderboard backend. Manage EOS
+availability separately in the Epic Developer Portal.
 
 ## Host a separate service
 

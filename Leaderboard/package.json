@@ -1,1 +1,1 @@
-{"name":"initial-d-community-leaderboard","private":true,"type":"module","scripts":{"test":"node --test test/*.test.mjs","dev":"wrangler dev","deploy":"wrangler deploy"},"devDependencies":{"wrangler":"^4.0.0"}}
+{"name":"initial-d-community-leaderboard","private":true,"type":"module","engines":{"node":"^24.22.1"},"scripts":{"test":"node --test test/*.test.mjs","dev":"wrangler dev","deploy":"wrangler deploy"},"devDependencies":{"wrangler":"^4.0.0"}}
