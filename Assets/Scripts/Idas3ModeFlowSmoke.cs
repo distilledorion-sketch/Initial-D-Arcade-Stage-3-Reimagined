@@ -9,6 +9,7 @@ using UnityEngine;
 public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
     private static bool MenuHighlightCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-highlight-check")>=0;
     private static bool MenuPresentationCheck => MenuHighlightCheck || Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-presentation-check")>=0;
+    private static bool StartCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0;
     private bool headlightsCheck;
     private KeyCode headlightKey;
     private ushort headlightPad;
@@ -28,7 +29,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
     }
     [Serializable] private class CommunityQueue {public Idas3CommunityTimes.Run[] runs;}
     private static string pendingRoot; private static Idas3ModeFlowSmoke active;
-    private Idas3SceneGame host; private string root; private int checks; private uint padPulse;
+    private Idas3SceneGame host; private string root; private int checks; private uint padPulse; private ushort boundStartButtons;
     private bool finished,frozen; private double began; private long submittedFrames; private readonly List<string> captures=new List<string>();
     public static bool Configure(ref string saves){
         var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-mode-flow-smoke");if(at<0)return false;
@@ -48,11 +49,13 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(active==null)return false;
         // Isolate the private frame fixtures before bindings/pause/music read
         // hardware; the user may still be playing the ordinary desktop build.
-        key=_=>false;pad=default;return true;
+        key=_=>false;pad=StartCheck?new Idas3ControlBindings.PadState{connected=true,buttons=active.boundStartButtons}:default;return true;
     }
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame){
         if(active==null)return true;if(active.finished||active.frozen)return false;
+        var mapped=frame;
         frame=new Idas3Native.FrameInput{size=(uint)Marshal.SizeOf<Idas3Native.FrameInput>(),flags=1,deltaSeconds=1.0/60};
+        if(StartCheck&&active.boundStartButtons!=0){frame.padConnected=mapped.padConnected;frame.padButtons=mapped.padButtons;}
         if(active.headlightsCheck){
             active.headlightBindings.Poll(k=>k==active.headlightKey,new Idas3ControlBindings.PadState{connected=true,buttons=active.headlightPad},Time.realtimeSinceStartupAsDouble);
             active.headlightBindings.ApplyDriving(ref frame);
@@ -63,6 +66,17 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
     private void Check(bool ok,string message){++checks;if(!ok)throw new InvalidOperationException(message+"; "+Idas3Native.Error());}
     private IEnumerator Frames(int count){for(int i=0;i<count;++i)yield return null;}
     private IEnumerator Pad(uint value){padPulse=value;yield return null;yield return null;}
+    private void BindStart(){
+        var bindings=host.ControlBindings;bindings.BeginEdit();
+        Check(bindings.TrySetDraftPad(Idas3ControlBindings.ActionId.Start,Idas3ControlBindings.PadInput.B)&&bindings.ApplyDraft(),
+            "Could not bind result/story Start to controller B");
+    }
+    private IEnumerator BoundStart(){
+        boundStartButtons=0x2000;yield return Frames(2);
+        Check((host.DiagnosticSubmittedInput.padButtons&0x10)!=0&&(host.DiagnosticSubmittedInput.padButtons&0x2000)==0,
+            "Bound result/story Start did not reach native without its B alias");
+    }
+    private IEnumerator ReleaseBoundStart(){boundStartButtons=0;yield return Frames(4);}
     private IEnumerator Until(Func<bool> predicate,int count,string message){for(int i=0;i<count&&!predicate();++i)yield return null;Check(predicate(),message);}
     private IEnumerator Fixture(int scene){Check(Idas3SceneModeFlowFixture(scene)==1,"Fixture "+scene);yield return Frames(2);}
     private IEnumerator ChooseFullTuneCar(){
@@ -948,17 +962,20 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         frozen=true;Check(Idas3SceneModeFlowFixture(-1)==1,"Native App finish/timeup and Bunta regression");frozen=false;
         frozen=true;Check(Idas3SceneModeFlowFixture(-2)==1,"Native App original coaching and personal record sequence");frozen=false;
         frozen=true;Check(Idas3SceneModeFlowFixture(-3)==1,"Native App solo and multiplayer finish music routing");frozen=false;
+        if(StartCheck)BindStart();
         yield return Fixture(0);yield return Frames(120);
         Check(Idas3SceneModeFlowValue(3)==4,"Bunta four-star progress");yield return Capture("bunta-course-four-stars");
         yield return Fixture(1);yield return Frames(100);
         Check(Idas3SceneModeFlowValue(0)==1&&Idas3SceneModeFlowValue(2)==33,"Bunta challenge scene/music");
-        yield return Capture("bunta-challenge");yield return Pad(0x10);
+        yield return Capture("bunta-challenge");if(StartCheck)yield return BoundStart();else yield return Pad(0x10);
         yield return Until(()=>Idas3SceneModeFlowValue(0)==0,100,"Controller START closes challenge into loading");
+        if(StartCheck){yield return Frames(8);Check(Idas3SceneModeFlowValue(0)==0,"Held bound Start skipped a second story owner");yield return ReleaseBoundStart();}
         for(int scene=2;scene<=3;++scene){
             yield return Fixture(scene);yield return Frames(100);
             Check(Idas3SceneModeFlowValue(0)==1&&Idas3SceneModeFlowValue(2)==(scene==2?34:35),"Bunta result scene/music");
-            yield return Capture(scene==2?"bunta-win":"bunta-loss");yield return Pad(0x10);
+            yield return Capture(scene==2?"bunta-win":"bunta-loss");if(StartCheck)yield return BoundStart();else yield return Pad(0x10);
             yield return Until(()=>Idas3SceneModeFlowValue(0)==0&&Idas3SceneModeFlowValue(4)==1,100,"Bunta result returns to course selection");
+            if(StartCheck){yield return Frames(8);Check(Idas3SceneModeFlowValue(0)==0,"Held bound Start skipped a second story result owner");yield return ReleaseBoundStart();}
         }
         yield return Fixture(4);yield return Frames(60);
         Check(Idas3SceneModeFlowValue(1)==1&&Idas3SceneModeFlowValue(2)==2,"TA analysis scene/music");
@@ -1038,12 +1055,14 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         File.AppendAllText(Path.Combine(root,"finish-audio.txt"),names[variant]+": waited "+audioSamples+" frames, last WIN sample "+previousCursor+", endpoint observed "+sawAudioEnd+"\n");
         }
         // Start skips from either FINISH or the subsequent record message.
+        if(StartCheck)BindStart();
         foreach(int wait in new[]{30,180}){
             yield return Fixture(66);yield return Frames(wait);
             Check(Idas3SceneModeFlowValue(19)==0,"Start test begins during audio playback");
-            yield return Pad(0x10);
+            if(StartCheck)yield return BoundStart();else yield return Pad(0x10);
             yield return Until(()=>Idas3SceneModeFlowValue(0)==1,4,"Start promptly skips finish audio into analysis");
             Check(Idas3SceneModeFlowValue(22)==1,"Start explicitly marks the audio skip");
+            if(StartCheck){yield return Frames(8);Check(Idas3SceneModeFlowValue(0)==1,"Held bound Start skipped past analysis");yield return ReleaseBoundStart();}
         }
         Finish(true,null);
     }

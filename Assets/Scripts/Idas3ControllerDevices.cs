@@ -322,7 +322,8 @@ public sealed class Idas3ControllerDevices : IDisposable
             if (!button && !trigger && axis.normalize && axis.normalizeZero <= axis.normalizeMin) minimum = 0;
             if (axis.invert && minimum == 0 && !button && !trigger) { minimum = -1; maximum = 0; }
             string name = string.IsNullOrWhiteSpace(control.displayName) ? path : control.displayName;
-            device.controls.Add(new Idas3ControllerControl { path = path, label = name, minimum = minimum, maximum = maximum, button = button });
+            device.controls.Add(new Idas3ControllerControl { path = path, label = name, minimum = minimum, maximum = maximum, button = button,
+                fallbackButtons = input is Gamepad ? StandardButtonMask(path) : (ushort)0 });
             device.axes.Add(axis);
         }
         device.activityBaseline = new float[device.controls.Count];
@@ -400,10 +401,24 @@ public sealed class Idas3ControllerDevices : IDisposable
     {
         string[] names = { "dpad/up", "dpad/down", "dpad/left", "dpad/right", "start", "select", "leftStickPress", "rightStickPress", "leftShoulder", "rightShoulder", "buttonSouth", "buttonEast", "buttonWest", "buttonNorth", "leftTrigger", "rightTrigger", "leftStick/x", "leftStick/y", "rightStick/x", "rightStick/y" };
         string[] labels = { "D-pad up", "D-pad down", "D-pad left", "D-pad right", "Start", "Back", "Left stick press", "Right stick press", "Left shoulder", "Right shoulder", "A / south", "B / east", "X / west", "Y / north", "Left trigger", "Right trigger", "Left stick X", "Left stick Y", "Right stick X", "Right stick Y" };
-        for (int i = 0; i < names.Length; ++i) device.controls.Add(new Idas3ControllerControl { path = names[i], label = labels[i], minimum = i < 16 ? 0 : -1, maximum = 1, button = i < 14 });
+        for (int i = 0; i < names.Length; ++i) device.controls.Add(new Idas3ControllerControl { path = names[i], label = labels[i], minimum = i < 16 ? 0 : -1, maximum = 1, button = i < 14,
+            fallbackButtons=StandardButtonMask(names[i]) });
         device.activityBaseline = new float[names.Length];
     }
     private static readonly ushort[] ButtonMasks = { 1, 2, 4, 8, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x1000, 0x2000, 0x4000, 0x8000 };
+    private static ushort StandardButtonMask(string path)
+    {
+        switch(path)
+        {
+            case "dpad/up": return 1; case "dpad/down": return 2; case "dpad/left": return 4; case "dpad/right": return 8;
+            case "start": return 0x10; case "select": return 0x20;
+            case "leftStickPress": return 0x40; case "rightStickPress": return 0x80;
+            case "leftShoulder": return 0x100; case "rightShoulder": return 0x200;
+            case "buttonSouth": return 0x1000; case "buttonEast": return 0x2000;
+            case "buttonWest": return 0x4000; case "buttonNorth": return 0x8000;
+            default: return 0;
+        }
+    }
     private static float Signed(short value) => value < 0 ? value / 32768f : value / 32767f;
     private static short Stick(float value) => (short)Mathf.Clamp(Mathf.RoundToInt(value * (value < 0 ? 32768 : 32767)), -32768, 32767);
     private static void ReadDevice(Device device)
@@ -418,7 +433,8 @@ public sealed class Idas3ControllerDevices : IDisposable
         }
         for (int i = 0; i < device.controls.Count; ++i)
         {
-            var control = device.controls[i]; float value = device.axes[i].ReadUnprocessedValue();
+            var control = device.controls[i]; if(device.generic)control.fallbackButtons=0;
+            float value = device.axes[i].ReadUnprocessedValue();
             control.value = float.IsNaN(value) || float.IsInfinity(value) ? 0 : control.button ? value >= .5f ? 1 : 0 : Mathf.Clamp(value, control.minimum, control.maximum);
         }
         if (device.unity is Gamepad gamepad) { device.pad = Idas3GamepadInput.ReadUnityPad(gamepad); return; }
@@ -448,15 +464,18 @@ public sealed class Idas3ControllerDevices : IDisposable
                 else if (path == "dpadLeft") path = "dpad/left";
                 else if (path == "dpadRight") path = "dpad/right";
             }
-            if (path == "dpad/up" && control.value > .5f) state.buttons |= 1;
-            else if (path == "dpad/down" && control.value > .5f) state.buttons |= 2;
-            else if (path == "dpad/left" && control.value > .5f) state.buttons |= 4;
-            else if (path == "dpad/right" && control.value > .5f) state.buttons |= 8;
-            else if (path == "start" && control.value > .5f) state.buttons |= 0x10;
-            else if (path == "select" && control.value > .5f) state.buttons |= 0x20;
-            else if (path == "start" || path == "select") continue;
+            else if(device.unity is Joystick&&path.StartsWith("hatswitch/",StringComparison.Ordinal))
+                path="dpad/"+path.Substring("hatswitch/".Length);
+            if (path == "dpad/up") {control.fallbackButtons=1;if(control.value>.5f)state.buttons|=1;}
+            else if (path == "dpad/down") {control.fallbackButtons=2;if(control.value>.5f)state.buttons|=2;}
+            else if (path == "dpad/left") {control.fallbackButtons=4;if(control.value>.5f)state.buttons|=4;}
+            else if (path == "dpad/right") {control.fallbackButtons=8;if(control.value>.5f)state.buttons|=8;}
+            else if (path == "start") {control.fallbackButtons=0x10;if(control.value>.5f)state.buttons|=0x10;}
+            else if (path == "select") {control.fallbackButtons=0x20;if(control.value>.5f)state.buttons|=0x20;}
             else if (!path.StartsWith("dpad/", StringComparison.Ordinal))
-            { if (control.value > .5f && ordinal < 2) state.buttons |= ordinal == 0 ? (ushort)0x1000 : (ushort)0x2000; ++ordinal; }
+            { control.fallbackButtons=ordinal==0?(ushort)0x1000:ordinal==1?(ushort)0x2000:(ushort)0;
+              if(!device.descriptorControls&&device.unity is Joystick&&path=="trigger")control.fallbackButtons|=0x1000;
+              if(control.value>.5f)state.buttons|=control.fallbackButtons; ++ordinal; }
         }
         device.pad = state;
     }

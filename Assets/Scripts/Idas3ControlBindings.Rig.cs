@@ -7,6 +7,7 @@ public sealed partial class Idas3ControlBindings
     readonly Dictionary<string,RigState> rigStates=new Dictionary<string,RigState>(StringComparer.Ordinal);
     readonly List<string> expiredRigStates=new List<string>();
     readonly float[] rigAmounts=new float[ActionCount];
+    readonly HashSet<string> rigStartSources=new HashSet<string>(StringComparer.Ordinal);
 
     // Profiles remain independent in the editor. Only explicitly saved generic
     // device bindings join the active wheel rig; gamepads and keyboard-only
@@ -14,6 +15,7 @@ public sealed partial class Idas3ControlBindings
     void PollRig(IReadOnlyList<Idas3ControllerDevices.RigSample> samples)
     {
         Array.Clear(rigAmounts,0,rigAmounts.Length);
+        rigStartSources.Clear();
         foreach(var state in rigStates.Values)state.seen=false;
         if(genericProfile&&samples!=null)foreach(var sample in samples){
             if(sample==null||string.IsNullOrEmpty(sample.key)||sample.profile==activeProfileKey||
@@ -34,7 +36,10 @@ public sealed partial class Idas3ControlBindings
                 int bit=1<<i;
                 if(fresh&&amount>.15f)state.blocked|=bit;
                 if(amount<=.15f)state.blocked&=~bit;
-                if((state.blocked&bit)==0)rigAmounts[i]=Math.Max(rigAmounts[i],amount);
+                if((state.blocked&bit)==0){
+                    rigAmounts[i]=Math.Max(rigAmounts[i],amount);
+                    if(i==(int)ActionId.Start&&amount>=.5f)rigStartSources.Add("rig:"+sample.key+":"+binding.controlPath);
+                }
             }
         }
         expiredRigStates.Clear();foreach(var pair in rigStates)if(!pair.Value.seen)expiredRigStates.Add(pair.Key);

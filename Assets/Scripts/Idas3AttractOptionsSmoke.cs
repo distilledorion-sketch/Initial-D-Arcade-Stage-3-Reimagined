@@ -931,6 +931,20 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         yield return Capture("attract-controller-remap");yield return Release();menu.Back();yield return Release();CheckClosed("Remapped controller options did not close");
         Check(!options.Current.wheelForceFeedback,"Attract tests enabled hardware force feedback");
 
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0){
+            bindings.BeginEdit();Check(bindings.TrySetDraftPad(Idas3ControlBindings.ActionId.Start,Idas3ControlBindings.PadInput.B)&&bindings.ApplyDraft(),
+                "Could not bind frontend Start to controller B");
+            yield return Release();CheckTitle("Binding Start changed the original title");
+            buttons=0x2000;yield return Frames(3);
+            Check((host.DiagnosticSubmittedInput.padButtons&0x10)!=0&&(host.DiagnosticSubmittedInput.padButtons&0x2000)==0,
+                "Bound B did not reach frontend as Start without its Back alias");
+            Check((host.DiagnosticSubmittedInput.key0&(1u<<27))==0,"Bound frontend Start emitted Escape");
+            yield return Until(()=>host.Status.frontendStage!=0,8,"Bound B Start did not advance the original frontend");
+            int stage=host.Status.frontendStage;yield return Frames(8);
+            Check(host.Status.frontendStage==stage&&!menu.IsOpen,"Held bound Start repeated across the frontend transition");
+            yield return Release();observations.Add("bound-B-start-advances-frontend-once-without-back-or-escape");Finish(true,null);yield break;
+        }
+
         pulse=13;yield return Until(()=>host.Status.frontendStage!=0,8,"Released Enter did not start the normal game flow");
         yield return Frames(3);Check(!menu.IsOpen&&!menu.AttractPromptVisible,"Attract options prompt leaked outside Title");
         observations.Add("normal-enter-starts-after-release");Finish(true,null);
