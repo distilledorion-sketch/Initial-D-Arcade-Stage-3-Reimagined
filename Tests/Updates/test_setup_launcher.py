@@ -4,6 +4,7 @@ Nonempty destination sentinels stop setup before network access. Unlike
 dot-sourcing the extraction helpers, -File exercises parameter binding.
 """
 from pathlib import Path
+import argparse
 import json
 import os
 import shutil
@@ -12,7 +13,10 @@ import uuid
 
 
 repo = Path(__file__).resolve().parents[2]
-proof = repo / 'Verification' / ('setup-launcher-' + uuid.uuid4().hex)
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--report-dir', type=Path)
+args = parser.parse_args()
+proof = (args.report_dir or repo / 'Verification' / ('setup-launcher-' + uuid.uuid4().hex)).resolve()
 proof.mkdir(parents=True)
 shell = Path(os.environ['SystemRoot']) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
 cmd = Path(os.environ['SystemRoot']) / 'System32/cmd.exe'
