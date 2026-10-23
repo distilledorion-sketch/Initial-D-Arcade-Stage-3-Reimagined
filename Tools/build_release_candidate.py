@@ -42,8 +42,9 @@ def build_inputs(progress=False):
     Native/userdata, ROMs, Downloads, or desktop installations.
     """
     files = {}
+    source_root = require_plain_path(ROOT)
     for tree in INPUT_TREES:
-        base = require_plain_path(ROOT / tree)
+        base = require_plain_path(source_root / tree)
         if not base.is_dir():
             raise FileNotFoundError("Build input missing: " + tree)
         if progress:
@@ -58,7 +59,7 @@ def build_inputs(progress=False):
                 if stat.S_ISLNK(info.st_mode) or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
                     raise ValueError("Build input contains a link: " + str(path))
                 if stat.S_ISREG(info.st_mode):
-                    files[path.relative_to(ROOT).as_posix()] = {"bytes": info.st_size, "sha256": verify.sha256(path)}
+                    files[path.relative_to(source_root).as_posix()] = {"bytes": info.st_size, "sha256": verify.sha256(path)}
     return {"inventorySha256": verify.digest_json(files), "fileCount": len(files), "files": files,
             "scope": "Build-input hashes only. Includes local client configuration and bundled binaries; no credential values."}
 
