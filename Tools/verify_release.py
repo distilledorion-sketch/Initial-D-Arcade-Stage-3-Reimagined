@@ -137,7 +137,7 @@ class Run:
     def save(self):
         write_json(self.output / "summary.json", self.summary)
 
-    def command(self, name, command, cwd=ROOT, timeout=180, report=None):
+    def command(self, name, command, cwd=ROOT, timeout=180, report=None, env=None):
         entry = {"name": name, "passed": False, "command": list(map(str, command)),
                  "log": name + ".log"}
         self.summary["checks"].append(entry)
@@ -146,12 +146,24 @@ class Run:
         print("RUN " + name, flush=True)
         try:
             with (self.output / entry["log"]).open("wb") as log:
-                completed = subprocess.run(list(map(str, command)), cwd=cwd, stdout=log,
-                                           stderr=subprocess.STDOUT, timeout=timeout,
-                                           **hidden_process_options())
-            entry["exitCode"] = completed.returncode
-            if completed.returncode:
-                raise RuntimeError(f"{name} exited {completed.returncode}; see {entry['log']}")
+                with subprocess.Popen(list(map(str, command)), cwd=cwd, stdout=log,
+                                      stderr=subprocess.STDOUT, env=env,
+                                      **hidden_process_options()) as process:
+                    try:
+                        exit_code = process.wait(timeout=timeout)
+                    except subprocess.TimeoutExpired:
+                        # Only terminate this command and its children, never
+                        # another editor/game already running on the machine.
+                        if os.name == "nt":
+                            subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                                           stdout=log, stderr=subprocess.STDOUT, **hidden_process_options())
+                        if process.poll() is None:
+                            process.kill()
+                        process.wait()
+                        raise
+            entry["exitCode"] = exit_code
+            if exit_code:
+                raise RuntimeError(f"{name} exited {exit_code}; see {entry['log']}")
             if report is not None:
                 data = require_passed_report(report)
                 entry["report"] = str(report.relative_to(self.output))
@@ -192,6 +204,7 @@ def run_source(run, args):
     run.summary["tools"]["csharpCompilerSha256"] = sha256(compiler)
     run.save()
     run.command("verification-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_verification.py"])
+    run.command("fresh-build-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_fresh_build.py"])
     tests = sorted(str(path) for path in (ROOT / "Leaderboard/test").glob("*.test.mjs"))
     if not tests:
         raise RuntimeError("No backend tests found")

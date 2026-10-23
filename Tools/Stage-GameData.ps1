@@ -21,6 +21,7 @@ param(
     [string]$SourceRoot,
     [string]$DestinationRoot,
     [string]$ManifestPath,
+    [string]$PackerPath,
     [switch]$InventoryOnly,
     [switch]$CreateFreshSaveSeed,
     [switch]$CompressAssets
@@ -146,7 +147,7 @@ if (-not $InventoryOnly) {
         }
     }
     if ($CompressAssets) {
-        $packer = Join-Path $SourceRoot 'bin/pack_native_assets.exe'
+        $packer = if ($PackerPath) { [IO.Path]::GetFullPath($PackerPath) } else { Join-Path $SourceRoot 'bin/pack_native_assets.exe' }
         if (-not (Test-Path -LiteralPath $packer -PathType Leaf)) { throw 'Build the pack_native_assets target before compressed staging.' }
         & $packer $sourceData $targetData | Out-Host
         if ($LASTEXITCODE -ne 0) { throw 'Lossless native asset packing failed.' }

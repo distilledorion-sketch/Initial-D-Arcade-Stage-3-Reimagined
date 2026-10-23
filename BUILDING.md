@@ -41,6 +41,8 @@ The public checkout uses the nine packs in `RuntimeAssets`: `HAKONE`, `SADAMINE`
 
 ## Tests
 
+For a new Windows release candidate with build provenance, use `python -X utf8 Tools/build_release_candidate.py --original-image D:/reference/idas3_main_0C020000.bin --output Verification/fresh-candidate`. It builds into a new folder, compiles and checks the native plugins, and records source, content, toolchain and player hashes. The reference image is required for the selected native parity tests and is never packaged. Unity needs an active Editor license. See [release verification](docs/release-verification.md) for the evidence scope and subsequent acceptance checks.
+
 Run `python -X utf8 Tools/verify_release.py --suite source` for the maintained source regression suite. It requires Python 3.11+, Visual Studio Roslyn/.NET Framework and the patched Node 24 version specified in `Leaderboard/package.json`. Use `--node` for a Node installation outside PATH. Each run writes a fresh evidence directory and a JSON summary, including failures. See [release verification](docs/release-verification.md) for candidate verification and the remaining release gates.
 
 Native CMake registers tests through CTest. Many asset tests expect this repository's runtime data; independent reference tests also require explicitly configured reference inputs. Build a test target before selecting it with CTest.
