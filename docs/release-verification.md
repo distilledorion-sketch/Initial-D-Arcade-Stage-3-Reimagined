@@ -46,3 +46,17 @@ The default `all` suite checks blocked startup and its real GUI capture, mode fl
 Use `--suite startup` to run only the missing-ROM check without supplying a ROM, or `--suite flows` for mode flow and the three local pairs. Unselected checks remain listed as pending. These are hidden Windows processes: native camera captures are available, but the paired tests explicitly omit actual window/IMGUI pixels. The missing-ROM GUI capture is still required by the startup suite; a hidden-window capture timeout fails that suite even if its startup-state assertions pass.
 
 These checks do **not** establish Internet/EOS matchmaking, nonzero win/loss reward persistence, every finish order, physical controller recovery, or all-language/resolution presentation. Those acceptance gates remain separate. The existing mode-flow diagnostic also includes controlled visual fixtures; it is not a human-driven complete race or original-game parity measurement.
+
+## Fresh-install extraction and failure recovery
+
+The source suite runs the real PowerShell setup extraction functions against disposable two-archive fixtures. It checks damaged compressed data, late extraction errors, a locked destination, retries, paths with trailing separators, existing player files, archive validation, and cleanup containment. The installer extracts into a unique sibling directory and publishes it only after both archives finish. A caught extraction or publication failure cleans only that invocation's staging folder and leaves the destination absent or empty. Existing player files are refused before extraction.
+
+For a full-sized install check against the exact fresh candidate:
+
+```powershell
+python -X utf8 Tests/Updates/test_setup_extraction.py --build-evidence Verification/fresh-candidate --report-dir Verification/setup-candidate
+```
+
+This also creates core/course ZIPs from the shipping allowlist, checks both CRCs and download-size limits, runs the actual setup extraction, and hashes every installed file against the candidate before and after the operation. It snapshots the tested installer in the evidence directory and records its hash and extraction duration. To reuse archives from an earlier test, add `--archives <core.zip> <courses.zip>`; their inventory and installed bytes must still match the fresh-build evidence.
+
+It does not download from GitHub, launch the game, or exercise an update of an existing installation. Abrupt process termination/power loss and the native update helper's recovery still require separate acceptance; caught-error tests are not substitutes for those cases.

@@ -231,6 +231,9 @@ def run_source(run, args):
     folder = run.output / "setup-launcher"
     run.command("setup-launcher", [sys.executable, "-X", "utf8", "Tests/Updates/test_setup_launcher.py",
                                     "--report-dir", folder], report=folder / "report.json")
+    folder = run.output / "setup-extraction"
+    run.command("setup-extraction", [sys.executable, "-X", "utf8", "Tests/Updates/test_setup_extraction.py",
+                                      "--report-dir", folder], report=folder / "report.json")
 
 
 def main():
