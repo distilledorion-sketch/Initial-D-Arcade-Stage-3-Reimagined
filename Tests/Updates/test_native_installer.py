@@ -1,4 +1,5 @@
 from pathlib import Path
+from framework_runtime import configure_managed_test_driver
 import argparse,ctypes,hashlib,json,os,struct,subprocess,sys,time,uuid,zipfile
 root=Path(__file__).resolve().parents[2]
 parser=argparse.ArgumentParser(description='Native installation, rollback and process handoff with disposable fixtures; no desktop UI automation.')
@@ -9,6 +10,7 @@ args=parser.parse_args()
 if sys.flags.optimize:parser.error('Assertions must stay enabled')
 proof=(args.report_dir or root/'Verification'/('native-installer-'+uuid.uuid4().hex)).resolve();proof.mkdir(parents=True,exist_ok=False)
 helper=args.helper.resolve(strict=True);child=args.child.resolve(strict=True);driver=proof/'StageDriver.exe'
+configure_managed_test_driver(driver)
 csc=Path(os.environ['SystemRoot'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 r=subprocess.run([str(csc),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll',str(root/'Assets/Scripts/Idas3UpdatePaths.cs'),str(root/'Assets/Scripts/Idas3UpdateStaging.cs'),str(root/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True);assert r.returncode==0,r.stdout+r.stderr
 base=proof/'fixtures';base.mkdir()

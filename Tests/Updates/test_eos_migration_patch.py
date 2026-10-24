@@ -5,6 +5,7 @@ files. EOS target files must be staged, retained files verified, and saves kept.
 All input binaries are inert fixture bytes; no game or online service is run.
 """
 from pathlib import Path
+from framework_runtime import configure_managed_test_driver
 import argparse
 import hashlib
 import importlib.util
@@ -60,6 +61,7 @@ def main():
               'Retired files are absent from patch payload and target inventory')
     compiler=Path(os.environ['SystemRoot'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     driver=proof/'StageDriver.exe'
+    configure_managed_test_driver(driver)
     run=subprocess.run([str(compiler),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll',
                         '/r:System.Web.Extensions.dll',str(ROOT/'Assets/Scripts/Idas3UpdatePaths.cs'),str(ROOT/'Assets/Scripts/Idas3UpdateStaging.cs'),str(ROOT/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True)
     (proof/'compile.log').write_text(run.stdout+run.stderr)

@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from framework_runtime import configure_managed_test_driver
 import struct
 import subprocess
 import sys
@@ -54,6 +55,7 @@ def main():
     report = {"passed": False, "scope": __doc__.strip(), "helperSha256": sha(helper),
               "stagingSha256": sha(ROOT / "Assets/Scripts/Idas3UpdateStaging.cs"), "tests": []}
     driver = proof / "StageDriver.exe"
+    configure_managed_test_driver(driver)
     compiler = Path(os.environ["SystemRoot"]) / "Microsoft.NET/Framework64/v4.0.30319/csc.exe"
     kernel = ctypes.WinDLL("kernel32", use_last_error=True)
     kernel.CreateFileW.argtypes = [ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32, ctypes.c_void_p,

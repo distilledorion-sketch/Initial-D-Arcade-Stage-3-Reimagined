@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from framework_runtime import configure_managed_test_driver
 import subprocess
 import uuid
 import zipfile
@@ -77,12 +78,10 @@ def main():
 
     def compile_driver(name, sources, references):
         exe = proof / (name + ".exe")
+        configure_managed_test_driver(exe)
         result = run([compiler, "/nologo", "/out:" + str(exe), *["/r:" + r for r in references],
                       ROOT / "Assets/Scripts/Idas3UpdatePaths.cs", *[ROOT / s for s in sources]])
         assert result.returncode == 0, result.stdout + result.stderr
-        exe.with_suffix(".exe.config").write_text('<configuration><runtime><AppContextSwitchOverrides '
-            'value="Switch.System.IO.UseLegacyPathHandling=false;Switch.System.IO.BlockLongPaths=false" />'
-            '</runtime></configuration>', encoding="utf-8")
         return exe
 
     def fixture(name):
