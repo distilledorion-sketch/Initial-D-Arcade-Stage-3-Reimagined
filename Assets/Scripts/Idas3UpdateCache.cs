@@ -18,8 +18,8 @@ public static class Idas3UpdateCache
     private static readonly object gate = new object();
     private const int MaximumEntries = 100000, MaximumDepth = 48, MaximumStatusBytes = 32768;
     private static readonly HashSet<string> files = new HashSet<string>(StringComparer.OrdinalIgnoreCase) {
-        "game.zip", "install.exe", "install.ps1", "install.json", "install.plan", "ready", "result.json", "result.json.tmp",
-        "error.txt", "patch-invalid", "owner.json", ".cleanup-lock", ".install-lock"
+        "game.zip", "content.zip", "install.exe", "install.ps1", "install.json", "install.plan", "ready", "result.json", "result.json.tmp",
+        "error.txt", "recovery-error.txt", "patch-invalid", "owner.json", ".cleanup-lock", ".install-lock"
     };
     public sealed class CleanupSummary { public int removed, kept, failed; }
     [DataContract] private sealed class Result {
@@ -201,7 +201,7 @@ public static class Idas3UpdateCache
                         if (Directory.Exists(path)) DeleteTree(path, 1, ref count);
                     }
                     // Keep ownership/status until payload deletion succeeds.
-                    foreach (string name in new[] { "game.zip", "install.plan", "install.json", "install.ps1", "ready", "patch-invalid", "result.json.tmp", ".install-lock", "error.txt" }) {
+                    foreach (string name in new[] { "game.zip", "content.zip", "install.plan", "install.json", "install.ps1", "ready", "patch-invalid", "result.json.tmp", ".install-lock", "error.txt", "recovery-error.txt" }) {
                         string path = Path.Combine(session, name); NoLinks(path); File.Delete(path);
                     }
                 }

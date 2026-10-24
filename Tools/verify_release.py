@@ -206,6 +206,7 @@ def run_source(run, args):
     run.command("verification-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_verification.py"])
     run.command("fresh-build-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_fresh_build.py"])
     run.command("packaged-player-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_packaged_player.py"])
+    run.command("setup-package-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_setup_package.py"])
     tests = sorted(str(path) for path in (ROOT / "Leaderboard/test").glob("*.test.mjs"))
     if not tests:
         raise RuntimeError("No backend tests found")
@@ -234,6 +235,39 @@ def run_source(run, args):
     folder = run.output / "setup-extraction"
     run.command("setup-extraction", [sys.executable, "-X", "utf8", "Tests/Updates/test_setup_extraction.py",
                                       "--report-dir", folder], report=folder / "report.json")
+    run_updater(run)
+
+
+def run_updater(run):
+    # Build the current helper source and also exercise the binary that Unity
+    # actually embeds. A passing source build cannot stand in for a stale resource.
+    builder=load_tool("updater_build_tools", "build_release_candidate.py")
+    studio,generator=builder.find_visual_studio()
+    cmake=shutil.which("cmake")
+    if not cmake:raise FileNotFoundError("CMake is required for native updater verification")
+    folder=run.output/"updater"
+    binaries=folder/"bin"
+    run.command("updater-configure",[cmake,"-S",ROOT/"Tools/Updater","-B",folder/"build","-G",generator,"-A","x64",
+                "-DCMAKE_GENERATOR_INSTANCE="+studio["installationPath"],"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="+binaries.as_posix()],timeout=300)
+    run.command("updater-build",[cmake,"--build",folder/"build","--config","Release","--parallel","2"],timeout=300)
+    child=binaries/"Release/UpdateTestChild.exe"
+    bundled=folder/"bundled.exe"
+    shutil.copyfile(ROOT/"Assets/Resources/UpdateInstaller.exe.bytes",bundled)
+    for kind,helper in (("compiled",binaries/"Release/Idas3UpdateInstaller.exe"),("bundled",bundled)):
+        normal=folder/(kind+"-installation")
+        recovery=folder/(kind+"-recovery")
+        run.command("updater-"+kind+"-installation",[sys.executable,"-X","utf8","Tests/Updates/test_native_installer.py",
+                    "--helper",helper,"--child",child,"--report-dir",normal],timeout=180,report=normal/"native-windows-report.json")
+        run.command("updater-"+kind+"-recovery",[sys.executable,"-X","utf8","Tests/Updates/test_native_recovery.py",
+                    "--helper",helper,"--child",child,"--seed-helper",bundled,"--report-dir",recovery],timeout=300,report=recovery/"report.json")
+    cache=folder/"cache"
+    run.command("updater-cache",[sys.executable,"-X","utf8","Tests/Updates/test_cache.py","--report-dir",cache],report=cache/"report.json")
+    launcher=folder/"launcher"
+    run.command("recovery-launcher",[sys.executable,"-X","utf8","Tests/Updates/test_recovery_launcher.py",
+                "--helper",bundled,"--report-dir",launcher],report=launcher/"report.json")
+    run.command("setup-package",[sys.executable,"-X","utf8","Tools/Build-SetupPackage.py","--helper",bundled,
+                "--archive",folder/"Initial-D-Setup.zip","--installation-report",folder/"bundled-installation/native-windows-report.json",
+                "--recovery-report",folder/"bundled-recovery/report.json","--launcher-report",launcher/"report.json"],report=folder/"Initial-D-Setup.report.json")
 
 
 def main():

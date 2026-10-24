@@ -60,3 +60,17 @@ python -X utf8 Tests/Updates/test_setup_extraction.py --build-evidence Verificat
 This also creates core/course ZIPs from the shipping allowlist, checks both CRCs and download-size limits, runs the actual setup extraction, and hashes every installed file against the candidate before and after the operation. It snapshots the tested installer in the evidence directory and records its hash and extraction duration. To reuse archives from an earlier test, add `--archives <core.zip> <courses.zip>`; their inventory and installed bytes must still match the fresh-build evidence.
 
 It does not download from GitHub, launch the game, or exercise an update of an existing installation. Abrupt process termination/power loss and the native update helper's recovery still require separate acceptance; caught-error tests are not substitutes for those cases.
+
+## Native update recovery and setup packaging
+
+The source suite now builds the native updater with the selected Visual Studio C++ toolchain. It separately runs normal installation/rollback/handoff and interruption/recovery checks against that build and the exact binary embedded in `Assets/Resources/UpdateInstaller.exe.bytes`. Both must pass. Recovery checks use disposable files, verify all original hashes and private-file preservation, reject invalid plans/status/backups, and forcibly terminate only test-owned processes during installation and during recovery. A repeated recovery must complete correctly. These process-termination checks do not simulate storage failure or power loss.
+
+The setup recovery launcher is exercised through actual CMD and Windows PowerShell entry points with isolated `TEMP` caches, including a missing game executable, Japanese/spaced paths, multiple installations, cancellation and a damaged backup. Managed cache checks establish that failed recoveries retain backups and verified recoveries permit cleanup of both downloads. The desktop restart-failure message box is explicitly outside the automated native installer suite.
+
+`Tools/Build-SetupPackage.py` requires the native installation report, full recovery report and launcher report before creating a new setup ZIP. It rejects mismatched helper/launcher hashes, missing or failed cases and omitted process-interruption tests. Example:
+
+```powershell
+python Tools/Build-SetupPackage.py --helper <tested-helper.exe> --archive <new-setup.zip> --installation-report <native-windows-report.json> --recovery-report <recovery-report.json> --launcher-report <launcher-report.json>
+```
+
+The ZIP contains six explicit files: installation and recovery CMD/PowerShell pairs, the verified native helper and a README. Creation does not publish an update. Players run `Recover Initial D.cmd` from the extracted setup ZIP; the old game need not launch. Normal game startup does not automatically run recovery. A new full candidate is still required after updating the embedded helper or managed cache code.

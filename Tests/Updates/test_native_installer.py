@@ -1,10 +1,17 @@
 from pathlib import Path
-import ctypes,hashlib,json,os,struct,subprocess,time,uuid,zipfile
-root=Path(__file__).resolve().parents[2];proof=root/'Verification/wine-updater-20260922';proof.mkdir(exist_ok=True)
-helper=root/'Native/build-update-helper/Idas3UpdateInstaller.exe';child=root/'Native/build-update-helper/UpdateTestChild.exe';driver=proof/'StageDriver.exe'
+import argparse,ctypes,hashlib,json,os,struct,subprocess,sys,time,uuid,zipfile
+root=Path(__file__).resolve().parents[2]
+parser=argparse.ArgumentParser(description='Native installation, rollback and process handoff with disposable fixtures; no desktop UI automation.')
+parser.add_argument('--helper',type=Path,required=True)
+parser.add_argument('--child',type=Path,required=True)
+parser.add_argument('--report-dir',type=Path)
+args=parser.parse_args()
+if sys.flags.optimize:parser.error('Assertions must stay enabled')
+proof=(args.report_dir or root/'Verification'/('native-installer-'+uuid.uuid4().hex)).resolve();proof.mkdir(parents=True,exist_ok=False)
+helper=args.helper.resolve(strict=True);child=args.child.resolve(strict=True);driver=proof/'StageDriver.exe'
 csc=Path(os.environ['SystemRoot'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
 r=subprocess.run([str(csc),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll',str(root/'Assets/Scripts/Idas3UpdateStaging.cs'),str(root/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True);assert r.returncode==0,r.stdout+r.stderr
-base=root/'Tests/Updates'/('installer-native-'+uuid.uuid4().hex);base.mkdir()
+base=proof/'fixtures';base.mkdir()
 required={'InitialDUnity.exe':b'new exe','UnityPlayer.dll':b'new dll','InitialDUnity_Data/globalgamemanagers':b'new version','InitialDUnity_Data/Managed/Assembly-CSharp.dll':b'new scripts'}
 rom_files={
     'rom/README.txt':b'local ROM instructions',
@@ -23,28 +30,6 @@ def assert_lease_held(session):
     handle=kernel.CreateFileW(str(session/'.cleanup-lock'),0xC0000000,0,None,3,0,None)
     if handle not in (None,invalid_handle):kernel.CloseHandle(handle);raise AssertionError('Active update session was not leased')
 
-def dismiss_error(proc):
-    user=ctypes.windll.user32
-    callback=ctypes.WINFUNCTYPE(ctypes.c_bool,ctypes.c_void_p,ctypes.c_void_p)
-    user.GetWindowThreadProcessId.argtypes=[ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint32)]
-    user.GetClassNameW.argtypes=[ctypes.c_void_p,ctypes.c_wchar_p,ctypes.c_int]
-    user.GetWindowTextW.argtypes=[ctypes.c_void_p,ctypes.c_wchar_p,ctypes.c_int]
-    user.PostMessageW.argtypes=[ctypes.c_void_p,ctypes.c_uint32,ctypes.c_size_t,ctypes.c_ssize_t]
-    found=[]
-    def close(hwnd,_):
-        pid=ctypes.c_uint32();user.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
-        if pid.value==proc.pid:
-            title=ctypes.create_unicode_buffer(128);kind=ctypes.create_unicode_buffer(128)
-            user.GetWindowTextW(hwnd,title,128);user.GetClassNameW(hwnd,kind,128)
-            if title.value=='Initial D update' and kind.value=='#32770':
-                assert user.PostMessageW(hwnd,0x10,0,0),'Cannot close updater test dialog'
-                found.append(True)
-        return True
-    deadline=time.time()+10
-    while proc.poll() is None and time.time()<deadline:
-        user.EnumWindows(callback(close),0);time.sleep(.05)
-    assert found,'Missing updater restart error dialog'
-
 def changed_plan_paths(plan):
     data=plan.read_bytes();offset=8
     def read_string():
@@ -56,12 +41,11 @@ def changed_plan_paths(plan):
         path=read_string();changed=data[offset];offset+=74
         if changed:paths.append(path.replace('\\','/'))
     return paths
-def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,tamper=False,concurrent=False,restart=False,good=False,bad_hash=False,restart_failure=False,rollback_failure=False):
+def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,tamper=False,concurrent=False,restart=False,good=False,bad_hash=False,rollback_failure=False):
     folder=base/name;game=folder/'game space 日本';session=folder/'session space';game.mkdir(parents=True);session.mkdir();(folder/'ISOLATED_UPDATE_TEST.txt').write_text('Disposable native installer fixture')
     original={**{k:b'old '+v for k,v in required.items()},'InitialDUnity_Data/StreamingAssets/retained.bin':b'unchanged scenery','userdata/card.json':b'save','custom-music/song.mp3':b'music','replays/test.idreplay':b'replay',**rom_files}
     target={**required,'InitialDUnity_Data/StreamingAssets/retained.bin':b'unchanged scenery','READ ME.txt':b'new readme'}
     if restart or concurrent or rollback_failure:original['InitialDUnity.exe']=child.read_bytes();target['InitialDUnity.exe']=child.read_bytes()
-    if restart_failure:target['InitialDUnity.exe']=b'not a Windows executable'
     if damage:original['InitialDUnity_Data/StreamingAssets/retained.bin']=b'corrupt'
     if missing:original.pop('InitialDUnity_Data/StreamingAssets/retained.bin')
     for n,v in original.items():p=game/n;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(v)
@@ -114,13 +98,6 @@ def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,ta
                     (session/'backup'/failed_restore).write_bytes(b'corrupt recovery backup')
                     (session/'stage'/changed[1]).write_bytes(b'corrupt later payload')
                 (game/'release-parent').write_text('exit');parent.wait(timeout=10)
-            if restart_failure:
-                deadline=time.time()+15
-                while not (session/'error.txt').exists() and proc.poll() is None and time.time()<deadline:time.sleep(.05)
-                assert (session/'error.txt').exists(),'Missing restart failure'
-                assert_lease_held(session)
-                assert all(not (session/n).exists() for n in ('stage','backup','game.zip')),'Restart error retained payloads'
-                dismiss_error(proc)
             stdout,stderr=proc.communicate(timeout=30);code=proc.returncode;output=stderr.decode(errors='replace')
             if (session/'error.txt').exists():output+=(session/'error.txt').read_text()
             terminal=json.loads((session/'result.json').read_text())
@@ -130,13 +107,13 @@ def case(name,patch=False,mutate=None,damage=False,missing=False,locked=False,ta
             retry=subprocess.run(args,capture_output=True,timeout=10)
             assert retry.returncode!=0 and json.loads((session/'result.json').read_text())==terminal
             assert all((session/n).exists()==rollback_failure for n in ('stage','backup','game.zip'))
-        assert (code==0)==(good and not restart_failure),(name,code,output)
+        assert (code==0)==good,(name,code,output)
         expected={**original,**target} if good else dict(original)
         if rollback_failure:expected[failed_restore]=target[failed_restore]
         for n,v in expected.items():assert (game/n).read_bytes()==v,(name,n)
         for n,stamp in rom_times.items():assert (game/n).stat().st_mtime_ns==stamp,(name,'ROM timestamp changed',n)
         if not good:assert not (game/'READ ME.txt').exists(),name
-        if restart and not restart_failure:
+        if restart:
             deadline=time.time()+10
             while not (game/'restarted.txt').exists() and time.time()<deadline:time.sleep(.05)
             assert (game/'restarted.txt').read_text()=='restarted'
@@ -166,7 +143,6 @@ case('rollback-locked',locked=True)
 case('concurrent',concurrent=True)
 case('concurrent-retained-same-metadata',concurrent='InitialDUnity_Data/StreamingAssets/retained.bin')
 case('process-handoff-restart',restart=True,good=True)
-case('restart-failure-cleans-payloads',restart=True,restart_failure=True,good=True)
 case('rollback-failure-keeps-recovery',rollback_failure=True)
 def reject_overlapping_session(name,session_inside_game):
     folder=base/name
@@ -184,4 +160,4 @@ def reject_overlapping_session(name,session_inside_game):
     results.append(dict(test=name,passed=True));print(name+': PASS',flush=True)
 reject_overlapping_session('session-inside-game-keeps-payloads',True)
 reject_overlapping_session('game-inside-session-keeps-payloads',False)
-(proof/'native-windows-report.json').write_text(json.dumps(dict(passed=True,tests=results,fixture=str(base)),indent=2))
+(proof/'native-windows-report.json').write_text(json.dumps(dict(passed=True,count=len(results),tests=results,fixture=str(base),helperSha256=hashlib.sha256(helper.read_bytes()).hexdigest(),pending=['Desktop restart-failure dialog is not automated by this test.']),indent=2))
