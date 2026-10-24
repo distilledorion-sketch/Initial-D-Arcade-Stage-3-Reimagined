@@ -55,6 +55,7 @@ def require_scored_report(folder, version, exit_code, role):
         if (race.get("winner") != winner or race.get("naturalFinish") is not True
                 or race.get("duplicatePreserved") is not True or race.get("tuningPoints") != amount
                 or race.get("balance") != balance or race.get("result") != ("YOU WIN" if won else "YOU LOSE")
+                or race.get("displayedBalance") != balance or race.get("pointsPhase", 0) < 2
                 or race.get("verifiedFrame", 0) <= 10000 or race.get("seconds", 0) <= 150
                 or race.get("after", {}).get("battles") != winner + 1
                 or race.get("after", {}).get("wins") != (int(won) if winner == 0 else 1)):

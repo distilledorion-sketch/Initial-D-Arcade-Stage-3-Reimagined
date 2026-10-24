@@ -22,7 +22,7 @@ namespace Idas3.Multiplayer
 
         [Serializable] private class ScoredRace
         {
-            public int winner,tuningPoints,battlePoints;
+            public int winner,tuningPoints,battlePoints,pointsPhase,displayedBalance;
             public ulong raceId,hostTicks,guestTicks,authorityFrame,verifiedFrame;
             public double seconds;
             public uint balance;
@@ -181,8 +181,13 @@ namespace Idas3.Multiplayer
                     yield return CaptureMenu("scored-"+cycle+"-finish");
                     yield return ScoredBarrier("scored-results-"+cycle);
                     yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,30,"Native result did not reach points.");
-                    yield return Until(()=>Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5)>=1,5,"Native points reveal did not complete.");
-                    yield return CaptureMenu("scored-"+cycle+"-points");pulse=13;
+                    yield return Until(()=>Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5)>=2&&
+                        Idas3MultiplayerNative.Idas3MultiplayerResultScreen(6)==expectedBalance,5,"Displayed points did not finish counting to the saved balance.");
+                    yield return CaptureMenu("scored-"+cycle+"-points");
+                    item.pointsPhase=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5);
+                    item.displayedBalance=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(6);
+                    Check(menu.ResultsPage==1&&item.pointsPhase>=2&&item.displayedBalance==expectedBalance,"Captured points screen did not retain the final total.");
+                    pulse=13;
                     yield return Until(()=>menu.ResultsPage==2&&menu.CanAcknowledgeReturnToLobby,8,"Points did not reach Continue.");
                     yield return CaptureMenu("scored-"+cycle+"-continue");yield return ScoredBarrier("scored-continue-"+cycle);
                     if(cycle==0){

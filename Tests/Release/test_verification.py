@@ -88,6 +88,30 @@ class ResultEvidenceTests(unittest.TestCase):
         cases[0]["captures"].pop();path.write_text(json.dumps(report))
         with self.assertRaises(ValueError):scored.require_recovery_report(self.root,"test","host")
 
+    def test_scored_reports_require_final_displayed_total(self):
+        outer=dict(passed=True,shutdownComplete=True,schema="idas3-two-client-smoke-v1",
+                   applicationVersion="test",role="host",authorityEnabled=True,p2pRaceCheck=False,
+                   onlineRuntimeCheck=False,checks=1)
+        races=[dict(raceId=i+1,winner=i,naturalFinish=True,duplicatePreserved=True,tuningPoints=points,
+                    balance=balance,displayedBalance=balance,pointsPhase=2,result=result,
+                    verifiedFrame=12000,seconds=200,after=dict(battles=i+1,wins=1),continued=i==0)
+               for i,(points,balance,result) in enumerate(((2000,2321,"YOU WIN"),(1000,3321,"YOU LOSE")))]
+        detail=dict(passed=True,schema="idas3-scored-race-cycle-v1",applicationVersion="test",role="host",
+                    checks=1,inputSamples=24000,connectedRematch=True,persistedAfterLeaving=True,
+                    unrelatedProfilePreserved=True,races=races)
+        (self.root/"report.json").write_text(json.dumps(outer))
+        path=self.root/"scored-report.json";path.write_text(json.dumps(detail))
+        scored.require_scored_report(self.root,"test",0,"host")
+        for cycle in range(2):
+            for field,value in (("displayedBalance",321),("pointsPhase",1),("displayedBalance",None)):
+                with self.subTest(cycle=cycle,field=field,value=value):
+                    old=races[cycle][field]
+                    if value is None:races[cycle].pop(field)
+                    else:races[cycle][field]=value
+                    path.write_text(json.dumps(detail))
+                    with self.assertRaises(ValueError):scored.require_scored_report(self.root,"test",0,"host")
+                    races[cycle][field]=old
+
 
 class VerificationTests(unittest.TestCase):
     def setUp(self):
