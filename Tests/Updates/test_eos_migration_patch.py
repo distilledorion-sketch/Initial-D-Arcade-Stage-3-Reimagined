@@ -61,7 +61,7 @@ def main():
     compiler=Path(os.environ['SystemRoot'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
     driver=proof/'StageDriver.exe'
     run=subprocess.run([str(compiler),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll',
-                        '/r:System.Web.Extensions.dll',str(ROOT/'Assets/Scripts/Idas3UpdateStaging.cs'),str(ROOT/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True)
+                        '/r:System.Web.Extensions.dll',str(ROOT/'Assets/Scripts/Idas3UpdatePaths.cs'),str(ROOT/'Assets/Scripts/Idas3UpdateStaging.cs'),str(ROOT/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True)
     (proof/'compile.log').write_text(run.stdout+run.stderr)
     assert run.returncode==0,run.stdout+run.stderr
     game=base/'game';session=base/'session';game.mkdir();session.mkdir()

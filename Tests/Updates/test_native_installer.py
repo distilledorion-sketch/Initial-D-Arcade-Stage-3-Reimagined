@@ -10,7 +10,7 @@ if sys.flags.optimize:parser.error('Assertions must stay enabled')
 proof=(args.report_dir or root/'Verification'/('native-installer-'+uuid.uuid4().hex)).resolve();proof.mkdir(parents=True,exist_ok=False)
 helper=args.helper.resolve(strict=True);child=args.child.resolve(strict=True);driver=proof/'StageDriver.exe'
 csc=Path(os.environ['SystemRoot'])/'Microsoft.NET/Framework64/v4.0.30319/csc.exe'
-r=subprocess.run([str(csc),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll',str(root/'Assets/Scripts/Idas3UpdateStaging.cs'),str(root/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True);assert r.returncode==0,r.stdout+r.stderr
+r=subprocess.run([str(csc),'/nologo','/out:'+str(driver),'/r:System.IO.Compression.dll','/r:System.IO.Compression.FileSystem.dll','/r:System.Web.Extensions.dll',str(root/'Assets/Scripts/Idas3UpdatePaths.cs'),str(root/'Assets/Scripts/Idas3UpdateStaging.cs'),str(root/'Tests/Updates/StageDriver.cs')],capture_output=True,text=True);assert r.returncode==0,r.stdout+r.stderr
 base=proof/'fixtures';base.mkdir()
 required={'InitialDUnity.exe':b'new exe','UnityPlayer.dll':b'new dll','InitialDUnity_Data/globalgamemanagers':b'new version','InitialDUnity_Data/Managed/Assembly-CSharp.dll':b'new scripts'}
 rom_files={

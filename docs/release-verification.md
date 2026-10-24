@@ -100,3 +100,14 @@ The command reads the latest public GitHub release and requires both supplied ba
 The old files are extracted into a new marked private installation with inert save, ROM, music and replay sentinels. The current diagnostic then downloads both full-sized archives from loopback, stages and applies them, and the native helper restarts the actual upgraded executable. The runner stops only that owned restart and invokes the upgraded game's blocked-ROM startup diagnostic. It checks all target file hashes, unchanged sentinels, safe download cleanup and unchanged candidate bytes. Unlisted legacy files are reported and retained. No actual ROM is required or distributed.
 
 **Scope limitation:** this runs the current updater against exact old installation files, with the installed version explicitly simulated and recorded separately from the executing application's version. It does not execute the old shipped managed updater, exercise GitHub download reliability, test the full-size patch route, or prove normal gameplay after an upgrade. Those remain separate acceptance evidence. The result always leaves `releaseReady` false.
+
+
+## Windows paths beyond MAX_PATH
+
+The source suite exercises production staging, native installation, retained patch files, rollback, recovery and managed cache cleanup with actual filenames longer than 300 characters. It runs these fixtures against both the compiled helper and the embedded resource. The managed Framework harness enables modern path parsing in its own application configuration; it does not change Windows registry policy. To additionally exercise Unity's Mono runtime:
+
+```powershell
+python -X utf8 Tests/Updates/test_long_paths.py --helper <tested-helper.exe> --mono "C:/Program Files/Unity/Hub/Editor/6000.6.0f1/Editor/Data/MonoBleedingEdge/bin/mono.exe" --report-dir Verification/updater-long-paths-mono
+```
+
+The checks also reject damaged retained files, invalid recovery backups and junctions, preserve private files and their timestamps, and retain locked or uncertain cache data. They use inert files, so a full-sized Unity download/upgrade is still required after changes to the updater. DOS 8.3 alias tests in `test_native_paths.py` are separate: its historical `long-path` case means a non-8.3 spelling, not a path exceeding MAX_PATH. That suite needs a fixture volume with 8.3 names enabled; a missing short alias is a failed prerequisite, not evidence of an updater regression.

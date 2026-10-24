@@ -16,13 +16,22 @@ using Digest=std::array<unsigned char,32>;
 struct Handle{HANDLE h=INVALID_HANDLE_VALUE;explicit Handle(HANDLE v):h(v){}~Handle(){if(h&&h!=INVALID_HANDLE_VALUE)CloseHandle(h);}Handle(const Handle&)=delete;};
 static void require(bool ok,const char* reason){if(!ok)throw std::runtime_error(reason);}
 static std::wstring lower(std::wstring s){std::transform(s.begin(),s.end(),s.begin(),[](wchar_t c){return static_cast<wchar_t>(towlower(c));});return s;}
-static fs::path fullPath(const fs::path& p){return fs::absolute(p).lexically_normal();}
-static fs::path comparablePath(std::wstring value){
-    auto prefix=lower(value);
+// Use one extended spelling for both containment comparisons and Windows I/O.
+// This avoids MAX_PATH failures without depending on machine-wide policy.
+static fs::path logicalPath(const fs::path& p){
+    auto value=p.wstring(),prefix=lower(value);
     if(prefix.rfind(L"\\\\?\\unc\\",0)==0)value=L"\\\\"+value.substr(8);
     else if(prefix.rfind(L"\\\\?\\",0)==0)value=value.substr(4);
-    return fullPath(value);
+    return fs::absolute(value).lexically_normal();
 }
+static fs::path fullPath(const fs::path& p){
+    auto normal=logicalPath(p).wstring();
+    require(normal.rfind(L"\\\\.\\",0)!=0,"Device paths cannot be updated.");
+    if(normal.rfind(L"\\\\",0)==0)return fs::path(L"\\\\?\\UNC\\"+normal.substr(2));
+    require(normal.size()>2&&normal[1]==L':'&&normal[2]==L'\\',"Invalid update drive.");
+    return fs::path(L"\\\\?\\"+normal);
+}
+static fs::path comparablePath(const std::wstring& value){return fullPath(value);}
 static fs::path inside(const fs::path& root,const fs::path& relative){
     auto p=fullPath(root/relative);auto prefix=lower(fullPath(root).wstring()+L"\\");
     require(lower(p.wstring()).rfind(prefix,0)==0,"An update path escaped its folder.");return p;
@@ -31,12 +40,12 @@ static fs::path noReparseAncestors(fs::path p){
     // Wine exposes DOS drive mappings as reparse points. Validate every path
     // below the drive root, while allowing the drive mapping itself.
     fs::path existing;
-    for(p=fullPath(p);!p.empty();){if(p==p.root_path())break;DWORD a=GetFileAttributesW(p.c_str());
+    for(p=logicalPath(p);!p.empty();){if(p==p.root_path())break;DWORD a=GetFileAttributesW(fullPath(p).c_str());
         if(a!=INVALID_FILE_ATTRIBUTES){
             if(a&FILE_ATTRIBUTE_REPARSE_POINT)throw std::runtime_error("Update folders cannot contain links: "+p.u8string());
-            if(existing.empty())existing=p;
+            if(existing.empty())existing=fullPath(p);
         }
-        else require(GetLastError()==ERROR_FILE_NOT_FOUND||GetLastError()==ERROR_PATH_NOT_FOUND,"Cannot inspect an update path.");
+        else {DWORD error=GetLastError();if(error!=ERROR_FILE_NOT_FOUND&&error!=ERROR_PATH_NOT_FOUND)throw std::runtime_error("Cannot inspect an update path (Windows "+std::to_string(error)+"): "+p.u8string());}
         auto parent=p.parent_path();if(parent==p)break;p=parent;
     }
     return existing;
@@ -46,7 +55,7 @@ static bool sameWineDriveAlias(const fs::path& expected,const fs::path& resolved
     // This is a DOS drive alias, not a link inside the update tree. Retain
     // link rejection on BOTH spellings and require matching open-file identity.
     if(!GetProcAddress(GetModuleHandleW(L"ntdll.dll"),"wine_get_version")||
-        lower(expected.root_path().wstring())==lower(resolved.root_path().wstring()))return false;
+        lower(logicalPath(expected).root_path().wstring())==lower(logicalPath(resolved).root_path().wstring()))return false;
     noReparseAncestors(resolved);
     Handle other(CreateFileW(resolved.c_str(),FILE_READ_ATTRIBUTES,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_BACKUP_SEMANTICS|FILE_FLAG_OPEN_REPARSE_POINT,nullptr));
     BY_HANDLE_FILE_INFORMATION a{},b{};
@@ -317,6 +326,8 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
             if(!rollbackNeeded)cleanupPayloads(session);
         }
         if(ready&&!test){MessageBoxA(nullptr,error.c_str(),"Initial D update",MB_OK|MB_ICONERROR);if(!committed&&!rollbackNeeded)try{restart(root);}catch(...){}}
+        auto message=error+"\r\n";DWORD written=0;
+        WriteFile(GetStdHandle(STD_ERROR_HANDLE),message.data(),static_cast<DWORD>(message.size()),&written,nullptr);
         if(argv)LocalFree(argv);return 1;
     }
 }

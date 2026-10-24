@@ -68,7 +68,7 @@ def main():
     try:
         compiled = execute([compiler, "/nologo", "/out:" + str(driver), "/r:System.IO.Compression.dll",
                             "/r:System.IO.Compression.FileSystem.dll", "/r:System.Web.Extensions.dll",
-                            ROOT / "Assets/Scripts/Idas3UpdateStaging.cs", ROOT / "Tests/Updates/StageDriver.cs"])
+                            ROOT / "Assets/Scripts/Idas3UpdatePaths.cs", ROOT / "Assets/Scripts/Idas3UpdateStaging.cs", ROOT / "Tests/Updates/StageDriver.cs"])
         assert compiled.returncode == 0, compiled.stdout + compiled.stderr
         for name in ("split-full", "missing-old-courses", "bad-content-hash", "invalid-content-zip",
                      "damaged-content-payload", "duplicate-across-archives", "private-content",

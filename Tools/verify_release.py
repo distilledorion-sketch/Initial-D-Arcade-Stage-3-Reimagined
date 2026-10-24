@@ -264,6 +264,9 @@ def run_updater(run):
         split=folder/(kind+"-split")
         run.command("updater-"+kind+"-split",[sys.executable,"-X","utf8","Tests/Updates/test_split_update.py",
                     "--helper",helper,"--report-dir",split],timeout=180,report=split/"report.json")
+        long_paths=folder/(kind+"-long-paths")
+        run.command("updater-"+kind+"-long-paths",[sys.executable,"-X","utf8","Tests/Updates/test_long_paths.py",
+                    "--helper",helper,"--report-dir",long_paths],timeout=180,report=long_paths/"report.json")
         run.command("updater-"+kind+"-recovery",[sys.executable,"-X","utf8","Tests/Updates/test_native_recovery.py",
                     "--helper",helper,"--child",child,"--seed-helper",bundled,"--report-dir",recovery],timeout=300,report=recovery/"report.json")
     cache=folder/"cache"

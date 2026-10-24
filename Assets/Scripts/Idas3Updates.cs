@@ -246,9 +246,9 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     internal IEnumerator DownloadAndInstall(string fixtureRoot=null){
         string root=Path.GetFullPath(fixtureRoot??Path.Combine(Application.dataPath,".."));
-        if(fixtureRoot!=null&&!File.Exists(Path.Combine(Path.GetDirectoryName(root),"ISOLATED_UPDATE_TEST.txt")))
+        if(fixtureRoot!=null&&!File.Exists(Idas3UpdatePaths.FileSystemPath(Path.Combine(Path.GetDirectoryName(root),"ISOLATED_UPDATE_TEST.txt"))))
             throw new IOException("Updater diagnostics require an isolated fixture.");
-        if(Application.isEditor||!File.Exists(Path.Combine(root,"InitialDUnity.exe")))throw new IOException("Run the Windows game to install updates.");
+        if(Application.isEditor||!File.Exists(Idas3UpdatePaths.FileSystemPath(Path.Combine(root,"InitialDUnity.exe"))))throw new IOException("Run the Windows game to install updates.");
         // Wine/Proton installations can be launched through Steam-library or
         // home-directory aliases. Resolve the real base spelling before deriving
         // any paths; links within the game's contents remain prohibited.
@@ -257,7 +257,7 @@ public sealed class Idas3Updates : MonoBehaviour
         Debug.Log("Game update installation folder: "+root);
         // Check access before downloading. Never request elevation or alter ACLs.
         string probe=Path.Combine(root,".update-write-check-"+Guid.NewGuid().ToString("N"));
-        using(var stream=new FileStream(probe,FileMode.CreateNew,FileAccess.Write,FileShare.None,1,FileOptions.DeleteOnClose)){}
+        using(var stream=new FileStream(Idas3UpdatePaths.FileSystemPath(probe),FileMode.CreateNew,FileAccess.Write,FileShare.None,1,FileOptions.DeleteOnClose)){}
         var helperAsset=Resources.Load<TextAsset>("UpdateInstaller.exe");
         if(helperAsset==null)throw new IOException("The bundled update installer is missing.");
         State=CheckState.Preparing;Message="Preparing update…";
@@ -271,7 +271,7 @@ public sealed class Idas3Updates : MonoBehaviour
         if(new DriveInfo(Path.GetPathRoot(session)).AvailableFreeSpace<downloadBytes+(!usingPatch?contentBytes:0)+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
         downloadingContent=false;State=CheckState.Downloading;Message="Downloading update…";
         using(var request=UnityWebRequest.Get(downloadUrl)){
-            activeRequest=request;request.downloadHandler=new DownloadHandlerFile(archive){removeFileOnAbort=true};
+            activeRequest=request;request.downloadHandler=new DownloadHandlerFile(Idas3UpdatePaths.FileSystemPath(archive)){removeFileOnAbort=true};
             request.redirectLimit=5;request.timeout=0;
             var operation=request.SendWebRequest();ulong previousBytes=0;double lastProgress=Time.realtimeSinceStartupAsDouble;
             while(!operation.isDone){
@@ -286,8 +286,8 @@ public sealed class Idas3Updates : MonoBehaviour
         }
         State=CheckState.Preparing;Message="Verifying the downloaded update…";
         var verification=Task.Run(()=>{
-            if(new FileInfo(archive).Length!=downloadBytes)return false;
-            using(var hash=SHA256.Create())using(var input=File.OpenRead(archive))
+            if(new FileInfo(Idas3UpdatePaths.FileSystemPath(archive)).Length!=downloadBytes)return false;
+            using(var hash=SHA256.Create())using(var input=File.OpenRead(Idas3UpdatePaths.FileSystemPath(archive)))
                 return string.Equals(BitConverter.ToString(hash.ComputeHash(input)).Replace("-","").ToLowerInvariant(),downloadHash,StringComparison.Ordinal);
         });
         sessionWorker=verification;
@@ -298,7 +298,7 @@ public sealed class Idas3Updates : MonoBehaviour
             contentArchive=Path.Combine(session,"content.zip");
             downloadingContent=true;State=CheckState.Downloading;Message="Downloading additional courses…";
             using(var request=UnityWebRequest.Get(contentUrl)){
-                activeRequest=request;request.downloadHandler=new DownloadHandlerFile(contentArchive){removeFileOnAbort=true};request.redirectLimit=5;request.timeout=0;
+                activeRequest=request;request.downloadHandler=new DownloadHandlerFile(Idas3UpdatePaths.FileSystemPath(contentArchive)){removeFileOnAbort=true};request.redirectLimit=5;request.timeout=0;
                 var operation=request.SendWebRequest();ulong previous=0;double last=Time.realtimeSinceStartupAsDouble;
                 while(!operation.isDone){
                     if(cancelled){request.Abort();break;}
@@ -311,12 +311,12 @@ public sealed class Idas3Updates : MonoBehaviour
                 if(request.result!=UnityWebRequest.Result.Success)throw new IOException("Course download interrupted. Nothing was installed.");
             }
             downloadingContent=false;State=CheckState.Preparing;Message="Verifying additional courses…";
-            var contentCheck=Task.Run(()=>new FileInfo(contentArchive).Length==contentBytes&&Idas3UpdateStaging.Hash(contentArchive)==contentHash);
+            var contentCheck=Task.Run(()=>new FileInfo(Idas3UpdatePaths.FileSystemPath(contentArchive)).Length==contentBytes&&Idas3UpdateStaging.Hash(contentArchive)==contentHash);
             sessionWorker=contentCheck;while(!contentCheck.IsCompleted)yield return null;
             if(!contentCheck.GetAwaiter().GetResult())throw new IOException("Course download verification failed. Nothing was installed.");
         }
         string helper=Path.Combine(session,"install.exe");
-        File.WriteAllBytes(helper,helperAsset.bytes);
+        File.WriteAllBytes(Idas3UpdatePaths.FileSystemPath(helper),helperAsset.bytes);
         int parentId;long parentTime;
         using(var current=System.Diagnostics.Process.GetCurrentProcess()){parentId=current.Id;parentTime=current.StartTime.ToUniversalTime().ToFileTimeUtc();}
         Message="Checking game files and preparing the update…";
@@ -335,11 +335,11 @@ public sealed class Idas3Updates : MonoBehaviour
         installerLaunched=true;
         Message="Preparing the update. The game will restart automatically…";
         double helperStarted=Time.realtimeSinceStartupAsDouble;
-        while(!File.Exists(Path.Combine(session,"ready"))){
+        while(!File.Exists(Idas3UpdatePaths.FileSystemPath(Path.Combine(session,"ready")))){
             if(Time.realtimeSinceStartupAsDouble-helperStarted>300){if(!installer.HasExited)installer.Kill();throw new IOException("Installer preparation timed out. The game remains open.");}
             if(installer.HasExited){
                 string error=Path.Combine(session,"error.txt");
-                string detail=File.Exists(error)?File.ReadAllText(error):"The installer exited before preparing the update (code "+installer.ExitCode+").";
+                string detail=File.Exists(Idas3UpdatePaths.FileSystemPath(error))?File.ReadAllText(Idas3UpdatePaths.FileSystemPath(error)):"The installer exited before preparing the update (code "+installer.ExitCode+").";
                 throw new IOException(detail);
             }
             yield return null;
@@ -379,8 +379,8 @@ public sealed class Idas3Updates : MonoBehaviour
         // Keep the same non-elevated native launch. A blocked executable must
         // report its Windows error, never retry through a security bypass.
         try{
-            return System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(helper){
-                Arguments=Quote(plan),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=session
+            return System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Idas3UpdatePaths.FileSystemPath(helper)){
+                Arguments=Quote(plan),UseShellExecute=false,CreateNoWindow=true,WorkingDirectory=Idas3UpdatePaths.FileSystemPath(session)
             })??throw new IOException("The installer could not start.");
         }catch(Exception error)when(error is System.ComponentModel.Win32Exception||error is IOException||error is UnauthorizedAccessException){
             throw new InstallerLaunchException(error);

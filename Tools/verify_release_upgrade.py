@@ -201,7 +201,9 @@ def main():
                                      env=dict(os.environ, TEMP=str(temporary), TMP=str(temporary)), stdout=log, stderr=subprocess.STDOUT,
                                      timeout=3660, **verify.hidden_process_options())
         flow = packaged.read_json(output / "unity-flow.json")
-        assert process.returncode == 0 and flow["reachedShutdown"] and not flow.get("error"), flow
+        assert process.returncode == 0 and flow["reachedShutdown"] and not flow.get("error"), (
+            "Unity upgrade stopped before handoff (exit " + str(process.returncode) + "). " +
+            str(flow.get("error", ""))[:4000] + " See unity-flow.json for the full trace.")
         assert (flow["applicationVersion"], flow["installedVersion"], flow["targetVersion"]) == (target_version, baseline_version, target_version)
         assert Path(flow["tempPath"]).resolve() == temporary and Path(flow["cacheRoot"]).resolve() == temporary / "InitialDUpdates"
         sessions = {Path(row["session"]).resolve() for row in flow["observations"] if row.get("session")}
