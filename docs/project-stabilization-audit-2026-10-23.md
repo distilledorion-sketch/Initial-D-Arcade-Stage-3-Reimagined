@@ -20,6 +20,8 @@ Hosted Windows verification at `762ecec` also passed all 40 stages. The download
 
 ## Original audit and evidence
 
+The next release-process change adds `Tools/release_acceptance.py` and requires its complete record for public `Build-ReleasePackage.py` packaging. It binds committed source, fresh-build provenance, full candidate/local-flow/scored/startup checks, install/upgrade downloads and an attributable real-world review to one candidate. Cached success flags and focused/private diagnostic results are insufficient. Seventeen focused acceptance tests pass, including a complete synthetic evidence chain and rejection of missing cases, changed bytes, omitted reports and unexpected archive entries. The existing 23 verification-tool tests and ROM/music package privacy checks also pass. These are tool tests, not real-world acceptance of the current game. Private test archives require explicit candidate mode and remain unapproved. The maintained GitHub publication path still needs to be connected; full-current-candidate acceptance and the remaining stabilization work remain open.
+
 The project needs a stabilization cycle before more features, tracks, ports, or service migrations. Keep the native gameplay core and the existing tests. Replace fragile coordination incrementally, beginning with release verification and the complete online race cycle. A full rewrite is not supported by the findings below.
 
 The principal problem is that the product has grown faster than its release and integration process. Passing a transport test, a menu fixture, and a save test separately does not prove that two players can finish, collect points, continue, and race again using the published download.
