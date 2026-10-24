@@ -205,6 +205,7 @@ def run_source(run, args):
     run.save()
     run.command("verification-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_verification.py"])
     run.command("fresh-build-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_fresh_build.py"])
+    run.command("packaged-player-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_packaged_player.py"])
     tests = sorted(str(path) for path in (ROOT / "Leaderboard/test").glob("*.test.mjs"))
     if not tests:
         raise RuntimeError("No backend tests found")
