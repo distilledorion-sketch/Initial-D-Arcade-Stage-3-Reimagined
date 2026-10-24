@@ -1,5 +1,6 @@
 """Exercise failure, isolation and evidence boundaries without launching a game."""
 import json
+import copy
 from pathlib import Path
 import sys
 import tempfile
@@ -8,6 +9,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Tools"))
 import verify_packaged_player as player
+import verify_scored_player as scored
 
 
 class PackagedPlayerTests(unittest.TestCase):
@@ -166,6 +168,63 @@ class PackagedPlayerTests(unittest.TestCase):
         player.verify.write_json(self.folder / "summary.json", proof)
         with self.assertRaises(ValueError):
             player.require_build_evidence(self.folder, inventory)
+
+
+class ScoredPlayerEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.folder = Path(self.temporary.name)
+        self.report = dict(passed=True, shutdownComplete=True, applicationVersion="test-version", checks=12,
+                           schema="idas3-two-client-smoke-v1", role="host", onlineRuntimeCheck=False,
+                           p2pRaceCheck=False, authorityEnabled=True)
+        self.detail = dict(passed=True, schema="idas3-scored-race-cycle-v1", applicationVersion="test-version",
+                           role="host", checks=100, inputSamples=12000, connectedRematch=True,
+                           persistedAfterLeaving=True, unrelatedProfilePreserved=True, races=[])
+        for winner in range(2):
+            self.detail["races"].append(dict(winner=winner, raceId=winner + 100, naturalFinish=True,
+                duplicatePreserved=True, tuningPoints=2000 if winner == 0 else 1000, balance=2321 if winner == 0 else 3321,
+                result="YOU WIN" if winner == 0 else "YOU LOSE", verifiedFrame=12000, seconds=204,
+                after=dict(battles=winner + 1, wins=1), continued=winner == 0))
+
+    def validate(self):
+        player.verify.write_json(self.folder / "report.json", self.report)
+        player.verify.write_json(self.folder / "scored-report.json", self.detail)
+        return scored.require_scored_report(self.folder, "test-version", 0, "host")
+
+    def test_accepts_both_winners_and_persisted_awards(self):
+        self.assertEqual(len(self.validate()[1]["races"]), 2)
+        self.report["role"] = self.detail["role"] = "join"
+        for winner, race in enumerate(self.detail["races"]):
+            race.update(tuningPoints=1000 if winner == 0 else 2000, balance=1321 if winner == 0 else 3321,
+                        result="YOU LOSE" if winner == 0 else "YOU WIN", after=dict(battles=winner + 1, wins=winner))
+        player.verify.write_json(self.folder / "report.json", self.report)
+        player.verify.write_json(self.folder / "scored-report.json", self.detail)
+        scored.require_scored_report(self.folder, "test-version", 0, "join")
+
+    def test_rejects_neutral_duplicate_forced_or_wrong_rewards(self):
+        before = copy.deepcopy(self.detail)
+        for change in ({"winner": -1}, {"naturalFinish": False}, {"duplicatePreserved": False},
+                       {"tuningPoints": 0}, {"balance": 4321}, {"seconds": 2}, {"verifiedFrame": 0},
+                       {"after": {"battles": 2, "wins": 2}}, {"continued": False}, {"raceId": 0}):
+            with self.subTest(change=change):
+                self.detail = copy.deepcopy(before)
+                self.detail["races"][0].update(change)
+                with self.assertRaises(ValueError):
+                    self.validate()
+        self.detail = before
+        self.detail["races"][1]["raceId"] = self.detail["races"][0]["raceId"]
+        with self.assertRaises(ValueError):
+            self.validate()
+
+    def test_requires_reload_preservation_and_actual_input(self):
+        before = copy.deepcopy(self.detail)
+        for field, value in (("persistedAfterLeaving", False), ("unrelatedProfilePreserved", False),
+                             ("connectedRematch", False), ("passed", False), ("inputSamples", 0), ("checks", True)):
+            self.detail = copy.deepcopy(before)
+            self.detail[field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                self.validate()
 
 
 if __name__ == "__main__":

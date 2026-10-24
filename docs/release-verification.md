@@ -27,7 +27,7 @@ Keep the source/config fingerprint and candidate inventory with the eventual rel
 python -X utf8 Tools/build_release_candidate.py --original-image D:/reference/idas3_main_0C020000.bin --output Verification/fresh-candidate
 ```
 
-This creates a new native build, compiles both native plugins and the asset packer, runs eleven selected native tests, and builds a full Windows player into `Verification/fresh-candidate/player`. It uses the exact Unity version recorded in the project and installed Visual Studio C++ tools. The local original image is used only by native reference tests; it is never copied into the player. Existing evidence and player folders are refused. Neither the desktop game nor the checked-in native DLLs is replaced.
+This creates a new native build, compiles both native plugins and the asset packer, runs twelve selected native tests, and builds a full Windows player into `Verification/fresh-candidate/player`. It uses the exact Unity version recorded in the project and installed Visual Studio C++ tools. The local original image is used only by native reference tests; it is never copied into the player. Existing evidence and player folders are refused. Neither the desktop game nor the checked-in native DLLs is replaced.
 
 The native DLLs in the player must match the newly compiled outputs. Evidence includes compiler/editor identities, source and content/config input hashes before and after the build, native test XML, the Unity build result, staging manifest, and the distributable inventory. Bundled SDKs and the embedded updater remain recorded binary inputs; this is not a claim that every dependency was rebuilt. Local EOS client configuration is hashed without recording its contents. Keep this local build evidence private; it contains machine paths and local configuration fingerprints.
 
@@ -46,6 +46,20 @@ The default `all` suite checks blocked startup and its real GUI capture, mode fl
 Use `--suite startup` to run only the missing-ROM check without supplying a ROM, or `--suite flows` for mode flow and the three local pairs. Unselected checks remain listed as pending. These are hidden Windows processes: native camera captures are available, but the paired tests explicitly omit actual window/IMGUI pixels. The missing-ROM GUI capture is still required by the startup suite; a hidden-window capture timeout fails that suite even if its startup-state assertions pass.
 
 These checks do **not** establish Internet/EOS matchmaking, nonzero win/loss reward persistence, every finish order, physical controller recovery, or all-language/resolution presentation. Those acceptance gates remain separate. The existing mode-flow diagnostic also includes controlled visual fixtures; it is not a human-driven complete race or original-game parity measurement.
+
+## Scored races and connected rematch
+
+Run the separate earned-reward acceptance against a fresh candidate containing the scored diagnostic:
+
+```powershell
+python -X utf8 Tools/verify_scored_player.py --build-evidence Verification/fresh-candidate --rom <local-gds-0033.chd> --output Verification/scored-candidate
+```
+
+The runner copies and verifies the complete candidate in a marked private directory. Two local TCP players use newly generated tuned saves, normal wheel input, and unchanged wall-clock timing. A read-only path follower drives the host to Myogi's normal finish, then the guest wins the connected rematch. The other driver stays stationary and times out. No finish flag, position, progress, time allowance or winner is assigned by the diagnostic.
+
+The player checks actual tuning-file balances, independently reloaded battle history, duplicate native and managed result delivery, points/Continue, Yes/Yes, the same selected save and connection on rematch, and No returning to mode select. An unrelated car profile must remain byte-identical. The runner requires both processes to exit cleanly, cross-checks their race IDs and finish times, verifies all reports, and re-hashes the private and original distributable files. Ordinary save paths and public matchmaking are not used. The private player contains the supplied ROM and must never be uploaded.
+
+The native `online_scored_finish` test separately checks that the guidance is read-only and can finish with either slot using the wheel ADC mapping. Passing that numerical test does not establish the packaged reward flow. Passing the packaged test would still leave two moving finishers, process-restart recovery, disk failures, power-loss atomicity, EOS and different-network acceptance unproven. Captures from these hidden players also require separate visual review.
 
 ## Fresh-install extraction and failure recovery
 

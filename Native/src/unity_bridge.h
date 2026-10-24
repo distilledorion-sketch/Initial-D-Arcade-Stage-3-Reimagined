@@ -184,6 +184,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetAuraStatus(int side,I
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetHudStatus(Idas3MultiplayerHudStatus* status);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerCopyHudText(int side,char* destination,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerDiagnosticFinish(uint64_t ticks60);
+// Read-only ordinary control guidance, restricted to marked private LAN tests.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerScoredDiagnosticControls(float* values,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerNextBattleRecord(const Idas3BattleRecord* before,int won,const Idas3BattleRecord* opponent,uint32_t experience,Idas3BattleRecord* after,uint32_t* nextExperience);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCopyPreRaceBattleRecord(int side,char* destination,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetRaceMusicState(Idas3RaceMusicState* state);

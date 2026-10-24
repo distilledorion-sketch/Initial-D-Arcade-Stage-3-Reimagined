@@ -20,7 +20,7 @@ import verify_release as verify
 ROOT = verify.ROOT
 NATIVE_TESTS = (
     "host_steering_smoothing", "physics", "race", "original_host_input",
-    "original_driving_session", "online_race_timeline", "original_race_rules",
+    "original_driving_session", "online_race_timeline", "online_scored_finish", "original_race_rules",
     "original_collision_reference", "native_multiplayer", "native_asset_storage",
     "unity_shared_renderer",
 )

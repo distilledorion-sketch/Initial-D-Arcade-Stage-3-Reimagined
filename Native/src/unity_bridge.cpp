@@ -9,6 +9,7 @@
 #include "unity_audio_output.h"
 #include "unity_ui_capture.h"
 #include "main.cpp"
+#include "../tests/online_scored_driver.h"
 #include "../tests/mode_flow_app_tests.inl"
 #include "../tests/time_attack_completion_app_tests.inl"
 #include "../tests/finish_music_app_tests.inl"
@@ -929,6 +930,22 @@ int IDAS3_UNITY_CALL Idas3MultiplayerCopyHudText(int side,char* destination,int 
         return int(text.size());
     }catch(const std::exception& e){unityError(e.what());return -1;}
     catch(...){unityError("Unknown online HUD text error");return -1;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerScoredDiagnosticControls(float* values,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app||!values||count!=6||r.app->saveRoot.filename()!="userdata"||
+           !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_MULTIPLAYER_TEST.txt")||
+           !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_SCORED_RACE_TEST.txt"))return 0;
+        const auto& app=*r.app;
+        if(!app.multiplayer.active||!app.authorityRace||app.multiplayer.disconnected)return 0;
+        const auto slot=app.multiplayer.config.localSlot;
+        const auto controls=onlineScoredDriver(*app.authorityRace,slot);
+        const auto& rules=app.authorityRace->rules(slot);
+        values[0]=controls.steering;values[1]=controls.throttle;values[2]=controls.brake;
+        values[3]=float(rules.state().progress.index);values[4]=float(rules.rules().goalIndex);
+        values[5]=float(app.authorityRace->frame());return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerDiagnosticFinish(uint64_t ticks60){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
