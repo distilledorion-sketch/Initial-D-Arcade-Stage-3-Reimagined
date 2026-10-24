@@ -96,7 +96,7 @@ def stages(path, data, expected, required_reports=()):
 
 def source_checks():
     return ("verification-tool-tests", "fresh-build-tool-tests", "packaged-player-tool-tests", "setup-package-tool-tests",
-            "release-acceptance-tool-tests", "publication-tool-tests", "backend", *verify.MANAGED_TESTS, *verify.PACKAGE_TESTS,
+            "release-acceptance-tool-tests", "publication-tool-tests", "menu-input-router", "backend", *verify.MANAGED_TESTS, *verify.PACKAGE_TESTS,
             "setup-launcher", "setup-extraction", "upgrade-archive-contract", "updater-configure", "updater-build",
             *("updater-" + kind + "-" + case for kind in ("compiled", "bundled")
               for case in ("installation", "split", "long-paths", "recovery")),

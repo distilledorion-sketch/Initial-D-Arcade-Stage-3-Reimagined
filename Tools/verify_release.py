@@ -209,6 +209,9 @@ def run_source(run, args):
     run.command("setup-package-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_setup_package.py"])
     run.command("release-acceptance-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_release_acceptance.py"])
     run.command("publication-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_publication.py"])
+    folder = run.output / "menu-input-router"
+    run.command("menu-input-router", [sys.executable, "-X", "utf8", "Tests/Input/test_menu_input_router.py",
+                "--compiler", compiler, "--report-dir", folder], report=folder / "report.json")
     tests = sorted(str(path) for path in (ROOT / "Leaderboard/test").glob("*.test.mjs"))
     if not tests:
         raise RuntimeError("No backend tests found")

@@ -55,11 +55,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private bool attractOptionsReleaseBlocked;
     internal Idas3RaceMusicCatalog RaceMusic => raceMusic;
     internal Idas3RaceMusicMenu RaceMusicMenu => raceMusicMenu;
-    private Idas3Native.FrameInput previousMenuInput;
-    private bool diagnosticMode, preservePauseOnClose, suppressPauseControls, pauseOpenReleaseBlocked;
+    private readonly Idas3MenuInputRouter menuInput = new Idas3MenuInputRouter();
+    private bool diagnosticMode, preservePauseOnClose;
     private bool? diagnosticFocusOverride;
-    private int pauseBlockThroughFrame = -1, menuNavigationAxis;
-    private double nextMenuNavigation;
     private bool appliedBackgroundMute;
     internal Idas3GameOptions GameOptions => gameOptions;
     internal Idas3PauseMenu PauseMenu => pauseMenu;
@@ -472,9 +470,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (diagnosticFocusOverride.HasValue) frame.flags = (frame.flags & ~1u) | (diagnosticFocusOverride.Value ? 1u : 0u);
             if (bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active || savePointerBlocked)
             {
-                previousMenuInput = frame;
+                menuInput.ObserveCovered(MenuInputSample(frame));
                 NeutralizeControls(ref frame);
-                menuNavigationAxis = 0;
             }
             else RoutePauseInput(ref frame);
             if ((frame.flags & 1u) == 0) NeutralizeControls(ref frame);
@@ -532,8 +529,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         controlBindings.CancelCapture();
         pauseMenu.SetOpen(false);
         raceMusicMenu.SetOpen(false);
-        previousMenuInput = default;
-        menuNavigationAxis = 0;
+        menuInput.ResetNavigation();
         Status = Idas3Native.ReadStatus();
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
@@ -548,8 +544,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         raceMusicMenu.SetOpen(false);
         musicReleaseBlocked = true;
         Status = Idas3Native.ReadStatus();
-        previousMenuInput = default;
-        menuNavigationAxis = 0;
+        menuInput.ResetNavigation();
     }
 
     internal void BeginChallenger()
@@ -837,10 +832,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private void PauseVisibilityChanged(bool open)
     {
-        pauseBlockThroughFrame = Time.frameCount + 1;
-        menuNavigationAxis = 0;
-        pauseOpenReleaseBlocked = open;
-        if (!open) suppressPauseControls = true;
+        menuInput.VisibilityChanged(open, Time.frameCount);
         if (pauseMenu.AttractOptions)
         {
             attractOptionsHoldSeconds = 0;
@@ -988,82 +980,53 @@ public sealed class Idas3SceneGame : MonoBehaviour
         if (allowed && !mouseHeld && !navigationHeld) savePointerReleaseBlocked = false;
         return true;
     }
+    private Idas3MenuInputRouter.Sample MenuInputSample(Idas3Native.FrameInput raw) => new Idas3MenuInputRouter.Sample {
+        Escape = Held(raw, 27), Back = Held(raw, 8), Confirm = Held(raw, 13), Buttons = raw.padButtons,
+        // Start is already translated by the binding layer. Treating it as a
+        // second toggle would immediately close a menu opened with Start.
+        CloseHeld = Held(raw, 27) || Held(raw, 13) || (raw.padButtons & 0x3010) != 0 ||
+            (pauseMenu.AttractOptions && controlBindings.ViewChangeHeld) || (!diagnosticMode && Input.GetMouseButton(0)),
+        Vertical = (Held(raw, 40) || (raw.padButtons & 2) != 0 || raw.thumbLY < -16000 ? 1 : 0)
+            - (Held(raw, 38) || (raw.padButtons & 1) != 0 || raw.thumbLY > 16000 ? 1 : 0),
+        Horizontal = (Held(raw, 39) || (raw.padButtons & 8) != 0 || raw.thumbLX > 16000 ? 1 : 0)
+            - (Held(raw, 37) || (raw.padButtons & 4) != 0 || raw.thumbLX < -16000 ? 1 : 0)
+    };
+
     private void RoutePauseInput(ref Idas3Native.FrameInput frame)
     {
-        var raw = frame;
+        var sample = MenuInputSample(frame);
         pauseMenu.SetWheelNavigation(controllerDevices.ActiveIsGeneric);
-        bool pressed(int key) => Held(raw, key) && !Held(previousMenuInput, key);
-        uint pressedButtons = raw.padButtons & ~previousMenuInput.padButtons;
-        // PauseHeld already translates the bound controller control to Escape.
-        // Raw Start is stripped from driving packets, then reappears while the
-        // menu is open; treating it as a second edge immediately closes pause.
-        bool toggle = pressed(27);
-        bool closeHeld = Held(raw, 27) || Held(raw, 13) || (raw.padButtons & 0x3010) != 0 ||
-            (pauseMenu.AttractOptions && controlBindings.ViewChangeHeld) || (!diagnosticMode && Input.GetMouseButton(0));
-        if (!closeHeld) suppressPauseControls = false;
-        if (multiplayerMenu.BlocksGameInput)
+        var command = menuInput.Process(sample, new Idas3MenuInputRouter.Context {
+            Focused = (frame.flags & 1) != 0, OnlineBlocksInput = multiplayerMenu.BlocksGameInput,
+            PauseOpen = pauseMenu.IsOpen, CanOpenPause = CanOpenPause, Now = Time.realtimeSinceStartupAsDouble,
+            PointerBlocksNavigation = !multiplayerMenu.BlocksGameInput && (frame.flags & 1) != 0 && pauseMenu.IsOpen &&
+                pausePointer.BlockNavigation(Idas3MenuPointer.Active, MenuNavigationHeld(frame))
+        });
+        switch (command.Kind)
         {
-            int vertical=(Held(raw,40)||(raw.padButtons&2)!=0||raw.thumbLY < -16000?1:0)
-                -(Held(raw,38)||(raw.padButtons&1)!=0||raw.thumbLY > 16000?1:0);
-            int horizontal=(Held(raw,39)||(raw.padButtons&8)!=0||raw.thumbLX > 16000?1:0)
-                -(Held(raw,37)||(raw.padButtons&4)!=0||raw.thumbLX < -16000?1:0);
-            multiplayerMenu.ProcessMenuNavigation(horizontal,vertical,Held(raw,13)||(raw.padButtons&0x1000)!=0,
-                Held(raw,8)||(raw.padButtons&0x2000)!=0,(raw.flags&1)==0||controlBindings.SuppressInput,
-                Time.realtimeSinceStartupAsDouble,controllerDevices.ActiveIsGeneric);
-            NeutralizeControls(ref frame);
+            case Idas3MenuInputRouter.Action.OnlineNavigation:
+                multiplayerMenu.ProcessMenuNavigation(command.Horizontal, command.Vertical,
+                    sample.Confirm || (sample.Buttons & 0x1000) != 0, sample.Back || (sample.Buttons & 0x2000) != 0,
+                    (frame.flags & 1) == 0 || controlBindings.SuppressInput, Time.realtimeSinceStartupAsDouble, controllerDevices.ActiveIsGeneric);
+                break;
+            case Idas3MenuInputRouter.Action.PauseBack: pauseMenu.Back(); break;
+            case Idas3MenuInputRouter.Action.PauseActivate: pauseMenu.Activate(); break;
+            case Idas3MenuInputRouter.Action.PauseNavigate:
+                if (command.Vertical != 0) pauseMenu.Navigate(command.Vertical);
+                else pauseMenu.NavigateHorizontal(command.Horizontal);
+                break;
+            case Idas3MenuInputRouter.Action.OpenPause: pauseMenu.SetOpen(true); break;
         }
-        else if ((raw.flags & 1) != 0)
-        {
-            if (pauseMenu.IsOpen)
-            {
-                // A rebound pause control may also be the device's menu A/B.
-                // Wait for release before interpreting it as a menu command.
-                if(pausePointer.BlockNavigation(Idas3MenuPointer.Active,MenuNavigationHeld(raw))){menuNavigationAxis=0;}
-                else if (pauseOpenReleaseBlocked)
-                {
-                    if (!closeHeld) pauseOpenReleaseBlocked = false;
-                }
-                else if (toggle) pauseMenu.Back();
-                else if (pressed(8) || (pressedButtons & 0x2000) != 0) pauseMenu.Back();
-                else if (pressed(13) || (pressedButtons & 0x1000) != 0) pauseMenu.Activate();
-                else
-                {
-                    int vertical = (Held(raw, 40) || (raw.padButtons & 2) != 0 || raw.thumbLY < -16000 ? 1 : 0)
-                        - (Held(raw, 38) || (raw.padButtons & 1) != 0 || raw.thumbLY > 16000 ? 1 : 0);
-                    int horizontal = (Held(raw, 39) || (raw.padButtons & 8) != 0 || raw.thumbLX > 16000 ? 1 : 0)
-                        - (Held(raw, 37) || (raw.padButtons & 4) != 0 || raw.thumbLX < -16000 ? 1 : 0);
-                    int axis = vertical != 0 ? vertical : horizontal * 2;
-                    double now = Time.realtimeSinceStartupAsDouble;
-                    if (axis != 0 && (axis != menuNavigationAxis || now >= nextMenuNavigation))
-                    {
-                        if (vertical != 0) pauseMenu.Navigate(vertical); else pauseMenu.NavigateHorizontal(horizontal);
-                        nextMenuNavigation = now + (axis != menuNavigationAxis ? .32 : .10);
-                    }
-                    menuNavigationAxis = axis;
-                }
-                NeutralizeControls(ref frame);
-            }
-            else if (toggle && CanOpenPause && !suppressPauseControls)
-            {
-                pauseMenu.SetOpen(true);
-                NeutralizeControls(ref frame);
-            }
-        }
-        // A held menu/confirm button can also be bound to acceleration. Keep
-        // its menu latch, but do not silence unrelated driving controls.
         bool returningToFrontend = (Status.flags & 1u) != 0;
-        if (suppressPauseControls && !returningToFrontend)
+        if (menuInput.SuppressClosingControls && !returningToFrontend)
         {
-            // Do not forward the closing press to native pause/confirmation.
             ClearKey(ref frame, 27); ClearKey(ref frame, 13); ClearKey(ref frame, 8);
-            // In a driving packet B is the canonical shift-up action, even
-            // when its physical binding is R1. A held confirm/throttle must
-            // not swallow fresh paddle presses after leaving the menu.
+            // Preserve canonical shift-up B and unrelated driving controls
+            // while a closing confirm/Start button is still held.
             frame.padButtons &= ~0x1010u;
         }
-        if (pauseMenu.BlocksGameInput || (suppressPauseControls && returningToFrontend) || Time.frameCount <= pauseBlockThroughFrame)
+        if (menuInput.BlocksGameInput(pauseMenu.BlocksGameInput, returningToFrontend, Time.frameCount))
             NeutralizeControls(ref frame);
-        previousMenuInput = raw;
     }
 
     private void RefreshScene()
