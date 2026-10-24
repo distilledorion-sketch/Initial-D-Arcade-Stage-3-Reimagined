@@ -144,7 +144,7 @@ internal static class EosSanctionsDriver {
         Check(Api.Requests.Count==issued,"Pending entries are never evicted to bypass cache bound");Complete(1);Allowed(pending[0],"One bounded-cache request completes");
         var added=reader.RequireAllowed(new ProductUserId("overflow"),false);Check(Api.Requests.Count==issued+1&&!added.IsCompleted,"A completed oldest entry can be evicted to allow a new request");reader.Dispose();
     }
-    static int Main(string[] args){SynchronizationContext.SetSynchronizationContext(context);Api.Automatic=false;try{
+    static int Main(string[] args){Console.OutputEncoding=new System.Text.UTF8Encoding(false);SynchronizationContext.SetSynchronizationContext(context);Api.Automatic=false;try{
         switch(args[0]){case "cache":Cache();break;case "restriction":Restriction();break;case "malformed":Malformed();break;case "timeouts":Timeouts();break;case "dispose-bounds":DisposalAndBounds();break;case "reset-policies":ResetPolicies();break;case "reset-failures":ResetFailures();break;default:throw new Exception("Unknown case");}
         Console.WriteLine("TOTAL\t"+checks);return 0;
     }catch(Exception error){Console.Error.WriteLine(error);return 1;}}

@@ -1,4 +1,5 @@
 """Run production EOS packet framing against boundary, loss and malformed input cases."""
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -6,12 +7,16 @@ import subprocess
 from test_build_compatibility import find_compiler
 
 ROOT = Path(__file__).resolve().parents[2]
-proof = ROOT / "Verification/eos-online-20261011/packets"
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--compiler")
+parser.add_argument("--report-dir", type=Path, default=ROOT / "Verification/eos-online-20261011/packets")
+args = parser.parse_args()
+proof = args.report_dir.resolve()
 proof.mkdir(parents=True, exist_ok=True)
 source = ROOT / "Assets/Scripts/Multiplayer/Idas3EosPackets.cs"
 driver = Path(__file__).with_name("EosPacketsDriver.cs")
 exe = proof / "EosPacketsDriver.exe"
-compiled = subprocess.run([str(find_compiler(None)), "/nologo", "/warnaserror+", "/target:exe",
+compiled = subprocess.run([str(find_compiler(args.compiler)), "/nologo", "/warnaserror+", "/target:exe",
     "/out:" + str(exe), str(source), str(driver)], capture_output=True, text=True)
 (proof / "compile.log").write_text(compiled.stdout + compiled.stderr, encoding="utf-8")
 if compiled.returncode:

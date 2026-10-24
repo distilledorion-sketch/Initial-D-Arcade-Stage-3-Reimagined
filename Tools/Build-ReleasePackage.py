@@ -10,6 +10,7 @@ import importlib.util
 import json
 import re
 import stat
+import sys
 import zipfile
 
 ALLOWED_DIRS = {'InitialDUnity_Data', 'MonoBleedingEdge', 'D3D12'}
@@ -71,8 +72,26 @@ def collect_player_files(player):
     return files
 
 
-def build(player, archive):
+def build(player, archive, acceptance=None, candidate_only=False):
     player, archive = Path(player), Path(archive)
+    if sys.flags.optimize:
+        raise ValueError('Packaging requires Python assertions enabled')
+    if archive.resolve().is_relative_to(player.resolve()):
+        raise ValueError('Package output must be outside the player')
+    if archive.exists() or archive.with_suffix('.report.json').exists():
+        raise FileExistsError('Use a new package and report path')
+    if bool(acceptance) == bool(candidate_only):
+        raise ValueError('Supply complete --acceptance evidence, or explicitly use --candidate-only for a private test package')
+    receipt = None
+    if candidate_only:
+        if not archive.name.startswith('Candidate-'):
+            raise ValueError('Private test archives must use the Candidate- filename prefix')
+    else:
+        # Do not accept a cached releaseReady flag. Recheck all referenced
+        # evidence and the candidate before creating any distributable archive.
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import release_acceptance
+        receipt = release_acceptance.check(Path(acceptance), player)
     files = collect_player_files(player)
     spec = importlib.util.spec_from_file_location('update_patch', Path(__file__).with_name('Build-UpdatePatch.py'))
     patch = importlib.util.module_from_spec(spec)
@@ -86,11 +105,20 @@ def build(player, archive):
         assert output.testzip() is None, 'Release ZIP failed CRC verification'
         inventory = patch.inventory(output)
         assert len(inventory) == len(files)
+    if receipt:
+        if archive.stat().st_size >= 2 * 1024**3:
+            raise ValueError('Release archive exceeds the download limit; use the verified split downloads')
+        actual = {name: {'bytes': row['size'], 'sha256': row['sha256']} for name, row in inventory.items()}
+        digest = hashlib.sha256(json.dumps(actual, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if digest != receipt['candidateInventorySha256']:
+            raise ValueError('Packaged bytes differ from the accepted candidate; archive is not approved')
     with archive.open('rb') as stream:
         digest = hashlib.file_digest(stream, 'sha256').hexdigest()
     report = dict(archive=str(archive), bytes=archive.stat().st_size, sha256=digest,
                   files=len(files), crcCheckPassed=True, privateDataExcluded=True,
-                  customMusicEntriesExcluded=True, romEntriesExcluded=True)
+                  customMusicEntriesExcluded=True, romEntriesExcluded=True,
+                  releaseReady=receipt is not None, candidateOnly=candidate_only,
+                  acceptance=receipt)
     archive.with_suffix('.report.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report), flush=True)
     return report
@@ -100,5 +128,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--player', required=True)
     parser.add_argument('--archive', required=True)
+    approval = parser.add_mutually_exclusive_group(required=True)
+    approval.add_argument('--acceptance', help='Complete local acceptance manifest; checked again before packaging')
+    approval.add_argument('--candidate-only', action='store_true', help='Private verification archive; requires Candidate- filename prefix')
     args = parser.parse_args()
-    build(args.player, args.archive)
+    build(args.player, args.archive, args.acceptance, args.candidate_only)

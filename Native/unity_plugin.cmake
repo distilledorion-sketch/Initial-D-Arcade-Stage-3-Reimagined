@@ -15,7 +15,7 @@ target_compile_definitions(unity_scene_smoke PRIVATE UNICODE _UNICODE NOMINMAX W
 target_compile_options(unity_scene_smoke PRIVATE /W4 /fp:strict)
 target_link_libraries(unity_scene_smoke PRIVATE d3d11)
 set_target_properties(Idas3Unity PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../Assets/Plugins/x86_64"
+  RUNTIME_OUTPUT_DIRECTORY "${IDAS3_PLUGIN_OUTPUT_DIRECTORY}"
   MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 if(EXISTS "${CMAKE_SOURCE_DIR}/tests/unity_shared_renderer_tests.cpp")

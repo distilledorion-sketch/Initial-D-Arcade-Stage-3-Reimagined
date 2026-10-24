@@ -121,6 +121,8 @@ namespace Idas3.Multiplayer
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerStart(ref Idas3MultiplayerConfig config);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerSetGo(int released);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerSetResult(int winner);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerPrepareResult(int winner,out int selection,out uint points,[Out] uint[] before,[Out] uint[] after,uint count);
+        [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerRecoverReward(byte[] saves,int selection,uint points,[In] uint[] before,[In] uint[] after,uint count);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerPointsEarned();
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerResultScreen(int field);
         [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3MultiplayerResultInput(int confirm,int cancel,int direction,uint flags);

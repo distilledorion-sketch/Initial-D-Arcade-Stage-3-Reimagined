@@ -78,7 +78,7 @@ namespace Idas3.Multiplayer
                 keys.Add(playerId+"|"+action+"|"+id);
             }
         }
-        private static void ValidateResetKeys(string[] keys)
+        internal static void ValidateResetKeys(string[] keys)
         {
             if(keys==null||keys.Length>MaximumResetKeys)throw new InvalidDataException("Invalid online reset history.");
             var seen=new HashSet<string>(StringComparer.Ordinal);

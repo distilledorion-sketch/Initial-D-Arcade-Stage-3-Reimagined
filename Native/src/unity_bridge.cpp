@@ -9,6 +9,7 @@
 #include "unity_audio_output.h"
 #include "unity_ui_capture.h"
 #include "main.cpp"
+#include "../tests/online_scored_driver.h"
 #include "../tests/mode_flow_app_tests.inl"
 #include "../tests/time_attack_completion_app_tests.inl"
 #include "../tests/finish_music_app_tests.inl"
@@ -930,6 +931,22 @@ int IDAS3_UNITY_CALL Idas3MultiplayerCopyHudText(int side,char* destination,int 
     }catch(const std::exception& e){unityError(e.what());return -1;}
     catch(...){unityError("Unknown online HUD text error");return -1;}
 }
+int IDAS3_UNITY_CALL Idas3MultiplayerScoredDiagnosticControls(float* values,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app||!values||count!=6||r.app->saveRoot.filename()!="userdata"||
+           !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_MULTIPLAYER_TEST.txt")||
+           !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_SCORED_RACE_TEST.txt"))return 0;
+        const auto& app=*r.app;
+        if(!app.multiplayer.active||!app.authorityRace||app.multiplayer.disconnected)return 0;
+        const auto slot=app.multiplayer.config.localSlot;
+        const auto controls=onlineScoredDriver(*app.authorityRace,slot);
+        const auto& rules=app.authorityRace->rules(slot);
+        values[0]=controls.steering;values[1]=controls.throttle;values[2]=controls.brake;
+        values[3]=float(rules.state().progress.index);values[4]=float(rules.rules().goalIndex);
+        values[5]=float(app.authorityRace->frame());return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
 int IDAS3_UNITY_CALL Idas3MultiplayerDiagnosticFinish(uint64_t ticks60){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
@@ -1509,6 +1526,33 @@ int IDAS3_UNITY_CALL Idas3MultiplayerSetGo(int released){
         r.app->setMultiplayerGo(released!=0);publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer GO error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uint32_t* points,uint32_t* before,uint32_t* after,uint32_t count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app)throw std::logic_error("Multiplayer scene is not initialized");
+        if(!selection||!points||!before||!after||count!=307)throw std::invalid_argument("Invalid reward plan buffers");
+        const auto& plan=r.app->prepareMultiplayerResult(winner);
+        *selection=plan?plan->selection:-1;*points=plan?plan->points:0;
+        std::fill_n(before,count,0);std::fill_n(after,count,0);
+        if(plan){std::copy(plan->before.words.begin(),plan->before.words.end(),before);std::copy(plan->after.words.begin(),plan->after.words.end(),after);}
+        return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+    catch(...){unityError("Unknown multiplayer reward preparation error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!before||!after||count!=307)throw std::invalid_argument("Invalid reward recovery buffers");
+        const auto root=unicodePath(saves);
+        // A loaded scene owns its memory profiles. Startup recovery runs before
+        // initialization; live settlement uses that scene's cached reward plan.
+        if(r.app)throw std::logic_error("Reward recovery must precede scene initialization");
+        idas3::OnlineResultReward::Plan plan;plan.selection=selection;plan.points=points;
+        std::copy_n(before,count,plan.before.words.begin());std::copy_n(after,count,plan.after.words.begin());
+        idas3::OnlineResultReward(root).apply(plan);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+    catch(...){unityError("Unknown multiplayer reward recovery error");return 0;}
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

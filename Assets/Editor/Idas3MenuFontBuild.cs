@@ -23,6 +23,10 @@ public sealed class Idas3MenuFontBuild : IPreprocessBuildWithReport
     // saves or installed OS fonts are needed to verify the actual text output.
     public static void BuildDiagnostic()
     {
+        string output=Environment.GetEnvironmentVariable("IDAS3_DIAGNOSTIC_OUTPUT");
+        if(string.IsNullOrEmpty(output))output="Builds/MenuFontCheck";
+        else if(!Path.IsPathFullyQualified(output)||Directory.Exists(output)||File.Exists(output))
+            throw new IOException("Diagnostic output must be a new absolute path.");
         const string scenePath="Assets/Scenes/MenuFontDiagnostic.unity";
         if(File.Exists(scenePath))throw new IOException("Temporary font diagnostic scene already exists.");
         try{
@@ -32,7 +36,7 @@ public sealed class Idas3MenuFontBuild : IPreprocessBuildWithReport
             new GameObject("Sound Room font check").AddComponent<Idas3MenuFontSmoke>();
             EditorSceneManager.SaveScene(scene,scenePath);
             var result=BuildPipeline.BuildPlayer(new BuildPlayerOptions{
-                scenes=new[]{scenePath},locationPathName="Builds/MenuFontCheck/InitialDUnity.exe",
+                scenes=new[]{scenePath},locationPathName=Path.Combine(output,"InitialDUnity.exe"),
                 target=BuildTarget.StandaloneWindows64,options=BuildOptions.None});
             if(result.summary.result!=BuildResult.Succeeded)throw new BuildFailedException("Font diagnostic build failed.");
         }finally{AssetDatabase.DeleteAsset(scenePath);}

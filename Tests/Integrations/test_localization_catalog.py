@@ -41,7 +41,8 @@ def main():
     result.stdout = result.stdout.lstrip("\ufeff")
     (proof / "checks.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     report = {"passed": result.returncode == 0, "output": result.stdout.strip(), "scope": __doc__.strip(), "runtime": str(mono),
-              "sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in (catalog, source, managed / "Assembly-CSharp.dll", *status_sources)}}
+              "player": str(args.player.resolve()),
+              "sha256": {("player/InitialDUnity_Data/Managed/Assembly-CSharp.dll" if path == managed / "Assembly-CSharp.dll" else path.relative_to(ROOT).as_posix()): hashlib.sha256(path.read_bytes()).hexdigest() for path in (catalog, source, managed / "Assembly-CSharp.dll", *status_sources)}}
     (proof / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)

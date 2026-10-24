@@ -49,9 +49,11 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     }
     internal static bool PreparePhysicalInput(ref Func<KeyCode,bool> key,ref Idas3ControlBindings.PadState pad)
     {if(active==null||active.finished)return false;key=active.KeyHeld;pad=new Idas3ControlBindings.PadState{connected=active.physicalThumbX!=0,thumbLX=active.physicalThumbX};return true;}
-    private bool KeyHeld(KeyCode key)=>physicalKey!=KeyCode.None&&key==physicalKey;
+    private bool KeyHeld(KeyCode key)=>host.DiagnosticFocusOverride!=false&&physicalKey!=KeyCode.None&&key==physicalKey;
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame)
-    {if(active==null)return true;if(active.finished)return !active.ownsPlayer;if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}
+    {if(active==null)return true;if(active.finished)return !active.ownsPlayer;
+        if(active.host.DiagnosticFocusOverride==false)return true;
+        if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}
         // Reserved menu keys bypass driving bindings in the real host too.
         if(active.physicalKey==KeyCode.Return)frame.SetKey(13);else if(active.physicalKey==KeyCode.Escape)frame.SetKey(27);else if(active.physicalKey==KeyCode.Delete)frame.SetKey(46);
         if((active.padPulse|active.padHeld)!=0){frame.padConnected=1;frame.padButtons=active.padPulse|active.padHeld;active.padPulse=0;}if(active.physicalThumbX!=0){frame.padConnected=1;frame.thumbLX=active.physicalThumbX;}return true;}
@@ -89,6 +91,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         yield return Hold(KeyCode.C,.8);Check(!host.RaceMusicMenu.IsOpen,"Removed Camera key still opened picker");
         yield return Hold(KeyCode.L,.85);Check(host.RaceMusicMenu.IsOpen,"Held mapped Camera did not open picker");
         Check(host.Status.frontendStage==10&&host.RaceMusic.State.opponentEligible!=0,"Picker input confirmed opponent underneath");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-focus-check")>=0){yield return CheckFocusGap();Finish(true,null);yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-custom-music-check")>=0){yield return CheckCustomMusic();Finish(true,null);yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-sound-room-check")>=0){yield return CheckSoundRoom();Finish(true,null);yield break;}
         yield return Capture("opponent-picker");yield return CheckStageFilters();
@@ -110,6 +113,19 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         yield return CheckCountdownAudio(116,"singleplayer");Finish(true,null);
     }
     private bool ReturnCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-return-check")>=0;
+    private IEnumerator CheckFocusGap(){
+        foreach(var key in new[]{KeyCode.Return,KeyCode.Escape}){
+            host.DiagnosticFocusOverride=false;physicalKey=key;yield return Frames(4);
+            host.DiagnosticFocusOverride=true;yield return Frames(12);
+            Check(host.RaceMusicMenu.IsOpen,"Music key activated across neutral focus gap: "+key);
+            Check(host.Status.frontendStage==10,"Music focus recovery confirmed the opponent underneath");
+            physicalKey=KeyCode.None;yield return Frames(5);physicalKey=key;yield return Frames(5);
+            Check(!host.RaceMusicMenu.IsOpen,"Fresh music key failed after focused release: "+key);
+            physicalKey=KeyCode.None;yield return Frames(5);
+            yield return Hold(KeyCode.L,.85);Check(host.RaceMusicMenu.IsOpen,"Music did not reopen after focused release test");
+        }
+        yield return Capture("music-focus-recovered");
+    }
     private IEnumerator CheckSoundRoom()
     {
         var menu=host.RaceMusicMenu;yield return MusicIdle();

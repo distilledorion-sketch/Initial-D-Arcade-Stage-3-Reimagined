@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "wet_weather.h"
 #include "online_car_selection.h"
+#include "online_result_reward.h"
 #include "online_result_screen.h"
 #include "unity_ui_capture.h"
 #include "imported_course.h"
@@ -134,6 +135,8 @@ struct App {
         bool active=false,waiting=false,received=false,disconnected=false;
         int finishWinner=-2; // -2 pending; protocol -1 both time-up,0/1 winning slot,2 draw
         int rewardSelection=-1;
+        int rewardWinner=-3;
+        std::optional<OnlineResultReward::Plan> rewardPlan;
         std::uint32_t pointsEarned=0;
         Idas3MultiplayerConfig config{};
         std::array<Idas3BattleRecord,2> records{{{0,0,1,0},{0,0,1,0}}};
@@ -989,11 +992,27 @@ struct App {
         if(released){paused=false;message.clear();messageSeconds=0;beginVsBanner();}
     }
     bool multiplayerDisconnected()const{return multiplayer.active&&multiplayer.disconnected;}
-    void setMultiplayerResult(int winner){
+    const std::optional<OnlineResultReward::Plan>& prepareMultiplayerResult(int winner){
         if(winner < -1||winner > 2)throw std::invalid_argument("Invalid multiplayer result");
         if(!multiplayer.active||multiplayer.disconnected||
            (authorityRace?authorityWinner()!=winner:race.phase!=RacePhase::Finished))
             throw std::logic_error("A connected finished race is required for its result");
+        if(multiplayer.rewardWinner!=-3){
+            if(multiplayer.rewardWinner!=winner)throw std::logic_error("Multiplayer reward is already planned");
+            return multiplayer.rewardPlan;
+        }
+        if(multiplayer.rewardSelection>=0&&winner>=0){
+            original::OriginalBattleProfile selected;
+            if(!onlineCarProfile(multiplayer.rewardSelection,selected))
+                throw std::runtime_error("Selected online car could not be read for its points");
+            multiplayer.rewardPlan=OnlineResultReward(userdataRoot()).prepare(multiplayer.rewardSelection,selected,
+                winner==int(multiplayer.config.localSlot));
+        }
+        multiplayer.rewardWinner=winner;
+        return multiplayer.rewardPlan;
+    }
+    void setMultiplayerResult(int winner){
+        const auto& reward=prepareMultiplayerResult(winner);
         if(multiplayer.finishWinner!=-2){
             if(multiplayer.finishWinner!=winner)throw std::logic_error("Multiplayer result is already settled");
             return;
@@ -1001,16 +1020,13 @@ struct App {
         // Online participation earns1,000 tuning points, plus1,000 for a
         // win. Double timeout/disconnect earns none. Persist only the actual
         // selected garage car; never copy the race's normalized physics card.
-        if(multiplayer.rewardSelection>=0&&winner>=0){
-            original::OriginalBattleProfile earned;
-            if(!onlineCarProfile(multiplayer.rewardSelection,earned))throw std::runtime_error("Selected online car could not be read for its points");
-            const auto selected=decodeOnlineCarSelection(multiplayer.rewardSelection);
-            const auto amount=1000u+(winner==int(multiplayer.config.localSlot)?1000u:0u);
-            const auto balance=earned.u(72);
-            earned.setu(72,std::uint32_t(std::min(std::uint64_t(balance)+amount,std::uint64_t(999999999))));
-            const auto directory=selected.slot>=0?LocalSaveSlots(userdataRoot()/"saves").profileDirectory(unsigned(selected.slot)):userdataRoot()/"driver_profiles_v1";
-            if(!LocalDriverProfiles(directory).save(multiplayer.config.localCar,earned))throw std::runtime_error("Online tuning points could not be saved");
-            multiplayer.pointsEarned=earned.u(72)-balance;
+        if(reward){
+            // The prepared absolute update is repeatable after a partial result
+            // save. Never recalculate an addition from an already credited car.
+            OnlineResultReward(userdataRoot()).apply(*reward);
+            const auto& earned=reward->after;
+            const auto selected=decodeOnlineCarSelection(reward->selection);
+            multiplayer.pointsEarned=reward->points;
             if(selected.slot==activeSaveSlot){
                 pendingProfiles.at(multiplayer.config.localCar).reset();
                 if(multiplayer.savedProfileCar==int(multiplayer.config.localCar)){
@@ -1020,8 +1036,13 @@ struct App {
             battleProfile.setu(72,earned.u(72));frontend.battleProfile.setu(72,earned.u(72));
         }
         multiplayer.finishWinner=winner;race.phase=RacePhase::Finished;
-        beginOnlineResult();
-        race.originalStartDigit=-1;updateAudioScene();
+        try{
+            beginOnlineResult();race.originalStartDigit=-1;updateAudioScene();
+        }catch(...){
+            // The absolute reward may already be on disk. Keep its plan for
+            // retry, but do not acknowledge a partially initialized screen.
+            multiplayer.finishWinner=-2;resetOnlineResult();throw;
+        }
     }
     void updateAudioScene(bool forcePause=false){
         if(multiplayerDisconnected())audio.scene(true,false,true,false);

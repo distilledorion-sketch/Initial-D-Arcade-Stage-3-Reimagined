@@ -27,7 +27,7 @@ cmake --build Native/build-unity-d --target Idas3WheelFeedback
 
 ## Unity player
 
-Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all six imported courses beside the player.
+Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all nine imported courses beside the player.
 
 Windows builds also create `Builds/Current/rom/README.txt` with the same instructions shown by the startup validator. Place your original dump beside those instructions as either `rom/gds-0033.chd` or the complete set `rom/gds-0033.cue`, `rom/gds-0033-track1.bin`, `rom/gds-0033-track2.bin` and `rom/gds-0033-track3.bin`. Startup validates the dump before gameplay. Building does not need a ROM, inspect existing ROMs or copy them from the checkout or another installation.
 
@@ -37,9 +37,13 @@ Release ZIPs must exclude every `rom/` entry, including the instructions and emp
 
 If Unity is installed outside the usual Hub location, set `IDAS3_UNITY_EDITOR` to the full path of `Editor/Unity.exe` before running the build.
 
-The public checkout uses the six packs in `RuntimeAssets`: `HAKONE`, `SADAMINE`, `ENNA`, `MYOGI_SPECIAL`, `USUI_SPECIAL` and `MOMIJI`. Private development/staging folders from the maintainer's computer are not required for the normal player build. Some historical diagnostic and asset-extraction tools still require their own input files; they are not part of the normal player build. See [Special Stage imports](docs/special-stage-courses.md) for their provenance and handling choices.
+The public checkout uses the nine packs in `RuntimeAssets`: `HAKONE`, `SADAMINE`, `ENNA`, `MYOGI_SPECIAL`, `USUI_SPECIAL`, `MOMIJI`, `TSUBAKI`, `GUNSAI` and `ODAWARA`. Private development/staging folders from the maintainer's computer are not required for the normal player build. Some historical diagnostic and asset-extraction tools still require their own input files; they are not part of the normal player build. See [Special Stage imports](docs/special-stage-courses.md) for their provenance and handling choices.
 
 ## Tests
+
+For a new Windows release candidate with build provenance, use `python -X utf8 Tools/build_release_candidate.py --original-image D:/reference/idas3_main_0C020000.bin --output Verification/fresh-candidate`. It builds into a new folder, compiles and checks the native plugins, and records source, content, toolchain and player hashes. The reference image is required for the selected native parity tests and is never packaged. Unity needs an active Editor license. See [release verification](docs/release-verification.md) for the evidence scope and subsequent acceptance checks.
+
+Run `python -X utf8 Tools/verify_release.py --suite source` for the maintained source regression suite. It requires Python 3.11+, Visual Studio Roslyn/.NET Framework and the patched Node 24 version specified in `Leaderboard/package.json`. Use `--node` for a Node installation outside PATH. Each run writes a fresh evidence directory and a JSON summary, including failures. See [release verification](docs/release-verification.md) for candidate verification and the remaining release gates.
 
 Native CMake registers tests through CTest. Many asset tests expect this repository's runtime data; independent reference tests also require explicitly configured reference inputs. Build a test target before selecting it with CTest.
 

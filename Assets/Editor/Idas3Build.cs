@@ -61,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.51";
+        PlayerSettings.bundleVersion = "0.3.95-community-replays.52";
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -161,6 +161,38 @@ public static class Idas3Build
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Windows script build failed: "+report.summary.result);
     }
 
+    // Faster private investigation of managed changes. The caller must retain
+    // baseline/output hashes; a scripts-only copy is not release-build evidence.
+    // GUI/lifecycle failures here do not rule out stale player data. Confirm
+    // them in a clean candidate before attributing them to gameplay changes.
+    // Unity may copy Assets plugin binaries: callers must restore their verified
+    // native inputs and check all output changes before launching this copy.
+    public static void RebuildPrivateDiagnosticScripts(){
+        string folder=Environment.GetEnvironmentVariable("IDAS3_DIAGNOSTIC_SCRIPT_PLAYER");
+        if(string.IsNullOrWhiteSpace(folder)||!Path.IsPathFullyQualified(folder))
+            throw new ArgumentException("An explicit private diagnostic player is required.");
+        folder=Path.GetFullPath(folder);
+        string verification=Path.GetFullPath(Path.Combine(Application.dataPath,"../Verification"))+Path.DirectorySeparatorChar;
+        if(!folder.StartsWith(verification,StringComparison.OrdinalIgnoreCase)||
+           !File.Exists(Path.Combine(folder,"PRIVATE_TEST_ONLY.txt")))
+            throw new IOException("Scripts-only diagnostics require a marked private copy inside Verification.");
+        for(var directory=new DirectoryInfo(folder);directory!=null;directory=directory.Parent)
+            if((directory.Attributes&FileAttributes.ReparsePoint)!=0)
+                throw new IOException("Diagnostic build paths cannot use directory links.");
+        string output=Path.Combine(folder,"InitialDUnity.exe");
+        if(!File.Exists(output)||!File.Exists(Path.Combine(folder,"InitialDUnity_Data/data.unity3d")))
+            throw new FileNotFoundException("Copy a complete compressed Windows player first.");
+        var pending=new System.Collections.Generic.Stack<string>();pending.Push(folder);
+        while(pending.Count>0)foreach(string entry in Directory.EnumerateFileSystemEntries(pending.Pop())){
+            var attributes=File.GetAttributes(entry);
+            if((attributes&FileAttributes.ReparsePoint)!=0)throw new IOException("Diagnostic build entries cannot use links.");
+            if((attributes&FileAttributes.Directory)!=0)pending.Push(entry);
+        }
+        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
+            target=BuildTarget.StandaloneWindows64,options=ScriptBuildOptions(output)});
+        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Private script build failed: "+report.summary.result);
+    }
+
     public static void BuildSadamineStaging(){Configure();BuildPlayer("Builds/Staging/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");}
     public static void BuildMenuPresentationDiagnostic(){Configure();BuildPlayer("Builds/MenuPresentationCheck/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");}
     public static void RebuildMenuPresentationDiagnosticScripts(){
@@ -202,6 +234,53 @@ public static class Idas3Build
         EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(scenePath,true) };
         AssetDatabase.SaveAssets();
         BuildPlayer("Builds/Current/InitialDUnity.exe",scenePath);
+    }
+
+    // The verification runner owns a new output directory and supplies freshly
+    // compiled native plugins. Never rebuild Current or rewrite project settings.
+    public static void BuildReleaseCandidate()
+    {
+        string output = Environment.GetEnvironmentVariable("IDAS3_RELEASE_OUTPUT");
+        string evidence = Environment.GetEnvironmentVariable("IDAS3_RELEASE_EVIDENCE");
+        string native = Environment.GetEnvironmentVariable("IDAS3_RELEASE_NATIVE_DIRECTORY");
+        foreach (string path in new[] { output, evidence, native })
+            if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+                throw new ArgumentException("Release paths must be explicit absolute paths.");
+        if (Directory.Exists(output) || File.Exists(output))
+            throw new IOException("Release candidate output already exists: " + output);
+        if (!File.Exists(Path.Combine(native,"pack_native_assets.exe")))
+            throw new FileNotFoundException("Fresh asset packer is missing.");
+        foreach (string plugin in new[] { "Idas3Unity.dll", "Idas3WheelFeedback.dll" })
+            if (!File.Exists(Path.Combine(native,plugin))) throw new FileNotFoundException("Fresh native plugin missing: " + plugin);
+        if (PlayerSettings.GetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Standalone) != ScriptingImplementation.Mono2x ||
+            PlayerSettings.colorSpace != ColorSpace.Gamma || GraphicsSettings.defaultRenderPipeline != null)
+            throw new InvalidOperationException("Configure the supported Mono / Gamma / built-in pipeline before building a candidate.");
+        var apis = PlayerSettings.GetGraphicsAPIs(BuildTarget.StandaloneWindows64);
+        if (apis.Length != 1 || apis[0] != GraphicsDeviceType.Direct3D11)
+            throw new InvalidOperationException("Release verification requires the configured Direct3D11 player.");
+        // A new output directory does not invalidate Unity's shared build cache.
+        // Release candidates must rebuild scripts AND player data together.
+        var report=BuildPlayer(Path.Combine(output,"InitialDUnity.exe"),"Assets/Scenes/InitialDUnityScene.unity",true);
+        string plugins = Path.Combine(output,"InitialDUnity_Data/Plugins/x86_64");
+        foreach (string plugin in new[] { "Idas3Unity.dll", "Idas3WheelFeedback.dll" })
+        {
+            string target = Path.Combine(plugins,plugin);
+            if (!File.Exists(target)) throw new FileNotFoundException("Unity did not stage the expected plugin",target);
+            File.Copy(Path.Combine(native,plugin),target,true);
+        }
+        File.WriteAllText(Path.Combine(evidence,"unity-build.json"),JsonUtility.ToJson(new ReleaseBuildReport {
+            passed=true,unityVersion=Application.unityVersion,applicationVersion=PlayerSettings.bundleVersion,
+            output=Path.GetFullPath(output),
+            cleanBuildCache=(report.summary.options&BuildOptions.CleanBuildCache)!=0,
+            scriptsOnly=(report.summary.options&BuildOptions.BuildScriptsOnly)!=0,
+            buildOptions=report.summary.options.ToString()
+        },true));
+    }
+
+    [Serializable] private sealed class ReleaseBuildReport
+    {
+        public bool passed,cleanBuildCache,scriptsOnly;
+        public string unityVersion,applicationVersion,output,buildOptions;
     }
 
     public static void BuildTestPlayer()
@@ -289,7 +368,7 @@ public static class Idas3Build
         return BuildOptions.BuildScriptsOnly | (File.Exists(archive)?BuildOptions.CompressWithLz4HC:BuildOptions.None);
     }
 
-    private static void BuildPlayer(string relativeOutput,string scenePath)
+    private static BuildReport BuildPlayer(string relativeOutput,string scenePath,bool cleanBuild=false)
     {
         string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
         if (!File.Exists(Path.Combine(project, "Assets/Plugins/x86_64/Idas3Unity.dll")))
@@ -298,7 +377,8 @@ public static class Idas3Build
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
             scenes = new[] { scenePath }, locationPathName = output,
-            target = BuildTarget.StandaloneWindows64, options = BuildOptions.CompressWithLz4HC
+            target = BuildTarget.StandaloneWindows64,
+            options = BuildOptions.CompressWithLz4HC | (cleanBuild?BuildOptions.CleanBuildCache:BuildOptions.None)
         });
         if (report.summary.result != BuildResult.Succeeded)
             throw new InvalidOperationException("Unity build failed: " + report.summary.result);
@@ -320,6 +400,12 @@ public static class Idas3Build
             UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = project,
             RedirectStandardOutput = true, RedirectStandardError = true
         };
+        string releaseEvidence=Environment.GetEnvironmentVariable("IDAS3_RELEASE_EVIDENCE");
+        string releaseNative=Environment.GetEnvironmentVariable("IDAS3_RELEASE_NATIVE_DIRECTORY");
+        if(!string.IsNullOrEmpty(releaseEvidence))
+            start.Arguments += " -ManifestPath \"" + Path.Combine(releaseEvidence,"game-data-manifest.json") + "\"";
+        if(!string.IsNullOrEmpty(releaseNative))
+            start.Arguments += " -PackerPath \"" + Path.Combine(releaseNative,"pack_native_assets.exe") + "\"";
         // A PowerShell 7 caller can leave its module path in the editor's
         // environment; the Windows PowerShell 5 staging process needs its own.
         start.EnvironmentVariables.Remove("PSModulePath");
@@ -329,8 +415,9 @@ public static class Idas3Build
             var stderr = process.StandardError.ReadToEndAsync();
             process.WaitForExit();
             string stagingLog = stdout.GetAwaiter().GetResult() + stderr.GetAwaiter().GetResult();
-            Directory.CreateDirectory(Path.Combine(project, "Logs"));
-            File.WriteAllText(Path.Combine(project, "Logs/staging.log"), stagingLog);
+            string stagingLogDirectory=string.IsNullOrEmpty(releaseEvidence)?Path.Combine(project,"Logs"):releaseEvidence;
+            Directory.CreateDirectory(stagingLogDirectory);
+            File.WriteAllText(Path.Combine(stagingLogDirectory, "staging.log"), stagingLog);
             if (process.ExitCode != 0) throw new InvalidOperationException("Game data staging failed: " + stagingLog);
         }
         File.Copy(Path.Combine(project, "Tools/Player-Readme.txt"),
@@ -340,6 +427,7 @@ public static class Idas3Build
         File.Copy(Path.Combine(project, "Tools/Multiplayer-Test.txt"),
             Path.Combine(Path.GetDirectoryName(output), "MULTIPLAYER TEST.txt"), true);
         Debug.Log("Initial D Unity player and all game assets: " + output);
+        return report;
     }
 }
 
