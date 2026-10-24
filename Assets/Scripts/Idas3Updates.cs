@@ -57,6 +57,8 @@ public sealed class Idas3Updates : MonoBehaviour
     internal string FailureDetails {get;private set;}="";
     private bool HasFailureDetails=>State==CheckState.Unavailable&&!string.IsNullOrEmpty(FailureDetails);
     private System.Diagnostics.Process installer;
+    internal Func<bool> InstallationAllowed;
+    internal bool CanInstall=>InstallationAllowed?.Invoke()??true;
     internal Action InstallOverride;
     internal Func<bool,IEnumerator> DownloadOverride;
     private IEnumerator CreateDownload()=>DownloadOverride?.Invoke(usingPatch)??DownloadAndInstall();
@@ -217,6 +219,7 @@ public sealed class Idas3Updates : MonoBehaviour
     internal void AcceptUpdate(){BeginInstall(false);}
     internal void AcceptRepair(){BeginInstall(true);}
     private void BeginInstall(bool full){
+        if(!CanInstall)return;
         if(State!=CheckState.Available&&!(full&&State==CheckState.Current))return;
         if(fullUrl==null||!TryCompareVersions(AvailableVersion,InstalledVersion,out int order)||order<0)return;
         ClearFailure();
@@ -416,8 +419,11 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     internal void HandleWindowInput(bool left,bool right,bool confirm,bool back){
         if(State==CheckState.Available||State==CheckState.Current){
-            if(left)actionSelected=(actionSelected+2)%3;if(right)actionSelected=(actionSelected+1)%3;
-            if(State==CheckState.Current&&actionSelected==0)actionSelected=1;
+            if(!CanInstall)actionSelected=2;
+            else{
+                if(left)actionSelected=(actionSelected+2)%3;if(right)actionSelected=(actionSelected+1)%3;
+                if(State==CheckState.Current&&actionSelected==0)actionSelected=1;
+            }
             if(back||confirm&&actionSelected==2)ContinueToGame();
             else if(confirm){if(actionSelected==1)AcceptRepair();else AcceptUpdate();}
         }else if(HasFailureDetails){
@@ -438,7 +444,8 @@ public sealed class Idas3Updates : MonoBehaviour
         }
         GUI.depth=-32000;var matrix=GUI.matrix;var color=GUI.color;
         GUI.color=new Color(0,0,0,.96f);GUI.DrawTexture(new Rect(0,0,Screen.width,Screen.height),Texture2D.whiteTexture);GUI.color=Color.white;
-        float height=HasFailureDetails?460:330;
+        bool blockedInstall=!CanInstall&&(State==CheckState.Available||State==CheckState.Current);
+        float height=HasFailureDetails?460:blockedInstall?390:330;
         float scale=Mathf.Min(1.5f,Mathf.Min(Screen.width/680f,Screen.height/(height+60)));
         GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-640*scale)/2,(Screen.height-height*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
         GUI.Box(new Rect(0,0,640,height),GUIContent.none);
@@ -462,13 +469,14 @@ public sealed class Idas3Updates : MonoBehaviour
                 "Update: "+((patchUrl!=null?patchBytes:fullBytes+contentBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB":
                 "Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB",windowText);
             for(int i=0;i<3;i++){
-                bool enabled=i==2||fullUrl!=null&&TryCompareVersions(AvailableVersion,InstalledVersion,out int order)&&order>=0&&(i!=0||State==CheckState.Available);
+                bool enabled=i==2||CanInstall&&fullUrl!=null&&TryCompareVersions(AvailableVersion,InstalledVersion,out int order)&&order>=0&&(i!=0||State==CheckState.Available);
                 GUI.enabled=enabled;GUI.color=actionSelected==i?new Color(1,.85f,.3f):Color.white;
                 if(GUI.Button(new Rect(25+i*200,240,190,52),Idas3MenuLocalization.T(i==0?"UPDATE":i==1?"FULL REPAIR":"LATER"),Idas3MenuLocalization.Style(windowButton))){
                     if(i==0)AcceptUpdate();else if(i==1)AcceptRepair();else ContinueToGame();
                 }
             }
             GUI.enabled=true;GUI.color=Color.white;
+            if(blockedInstall)Idas3MenuLocalization.Label(new Rect(30,310,580,60),"Cancel matchmaking or leave your room before installing an update.",windowText);
         }else if(State==CheckState.Downloading){
             long activeBytes=downloadingContent?contentBytes:downloadBytes;
             float progress=activeRequest==null?0:Mathf.Clamp01((float)(activeRequest.downloadedBytes/(double)activeBytes));

@@ -749,9 +749,72 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(capture)yield return editor.Capture(Path.Combine(root,"youmu-layout.png"));editor.Close(false);
         Check(options.Current.hudMeterStyle==savedStyle,"Cancelling the Youmu layout changed saved appearance");
     }
+    private IEnumerator UpdaterSessionRegression(){
+        // The diagnostic owns private saves and a loopback-only listener. The
+        // transport peer reads real session traffic; it never loads a race or
+        // calls the host's frame pump itself.
+        var session=host.MultiplayerSession;
+        var listener=new System.Net.Sockets.TcpListener(System.Net.IPAddress.Loopback,0);
+        listener.Start();int port=((System.Net.IPEndPoint)listener.LocalEndpoint).Port;listener.Stop();
+        session.ConfigureLocalTest(port,"UPDATER POLL TEST");session.HostRoom();
+        yield return Until(()=>session.InLobby,5,"Private updater-test room did not open");
+        host.GetComponent<Idas3.Multiplayer.Idas3MultiplayerMenu>().SetOpen(false);
+        yield return Release();
+        physicalKey=KeyCode.C;yield return ExpectOpen("updater-session");yield return Release();
+        var updates=menu.Updates;int installs=0;updates.InstallOverride=()=>++installs;
+        bool acceptedWhileOpen=false,receivedWhileOpen=false,resumedAfterClose=false,blockedConfirmClosed=false;
+        int blockedAction=-1;
+        try{
+            updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v99.0.0"));
+            menu.SelectCategory(Idas3PauseMenu.Category.Updates);
+            Check(menu.DiagnosticSelection==1,"Update category did not select its update action");
+            pulse=13;yield return Frames(5);
+            Check(updates.WindowVisible,"Normal options navigation did not open the updater");
+            updates.AcceptUpdate();updates.AcceptRepair();
+            var transport=(Idas3.Multiplayer.IIdas3Transport)typeof(Idas3.Multiplayer.Idas3MultiplayerSession)
+                .GetField("transport",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(session);
+            using(var peer=new Idas3.Multiplayer.Idas3TcpTransport(port,true,"UPDATER TEST PEER")){
+                int messages=0;peer.Message+=data=>++messages;
+                Check(peer.Initialize(),"Private updater-test peer did not initialize");peer.Join(session.RoomCode);
+                double end=Time.realtimeSinceStartupAsDouble+2;
+                while(Time.realtimeSinceStartupAsDouble<end){peer.Poll();yield return null;}
+                Check(updates.WindowVisible,"Updater closed before background polling observation");
+                acceptedWhileOpen=transport.Connected;receivedWhileOpen=messages>0;
+                updates.ContinueToGame();end=Time.realtimeSinceStartupAsDouble+3;
+                while(messages==0&&Time.realtimeSinceStartupAsDouble<end){peer.Poll();yield return null;}
+                resumedAfterClose=transport.Connected&&messages>0;
+            }
+            updates.Activate();updates.HandleWindowInput(true,false,false,false);
+            blockedAction=(int)typeof(Idas3Updates).GetField("actionSelected",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(updates);
+            updates.HandleWindowInput(false,false,true,false);
+            blockedConfirmClosed=!updates.WindowVisible;
+        }finally{
+            updates.InstallOverride=null;if(updates.WindowVisible)updates.ContinueToGame();
+            session.LeaveRoom();menu.SetOpen(false);
+            observations.Add("Updater session: accepted while open="+acceptedWhileOpen+
+                "; received real session packets while open="+receivedWhileOpen+
+                "; accepted/received after close="+resumedAfterClose+"; install attempts admitted while in room="+installs);
+        }
+        Check(resumedAfterClose,"Control observation did not establish a working private transport");
+        Check(acceptedWhileOpen&&receivedWhileOpen,"Updater window starved the production network frame pump");
+        Check(installs==0,"Updater admitted installation while the player was in an online room");
+        Check(blockedAction==2&&blockedConfirmClosed,"Blocked updater did not keep keyboard selection on Later");
+        int offlineInstalls=0;updates.InstallOverride=()=>++offlineInstalls;
+        try{
+            updates.Activate();updates.HandleWindowInput(false,true,true,false);
+            Check(offlineInstalls==1&&!updates.DiagnosticRepair,"Leaving the room did not restore normal update installation");
+            updates.ContinueToGame();updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v"+Application.version));updates.Activate();
+            updates.HandleWindowInput(true,false,true,false);
+            Check(offlineInstalls==2&&updates.DiagnosticRepair,"Leaving the room did not restore same-version Full Repair");
+            observations.Add("After leaving room: keyboard Update and same-version Full Repair admitted; intercepted installs="+offlineInstalls);
+        }finally{updates.InstallOverride=null;if(updates.WindowVisible)updates.ContinueToGame();}
+        Finish(true,null);
+    }
+
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate physical-input injection");yield return Release();
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updater-session-check")>=0){yield return UpdaterSessionRegression();yield break;}
         if(HudEdgePlacementCheck){menu.OpenAttractOptions();yield return HudEdgePlacementRegression(false);menu.SetOpen(false);Finish(true,null);yield break;}
         if(HudCustomizationCheck){yield return HudCustomizationRegression();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ai-options-check")>=0){
@@ -979,6 +1042,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(OptionsExitCheck)report.scope="Actual Unity host with private saves and injected keyboard/controller input: attract options apply/close with held axis, keyboard Start, race options apply/back/resume with held throttle/steering, and music visibility close callback. No physical wheel or menu pixel verification.";
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Online settings captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Update / Full Repair / Later, same-version repair and patch/full fallback state transitions with controlled transfer failures, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updater-session-check")>=0)report.scope="Packaged Unity player with isolated saves: normal attract-options navigation opens the updater over a private loopback room. A real TCP peer checks host acceptance and production session messages while the updater is open, then after closing it. Update and repair installation attempts are intercepted. No EOS, external network, downloaded update, or race acceptance.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));Debug.Log((report.passed?"PASS":"FAIL")+" attract options "+error);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying=false;

@@ -666,6 +666,7 @@ UPDATE CHECK	更新の確認	更新检查
 UPDATE	更新する	更新
 FULL REPAIR	完全修復	完整修复
 LATER	あとで	稍后
+Cancel matchmaking or leave your room before installing an update.	更新をインストールする前に、マッチングを中止するかルームから退出してください。	安装更新前，请取消匹配或离开房间。
 CONTINUE TO GAME	ゲームを続ける	继续游戏
 INSTALLED VERSION	現在のバージョン	已安装版本
 Return to the title screen to check for updates.	タイトル画面に戻ってから更新を確認してください。	请返回标题画面检查更新。

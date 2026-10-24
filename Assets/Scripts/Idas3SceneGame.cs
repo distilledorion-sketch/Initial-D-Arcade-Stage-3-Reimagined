@@ -235,6 +235,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             pauseMenu.Initialize(gameOptions);
             pauseMenu.Updates=Idas3Updates.Instance;
             if(pauseMenu.Updates==null){pauseMenu.Updates=gameObject.AddComponent<Idas3Updates>();pauseMenu.Updates.Initialize(false);}
+            pauseMenu.Updates.InstallationAllowed=()=>!multiplayer.InLobby&&!multiplayer.Busy&&!multiplayer.IsRacing&&!multiplayer.ChallengerPending;
             replayLibrary=gameObject.AddComponent<Idas3ReplayLibrary>();replayLibrary.Initialize(this,pauseMenu,saves);
             if(!diagnosticMode)gameObject.AddComponent<Idas3CommunityTimes>().Initialize(this,gameOptions,pauseMenu);
             pauseMenu.InitializeBindings(controlBindings);
@@ -357,9 +358,17 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         if(!ready&&!stopping&&failure==null){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();return;}
         if (!ready || stopping || failure != null) return;
-        if(pauseMenu!=null&&pauseMenu.Updates!=null&&pauseMenu.Updates.WindowVisible)return;
         try
         {
+            double networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
+            multiplayer.BeforeFrame();
+            if(performanceDiagnostics)NetworkMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
+            challenger.Tick();
+            // A modal owns local input, not online discovery or heartbeats.
+            if(pauseMenu.Updates.WindowVisible&&multiplayer.IsRacing){
+                pauseMenu.Updates.ContinueToGame();pauseMenu.SetOpen(false);
+            }
+            if(pauseMenu.Updates.WindowVisible)return;
             gameOptions.Tick(Time.realtimeSinceStartupAsDouble);
             controllerDevices.Tick(Focused && !pauseMenu.IsOpen && !multiplayerMenu.IsOpen &&
                 !raceMusicMenu.IsOpen && !controlBindings.IsCapturing && !controlBindings.SuppressInput);
@@ -372,10 +381,6 @@ public sealed class Idas3SceneGame : MonoBehaviour
             bool muteBackground = gameOptions.Current.muteWhenUnfocused && !Focused;
             if (muteBackground != appliedBackgroundMute) ApplyNativeOptions(gameOptions.Current, false);
             MatchOutputResolution();
-            double networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
-            multiplayer.BeforeFrame();
-            if(performanceDiagnostics)NetworkMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
-            challenger.Tick();
             var frame = new Idas3Native.FrameInput {
                 size = (uint)Marshal.SizeOf<Idas3Native.FrameInput>(),
                 // The native host receives actual focus and keeps online
@@ -549,6 +554,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     internal void BeginChallenger()
     {
+        // Restore the updater's cursor state before closing its parent options.
+        if(pauseMenu.Updates.WindowVisible)pauseMenu.Updates.ContinueToGame();
         controlBindings.CancelEdit(false);
         pauseMenu.SetOpen(false);raceMusicMenu.SetOpen(false);multiplayerMenu.SetOpen(false);
         musicReleaseBlocked=attractOptionsReleaseBlocked=false;
