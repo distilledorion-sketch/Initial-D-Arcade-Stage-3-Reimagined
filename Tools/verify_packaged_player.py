@@ -181,6 +181,10 @@ class Players:
         startup.wShowWindow = 0
         log = (self.run.output / (name + "-stdout.log")).open("wb")
         command = [str(self.player / "InitialDUnity.exe"), "-force-d3d11", "-screen-fullscreen", "0",
+                   # Hidden Unity windows can omit OnGUI if SetResolution is
+                   # a no-op. Start below the diagnostics' 1200/1280x720 size
+                   # so their normal setup performs a real window transition.
+                   "-screen-width", "1184", "-screen-height", "704",
                    "-idas3-skip-update-once", "-logFile", str(self.run.output / (name + "-player.log")), *arguments]
         entry = {"name": name, "command": command, "passed": False}
         self.run.summary["checks"].append(entry)

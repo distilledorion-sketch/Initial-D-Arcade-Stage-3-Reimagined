@@ -21,7 +21,7 @@ internal sealed partial class Idas3MenuInputRouter
     }
 
     private Sample previous;
-    private bool suppressClosingControls, openingReleaseBlocked, ownsFrame;
+    private bool suppressClosingControls, openingReleaseBlocked, ownsFrame, focusReleaseBlocked;
     private int blockThroughFrame = -1, navigationAxis;
     private double nextNavigation;
     private readonly Idas3PointerNavigation pausePointer = new Idas3PointerNavigation();
@@ -42,13 +42,17 @@ internal sealed partial class Idas3MenuInputRouter
         navigationAxis = 0;
     }
 
-    internal void ObserveCovered(Sample sample)
+    internal void ObserveCovered(Sample sample, bool focused = true)
     {
         // Another modal consumes this sample. It must not become a fresh press
         // when that modal stops covering pause/online navigation.
         previous = sample;
         navigationAxis = 0;
+        if (!focused) focusReleaseBlocked = true;
     }
+
+    private static bool NavigationHeld(Sample sample) => sample.Escape || sample.Back || sample.Confirm ||
+        sample.CloseHeld || (sample.Buttons & 0x301Fu) != 0 || sample.Horizontal != 0 || sample.Vertical != 0;
 
     internal Command Process(Sample sample, Context context)
     {
@@ -58,7 +62,14 @@ internal sealed partial class Idas3MenuInputRouter
         uint buttons = sample.Buttons & ~previous.Buttons;
         previous = sample;
         ownsFrame = false;
-        if (!sample.CloseHeld) suppressClosingControls = false;
+        // The host samples neutral while unfocused. That is not a physical
+        // release: rearm menu actions only after a focused neutral sample.
+        if (!context.Focused)
+        {
+            focusReleaseBlocked = true;
+            navigationAxis = 0;
+        }
+        else if (!sample.CloseHeld) suppressClosingControls = false;
 
         // Online owns navigation before pause; the host forwards focus and
         // capture guards to that menu even while no command may be activated.
@@ -68,6 +79,11 @@ internal sealed partial class Idas3MenuInputRouter
             return new Command { Kind = Action.OnlineNavigation, Horizontal = sample.Horizontal, Vertical = sample.Vertical };
         }
         if (!context.Focused) return default;
+        if (focusReleaseBlocked)
+        {
+            if (!NavigationHeld(sample) && !context.NavigationHeld) focusReleaseBlocked = false;
+            return default;
+        }
         if (context.PauseOpen)
         {
             ownsFrame = true;

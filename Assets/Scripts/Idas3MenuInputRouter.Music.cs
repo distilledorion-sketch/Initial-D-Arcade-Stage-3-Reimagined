@@ -22,7 +22,7 @@ internal sealed partial class Idas3MenuInputRouter
 
     private MusicSample previousMusic;
     private float musicHoldSeconds;
-    private bool musicReleaseBlocked;
+    private bool musicReleaseBlocked, musicFocusReleaseBlocked;
     private int musicNavigationAxis;
     private double nextMusicNavigation;
     private readonly Idas3PointerNavigation musicPointer = new Idas3PointerNavigation();
@@ -48,9 +48,20 @@ internal sealed partial class Idas3MenuInputRouter
         var previous = previousMusic;
         previousMusic = sample;
         var command = new MusicCommand { BlocksGameInput = context.BlocksGameInput || musicReleaseBlocked };
+        if (!context.Focused) musicFocusReleaseBlocked = true;
         if (!context.Focused || context.Blocked)
         {
             musicHoldSeconds = 0;
+            return command;
+        }
+        if (musicFocusReleaseBlocked)
+        {
+            // A neutral packet produced while unfocused must not turn a held
+            // confirm, back, preview or direction into a new menu action.
+            if (!sample.AnyControlHeld && !NavigationHeld(sample.Navigation) && !sample.Delete &&
+                !sample.ViewHeld && !sample.SearchEscapePressed && !sample.PreviewPressed)
+                musicFocusReleaseBlocked = false;
+            command.BlocksGameInput |= context.MenuOpen || context.LobbyAllowed || context.OpponentAllowed;
             return command;
         }
         if (musicReleaseBlocked)

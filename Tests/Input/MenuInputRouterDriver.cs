@@ -90,6 +90,65 @@ internal static class MenuInputRouterDriver
         Check(!router.BlocksGameInput(false, false, 25), "ordinary uncovered gameplay is not blocked");
         MusicChecks();
         FrontendChecks();
+        FocusGapChecks();
+    }
+
+    private static void FocusGapChecks()
+    {
+        // The host does not sample ordinary keyboard/gamepad input while
+        // unfocused. Its zero packet does not prove a physical release.
+        foreach (var held in new[] {
+            new Router.Sample { Confirm = true, CloseHeld = true },
+            new Router.Sample { Back = true, CloseHeld = true },
+            new Router.Sample { Escape = true, CloseHeld = true },
+            new Router.Sample { Buttons = 0x1000, CloseHeld = true },
+            new Router.Sample { Buttons = 0x2000, CloseHeld = true },
+            new Router.Sample { Horizontal = 1 },
+            new Router.Sample { Vertical = -1 }
+        })
+        {
+            var router = new Router();
+            router.Process(held, Paused());
+            var away = Paused(); away.Focused = false;
+            router.Process(default, away);
+            router.Process(default, away);
+            Check(router.Process(held, Paused(10)).Kind == Router.Action.None,
+                "neutral focus gap cannot replay pause control " + held.Buttons + "/" + held.Horizontal + "/" + held.Vertical + "/" + held.Confirm + "/" + held.Back + "/" + held.Escape);
+            Check(router.Process(held, Paused(20)).Kind == Router.Action.None, "held pause control remains blocked after refocus");
+            router.Process(default, Paused(21));
+            Check(router.Process(held, Paused(22)).Kind != Router.Action.None, "pause control resumes after focused release");
+        }
+
+        var closing = new Router();
+        var driving = new Router.Context { Focused = true, CanOpenPause = true };
+        closing.VisibilityChanged(false, 10);
+        var unfocused = driving; unfocused.Focused = false;
+        closing.Process(default, unfocused);
+        Check(closing.SuppressClosingControls, "unfocused neutral cannot clear closing controls");
+        var confirm = new Router.Sample { Confirm = true, CloseHeld = true };
+        closing.Process(confirm, driving);
+        Check(closing.BlocksGameInput(false, true, 20), "held closing control stays blocked from frontend after refocus");
+        Check(!closing.BlocksGameInput(false, false, 20), "focus release guard does not block unrelated driving");
+        closing.Process(default, driving);
+        Check(!closing.SuppressClosingControls, "focused closing-control release clears guard");
+
+        foreach (var held in new[] {
+            new Router.MusicSample { Navigation = confirm, AnyControlHeld = true },
+            new Router.MusicSample { Navigation = new Router.Sample { Buttons = 0x2000 }, AnyControlHeld = true },
+            new Router.MusicSample { Delete = true, AnyControlHeld = true },
+            new Router.MusicSample { Navigation = new Router.Sample { Vertical = 1 }, AnyControlHeld = true },
+            new Router.MusicSample { Navigation = new Router.Sample { Buttons = 0x8000 }, AnyControlHeld = true }
+        })
+        {
+            var router = new Router();
+            router.ProcessMusic(held, MusicOpen());
+            var away = MusicOpen(); away.Focused = false;
+            router.ProcessMusic(default, away);
+            Check(router.ProcessMusic(held, MusicOpen(10)).Kind == Router.MusicAction.None, "neutral focus gap cannot replay music action");
+            Check(router.ProcessMusic(held, MusicOpen(20)).Kind == Router.MusicAction.None, "music held action waits for focused release");
+            router.ProcessMusic(default, MusicOpen(21));
+            Check(router.ProcessMusic(held, MusicOpen(22)).Kind != Router.MusicAction.None, "music action resumes after focused release");
+        }
     }
 
     private static Router.MusicContext MusicOpen(double now = 0) => new Router.MusicContext {

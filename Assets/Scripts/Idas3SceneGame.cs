@@ -458,7 +458,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (diagnosticFocusOverride.HasValue) frame.flags = (frame.flags & ~1u) | (diagnosticFocusOverride.Value ? 1u : 0u);
             if (bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active || savePointerBlocked)
             {
-                menuInput.ObserveCovered(MenuInputSample(frame));
+                menuInput.ObserveCovered(MenuInputSample(frame), Focused);
                 NeutralizeControls(ref frame);
             }
             else RoutePauseInput(ref frame);
