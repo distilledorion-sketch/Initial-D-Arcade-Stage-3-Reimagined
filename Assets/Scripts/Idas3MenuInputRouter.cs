@@ -1,6 +1,6 @@
 // Owns pause/online navigation edges, hold-repeat and transition release guards.
 // Sampling, drawing, and the native simulation remain outside this state machine.
-internal sealed class Idas3MenuInputRouter
+internal sealed partial class Idas3MenuInputRouter
 {
     internal enum Action { None, OnlineNavigation, PauseBack, PauseActivate, PauseNavigate, OpenPause }
     internal struct Sample

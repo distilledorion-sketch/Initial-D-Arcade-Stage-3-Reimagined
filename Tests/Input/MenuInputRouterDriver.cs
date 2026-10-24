@@ -86,5 +86,95 @@ internal static class MenuInputRouterDriver
         driving.CanOpenPause = false;
         Check(router.Process(start, driving).Kind == Router.Action.None, "race phase restriction prevents opening pause");
         Check(!router.BlocksGameInput(false, false, 25), "ordinary uncovered gameplay is not blocked");
+        MusicChecks();
+    }
+
+    private static Router.MusicContext MusicOpen(double now = 0) => new Router.MusicContext {
+        Focused = true, MenuOpen = true, BlocksGameInput = true, Now = now
+    };
+
+    private static void MusicChecks()
+    {
+        var router = new Router();
+        var selection = new Router.MusicContext { Focused = true, OpponentAllowed = true, DeltaSeconds = .1f };
+        var view = new Router.MusicSample { ViewHeld = true, AnyControlHeld = true };
+        var command = router.ProcessMusic(view, selection);
+        Check(command.Kind == Router.MusicAction.None && command.BlocksGameInput && router.MusicHoldProgress > 0,
+            "short view hold is consumed without opening the music picker");
+        router.ProcessMusic(default, selection);
+        Check(router.MusicHoldProgress == 0, "releasing view cancels partial music hold");
+        selection.DeltaSeconds = 5;
+        Check(router.ProcessMusic(view, selection).Kind == Router.MusicAction.None,
+            "one slow frame cannot instantly open the music picker");
+        for (int i = 0; i < 6; ++i) command = router.ProcessMusic(view, selection);
+        Check(command.Kind == Router.MusicAction.OpenOpponent && command.BlocksGameInput,
+            "sustained view hold opens opponent music and consumes underlying input");
+        router.MusicVisibilityChanged();
+        Check(router.MusicHoldProgress == 0 && router.MusicReleaseBlocked, "music visibility resets hold and arms release guard");
+        var confirm = new Router.MusicSample { Navigation = new Router.Sample { Confirm = true }, AnyControlHeld = true };
+        Check(router.ProcessMusic(confirm, MusicOpen()).Kind == Router.MusicAction.None,
+            "held opening input cannot select music immediately");
+        command = router.ProcessMusic(default, MusicOpen());
+        Check(command.BlocksGameInput && !router.MusicReleaseBlocked, "music release frame stays consumed");
+        Check(router.ProcessMusic(confirm, MusicOpen()).Kind == Router.MusicAction.Activate, "fresh music confirm selects after release");
+        Check(router.ProcessMusic(confirm, MusicOpen()).Kind == Router.MusicAction.None, "held music confirm selects only once");
+        router.MusicVisibilityChanged();
+        Check(router.ProcessMusic(confirm, selection).BlocksGameInput, "held music-closing confirm cannot start the underlying race");
+        router.ProcessMusic(default, selection);
+        Check(!router.ProcessMusic(default, selection).BlocksGameInput, "music closing guard releases ordinary gameplay");
+
+        router = new Router();
+        var covered = MusicOpen(); covered.Blocked = true;
+        Check(router.ProcessMusic(confirm, covered).Kind == Router.MusicAction.None, "binding capture prevents music activation");
+        Check(router.ProcessMusic(confirm, MusicOpen()).Kind == Router.MusicAction.None,
+            "confirm begun during capture cannot activate when coverage ends");
+        selection.DeltaSeconds = .1f;
+        router.ProcessMusic(view, selection);
+        var unfocused = selection; unfocused.Focused = false;
+        router.ProcessMusic(view, unfocused);
+        Check(router.MusicHoldProgress == 0, "focus loss cancels music hold progress");
+
+        router = new Router();
+        var search = MusicOpen(); search.SearchFocused = true;
+        var deletion = new Router.MusicSample { Delete = true, AnyControlHeld = true };
+        Check(router.ProcessMusic(deletion, search).Kind == Router.MusicAction.None, "Delete edits search without deleting a song");
+        Check(router.ProcessMusic(confirm, search).Kind == Router.MusicAction.None, "Enter in search cannot select a song");
+        var mappedEscape = new Router.MusicSample { Navigation = new Router.Sample { Escape = true } };
+        Check(router.ProcessMusic(mappedEscape, search).Kind == Router.MusicAction.None,
+            "a mapped gameplay Escape does not bypass search ownership");
+        mappedEscape.SearchEscapePressed = true;
+        Check(router.ProcessMusic(mappedEscape, search).Kind == Router.MusicAction.BlurSearch, "physical Escape only blurs search");
+        Check(router.ProcessMusic(new Router.MusicSample { Navigation = new Router.Sample { Buttons = 0x2000 } }, search).Kind == Router.MusicAction.BlurSearch,
+            "fresh controller back only blurs search");
+        Check(router.ProcessMusic(deletion, MusicOpen()).Kind == Router.MusicAction.Delete, "fresh Delete outside search requests song deletion");
+        router.MusicSelectionChanged();
+        Check(router.ProcessMusic(deletion, MusicOpen()).Kind == Router.MusicAction.None, "delete completion waits for release before another action");
+        router.ClearMusicReleaseGuard();
+
+        router = new Router();
+        var pointer = MusicOpen(); pointer.PointerBlocksNavigation = true;
+        var preview = new Router.MusicSample { PreviewPressed = true, Navigation = new Router.Sample { Buttons = 0x8000 } };
+        Check(router.ProcessMusic(preview, pointer).Kind == Router.MusicAction.None, "music pointer ownership suppresses preview shortcut");
+        preview.PreviewPressed = false;
+        Check(router.ProcessMusic(preview, MusicOpen()).Kind == Router.MusicAction.None, "held preview button is not replayed after pointer coverage");
+        router.ProcessMusic(default, MusicOpen());
+        Check(router.ProcessMusic(preview, MusicOpen()).Kind == Router.MusicAction.Preview, "fresh controller preview toggles playback");
+        Check(router.ProcessMusic(new Router.MusicSample { Navigation = new Router.Sample { Back = true } }, MusicOpen()).Kind == Router.MusicAction.Back,
+            "keyboard Backspace goes back in music");
+        var direction = new Router.MusicSample { Navigation = new Router.Sample { Horizontal = 1, Vertical = -1 } };
+        command = router.ProcessMusic(direction, MusicOpen(1));
+        Check(command.Kind == Router.MusicAction.Navigate && command.Horizontal == 1 && command.Vertical == -1,
+            "music forwards both axes for device-specific menu navigation");
+        Check(router.ProcessMusic(direction, MusicOpen(1.2)).Kind == Router.MusicAction.None, "music navigation waits through initial hold delay");
+        Check(router.ProcessMusic(direction, MusicOpen(1.31)).Kind == Router.MusicAction.Navigate, "music navigation repeats after initial delay");
+
+        router = new Router();
+        selection.OpponentAllowed = false; selection.LobbyAllowed = true;
+        for (int i = 0; i < 7; ++i) command = router.ProcessMusic(view, selection);
+        Check(command.Kind == Router.MusicAction.OpenLobby, "lobby hold opens the lobby music context");
+        selection.LobbyAllowed = false;
+        command = router.ProcessMusic(view, selection);
+        Check(command.Kind == Router.MusicAction.None && !command.BlocksGameInput && router.MusicHoldProgress == 0,
+            "music opening stops when its context becomes unavailable");
     }
 }

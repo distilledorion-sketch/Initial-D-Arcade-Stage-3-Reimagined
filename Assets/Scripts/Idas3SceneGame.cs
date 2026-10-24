@@ -39,17 +39,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3RaceMusicCatalog raceMusic;
     private Idas3RaceMusicMenu raceMusicMenu;
     internal Idas3CustomRaceMusic CustomMusic {get;private set;}
-    private Idas3Native.FrameInput previousMusicInput;
     private readonly Idas3MenuPointer musicPointer=new Idas3MenuPointer();
     private readonly Idas3MenuPointer pausePointer=new Idas3MenuPointer();
-    private float musicHoldSeconds;
-    private bool musicReleaseBlocked;
     private bool savePointerReleaseBlocked;
     private Vector3 previousSavePointer;
     private bool savePointerTracked;
     private bool saveCarLevelsLoaded, saveCarLevelsWarned;
-    private int musicPickerContext, musicNavigationAxis;
-    private double nextMusicNavigation;
+    private int musicPickerContext;
     private float attractOptionsHoldSeconds;
     private int attractViewTapChild;
     private bool attractOptionsReleaseBlocked;
@@ -426,7 +422,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 diagnosticPad ? null : controllerDevices.Controls, diagnosticPad ? null : controllerDevices.RigSamples);
             bool bindingInputBlocked = controlBindings.SuppressInput || controlBindings.IsCapturing;
             multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld,
-                bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || musicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active,
+                bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || menuInput.MusicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active,
                 MenuNavigationHeld(frame) || controlBindings.ViewChangeHeld);
             if (multiplayerMenu.IsOpen && pauseMenu.IsOpen)
             {
@@ -462,7 +458,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             multiplayerMenu.ProcessDisconnectedInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
                 controlBindings.PauseHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
                 !Focused || bindingInputBlocked);
-            if (disconnectedFinish && !multiplayer.DisconnectedFinish) musicReleaseBlocked = true;
+            if (disconnectedFinish && !multiplayer.DisconnectedFinish) menuInput.BlockMusicUntilRelease();
             bool musicInputBlocked = UpdateRaceMusic(ref frame, bindingInputBlocked || multiplayerMenu.CapturesTextInput);
             bool attractInputBlocked = UpdateAttractOptions(ref frame, bindingInputBlocked || musicInputBlocked);
             bool savePointerBlocked = RouteSaveMenuPointer(frame, saveMenuOwnsPointer,
@@ -542,7 +538,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         pauseMenu.SetOpen(false);
         preservePauseOnClose = false;
         raceMusicMenu.SetOpen(false);
-        musicReleaseBlocked = true;
+        menuInput.BlockMusicUntilRelease();
         Status = Idas3Native.ReadStatus();
         menuInput.ResetNavigation();
     }
@@ -553,14 +549,14 @@ public sealed class Idas3SceneGame : MonoBehaviour
         if(pauseMenu.Updates.WindowVisible)pauseMenu.Updates.ContinueToGame();
         controlBindings.CancelEdit(false);
         pauseMenu.SetOpen(false);raceMusicMenu.SetOpen(false);multiplayerMenu.SetOpen(false);
-        musicReleaseBlocked=attractOptionsReleaseBlocked=false;
+        menuInput.ClearMusicReleaseGuard();attractOptionsReleaseBlocked=false;
         if(Idas3Native.Idas3SceneChallenger(1)!=1)throw new InvalidOperationException(Idas3Native.Error());
         Status=Idas3Native.ReadStatus();
     }
     internal void CancelChallenger()
     {
         if(Idas3Native.Idas3SceneChallenger(0)!=1)throw new InvalidOperationException(Idas3Native.Error());
-        musicReleaseBlocked=true;
+        menuInput.BlockMusicUntilRelease();
     }
     internal void EnterChallengerLobby()
     {
@@ -691,15 +687,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
         raceMusicMenu.Busy=CustomMusic.Busy;
         raceMusicMenu.SetSelected(CustomMusic.SelectedId);
         raceMusicMenu.SetNotice(deleted?"Song deleted.":CustomMusic.LastError??"The song could not be deleted.");
-        musicReleaseBlocked=true;musicNavigationAxis=0;previousMusicInput=default;
+        menuInput.MusicSelectionChanged();
     }
     private void MusicVisibilityChanged(bool open)
     {
         multiplayerMenu.InputCovered = open;
-        musicReleaseBlocked = true;
-        musicHoldSeconds = 0;
-        musicNavigationAxis = 0;
-        previousMusicInput = default;
+        menuInput.MusicVisibilityChanged();
     }
     private void MusicPreviewChanged(bool playing)
     {
@@ -724,67 +717,36 @@ public sealed class Idas3SceneGame : MonoBehaviour
         multiplayerMenu.MusicSelectionAllowed = lobby;
         multiplayerMenu.SelectedMusicTitle = CustomMusic.SelectedTitle;
         multiplayerMenu.MusicControlHint = "HOLD " + hint + " TO SELECT MUSIC";
-        var raw = frame;
-        bool block = raceMusicMenu.BlocksGameInput || musicReleaseBlocked;
-        if (!Focused || bindingBlocked)
+        var sample = new Idas3MenuInputRouter.MusicSample {
+            Navigation = MenuInputSample(frame), Delete = Held(frame, 46),
+            ViewHeld = controlBindings.ViewChangeHeld, AnyControlHeld = MusicControlsHeld(frame),
+            SearchEscapePressed = Input.GetKeyDown(KeyCode.Escape), PreviewPressed = Input.GetKeyDown(KeyCode.P)
+        };
+        var command = menuInput.ProcessMusic(sample, new Idas3MenuInputRouter.MusicContext {
+            Focused = Focused, Blocked = bindingBlocked, MenuOpen = raceMusicMenu.IsOpen,
+            BlocksGameInput = raceMusicMenu.BlocksGameInput, SearchFocused = raceMusicMenu.SearchFocused,
+            LobbyAllowed = lobby, OpponentAllowed = opponent, DeltaSeconds = Time.unscaledDeltaTime,
+            Now = Time.realtimeSinceStartupAsDouble,
+            PointerBlocksNavigation = Focused && !bindingBlocked && !menuInput.MusicReleaseBlocked && raceMusicMenu.IsOpen &&
+                !raceMusicMenu.SearchFocused && musicPointer.BlockNavigation(Idas3MenuPointer.Active,
+                    MenuNavigationHeld(frame) || Held(frame, 46) || (frame.padButtons & 0x4000u) != 0)
+        });
+        switch (command.Kind)
         {
-            musicHoldSeconds = 0; previousMusicInput = raw;
-            raceMusicMenu.SetContext(opponent, 0, hint);
-            if (block) NeutralizeControls(ref frame);
-            return block;
+            case Idas3MenuInputRouter.MusicAction.BlurSearch: raceMusicMenu.BlurSearch(); break;
+            case Idas3MenuInputRouter.MusicAction.Preview: raceMusicMenu.TogglePreview(); break;
+            case Idas3MenuInputRouter.MusicAction.Back: raceMusicMenu.Back(); break;
+            case Idas3MenuInputRouter.MusicAction.Activate: raceMusicMenu.Activate(); break;
+            case Idas3MenuInputRouter.MusicAction.Delete: raceMusicMenu.RequestDelete(); break;
+            case Idas3MenuInputRouter.MusicAction.Navigate:
+                raceMusicMenu.NavigateDevice(command.Horizontal, command.Vertical, controllerDevices.ActiveIsGeneric); break;
+            case Idas3MenuInputRouter.MusicAction.OpenLobby: OpenRaceMusic(1); break;
+            case Idas3MenuInputRouter.MusicAction.OpenOpponent: OpenRaceMusic(0); break;
         }
-        if (musicReleaseBlocked)
-        {
-            if (!MusicControlsHeld(raw)) musicReleaseBlocked = false;
-            previousMusicInput = raw; NeutralizeControls(ref frame);
-            raceMusicMenu.SetContext(opponent, 0, hint); return true;
-        }
-        if (raceMusicMenu.IsOpen)
-        {
-            // Text editing must not trigger mapped brakes, confirmation or custom-song deletion.
-            if(raceMusicMenu.SearchFocused){
-                if(Input.GetKeyDown(KeyCode.Escape)||(raw.padButtons&~previousMusicInput.padButtons&0x2000u)!=0)raceMusicMenu.BlurSearch();
-                previousMusicInput=raw;NeutralizeControls(ref frame);raceMusicMenu.SetContext(opponent,0,hint);return true;
-            }
-            if(musicPointer.BlockNavigation(Idas3MenuPointer.Active,MenuNavigationHeld(raw)||Held(raw,46)||(raw.padButtons&0x4000u)!=0)){
-                previousMusicInput=raw;NeutralizeControls(ref frame);
-                raceMusicMenu.SetContext(opponent,0,hint);return true;
-            }
-            bool pressed(int key) => Held(raw, key) && !Held(previousMusicInput, key);
-            uint buttons = raw.padButtons & ~previousMusicInput.padButtons;
-            if(Input.GetKeyDown(KeyCode.P)||(buttons&0x8000)!=0)raceMusicMenu.TogglePreview();
-            else if (pressed(27) || pressed(8) || (buttons & 0x2000) != 0) raceMusicMenu.Back();
-            else if (pressed(13) || (buttons & 0x1000) != 0) raceMusicMenu.Activate();
-            else if (pressed(46) || (buttons & 0x4000) != 0) raceMusicMenu.RequestDelete();
-            else
-            {
-                int vertical = (Held(raw, 40) || (raw.padButtons & 2) != 0 || raw.thumbLY < -16000 ? 1 : 0)
-                    - (Held(raw, 38) || (raw.padButtons & 1) != 0 || raw.thumbLY > 16000 ? 1 : 0);
-                int horizontal = (Held(raw, 39) || (raw.padButtons & 8) != 0 || raw.thumbLX > 16000 ? 1 : 0)
-                    - (Held(raw, 37) || (raw.padButtons & 4) != 0 || raw.thumbLX < -16000 ? 1 : 0);
-                int axis = vertical != 0 ? vertical : horizontal * 2;
-                double now = Time.realtimeSinceStartupAsDouble;
-                if (axis != 0 && (axis != musicNavigationAxis || now >= nextMusicNavigation))
-                {
-                    raceMusicMenu.NavigateDevice(horizontal,vertical,controllerDevices.ActiveIsGeneric);
-                    nextMusicNavigation = now + (axis != musicNavigationAxis ? .30 : .10);
-                }
-                musicNavigationAxis = axis;
-            }
-            previousMusicInput = raw; NeutralizeControls(ref frame);
-            raceMusicMenu.SetContext(opponent, 0, hint); return true;
-        }
-        if ((opponent || lobby) && controlBindings.ViewChangeHeld)
-        {
-            musicHoldSeconds += Math.Min(Time.unscaledDeltaTime, .1f);
-            if (musicHoldSeconds >= .65f) OpenRaceMusic(lobby ? 1 : 0);
-            block = true;
-        }
-        else musicHoldSeconds = 0;
-        raceMusicMenu.SetContext(opponent, Mathf.Clamp01(musicHoldSeconds / .65f), hint);
-        previousMusicInput = raw;
-        if (block) NeutralizeControls(ref frame);
-        return block;
+        // Opening the picker resets hold progress in its visibility callback.
+        raceMusicMenu.SetContext(opponent, command.ShowHoldProgress ? menuInput.MusicHoldProgress : 0, hint);
+        if (command.BlocksGameInput) NeutralizeControls(ref frame);
+        return command.BlocksGameInput;
     }
 
     private void UpdateAttractPrompt()
