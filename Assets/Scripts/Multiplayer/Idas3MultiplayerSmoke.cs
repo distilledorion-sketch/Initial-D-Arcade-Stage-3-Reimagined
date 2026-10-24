@@ -155,6 +155,7 @@ namespace Idas3.Multiplayer
             if(pendingReturnCheck&&(pendingPeerRoot.Length==0||pendingOnlineCheck||pendingDisconnectCheck))throw new ArgumentException("Return-to-lobby check requires two isolated peers and must run separately from disconnect/online-service checks.");
             pendingPort=IntegerArgument(args,"-idas3-multiplayer-port",27830,1024,65535);
             pendingCourse=IntegerArgument(args,"-idas3-multiplayer-course",0,0,Idas3CourseCatalog.Count-1);
+            if(ScoredRecoveryCheck&&!ScoredCheck)throw new ArgumentException("Result recovery checks require the isolated scored-race diagnostic.");
             if(ScoredCheck&&(P2pRaceCheck||pendingOnlineCheck||pendingDisconnectCheck||pendingReturnCheck||pendingCourse!=0||pendingPeerRoot.Length==0||
                 (pendingRole=="join"&&!pendingAddress.StartsWith("127.0.0.1:",StringComparison.Ordinal))))
                 throw new ArgumentException("Scored checks require two isolated loopback LAN peers on Myogi, without other diagnostic modes.");
@@ -201,6 +202,7 @@ namespace Idas3.Multiplayer
         }
         private bool KeyHeld(KeyCode key)
         {
+            if(scoredRecoveryInput)return !finished&&key==manualKey&&manualKey!=KeyCode.None;
             if(finished||frozen||!driving||!session.RaceReleased||!session.IsRacing)return false;
             if(ScoredCheck)return false;
             if(key==manualKey&&manualKey!=KeyCode.None)return true;
@@ -224,6 +226,19 @@ namespace Idas3.Multiplayer
             if(active==null)return true;
             if(active.finished||active.frozen)return false;
             var mapped=frame;
+            if(active.scoredRecoveryInput){
+                // Reserved menu keys normally come directly from Input.GetKey
+                // in the host. Supply the same held bits for the private device;
+                // focus, release guards, navigation and OnGUI remain unchanged.
+                frame.key0=frame.key1=frame.key2=frame.key3=0;
+                switch(active.manualKey){
+                    case KeyCode.Return:frame.SetKey(13);break;
+                    case KeyCode.LeftArrow:frame.SetKey(37);break;
+                    case KeyCode.RightArrow:frame.SetKey(39);break;
+                    case KeyCode.Backspace:frame.SetKey(8);break;
+                }
+                return true;
+            }
             frame=new Idas3Native.FrameInput{size=(uint)Marshal.SizeOf<Idas3Native.FrameInput>(),flags=1,deltaSeconds=active.acceleratedReturnWait&&!active.session.ExperimentalAuthority?.25:Math.Min(Time.unscaledDeltaTime,.25)};
             if(active.driving&&active.session.RaceReleased&&active.session.IsRacing){
                 // Keep only the action keys produced by ApplyDriving; unrelated

@@ -41,6 +41,7 @@ namespace Idas3.Multiplayer
         private Idas3ControlBindings.PadState ScoredPad()
         {
             var pad=new Idas3ControlBindings.PadState{connected=true};
+            if(scoredRecoveryInput){pad.buttons=manualPad;return pad;}
             if(finished||frozen||!driving||!session.IsRacing||!session.RaceReleased||session.StateName=="Results"||
                 scoredDriver!=(role=="host"?0:1))return pad;
             if(Idas3MultiplayerScoredDiagnosticControls(scoredGuidance,scoredGuidance.Length)!=1){
@@ -104,7 +105,7 @@ namespace Idas3.Multiplayer
             double deadline=Time.realtimeSinceStartupAsDouble+280,next=0;
             using(var trace=new StreamWriter(Path.Combine(root,"scored-"+cycle+"-trajectory.csv"))){
                 trace.WriteLine("seconds,localTicks,remoteTicks,speed,progress,authorityFrame,verified,winner,inputSamples");
-                while(!session.CanReturnToLobby&&Time.realtimeSinceStartupAsDouble<deadline){
+                while(!session.CanReturnToLobby&&!(ScoredRecoveryCheck&&session.ResultSavePending)&&Time.realtimeSinceStartupAsDouble<deadline){
                     if(Time.realtimeSinceStartupAsDouble>=next){
                         var local=session.LocalSnapshot;var authority=session.AuthorityStatus;
                         trace.WriteLine(string.Format(System.Globalization.CultureInfo.InvariantCulture,
@@ -117,7 +118,7 @@ namespace Idas3.Multiplayer
                     yield return null;
                 }
             }
-            Check(session.CanReturnToLobby,"Ordinary driving failed to produce a saved scored result.");
+            Check(ScoredRecoveryCheck?session.ResultSavePending:session.CanReturnToLobby,"Ordinary driving failed to produce the expected scored result.");
         }
         private IEnumerator RunScored()
         {
@@ -148,6 +149,7 @@ namespace Idas3.Multiplayer
                 Check(records.Read(session.LocalCar).Equals(Idas3BattleRecord.Fresh),"Scored test did not start with fresh history.");
                 for(int cycle=0;cycle<2;++cycle){
                     scoredDriver=cycle;var item=new ScoredRace{winner=cycle,before=records.Read(session.LocalCar)};races.Add(item);
+                    if(ScoredRecoveryCheck)BlockScoredRecord();
                     Phase("scored-ready-"+cycle);driving=false;menu.SetOpen(true);
                     yield return ScoredBarrier("scored-ready-"+cycle);
                     yield return Until(()=>session.CanReady,15,"Rematch selection was not acknowledged.");
@@ -160,6 +162,7 @@ namespace Idas3.Multiplayer
                     Phase("scored-driving-"+cycle);double beganRace=Time.realtimeSinceStartupAsDouble;driving=true;
                     yield return DriveScoredRace(cycle);
                     driving=false;item.seconds=Time.realtimeSinceStartupAsDouble-beganRace;lastAuthority=session.AuthorityStatus;
+                    if(ScoredRecoveryCheck)yield return RecoverScoredRecord(cycle,records,item.before,expectedBalance+(uint)(cycle==(role=="host"?0:1)?2000:1000));
                     item.authorityFrame=lastAuthority.frame;item.verifiedFrame=lastAuthority.verified;
                     item.hostTicks=lastAuthority.hostFinishTicks;item.guestTicks=lastAuthority.clientFinishTicks;
                     item.naturalFinish=lastAuthority.winner==cycle&&item.verifiedFrame>10000;
@@ -203,6 +206,7 @@ namespace Idas3.Multiplayer
                 Check(report.persistedAfterLeaving&&report.unrelatedProfilePreserved,"Reloaded history or unrelated car changed.");
                 yield return ScoredBarrier("scored-complete");report.passed=true;
             }finally{
+                CloseScoredRecordBlock();scoredRecoveryInput=false;manualKey=KeyCode.None;manualPad=0;
                 driving=false;report.phase=phase;report.checks=checks-firstCheck;report.inputSamples=scoredInputSamples;report.races=races.ToArray();
                 File.WriteAllText(Path.Combine(root,"scored-report.json"),JsonUtility.ToJson(report,true));
             }

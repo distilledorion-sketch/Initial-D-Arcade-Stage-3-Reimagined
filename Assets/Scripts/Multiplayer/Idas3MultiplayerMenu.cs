@@ -82,7 +82,8 @@ namespace Idas3.Multiplayer
         public bool DisconnectedFinishVisible=>session!=null&&session.DisconnectedFinish;
         public bool CanAcknowledgeDisconnectedFinish=>DisconnectedFinishVisible&&disconnectedInputArmed&&!disconnectedInputBlocked;
         public bool ResultsVisible=>session!=null&&!session.DisconnectedFinish&&session.IsRacing&&session.StateName=="Results";
-        private bool ResultRecoveryVisible=>ResultsVisible&&session.ResultSavePending&&!string.IsNullOrEmpty(session.ErrorText);
+        internal bool ResultRecoveryVisible=>ResultsVisible&&session.ResultSavePending&&!string.IsNullOrEmpty(session.ErrorText);
+        internal int DiagnosticResultRetryClicks { get; private set; }
         public bool CanAcknowledgeReturnToLobby=>ResultsVisible&&session.CanReturnToLobby&&resultsInputArmed&&!resultsInputBlocked;
         public int ResultsPage { get; private set; }
         int resultsNavigation;
@@ -681,7 +682,7 @@ namespace Idas3.Multiplayer
             Fill(new Rect(0,0,760,220),Panel);Fill(new Rect(0,0,5,220),Red);
             Text(new Rect(24,20,712,35),session.ErrorText,heading);
             Text(new Rect(24,65,712,88),session.ResultRecoveryMessage,wrapped);
-            if(ActionButton(new Rect(24,163,340,38),"RETRY RESULT",true,true))session.RetryResultSave();
+            if(ActionButton(new Rect(24,163,340,38),"RETRY RESULT",true,true)){++DiagnosticResultRetryClicks;session.RetryResultSave();}
             if(ActionButton(new Rect(396,163,340,38),"EXIT GAME"))Application.Quit();
         }
         private void Footer(){

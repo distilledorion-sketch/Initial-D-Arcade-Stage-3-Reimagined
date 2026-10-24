@@ -141,3 +141,23 @@ python -X utf8 Tests/Multiplayer/test_result_journal.py --native <fresh-Idas3Uni
 The process interruption cases cover preparation, durable intent, tuning publication, history publication, completion publication, and completed results. Separate native tests cover per-car writer exclusion, crash-released locks, profile conflicts, exact field preservation, backup repair, secondary garage cars and the tuning cap. The session suite checks failed native saves and result-screen retries as well as history failures, departure and resets.
 
 The new packaged candidate must still prove startup recovery through `Idas3SceneGame`, normal scored races/rematches with the journal enabled, and the retry/exit panel with keyboard, controller and supported languages/resolutions. The source tests and direct ABI driver do not establish those player-facing outcomes.
+
+### Packaged recovery acceptance
+
+The maintained startup check uses a passed native journal-driver report and an unchanged fresh Windows candidate:
+
+```powershell
+python -X utf8 Tools/verify_result_startup.py --build-evidence Verification/fresh-candidate --helper-evidence Verification/result-journal-native --rom "D:/original-game/gds-0033.chd" --output Verification/result-startup-player
+```
+
+It terminates only its owned helper after durable intent, tuning publication, history publication, completion publication and full completion. Each private fixture enters the actual `Idas3SceneGame` startup path. Recovery must finish before native scene readiness, retain the opaque profile fields, award exactly one result, and leave both journal copies complete. A second actual startup must preserve the exact reward/history/journal bytes. These players are deliberately stopped after startup observation; this is not a clean-exit, natural-race interruption, EOS or complete multiplayer-smoke pass. The original distributable inventory is rechecked without treating the private marker or supplied ROM as release content. Never upload the private player.
+
+To exercise the save-error modal during naturally completed scored races:
+
+```powershell
+python -X utf8 Tools/verify_scored_player.py --build-evidence Verification/fresh-candidate --rom "D:/original-game/gds-0033.chd" --output Verification/scored-result-recovery --result-recovery
+```
+
+This optional mode obstructs only marked private battle-history writes: an empty directory prevents first publication, and a read handle prevents replacement of existing history on the rematch. It requires the native tuning award and durable intent while history remains unchanged; Continue must stay blocked. Generated held keyboard bits and a virtual controller use production menu routing. The check traverses Retry/Exit, exercises focus-loss and held-confirm guards, verifies Cancel cannot leave an unfinished result, then removes its own obstruction and activates Retry through the actual menu. Both peers use both input types over two races. Existing scored checks still verify rewards, duplicates, connected rematch and No returning to mode select.
+
+Actual modal `OnGUI` Repaints are captured for English, Japanese and Chinese at 1024x768, 1280x720, 1920x1080 and 2560x1080. Their surrounding area is deliberately black; they establish the modal's rendering, not the native background. The runner validates all capture dimensions and hashes, but separate visual inspection is required. Physical controllers, clicking Exit, loss of disk space before durable intent, natural race-process termination and power loss remain outside this diagnostic. A passing source suite or editor compile does not establish that this optional packaged mode passed.

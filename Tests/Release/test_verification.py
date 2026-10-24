@@ -1,5 +1,8 @@
 """Release evidence must fail closed and must not inspect personal content."""
 import importlib.util
+import base64
+import hashlib
+import struct
 import json
 from pathlib import Path
 import sys
@@ -11,6 +14,79 @@ ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("verify_release", ROOT / "Tools/verify_release.py")
 verify = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verify)
+
+
+sys.path.insert(0, str(ROOT / "Tools"))
+import verify_result_startup as startup
+import verify_scored_player as scored
+
+
+class ResultEvidenceTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+
+    @staticmethod
+    def envelope(state):
+        payload=json.dumps(state,ensure_ascii=False,separators=(",", ":")).encode("utf-8")
+        return json.dumps({"state":state,"sha256":base64.b64encode(hashlib.sha256(payload).digest()).decode("ascii")})
+
+    def fixture(self):
+        root=self.root/"save"
+        startup.seed_profile(root)
+        profile=root/"driver_profiles_v1/car_08.profile"
+        data=bytearray(profile.read_bytes());struct.pack_into("<I",data,24+18*4,2321)
+        checksum=2166136261
+        for i,value in enumerate(data):
+            if i<20 or i>=24:checksum=((checksum^value)*16777619)&0xffffffff
+        struct.pack_into("<I",data,20,checksum);profile.write_bytes(data)
+        record={"car":8,"record":{"battles":1,"wins":1},"receipts":[{"raceId":"123","won":True}]}
+        folder=root/"online_records_v1";folder.mkdir()
+        (folder/"car_08.json").write_text(self.envelope(record))
+        journal={"version":1,"generation":2,"entry":{"complete":True,"raceId":"123","car":8,"winner":0,"won":True,
+                 "reward":{"selection":13,"points":2000,"after":list(struct.unpack_from("<307I",data,24))}}}
+        for name in ("online_result_v1.json","online_result_v1.json.previous"):
+            (root/name).write_text(self.envelope(journal))
+        return root
+
+    def test_startup_evidence_accepts_complete_single_reward(self):
+        self.assertEqual(startup.profile_state(self.fixture())["points"],2321)
+
+    def test_startup_evidence_rejects_bad_checksum(self):
+        root=self.fixture();path=root/"driver_profiles_v1/car_08.profile"
+        data=bytearray(path.read_bytes());data[-1]^=1;path.write_bytes(data)
+        with self.assertRaises(ValueError):startup.profile_state(root)
+
+    def test_startup_evidence_rejects_valid_checksum_wrong_history(self):
+        root=self.fixture();path=root/"online_records_v1/car_08.json"
+        state=json.loads(path.read_text())["state"];state["record"]["battles"]=2
+        path.write_text(self.envelope(state))
+        with self.assertRaises(ValueError):startup.profile_state(root)
+
+    def test_startup_evidence_rejects_unsettled_copies(self):
+        root=self.fixture();(root/"online_result_v1.json.pending").write_text("pending")
+        with self.assertRaises(ValueError):startup.profile_state(root)
+
+    def test_recovery_reports_cannot_omit_input_guards(self):
+        cases=[dict(cycle=i,input=("keyboard" if i==0 else "controller"),clicks=2,captures=[],
+                    **{key:True for key in ("passed","durableIntent","historyBlocked","focusGuard","heldGuard","retried")})
+               for i in range(2)]
+        images={f"result-recovery-{lang}-{w}x{h}.png":(w,h) for lang in range(3)
+                for w,h in ((1024,768),(1280,720),(1920,1080),(2560,1080))}
+        cases[0]["captures"]=list(images)
+        for name,(w,h) in images.items():
+            (self.root/name).write_bytes(b"\x89PNG\r\n\x1a\n"+struct.pack(">I",13)+b"IHDR"+struct.pack(">II",w,h))
+        report=dict(passed=True,schema="idas3-scored-result-recovery-v1",applicationVersion="test",role="host",cases=cases)
+        path=self.root/"result-recovery-report.json";path.write_text(json.dumps(report))
+        self.assertEqual(len(scored.require_recovery_report(self.root,"test","host")),12)
+        for key in ("durableIntent","historyBlocked","focusGuard","heldGuard","retried"):
+            with self.subTest(key=key):
+                cases[0][key]=False;path.write_text(json.dumps(report))
+                with self.assertRaises(ValueError):scored.require_recovery_report(self.root,"test","host")
+                cases[0][key]=True
+        cases[0]["captures"].pop();path.write_text(json.dumps(report))
+        with self.assertRaises(ValueError):scored.require_recovery_report(self.root,"test","host")
 
 
 class VerificationTests(unittest.TestCase):
