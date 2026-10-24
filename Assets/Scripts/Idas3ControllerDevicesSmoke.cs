@@ -26,7 +26,10 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
     private double began;
     private readonly List<string> captures = new List<string>();
     private readonly List<SelectionObservation> selection = new List<SelectionObservation>();
-    [Serializable] private class SelectionObservation { public string stage,active;public double elapsed; }
+    [Serializable] private class SelectionObservation {
+        public string stage,active;public double elapsed;
+        public bool pauseOpen,attractOptions,capturing,bindingBlocked;
+    }
     [Serializable] private class Report { public bool passed,shutdownComplete;public int checks;public string error,scope,applicationVersion;public string[] captures;public SelectionObservation[] selection; }
     [StructLayout(LayoutKind.Explicit,Size=20)] private struct GenericState : IInputStateTypeInfo
     {
@@ -139,7 +142,11 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
     private void ObserveSelection(string stage,string expected,double elapsed=0)
     {
         string name=host.ControllerDevices.ActiveName;
-        selection.Add(new SelectionObservation{stage=stage,active=name,elapsed=elapsed});
+        selection.Add(new SelectionObservation{stage=stage,active=name,elapsed=elapsed,
+            pauseOpen=host.PauseMenu.IsOpen,attractOptions=host.PauseMenu.AttractOptions,
+            capturing=host.ControlBindings.IsCapturing,bindingBlocked=host.ControlBindings.SuppressInput});
+        Check(!host.PauseMenu.IsOpen&&!host.ControlBindings.IsCapturing&&!host.ControlBindings.SuppressInput,
+            "Automatic-selection fixture is covered by a menu or input-release guard at "+stage);
         Check(name.Contains(expected),"Unexpected active controller at "+stage+": "+name);
     }
     private IEnumerator KeepSelection(string stage,string expected,double seconds)
@@ -169,7 +176,9 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
         string alphaKey=DeviceKey("Alpha"),betaKey=DeviceKey("Beta"),genericKey=DeviceKey("Wheel");
         Check(alphaKey!=betaKey&&betaKey!=genericKey,"Distinct controllers share selector keys");
         yield return Select(alphaKey);yield return Select("automatic");
-        Pad(alpha,new GamepadState().WithButton(GamepadButton.North));yield return Frames(3);
+        // Y is View Change: holding it at attract opens Options and correctly
+        // locks automatic source changes. Use an unbound shoulder for activity.
+        Pad(alpha,new GamepadState().WithButton(GamepadButton.LeftShoulder));yield return Frames(3);
         // A delayed virtual copy must not steal a source that is still held.
         // Use elapsed time, because six rendered frames can be much shorter
         // than the production half-second neutral guard.
@@ -182,7 +191,7 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
         ObserveSelection("fresh-beta-selected","Beta");
         Pad(beta,new GamepadState());
         yield return KeepSelection("neutral-beta-retained","Beta",.65);
-        Pad(alpha,new GamepadState().WithButton(GamepadButton.North));yield return Frames(6);
+        Pad(alpha,new GamepadState().WithButton(GamepadButton.LeftShoulder));yield return Frames(6);
         ObserveSelection("fresh-alpha-selected","Alpha");
         // Explicit selection remains immediate even while the former source
         // is held. The automatic guard must never override that preference.

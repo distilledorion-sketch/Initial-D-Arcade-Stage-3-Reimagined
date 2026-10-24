@@ -20,6 +20,33 @@ namespace Idas3.Multiplayer
             public string input;
             public bool passed,durableIntent,historyBlocked,focusGuard,heldGuard,retried;
             public string[] captures;
+            public List<RecoveryInputObservation> inputTrace=new List<RecoveryInputObservation>();
+        }
+        [Serializable] private class RecoveryInputObservation
+        {
+            public string stage,selected,key;
+            public int frame,axis,pad;
+            public double time,nextRepeat;
+            public bool armed,pointerActive,pending,visible,inLobby,racing,focused;
+        }
+        private void TraceRecoveryInput(string stage)
+        {
+            if(scoredRecoveries.Count==0)return;
+            var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+            var focus=(Idas3MenuFocus)typeof(Idas3MultiplayerMenu).GetField("controllerFocus",flags).GetValue(menu);
+            scoredRecoveries[scoredRecoveries.Count-1].inputTrace.Add(new RecoveryInputObservation{
+                stage=stage,selected=focus.Selected,key=manualKey.ToString(),pad=manualPad,frame=Time.frameCount,
+                time=Time.realtimeSinceStartupAsDouble,
+                nextRepeat=(double)typeof(Idas3MenuFocus).GetField("nextRepeat",flags).GetValue(focus),
+                axis=(int)typeof(Idas3MenuFocus).GetField("axis",flags).GetValue(focus),
+                armed=(bool)typeof(Idas3MenuFocus).GetField("armed",flags).GetValue(focus),
+                pointerActive=Idas3MenuPointer.Active,pending=session.ResultSavePending,visible=menu.ResultRecoveryVisible,
+                inLobby=session.InLobby,racing=session.IsRacing,focused=host.DiagnosticFocusOverride??Application.isFocused});
+        }
+        private IEnumerator RecoveryFrames(string stage,int count)
+        {
+            TraceRecoveryInput(stage+"-before");
+            for(int i=0;i<count;++i){yield return null;TraceRecoveryInput(stage);}
         }
         [Serializable] private class ResultRecoveryReport
         {
@@ -110,12 +137,14 @@ namespace Idas3.Multiplayer
                 Idas3MenuLocalization.SetLanguage(language);Screen.SetResolution(1200,720,FullScreenMode.Windowed);yield return Frames(8);
                 var focus=(Idas3MenuFocus)typeof(Idas3MultiplayerMenu).GetField("controllerFocus",BindingFlags.Instance|BindingFlags.NonPublic).GetValue(menu);
                 Check(focus.Count==2&&focus.Selected!=null&&focus.Selected.EndsWith(":RETRY RESULT",StringComparison.Ordinal),"Recovery controls were not focusable.");
-                RecoveryButton(pad,KeyCode.RightArrow,8);yield return Frames(3);
+                // One consumed poll represents a tap. Several slow frames can
+                // legitimately cross the production hold-repeat threshold.
+                RecoveryButton(pad,KeyCode.RightArrow,8);yield return RecoveryFrames("right",1);
                 Check(focus.Selected.EndsWith(":EXIT GAME",StringComparison.Ordinal),"Right did not select Exit.");
-                RecoveryButton(pad,KeyCode.None,0);yield return Frames(3);
-                RecoveryButton(pad,KeyCode.LeftArrow,4);yield return Frames(3);
+                RecoveryButton(pad,KeyCode.None,0);yield return RecoveryFrames("right-release",3);
+                RecoveryButton(pad,KeyCode.LeftArrow,4);yield return RecoveryFrames("left",1);
                 Check(focus.Selected.EndsWith(":RETRY RESULT",StringComparison.Ordinal),"Left did not select Retry.");
-                RecoveryButton(pad,KeyCode.None,0);yield return Frames(3);
+                RecoveryButton(pad,KeyCode.None,0);yield return RecoveryFrames("left-release",3);
                 int clicks=menu.DiagnosticResultRetryClicks;
                 host.DiagnosticFocusOverride=false;RecoveryButton(pad,KeyCode.Return,0x1000);yield return Frames(4);
                 host.DiagnosticFocusOverride=true;yield return Frames(4);
@@ -128,7 +157,7 @@ namespace Idas3.Multiplayer
                 result.heldGuard=menu.DiagnosticResultRetryClicks==clicks+1&&session.ResultSavePending;
                 Check(result.heldGuard,"Held input repeated Retry or escaped a blocked save.");
                 RecoveryButton(pad,KeyCode.None,0);yield return Frames(5);
-                RecoveryButton(pad,KeyCode.Backspace,0x2000);yield return Frames(3);
+                RecoveryButton(pad,KeyCode.Backspace,0x2000);yield return RecoveryFrames("cancel",3);
                 Check(menu.ResultRecoveryVisible&&session.InLobby&&session.IsRacing,"Cancel left an unfinished result.");
                 RecoveryButton(pad,KeyCode.None,0);yield return Frames(5);
                 // Start the automatic retry's one-second interval with a known
@@ -143,6 +172,7 @@ namespace Idas3.Multiplayer
                 Check(result.retried,"Retry duplicated tuning or failed to save history.");result.passed=true;
                 yield return ScoredBarrier("scored-recovered-"+cycle,90);
             }finally{
+                TraceRecoveryInput("finally");
                 host.DiagnosticFocusOverride=true;scoredRecoveryInput=false;manualKey=KeyCode.None;manualPad=0;
                 Idas3MenuLocalization.SetLanguage(language);result.captures=captures.ToArray();SaveRecoveryReport();
             }

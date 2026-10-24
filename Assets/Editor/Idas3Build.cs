@@ -161,6 +161,36 @@ public static class Idas3Build
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Windows script build failed: "+report.summary.result);
     }
 
+    // Faster private investigation of managed changes. The caller must retain
+    // baseline/output hashes; a scripts-only copy is not release-build evidence.
+    // Unity may copy Assets plugin binaries: callers must restore their verified
+    // native inputs and check all output changes before launching this copy.
+    public static void RebuildPrivateDiagnosticScripts(){
+        string folder=Environment.GetEnvironmentVariable("IDAS3_DIAGNOSTIC_SCRIPT_PLAYER");
+        if(string.IsNullOrWhiteSpace(folder)||!Path.IsPathFullyQualified(folder))
+            throw new ArgumentException("An explicit private diagnostic player is required.");
+        folder=Path.GetFullPath(folder);
+        string verification=Path.GetFullPath(Path.Combine(Application.dataPath,"../Verification"))+Path.DirectorySeparatorChar;
+        if(!folder.StartsWith(verification,StringComparison.OrdinalIgnoreCase)||
+           !File.Exists(Path.Combine(folder,"PRIVATE_TEST_ONLY.txt")))
+            throw new IOException("Scripts-only diagnostics require a marked private copy inside Verification.");
+        for(var directory=new DirectoryInfo(folder);directory!=null;directory=directory.Parent)
+            if((directory.Attributes&FileAttributes.ReparsePoint)!=0)
+                throw new IOException("Diagnostic build paths cannot use directory links.");
+        string output=Path.Combine(folder,"InitialDUnity.exe");
+        if(!File.Exists(output)||!File.Exists(Path.Combine(folder,"InitialDUnity_Data/data.unity3d")))
+            throw new FileNotFoundException("Copy a complete compressed Windows player first.");
+        var pending=new System.Collections.Generic.Stack<string>();pending.Push(folder);
+        while(pending.Count>0)foreach(string entry in Directory.EnumerateFileSystemEntries(pending.Pop())){
+            var attributes=File.GetAttributes(entry);
+            if((attributes&FileAttributes.ReparsePoint)!=0)throw new IOException("Diagnostic build entries cannot use links.");
+            if((attributes&FileAttributes.Directory)!=0)pending.Push(entry);
+        }
+        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
+            target=BuildTarget.StandaloneWindows64,options=ScriptBuildOptions(output)});
+        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Private script build failed: "+report.summary.result);
+    }
+
     public static void BuildSadamineStaging(){Configure();BuildPlayer("Builds/Staging/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");}
     public static void BuildMenuPresentationDiagnostic(){Configure();BuildPlayer("Builds/MenuPresentationCheck/InitialDUnity.exe","Assets/Scenes/InitialDUnityScene.unity");}
     public static void RebuildMenuPresentationDiagnosticScripts(){
