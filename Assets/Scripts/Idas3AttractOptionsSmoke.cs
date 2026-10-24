@@ -1060,7 +1060,15 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         var cameras=new List<Camera>();foreach(var item in Resources.FindObjectsOfTypeAll<Camera>())if(item!=null&&item.enabled&&item.gameObject.activeInHierarchy&&item.targetTexture==target)cameras.Add(item);
         cameras.Sort((a,b)=>a.depth.CompareTo(b.depth));foreach(var item in cameras)item.Render();
         camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();int repaints=menu.DiagnosticRepaints;menu.RequestDiagnosticCapture(target);
-        yield return Until(()=>menu.DiagnosticCaptureReady,4,"Actual attract OnGUI capture did not repaint");yield return new WaitForEndOfFrame();
+        string captureState="";var captureStates=new List<string>();
+        yield return Until(()=>{
+            string state="open="+menu.IsOpen+" prompt="+menu.AttractPromptVisible+" enabled="+menu.enabled+
+                " active="+menu.gameObject.activeInHierarchy+" updates="+(menu.Updates!=null&&menu.Updates.WindowVisible)+
+                " hudEditor="+(menu.HudEditor!=null&&menu.HudEditor.IsOpen)+" repaints="+menu.DiagnosticRepaints+
+                " ready="+menu.DiagnosticCaptureReady+" focus="+Application.isFocused+" size="+Screen.width+"x"+Screen.height;
+            if(state!=captureState){captureState=state;captureStates.Add(state);File.WriteAllLines(Path.Combine(root,name+"-capture-state.txt"),captureStates);}
+            return menu.DiagnosticCaptureReady;
+        },4,"Actual attract OnGUI capture did not repaint");yield return new WaitForEndOfFrame();
         var old=RenderTexture.active;RenderTexture.active=target;var image=new Texture2D(target.width,target.height,TextureFormat.RGB24,false);
         image.ReadPixels(new Rect(0,0,target.width,target.height),0,0);image.Apply();RenderTexture.active=old;
         int visible=0;foreach(var color in image.GetPixels32())if(color.r>24||color.g>24||color.b>24)++visible;
