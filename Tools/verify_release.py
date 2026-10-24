@@ -208,6 +208,7 @@ def run_source(run, args):
     run.command("packaged-player-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_packaged_player.py"])
     run.command("setup-package-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_setup_package.py"])
     run.command("release-acceptance-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_release_acceptance.py"])
+    run.command("publication-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_publication.py"])
     tests = sorted(str(path) for path in (ROOT / "Leaderboard/test").glob("*.test.mjs"))
     if not tests:
         raise RuntimeError("No backend tests found")

@@ -96,7 +96,7 @@ def stages(path, data, expected, required_reports=()):
 
 def source_checks():
     return ("verification-tool-tests", "fresh-build-tool-tests", "packaged-player-tool-tests", "setup-package-tool-tests",
-            "release-acceptance-tool-tests", "backend", *verify.MANAGED_TESTS, *verify.PACKAGE_TESTS,
+            "release-acceptance-tool-tests", "publication-tool-tests", "backend", *verify.MANAGED_TESTS, *verify.PACKAGE_TESTS,
             "setup-launcher", "setup-extraction", "upgrade-archive-contract", "updater-configure", "updater-build",
             *("updater-" + kind + "-" + case for kind in ("compiled", "bundled")
               for case in ("installation", "split", "long-paths", "recovery")),
@@ -172,7 +172,7 @@ def check(manifest_path, player):
             and candidate.get("source", {}).get("commit") == source["commit"], "Candidate tests used different code/config")
     same_candidate(candidate, inventory)
     no_report = {"verification-tool-tests", "fresh-build-tool-tests", "packaged-player-tool-tests", "setup-package-tool-tests",
-                 "release-acceptance-tool-tests", "backend", "rom_package", "custom_music_package", "updater-configure", "updater-build"}
+                 "release-acceptance-tool-tests", "publication-tool-tests", "backend", "rom_package", "custom_music_package", "updater-configure", "updater-build"}
     stages(paths["candidate"], candidate, source_checks(), set(source_checks()) - no_report)
 
     local = load(paths["packaged"])
