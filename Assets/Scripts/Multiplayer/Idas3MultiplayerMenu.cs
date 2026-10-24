@@ -244,7 +244,7 @@ namespace Idas3.Multiplayer
         }
         private void OriginalResultsInput(bool confirm=false,bool cancel=false)
         {
-            uint flags=(resultsInputBlocked?1u:0u)|(session.ResultPeerLeft?2u:0u)|(session.RemoteContinueRequested?4u:0u)|(!string.IsNullOrEmpty(session.ErrorText)?8u:0u);
+            uint flags=((resultsInputBlocked||session.ResultSavePending)?1u:0u)|(session.ResultPeerLeft?2u:0u)|(session.RemoteContinueRequested?4u:0u)|(!string.IsNullOrEmpty(session.ErrorText)?8u:0u);
             if(Idas3MultiplayerNative.Idas3MultiplayerResultInput(confirm?1:0,cancel?1:0,resultsInputArmed?resultsNavigation:0,flags)!=1)
                 Debug.LogError("Original online result input was rejected: "+Idas3Native.Error());
         }
@@ -266,7 +266,7 @@ namespace Idas3.Multiplayer
         public void ProcessResultsInput(bool confirmHeld,bool cancelHeld,bool blocked=false)
         {
             if(!ResultsVisible){resultsEntered=resultsInputArmed=false;return;}
-            blocked|=InputCovered;
+            blocked|=InputCovered||session.ResultSavePending;
             if(!resultsEntered){
                 resultsEntered=true;resultsInputArmed=false;resultsPreviousConfirm=resultsPreviousCancel=true;
                 ResultsPage=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(0);resultsNavigation=0;

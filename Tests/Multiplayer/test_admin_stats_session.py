@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 import shutil
 import subprocess
-import uuid
+import tempfile
 from test_build_compatibility import find_compiler
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,7 +25,7 @@ def main():
     proof = args.report_dir.resolve()
     proof.mkdir(parents=True, exist_ok=True)
     production = [ROOT / "Assets/Scripts/Multiplayer" / name for name in (
-        "Idas3MultiplayerSession.cs", "Idas3MultiplayerTypes.cs", "Idas3OnlineActivity.cs", "Idas3OnlineUsername.cs",
+        "Idas3MultiplayerSession.cs", "Idas3BattleRecordSettlement.cs", "Idas3MultiplayerTypes.cs", "Idas3OnlineActivity.cs", "Idas3OnlineUsername.cs",
         "Idas3LobbyChat.cs", "Idas3NetworkImpairment.cs", "Idas3MultiplayerRecords.cs", "Idas3MultiplayerRecords.Moderation.cs",
         "Idas3MultiplayerRecordChecks.cs", "Idas3BuildCompatibility.cs", "Idas3QuickMatch.cs", "Idas3TcpTransport.cs", "Idas3ChallengerTestTransport.cs")]
     native = ROOT / "Assets/Scripts/Multiplayer/Idas3MultiplayerNative.cs"
@@ -46,11 +46,19 @@ def main():
     (proof / "compile.log").write_text(compiled.stdout + compiled.stderr, encoding="utf-8")
     if compiled.returncode:
         raise RuntimeError(compiled.stdout + compiled.stderr)
-    saves = proof / ("isolated-saves-" + uuid.uuid4().hex)
+    # Avoid the standalone Framework host's legacy MAX_PATH limit on deep CI
+    # checkouts. Keep only this owned fixture in TEMP, then retain the evidence.
+    temporary = Path(tempfile.mkdtemp(prefix="idas3-admin-session-"))
+    saves = temporary / "run"
     ran = subprocess.run([str(executable), str(saves)], capture_output=True, text=True, encoding="utf-8", timeout=180)
     (proof / "checks.log").write_text(ran.stdout + ran.stderr, encoding="utf-8")
+    retained = proof / "isolated-saves"
+    shutil.copytree(temporary, retained)
+    if temporary.resolve().parent != Path(tempfile.gettempdir()).resolve() or not temporary.name.startswith("idas3-admin-session-"):
+        raise RuntimeError("Refusing to clean an unexpected fixture path")
+    shutil.rmtree(temporary)
     checks = [line.split("\t", 1)[1] for line in ran.stdout.splitlines() if line.startswith("PASS\t")]
-    report = {"passed": ran.returncode == 0, "count": len(checks), "checks": checks, "isolated_saves": str(saves),
+    report = {"passed": ran.returncode == 0, "count": len(checks), "checks": checks, "isolated_saves": str(retained / "run"),
               "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in production + [native]}, "scope": __doc__.strip()}
     (proof / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if ran.returncode:

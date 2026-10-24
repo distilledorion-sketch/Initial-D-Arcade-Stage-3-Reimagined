@@ -22,7 +22,7 @@ MANAGED_TESTS = (
     "build_compatibility", "eos_platform", "eos_packets", "eos_room_rules",
     "eos_sanctions", "eos_transport", "eos_activity", "online_session",
     "online_player_directory", "online_directory_http", "record_storage",
-    "lobby_chat_session", "online_username",
+    "lobby_chat_session", "online_username", "admin_stats_session", "result_settlement",
 )
 PACKAGE_TESTS = ("rom_package", "custom_music_package", "eos_migration_patch")
 PENDING_GATES = (

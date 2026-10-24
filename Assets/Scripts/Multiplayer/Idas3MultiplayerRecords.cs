@@ -54,9 +54,12 @@ namespace Idas3.Multiplayer
             public string sha256;
         }
         private readonly string directory;
+        private readonly Advance progression;
         public string LastRecovery {get;private set;}
-        public Idas3MultiplayerRecords(string saveRoot)
+        public Idas3MultiplayerRecords(string saveRoot) : this(saveRoot, Next) { }
+        internal Idas3MultiplayerRecords(string saveRoot, Advance progression)
         {
+            this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
             if(string.IsNullOrWhiteSpace(saveRoot))throw new ArgumentException("An actual save root is required.",nameof(saveRoot));
             directory=Path.Combine(Path.GetFullPath(saveRoot),"online_records_v1");
         }
@@ -80,10 +83,10 @@ namespace Idas3.Multiplayer
                 throw new InvalidOperationException("Original online record update failed: "+Idas3Native.Error());
             Validate(after);if(nextExperience>99)throw new InvalidDataException("Invalid original battle experience.");return after;
         }
-        private delegate Idas3BattleRecord Advance(Idas3BattleRecord before,bool won,Idas3BattleRecord opponent,uint experience,out uint nextExperience);
+        internal delegate Idas3BattleRecord Advance(Idas3BattleRecord before,bool won,Idas3BattleRecord opponent,uint experience,out uint nextExperience);
         public Idas3BattleRecord Commit(int car,ulong raceId,bool won,Idas3BattleRecord opponent)
         {
-            return Commit(car,raceId,won,opponent,Next);
+            return Commit(car,raceId,won,opponent,progression);
         }
         private Idas3BattleRecord Commit(int car,ulong raceId,bool won,Idas3BattleRecord opponent,
             Advance advance)
