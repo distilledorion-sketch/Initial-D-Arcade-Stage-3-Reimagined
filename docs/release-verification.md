@@ -47,6 +47,8 @@ Use `--suite startup` to run only the missing-ROM check without supplying a ROM,
 
 The updater case opens the real dialog through attract Options while hosting a private loopback room. A TCP peer must be accepted and receive production session traffic while the dialog remains open. Update/Repair attempts are intercepted and must be blocked until leaving the room; keyboard Update and same-version Full Repair must then work. The validator requires these specific observations, not a generic attract-menu pass. This does not install an update, contact EOS, or verify the warning's pixels.
 
+Add `--updater-captures` to require actual updater `OnGUI` Repaints in English, Japanese and Chinese at 640x480, 1024x768, 1280x720 and 1920x800. A hidden or minimized window may need to be brought forward so Unity produces Repaints. A missing capture, blank runtime image, or unavailable requested size fails the check. The dialog is captured against black; native-background composition is outside this check. The runner records image hashes and verifies dimensions; inspect the images separately for text clipping and readability.
+
 These checks do **not** establish Internet/EOS matchmaking, nonzero win/loss reward persistence, every finish order, physical controller recovery, or all-language/resolution presentation. Those acceptance gates remain separate. The existing mode-flow diagnostic also includes controlled visual fixtures; it is not a human-driven complete race or original-game parity measurement.
 
 ## Scored races and connected rematch

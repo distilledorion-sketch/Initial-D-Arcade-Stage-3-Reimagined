@@ -54,6 +54,14 @@ public sealed class Idas3Updates : MonoBehaviour
     private GUIStyle failureText,failureButton;
     private Vector2 failureScroll;
     private bool errorCopied;
+    private RenderTexture diagnosticTarget;
+    internal bool DiagnosticCaptureReady {get;private set;}
+    internal int DiagnosticRepaints {get;private set;}
+    internal void RequestDiagnosticCapture(RenderTexture target){
+        if(target==null||!target.IsCreated())throw new ArgumentException("Updater capture needs an existing render target.");
+        diagnosticTarget=target;DiagnosticCaptureReady=false;
+    }
+    internal void CancelDiagnosticCapture(){diagnosticTarget=null;}
     internal string FailureDetails {get;private set;}="";
     private bool HasFailureDetails=>State==CheckState.Unavailable&&!string.IsNullOrEmpty(FailureDetails);
     private System.Diagnostics.Process installer;
@@ -434,6 +442,14 @@ public sealed class Idas3Updates : MonoBehaviour
     }
     private void OnGUI(){
         if(!WindowVisible)return;
+        bool capture=diagnosticTarget!=null&&Event.current.type==EventType.Repaint;
+        var previous=RenderTexture.active;
+        if(Event.current.type==EventType.Repaint)++DiagnosticRepaints;
+        if(capture){RenderTexture.active=diagnosticTarget;GL.PushMatrix();GL.LoadPixelMatrix(0,Screen.width,Screen.height,0);}
+        try{DrawWindow();}
+        finally{if(capture){GL.PopMatrix();RenderTexture.active=previous;diagnosticTarget=null;DiagnosticCaptureReady=true;}}
+    }
+    private void DrawWindow(){
         if(Event.current.type==EventType.KeyDown||Event.current.type==EventType.KeyUp)Event.current.Use();
         if(windowTitle==null){
             windowTitle=new GUIStyle(GUI.skin.label){fontSize=27,fontStyle=FontStyle.Bold,alignment=TextAnchor.MiddleCenter};

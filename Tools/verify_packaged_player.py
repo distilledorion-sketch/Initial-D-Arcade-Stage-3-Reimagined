@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import socket
+import struct
 import subprocess
 import sys
 import time
@@ -30,6 +31,34 @@ UPDATER_OBSERVATIONS = (
     "accepted/received after close=True; install attempts admitted while in room=0",
     "After leaving room: keyboard Update and same-version Full Repair admitted; intercepted installs=2",
 )
+UPDATER_SIZES = ((640, 480), (1024, 768), (1280, 720), (1920, 800))
+
+
+def require_updater_captures(folder, report):
+    expected = {f"updater-{language}-{width}x{height}.png": (width, height)
+                for language in range(3) for width, height in UPDATER_SIZES}
+    names = report.get("captures", [])
+    if len(names) != len(expected) or set(names) != set(expected):
+        raise ValueError("Updater language/resolution captures are incomplete")
+    dimensions = report.get("captureDimensions", [])
+    if len(dimensions) != len(expected) or {row.get("file") for row in dimensions} != set(expected):
+        raise ValueError("Updater capture dimensions are incomplete")
+    hashes = {}
+    for row in dimensions:
+        name = row["file"]
+        width, height = expected[name]
+        if (row.get("requestedSizeSupported") is not True or
+                (row.get("requestedWidth"), row.get("requestedHeight"), row.get("actualWidth"), row.get("actualHeight")) !=
+                (width, height, width, height)):
+            raise ValueError("Updater viewport did not match its requested size")
+        path = folder / name
+        with path.open("rb") as stream:
+            header = stream.read(24)
+        if (len(header) != 24 or header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR" or
+                struct.unpack(">II", header[16:24]) != (width, height)):
+            raise ValueError("Updater capture has the wrong format or dimensions")
+        hashes[name] = verify.sha256(path)
+    return hashes
 
 
 def selected_cases(suite):
@@ -140,8 +169,9 @@ def pair_arguments(case, role, folder, peer, port):
 
 
 class Players:
-    def __init__(self, run, player, version):
+    def __init__(self, run, player, version, updater_captures=False):
         self.run, self.player, self.version = run, player, version
+        self.updater_captures = updater_captures
         self.owned = []
 
     def launch(self, name, arguments):
@@ -169,6 +199,8 @@ class Players:
     def collect(self, process, entry, folder, kind, role=None):
         entry["exitCode"] = process.returncode
         report, detail = require_runtime_report(folder, self.version, process.returncode, kind, role)
+        if kind == "updater-session" and self.updater_captures:
+            entry["captureHashes"] = require_updater_captures(folder, report)
         entry.update(passed=True, report=str((folder / "report.json").relative_to(self.run.output)),
                      reportSha256=verify.sha256(folder / "report.json"), reportedCount=report["checks"])
         if detail:
@@ -242,9 +274,12 @@ def main():
     parser.add_argument("--player", type=Path, help="Clean candidate; defaults to the evidence directory's player subdirectory")
     parser.add_argument("--rom", type=Path, help="Explicit local GDS-0033 CHD; copied only into a marked private test player")
     parser.add_argument("--suite", choices=("all", "startup", "flows", "updater"), default="all")
+    parser.add_argument("--updater-captures", action="store_true", help="Require actual updater Repaints in three languages/four sizes; visual inspection remains separate")
     parser.add_argument("--output", type=Path, help="NEW evidence directory, outside the build and player")
     args = parser.parse_args()
     cases = selected_cases(args.suite)
+    if args.updater_captures and "updater-session" not in cases:
+        parser.error("--updater-captures requires a suite containing updater-session")
     if os.name != "nt" or sys.flags.optimize:
         parser.error("Requires Windows with Python assertions enabled")
     if args.suite != "startup" and args.rom is None:
@@ -268,7 +303,7 @@ def main():
                            buildEvidence=str(evidence), buildEvidenceSha256=verify.sha256(evidence / "summary.json"),
                            builtSource=proof["source"], applicationVersion=version,
                            tools={"python": sys.version, "driverSha256": verify.sha256(Path(__file__))},
-                           selectedCases=list(cases),
+                           selectedCases=list(cases), updaterCaptures=args.updater_captures,
                            scope="Private saves and loopback TCP. Selected cases cover blocked startup, local race flow, or connection processing and intercepted installation while the updater is open. Not Internet/EOS, scored reward, downloaded update, visual layout or human-driven finish acceptance.")
         run.summary["pendingGates"] = [
             "Remaining native reference coverage",
@@ -287,7 +322,7 @@ def main():
         private = output / "private-player"
         print("Copying distributable files into a marked private test player...", flush=True)
         copy_player(player, private, inventory)
-        players = Players(run, private, version)
+        players = Players(run, private, version, updater_captures=args.updater_captures)
         if "rom-missing" in cases:
             players.case("rom-missing", lambda: players.single("rom-missing", "-idas3-rom-smoke", "startup", ("-idas3-rom-expect", "blocked")))
         if args.suite != "startup":
@@ -299,8 +334,9 @@ def main():
                 if case in cases:
                     players.case(case, lambda case=case: players.pair(case))
             if "updater-session" in cases:
+                extra = ("-idas3-updater-session-check",) + (("-idas3-updater-session-captures",) if args.updater_captures else ())
                 players.case("updater-session", lambda: players.single("updater-session", "-idas3-attract-options-smoke",
-                             "updater-session", ("-idas3-updater-session-check",)))
+                             "updater-session", extra))
         print("Rechecking distributable bytes in the test copy and original candidate...", flush=True)
         for name, row in inventory["files"].items():
             if verify.sha256(private / name) != row["sha256"]:

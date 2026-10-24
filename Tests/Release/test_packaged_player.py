@@ -158,6 +158,42 @@ class PackagedPlayerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "differs"):
             player.copy_player(source, self.root / "changed-copy", inventory)
 
+    def updater_capture_fixture(self):
+        captures, dimensions = [], []
+        for language in range(3):
+            for width, height in player.UPDATER_SIZES:
+                name = f"updater-{language}-{width}x{height}.png"
+                captures.append(name)
+                dimensions.append(dict(file=name, requestedWidth=width, requestedHeight=height,
+                                       actualWidth=width, actualHeight=height, requestedSizeSupported=True))
+                # Header-only fixture tests metadata rejection, not image decoding.
+                (self.folder / name).write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR" + player.struct.pack(">II", width, height))
+        return dict(captures=captures, captureDimensions=dimensions)
+
+    def test_updater_captures_require_every_language_and_exact_viewport(self):
+        report = self.updater_capture_fixture()
+        hashes = player.require_updater_captures(self.folder, report)
+        self.assertEqual(len(hashes), 12)
+        for change in (lambda r: r["captures"].pop(), lambda r: r["captureDimensions"].pop(),
+                       lambda r: r["captureDimensions"][0].update(actualWidth=600),
+                       lambda r: r["captureDimensions"][0].update(requestedSizeSupported=False)):
+            modified = copy.deepcopy(report)
+            change(modified)
+            with self.assertRaises(ValueError):
+                player.require_updater_captures(self.folder, modified)
+
+    def test_updater_captures_reject_missing_truncated_and_wrong_size_files(self):
+        for content in (None, b"broken", b"\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDR" + player.struct.pack(">II", 600, 480)):
+            with self.subTest(content=content):
+                report = self.updater_capture_fixture()
+                path = self.folder / report["captures"][0]
+                if content is None:
+                    path.unlink()
+                else:
+                    path.write_bytes(content)
+                with self.assertRaises((FileNotFoundError, ValueError)):
+                    player.require_updater_captures(self.folder, report)
+
     def test_independent_success_does_not_erase_prior_failure(self):
         run = player.verify.Run(self.root / "output", "packaged-all")
         players = player.Players(run, self.root / "unused", "test-version")

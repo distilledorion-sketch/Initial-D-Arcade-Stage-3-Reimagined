@@ -26,6 +26,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
     private short steeringAxis;
     private static bool OptionsExitCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-options-exit-check")>=0;
     private static bool UpdatesCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updates-check")>=0;
+    private static bool UpdaterCaptures=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updater-session-captures")>=0;
     private static bool HudCustomizationCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-customization-check")>=0;
     private static bool HudEdgePlacementCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-edge-placement-check")>=0;
     private int pulse,checks;
@@ -87,7 +88,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             if(failure!=null){Finish(false,failure.ToString());yield break;}if(value is IEnumerator child)stack.Push(child);else yield return value;
         }
     }
-    private void Update(){if(!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-began>(ReportsCheck||PointerCheck||HudCustomizationCheck?300:45)))Finish(false,host.Failure??"Attract options diagnostic timeout.");}
+    private void Update(){if(!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-began>(ReportsCheck||PointerCheck||HudCustomizationCheck||UpdaterCaptures?300:45)))Finish(false,host.Failure??"Attract options diagnostic timeout.");}
     private IEnumerator PointerRegression(){
         padConnected=true;yield return Release();menu.OpenAttractOptions();menu.SelectTab(2);
         int camera=options.Draft.defaultCamera;bool fps=options.Draft.showFps;
@@ -749,6 +750,46 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(capture)yield return editor.Capture(Path.Combine(root,"youmu-layout.png"));editor.Close(false);
         Check(options.Current.hudMeterStyle==savedStyle,"Cancelling the Youmu layout changed saved appearance");
     }
+    private IEnumerator ResizeUpdaterViewport(int width,int height){
+        // The updater pauses native rendering, but its own IMGUI uses the
+        // current player viewport. Do not wait for a deliberately frozen scene.
+        Screen.SetResolution(width,height,FullScreenMode.Windowed);
+        yield return Until(()=>Screen.width==width&&Screen.height==height,8,"Updater viewport did not reach its requested size");
+        yield return Frames(3);
+    }
+    private IEnumerator CaptureUpdaterWarnings(Idas3Updates updates){
+        int languageBefore=Idas3MenuLocalization.Language;
+        var sizes=new[]{new Vector2Int(640,480),new Vector2Int(1024,768),new Vector2Int(1280,720),new Vector2Int(1920,800)};
+        try{
+            for(int language=0;language<3;++language){
+                Idas3MenuLocalization.SetLanguage(language);
+                const string warning="Cancel matchmaking or leave your room before installing an update.";
+                Check(language==0||Idas3MenuLocalization.T(warning)!=warning,"Bundled updater warning lacks its translation");
+                foreach(var size in sizes){
+                    yield return ResizeUpdaterViewport(size.x,size.y);
+                    string name="updater-"+language+"-"+size.x+"x"+size.y;
+                    var target=new RenderTexture(size.x,size.y,0,RenderTextureFormat.ARGB32){antiAliasing=1};
+                    Texture2D picture=null;Check(target.Create(),"Updater capture target failed");
+                    try{
+                        var old=RenderTexture.active;RenderTexture.active=target;GL.Clear(true,true,Color.black);RenderTexture.active=old;
+                        int repaint=updates.DiagnosticRepaints;updates.RequestDiagnosticCapture(target);
+                        File.WriteAllText(Path.Combine(root,"capture-phase.txt"),name);
+                        yield return Until(()=>updates.DiagnosticCaptureReady,45,"Updater received no actual OnGUI Repaint");
+                        Check(updates.WindowVisible&&!updates.CanInstall&&updates.DiagnosticRepaints>repaint,"Blocked updater disappeared before capture");
+                        old=RenderTexture.active;RenderTexture.active=target;
+                        picture=new Texture2D(size.x,size.y,TextureFormat.RGB24,false);
+                        picture.ReadPixels(new Rect(0,0,size.x,size.y),0,0);picture.Apply();RenderTexture.active=old;
+                        int light=0;foreach(var pixel in picture.GetPixels32())if(pixel.r>180&&pixel.g>180&&pixel.b>180)++light;
+                        Check(light>150,"Updater capture lacks visible text");
+                        File.WriteAllBytes(Path.Combine(root,name+".png"),picture.EncodeToPNG());captures.Add(name+".png");
+                        captureDimensions.Add(new CaptureDimensions{file=name+".png",requestedWidth=size.x,requestedHeight=size.y,
+                            actualWidth=picture.width,actualHeight=picture.height,requestedSizeSupported=true});
+                    }finally{updates.CancelDiagnosticCapture();if(picture!=null)Destroy(picture);target.Release();Destroy(target);}
+                }
+            }
+        }finally{Idas3MenuLocalization.SetLanguage(languageBefore);}
+        yield return ResizeUpdaterViewport(1200,720);
+    }
     private IEnumerator UpdaterSessionRegression(){
         // The diagnostic owns private saves and a loopback-only listener. The
         // transport peer reads real session traffic; it never loads a race or
@@ -770,6 +811,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             Check(menu.DiagnosticSelection==1,"Update category did not select its update action");
             pulse=13;yield return Frames(5);
             Check(updates.WindowVisible,"Normal options navigation did not open the updater");
+            if(UpdaterCaptures)yield return CaptureUpdaterWarnings(updates);
             updates.AcceptUpdate();updates.AcceptRepair();
             var transport=(Idas3.Multiplayer.IIdas3Transport)typeof(Idas3.Multiplayer.Idas3MultiplayerSession)
                 .GetField("transport",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(session);
@@ -1043,6 +1085,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-discord-check")>=0)report.scope="Discord activity state mapping, native snapshot, UTF8 limits, replay descriptions, settings persistence and controller navigation; actual Online settings captures at 640x480 and 1280x720. Optional live flag checks Discord READY and activity acknowledgement from this Unity player.";
         if(UpdatesCheck)report.scope="GitHub release/version/checksum validation, live anonymous latest-release request, request cooldown, controlled offline/newer-release responses, keyboard/controller/wheel access to Update / Full Repair / Later, same-version repair and patch/full fallback state transitions with controlled transfer failures, options/title captures, and return to game. Installation intercepted here and tested separately by installer fixtures. Private saves only.";
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-updater-session-check")>=0)report.scope="Packaged Unity player with isolated saves: normal attract-options navigation opens the updater over a private loopback room. A real TCP peer checks host acceptance and production session messages while the updater is open, then after closing it. Update and repair installation attempts are intercepted. No EOS, external network, downloaded update, or race acceptance.";
+        if(UpdaterCaptures)report.scope+=" Optional captures render the updater's actual OnGUI Repaint in English/Japanese/Chinese at four exact window sizes. The surrounding area is black; this checks the dialog rather than native-background composition. Screenshots require visual review.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));Debug.Log((report.passed?"PASS":"FAIL")+" attract options "+error);
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying=false;
