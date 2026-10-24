@@ -77,6 +77,13 @@ def require_native_results(path, expected=NATIVE_TESTS):
     return {"passed": True, "count": len(cases), "tests": actual}
 
 
+def require_clean_unity_build(report):
+    # A fresh destination can still receive Unity's cached player data. Require
+    # the build's actual reported flags, not the caller's intended build mode.
+    if report.get("cleanBuildCache") is not True or report.get("scriptsOnly") is not False:
+        raise ValueError("Unity build lacks explicit clean player-data and script rebuild evidence")
+
+
 def find_visual_studio():
     vswhere = Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")) / "Microsoft Visual Studio/Installer/vswhere.exe"
     data = json.loads(subprocess.check_output([str(vswhere), "-latest", "-products", "*", "-requires",
@@ -159,6 +166,7 @@ def main():
                     "-buildTarget", "Win64", "-executeMethod", "Idas3Build.BuildReleaseCandidate",
                     "-logFile", output / "unity-editor.log"], timeout=3600, env=environment, report=output / "unity-build.json")
         unity_report = verify.require_passed_report(output / "unity-build.json")
+        require_clean_unity_build(unity_report)
         if unity_report["unityVersion"] != version:
             raise RuntimeError("Built with a different Unity version than the project requires")
         if Path(unity_report["output"]).resolve() != output / "player":

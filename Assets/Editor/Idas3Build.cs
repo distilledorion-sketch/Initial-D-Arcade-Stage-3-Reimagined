@@ -163,6 +163,8 @@ public static class Idas3Build
 
     // Faster private investigation of managed changes. The caller must retain
     // baseline/output hashes; a scripts-only copy is not release-build evidence.
+    // GUI/lifecycle failures here do not rule out stale player data. Confirm
+    // them in a clean candidate before attributing them to gameplay changes.
     // Unity may copy Assets plugin binaries: callers must restore their verified
     // native inputs and check all output changes before launching this copy.
     public static void RebuildPrivateDiagnosticScripts(){
@@ -256,7 +258,9 @@ public static class Idas3Build
         var apis = PlayerSettings.GetGraphicsAPIs(BuildTarget.StandaloneWindows64);
         if (apis.Length != 1 || apis[0] != GraphicsDeviceType.Direct3D11)
             throw new InvalidOperationException("Release verification requires the configured Direct3D11 player.");
-        BuildPlayer(Path.Combine(output,"InitialDUnity.exe"),"Assets/Scenes/InitialDUnityScene.unity");
+        // A new output directory does not invalidate Unity's shared build cache.
+        // Release candidates must rebuild scripts AND player data together.
+        var report=BuildPlayer(Path.Combine(output,"InitialDUnity.exe"),"Assets/Scenes/InitialDUnityScene.unity",true);
         string plugins = Path.Combine(output,"InitialDUnity_Data/Plugins/x86_64");
         foreach (string plugin in new[] { "Idas3Unity.dll", "Idas3WheelFeedback.dll" })
         {
@@ -266,14 +270,17 @@ public static class Idas3Build
         }
         File.WriteAllText(Path.Combine(evidence,"unity-build.json"),JsonUtility.ToJson(new ReleaseBuildReport {
             passed=true,unityVersion=Application.unityVersion,applicationVersion=PlayerSettings.bundleVersion,
-            output=Path.GetFullPath(output)
+            output=Path.GetFullPath(output),
+            cleanBuildCache=(report.summary.options&BuildOptions.CleanBuildCache)!=0,
+            scriptsOnly=(report.summary.options&BuildOptions.BuildScriptsOnly)!=0,
+            buildOptions=report.summary.options.ToString()
         },true));
     }
 
     [Serializable] private sealed class ReleaseBuildReport
     {
-        public bool passed;
-        public string unityVersion,applicationVersion,output;
+        public bool passed,cleanBuildCache,scriptsOnly;
+        public string unityVersion,applicationVersion,output,buildOptions;
     }
 
     public static void BuildTestPlayer()
@@ -361,7 +368,7 @@ public static class Idas3Build
         return BuildOptions.BuildScriptsOnly | (File.Exists(archive)?BuildOptions.CompressWithLz4HC:BuildOptions.None);
     }
 
-    private static void BuildPlayer(string relativeOutput,string scenePath)
+    private static BuildReport BuildPlayer(string relativeOutput,string scenePath,bool cleanBuild=false)
     {
         string project = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
         if (!File.Exists(Path.Combine(project, "Assets/Plugins/x86_64/Idas3Unity.dll")))
@@ -370,7 +377,8 @@ public static class Idas3Build
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
             scenes = new[] { scenePath }, locationPathName = output,
-            target = BuildTarget.StandaloneWindows64, options = BuildOptions.CompressWithLz4HC
+            target = BuildTarget.StandaloneWindows64,
+            options = BuildOptions.CompressWithLz4HC | (cleanBuild?BuildOptions.CleanBuildCache:BuildOptions.None)
         });
         if (report.summary.result != BuildResult.Succeeded)
             throw new InvalidOperationException("Unity build failed: " + report.summary.result);
@@ -419,6 +427,7 @@ public static class Idas3Build
         File.Copy(Path.Combine(project, "Tools/Multiplayer-Test.txt"),
             Path.Combine(Path.GetDirectoryName(output), "MULTIPLAYER TEST.txt"), true);
         Debug.Log("Initial D Unity player and all game assets: " + output);
+        return report;
     }
 }
 

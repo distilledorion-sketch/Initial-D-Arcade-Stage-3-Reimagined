@@ -94,6 +94,7 @@ def require_build_evidence(evidence, inventory):
     stages = [check for check in proof["checks"] if check.get("name") == "unity-build"]
     if len(stages) != 1 or stages[0].get("reportSha256") != verify.sha256(evidence / "unity-build.json"):
         raise ValueError("Unity build report does not match recorded evidence")
+    build.require_clean_unity_build(unity)
     if not unity.get("applicationVersion"):
         raise ValueError("Unity build report lacks the application version")
     return proof, unity["applicationVersion"]

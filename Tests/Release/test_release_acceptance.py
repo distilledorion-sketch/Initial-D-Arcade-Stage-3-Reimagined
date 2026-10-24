@@ -187,7 +187,8 @@ class AcceptanceTests(unittest.TestCase):
         def stage(folder, name, data=None, filename=None):
             path = self.write(folder + "/" + (filename or name + ".json"), data or dict(passed=True))
             return dict(name=name, passed=True, exitCode=0, report=path.relative_to(self.root / folder).as_posix(), reportSha256=verify.sha256(path))
-        unity = stage("build", "unity-build", dict(passed=True, applicationVersion="test-version"), "unity-build.json")
+        unity = stage("build", "unity-build", dict(passed=True, applicationVersion="test-version",
+                      cleanBuildCache=True, scriptsOnly=False), "unity-build.json")
         self.write("build/candidate.json", inventory)
         self.write("build/source.json", source)
         self.write("build/inputs.json", dict(files={"content": "synthetic input"}))

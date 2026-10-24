@@ -211,7 +211,8 @@ class PackagedPlayerTests(unittest.TestCase):
         inventory = {"files": {"InitialDUnity.exe": {"bytes": 1, "sha256": "fixture"}}}
         inventory["inventorySha256"] = player.verify.digest_json(inventory["files"])
         player.verify.write_json(self.folder / "candidate.json", inventory)
-        player.verify.write_json(self.folder / "unity-build.json", {"passed": True, "applicationVersion": "test-version"})
+        player.verify.write_json(self.folder / "unity-build.json", {"passed": True, "applicationVersion": "test-version",
+                                                                    "cleanBuildCache": True, "scriptsOnly": False})
         proof = {"passed": True, "suite": "fresh-build", "sourceUnchanged": True, "inputsUnchanged": True,
                  "candidate": {"inventorySha256": inventory["inventorySha256"]},
                  "checks": [{"name": "unity-build", "passed": True, "reportSha256": player.verify.sha256(self.folder / "unity-build.json")}]}
@@ -239,6 +240,14 @@ class PackagedPlayerTests(unittest.TestCase):
         proof["checks"] = []
         player.verify.write_json(self.folder / "summary.json", proof)
         with self.assertRaises(ValueError):
+            player.require_build_evidence(self.folder, inventory)
+
+    def test_rejects_cached_player_even_with_matching_report_hash(self):
+        inventory, proof = self.prepare_evidence()
+        player.verify.write_json(self.folder / "unity-build.json", {"passed": True, "applicationVersion": "test-version"})
+        proof["checks"][0]["reportSha256"] = player.verify.sha256(self.folder / "unity-build.json")
+        player.verify.write_json(self.folder / "summary.json", proof)
+        with self.assertRaisesRegex(ValueError, "clean"):
             player.require_build_evidence(self.folder, inventory)
 
 

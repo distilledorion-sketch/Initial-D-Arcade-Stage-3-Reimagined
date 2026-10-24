@@ -43,6 +43,17 @@ class FreshBuildTests(unittest.TestCase):
         report.write_text('<testsuite><testcase name="physics" status="run"/><testcase name="race" status="run"/></testsuite>')
         self.assertEqual(build.require_native_results(report, ("physics", "race"))["count"], 2)
 
+    def test_clean_build_rejects_cached_missing_or_ambiguous_flags(self):
+        for report in ({}, {"cleanBuildCache": True}, {"cleanBuildCache": False, "scriptsOnly": False},
+                       {"cleanBuildCache": True, "scriptsOnly": True},
+                       {"cleanBuildCache": 1, "scriptsOnly": False},
+                       {"cleanBuildCache": True, "scriptsOnly": 0}):
+            with self.subTest(report=report), self.assertRaisesRegex(ValueError, "clean"):
+                build.require_clean_unity_build(report)
+
+    def test_clean_build_accepts_reported_full_rebuild(self):
+        build.require_clean_unity_build({"cleanBuildCache": True, "scriptsOnly": False})
+
     def test_input_manifest_detects_content_and_local_config_changes(self):
         assets = self.root / "Assets"
         assets.mkdir()
