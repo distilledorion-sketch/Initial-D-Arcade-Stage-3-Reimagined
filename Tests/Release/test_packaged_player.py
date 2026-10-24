@@ -104,6 +104,42 @@ class PackagedPlayerTests(unittest.TestCase):
             self.assertNotIn("-idas3-multiplayer-address", h)
             self.assertIn("-idas3-multiplayer-world-only", j)
 
+    def test_updater_is_in_default_flows_and_can_run_without_race_cases(self):
+        for suite in ("all", "flows", "updater"):
+            self.assertIn("updater-session", player.selected_cases(suite))
+        self.assertEqual(player.selected_cases("updater"), ("updater-session",))
+        self.assertEqual(player.selected_cases("startup"), ("rom-missing",))
+        self.assertNotIn("rom-missing", player.selected_cases("flows"))
+        with self.assertRaises(ValueError):
+            player.selected_cases("unknown")
+
+    def test_updater_requires_connection_guard_and_restored_install_evidence(self):
+        self.report.update(schema="idas3-attract-options-smoke-v1", observations=list(player.UPDATER_OBSERVATIONS))
+        self.write_reports()
+        validate = lambda: player.require_runtime_report(self.folder, "test-version", 0, "updater-session")
+        self.assertIsNone(validate()[1])
+        for missing in player.UPDATER_OBSERVATIONS:
+            with self.subTest(missing=missing):
+                self.report["observations"] = [item for item in player.UPDATER_OBSERVATIONS if item != missing]
+                self.write_reports()
+                with self.assertRaisesRegex(ValueError, "Incomplete"):
+                    validate()
+        invalid = [None, "generic pass", [True],
+                   [item.replace("open=True", "open=False") for item in player.UPDATER_OBSERVATIONS],
+                   [item.replace("in room=0", "in room=3") for item in player.UPDATER_OBSERVATIONS],
+                   [item.replace("installs=2", "installs=1") for item in player.UPDATER_OBSERVATIONS],
+                   [*player.UPDATER_OBSERVATIONS, player.UPDATER_OBSERVATIONS[1].replace("open=True", "open=False")]]
+        for observations in invalid:
+            with self.subTest(observations=observations):
+                self.report["observations"] = observations
+                self.write_reports()
+                with self.assertRaises(ValueError):
+                    validate()
+        self.report.update(schema="idas3-mode-flow-smoke-v1", observations=list(player.UPDATER_OBSERVATIONS))
+        self.write_reports()
+        with self.assertRaisesRegex(ValueError, "Unexpected updater-session"):
+            validate()
+
     def test_copy_reads_only_inventoried_distributable_files(self):
         source = self.root / "source"
         source.mkdir()

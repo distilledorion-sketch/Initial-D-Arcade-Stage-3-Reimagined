@@ -24,6 +24,26 @@ PAIR_FLAGS = {
     "disconnect": ("-idas3-multiplayer-disconnect-check",),
 }
 
+UPDATER_OBSERVATIONS = (
+    "updater-session-opened-audio",
+    "Updater session: accepted while open=True; received real session packets while open=True; "
+    "accepted/received after close=True; install attempts admitted while in room=0",
+    "After leaving room: keyboard Update and same-version Full Repair admitted; intercepted installs=2",
+)
+
+
+def selected_cases(suite):
+    if suite == "startup":
+        return ("rom-missing",)
+    if suite == "updater":
+        return ("updater-session",)
+    flows = ("mode-flow", *PAIR_FLAGS, "updater-session")
+    if suite == "flows":
+        return flows
+    if suite == "all":
+        return ("rom-missing", *flows)
+    raise ValueError("Unknown packaged suite: " + suite)
+
 
 def read_json(path):
     return json.loads(path.read_text(encoding="utf-8-sig"))
@@ -81,6 +101,19 @@ def require_runtime_report(folder, version, exit_code, kind, role=None):
     elif kind == "mode-flow":
         if report.get("schema") != "idas3-mode-flow-smoke-v1":
             raise ValueError("Unexpected mode-flow report")
+    elif kind == "updater-session":
+        if report.get("schema") != "idas3-attract-options-smoke-v1":
+            raise ValueError("Unexpected updater-session report")
+        observations = report.get("observations")
+        if not isinstance(observations, list) or not all(isinstance(item, str) for item in observations):
+            raise ValueError("Missing updater-session observations")
+        # A generic attract/options pass is insufficient. Require the real TCP
+        # observation and restoration of both install actions after leaving.
+        for expected in UPDATER_OBSERVATIONS:
+            prefix = expected.split(":", 1)[0]
+            actual = [item for item in observations if item.split(":", 1)[0] == prefix]
+            if actual != [expected]:
+                raise ValueError("Incomplete or conflicting updater-session evidence: " + prefix)
     else:
         if report.get("schema") != "idas3-two-client-smoke-v1" or report.get("role") != role:
             raise ValueError("Unexpected two-client report or role")
@@ -208,9 +241,10 @@ def main():
     parser.add_argument("--build-evidence", type=Path, required=True, help="Successful fresh-build evidence directory")
     parser.add_argument("--player", type=Path, help="Clean candidate; defaults to the evidence directory's player subdirectory")
     parser.add_argument("--rom", type=Path, help="Explicit local GDS-0033 CHD; copied only into a marked private test player")
-    parser.add_argument("--suite", choices=("all", "startup", "flows"), default="all")
+    parser.add_argument("--suite", choices=("all", "startup", "flows", "updater"), default="all")
     parser.add_argument("--output", type=Path, help="NEW evidence directory, outside the build and player")
     args = parser.parse_args()
+    cases = selected_cases(args.suite)
     if os.name != "nt" or sys.flags.optimize:
         parser.error("Requires Windows with Python assertions enabled")
     if args.suite != "startup" and args.rom is None:
@@ -234,7 +268,8 @@ def main():
                            buildEvidence=str(evidence), buildEvidenceSha256=verify.sha256(evidence / "summary.json"),
                            builtSource=proof["source"], applicationVersion=version,
                            tools={"python": sys.version, "driverSha256": verify.sha256(Path(__file__))},
-                           scope="Private saves, two packaged processes using loopback TCP and shared native authority. Natural timeouts, native points/Continue, rematch and disconnect recovery. Not Internet/EOS, scored reward or human-driven finish acceptance.")
+                           selectedCases=list(cases),
+                           scope="Private saves and loopback TCP. Selected cases cover blocked startup, local race flow, or connection processing and intercepted installation while the updater is open. Not Internet/EOS, scored reward, downloaded update, visual layout or human-driven finish acceptance.")
         run.summary["pendingGates"] = [
             "Remaining native reference coverage",
             "Nonzero win/loss rewards exactly once and both driver finish orders",
@@ -242,23 +277,30 @@ def main():
             "Supported install/update journeys and user-data preservation",
             "Hardware performance, physical controllers, language/resolution and actual window-pixel acceptance",
         ]
-        if args.suite == "flows":
+        if "rom-missing" not in cases:
             run.summary["pendingGates"].append("ROM startup state and visual capture (not selected)")
-        if args.suite == "startup":
+        if "mode-flow" not in cases:
             run.summary["pendingGates"].append("Packaged race-flow diagnostics (not selected)")
+        if "updater-session" not in cases:
+            run.summary["pendingGates"].append("Updater session continuity and installation guard (not selected)")
         run.save()
         private = output / "private-player"
         print("Copying distributable files into a marked private test player...", flush=True)
         copy_player(player, private, inventory)
         players = Players(run, private, version)
-        if args.suite != "flows":
+        if "rom-missing" in cases:
             players.case("rom-missing", lambda: players.single("rom-missing", "-idas3-rom-smoke", "startup", ("-idas3-rom-expect", "blocked")))
         if args.suite != "startup":
             (private / "rom").mkdir(exist_ok=True)
             shutil.copyfile(rom, private / "rom/gds-0033.chd")
-            players.case("mode-flow", lambda: players.single("mode-flow", "-idas3-mode-flow-smoke", "mode-flow"))
+            if "mode-flow" in cases:
+                players.case("mode-flow", lambda: players.single("mode-flow", "-idas3-mode-flow-smoke", "mode-flow"))
             for case in PAIR_FLAGS:
-                players.case(case, lambda case=case: players.pair(case))
+                if case in cases:
+                    players.case(case, lambda case=case: players.pair(case))
+            if "updater-session" in cases:
+                players.case("updater-session", lambda: players.single("updater-session", "-idas3-attract-options-smoke",
+                             "updater-session", ("-idas3-updater-session-check",)))
         print("Rechecking distributable bytes in the test copy and original candidate...", flush=True)
         for name, row in inventory["files"].items():
             if verify.sha256(private / name) != row["sha256"]:
