@@ -11,7 +11,7 @@ internal sealed partial class Idas3MenuInputRouter
     }
     internal struct Context
     {
-        internal bool Focused, OnlineBlocksInput, PauseOpen, CanOpenPause, PointerBlocksNavigation;
+        internal bool Focused, OnlineBlocksInput, PauseOpen, CanOpenPause, PointerActive, NavigationHeld;
         internal double Now;
     }
     internal struct Command
@@ -24,6 +24,7 @@ internal sealed partial class Idas3MenuInputRouter
     private bool suppressClosingControls, openingReleaseBlocked, ownsFrame;
     private int blockThroughFrame = -1, navigationAxis;
     private double nextNavigation;
+    private readonly Idas3PointerNavigation pausePointer = new Idas3PointerNavigation();
 
     internal bool SuppressClosingControls => suppressClosingControls;
 
@@ -70,7 +71,7 @@ internal sealed partial class Idas3MenuInputRouter
         if (context.PauseOpen)
         {
             ownsFrame = true;
-            if (context.PointerBlocksNavigation) navigationAxis = 0;
+            if (pausePointer.Block(context.PointerActive, context.NavigationHeld)) navigationAxis = 0;
             else if (openingReleaseBlocked)
             {
                 if (!sample.CloseHeld) openingReleaseBlocked = false;

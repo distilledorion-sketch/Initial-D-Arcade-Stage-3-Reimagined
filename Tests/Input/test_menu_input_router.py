@@ -18,7 +18,8 @@ def main():
     args = parser.parse_args()
     output = args.report_dir.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    sources = [ROOT / "Assets/Scripts" / name for name in ("Idas3MenuInputRouter.cs", "Idas3MenuInputRouter.Music.cs")]
+    sources = [ROOT / "Assets/Scripts" / name for name in ("Idas3MenuInputRouter.cs", "Idas3MenuInputRouter.Music.cs",
+                                                           "Idas3MenuInputRouter.Frontend.cs", "Idas3PointerNavigation.cs")]
     driver = Path(__file__).with_name("MenuInputRouterDriver.cs")
     exe = output / "MenuInputRouterDriver.exe"
     compiler = find_compiler(args.compiler)

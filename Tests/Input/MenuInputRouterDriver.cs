@@ -76,9 +76,11 @@ internal static class MenuInputRouterDriver
             "a changed axis navigates immediately in its new direction");
         var diagonal = router.Process(new Router.Sample { Horizontal = 1, Vertical = -1 }, Paused(1.46));
         Check(diagonal.Horizontal == 0 && diagonal.Vertical == -1, "vertical navigation takes priority over a diagonal");
-        var pointer = Paused(2); pointer.PointerBlocksNavigation = true;
+        var pointer = Paused(2); pointer.PointerActive = true; pointer.NavigationHeld = true;
         Check(router.Process(confirm, pointer).Kind == Router.Action.None, "pointer ownership prevents duplicate controller activation");
-        Check(router.Process(confirm, Paused(2.1)).Kind == Router.Action.None, "held confirm is not replayed after pointer coverage");
+        pointer.PointerActive = false; pointer.Now = 2.1;
+        Check(router.Process(confirm, pointer).Kind == Router.Action.None, "held confirm is not replayed after pointer coverage");
+        router.Process(default, Paused(2.2));
         router.ResetNavigation();
         Check(router.Process(down, Paused(3)).Kind == Router.Action.PauseNavigate, "returning to a menu resets stale navigation");
 
@@ -87,6 +89,7 @@ internal static class MenuInputRouterDriver
         Check(router.Process(start, driving).Kind == Router.Action.None, "race phase restriction prevents opening pause");
         Check(!router.BlocksGameInput(false, false, 25), "ordinary uncovered gameplay is not blocked");
         MusicChecks();
+        FrontendChecks();
     }
 
     private static Router.MusicContext MusicOpen(double now = 0) => new Router.MusicContext {
@@ -152,11 +155,12 @@ internal static class MenuInputRouterDriver
         router.ClearMusicReleaseGuard();
 
         router = new Router();
-        var pointer = MusicOpen(); pointer.PointerBlocksNavigation = true;
+        var pointer = MusicOpen(); pointer.PointerActive = true; pointer.NavigationHeld = true;
         var preview = new Router.MusicSample { PreviewPressed = true, Navigation = new Router.Sample { Buttons = 0x8000 } };
         Check(router.ProcessMusic(preview, pointer).Kind == Router.MusicAction.None, "music pointer ownership suppresses preview shortcut");
         preview.PreviewPressed = false;
-        Check(router.ProcessMusic(preview, MusicOpen()).Kind == Router.MusicAction.None, "held preview button is not replayed after pointer coverage");
+        pointer.PointerActive = false;
+        Check(router.ProcessMusic(preview, pointer).Kind == Router.MusicAction.None, "held preview button is not replayed after pointer coverage");
         router.ProcessMusic(default, MusicOpen());
         Check(router.ProcessMusic(preview, MusicOpen()).Kind == Router.MusicAction.Preview, "fresh controller preview toggles playback");
         Check(router.ProcessMusic(new Router.MusicSample { Navigation = new Router.Sample { Back = true } }, MusicOpen()).Kind == Router.MusicAction.Back,
@@ -176,5 +180,76 @@ internal static class MenuInputRouterDriver
         command = router.ProcessMusic(view, selection);
         Check(command.Kind == Router.MusicAction.None && !command.BlocksGameInput && router.MusicHoldProgress == 0,
             "music opening stops when its context becomes unavailable");
+    }
+
+    private static void FrontendChecks()
+    {
+        var router = new Router();
+        var context = new Router.AttractContext { Focused = true, Allowed = true, Child = 12, DeltaSeconds = .1f };
+        var view = new Router.AttractSample { ViewHeld = true, AnyControlHeld = true };
+        var command = router.ProcessAttract(view, context);
+        Check(command.BlocksGameInput && command.Kind == Router.AttractAction.None, "ranking view press waits to distinguish tap from hold");
+        command = router.ProcessAttract(default, context);
+        Check(!command.BlocksGameInput && command.Kind == Router.AttractAction.NativeViewTap, "ranking tap reaches the original screen once on release");
+        Check(router.ProcessAttract(default, context).Kind == Router.AttractAction.None, "released ranking tap cannot repeat");
+        for (int i = 0; i < 7; ++i) command = router.ProcessAttract(view, context);
+        Check(command.Kind == Router.AttractAction.OpenOptions && command.BlocksGameInput, "holding view opens options without changing ranking page");
+        router.AttractVisibilityChanged();
+        Check(router.AttractHoldProgress == 0 && router.ProcessAttract(view, context).Kind == Router.AttractAction.None,
+            "options visibility consumes the opening hold");
+        context.Focused = false;
+        Check(router.ProcessAttract(default, context).BlocksGameInput, "unfocused neutral input cannot release the options closing guard");
+        context.Focused = true;
+        Check(router.ProcessAttract(view, context).BlocksGameInput, "refocusing with held view cannot reopen options");
+        Check(router.ProcessAttract(default, context).BlocksGameInput, "options release frame remains consumed");
+        Check(!router.ProcessAttract(default, context).BlocksGameInput, "original attract controls resume after physical release");
+
+        router.ProcessAttract(view, context); context.Blocked = true;
+        router.ProcessAttract(default, context); context.Blocked = false;
+        Check(router.AttractHoldProgress == 0 && router.ProcessAttract(default, context).Kind == Router.AttractAction.None,
+            "input capture cancels a pending ranking tap");
+        router.ProcessAttract(view, context); context.Child = 0;
+        Check(router.ProcessAttract(default, context).Kind == Router.AttractAction.None, "changing attract screens cancels a pending ranking tap");
+        context.Child = 12; router.ProcessAttract(view, context);
+        Check(router.ProcessAttract(new Router.AttractSample { StartHeld = true }, context).Kind == Router.AttractAction.None,
+            "Start takes precedence over a simultaneous ranking tap release");
+        context.DeltaSeconds = 5;
+        Check(router.ProcessAttract(view, context).Kind == Router.AttractAction.None && router.AttractHoldProgress < .2f,
+            "a single slow frame cannot open attract options");
+        context.Allowed = false;
+        Check(!router.ProcessAttract(view, context).BlocksGameInput && router.AttractHoldProgress == 0,
+            "leaving attract resets the pending hold and returns input");
+        router.AttractVisibilityChanged(); router.ClearAttractReleaseGuard();
+        Check(!router.ProcessAttract(default, context).BlocksGameInput, "admitting a challenger clears the obsolete attract release guard");
+
+        var save = new Router.SavePointerContext { Allowed = true, OwnsPointer = true };
+        var mouse = new Router.SavePointerSample { Available = true, X = 20, Y = 30 };
+        Check(!router.ProcessSavePointer(mouse, save).Hover, "stationary cursor does not override a new save menu default");
+        Check(!router.ProcessSavePointer(mouse, save).Hover, "stationary cursor leaves controller selection intact");
+        mouse.X = 25;
+        Check(router.ProcessSavePointer(mouse, save).Hover, "moving cursor enables native save menu hover");
+        mouse.Held = true; mouse.Pressed = true;
+        var pointer = router.ProcessSavePointer(mouse, save);
+        Check(pointer.Click && pointer.BlocksGameInput && router.SavePointerReleaseBlocked, "save click owns the native confirmation frame");
+        mouse.Pressed = false;
+        Check(!router.ProcessSavePointer(mouse, save).Click, "holding the save click never repeats activation");
+        save.OwnsPointer = false;
+        Check(router.ProcessSavePointer(mouse, save).BlocksGameInput, "click that leaves save selection cannot confirm the following screen");
+        save.Allowed = false; mouse.Held = false;
+        Check(router.ProcessSavePointer(mouse, save).BlocksGameInput && router.SavePointerReleaseBlocked,
+            "unfocused save pointer sample cannot release a held transition");
+        save.Allowed = true; mouse.NavigationHeld = true;
+        Check(router.ProcessSavePointer(mouse, save).BlocksGameInput, "controller held across save click remains covered");
+        mouse.NavigationHeld = false;
+        Check(router.ProcessSavePointer(mouse, save).BlocksGameInput && !router.SavePointerReleaseBlocked,
+            "save pointer consumes the neutral release frame");
+        Check(!router.ProcessSavePointer(mouse, save).BlocksGameInput, "fresh input reaches the next screen after save release");
+        save.OwnsPointer = true; mouse.Y = 100;
+        Check(!router.ProcessSavePointer(mouse, save).Hover, "returning to save menu starts a fresh pointer position baseline");
+        mouse.Y = 110;
+        Check(router.ProcessSavePointer(mouse, save).Hover, "pointer hover resumes only on subsequent movement");
+        mouse.Available = false; mouse.Held = true; mouse.Pressed = true;
+        pointer = router.ProcessSavePointer(mouse, save);
+        Check(!pointer.Hover && !pointer.Click && !pointer.BlocksGameInput, "private diagnostics cannot accidentally use the desktop mouse");
     }
 }

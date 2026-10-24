@@ -8,7 +8,7 @@ internal sealed partial class Idas3MenuInputRouter
     }
     internal struct MusicContext
     {
-        internal bool Focused, Blocked, MenuOpen, BlocksGameInput, SearchFocused, PointerBlocksNavigation;
+        internal bool Focused, Blocked, MenuOpen, BlocksGameInput, SearchFocused, PointerActive, NavigationHeld;
         internal bool LobbyAllowed, OpponentAllowed;
         internal float DeltaSeconds;
         internal double Now;
@@ -25,6 +25,7 @@ internal sealed partial class Idas3MenuInputRouter
     private bool musicReleaseBlocked;
     private int musicNavigationAxis;
     private double nextMusicNavigation;
+    private readonly Idas3PointerNavigation musicPointer = new Idas3PointerNavigation();
 
     internal bool MusicReleaseBlocked => musicReleaseBlocked;
     internal float MusicHoldProgress => System.Math.Min(1f, System.Math.Max(0f, musicHoldSeconds / .65f));
@@ -68,7 +69,7 @@ internal sealed partial class Idas3MenuInputRouter
                 if (sample.SearchEscapePressed || (buttons & 0x2000) != 0) command.Kind = MusicAction.BlurSearch;
                 return command;
             }
-            if (context.PointerBlocksNavigation) return command;
+            if (musicPointer.Block(context.PointerActive, context.NavigationHeld)) return command;
             if (sample.PreviewPressed || (buttons & 0x8000) != 0) command.Kind = MusicAction.Preview;
             else if (sample.Navigation.Escape && !previous.Navigation.Escape ||
                      sample.Navigation.Back && !previous.Navigation.Back || (buttons & 0x2000) != 0) command.Kind = MusicAction.Back;
