@@ -246,6 +246,9 @@ def run_updater(run):
     cmake=shutil.which("cmake")
     if not cmake:raise FileNotFoundError("CMake is required for native updater verification")
     folder=run.output/"updater"
+    archive_contract=run.output/"upgrade-archive-contract"
+    run.command("upgrade-archive-contract",[sys.executable,"-X","utf8","Tests/Release/test_upgrade_archives.py",
+                "--report-dir",archive_contract],report=archive_contract/"report.json")
     binaries=folder/"bin"
     run.command("updater-configure",[cmake,"-S",ROOT/"Tools/Updater","-B",folder/"build","-G",generator,"-A","x64",
                 "-DCMAKE_GENERATOR_INSTANCE="+studio["installationPath"],"-DCMAKE_RUNTIME_OUTPUT_DIRECTORY="+binaries.as_posix()],timeout=300)
@@ -258,6 +261,9 @@ def run_updater(run):
         recovery=folder/(kind+"-recovery")
         run.command("updater-"+kind+"-installation",[sys.executable,"-X","utf8","Tests/Updates/test_native_installer.py",
                     "--helper",helper,"--child",child,"--report-dir",normal],timeout=180,report=normal/"native-windows-report.json")
+        split=folder/(kind+"-split")
+        run.command("updater-"+kind+"-split",[sys.executable,"-X","utf8","Tests/Updates/test_split_update.py",
+                    "--helper",helper,"--report-dir",split],timeout=180,report=split/"report.json")
         run.command("updater-"+kind+"-recovery",[sys.executable,"-X","utf8","Tests/Updates/test_native_recovery.py",
                     "--helper",helper,"--child",child,"--seed-helper",bundled,"--report-dir",recovery],timeout=300,report=recovery/"report.json")
     cache=folder/"cache"

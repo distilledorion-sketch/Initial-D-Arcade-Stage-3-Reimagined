@@ -74,3 +74,29 @@ python Tools/Build-SetupPackage.py --helper <tested-helper.exe> --archive <new-s
 ```
 
 The ZIP contains six explicit files: installation and recovery CMD/PowerShell pairs, the verified native helper and a README. Creation does not publish an update. Players run `Recover Initial D.cmd` from the extracted setup ZIP; the old game need not launch. Normal game startup does not automatically run recovery. A new full candidate is still required after updating the embedded helper or managed cache code.
+
+## Unity downloads and previous-release upgrades
+
+Build the isolated diagnostic scene and the fresh candidate sequentially, without editing gameplay code between them. Do not run both Unity builds simultaneously: the diagnostic builder temporarily creates a scene inside the project.
+
+```powershell
+python -X utf8 Tools/build_updater_diagnostic.py --output Verification/updater-diagnostic
+python -X utf8 Tools/build_release_candidate.py --original-image D:/reference/idas3_main_0C020000.bin --output Verification/fresh-candidate
+python -X utf8 Tools/verify_updater_flow.py --diagnostic-player Verification/updater-diagnostic/player --build-evidence Verification/fresh-candidate --child <UpdateTestChild.exe> --output Verification/updater-flows
+```
+
+Use the `UpdateTestChild.exe` produced by the source verification suite's updater build. The flow runner checks that the diagnostic's managed assembly is byte-identical to the fresh candidate. It then exercises the real Unity downloader, staging, shutdown and embedded native helper against disposable loopback fixtures. Its nine cases cover full/patch installation, damaged-retained-file fallback, rejected core/patch downloads, separate course installation, fallback to both full downloads, a corrupt course download and an interrupted course download. Successful fixtures restart a small test executable; they do not claim full-game startup.
+
+The source suite separately stages both archives through production code and invokes both the compiled and bundled helpers. Twelve cases per helper cover installation, missing old courses, rejected archives, collisions and rollback after locking a course file. These are bounded regression fixtures, not the full upgrade journey.
+
+To exercise the complete previous-release file set:
+
+```powershell
+python -X utf8 Tools/verify_release_upgrade.py --build-evidence Verification/fresh-candidate --diagnostic-player Verification/updater-diagnostic/player --baseline-archives <public-core.zip> <public-courses.zip> --output Verification/full-upgrade
+```
+
+The command reads the latest public GitHub release and requires both supplied baseline ZIPs to match its published names, sizes and SHA-256 digests. It packages the candidate into core/course downloads, or accepts `--target-archives <core.zip> <courses.zip>` after validating their combined inventory against the candidate. The development candidate must have a newer version than the baseline. Bumping that version does not publish a release or update the public installer URLs.
+
+The old files are extracted into a new marked private installation with inert save, ROM, music and replay sentinels. The current diagnostic then downloads both full-sized archives from loopback, stages and applies them, and the native helper restarts the actual upgraded executable. The runner stops only that owned restart and invokes the upgraded game's blocked-ROM startup diagnostic. It checks all target file hashes, unchanged sentinels, safe download cleanup and unchanged candidate bytes. Unlisted legacy files are reported and retained. No actual ROM is required or distributed.
+
+**Scope limitation:** this runs the current updater against exact old installation files, with the installed version explicitly simulated and recorded separately from the executing application's version. It does not execute the old shipped managed updater, exercise GitHub download reliability, test the full-size patch route, or prove normal gameplay after an upgrade. Those remain separate acceptance evidence. The result always leaves `releaseReady` false.
