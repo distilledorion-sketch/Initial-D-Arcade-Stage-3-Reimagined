@@ -174,7 +174,7 @@ def main():
             raise RuntimeError("Build inputs changed while building; inspect the changes and build again")
         run.summary.update(sourceUnchanged=True, inputsUnchanged=True)
         run.summary["pendingGates"] = list(verify.PENDING_GATES[1:])
-        run.summary["pendingGates"][0] = "Remaining native reference coverage and packaged integration checks (eleven selected native tests passed)"
+        run.summary["pendingGates"][0] = f"Remaining native reference coverage and packaged integration checks ({len(NATIVE_TESTS)} selected native tests passed)"
         run.finish()
     except Exception as error:
         run.finish(error)
