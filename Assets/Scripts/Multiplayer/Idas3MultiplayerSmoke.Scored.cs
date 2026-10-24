@@ -192,7 +192,13 @@ namespace Idas3.Multiplayer
                     yield return CaptureMenu("scored-"+cycle+"-continue");yield return ScoredBarrier("scored-continue-"+cycle);
                     if(cycle==0){
                         pulse=13;
-                        yield return Until(()=>session.InLobby&&session.HandshakeComplete&&!session.IsRacing,30,"Both Yes did not keep the room for rematch.");
+                        // The host retires native racing before the peer has
+                        // acknowledged ReturnLobby. During Returning, the room
+                        // is still connected but the saved garage is not yet
+                        // refreshed. Require the completed handshake, not just
+                        // the absence of an active native race.
+                        yield return Until(()=>session.InLobby&&session.HandshakeComplete&&!session.IsRacing&&
+                            session.StateName=="Lobby"&&!session.Busy&&session.CanReady,30,"Both Yes did not complete the lobby return handshake.");
                         yield return Frames(10);
                         item.continued=host.Status.frontendStage==5&&menu.IsOpen&&session.RoomCode==roomCode&&ReferenceEquals(transport,SessionField<object>("transport"));
                         Check(item.continued&&!session.LocalReady&&session.LocalSavedCar.SaveSlot==0&&session.LocalSavedCar.Words[18]==expectedBalance,"Lobby retained stale readiness, points or selected car.");

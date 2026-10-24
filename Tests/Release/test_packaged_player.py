@@ -184,6 +184,7 @@ class ScoredPlayerEvidenceTests(unittest.TestCase):
         for winner in range(2):
             self.detail["races"].append(dict(winner=winner, raceId=winner + 100, naturalFinish=True,
                 duplicatePreserved=True, tuningPoints=2000 if winner == 0 else 1000, balance=2321 if winner == 0 else 3321,
+                displayedBalance=2321 if winner == 0 else 3321, pointsPhase=2,
                 result="YOU WIN" if winner == 0 else "YOU LOSE", verifiedFrame=12000, seconds=204,
                 after=dict(battles=winner + 1, wins=1), continued=winner == 0))
 
@@ -197,6 +198,7 @@ class ScoredPlayerEvidenceTests(unittest.TestCase):
         self.report["role"] = self.detail["role"] = "join"
         for winner, race in enumerate(self.detail["races"]):
             race.update(tuningPoints=1000 if winner == 0 else 2000, balance=1321 if winner == 0 else 3321,
+                        displayedBalance=1321 if winner == 0 else 3321,
                         result="YOU LOSE" if winner == 0 else "YOU WIN", after=dict(battles=winner + 1, wins=winner))
         player.verify.write_json(self.folder / "report.json", self.report)
         player.verify.write_json(self.folder / "scored-report.json", self.detail)
