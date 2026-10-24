@@ -27,7 +27,7 @@ Keep the source/config fingerprint and candidate inventory with the eventual rel
 python -X utf8 Tools/build_release_candidate.py --original-image D:/reference/idas3_main_0C020000.bin --output Verification/fresh-candidate
 ```
 
-This creates a new native build, compiles both native plugins and the asset packer, runs twelve selected native tests, and builds a full Windows player into `Verification/fresh-candidate/player`. It uses the exact Unity version recorded in the project and installed Visual Studio C++ tools. The local original image is used only by native reference tests; it is never copied into the player. Existing evidence and player folders are refused. Neither the desktop game nor the checked-in native DLLs is replaced.
+This creates a new native build, compiles both native plugins and the asset packer, runs fifteen selected native tests, and builds a full Windows player into `Verification/fresh-candidate/player`. It uses the exact Unity version recorded in the project and installed Visual Studio C++ tools. The local original image is used only by native reference tests; it is never copied into the player. Existing evidence and player folders are refused. Neither the desktop game nor the checked-in native DLLs is replaced.
 
 The native DLLs in the player must match the newly compiled outputs. Evidence includes compiler/editor identities, source and content/config input hashes before and after the build, native test XML, the Unity build result, staging manifest, and the distributable inventory. Bundled SDKs and the embedded updater remain recorded binary inputs; this is not a claim that every dependency was rebuilt. Local EOS client configuration is hashed without recording its contents. Keep this local build evidence private; it contains machine paths and local configuration fingerprints.
 
@@ -125,3 +125,19 @@ python -X utf8 Tests/Updates/test_long_paths.py --helper <tested-helper.exe> --m
 ```
 
 The checks also reject damaged retained files, invalid recovery backups and junctions, preserve private files and their timestamps, and retain locked or uncertain cache data. They use inert files, so a full-sized Unity download/upgrade is still required after changes to the updater. DOS 8.3 alias tests in `test_native_paths.py` are separate: its historical `long-path` case means a non-8.3 spelling, not a path exceeding MAX_PATH. That suite needs a fixture volume with 8.3 names enabled; a missing short alias is a failed prerequisite, not evidence of an updater regression.
+
+## Result-save recovery under development
+
+The online result path now writes a checksummed intent before awarding native tuning points or committing managed battle history. Native preparation captures the actual disk before-image separately from the selected garage profile in memory. Applying the absolute after-image is conditional: it succeeds once, recognizes an identical previous application, or refuses a conflicting newer profile. Ordinary and conditional profile writers share an OS-held lock. Result history retains its race receipt, including when an administrative reset supersedes a pending recovered result.
+
+The result journal has one outstanding result per save root, increasing generations, two current copies and a pending publication file. Both current copies must retain the completed generation before another result starts. Recovery runs before native scene initialization so offline gameplay cannot first load or modify an unrecovered profile. An unreadable pending intent or conflicting profile is preserved and blocks recovery. This is recoverable ordering across two files, not one atomic filesystem transaction or a verified power-loss guarantee.
+
+`Tests/Multiplayer/test_result_journal.py` is part of the source verifier. Its default run simulates the native profile boundary while exercising real journal/record files and terminating only owned test children. To additionally exercise the actual native recovery ABI without initializing a scene or using player saves:
+
+```powershell
+python -X utf8 Tests/Multiplayer/test_result_journal.py --native <fresh-Idas3Unity.dll> --report-dir Verification/result-journal-native
+```
+
+The process interruption cases cover preparation, durable intent, tuning publication, history publication, completion publication, and completed results. Separate native tests cover per-car writer exclusion, crash-released locks, profile conflicts, exact field preservation, backup repair, secondary garage cars and the tuning cap. The session suite checks failed native saves and result-screen retries as well as history failures, departure and resets.
+
+The new packaged candidate must still prove startup recovery through `Idas3SceneGame`, normal scored races/rematches with the journal enabled, and the retry/exit panel with keyboard, controller and supported languages/resolutions. The source tests and direct ABI driver do not establish those player-facing outcomes.

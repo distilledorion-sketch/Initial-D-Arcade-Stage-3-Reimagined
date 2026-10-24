@@ -1527,6 +1527,33 @@ int IDAS3_UNITY_CALL Idas3MultiplayerSetGo(int released){
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer GO error");return 0;}
 }
+int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uint32_t* points,uint32_t* before,uint32_t* after,uint32_t count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app)throw std::logic_error("Multiplayer scene is not initialized");
+        if(!selection||!points||!before||!after||count!=307)throw std::invalid_argument("Invalid reward plan buffers");
+        const auto& plan=r.app->prepareMultiplayerResult(winner);
+        *selection=plan?plan->selection:-1;*points=plan?plan->points:0;
+        std::fill_n(before,count,0);std::fill_n(after,count,0);
+        if(plan){std::copy(plan->before.words.begin(),plan->before.words.end(),before);std::copy(plan->after.words.begin(),plan->after.words.end(),after);}
+        return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+    catch(...){unityError("Unknown multiplayer reward preparation error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!before||!after||count!=307)throw std::invalid_argument("Invalid reward recovery buffers");
+        const auto root=unicodePath(saves);
+        // A loaded scene owns its memory profiles. Startup recovery runs before
+        // initialization; live settlement uses that scene's cached reward plan.
+        if(r.app)throw std::logic_error("Reward recovery must precede scene initialization");
+        idas3::OnlineResultReward::Plan plan;plan.selection=selection;plan.points=points;
+        std::copy_n(before,count,plan.before.words.begin());std::copy_n(after,count,plan.after.words.begin());
+        idas3::OnlineResultReward(root).apply(plan);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+    catch(...){unityError("Unknown multiplayer reward recovery error");return 0;}
+}
 int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{

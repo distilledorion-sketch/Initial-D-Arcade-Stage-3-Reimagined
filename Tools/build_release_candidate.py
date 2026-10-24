@@ -23,6 +23,7 @@ NATIVE_TESTS = (
     "original_driving_session", "online_race_timeline", "online_scored_finish", "original_race_rules",
     "original_collision_reference", "native_multiplayer", "native_asset_storage",
     "unity_shared_renderer",
+    "local_driver_profiles", "local_driver_profile_recovery", "online_result_reward",
 )
 INPUT_TREES = ("Assets", "Packages", "ProjectSettings", "Native/data", "RuntimeAssets", "ThirdParty")
 

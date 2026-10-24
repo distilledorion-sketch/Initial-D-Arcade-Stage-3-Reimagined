@@ -2,51 +2,55 @@ using System;
 
 namespace Idas3.Multiplayer
 {
-    // Owns persistence for one already-confirmed result. Native tuning awards,
-    // presentation and transport stay outside retries of the record file.
+    // Owns one confirmed result from durable intent through both reward stores.
+    // Native presentation succeeds once per live session; restart recovery runs
+    // before the scene loads any profile into memory.
     internal sealed class Idas3BattleRecordSettlement
     {
-        readonly Idas3MultiplayerRecords records;
-        readonly int car, winner;
-        readonly ulong raceId, hostTicks, guestTicks;
-        readonly bool won;
-        readonly Idas3BattleRecord opponent, previous;
-        int? previousPoints;
+        readonly int winner;
+        readonly ulong hostTicks, guestTicks;
+        readonly Idas3BattleRecord previous;
+        readonly Idas3ResultJournal journal;
+        readonly Idas3ResultJournal.Entry request;
+        bool nativeApplied;
         double retryAt;
         public bool Complete { get; private set; }
         public Exception Failure { get; private set; }
         public Idas3BattleRecord Record { get; private set; }
         public int PointsEarned { get; private set; }
+        public int TuningPointsEarned { get; private set; }
+        public bool DurableIntent { get; private set; }
         public bool ChangesHistory => winner == 0 || winner == 1;
 
         internal Idas3BattleRecordSettlement(Idas3MultiplayerRecords records, int car,
             ulong raceId, int winner, bool won, Idas3BattleRecord opponent,
             Idas3BattleRecord previous, ulong hostTicks, ulong guestTicks)
         {
-            this.records = records ?? throw new ArgumentNullException(nameof(records));
-            this.car = car; this.raceId = raceId; this.winner = winner; this.won = won;
-            this.opponent = opponent; this.previous = previous;
+            if(records==null)throw new ArgumentNullException(nameof(records));
+            this.winner = winner;this.previous = previous;
             this.hostTicks = hostTicks; this.guestTicks = guestTicks;
+            journal = new Idas3ResultJournal(records);
+            request = Idas3ResultJournal.Request(car,raceId,winner,won,opponent,previous,hostTicks,guestTicks);
         }
 
         public bool Matches(int result, ulong hostTime, ulong guestTime) =>
             winner == result && hostTicks == hostTime && guestTicks == guestTime;
 
-        public bool TrySave(double now)
+        public bool TrySave(double now,bool force=false)
         {
             if (Complete) return true;
-            if (now < retryAt) return false;
+            if (!force && now < retryAt) return false;
             try
             {
-                if (ChangesHistory)
+                if (winner == -1)
                 {
-                    if (!previousPoints.HasValue) previousPoints = records.ReadLevelPoints(car);
-                    // Commit's durable receipt makes a repeat safe even when
-                    // the write succeeded but a later read failed.
-                    Record = records.Commit(car, raceId, won, opponent);
-                    PointsEarned = records.ReadLevelPoints(car) - previousPoints.Value;
+                    // Double timeout has neither tuning nor history to persist.
+                    ApplyNative();Record=previous;
                 }
-                else Record = previous; // Draw/time-up never changes history.
+                else {
+                    var saved=journal.Settle(request,PrepareReward,_=>{DurableIntent=true;ApplyNative();});
+                    Record=saved.record;PointsEarned=saved.battlePoints;
+                }
                 Complete = true; Failure = null;
                 return true;
             }
@@ -55,6 +59,31 @@ namespace Idas3.Multiplayer
                 Failure = error; retryAt = now + 1;
                 return false;
             }
+        }
+        Idas3ResultJournal.Reward PrepareReward()
+        {
+            var before=new uint[307];var after=new uint[307];
+            if(Idas3MultiplayerNative.Idas3MultiplayerPrepareResult(winner,out int selection,out uint points,before,after,307)!=1)
+                throw new InvalidOperationException(Idas3Native.Error());
+            return selection<0?new Idas3ResultJournal.Reward():new Idas3ResultJournal.Reward{
+                selection=selection,points=points,before=before,after=after};
+        }
+        void ApplyNative()
+        {
+            if(nativeApplied)return;
+            if(Idas3MultiplayerNative.Idas3MultiplayerSetResult(winner)!=1)
+                throw new InvalidOperationException(Idas3Native.Error());
+            nativeApplied=true;TuningPointsEarned=Idas3MultiplayerNative.Idas3MultiplayerPointsEarned();
+        }
+        internal static bool RecoverPending(string saveRoot)
+        {
+            var records=new Idas3MultiplayerRecords(saveRoot);
+            return new Idas3ResultJournal(records).Recover(reward=>{
+                if(reward.selection<0)return;
+                var root=System.Text.Encoding.UTF8.GetBytes(records.SaveRoot+"\0");
+                if(Idas3MultiplayerNative.Idas3MultiplayerRecoverReward(root,reward.selection,reward.points,reward.before,reward.after,307)!=1)
+                    throw new InvalidOperationException(Idas3Native.Error());
+            });
         }
     }
 }

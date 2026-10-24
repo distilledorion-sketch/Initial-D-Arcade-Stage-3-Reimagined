@@ -9,6 +9,10 @@
 #define NOMINMAX
 #endif
 #include <windows.h>
+#else
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
 #endif
 
 namespace idas3 {
@@ -46,6 +50,39 @@ bool replace(const std::filesystem::path& from,const std::filesystem::path& to){
     std::error_code error;std::filesystem::rename(from,to,error);return !error;
 #endif
 }
+class ProfileWriteLock {
+#ifdef _WIN32
+    HANDLE handle_=INVALID_HANDLE_VALUE;
+#else
+    int handle_=-1;
+#endif
+public:
+    explicit ProfileWriteLock(const std::filesystem::path& file){
+        const auto lockFile=std::filesystem::path(file.wstring()+L".lock");
+#ifdef _WIN32
+        handle_=CreateFileW(lockFile.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
+#else
+        handle_=open(lockFile.c_str(),O_RDWR|O_CREAT,0600);
+        if(handle_>=0&&flock(handle_,LOCK_EX|LOCK_NB)!=0){close(handle_);handle_=-1;}
+#endif
+    }
+    ProfileWriteLock(const ProfileWriteLock&)=delete;
+    ProfileWriteLock& operator=(const ProfileWriteLock&)=delete;
+    explicit operator bool()const{
+#ifdef _WIN32
+        return handle_!=INVALID_HANDLE_VALUE;
+#else
+        return handle_>=0;
+#endif
+    }
+    ~ProfileWriteLock(){
+#ifdef _WIN32
+        if(handle_!=INVALID_HANDLE_VALUE)CloseHandle(handle_);
+#else
+        if(handle_>=0){flock(handle_,LOCK_UN);close(handle_);}
+#endif
+    }
+};
 }
 std::filesystem::path LocalDriverProfiles::path(unsigned car)const{
     if(car>=35)throw std::out_of_range("Local driver car must be0..34");
@@ -60,6 +97,28 @@ LocalDriverProfiles::Loaded LocalDriverProfiles::load(unsigned car)const{
     return result;
 }
 bool LocalDriverProfiles::save(unsigned car,const original::OriginalBattleProfile& profile)const{
+    const auto file=path(car);if(!valid(car,profile))return false;
+    std::error_code error;std::filesystem::create_directories(directory_,error);if(error)return false;
+    ProfileWriteLock lock(file);if(!lock)return false;
+    return saveLocked(car,profile);
+}
+LocalDriverProfiles::ConditionalSave LocalDriverProfiles::saveExpected(unsigned car,
+        const original::OriginalBattleProfile& before,const original::OriginalBattleProfile& after)const{
+    const auto file=path(car);
+    if(!valid(car,before)||!valid(car,after))return ConditionalSave::Invalid;
+    std::error_code error;std::filesystem::create_directories(directory_,error);if(error)return ConditionalSave::IoError;
+    ProfileWriteLock lock(file);if(!lock)return ConditionalSave::IoError;
+    const auto current=load(car);
+    if(current.origin==Origin::Unreadable)return ConditionalSave::Unreadable;
+    if(current.profile.words==after.words){
+        // A historical backup must be repaired before recovery is acknowledged.
+        if(current.origin==Origin::Backup&&!saveLocked(car,after))return ConditionalSave::IoError;
+        return ConditionalSave::AlreadySaved;
+    }
+    if(current.profile.words!=before.words)return ConditionalSave::Conflict;
+    return saveLocked(car,after)?ConditionalSave::Saved:ConditionalSave::IoError;
+}
+bool LocalDriverProfiles::saveLocked(unsigned car,const original::OriginalBattleProfile& profile)const{
     const auto file=path(car);if(!valid(car,profile))return false;
     std::error_code error;std::filesystem::create_directories(directory_,error);if(error)return false;
     const auto suffix=L".new-"+std::to_wstring(std::chrono::steady_clock::now().time_since_epoch().count());

@@ -42,6 +42,7 @@ internal static class ResultSettlementDriver
             Idas3MultiplayerNative.ResultCalls=Idas3MultiplayerNative.PointsCalls=Idas3MultiplayerNative.RecordCalls=Idas3MultiplayerNative.NativeAwards=0;
             Idas3MultiplayerNative.Disconnects=Idas3MultiplayerNative.NativeLeaves=0;
             Idas3MultiplayerNative.OnDisconnect=null;Idas3MultiplayerNative.OnNativeLeave=null;
+            Idas3MultiplayerNative.FailNativeResult=Idas3MultiplayerNative.FailPresentation=false;
             Idas3MultiplayerNative.PointsToAward=winner<0?0:winner==(host?0:1)?2000:1000;
         }
         internal void Finish(int winner=0)=>Call(Session,"ShowResult",winner,6000UL,0UL);
@@ -135,9 +136,31 @@ internal static class ResultSettlementDriver
             string[] ids={"fixture-reset"},empty=Array.Empty<string>();
             Call(f.Session,"ApplyAdministrativeStatsResets","0123456789abcdef0123456789abcdef",full?empty:ids,full?ids:empty);
             int awards=Idas3MultiplayerNative.NativeAwards;f.Frame(12);f.Finish();
-            Check(!f.Session.IsRacing&&!f.Session.ResultSavePending&&f.Records.Read(8).Equals(Idas3BattleRecord.Fresh),
-                "Administrative "+(full?"full":"level")+" reset supersedes a pending result and prevents stale credit");
+            var expected=Idas3BattleRecord.Fresh;if(!full){expected.battles=expected.wins=1;}
+            Check(!f.Session.IsRacing&&!f.Session.ResultSavePending&&f.Records.Read(8).Equals(expected),
+                "Administrative "+(full?"full":"level")+" reset follows earned history and prevents stale aura credit");
             Check(Idas3MultiplayerNative.NativeAwards==awards&&f.Session.StatsResetNotice.Length>0&&f.Session.ErrorText.Length==0,"Reset preserves already-earned native tuning and clears the superseded save error");
+        }
+    }
+    static void NativeFailure(){
+        using(var f=new Fixture("native-save-failure")){
+            Idas3MultiplayerNative.FailNativeResult=true;f.Finish();
+            Check(f.Session.ResultSavePending&&Idas3MultiplayerNative.NativeAwards==0&&f.Records.Read(8).battles==0&&File.Exists(System.IO.Path.Combine(f.Path,"online_result_v1.json")),
+                "Failed native award retains durable intent without premature history credit");
+            f.Session.ReturnToMode();Check(f.Session.IsRacing,"Native save failure cannot enter offline play over the pending profile");
+            Idas3MultiplayerNative.FailNativeResult=false;f.Session.RetryResultSave();
+            Check(Committed(f.Session)&&Idas3MultiplayerNative.NativeAwards==1&&f.Records.Read(8).battles==1,"Explicit retry completes a failed native save once");
+        }
+    }
+    static void PresentationFailure(){
+        using(var f=new Fixture("presentation-failure")){
+            Idas3MultiplayerNative.FailPresentation=true;f.Finish();
+            Check(!Committed(f.Session)&&f.Session.ResultSavePending&&f.Records.Read(8).battles==1&&Idas3MultiplayerNative.NativeAwards==1,
+                "Presentation failure does not mark the result screen complete or discard saved rewards");
+            f.Frame(10.5);Check(Idas3MultiplayerNative.RecordCalls==1,"Presentation retry is throttled");
+            Idas3MultiplayerNative.FailPresentation=false;f.Session.RetryResultSave();
+            Check(Committed(f.Session)&&f.Session.ErrorText.Length==0&&Idas3MultiplayerNative.NativeAwards==1&&f.Records.Read(8).battles==1,
+                "Result screen retry never repeats either saved reward");
         }
     }
     public static int Main(string[] args){try{
@@ -147,6 +170,7 @@ internal static class ResultSettlementDriver
         FailedWrite(false);FailedWrite(true);LockedRecord();Neutral(-1);Neutral(2);
         RemoteRecordWhilePending();ResetWhilePending(false);ResetWhilePending(true);
         BufferedRemoteRecord(true);BufferedRemoteRecord(false);
+        NativeFailure();PresentationFailure();
         Console.WriteLine("CHECKS "+checks);return 0;
     }catch(Exception error){Console.Error.WriteLine(error);return 1;}}
 }

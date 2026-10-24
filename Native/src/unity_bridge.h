@@ -268,6 +268,10 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetGo(int released);
 // selected-car rewards and starts original menus after authority validation.
 // An identical repeat is a no-op.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner);
+// Prepare is read-only for disk; persist this intent before applying either
+// reward store. Recovery also works before scene initialization.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uint32_t* points,uint32_t* before,uint32_t* after,uint32_t count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
 // Local original-menu presentation. These calls do not award or alter results.
 // Input flags: 1 blocked, 2 peer left, 4 peer ready, 8 record save failed.

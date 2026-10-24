@@ -25,7 +25,7 @@ def main():
     proof = args.report_dir.resolve()
     proof.mkdir(parents=True, exist_ok=True)
     production = [ROOT / "Assets/Scripts/Multiplayer" / name for name in (
-        "Idas3MultiplayerSession.cs", "Idas3BattleRecordSettlement.cs", "Idas3MultiplayerTypes.cs", "Idas3OnlineActivity.cs", "Idas3OnlineUsername.cs",
+        "Idas3MultiplayerSession.cs", "Idas3BattleRecordSettlement.cs", "Idas3ResultJournal.cs", "Idas3MultiplayerTypes.cs", "Idas3OnlineActivity.cs", "Idas3OnlineUsername.cs",
         "Idas3LobbyChat.cs", "Idas3NetworkImpairment.cs", "Idas3MultiplayerRecords.cs", "Idas3MultiplayerRecords.Moderation.cs",
         "Idas3MultiplayerRecordChecks.cs", "Idas3BuildCompatibility.cs", "Idas3QuickMatch.cs", "Idas3TcpTransport.cs", "Idas3ChallengerTestTransport.cs")]
     native = ROOT / "Assets/Scripts/Multiplayer/Idas3MultiplayerNative.cs"

@@ -90,14 +90,20 @@ namespace Idas3.Multiplayer
 #if IDAS3_RESULT_SETTLEMENT_TEST
         internal static int ResultCalls,PointsCalls,RecordCalls,NativeAwards,PointsToAward,PresentedPoints;
         internal static uint PresentedLevel;
-        internal static int Idas3MultiplayerSetResult(int winner){++ResultCalls;++NativeAwards;return 1;}
+        internal static bool FailNativeResult,FailPresentation;
+        internal static int Idas3MultiplayerPrepareResult(int winner,out int selection,out uint points,uint[] before,uint[] after,uint count){
+            selection=13;points=(uint)PointsToAward;before[4]=after[4]=8;before[18]=321;after[18]=321+points;return 1;
+        }
+        internal static int Idas3MultiplayerSetResult(int winner){++ResultCalls;if(FailNativeResult)return 0;++NativeAwards;return 1;}
         internal static int Idas3MultiplayerPointsEarned(){++PointsCalls;return PointsToAward;}
-        internal static int Idas3MultiplayerResultRecord(int points,uint level){++RecordCalls;PresentedPoints=points;PresentedLevel=level;return 1;}
+        internal static int Idas3MultiplayerResultRecord(int points,uint level){++RecordCalls;if(FailPresentation)return 0;PresentedPoints=points;PresentedLevel=level;return 1;}
 #else
+        internal static int Idas3MultiplayerPrepareResult(int winner,out int selection,out uint points,uint[] before,uint[] after,uint count)=>throw Unexpected();
         internal static int Idas3MultiplayerSetResult(int winner)=>throw Unexpected();
         internal static int Idas3MultiplayerPointsEarned()=>throw Unexpected();
         internal static int Idas3MultiplayerResultRecord(int points,uint level)=>throw Unexpected();
 #endif
+        internal static int Idas3MultiplayerRecoverReward(byte[] root,int selection,uint points,uint[] before,uint[] after,uint count)=>throw Unexpected();
 #if IDAS3_RECORD_STORAGE_INTEGRATION
         internal static int Disconnects,NativeLeaves;
         internal static Action OnDisconnect,OnNativeLeave;

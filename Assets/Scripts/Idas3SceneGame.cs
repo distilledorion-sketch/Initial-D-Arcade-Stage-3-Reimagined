@@ -201,6 +201,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 }
             }
             Directory.CreateDirectory(saves);
+            // Complete durable online results before native initialization can
+            // load stale tuning profiles or offline play can modify them.
+            if(Idas3BattleRecordSettlement.RecoverPending(saves))
+                Debug.Log("IDAS3 recovered a previously interrupted online result.");
             if (Idas3Native.Idas3SceneConfigureLanguage(Idas3GameOptions.LoadArcadeTextLanguage(saves)) != 1)
                 throw new InvalidOperationException(Idas3Native.Error());
             Idas3Native.Idas3SceneSetLoadKeepAlive(loadKeepAliveCallback);loadKeepAliveRegistered=true;

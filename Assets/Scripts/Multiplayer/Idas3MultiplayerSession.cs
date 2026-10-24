@@ -134,8 +134,18 @@ namespace Idas3.Multiplayer
         bool recordCommitted;
         Idas3BattleRecordSettlement settlement;
         string lastRecordSaveFailure;
+        double resultPresentationRetryAt;
         bool ResultSettled => recordCommitted || settlement != null;
         public bool ResultSavePending => nativeRace && settlement != null && !recordCommitted;
+        public string ResultRecoveryMessage => settlement!=null&&settlement.Complete?
+            "Your rewards are saved. Retry the result screen or exit the game.":settlement!=null&&settlement.DurableIntent?
+            "Your result is saved for recovery. Retry saving, or exit and recover it next launch.":
+            "The result has not been saved. Check free space and folder access, then retry. Exiting now may lose this result.";
+        public void RetryResultSave()
+        {
+            if(!ResultSavePending)return;
+            settlement.TrySave(Now,true);resultPresentationRetryAt=0;CompleteResultRecord();
+        }
         public bool LocalContinueRequested { get; private set; }
         public bool RemoteContinueRequested { get; private set; }
         public bool ResultPeerLeft { get; private set; }
@@ -304,6 +314,8 @@ namespace Idas3.Multiplayer
         {
             const string notice = "An administrator reset your online battle stats. You can earn them again by racing.";
             bool changed = records.ApplyAdministrativeResets(playerId, levelIds, fullIds, () => {
+                if(settlement!=null&&!settlement.TrySave(Now,true))
+                    throw new IOException("The earned race result must be saved before resetting its history.",settlement.Failure);
                 // A frozen race must never commit its old record after reset.
                 // The neutral finish awards no result; already-settled tuning
                 // points stay with the car, independently of online history.
@@ -775,7 +787,7 @@ namespace Idas3.Multiplayer
         void LoadRace()
         {
             Require(HasCourseDraw,"Race requires a shared course selection.");
-            RaceLocalRecord=LocalRecord;RaceRemoteRecord=remoteRecord;recordCommitted=false;settlement=null;lastRecordSaveFailure=null;
+            RaceLocalRecord=LocalRecord;RaceRemoteRecord=remoteRecord;recordCommitted=false;settlement=null;lastRecordSaveFailure=null;resultPresentationRetryAt=0;
             LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
             TuningPointsEarned=BattlePointsEarned=0;
             state="Loading";operationAt=Now;releaseAt=0;RaceReleased=remoteLoaded=releaseAck=finishSent=resultSent=remoteFinished=false;
@@ -928,27 +940,32 @@ namespace Idas3.Multiplayer
                 Require(settlement.Matches(winner,hostTicks,guestTicks),"Conflicting result for a settled race.");
                 CompleteResultRecord();return;
             }
-            Require(Idas3MultiplayerNative.Idas3MultiplayerSetResult(winner)==1,Idas3Native.Error());
             settlement=new Idas3BattleRecordSettlement(records,LocalCar,raceId,winner,winner==(IsHost?0:1),
                 RaceRemoteRecord,RaceLocalRecord,hostTicks,guestTicks);
             if(pendingAuthorityRecord.HasValue){remoteRecord=pendingAuthorityRecord.Value;pendingAuthorityRecord=null;}
             state="Results";ResultText=winner==-1?"TIME UP":winner==2?"DRAW":winner==(IsHost?0:1)?"YOU WIN":"YOU LOSE";
-            TuningPointsEarned=Idas3MultiplayerNative.Idas3MultiplayerPointsEarned();
             CompleteResultRecord();
         }
         void CompleteResultRecord()
         {
             if(recordCommitted||settlement==null)return;
             const string saveError="Battle record could not be saved.";
-            if(!settlement.TrySave(Now)){
+            bool saved=settlement.TrySave(Now);TuningPointsEarned=settlement.TuningPointsEarned;
+            if(!saved){
                 ErrorText=saveError;
                 string failure=settlement.Failure?.ToString();
                 if(failure!=lastRecordSaveFailure){lastRecordSaveFailure=failure;Debug.LogError("IDAS3 completed race record: "+failure);}
                 return;
             }
-            recordCommitted=true;BattlePointsEarned=settlement.PointsEarned;
-            lastRecordSaveFailure=null;if(ErrorText==saveError)ErrorText="";
-            Require(Idas3MultiplayerNative.Idas3MultiplayerResultRecord(BattlePointsEarned,settlement.Record.level)==1,Idas3Native.Error());
+            if(Now<resultPresentationRetryAt)return;
+            BattlePointsEarned=settlement.PointsEarned;
+            const string screenError="Race result screen could not be prepared.";
+            if(Idas3MultiplayerNative.Idas3MultiplayerResultRecord(BattlePointsEarned,settlement.Record.level)!=1){
+                ErrorText=screenError;resultPresentationRetryAt=Now+1;
+                Debug.LogError("IDAS3 result presentation: "+Idas3Native.Error());return;
+            }
+            recordCommitted=true;lastRecordSaveFailure=null;
+            if(ErrorText==saveError||ErrorText==screenError)ErrorText="";
             // A transport failure cannot undo an already-earned result. Save
             // retries never repeat the native tuning award or require a peer.
             if(settlement.ChangesHistory&&HandshakeComplete&&transport!=null&&transport.Connected&&!ResultPeerLeft)
@@ -1019,13 +1036,17 @@ namespace Idas3.Multiplayer
         }
         public void LeaveRoom()
         {
-            if(leaving)return;leaving=true;
+            if(leaving)return;
+            if(!disposing&&settlement!=null&&!settlement.TrySave(Now,true))
+                throw new IOException("The earned race result is still being saved. Retry saving or close the game to recover it next launch.",settlement.Failure);
+            leaving=true;
             try { CancelMatchmaking();if(HandshakeComplete){Send(Packet.Leave);PollTransport();}StopRace();transport?.Leave();ResetPeer();DisconnectedFinish=false;terminalFailure=null;ResultText="";state="Offline";status="Room closed."; }
             finally {leaving=false;}
         }
         public void Dispose()
         {
-            if(disposing)return;LeaveRoom();disposing=true;transport?.Dispose();transport=null;
+            if(disposing)return;disposing=true;
+            try{LeaveRoom();}finally{transport?.Dispose();transport=null;}
         }
     }
 }

@@ -82,6 +82,7 @@ namespace Idas3.Multiplayer
         public bool DisconnectedFinishVisible=>session!=null&&session.DisconnectedFinish;
         public bool CanAcknowledgeDisconnectedFinish=>DisconnectedFinishVisible&&disconnectedInputArmed&&!disconnectedInputBlocked;
         public bool ResultsVisible=>session!=null&&!session.DisconnectedFinish&&session.IsRacing&&session.StateName=="Results";
+        private bool ResultRecoveryVisible=>ResultsVisible&&session.ResultSavePending&&!string.IsNullOrEmpty(session.ErrorText);
         public bool CanAcknowledgeReturnToLobby=>ResultsVisible&&session.CanReturnToLobby&&resultsInputArmed&&!resultsInputBlocked;
         public int ResultsPage { get; private set; }
         int resultsNavigation;
@@ -131,6 +132,11 @@ namespace Idas3.Multiplayer
                 ProcessDisconnectedInput(Input.GetKey(KeyCode.Return),Input.GetKey(KeyCode.Escape)||Input.GetKey(KeyCode.Backspace),!Application.isFocused);return;
             }
             if(ResultsVisible){
+                if(ResultRecoveryVisible){
+                    ProcessMenuNavigation(Input.GetKey(KeyCode.LeftArrow)?-1:Input.GetKey(KeyCode.RightArrow)?1:0,
+                        Input.GetKey(KeyCode.UpArrow)?-1:Input.GetKey(KeyCode.DownArrow)?1:0,
+                        Input.GetKey(KeyCode.Return),Input.GetKey(KeyCode.Escape),!Application.isFocused,Time.realtimeSinceStartupAsDouble);return;
+                }
                 NavigateResults(Input.GetKey(KeyCode.LeftArrow)||Input.GetKey(KeyCode.UpArrow)?-1:Input.GetKey(KeyCode.RightArrow)||Input.GetKey(KeyCode.DownArrow)?1:0);
                 ProcessResultsInput(Input.GetKey(KeyCode.Return),Input.GetKey(KeyCode.Escape)||Input.GetKey(KeyCode.Backspace),!Application.isFocused);return;
             }
@@ -162,7 +168,7 @@ namespace Idas3.Multiplayer
         }
         internal void ProcessMenuNavigation(int horizontal,int vertical,bool confirm,bool back,bool blocked,double now,bool wheel=false){
             steeringOnly=wheel;
-            if(ResultsVisible){NavigateResults(blocked?0:horizontal!=0?horizontal:vertical);return;}
+            if(ResultsVisible&&!ResultRecoveryVisible){NavigateResults(blocked?0:horizontal!=0?horizontal:vertical);return;}
             if(wheel&&horizontal!=0){vertical=horizontal;horizontal=0;}
             navigationHeld=confirm||back;
             if(!IsOpen)return;
@@ -172,7 +178,7 @@ namespace Idas3.Multiplayer
                 return;
             }
             if(controllerFocus.Poll(horizontal,vertical,confirm,back,blocked||InputCovered||Idas3MenuPointer.Active,now)){
-                BackFromMenu();
+                if(!ResultRecoveryVisible)BackFromMenu();
             }
         }
         private void BackFromMenu(){
@@ -244,6 +250,7 @@ namespace Idas3.Multiplayer
         }
         private void OriginalResultsInput(bool confirm=false,bool cancel=false)
         {
+            if(Idas3MultiplayerNative.Idas3MultiplayerResultScreen(0)<0)return;
             uint flags=((resultsInputBlocked||session.ResultSavePending)?1u:0u)|(session.ResultPeerLeft?2u:0u)|(session.RemoteContinueRequested?4u:0u)|(!string.IsNullOrEmpty(session.ErrorText)?8u:0u);
             if(Idas3MultiplayerNative.Idas3MultiplayerResultInput(confirm?1:0,cancel?1:0,resultsInputArmed?resultsNavigation:0,flags)!=1)
                 Debug.LogError("Original online result input was rejected: "+Idas3Native.Error());
@@ -387,7 +394,8 @@ namespace Idas3.Multiplayer
                 // The game now paints its original result and Continue owners.
                 // Keep input capture, but do not cover them with an IMGUI panel.
                 if(ResultsVisible||session.StateName=="Returning"){
-                    if(ResultsVisible)OriginalResultsPointer();
+                    if(ResultRecoveryVisible)ResultRecoveryView();
+                    else if(ResultsVisible)OriginalResultsPointer();
                     if(Event.current.isKey)Event.current.Use();return;
                 }
                 if(!IsOpen){
@@ -666,6 +674,15 @@ namespace Idas3.Multiplayer
             Fill(new Rect(26,502+offset,848,44),Panel);Fill(new Rect(26,502+offset,3,44),error?Red:Edge);
             Text(new Rect(40,511+offset,error?774:813,34),text,wrapped,error?new Color32(255,128,124,255):Muted);
             if(error&&ActionButton(new Rect(831,509+offset,29,29),"X"))session.ClearError();
+        }
+        private void ResultRecoveryView(){
+            float scale=Mathf.Min(Screen.width/900f,Screen.height/640f);
+            GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-760*scale)/2,(Screen.height-220*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
+            Fill(new Rect(0,0,760,220),Panel);Fill(new Rect(0,0,5,220),Red);
+            Text(new Rect(24,20,712,35),session.ErrorText,heading);
+            Text(new Rect(24,65,712,88),session.ResultRecoveryMessage,wrapped);
+            if(ActionButton(new Rect(24,163,340,38),"RETRY RESULT",true,true))session.RetryResultSave();
+            if(ActionButton(new Rect(396,163,340,38),"EXIT GAME"))Application.Quit();
         }
         private void Footer(){
             float offset=ChatOffset;
