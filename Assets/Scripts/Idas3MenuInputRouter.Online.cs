@@ -25,6 +25,10 @@ internal sealed partial class Idas3MenuInputRouter
     internal bool OnlineCapturesText(bool editing, int frame) =>
         editing || onlineTextReleaseBlocked || frame <= onlineTextBlockThroughFrame;
 
+    internal bool BlocksOnlineGameInput(bool open, bool gameplay, int frame, int transitionThroughFrame) =>
+        open || frame <= transitionThroughFrame ||
+        (!gameplay && (onlineClosingControls || OnlineCapturesText(false, frame)));
+
     internal OnlineAction ProcessOnline(OnlineSample sample, OnlineContext context)
     {
         bool togglePressed = sample.Toggle && !previousOnline.Toggle;

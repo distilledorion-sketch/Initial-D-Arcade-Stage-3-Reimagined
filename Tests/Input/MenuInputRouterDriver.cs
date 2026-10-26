@@ -105,6 +105,72 @@ internal static class MenuInputRouterDriver
         FocusGapChecks();
         ClosingControlChecks();
         OnlineOwnershipChecks();
+        OnlineRaceTransitionChecks();
+    }
+
+    private static void OnlineRaceTransitionChecks()
+    {
+        var router = new Router();
+        var click = new Router.SavePointerSample { Available = true, Held = true, Pressed = true };
+        var save = new Router.SavePointerContext { Focused = true, Allowed = true, OwnsPointer = true };
+        router.ProcessSavePointer(click, save);
+        var coveredSave = new Router.SavePointerContext { Focused = true };
+        Check(router.ProcessSavePointer(default, coveredSave).BlocksGameInput && !router.SavePointerReleaseBlocked,
+            "save click releases under a focused online overlay without activating the save menu");
+        Check(!router.ProcessSavePointer(default, coveredSave).BlocksGameInput,
+            "a covered save pointer cannot hold other menus hostage after release");
+
+        foreach (bool held in new[] { false, true })
+        {
+            router = new Router();
+            router.ProcessSavePointer(click, save);
+            router.BlockMusicUntilRelease();
+            router.AttractVisibilityChanged();
+            router.OnlineClosed(); router.OnlineTextEnded(1);
+            var raceSave = new Router.SavePointerContext { Focused = true, Gameplay = true };
+            var raceMusic = new Router.MusicContext { Focused = true, Gameplay = true };
+            var raceAttract = new Router.AttractContext { Focused = true, Gameplay = true };
+            bool blocked = false;
+            // Match the SceneGame routing order. Covers neutral input and held
+            // keyboard/pedal/stick/shift controls through 600 online frames.
+            for (int frame = 2; frame < 602; ++frame)
+            {
+                router.ProcessOnline(new Router.OnlineSample { AnyKey = held, NavigationHeld = held, CloseHeld = held },
+                    new Router.OnlineContext { Frame = frame, Blocked = router.MusicReleaseBlocked });
+                bool music = router.ProcessMusic(new Router.MusicSample { AnyControlHeld = held,
+                    ViewHeld = held, Navigation = new Router.Sample { Horizontal = held ? 1 : 0, Buttons = held ? 0x2000u : 0u } }, raceMusic).BlocksGameInput;
+                raceAttract.Blocked = music;
+                bool attract = router.ProcessAttract(new Router.AttractSample { AnyControlHeld = held }, raceAttract).BlocksGameInput;
+                bool pointer = router.ProcessSavePointer(new Router.SavePointerSample { Held = held, NavigationHeld = held }, raceSave).BlocksGameInput;
+                blocked |= music || attract || pointer || router.BlocksOnlineGameInput(false, true, frame, 1);
+            }
+            Check(!blocked, "closed menu guards cannot neutralize an online race, held controls=" + held);
+            Check(!router.SavePointerReleaseBlocked && !router.MusicReleaseBlocked,
+                "entering a race discards obsolete frontend pointer/music guards");
+            Check(router.BlocksOnlineGameInput(true, true, 700, 1), "an explicitly reopened online overlay still owns race input");
+            Check(router.BlocksOnlineGameInput(false, true, 700, 701), "overlay transition frames remain consumed in a race");
+        }
+
+        router = new Router();
+        router.OnlineTextEnded(1); router.BlockMusicUntilRelease();
+        bool musicBlocked = true;
+        for (int frame = 2; frame < 6; ++frame)
+        {
+            router.ProcessOnline(default, new Router.OnlineContext { Open = true, Frame = frame, Blocked = router.MusicReleaseBlocked });
+            musicBlocked = router.ProcessMusic(default, new Router.MusicContext {
+                Focused = true, Blocked = router.OnlineCapturesText(false, frame) }).BlocksGameInput;
+        }
+        Check(!musicBlocked && !router.OnlineCapturesText(false, 6),
+            "chat and music guards settle after physical release instead of waiting on each other");
+
+        router = new Router(); router.BlockMusicUntilRelease();
+        router.ProcessMusic(default, new Router.MusicContext { Focused = false, Blocked = true });
+        Check(router.MusicReleaseBlocked, "unfocused covered neutral still cannot release music controls");
+        router.ProcessMusic(new Router.MusicSample { AnyControlHeld = true },
+            new Router.MusicContext { Focused = true, Blocked = true });
+        Check(router.MusicReleaseBlocked, "focused covered held control retains music release protection");
+        router.OnlineClosed(); router.OnlineTextEnded(1);
+        Check(router.BlocksOnlineGameInput(false, false, 10, 1), "frontend remains protected from held closing and text controls");
     }
 
     private static void OnlineOwnershipChecks()
@@ -259,7 +325,9 @@ internal static class MenuInputRouterDriver
     private static void MusicChecks()
     {
         var router = new Router();
-        var selection = new Router.MusicContext { Focused = true, OpponentAllowed = true, DeltaSeconds = .1f };
+        // A race owns native input during the pre-race opponent presentation,
+        // where the legitimate music-picker hold must still be available.
+        var selection = new Router.MusicContext { Focused = true, OpponentAllowed = true, Gameplay = true, DeltaSeconds = .1f };
         var view = new Router.MusicSample { ViewHeld = true, AnyControlHeld = true };
         var command = router.ProcessMusic(view, selection);
         Check(command.Kind == Router.MusicAction.None && command.BlocksGameInput && router.MusicHoldProgress > 0,
@@ -382,7 +450,7 @@ internal static class MenuInputRouterDriver
         router.AttractVisibilityChanged(); router.ClearAttractReleaseGuard();
         Check(!router.ProcessAttract(default, context).BlocksGameInput, "admitting a challenger clears the obsolete attract release guard");
 
-        var save = new Router.SavePointerContext { Allowed = true, OwnsPointer = true };
+        var save = new Router.SavePointerContext { Focused = true, Allowed = true, OwnsPointer = true };
         var mouse = new Router.SavePointerSample { Available = true, X = 20, Y = 30 };
         Check(!router.ProcessSavePointer(mouse, save).Hover, "stationary cursor does not override a new save menu default");
         Check(!router.ProcessSavePointer(mouse, save).Hover, "stationary cursor leaves controller selection intact");
@@ -395,10 +463,10 @@ internal static class MenuInputRouterDriver
         Check(!router.ProcessSavePointer(mouse, save).Click, "holding the save click never repeats activation");
         save.OwnsPointer = false;
         Check(router.ProcessSavePointer(mouse, save).BlocksGameInput, "click that leaves save selection cannot confirm the following screen");
-        save.Allowed = false; mouse.Held = false;
+        save.Allowed = save.Focused = false; mouse.Held = false;
         Check(router.ProcessSavePointer(mouse, save).BlocksGameInput && router.SavePointerReleaseBlocked,
             "unfocused save pointer sample cannot release a held transition");
-        save.Allowed = true; mouse.NavigationHeld = true;
+        save.Allowed = save.Focused = true; mouse.NavigationHeld = true;
         Check(router.ProcessSavePointer(mouse, save).BlocksGameInput, "controller held across save click remains covered");
         mouse.NavigationHeld = false;
         Check(router.ProcessSavePointer(mouse, save).BlocksGameInput && !router.SavePointerReleaseBlocked,

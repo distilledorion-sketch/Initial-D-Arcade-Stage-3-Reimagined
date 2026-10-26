@@ -65,6 +65,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private bool Focused => diagnosticFocusOverride ?? Application.isFocused;
     private bool OnlineRace => multiplayer != null && multiplayer.IsRacing;
+    private bool GameplayInputContext => OnlineRace || (Status.flags & 1u) == 0;
     private bool CanOpenPause => ready && (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 0 && Status.racePhase < 3;
     private bool AttractScreen => ready && (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 1u &&
         Status.frontendStage == 0 && !OnlineRace && !multiplayer.ChallengerPending;
@@ -431,6 +432,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             else controlBindings.Poll(physicalKey, physicalPad, Time.realtimeSinceStartupAsDouble,
                 diagnosticPad ? null : controllerDevices.Controls, diagnosticPad ? null : controllerDevices.RigSamples);
             bool bindingInputBlocked = controlBindings.SuppressInput || controlBindings.IsCapturing;
+            multiplayerMenu.RaceHudActive = (Status.flags & 1u) == 0;
             multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld,
                 bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || menuInput.MusicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active,
                 MenuNavigationHeld(frame) || controlBindings.ViewChangeHeld);
@@ -738,7 +740,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         var command = menuInput.ProcessMusic(sample, new Idas3MenuInputRouter.MusicContext {
             Focused = Focused, Blocked = bindingBlocked, MenuOpen = raceMusicMenu.IsOpen,
             BlocksGameInput = raceMusicMenu.BlocksGameInput, SearchFocused = raceMusicMenu.SearchFocused,
-            LobbyAllowed = lobby, OpponentAllowed = opponent, DeltaSeconds = Time.unscaledDeltaTime,
+            LobbyAllowed = lobby, OpponentAllowed = opponent, Gameplay = GameplayInputContext, DeltaSeconds = Time.unscaledDeltaTime,
             Now = Time.realtimeSinceStartupAsDouble,
             PointerActive = Idas3MenuPointer.Active,
             NavigationHeld = MenuNavigationHeld(frame) || Held(frame, 46) || (frame.padButtons & 0x4000u) != 0
@@ -773,7 +775,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             ViewHeld = controlBindings.ViewChangeHeld, AnyControlHeld = MusicControlsHeld(frame),
             StartHeld = Held(frame, 13) || (frame.padButtons & 0x1000) != 0
         }, new Idas3MenuInputRouter.AttractContext {
-            Focused = Focused, Blocked = inputBlocked, Allowed = AttractOptionsAllowed,
+            Focused = Focused, Blocked = inputBlocked, Allowed = AttractOptionsAllowed, Gameplay = GameplayInputContext,
             Child = Status.attractChild, DeltaSeconds = Time.unscaledDeltaTime
         });
         if (command.Kind == Idas3MenuInputRouter.AttractAction.OpenOptions) pauseMenu.OpenAttractOptions();
@@ -909,7 +911,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 Held(frame, 69) || Held(frame, 81) || (frame.padButtons & 0xC000u) != 0
         }, new Idas3MenuInputRouter.SavePointerContext {
             Allowed = Focused && !inputBlocked && !pauseMenu.BlocksGameInput && !multiplayerMenu.BlocksGameInput,
-            OwnsPointer = ownsPointer
+            OwnsPointer = ownsPointer, Focused = Focused, Gameplay = GameplayInputContext
         });
         if (command.Hover) Idas3Native.Idas3SceneSaveMenuPointer(point.x, Screen.height - point.y, Screen.width, Screen.height, 2);
         if (command.Click) Idas3Native.Idas3SceneSaveMenuPointer(point.x, Screen.height - point.y, Screen.width, Screen.height, 1);

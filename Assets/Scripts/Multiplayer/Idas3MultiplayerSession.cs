@@ -40,6 +40,12 @@ namespace Idas3.Multiplayer
         public Idas3AuthorityStatus AuthorityStatus { get; private set; }
         readonly byte[] authorityPacket=new byte[1064];
         ulong authorityPacketFrame;
+        const double AuthorityRecoveryDelay=1,AuthorityRecoveryInterval=.5,AuthorityProgressTimeout=15;
+        bool authorityProgressStarted,authorityRecovering;
+        ulong authorityLastConfirmed;
+        double authorityProgressAt,authorityRecoverySentAt;
+        internal int AuthorityRecoveryPacketsSent { get; private set; }
+        internal int AuthorityRecoveries { get; private set; }
         int pendingAuthorityWinner=-3;
         Idas3BattleRecord? pendingAuthorityRecord;
         ulong pendingAuthorityHostTicks,pendingAuthorityClientTicks;
@@ -49,6 +55,7 @@ namespace Idas3.Multiplayer
         public double DiagnosticJitterMs=>impairment.JitterMs;
         public double DiagnosticLossPercent=>impairment.LossPercent;
         public long DiagnosticDroppedPackets=>impairment.Dropped;
+        internal void SetDiagnosticRaceInputOutage(bool enabled,bool includeReliable)=>impairment.SetRaceInputOutage(enabled,includeReliable);
         Idas3QuickMatch quickMatch;
         string matchmakingTestScope = "";
         readonly Idas3PlayerInfo[] players = { new Idas3PlayerInfo(), new Idas3PlayerInfo() };
@@ -535,7 +542,7 @@ namespace Idas3.Multiplayer
             if (DisconnectedFinish || transport==null || !transport.Connected) return;
             using(var m=new MemoryStream(256)) using(var w=new BinaryWriter(m,Encoding.UTF8,true)) {
                 w.Write(Magic);w.Write(Protocol);w.Write((byte)type);w.Write(localNonce);w.Write(type==Packet.Hello?0UL:remoteNonce);
-                payload?.Invoke(w);impairment.Send(transport,m.ToArray(),reliable);
+                payload?.Invoke(w);impairment.Send(transport,m.ToArray(),reliable,type==Packet.AuthorityInputs);
             }
         }
         static void Require(bool condition,string message) { if(!condition)throw new InvalidDataException(message); }
@@ -818,6 +825,8 @@ namespace Idas3.Multiplayer
             }
             nativeRace=true;
             pendingAuthorityWinner=-3;pendingAuthorityRecord=null;AuthorityStatus=default;
+            authorityProgressStarted=authorityRecovering=false;
+            AuthorityRecoveryPacketsSent=AuthorityRecoveries=0;
             if(ExperimentalAuthority)Require(Idas3MultiplayerNative.Idas3MultiplayerEnableAuthorityRules(raceId,RemoteSavedCar.Automatic?1:0,BoostEnabled?1:0,CollisionsEnabled?1:0)==1,Idas3Native.Error());
             Require(Idas3Native.Idas3SceneSetPreRaceNames(Clean(transport?.LocalName),remoteName)==1,Idas3Native.Error());
             var localStats=RaceLocalRecord;var remoteStats=RaceRemoteRecord;
@@ -904,21 +913,60 @@ namespace Idas3.Multiplayer
             try { AfterFrameCore(); } catch(Exception e) { Fail("Multiplayer stopped: "+e.Message); }
             if(terminalFailure!=null)throw terminalFailure;
         }
+        bool CheckAuthorityProgress(Idas3AuthorityStatus snapshot,out bool recover)
+        {
+            recover=false;
+            // Ping, chat and duplicate input packets prove that the route is
+            // alive, not that either car can advance. Only newly confirmed
+            // simulation frames reset this deadline.
+            if(!RaceReleased||state!="Racing"||snapshot.winner!=-3){
+                authorityProgressStarted=authorityRecovering=false;return true;
+            }
+            // SetGo releases the car showcase before the fixed-step race
+            // begins. Frame zero during that presentation is not packet loss.
+            if(!authorityProgressStarted&&snapshot.frame==0)return true;
+            double now=Now;
+            if(!authorityProgressStarted||snapshot.confirmed!=authorityLastConfirmed){
+                if(authorityRecovering){
+                    ++AuthorityRecoveries;
+                    Debug.Log("IDAS3 race input recovery completed: frame="+snapshot.frame+" confirmed="+snapshot.confirmed);
+                }
+                authorityProgressStarted=true;authorityRecovering=false;
+                authorityLastConfirmed=snapshot.confirmed;authorityProgressAt=now;authorityRecoverySentAt=now;
+                return true;
+            }
+            if(now-authorityProgressAt>=AuthorityProgressTimeout){
+                Debug.LogWarning("IDAS3 race input progress timeout: frame="+snapshot.frame+" confirmed="+snapshot.confirmed+
+                    " verified="+snapshot.verified+" stalled="+snapshot.stalled+" recoveryPackets="+AuthorityRecoveryPacketsSent);
+                Fail("Race synchronization stopped responding. No result or points were recorded. Please rejoin the room.");
+                return false;
+            }
+            if(now-authorityProgressAt>=AuthorityRecoveryDelay&&now-authorityRecoverySentAt>=AuthorityRecoveryInterval){
+                if(!authorityRecovering)Debug.LogWarning("IDAS3 race input recovery started: frame="+snapshot.frame+
+                    " confirmed="+snapshot.confirmed+" verified="+snapshot.verified+" stalled="+snapshot.stalled);
+                authorityRecovering=true;authorityRecoverySentAt=now;recover=true;
+            }
+            return true;
+        }
         void AfterAuthorityFrame()
         {
             var status=new Idas3AuthorityStatus{size=96,version=1};
             Require(Idas3MultiplayerNative.Idas3MultiplayerAuthorityStatus(ref status)==1,Idas3Native.Error());AuthorityStatus=status;
+            if(!CheckAuthorityProgress(status,out bool recover))return;
             // Publish each newly simulated input frame. A wall-clock 30Hz
             // threshold made a 60Hz peer predict two (sometimes three) ticks
             // between updates. Retransmit while stalled so recovery still works.
-            if(status.frame!=authorityPacketFrame||Now-lastPose>=1.0/30) {
+            if(recover||status.frame!=authorityPacketFrame||Now-lastPose>=1.0/30) {
                 authorityPacketFrame=status.frame;
                 lastPose=Now;int count=Idas3MultiplayerNative.Idas3MultiplayerAuthorityPacket(authorityPacket,(uint)authorityPacket.Length);
                 Require(count>=40&&count<=authorityPacket.Length,Idas3Native.Error());
                 // Repeat absolute lamp state with every input packet so loss cannot
                 // lose a toggle; its sequence prevents reordered packets reverting it.
+                // A bounded reliable retry carries the same verified history;
+                // it never guesses missing controls or resets either car.
                 Send(Packet.AuthorityInputs,w=>{w.Write(raceId);w.Write(count);w.Write(authorityPacket,0,count);
-                    w.Write(LocalSnapshot.sequence);w.Write((LocalSnapshot.flags&16u)!=0?1u:0u);},false);++SnapshotsSent;
+                    w.Write(LocalSnapshot.sequence);w.Write((LocalSnapshot.flags&16u)!=0?1u:0u);},recover);++SnapshotsSent;
+                if(recover)++AuthorityRecoveryPacketsSent;
             }
             var remote=new Idas3CarSnapshot{size=128,version=1};
             Require(Idas3MultiplayerNative.Idas3MultiplayerGetRemoteSnapshot(ref remote)==1,Idas3Native.Error());RemoteSnapshot=remote;

@@ -15,11 +15,19 @@ namespace Idas3.Multiplayer
         double reliableDue;
         long sequence;
         public readonly double RttMs,JitterMs,LossPercent;
+        bool dropRaceInputs,dropReliableRaceInputs;
         public long Dropped { get; private set; }
         public Idas3NetworkImpairment(Func<double> now)
         {
             this.now=now;RttMs=Argument("-idas3-net-rtt-ms",0,1000);
             JitterMs=Argument("-idas3-net-jitter-ms",0,200);LossPercent=Argument("-idas3-net-loss-pct",0,100);
+        }
+        internal void SetRaceInputOutage(bool enabled,bool includeReliable)
+        {
+            var args=Environment.GetCommandLineArgs();
+            if(Array.IndexOf(args,"-idas3-multiplayer-smoke")<0||Array.IndexOf(args,"-idas3-multiplayer-race-progress-check")<0)
+                throw new InvalidOperationException("Race input outage requires the isolated multiplayer diagnostic.");
+            dropRaceInputs=enabled;dropReliableRaceInputs=includeReliable;
         }
         static double Argument(string key,double fallback,double maximum)
         {
@@ -28,8 +36,11 @@ namespace Idas3.Multiplayer
                 throw new ArgumentException("Invalid network diagnostic value for "+key);
             return value;
         }
-        public void Send(IIdas3Transport transport,byte[] data,bool reliable)
+        public void Send(IIdas3Transport transport,byte[] data,bool reliable,bool raceInput=false)
         {
+            // Opt-in starvation fixture: keep Ping/Pong and room traffic alive
+            // while withholding precisely the input history needed to move.
+            if(raceInput&&dropRaceInputs&&(!reliable||dropReliableRaceInputs)){++Dropped;return;}
             if(RttMs==0&&JitterMs==0&&LossPercent==0){transport.Send(data,reliable);return;}
             if(!reliable&&random.NextDouble()*100<LossPercent){++Dropped;return;}
             if(queue.Count>=256)throw new InvalidOperationException("Diagnostic network queue overflow.");

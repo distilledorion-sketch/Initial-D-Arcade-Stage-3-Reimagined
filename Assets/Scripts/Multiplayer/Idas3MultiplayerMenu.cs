@@ -46,7 +46,7 @@ namespace Idas3.Multiplayer
         private float ChatOffset=>ShowLobbyChat?ChatHeight:0;
         internal float CanvasHeight=>Height+ChatOffset;
         internal Idas3MenuInputRouter InputRouter { get; set; } = new Idas3MenuInputRouter();
-        internal bool CapturesTextInput=>InputRouter.OnlineCapturesText(chatEditing||usernameTyping,Time.frameCount);
+        internal bool CapturesTextInput=>IsOpen&&InputRouter.OnlineCapturesText(chatEditing||usernameTyping,Time.frameCount);
         internal int ControllerActionCount=>controllerFocus.Count;
         internal string ControllerSelection=>controllerFocus.Selected;
         private int blockThroughFrame=-1;
@@ -78,7 +78,8 @@ namespace Idas3.Multiplayer
         internal void CancelDiagnosticCapture(){diagnosticTarget=null;}
 
         public bool IsOpen { get; private set; }
-        public bool BlocksGameInput => IsOpen||suppressClosingControls||CapturesTextInput||Time.frameCount<=blockThroughFrame;
+        public bool BlocksGameInput => InputRouter.BlocksOnlineGameInput(IsOpen,
+            RaceHudActive||session!=null&&session.IsRacing,Time.frameCount,blockThroughFrame);
         public bool DisconnectedFinishVisible=>session!=null&&session.DisconnectedFinish;
         public bool CanAcknowledgeDisconnectedFinish=>DisconnectedFinishVisible&&disconnectedInputArmed&&!disconnectedInputBlocked;
         public bool ResultsVisible=>session!=null&&!session.DisconnectedFinish&&session.IsRacing&&session.StateName=="Results";

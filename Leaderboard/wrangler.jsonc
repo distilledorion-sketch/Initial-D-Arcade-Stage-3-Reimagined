@@ -16,7 +16,7 @@
     "RULESET": "d3-community-v1",
     "RETAIN_TOP_TEN": "true",
     "DISABLE_REPLAYS": "true",
-    "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.52",
+    "REQUIRED_CLIENT_BUILD": "0.3.95-community-replays.53",
     "EOS_CLIENT_ID": "REPLACE_WITH_YOUR_EOS_CLIENT_ID",
     "EOS_PRODUCT_ID": "REPLACE_WITH_YOUR_EOS_PRODUCT_ID",
     "EOS_SANDBOX_ID": "REPLACE_WITH_YOUR_EOS_SANDBOX_ID",

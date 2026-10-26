@@ -7,7 +7,7 @@ internal sealed partial class Idas3MenuInputRouter
     }
     internal struct AttractContext
     {
-        internal bool Focused, Blocked, Allowed;
+        internal bool Focused, Blocked, Allowed, Gameplay;
         internal int Child;
         internal float DeltaSeconds;
     }
@@ -29,6 +29,13 @@ internal sealed partial class Idas3MenuInputRouter
 
     internal AttractCommand ProcessAttract(AttractSample sample, AttractContext context)
     {
+        // Attract controls have no ownership after the native race takes over.
+        if (context.Gameplay)
+        {
+            attractHoldSeconds = 0;
+            attractReleaseBlocked = false;
+            return default;
+        }
         if (!context.Focused || context.Blocked)
         {
             attractHoldSeconds = 0;
@@ -66,7 +73,7 @@ internal sealed partial class Idas3MenuInputRouter
     }
     internal struct SavePointerContext
     {
-        internal bool Allowed, OwnsPointer;
+        internal bool Focused, Allowed, OwnsPointer, Gameplay;
     }
     internal struct SavePointerCommand
     {
@@ -78,6 +85,13 @@ internal sealed partial class Idas3MenuInputRouter
 
     internal SavePointerCommand ProcessSavePointer(SavePointerSample sample, SavePointerContext context)
     {
+        // Online racing disallows save-menu routing for the whole race. A
+        // click from that menu must not keep neutralizing the driving packet.
+        if (context.Gameplay)
+        {
+            savePointerReleaseBlocked = savePointerTracked = false;
+            return default;
+        }
         var command = new SavePointerCommand();
         if (context.Allowed && context.OwnsPointer && sample.Available)
         {
@@ -93,7 +107,9 @@ internal sealed partial class Idas3MenuInputRouter
         }
         else savePointerTracked = false;
         command.BlocksGameInput = savePointerReleaseBlocked;
-        if (context.Allowed && !sample.Held && !sample.NavigationHeld) savePointerReleaseBlocked = false;
+        // Observe physical release even when another modal covers this menu.
+        // Focus is separate from permission to activate the underlying menu.
+        if (context.Focused && !sample.Held && !sample.NavigationHeld) savePointerReleaseBlocked = false;
         return command;
     }
 }
