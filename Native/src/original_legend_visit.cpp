@@ -156,6 +156,7 @@ void OriginalLegendVisit::paint(std::span<std::uint32_t> target,int width,int he
         return;
     }
     if(dialogVisible_)scene_.paint(target,width,height);
-    if(overlayVisible_)scene_.paintChoice(target,width,height,overlay_,selected_,timerTicks_);
+    if(overlayVisible_)scene_.paintChoice(target,width,height,overlay_,selected_,timerTicks_,
+        state_.phase108==102||state_.phase108==106||state_.phase108==204||state_.phase108==208,state_.confirmFrame504);
 }
 }

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.95-community-replays.52 - October 25, 2026 (release candidate)
+
+This candidate combines the stabilization work and subsequent desktop fixes since .51. Stable release acceptance is still pending, including real matchmaking and room-code races on two Windows PCs using different Internet connections. Performance improvements vary by track and hardware; this is not a verified universal 30% FPS increase.
+
+- Reduce repeated mesh, HUD, material and input allocations, reuse prepared imported-course geometry, and release obsolete course resources during transitions. Preserve the current graphics and course detail.
+- Reduce finish-line replay saving work by sharing serialization between the last run and personal-best ghost. Online leaderboards continue to store times without replays.
+- Restore the original Saved Data pages and wire Configuration options to their gameplay settings. Correct selection boxes, widescreen background alignment, and per-car configuration/tuning behavior.
+- Restore finish-line-only post-race and session-ending screens, including Internet Ranking/password artwork, effects and car-camera framing. Correct the racer-level-up placement before points and remove the temporary Time Attack finish overlay.
+- Restore flashing Continue/rematch selections and allow revving, steering and headlight controls during race introductions. Correct blind-attack HUD visibility.
+- Correct car lighting and the floating headlight glow, restore attract-mode lamp illumination and projected headlights, and retain the original light on/off cues. Remove the added random falling-leaf effect.
+- Keep engine audio running through network stalls and refresh public rooms after online initialization and while browsing.
+- Centralize pause, music and online menu input ownership; suppress held controls across focus changes and menu transitions.
+- Recover interrupted online result saves without granting rewards twice. Improve updater recovery, long Windows path handling, localized errors and package verification.
+
+Validation and outstanding acceptance checks are recorded with the candidate. This source update alone does not change the live leaderboard policy or publish an automatic game update.
+
 ## 0.3.95-community-replays.51 - October 18, 2026
 
 - Verify installer downloads using .NET SHA-256 without requiring the PowerShell `Get-FileHash` module.

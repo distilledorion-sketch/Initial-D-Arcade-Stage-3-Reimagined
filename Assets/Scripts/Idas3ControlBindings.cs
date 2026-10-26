@@ -74,6 +74,7 @@ public sealed partial class Idas3ControlBindings
     private ushort reconnectHeldButtons;
     private int reconnectHeldAxes;
     private readonly HashSet<string> reconnectHeldControls = new HashSet<string>(StringComparer.Ordinal);
+    private readonly Predicate<string> releasedReconnectControl, releasedCaptureButton;
     private ActionId captureAction;
     private Slot captureSlot;
     private double captureDeadline;
@@ -96,6 +97,14 @@ public sealed partial class Idas3ControlBindings
     public bool OnlineHeld => !SuppressInput && RawOnlineHeld;
     public bool ViewChangeHeld => !SuppressInput && ActionHeld(ActionId.Camera);
     public event System.Action Changed;
+
+    public Idas3ControlBindings()
+    {
+        releasedReconnectControl = ReleasedReconnectControl;
+        releasedCaptureButton = ReleasedCaptureButton;
+    }
+    private bool ReleasedReconnectControl(string path) => !CustomControlHeld(path);
+    private bool ReleasedCaptureButton(string path) => !controls.TryGetValue(path,out var control)||control.value<=.5f;
 
     public static Values Defaults()
     {
@@ -358,8 +367,8 @@ public sealed partial class Idas3ControlBindings
         }
         reconnectHeldButtons&=pad.buttons;
         reconnectHeldAxes&=HeldAxes();
-        reconnectHeldControls.RemoveWhere(path=>!CustomControlHeld(path));
-        captureHeldButtons.RemoveWhere(path=>!controls.TryGetValue(path,out var control)||control.value<=.5f);
+        reconnectHeldControls.RemoveWhere(releasedReconnectControl);
+        captureHeldButtons.RemoveWhere(releasedCaptureButton);
         for (int i = 0; i < ActionCount; ++i)
         { var binding = current.actions[i]; keyboardActions[i] = Held(binding.key1) || Held(binding.key2) || Held(binding.key3); }
         bool anyHeld = AnyInputHeld();

@@ -34,7 +34,6 @@
 // (wheel position), +0x27C (the grip factor, used as 1 - x), +0x3C4/+0x3C8 and
 // +0x3B4/+0x3B8 (the road term), and what drives the rumble amplitude.
 namespace idas3ffb {
-
 // What the remake knows about the car this frame. All fields are finite or the
 // update is refused, because a NaN reaching the board would latch a force.
 struct OwnerInput {
@@ -48,6 +47,7 @@ struct OwnerInput {
     bool wallContact = false;
     float strength = 1.0f;       // [0,1], quantised to the cabinet's eleven dial steps
     bool invert = false;         // wheels whose positive torque turns the other way
+    int cardSteeringLevel = -1;   // -1 legacy caller; 0..8 Saved Data's 1..9 dial
 };
 
 // The cabinet's own tuning tables, read out of the image. carLimit is indexed by

@@ -61,7 +61,7 @@ public static class Idas3Build
     {
         PlayerSettings.companyName = "Chris";
         PlayerSettings.productName = "Initial D Unity";
-        PlayerSettings.bundleVersion = "0.3.95-community-replays.52";
+        PlayerSettings.bundleVersion = Idas3CommunityTimes.RequiredSubmissionBuild;
         PlayerSettings.colorSpace = ColorSpace.Gamma;
         PlayerSettings.allowUnsafeCode = true;
         PlayerSettings.defaultScreenWidth = 1280;
@@ -167,6 +167,29 @@ public static class Idas3Build
     // them in a clean candidate before attributing them to gameplay changes.
     // Unity may copy Assets plugin binaries: callers must restore their verified
     // native inputs and check all output changes before launching this copy.
+    public static void BuildPrivateAllocationDiagnostic(){
+        string folder=Environment.GetEnvironmentVariable("IDAS3_DIAGNOSTIC_SCRIPT_PLAYER");
+        if(string.IsNullOrWhiteSpace(folder)||!Path.IsPathFullyQualified(folder))
+            throw new ArgumentException("An explicit private diagnostic destination is required.");
+        folder=Path.GetFullPath(folder);
+        string verification=Path.GetFullPath(Path.Combine(Application.dataPath,"../Verification"))+Path.DirectorySeparatorChar;
+        if(!folder.StartsWith(verification,StringComparison.OrdinalIgnoreCase)||Directory.Exists(folder)||File.Exists(folder))
+            throw new IOException("Allocation profiling requires a NEW destination inside Verification.");
+        for(var directory=new DirectoryInfo(Path.GetDirectoryName(folder));directory!=null;directory=directory.Parent)
+            if(directory.Exists&&(directory.Attributes&FileAttributes.ReparsePoint)!=0)
+                throw new IOException("Diagnostic build paths cannot use directory links.");
+        var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},
+            locationPathName=Path.Combine(folder,"InitialDUnity.exe"),target=BuildTarget.StandaloneWindows64,
+            options=BuildOptions.Development|BuildOptions.CompressWithLz4HC});
+        if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Allocation diagnostic build failed: "+report.summary.result);
+        File.WriteAllText(Path.Combine(folder,"PRIVATE_TEST_ONLY.txt"),"Private allocation diagnostic. Never distribute.\n");
+        File.WriteAllText(Path.Combine(folder,"DEVELOPMENT_PROFILE_ONLY.txt"),"Development build: profiler overhead, not release FPS.\n");
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(folder),"development-build.json"),JsonUtility.ToJson(new ReleaseBuildReport{
+            passed=true,unityVersion=Application.unityVersion,applicationVersion=PlayerSettings.bundleVersion,
+            output=folder,buildOptions=report.summary.options.ToString(),scriptsOnly=(report.summary.options&BuildOptions.BuildScriptsOnly)!=0,
+            cleanBuildCache=(report.summary.options&BuildOptions.CleanBuildCache)!=0},true));
+    }
+
     public static void RebuildPrivateDiagnosticScripts(){
         string folder=Environment.GetEnvironmentVariable("IDAS3_DIAGNOSTIC_SCRIPT_PLAYER");
         if(string.IsNullOrWhiteSpace(folder)||!Path.IsPathFullyQualified(folder))
@@ -188,8 +211,10 @@ public static class Idas3Build
             if((attributes&FileAttributes.ReparsePoint)!=0)throw new IOException("Diagnostic build entries cannot use links.");
             if((attributes&FileAttributes.Directory)!=0)pending.Push(entry);
         }
+        var options=ScriptBuildOptions(output);
+        if(File.Exists(Path.Combine(folder,"DEVELOPMENT_PROFILE_ONLY.txt")))options|=BuildOptions.Development;
         var report=BuildPipeline.BuildPlayer(new BuildPlayerOptions{scenes=new[]{"Assets/Scenes/InitialDUnityScene.unity"},locationPathName=output,
-            target=BuildTarget.StandaloneWindows64,options=ScriptBuildOptions(output)});
+            target=BuildTarget.StandaloneWindows64,options=options});
         if(report.summary.result!=BuildResult.Succeeded)throw new InvalidOperationException("Private script build failed: "+report.summary.result);
     }
 
@@ -240,6 +265,8 @@ public static class Idas3Build
     // compiled native plugins. Never rebuild Current or rewrite project settings.
     public static void BuildReleaseCandidate()
     {
+        if (PlayerSettings.bundleVersion != Idas3CommunityTimes.RequiredSubmissionBuild)
+            throw new InvalidOperationException("Player version and Time Attack submission policy must match before building.");
         string output = Environment.GetEnvironmentVariable("IDAS3_RELEASE_OUTPUT");
         string evidence = Environment.GetEnvironmentVariable("IDAS3_RELEASE_EVIDENCE");
         string native = Environment.GetEnvironmentVariable("IDAS3_RELEASE_NATIVE_DIRECTORY");
@@ -391,6 +418,7 @@ public static class Idas3Build
                 string target=Path.Combine(destinationPack,Path.GetRelativePath(source,file));
                 Directory.CreateDirectory(Path.GetDirectoryName(target));File.Copy(file,target,true);
             }
+            Idas3PreparedCourseBuild.Stage(pack,source,destinationPack);
         }
         // Post-build staging avoids importing 14,376 native assets into Unity.
         string destination = Path.Combine(Path.GetDirectoryName(output), Path.GetFileNameWithoutExtension(output)+"_Data/StreamingAssets/IDAS3");

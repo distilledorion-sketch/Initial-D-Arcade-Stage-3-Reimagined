@@ -13,5 +13,6 @@ struct OriginalTimeAttackBackgroundDraw {
 // HLecture owns common-select tile45 through112DC0/112E60. Its animation
 // advances on original60Hz updates, never on repeated paint calls.
 std::uint32_t advanceOriginalTimeAttackBackground(std::uint32_t frame);
+Vec3 originalTimeAttackBackgroundPosition(std::uint32_t displayedFrame,int column,int row);
 std::array<OriginalTimeAttackBackgroundDraw,12> originalTimeAttackBackgroundDraws(std::uint32_t displayedFrame);
 }

@@ -18,6 +18,7 @@ import uuid
 
 import build_release_candidate as build
 import verify_release as verify
+from background_player import BackgroundPlayer
 
 PAIR_FLAGS = {
     "return-rematch": ("-idas3-multiplayer-return-check",),
@@ -176,27 +177,24 @@ class Players:
         self.owned = []
 
     def launch(self, name, arguments):
-        startup = subprocess.STARTUPINFO()
-        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-        startup.wShowWindow = 0
         log = (self.run.output / (name + "-stdout.log")).open("wb")
         command = [str(self.player / "InitialDUnity.exe"), "-force-d3d11", "-screen-fullscreen", "0",
                    # Hidden Unity windows can omit OnGUI if SetResolution is
                    # a no-op. Start below the diagnostics' 1200/1280x720 size
                    # so their normal setup performs a real window transition.
                    "-screen-width", "1184", "-screen-height", "704",
-                   "-idas3-skip-update-once", "-logFile", str(self.run.output / (name + "-player.log")), *arguments]
+                   "-idas3-test-silent", "-idas3-skip-update-once", "-logFile", str(self.run.output / (name + "-player.log")), *arguments]
         entry = {"name": name, "command": command, "passed": False}
         self.run.summary["checks"].append(entry)
         self.run.save()
         try:
-            process = subprocess.Popen(command, cwd=self.player, stdout=log, stderr=subprocess.STDOUT,
-                                       startupinfo=startup, **verify.hidden_process_options())
+            process = BackgroundPlayer(command, cwd=self.player, stdout=log)
         except Exception:
             log.close()
             raise
         self.owned.append((process, log))
         entry["pid"] = process.pid
+        entry["isolatedDesktop"] = process.desktop_name
         self.run.save()
         print("RUN " + name, flush=True)
         return process, entry
@@ -244,17 +242,32 @@ class Players:
         self.collect(jp, je, join, case, "join")
 
     def close(self):
-        for process, log in self.owned:
+        pending, self.owned = self.owned, []
+        errors = []
+        for process, log in pending:
+            stopped = False
             try:
                 if process.poll() is None:
                     subprocess.run(["taskkill", "/PID", str(process.pid), "/T", "/F"],
                                    stdout=log, stderr=subprocess.STDOUT, **verify.hidden_process_options())
-                    if process.poll() is None:
+                    try:
+                        process.wait(timeout=1)
+                    except subprocess.TimeoutExpired:
                         process.kill()
-                    process.wait(timeout=15)
+                        process.wait(timeout=15)
+                stopped = True
+            except Exception as error:
+                errors.append(error)
             finally:
-                log.close()
-        self.owned.clear()
+                if stopped:
+                    log.close()
+                else:
+                    # Retry only unfinished children, with their logs still open.
+                    # One failed termination must not skip the remaining children
+                    # or leave an exited child attached to an already closed log.
+                    self.owned.append((process, log))
+        if errors:
+            raise RuntimeError("Could not stop " + str(len(errors)) + " owned test player(s)") from errors[0]
 
     def case(self, name, action):
         first = len(self.run.summary["checks"])

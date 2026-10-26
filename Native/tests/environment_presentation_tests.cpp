@@ -20,6 +20,8 @@ int main(int argc,char** argv)try{
     std::array<DrivingEffects::Car,2> cars{};cars[0].visible=cars[0].grounded=true;cars[0].speed=20;
     cars[0].points={Vec3{-.6f,0,1},Vec3{.6f,0,1},Vec3{-.6f,0,-1},Vec3{.6f,0,-1}};
     std::array<std::array<unsigned,4>,2> materials{};
+    for(unsigned tick=0;tick<600;++tick)e.advance(1./60,true,false,cars,materials);
+    check(e.leafCount()==0,"Normal road driving introduced unrequested ambient falling leaves");
     for(unsigned material=0;material<16;++material){e.reset();materials[0].fill(material);e.advance(1./60,true,false,cars,materials);
         check(e.leafCount()==((material==1||material==2||material==11)?12u:0u),"Leaf admission disagrees with source road material");
     }

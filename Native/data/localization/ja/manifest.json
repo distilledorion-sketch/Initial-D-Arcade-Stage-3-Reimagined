@@ -2154,6 +2154,392 @@
       "japanese_sha256": "47e4c172cfae1829d4ae97964951a4965c3a801e3ca2b7f17cc13028a710e6f2"
     },
     {
+      "asset": "saved_data/cardcheck/cardcheck.idasmesh",
+      "chunks": 137,
+      "base_textures": 19,
+      "textures": 30,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          28,
+          30
+        ],
+        [
+          29,
+          31
+        ],
+        [
+          30,
+          32
+        ],
+        [
+          32,
+          34
+        ],
+        [
+          33,
+          35
+        ],
+        [
+          34,
+          36
+        ],
+        [
+          35,
+          37
+        ],
+        [
+          48,
+          52
+        ],
+        [
+          49,
+          53
+        ],
+        [
+          50,
+          54
+        ],
+        [
+          51,
+          55
+        ],
+        [
+          52,
+          56
+        ],
+        [
+          53,
+          57
+        ],
+        [
+          54,
+          58
+        ],
+        [
+          89,
+          126
+        ],
+        [
+          92,
+          130
+        ],
+        [
+          93,
+          131
+        ],
+        [
+          94,
+          132
+        ],
+        [
+          95,
+          133
+        ],
+        [
+          96,
+          134
+        ],
+        [
+          97,
+          135
+        ],
+        [
+          98,
+          136
+        ],
+        [
+          99,
+          137
+        ],
+        [
+          100,
+          138
+        ],
+        [
+          101,
+          139
+        ],
+        [
+          102,
+          140
+        ],
+        [
+          103,
+          141
+        ],
+        [
+          104,
+          142
+        ],
+        [
+          105,
+          143
+        ],
+        [
+          106,
+          144
+        ],
+        [
+          107,
+          145
+        ],
+        [
+          108,
+          146
+        ],
+        [
+          109,
+          147
+        ],
+        [
+          110,
+          148
+        ],
+        [
+          111,
+          149
+        ],
+        [
+          130,
+          168
+        ],
+        [
+          131,
+          169
+        ],
+        [
+          132,
+          170
+        ],
+        [
+          134,
+          172
+        ],
+        [
+          135,
+          173
+        ],
+        [
+          136,
+          174
+        ]
+      ],
+      "english_sha256": "3cd86bed058f8e7b86ef4f5d3c884e305785a331a8922376da8725fd71d17fea",
+      "japanese_sha256": "871de92b05b7d763e2367032a9eb9e907188a63cbba422691dbd3e8791f6216c"
+    },
+    {
+      "asset": "saved_data/password/password.idasmesh",
+      "chunks": 4,
+      "base_textures": 4,
+      "textures": 5,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "c4a200f711d15c6f45d68b846591af06b120beeb91c1bb281b4c48b7b8ddd9ec",
+      "japanese_sha256": "211c9f4e5e0257df97000f82a138a0266ece1a7c26d9adbd7c6698baef4373af"
+    },
+    {
+      "asset": "saved_data/v3sS10conf/v3sS10conf.idasmesh",
+      "chunks": 29,
+      "base_textures": 22,
+      "textures": 39,
+      "mapping": [
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          5,
+          5
+        ],
+        [
+          6,
+          6
+        ],
+        [
+          7,
+          7
+        ],
+        [
+          8,
+          8
+        ],
+        [
+          9,
+          9
+        ],
+        [
+          10,
+          10
+        ],
+        [
+          11,
+          11
+        ],
+        [
+          12,
+          12
+        ],
+        [
+          13,
+          13
+        ],
+        [
+          14,
+          14
+        ],
+        [
+          15,
+          15
+        ],
+        [
+          16,
+          16
+        ],
+        [
+          17,
+          17
+        ],
+        [
+          18,
+          18
+        ],
+        [
+          19,
+          19
+        ],
+        [
+          20,
+          20
+        ],
+        [
+          21,
+          21
+        ],
+        [
+          22,
+          22
+        ],
+        [
+          24,
+          24
+        ],
+        [
+          25,
+          25
+        ],
+        [
+          26,
+          26
+        ]
+      ],
+      "english_sha256": "46c6c55f70d97da00b908a804ddf733f29d745800d88f977b57a77da98a26463",
+      "japanese_sha256": "6f0adc8c7dd48b200e0bb376590ccfa2505609040dd62824074ce9a6184eb4c4"
+    },
+    {
+      "asset": "session_exit/ejectcard/ejectcard.idasmesh",
+      "chunks": 4,
+      "base_textures": 4,
+      "textures": 6,
+      "mapping": [
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          3
+        ]
+      ],
+      "english_sha256": "8184512cabbb0f560b30dc979afdfbfee5c25e807ec8e6393c21f63a704be6b0",
+      "japanese_sha256": "f1b0b405a0233f9763f1590ab6487b310189b7589a17c0fded273d115201412f"
+    },
+    {
+      "asset": "session_exit/levelup_bu/levelup_bu.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "45930beba4aa8cb66b821134697f223df30e9df9e365e965a4f499be06d31e9a",
+      "japanese_sha256": "9d54db4265600b48015ef991d14150bf048859e13be3447aa16c1643efb37da1"
+    },
+    {
+      "asset": "session_exit/levelup_dr/levelup_dr.idasmesh",
+      "chunks": 1,
+      "base_textures": 1,
+      "textures": 2,
+      "mapping": [
+        [
+          0,
+          0
+        ]
+      ],
+      "english_sha256": "3efa78a070e874990fa9108f71658fefb921f5f25d97d05c0212afc58451d045",
+      "japanese_sha256": "3a11e22e16381bd022909be93fa3a3b4da2b9f78b24d509e09627ecbcae2a399"
+    },
+    {
+      "asset": "session_exit/levelup_vs/levelup_vs.idasmesh",
+      "chunks": 2,
+      "base_textures": 2,
+      "textures": 4,
+      "mapping": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "english_sha256": "a54f269820f00fac4aa820b5ad85b939ebf92b1c01f1fce7a3e2c5cfaba271ad",
+      "japanese_sha256": "3abe74e0c743581dd079626befaf8de65cf0a16c87a3244718c0efc3f9115693"
+    },
+    {
       "asset": "time_attack/lecture/lecture.idasmesh",
       "chunks": 47,
       "base_textures": 9,

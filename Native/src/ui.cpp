@@ -150,9 +150,10 @@ void Hud::routePreview(const Course& c,float x,float y,float w,float h){
     }
 }
 void Hud::map(const Course& c,float x,float y,float w,float h,
-        const VehicleState& player,const VehicleState* rival){
+        const VehicleState& player,const VehicleState* rival,int cardNavigation){
     const UnityUiHudScope mapGroup(5);
-    if(mapDisplay_==2||c.points.size()<2||!pixels)return;
+    const int display=cardNavigation==1?2:cardNavigation==2?1:mapDisplay_;
+    if(display==2||c.points.size()<2||!pixels)return;
     const float mapScale=1.f+.25f*float(mapSize_);
     // Grow upward and rightward; retain the original left/bottom margins.
     y+=h*(1.f-mapScale);w*=mapScale;h*=mapScale;
@@ -162,7 +163,7 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     const float baseY=float(height)-480.f*fit;
     const float left=x*fit,top=baseY+y*fit,right=(x+w)*fit,bottom=baseY+(y+h)*fit;
-    if(mapDisplay_==1){
+    if(display==1){
         mapX0_=std::max(0,int(left));mapY0_=std::max(0,int(top));
         mapX1_=std::min(width,int(right));mapY1_=std::min(height,int(bottom));
         waterCupArtwork_.paint({pixels,std::size_t(width)*height},width,height,waterCup_,
@@ -290,6 +291,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
     const auto& c=*s.course;const auto& v=*s.car;const auto& race=*s.race;
     const bool useOriginalHud=originalHudReady;
     const bool onlineBattle=s.onlineBattleHud.active;
+    const bool blindAttack=onlineBattle&&s.night&&!s.onlineBattleHud.opponentHeadlights;
     const bool battleHud=s.battle||onlineBattle;
     const bool settledBattleResults=useOriginalHud&&s.battle&&s.battleResults&&(s.battleResults->profileMode==0||s.battleResults->profileMode==2)&&race.phase==RacePhase::Finished&&!s.menu&&!s.paused&&s.finishBanner==OriginalHudState::FinishBanner::none;
     const bool settledTimeAttackResults=useOriginalHud&&s.results&&!battleHud&&race.phase==RacePhase::Finished&&!race.timeUp&&!s.menu&&!s.paused&&s.finishBanner==OriginalHudState::FinishBanner::none;
@@ -300,14 +302,13 @@ const std::uint32_t* Hud::paint(const UiState& s){
         unityUiMarkHud(pixels);
         return pixels;
     }
-    // While the race-end announcement holds the road view the cabinet shows
-    // nothing else over it, so the development panel, the status line and
-    // the battle plates stay down.
+    // The finish road view contains the announcement and any earned level
+    // notice. Keep the development panel, status line and battle plates down.
     const bool announcement=s.finishBanner!=OriginalHudState::FinishBanner::none;
     // Online can finish locally before the verified result arrives. Its
     // original result owner (or disconnected screen) handles that interval;
     // the development finish panel must never appear over it.
-    const bool fallbackFinish=race.phase==RacePhase::Finished&&!s.multiplayer&&!onlineBattle&&!settledResults&&!announcement;
+    const bool fallbackFinish=!useOriginalHud&&race.phase==RacePhase::Finished&&!s.multiplayer&&!onlineBattle&&!settledResults&&!announcement;
     if(s.menu||!battleHud){lastBattleFrame=-1;lastBattleEnemy=lastBattleProfileMode=0xffffffff;battleAnimation={};battleFrameAnimation={};}
     if(s.menu&&s.frontend){
         const auto& art=s.frontend->paint(width,height);std::copy(art.begin(),art.end(),pixels);unityUiCopy(pixels,art.data(),width,height);
@@ -338,10 +339,12 @@ const std::uint32_t* Hud::paint(const UiState& s){
         rect(0,652,1280,68,panel);text(40,668,"WASD / arrows: drive     Q / E: shift     ESC: pause     F1: telemetry     F2: sound",15,white);
         text(40,695,"* Native distance treated as meters provisionally. Car and scenery are development geometry; presets are uncalibrated.",11,muted);
     }else{
-        if(!battleHud&&!s.results){label(race.originalTiming?510.f:28.f,20,c.name+" / TIME ATTACK",15,white,true);
+        if(!useOriginalHud&&!battleHud&&!s.results){label(race.originalTiming?510.f:28.f,20,c.name+" / TIME ATTACK",15,white,true);
             label(1110,20,(s.snow?"SNOW":s.wet?"WET":"DRY")+std::string(" / ")+(s.night?"NIGHT":"DAY"),13,white);}
         // Square and on the source canvas, anchored to the bottom left.
-        if(!settledResults&&!announcement&&s.car)map(c,14,352,112,112,*s.car,s.rival);
+        // The opponent's lights-off state conceals their map marker during a
+        // night battle. Keep our own marker and the actual race position intact.
+        if(!settledResults&&!announcement&&s.car)map(c,14,352,112,112,*s.car,blindAttack?nullptr:s.rival,s.frontend?s.frontend->battleProfile.byte(1186):0);
         if(race.originalTiming&&!useOriginalHud){
             label(28,110,"TIME "+std::to_string(std::max(0,(race.remaining6000+5999)/6000)),25,yellow,true);
             label(28,148,"SECTION TIME",15,white,true);
@@ -397,6 +400,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
         state.slide208=entrance.labels;state.slide212=entrance.backings;
         state.elapsedTicks6000=race.originalTiming?race.elapsed6000:std::uint32_t(std::min<std::uint64_t>(race.ticks*100,UINT32_MAX));
         state.extendedCountdown=s.extendedCountdown;state.timePanel=race.originalTiming&&!s.debug;state.remainingTicks6000=race.remaining6000;
+        state.simpleTime=s.frontend&&s.frontend->battleProfile.byte(1188)==1;
         if(s.useDisplayedRemaining)state.remainingTicks6000=s.displayedRemaining6000;
         state.timeExtended=s.timeExtended&&!s.paused&&race.phase==RacePhase::Running;
         state.sectionCount=unsigned(race.sector);state.sectionCapacity=race.sectionCapacity;state.sectionTimes6000=race.sectionTimes6000;
@@ -410,6 +414,9 @@ const std::uint32_t* Hud::paint(const UiState& s){
         state.rpm=originalTachDisplayRpm(v.rpm,state.tachType);
         state.edgeAnchored=true;
         originalHud.paint(std::span<std::uint32_t>(pixels,std::size_t(width)*height),width,height,state);
+        if(announcement&&race.phase==RacePhase::Finished&&s.battleResults)
+            originalBattleResults.paintFinishNotice(std::span<std::uint32_t>(pixels,std::size_t(width)*height),
+                width,height,*s.battleResults,s.finishNoticeFrame);
         if(state.timePanel&&!announcement){
             battlePresentation_.sectionCount=state.sectionCount;battlePresentation_.sectionCapacity=state.sectionCapacity;
             battlePresentation_.elapsed6000=state.elapsedTicks6000;battlePresentation_.cumulativeSections=state.sectionTimes6000;
@@ -450,7 +457,7 @@ const std::uint32_t* Hud::paint(const UiState& s){
             battle.frame204=frame;battle.validity96=onlineBattle?s.onlineBattleHud.rivalPositionFraction:s.battleRivalPositionFraction;
             // Keep the original ADVANTAGE header and unavailable-distance
             // artwork when a night opponent turns their headlights off.
-            const bool hideGap=onlineBattle&&s.night&&hideLightsOffAdvantage_&&!s.onlineBattleHud.opponentHeadlights;
+            const bool hideGap=blindAttack&&hideLightsOffAdvantage_;
             if(hideGap)battle.validity96=-1.f;
             battle.signedAdvantage100=onlineBattle?s.onlineBattleHud.advantage:s.battleAdvantage;
             // Render repeats and pause reuse the animation input for this 60 Hz tick.

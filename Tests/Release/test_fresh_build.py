@@ -54,6 +54,47 @@ class FreshBuildTests(unittest.TestCase):
     def test_clean_build_accepts_reported_full_rebuild(self):
         build.require_clean_unity_build({"cleanBuildCache": True, "scriptsOnly": False})
 
+    def submission_fixture(self):
+        version = "0.3.95-community-replays.52"
+        texts = {
+            "ProjectSettings/ProjectSettings.asset": "PlayerSettings:\n  bundleVersion: " + version + "\n",
+            "Assets/Scripts/Idas3CommunityTimes.cs": 'public const string RequiredSubmissionBuild="' + version + '";',
+            "Leaderboard/src/core.mjs": "export const REQUIRED_CLIENT_BUILD='" + version + "';",
+            "Leaderboard/wrangler.jsonc": '{"vars":{"REQUIRED_CLIENT_BUILD":"' + version + '"}}',
+        }
+        for name, text in texts.items():
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        return texts
+
+    def test_submission_versions_reject_either_stale_side(self):
+        texts = self.submission_fixture()
+        for name, text in texts.items():
+            with self.subTest(name=name):
+                path = self.root / name
+                path.write_text(text.replace("replays.52", "replays.51"))
+                with self.assertRaisesRegex(ValueError, "mismatch"):
+                    build.require_submission_versions(self.root)
+                path.write_text(text)
+
+    def test_submission_versions_reject_missing_and_duplicate_values(self):
+        texts = self.submission_fixture()
+        for name, text in texts.items():
+            for invalid in ("", text + "\n" + text):
+                with self.subTest(name=name, invalid=invalid):
+                    path = self.root / name
+                    path.write_text(invalid)
+                    with self.assertRaisesRegex(ValueError, "Missing or ambiguous"):
+                        build.require_submission_versions(self.root)
+                    path.write_text(text)
+
+    def test_submission_versions_accept_complete_matching_policy(self):
+        self.submission_fixture()
+        versions = build.require_submission_versions(self.root)
+        self.assertEqual(set(versions), {"player", "client", "backend", "deployment"})
+        self.assertEqual(set(versions.values()), {"0.3.95-community-replays.52"})
+
     def test_input_manifest_detects_content_and_local_config_changes(self):
         assets = self.root / "Assets"
         assets.mkdir()

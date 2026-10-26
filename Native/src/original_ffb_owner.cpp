@@ -88,6 +88,7 @@ void Owner::update(const OwnerInput& input, float dt) {
     if (frames <= kRampCap) ++frames;
 
     const int index = dial(input.strength);
+    const int cardIndex=input.cardSteeringLevel<0?index:std::clamp(input.cardSteeringLevel,0,8);
     const int car = std::clamp(input.carIndex, 0, 34);
 
     // ---- power (command 3): p1 >> 3 over 15, so only sixteen steps exist. ----
@@ -107,7 +108,7 @@ void Owner::update(const OwnerInput& input, float dt) {
     // as {0x01,48,64} (0C15A0C0 and again at 0C15A120); the limit computed here
     // is only ever a local clamp on the torque code (0C15A7A0..0C15A83E), and
     // command 1 caps the spring, which this game never sends.
-    limit = std::clamp(carLimit[car] + strengthLimitA[index] + strengthLimitB[index], 1, kLimitCeiling);
+    limit = std::clamp(carLimit[car] + strengthLimitA[index] + strengthLimitB[cardIndex], 1, kLimitCeiling);
     // The original then trims it by int(int(limit*0.9) * (f(+0x24C)+1) * 0.5).
     // That field's neutral value is exactly -1.0f, which makes the whole term
     // vanish, and the remake has nothing that stands in for it, so the trim is
@@ -141,7 +142,7 @@ void Owner::update(const OwnerInput& input, float dt) {
 
     // ---- damper (command 6): strength is always 2; the pole carries the feel. ----
     const int pole = std::clamp(
-        truncate(damperRate[index] * grip * grip * damperScale[index]), 1, 120);
+        truncate(damperRate[index] * grip * grip * damperScale[cardIndex]), 1, 120);
     if (pole != lastDamperPole) {
         submit(CommandDamper, static_cast<std::uint8_t>(kDamperStrength),
                static_cast<std::uint8_t>(pole));

@@ -22,6 +22,7 @@ struct OriginalHudState {
     // Inputs are original6000/sec cumulative checkpoints, not section deltas.
     // 065DF0..065E32 subtracts the preceding checkpoint for each visible row.
     bool timePanel=false;
+    bool simpleTime=false; // Saved card: total/countdown remain; omit section rows.
     float slide208=0,slide212=0; // Original +D0 labels / +D4 backing strips.
     bool extendedCountdown=false; // Imported courses may start above the original 99-second cap.
     std::int32_t remainingTicks6000=0;
@@ -71,6 +72,7 @@ public:
         float centerX,float centerY,float pixelHeight)const;
     unsigned chunkCount()const{return unsigned(model_.chunks.size());}
 private:
+    void buildDrawList(const OriginalHudState& state,std::vector<OriginalHudDraw>& output)const;
     NativeModel model_;
     std::size_t maxChunkVertices_=0;
     std::array<Vec3,4> startSignalCenters_{};

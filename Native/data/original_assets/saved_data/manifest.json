@@ -1,0 +1,71 @@
+{
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "banks": [
+    {
+      "bank": "v3sS10conf",
+      "outputs": {
+        "v3sS10conf.idasmesh": "46c6c55f70d97da00b908a804ddf733f29d745800d88f977b57a77da98a26463",
+        "textures/textures.idastex": "d118ec470203188919539e0b8bad25bd00d98475c2c3ab7ccf801b21b1bd3550"
+      }
+    },
+    {
+      "bank": "cardcheck",
+      "outputs": {
+        "cardcheck.idasmesh": "3cd86bed058f8e7b86ef4f5d3c884e305785a331a8922376da8725fd71d17fea",
+        "textures/textures.idastex": "7a3b2c22d36faafaa415fe83fe94ca6761c9e89c7164143529ba676c1722fdaf"
+      }
+    },
+    {
+      "bank": "cardcheck2",
+      "outputs": {
+        "cardcheck2.idasmesh": "9cebcbce7dda3eec6208f3425c2a8a322992ce9faf5386e69088d140313c1dde",
+        "textures/textures.idastex": "787226865628d980b629fa16e6eec6f35da018caf6c59d84f8d2798b7fac9fb4"
+      }
+    },
+    {
+      "bank": "cardcheck_car",
+      "outputs": {
+        "cardcheck_car.idasmesh": "dfb9d18d6f7ca12d647c7dcdceb4976d7d7223cbbcfa312bfcfce6f9380fa311",
+        "textures/textures.idastex": "8d327096714f2608ad309bee76447dc2865f227e7babdc5075b3348ad6dfd072"
+      }
+    },
+    {
+      "bank": "cardfont_a",
+      "outputs": {
+        "cardfont_a.idasmesh": "77ffaf7d76be0deac8fa44acad96419b2255e87ddd0415bf602841b3ca609bf3",
+        "textures/textures.idastex": "a685895612014ee09725177c01549cd497f63114c9bd969d8c6bd2ae4ef5222b"
+      }
+    },
+    {
+      "bank": "cardfont_h",
+      "outputs": {
+        "cardfont_h.idasmesh": "77a4564cc4a45dde0d7b525137d8273924ebe5b79b0f45a9e8bccdb4f2088dfc",
+        "textures/textures.idastex": "a685895612014ee09725177c01549cd497f63114c9bd969d8c6bd2ae4ef5222b"
+      }
+    },
+    {
+      "bank": "cardfont_k",
+      "outputs": {
+        "cardfont_k.idasmesh": "3cf71205144576ac04667d721ad56a2318f1209aa7ba9aaf4d4c78d34151b11f",
+        "textures/textures.idastex": "a685895612014ee09725177c01549cd497f63114c9bd969d8c6bd2ae4ef5222b"
+      }
+    },
+    {
+      "bank": "password",
+      "outputs": {
+        "password.idasmesh": "c4a200f711d15c6f45d68b846591af06b120beeb91c1bb281b4c48b7b8ddd9ec",
+        "textures/textures.idastex": "a2166946a5446721ffcc1f0789bdd3175fc3dcd769006d11a3f15a5748aeb8a6"
+      }
+    },
+    {
+      "bank": "password_sprite",
+      "outputs": {
+        "original_rip.tbl": "6f41ed9525061f81727f48748f7e1070e25930ed5077b344eb6db54c5f334363",
+        "original_rip.bin": "07efd3787d6d17c152dfb81ae815a8a77ccf04df3ae167b3d94a0e1de827e5c0",
+        "sprites.idasui": "68072ab3055fe26ed843447c266315af395286d81149976e8c1e97ad5152d1a9",
+        "textures/textures.idastex": "fc9fb2bd183b55797c64a7056502c147d602b51acbb1aaff2fba29c65c2b7eee"
+      }
+    }
+  ],
+  "scope": "Original artwork only; no executable or personal profile copied."
+}

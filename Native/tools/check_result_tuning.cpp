@@ -2,6 +2,7 @@
 #include "../src/main.cpp"
 #undef wWinMain
 #include <iostream>
+#include <map>
 
 // Application regression for a resumed upgraded car with renewed basic tuning.
 // Earlier upgrades and the completed-race award are explicit fixtures; the
@@ -85,8 +86,16 @@ int main(int argc,char** argv)try{
         // Decline the actual Continue owner, then verify persisted progression.
         app->input.pressed[VK_RIGHT]=true;render(1./60.);app->input.pressed[VK_RIGHT]=false;
         app->input.pressed[VK_RETURN]=true;render(1./60.);app->input.pressed[VK_RETURN]=false;
-        for(unsigned i=0;i<80&&!app->menu;++i)render(1./60.);
-        check(app->menu,"Continue did not return to the frontend");
+        bool saving=false,retrieval=false,gameOver=false;
+        for(unsigned i=0;i<600&&!app->menu;++i){
+            render(1./60.);
+            using Exit=original::OriginalSessionExit::Stage;
+            saving|=app->sessionExit.stage==Exit::SavingCard;
+            retrieval|=app->sessionExit.stage==Exit::RetrieveCard;
+            gameOver|=app->sessionExit.stage==Exit::GameOver;
+        }
+        check(saving&&retrieval&&gameOver,"Declining Continue skipped save/card retrieval/Game Over");
+        check(app->menu&&app->frontend.stage==FrontendStage::Title,"Game Over did not return to the title");
         const auto saved=app->profiles.load(0);
         check(saved.origin==LocalDriverProfiles::Origin::Saved&&saved.profile.u(72)==balance&&saved.profile.byte(164)==63,
             "Result award/upgrades did not persist to the isolated profile");
@@ -98,7 +107,55 @@ int main(int argc,char** argv)try{
     check(completed&&sawCompletionFocus,"High-engine renewal never reached the problematic basic-completion preview");
     check(app->battleProfile.byte(153)==57&&(app->battleProfile.u(1180)&0xc00)==0xc00,"Completion lost retained maximum performance progress");
     check(app->battleProfile.u(72)==999999+1000*visits,"Result points were awarded more than once");
+    // Regress the user's screen-order report through the actual App, including
+    // the finish -> points handoff. The earned-rank flag is an explicit fixture;
+    // the source finish clock, HUD selection and painters remain production code.
+    const auto noticeBank=NativeTextureBank::load(root/"data/original_assets/session_exit/levelup_dr/textures/textures.idastex");
+    const auto noticeModel=NativeModel::load(root/"data/original_assets/session_exit/levelup_dr/levelup_dr.idasmesh");
+    const auto& notice=noticeBank.at(noticeModel.chunks.at(0).batches.at(0).material[9]);
+    std::vector<std::uint8_t> noticeRgba;
+    for(auto pixel:notice.argb){noticeRgba.push_back(std::uint8_t(pixel>>16));noticeRgba.push_back(std::uint8_t(pixel>>8));
+        noticeRgba.push_back(std::uint8_t(pixel));noticeRgba.push_back(std::uint8_t(pixel>>24));}
+    std::map<unsigned,bool> noticeTextures;
+    const auto noticeDraws=[&](){UnityUiFrame frame{sizeof(frame)};
+        check(Idas3UiGetFrame(&frame)==1&&frame.unresolvedSurfaces==0,"Finish UI frame is unresolved");
+        std::vector<UnityUiDraw> draws(frame.drawCount);
+        check(Idas3UiCopyDraws(draws.data(),int(draws.size()))==int(draws.size()),"Cannot inspect finish UI draws");
+        unsigned count=0;
+        for(const auto& draw:draws){auto found=noticeTextures.find(draw.texture);
+            if(found==noticeTextures.end()){UnityUiTextureInfo info{sizeof(info)};bool match=false;
+                if(Idas3UiGetTextureInfo(draw.texture,&info)==1&&info.width==notice.width&&info.height==notice.height&&info.bytes==noticeRgba.size()){
+                    std::vector<std::uint8_t> rgba(info.bytes);
+                    check(Idas3UiCopyTextureRGBA(draw.texture,rgba.data(),int(rgba.size()))==int(rgba.size()),"Cannot inspect notice artwork");
+                    match=rgba==noticeRgba;
+                }
+                found=noticeTextures.emplace(draw.texture,match).first;
+            }
+            if(found->second&&draw.opacity>0&&draw.count>=3)++count;
+        }return count;
+    };
+    app->frontend.gameMode=original::OriginalGameMode::LegendOfTheStreets;
+    app->frontend.battleProfile.setu(0,0);original::selectOriginalRival(app->frontend.battleProfile,0);
+    app->start();
+    app->loadingActive=app->vsActive=app->preRaceDialogueActive=false;
+    app->race.phase=RacePhase::Finished;app->race.timeUp=false;
+    app->battleProgressApplied=true;app->battleResult=original::OriginalLegendResult::Win;
+    app->battleResults={};app->battleResults.profileMode=0;
+    app->pendingResultSetup=original::OriginalBattleResultAnimationSetup{0,app->battleProfile.u(72),false};
+    app->finishAudioSkipped=true;
+    render(0);check(noticeDraws()==0,"A non-promoted race displayed Racer Level Up");
+    app->battleResults.levelNoticeFlags=0x200000;
+    render(0);check(noticeDraws()>0&&!app->resultVisit.initialized,"Racer Level Up is missing from the finish road view");
+    const auto clock=app->finishBannerTicks;render(0);
+    check(noticeDraws()>0&&app->finishBannerTicks==clock,"Repaint advanced the finish notice");
+    unsigned finishNoticeFrames=0;
+    for(unsigned frame=0;frame<330&&!app->resultVisit.initialized;++frame){
+        app->simulate({});render(0);
+        if(!app->resultVisit.initialized){check(noticeDraws()>0,"Rank notice vanished before the points transition");++finishNoticeFrames;}
+    }
+    check(finishNoticeFrames>=300&&app->resultVisit.initialized,"Finish owner did not hand off to points");
+    check(noticeDraws()==0,"Racer Level Up carried over onto the points screen");
     Idas3UiEnable(0);
-    std::ofstream(out/"PASS.txt")<<checks<<" checks, "<<visits<<" application result visits; actual package renewal, high-engine basic completion, real car rendering, Continue, isolated persistence\n";
+    std::ofstream(out/"PASS.txt")<<checks<<" checks, "<<visits<<" application result visits; package renewal, real car rendering, Continue, isolated persistence, rank notice on finish before points\n";
     std::cout<<"PASS "<<checks<<" result tuning application checks across "<<visits<<" visits\n";
 }catch(const std::exception& e){std::cerr<<"FAIL: "<<e.what()<<'\n';return 1;}

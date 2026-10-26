@@ -37,7 +37,107 @@ public sealed class Idas3UnityUi : MonoBehaviour
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3UiGetTextureInfo(uint id, ref TextureInfo info);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3UiCopyTextureRGBA(uint id, [Out] byte[] rgba, int capacity);
 
+    [DllImport("Idas3Unity", EntryPoint="Idas3UiCopyDraws", CallingConvention=CallingConvention.Cdecl)]
+    static extern unsafe int CopyDrawsDirect(Draw* data,int capacity);
+    [DllImport("Idas3Unity", EntryPoint="Idas3UiCopyVertices", CallingConvention=CallingConvention.Cdecl)]
+    static extern unsafe int CopyVerticesDirect(Vertex* data,int capacity);
+    internal bool UiTransferBaseline { get; set; }
+    unsafe bool CopyFrameData(Frame frame)
+    {
+        if(UiTransferBaseline)
+            return Idas3UiCopyDraws(draws,draws.Length)==(int)frame.drawCount &&
+                Idas3UiCopyVertices(vertices,vertices.Length)==(int)frame.vertexCount;
+        // Native writes are synchronous and retain no address after return.
+        // Pin the actual managed capacity, with the same native bounds checks.
+        fixed(Draw* drawData=draws)
+        fixed(Vertex* vertexData=vertices)
+            return CopyDrawsDirect(drawData,draws.Length)==(int)frame.drawCount &&
+                CopyVerticesDirect(vertexData,vertices.Length)==(int)frame.vertexCount;
+    }
+    struct UiChunk {
+        public int first,count,key;
+        public float scale,x,y;
+        public Rect bounds;
+        public bool valid;
+    }
+    readonly List<UiChunk> geometryChunks=new List<UiChunk>();
+    Vertex[] priorGeometry=Array.Empty<Vertex>();
+    internal bool UiGeometryBaseline { get; set; }
+    internal int ReusedUiVertices { get; private set; }
+    internal int ConvertedUiVertices { get; private set; }
+    internal int UiGeometryChunks { get; private set; }
+    static int GeometryGroup(Draw d)=>(d.flags&8)!=0?16+(int)((d.flags>>8)&15):-1;
+    unsafe bool PrepareCachedUiGeometry(Frame frame,Idas3GameOptions.Values layout,bool reset)
+    {
+        ReusedUiVertices=ConvertedUiVertices=UiGeometryChunks=0;
+        // The native capture appends independent contiguous draw ranges. Keep
+        // the general path if a future source publishes overlap or a gap.
+        ulong extent=0;
+        for(int i=0;i<frame.drawCount;i++){
+            var d=draws[i];
+            if(d.first!=extent||(ulong)d.first+d.count>frame.vertexCount){geometryChunks.Clear();return false;}
+            extent+=d.count;
+        }
+        if(extent!=frame.vertexCount){geometryChunks.Clear();return false;}
+        if(reset||priorGeometry.Length<vertices.Length){
+            priorGeometry=new Vertex[vertices.Length];geometryChunks.Clear();
+        }
+        HudVertexCount=0;Array.Clear(hudVisible,0,hudVisible.Length);
+        fixed(Vertex* current=vertices)
+        fixed(Vertex* previous=priorGeometry)
+        for(int at=0;at<frame.drawCount;){
+            int key=GeometryGroup(draws[at]),start=(int)draws[at].first,end=at;
+            int count=0;
+            while(end<frame.drawCount&&GeometryGroup(draws[end])==key){count+=(int)draws[end].count;end++;}
+            bool hud=key>=16;int group=hud?key-16:0;
+            float scale=hud?(layout?.HudGroupScale(group)??1f):1f;
+            var pivot=hud?HudPivot(group,frame.width,frame.height):Vector2.zero;
+            var offset=hud?(layout?.HudOffset(group)??Vector2.zero):Vector2.zero;
+            float x=pivot.x*(1-scale)+offset.x*frame.width,y=pivot.y*(1-scale)+offset.y*frame.height;
+            UiChunk chunk=UiGeometryChunks<geometryChunks.Count?geometryChunks[UiGeometryChunks]:default;
+            bool reuse=chunk.valid&&chunk.first==start&&chunk.count==count&&chunk.key==key&&
+                chunk.scale==scale&&chunk.x==x&&chunk.y==y&&
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.MemCmp(current+start,previous+start,(long)count*sizeof(Vertex))==0;
+            if(reuse)ReusedUiVertices+=count;
+            else{
+                float minX=float.PositiveInfinity,minY=float.PositiveInfinity,maxX=float.NegativeInfinity,maxY=float.NegativeInfinity;
+                for(int k=start;k<start+count;k++){
+                    var v=vertices[k];
+                    var point=hud?new Vector3(v.x*scale+x,v.y*scale+y,0):new Vector3(v.x,v.y,0);
+                    meshVertices[k]=new MeshVertex{position=point,color=Color(v.argb),uv=new Vector2(v.u,v.v),offset=Offset(v.offsetArgb)};
+                    if(hud){minX=Mathf.Min(minX,point.x);minY=Mathf.Min(minY,point.y);maxX=Mathf.Max(maxX,point.x);maxY=Mathf.Max(maxY,point.y);}
+                }
+                Unity.Collections.LowLevel.Unsafe.UnsafeUtility.MemCpy(previous+start,current+start,(long)count*sizeof(Vertex));
+                chunk=new UiChunk{first=start,count=count,key=key,scale=scale,x=x,y=y,
+                    bounds=hud&&count>0?Rect.MinMaxRect(minX,minY,maxX,maxY):default,valid=true};
+                ConvertedUiVertices+=count;
+            }
+            if(UiGeometryChunks<geometryChunks.Count)geometryChunks[UiGeometryChunks]=chunk;else geometryChunks.Add(chunk);
+            UiGeometryChunks++;
+            if(hud){
+                HudVertexCount+=count;
+                if(group<hudBounds.Length&&count>0){
+                    var bounds=chunk.bounds;
+                    if(hudVisible[group]){var old=hudBounds[group];bounds=Rect.MinMaxRect(Mathf.Min(old.xMin,bounds.xMin),Mathf.Min(old.yMin,bounds.yMin),Mathf.Max(old.xMax,bounds.xMax),Mathf.Max(old.yMax,bounds.yMax));}
+                    hudBounds[group]=bounds;hudVisible[group]=true;
+                }
+                // Clip bounds still follow every current draw, including fades
+                // and changed masks. They are not inferred from vertex equality.
+                for(int i=at;i<end;i++){
+                    var d=draws[i];d.clip=new Vector4(d.clip.x*scale+x,d.clip.y*scale+y,d.clip.z*scale+x,d.clip.w*scale+y);draws[i]=d;
+                }
+            }
+            at=end;
+        }
+        if(geometryChunks.Count>UiGeometryChunks)geometryChunks.RemoveRange(UiGeometryChunks,geometryChunks.Count-UiGeometryChunks);
+        return true;
+    }
+
     Camera source, backgroundCamera, foregroundCamera;
+    internal bool CameraStackBaseline { get; set; }
+    bool backgroundRequired = true, foregroundRequired = true;
+    internal bool RequiresCamera(Camera camera) => camera == backgroundCamera ? backgroundRequired :
+        camera != foregroundCamera || foregroundRequired;
     CommandBuffer background, foreground, extras;
     Shader shader;
     Mesh mesh, fadeMesh;
@@ -94,6 +194,9 @@ public sealed class Idas3UnityUi : MonoBehaviour
         fadeProperties = new MaterialPropertyBlock();
         performanceBaseline = Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-baseline") >= 0;
         SubmissionCacheBaseline = Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-ui-submission-baseline") >= 0;
+        CameraStackBaseline = Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-camera-stack-baseline") >= 0;
+        UiTransferBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ui-transfer-baseline")>=0;
+        UiGeometryBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ui-geometry-baseline")>=0;
         sceneRenderer = GetComponent<Idas3SceneRenderer>();
         if (Marshal.SizeOf<Frame>() != 40 || Marshal.SizeOf<Draw>() != 48 || Marshal.SizeOf<Vertex>() != 24)
             throw new InvalidOperationException("Native UI ABI size mismatch");
@@ -171,6 +274,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     {
         if (source == null) return;
         bool visible=sceneRenderer==null||sceneRenderer.ShowGameHud;
+        backgroundRequired=foregroundRequired=visible;
         backgroundCamera.enabled=foregroundCamera.enabled=visible;
         if(!visible)return;
         IndexUploadCount = CommandRebuildCount = 0;
@@ -179,7 +283,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         if (frame.drawCount > 100000 || frame.vertexCount > 1000000 || frame.width == 0 || frame.height == 0) throw new InvalidOperationException("Invalid native UI frame bounds");
         if (draws.Length < frame.drawCount) draws = new Draw[frame.drawCount];
         if (vertices.Length < frame.vertexCount) vertices = new Vertex[frame.vertexCount];
-        if (Idas3UiCopyDraws(draws, draws.Length) != (int)frame.drawCount || Idas3UiCopyVertices(vertices, vertices.Length) != (int)frame.vertexCount) throw new InvalidOperationException("UI frame transfer failed");
+        if (!CopyFrameData(frame)) throw new InvalidOperationException("UI frame transfer failed");
         LoadTextures(frame.textureCount);
         bool baselineSubmission = performanceBaseline || SubmissionCacheBaseline;
         bool growMesh = meshVertices.Length == 0 || meshVertices.Length < frame.vertexCount;
@@ -188,6 +292,10 @@ public sealed class Idas3UnityUi : MonoBehaviour
             meshVertices = new MeshVertex[capacity]; sequentialIndices = new int[capacity];
             for (int i = 0; i < capacity; ++i) sequentialIndices[i] = i;
         }
+        var layout=HudOptionsOverride??(sceneRenderer?sceneRenderer.HudOptions:null);
+        bool cachedGeometry=!baselineSubmission&&!UiGeometryBaseline&&PrepareCachedUiGeometry(frame,layout,growMesh);
+        if(!cachedGeometry){
+            geometryChunks.Clear();ReusedUiVertices=UiGeometryChunks=0;ConvertedUiVertices=(int)frame.vertexCount;
         for (int i = 0; i < frame.vertexCount; ++i) {
             var v = vertices[i]; meshVertices[i] = new MeshVertex {
                 position = new Vector3(v.x, v.y, 0), color = Color(v.argb), uv = new Vector2(v.u, v.v), offset = Offset(v.offsetArgb)
@@ -196,7 +304,6 @@ public sealed class Idas3UnityUi : MonoBehaviour
         // Semantic groups keep all authored pieces on a shared pivot, including
         // animated backings, digits, portraits and names from different banks.
         HudVertexCount=0;Array.Clear(hudVisible,0,hudVisible.Length);
-        var layout=HudOptionsOverride??(sceneRenderer?sceneRenderer.HudOptions:null);
         for(int i=0;i<frame.drawCount;++i){
             var d=draws[i];
             if(d.first+d.count>frame.vertexCount)throw new InvalidOperationException("UI draw outside source frame");
@@ -221,6 +328,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
             d.clip=new Vector4(d.clip.x*hudScale+hudX,d.clip.y*hudScale+hudY,d.clip.z*hudScale+hudX,d.clip.w*hudScale+hudY);
             draws[i]=d;
         }
+        }
         // All source triangles use consecutive vertices. Keep one sequential
         // index buffer and update only each draw's range. Capacity survives
         // changing digit/glyph counts; unused vertices are never submitted.
@@ -241,7 +349,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
                 }
                 packedMesh = true;
             }
-            if (frame.vertexCount > 0) mesh.SetVertexBufferData(meshVertices, 0, 0, (int)frame.vertexCount, 0, UploadFlags);
+            if (frame.vertexCount > 0 && (resetIndices || !cachedGeometry || ConvertedUiVertices>0)) mesh.SetVertexBufferData(meshVertices, 0, 0, (int)frame.vertexCount, 0, UploadFlags);
         }
         ArcadeMeterVisible=false;
         ReleaseOriginalMeter(layout);
@@ -313,8 +421,10 @@ public sealed class Idas3UnityUi : MonoBehaviour
             if (!SameSubmission(submittedBatches[i], batches[i])) { rebuildCommands = true; break; }
         if (rebuildCommands) { background.Clear(); foreground.Clear(); ++CommandRebuildCount; }
         var size = new Vector4(frame.width, frame.height, 0, 0);
+        bool hasBackground=false,hasForeground=false;
         for (int i = 0; i < batches.Count; ++i) {
             var d = batches[i];
+            if ((d.flags & 2) != 0) hasBackground=true; else hasForeground=true;
             if (baselineSubmission) {
                 while (indexBuffers.Count <= i) indexBuffers.Add(Array.Empty<int>());
                 var indices = indexBuffers[i];
@@ -351,6 +461,9 @@ public sealed class Idas3UnityUi : MonoBehaviour
             properties.SetFloat("_Opacity", 1); properties.SetColor("_Tint", Color(fade));
             extras.DrawMesh(fadeMesh, Matrix4x4.identity, fadeMaterial, 0, 0, properties);
         }
+        backgroundRequired=CameraStackBaseline||hasBackground;
+        foregroundRequired=CameraStackBaseline||hasForeground||ArcadeMeterVisible||OrnamentVisible||(fade>>24)!=0;
+        backgroundCamera.enabled=backgroundRequired;foregroundCamera.enabled=foregroundRequired;
         backgroundCamera.targetTexture = foregroundCamera.targetTexture = source.targetTexture;
         backgroundCamera.rect = foregroundCamera.rect = renderer ? renderer.ViewportRect : new Rect(0,0,1,1);
         DrawCount = batches.Count+(ArcadeMeterVisible?arcadeHud.SpriteCount:0); UnresolvedSurfaces = frame.unresolvedSurfaces;
@@ -385,7 +498,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     {
         if(source==null||sceneRenderer!=null&&!sceneRenderer.ShowGameHud)return;
         backgroundCamera.targetTexture=foregroundCamera.targetTexture=source.targetTexture;
-        try {backgroundCamera.Render();foregroundCamera.Render();}
+        try {if(backgroundRequired)backgroundCamera.Render();if(foregroundRequired)foregroundCamera.Render();}
         finally {backgroundCamera.targetTexture=foregroundCamera.targetTexture=null;}
     }
     public void Shutdown()

@@ -24,7 +24,7 @@ public sealed class Idas3WheelFeedback : IDisposable
     // whole contract between the game and the cabinet board.
     internal struct CabinetRequest {
         public bool driving,wallContact,invert;
-        public int carIndex;
+        public int carIndex,cardSteeringLevel;
         public float speedKmh,steering,headingError,wallLateral,impact,strength,deltaSeconds;
     }
 
@@ -40,7 +40,7 @@ public sealed class Idas3WheelFeedback : IDisposable
             [MarshalAs(UnmanagedType.ByValArray,SizeConst=128)] public byte[] name;
             public uint vendorId,productId;
         }
-        // Mirrors Idas3WheelRaceState in wheel_feedback_backend.h, 52 bytes.
+        // Mirrors Idas3WheelRaceState v2 in wheel_feedback_backend.h, 56 bytes.
         [StructLayout(LayoutKind.Sequential)] private struct NativeRaceState {
             public uint size,version,driving,carIndex;
             public float speedKmh,steering,headingError,wallLateral,impact;
@@ -48,6 +48,7 @@ public sealed class Idas3WheelFeedback : IDisposable
             public float strength;
             public uint invert;
             public float deltaSeconds;
+            public int cardSteeringLevel;
         }
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelRefreshDevices();
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelGetDevice(int index,ref NativeDevice device);
@@ -67,15 +68,15 @@ public sealed class Idas3WheelFeedback : IDisposable
         }
         public bool Send(string id,CabinetRequest request){
             var state=new NativeRaceState{
-                size=(uint)Marshal.SizeOf<NativeRaceState>(),version=1,
+                size=(uint)Marshal.SizeOf<NativeRaceState>(),version=2,
                 driving=request.driving?1u:0u,
                 carIndex=(uint)Math.Max(0,Math.Min(34,request.carIndex)),
                 speedKmh=request.speedKmh,steering=request.steering,headingError=request.headingError,
                 wallLateral=request.wallLateral,impact=request.impact,
                 wallContact=request.wallContact?1u:0u,
                 strength=request.strength,invert=request.invert?1u:0u,
-                deltaSeconds=request.deltaSeconds};
-            if(state.size!=52)throw new InvalidOperationException("Wheel race state layout changed.");
+                deltaSeconds=request.deltaSeconds,cardSteeringLevel=request.cardSteeringLevel};
+            if(state.size!=56)throw new InvalidOperationException("Wheel race state layout changed.");
             return Idas3WheelUpdateCabinet(id,ref state)==1;
         }
         public void Stop()=>Idas3WheelStop();
@@ -89,6 +90,8 @@ public sealed class Idas3WheelFeedback : IDisposable
     internal static bool Pack(Idas3Native.WheelState state,int car,float dt,float strength,bool invert,out CabinetRequest request){
         request=default;
         if((state.flags&1)==0)return false;
+        int cardSteering=(state.flags&4)!=0?(int)((state.flags>>8)&15):-1;
+        if(cardSteering>8)return false;
         if(!Finite(state.speed)||!Finite(state.steering)||!Finite(state.headingError)||
            !Finite(state.wallLateral)||!Finite(state.impact)||!Finite(dt)||dt<=0||!Finite(strength)||strength<=0)return false;
         request=new CabinetRequest{
@@ -96,6 +99,7 @@ public sealed class Idas3WheelFeedback : IDisposable
             // The cabinet's force limit is per car; without it every car would
             // pull with the same weight, which the arcade's table says they do not.
             carIndex=car,
+            cardSteeringLevel=cardSteering,
             // The native side reads km/h; WheelState.speed is metres per second.
             speedKmh=Clamp(Math.Abs(state.speed),0,200)*3.6f,
             steering=Clamp(state.steering,-1,1),

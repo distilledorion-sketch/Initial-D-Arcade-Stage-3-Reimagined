@@ -28,8 +28,9 @@ class AutomaticRaceMusic {
     int previous_=0;
 public:
     explicit AutomaticRaceMusic(std::uint32_t seed):random_(seed){}
-    int select(int index){
+    int select(int index,bool fixed=false){
         if(index>0||index==-2)return index;
+        if(fixed&&previous_>0)return previous_;
         std::array<int,12> choices{};std::size_t count=0;
         for(int i=1;i<int(raceMusicCatalog.size());++i)
             if(raceMusicCatalog[i].stage==3&&i!=previous_)choices.at(count++)=i;

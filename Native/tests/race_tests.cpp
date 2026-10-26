@@ -50,6 +50,23 @@ int main(){try{
         require(a.tick==b.tick&&a.gear==b.gear&&a.speed==b.speed&&a.yaw==b.yaw&&a.position.x==b.position.x&&a.position.y==b.position.y&&a.position.z==b.position.z,"CSV retains exact finite float values across buffer boundaries");
     }
     require(loaded.finishTicks6000==precision.finishTicks6000,"buffered ghost retains exact finish");
+    const auto copyA=(dir/"copy-a.csv").string(),copyB=(dir/"copy-b.csv").string(),denied=(dir/"denied.csv").string();
+    const auto bytes=[](const auto& path){std::ifstream in(path,std::ios::binary);return std::string(std::istreambuf_iterator<char>(in),{});};
+    const auto expected=bytes(file);
+    require(precision.saveCopies(copyA,copyB)==std::array<bool,2>{true,true},"both telemetry copies save");
+    require(bytes(copyA)==expected&&bytes(copyB)==expected,"format-once copies retain exact legacy CSV bytes");
+    require(precision.saveCopies(copyA,copyA)==std::array<bool,2>{true,true}&&bytes(copyA)==expected,"identical destination is written once");
+    {std::ofstream out(denied);out<<"previous ghost";}
+    std::filesystem::create_directory(denied+".tmp");
+    const auto sentinel=std::filesystem::path(denied+".tmp")/"keep";{std::ofstream out(sentinel);out<<"keep";}
+    require(precision.saveCopies(copyA,denied)==std::array<bool,2>{true,false},"failed best copy does not block last-run publication");
+    require(bytes(copyA)==expected&&bytes(denied)=="previous ghost"&&bytes(sentinel)=="keep","failed best copy preserves existing file and obstruction");
+    require(precision.saveCopies(denied,copyB)==std::array<bool,2>{false,true},"failed last-run copy does not block new best");
+    require(bytes(copyB)==expected&&bytes(denied)=="previous ghost","independent copy failure preserves prior ghost");
+    precision.truncated=true;
+    require(precision.saveCopies(copyA,copyB)==std::array<bool,2>{false,false}&&bytes(copyA)==expected&&bytes(copyB)==expected,"truncated input cannot replace either copy");
+    precision.truncated=false;
+    std::filesystem::remove(copyA);std::filesystem::remove(copyB);std::filesystem::remove(denied);std::filesystem::remove(sentinel);std::filesystem::remove(denied+".tmp");
     rep.finishTicks6000=148;require(rep.save(file)&&loaded.load(file),"save exact original finish");
     require(loaded.finishTicks6000==148&&loaded.frames.back().tick==2,"finish precision survives reload independently of frame tick");
     rep.frames.back().gear=0;require(!rep.sharedBytes(148).empty()&&rep.save(file)&&loaded.load(file)&&loaded.frames.back().gear==0,"finish neutral survives replay export and CSV reload");

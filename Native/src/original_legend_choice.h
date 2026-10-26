@@ -30,5 +30,5 @@ struct OriginalLegendChoiceDraw {
 // selected is the source owner's +248 selection; timerTicks is the continue
 // countdown the source reads through 134680.
 std::vector<OriginalLegendChoiceDraw> originalLegendChoiceDraws(OriginalLegendChoiceKind kind,
-    std::uint32_t selected,std::uint32_t timerTicks);
+    std::uint32_t selected,std::uint32_t timerTicks,bool confirming=false,std::uint32_t confirmFrame=0);
 }

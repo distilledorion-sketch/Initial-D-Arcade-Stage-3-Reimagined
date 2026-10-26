@@ -150,6 +150,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
             focusHeldKey=0;focusHeldButtons=0;yield return Frames(5);
             if(control<=27&&control!=0x10)focusHeldKey=control;else focusHeldButtons=(uint)control;
             yield return Frames(5);Check(!menu.IsOpen,"Released menu control failed to resume: "+control);
+            if(control==8)Check((host.DiagnosticSubmittedInput.key0&(1u<<8))==0,
+                "Held closing Backspace leaked into native gameplay");
             focusHeldKey=0;focusHeldButtons=0;yield return Frames(5);
             Observe("focused-release-control-"+control);
         }

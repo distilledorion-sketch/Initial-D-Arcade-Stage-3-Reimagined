@@ -10,18 +10,29 @@ NativeAssembly instance(unsigned chunk,const OriginalMatrix& matrix){
     out.instances.push_back(item);return out;
 }
 }
-void OriginalTuningPreviewPresentation::load(const std::filesystem::path& root,const OriginalBattleProfile& profile,bool timeAttackRanking,bool continueScreen){
-    timeAttackRanking_=timeAttackRanking;continueScreen_=continueScreen;
-    // Continue's close source transform needs its own host presentation camera,
-    // rather than the result camera at the origin. Keep the full rotating car
-    // below the choice panel with the existing 45-degree lens.
-    eye=continueScreen?Vec3{0,.65f,4.f}:Vec3{0,0,0};
+void OriginalTuningPreviewPresentation::load(const std::filesystem::path& root,const OriginalBattleProfile& profile,bool timeAttackRanking,bool continueScreen,bool passwordScreen){
+    timeAttackRanking_=timeAttackRanking;continueScreen_=continueScreen;passwordScreen_=passwordScreen;passwordAngle_=0;
+    // Result/ranking/Continue already carry their complete original view
+    // transform in the mesh. Only Password owns a world-space camera.
+    eye={0,0,0};
     target=eye+Vec3{0,0,-1};
+    if(passwordScreen_){
+        eye={originalPasswordEye[0],originalPasswordEye[1],originalPasswordEye[2]};
+        target={originalPasswordTarget[0],originalPasswordTarget[1],originalPasswordTarget[2]};
+    }
     carId_=profile.u(16);weather_=profile.u(32);const auto folder=originalCarFolders.at(carId_);
     const auto base=root/"data/original_models"/folder;
     const auto groundPath=root/(timeAttackRanking?"data/original_assets/attract/ranking/s_ground":"data/original_assets/tuning/selcrs2");
     ground_=NativeModel::load(groundPath/(timeAttackRanking?"s_ground.idasmesh":"selcrs2.idasmesh"));
     groundTextures_=NativeTextureBank::load(groundPath/"textures/textures.idastex");
+    if(passwordScreen_){
+        // Password uses the white showroom backdrop shown by its own screen
+        // owner, not the muted grey surface beneath the ranking table. Keep
+        // the shadow/reflection material and the car lighting unchanged.
+        for(auto& batch:ground_.chunks.at(0).batches){
+            batch.material[2]|=0x201u;batch.material[3]=0xffffffffu;
+        }
+    }
     environmentTextures_=NativeTextureBank::load(root/"data/original_assets/tuning/environment/textures.idastex");
     baseCar_=NativeModel::load(base/(std::string(folder)+".idasmesh"));
     carTextures_=NativeTextureBank::load(root/"data/original_assets/cars"/folder/"textures/textures.idastex");
@@ -42,7 +53,7 @@ void OriginalTuningPreviewPresentation::load(const std::filesystem::path& root,c
     //XF does not rotate this light when078720 submits it through053480.
     const auto incoming=originalTuningPreviewIncomingLight();
     lighting.parameters={{-incoming[0],-incoming[1],-incoming[2]},{.7f,.7f,.7f},76.f/255.f,2.f};
-    state_={};visible_=state_;rebuild();advanceOriginalCarHeadlights(input_);++textureRevision_;meshDirty_=true;
+    state_={};if(passwordScreen_)state_.angle=0;visible_=state_;rebuild();advanceOriginalCarHeadlights(input_);++textureRevision_;meshDirty_=true;
 }
 void OriginalTuningPreviewPresentation::rebuild(){
     if(!materials_)throw std::logic_error("Original tuning preview has not loaded");
@@ -83,14 +94,18 @@ void OriginalTuningPreviewPresentation::consume(std::span<const OriginalTuningPr
         }
     }
     if(changed)rebuild();
-    visible_=state_;meshDirty_=true;advanceOriginalTuningPreview(state_);
+    meshDirty_=true;
+    if(passwordScreen_){
+        state_.angle=advanceOriginalPasswordCar(passwordAngle_);++state_.frames;
+        visible_=state_;
+    }else{visible_=state_;advanceOriginalTuningPreview(state_);}
 }
 bool OriginalTuningPreviewPresentation::upload(Renderer& renderer)const{
     return renderer.loadTextures(groundTextures_)&&renderer.loadTextures(carTextures_,true)&&renderer.loadTextures(plateTextures_,true)&&renderer.loadTextures(environmentTextures_,true);
 }
 const Mesh& OriginalTuningPreviewPresentation::mesh(){
     if(!meshDirty_)return mesh_;
-    mesh_.vertices.clear();mesh_.ranges.clear();const auto scene=originalTuningPreviewScene(carId_,visible_.angle,trig_,continueScreen_?2u:timeAttackRanking_?1u:0u);
+    mesh_.vertices.clear();mesh_.ranges.clear();const auto scene=originalTuningPreviewScene(carId_,visible_.angle,trig_,passwordScreen_?3u:continueScreen_?2u:timeAttackRanking_?1u:0u);
     mesh_.originalCar(ground_,instance(0,scene.background),{},0,0);
     mesh_.originalCar(ground_,instance(3,scene.shadow),{},0,0);
     const unsigned carBase=unsigned(groundTextures_.size()),plateBase=carBase+unsigned(carTextures_.size());

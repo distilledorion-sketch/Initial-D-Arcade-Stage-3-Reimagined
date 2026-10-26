@@ -83,7 +83,7 @@ typedef struct Idas3WheelState {
     uint32_t size,version;
     uint64_t simulationTicks;
     float speed,steering,headingError,wallLateral,impact;
-    uint32_t flags; //1 active driving,2 wall contact; steering positive right
+    uint32_t flags; //1 active driving,2 wall contact,4 saved steering present; bits8..11 dial0..8; steering positive right
 } Idas3WheelState;
 // Read-only signals for optional host HUD themes. Does not change simulation.
 typedef struct Idas3HudTelemetry {

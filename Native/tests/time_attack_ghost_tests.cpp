@@ -1,5 +1,6 @@
 #include "time_attack_ghost.h"
 #include <chrono>
+#include <bit>
 #include <fstream>
 #include <iostream>
 #include <limits>
@@ -10,6 +11,33 @@ int main(){
     const auto check=[&](bool ok,const char* message){++checks;if(!ok)throw std::runtime_error(message);};
     const auto root=std::filesystem::temp_directory_path()/("idas3-ghost-test-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(root);
+    // Existing IDG1 fixtures must retain every source float bit, including
+    // signed zero/subnormals, over full and partial buffered blocks.
+    for(unsigned count:{2u,1023u,1024u,1025u,18000u,unsigned(Replay::maxFrames)}){
+        Replay source;source.finishTicks6000=count*100-1;source.frames.reserve(count);
+        const std::array<float,6> values{0.f,-0.f,std::numeric_limits<float>::denorm_min(),-.1234567f,12345.678f,std::numeric_limits<float>::max()};
+        for(unsigned i=1;i<=count;++i){
+            ReplayDetail detail;detail.pitch=values[(i+4)%6];detail.roll=values[(i+5)%6];
+            source.record(i,{values[i%6],values[(i+1)%6],values[(i+2)%6]},values[(i+3)%6],0,0,&detail);
+        }
+        const auto legacy=root/("legacy-"+std::to_string(count)+".idghost"),saved=root/("buffered-"+std::to_string(count)+".idghost");
+        {std::ofstream out(legacy,std::ios::binary);const auto word=[&](std::uint32_t n){for(unsigned b=0;b<4;++b)out.put(char(n>>(8*b)));};
+         word(0x31474449);word(source.finishTicks6000);word(34);word(count);
+         for(const auto& f:source.frames){word(unsigned(f.tick));for(float v:{f.position.x,f.position.y,f.position.z,f.yaw,f.detail.pitch,f.detail.roll})word(std::bit_cast<std::uint32_t>(v));}}
+        check(TimeAttackGhost::saveBest(saved,source,34)==TimeAttackGhost::Saved::Replaced,"Long run save failed");
+        const auto bytes=[](const auto& path){std::ifstream in(path,std::ios::binary);return std::vector<char>(std::istreambuf_iterator<char>(in),{});};
+        check(bytes(saved)==bytes(legacy),"IDG1 bytes changed at a block boundary");
+        TimeAttackGhost imported;check(imported.load(legacy)&&imported.car==34&&imported.replay.finishTicks6000==source.finishTicks6000&&imported.replay.frames.size()==count,"Legacy long ghost failed to load");
+        for(unsigned i=0;i<count;++i){const auto& a=source.frames[i];const auto& b=imported.replay.frames[i];
+            check(a.tick==b.tick,"Loaded tick changed");
+            const float before[]{a.position.x,a.position.y,a.position.z,a.yaw,a.detail.pitch,a.detail.roll},after[]{b.position.x,b.position.y,b.position.z,b.yaw,b.detail.pitch,b.detail.roll};
+            for(unsigned j=0;j<6;++j)check(std::bit_cast<std::uint32_t>(before[j])==std::bit_cast<std::uint32_t>(after[j]),"Loaded float bits changed");}
+        check(TimeAttackGhost::saveBest(saved,source,0)==TimeAttackGhost::Saved::Unchanged,"Long tie replaced existing best");
+        --source.finishTicks6000;check(TimeAttackGhost::saveBest(saved,source,0)==TimeAttackGhost::Saved::Replaced,"Long faster ghost did not replace best");
+        check(imported.load(saved)&&imported.car==0&&imported.replay.finishTicks6000==source.finishTicks6000,"Long replacement metadata changed");
+        std::filesystem::resize_file(legacy,std::filesystem::file_size(legacy)-1);
+        check(!imported.load(legacy)&&imported.replay.frames.empty(),"Truncated final block loaded a partial ghost");
+    }
     const auto file=TimeAttackGhost::path(root/"slot_1",15,false,false);
     Replay run;run.beginCapture(true);run.finishTicks6000=200;
     ReplayDetail a{},b{};a.pitch=.1f;b.pitch=.3f;a.roll=-.2f;b.roll=.2f;

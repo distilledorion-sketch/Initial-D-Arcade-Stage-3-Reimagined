@@ -93,7 +93,7 @@ bool renderOnlineResult(){
     }else{
         onlineResultPixels.assign(std::size_t(width)*height,0u);unityUiClear(onlineResultPixels.data(),width,height);
         onlineContinueArtwork.paintChoice(onlineResultPixels,width,height,original::OriginalLegendChoiceKind::Continue,
-            unsigned(onlineResult.selected),onlineResult.countdown);
+            unsigned(onlineResult.selected),onlineResult.countdown,onlineResult.confirming&&onlineResult.decision==0,onlineResult.confirmFrames);
         const char* status=onlineResult.peerLeft?"THE OTHER DRIVER LEFT":onlineResult.decision==1?"WAITING FOR THE OTHER DRIVER...":onlineResult.peerReady?"OPPONENT READY":"";
         if(*status)caption(onlineResultPixels,tr(status),24,432,18);
         if(onlineResult.decision==1)caption(onlineResultPixels,tr("ESC / B  LEAVE"),24,457,13);

@@ -14,6 +14,12 @@ namespace {
 constexpr std::uint32_t magic=0x31474449; // IDG1, little endian
 void put(std::ostream& out,std::uint32_t n){for(unsigned i=0;i<4;++i)out.put(char(n>>(8*i)));}
 std::uint32_t get(std::istream& in){std::uint32_t n=0;for(unsigned i=0;i<4;++i)n|=std::uint32_t(std::uint8_t(in.get()))<<(8*i);return n;}
+// Preserve IDG1 byte-for-byte, but cross the stream boundary once per block,
+// not once per byte of every recorded pose. Keep memory bounded for long runs.
+constexpr std::size_t ghostFrameBytes=28,ghostBlockFrames=1024;
+using GhostBlock=std::array<std::uint8_t,ghostFrameBytes*ghostBlockFrames>;
+void putWord(std::uint8_t*& cursor,std::uint32_t n){for(unsigned i=0;i<4;++i)*cursor++=std::uint8_t(n>>(8*i));}
+std::uint32_t getWord(const std::uint8_t*& cursor){std::uint32_t n=0;for(unsigned i=0;i<4;++i)n|=std::uint32_t(*cursor++)<<(8*i);return n;}
 bool valid(const Replay& run,unsigned car){
     if(car>=35||run.truncated||!run.finishTicks6000||run.finishTicks6000>=10800000||run.frames.size()<2||run.frames.size()>Replay::maxFrames)return false;
     for(std::size_t i=0;i<run.frames.size();++i){
@@ -92,10 +98,16 @@ bool TimeAttackGhost::load(const std::filesystem::path& path){
     if(count<2||count>Replay::maxFrames)return false;
     in.seekg(0,std::ios::end);if(in.tellg()!=std::streamoff(16+28ull*count))return false;in.seekg(16);
     loaded.frames.reserve(count);
-    for(unsigned i=0;i<count;++i){
-        ReplayFrame f{};f.tick=get(in);
-        for(float* v:{&f.position.x,&f.position.y,&f.position.z,&f.yaw,&f.detail.pitch,&f.detail.roll})*v=std::bit_cast<float>(get(in));
-        loaded.frames.push_back(f);
+    GhostBlock block;
+    for(std::size_t base=0;base<count;base+=ghostBlockFrames){
+        const auto size=std::min(ghostBlockFrames,std::size_t(count)-base);
+        if(!in.read(reinterpret_cast<char*>(block.data()),std::streamsize(size*ghostFrameBytes)))return false;
+        const auto* cursor=block.data();
+        for(std::size_t i=0;i<size;++i){
+            ReplayFrame f{};f.tick=getWord(cursor);
+            for(float* v:{&f.position.x,&f.position.y,&f.position.z,&f.yaw,&f.detail.pitch,&f.detail.roll})*v=std::bit_cast<float>(getWord(cursor));
+            loaded.frames.push_back(f);
+        }
     }
     if(!in||!valid(loaded,model))return false;
     replay=std::move(loaded);car=model;return true;
@@ -108,7 +120,15 @@ TimeAttackGhost::Saved TimeAttackGhost::saveBest(const std::filesystem::path& pa
     auto temporary=path;temporary+=".tmp";auto backup=path;backup+=".previous";
     std::ofstream out(temporary,std::ios::binary|std::ios::trunc);if(!out)return Saved::Failed;
     put(out,magic);put(out,run.finishTicks6000);put(out,car);put(out,unsigned(run.frames.size()));
-    for(const auto& f:run.frames){put(out,unsigned(f.tick));for(float v:{f.position.x,f.position.y,f.position.z,f.yaw,f.detail.pitch,f.detail.roll})put(out,std::bit_cast<std::uint32_t>(v));}
+    GhostBlock block;
+    for(std::size_t base=0;base<run.frames.size();base+=ghostBlockFrames){
+        const auto size=std::min(ghostBlockFrames,run.frames.size()-base);auto* cursor=block.data();
+        for(std::size_t i=0;i<size;++i){
+            const auto& f=run.frames[base+i];putWord(cursor,unsigned(f.tick));
+            for(float v:{f.position.x,f.position.y,f.position.z,f.yaw,f.detail.pitch,f.detail.roll})putWord(cursor,std::bit_cast<std::uint32_t>(v));
+        }
+        if(!out.write(reinterpret_cast<const char*>(block.data()),std::streamsize(size*ghostFrameBytes)))return Saved::Failed;
+    }
     out.close();if(!out)return Saved::Failed;
     std::filesystem::rename(temporary,path,ec);if(!ec)return Saved::Replaced;
     std::filesystem::remove(backup,ec);ec.clear();std::filesystem::rename(path,backup,ec);if(ec)return Saved::Failed;

@@ -39,22 +39,22 @@ namespace Idas3.Multiplayer
         private string codeDraft="";
         private string chatDraft="",chatRoom="",chatNotice="";
         private Vector2 chatScroll;
-        private bool chatEditing,chatFocusRequested,chatSubmitArmed,chatReleaseBlocked,chatScrollToEnd;
-        private int chatBlockThroughFrame=-1;
+        private bool chatEditing,chatFocusRequested,chatSubmitArmed,chatScrollToEnd;
         private Idas3LobbyChatMessage lastChatMessage;
         private GUIStyle chatText,chatField;
         private bool ShowLobbyChat=>!playerDetails&&!usernameOpen&&session!=null&&session.InLobby&&!session.IsRacing&&!session.IsQuickMatching;
         private float ChatOffset=>ShowLobbyChat?ChatHeight:0;
         internal float CanvasHeight=>Height+ChatOffset;
-        internal bool CapturesTextInput=>chatEditing||usernameTyping||chatReleaseBlocked||Time.frameCount<=chatBlockThroughFrame;
+        internal Idas3MenuInputRouter InputRouter { get; set; } = new Idas3MenuInputRouter();
+        internal bool CapturesTextInput=>InputRouter.OnlineCapturesText(chatEditing||usernameTyping,Time.frameCount);
         internal int ControllerActionCount=>controllerFocus.Count;
         internal string ControllerSelection=>controllerFocus.Selected;
         private int blockThroughFrame=-1;
         private bool previousCursorVisible;
-        private bool suppressClosingControls;
+        private bool suppressClosingControls=>InputRouter.OnlineClosingControls;
         private bool previousNativeRace;
         internal bool ManagedControlInput { get; set; }
-        private bool previousOnlineHeld, previousCancelHeld;
+        private bool previousOnlineHeld=>InputRouter.OnlineToggleHeld;
         private bool disconnectedInputArmed,disconnectedPreviousConfirm,disconnectedPreviousCancel;
         private bool disconnectedInputBlocked=true,disconnectedEntered;
         private int disconnectedOpenedFrame=-1;
@@ -114,7 +114,7 @@ namespace Idas3.Multiplayer
                 previousCursorVisible=Cursor.visible;previousCursorLock=Cursor.lockState;
                 Cursor.lockState=CursorLockMode.None;Cursor.visible=true;
             }else{
-                suppressClosingControls=true;blockThroughFrame=Time.frameCount+1;
+                InputRouter.OnlineClosed();blockThroughFrame=Time.frameCount+1;
                 Cursor.lockState=previousCursorLock;Cursor.visible=previousCursorVisible;
             }
         }
@@ -123,11 +123,12 @@ namespace Idas3.Multiplayer
             if(session==null)return;
             session.ActivityRequested=IsOpen&&!DisconnectedFinishVisible;
             SynchronizeRaceVisibility();
+            session.PollRoomBrowser(IsOpen&&!InputCovered&&!usernameOpen&&!playerDetails&&!joinEntry&&!session.IsQuickMatching,
+                Time.realtimeSinceStartupAsDouble);
             if(chatEditing&&!Input.GetKey(KeyCode.Return)&&!Input.GetKey(KeyCode.KeypadEnter))chatSubmitArmed=true;
             if(usernameTyping&&!Input.GetKey(KeyCode.Return)&&!Input.GetKey(KeyCode.KeypadEnter))usernameSubmitArmed=true;
             if(usernameTyping&&(InputCovered||!Application.isFocused))EndUsernameTyping();
             if(chatEditing&&(!ShowLobbyChat||!session.CanChat||InputCovered||!Application.isFocused))EndChatEditing();
-            if(!ManagedControlInput&&chatReleaseBlocked&&!Input.anyKey&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
             if(ManagedControlInput)return;
             if(DisconnectedFinishVisible){
                 ProcessDisconnectedInput(Input.GetKey(KeyCode.Return),Input.GetKey(KeyCode.Escape)||Input.GetKey(KeyCode.Backspace),!Application.isFocused);return;
@@ -141,31 +142,25 @@ namespace Idas3.Multiplayer
                 NavigateResults(Input.GetKey(KeyCode.LeftArrow)||Input.GetKey(KeyCode.UpArrow)?-1:Input.GetKey(KeyCode.RightArrow)||Input.GetKey(KeyCode.DownArrow)?1:0);
                 ProcessResultsInput(Input.GetKey(KeyCode.Return),Input.GetKey(KeyCode.Escape)||Input.GetKey(KeyCode.Backspace),!Application.isFocused);return;
             }
-            // Focus loss releases all game input. Do not retain an old
-            // mouse/key latch from closing this menu across that release.
-            if(!Application.isFocused){suppressClosingControls=false;return;}
-            if(CapturesTextInput)return;
-            if(suppressClosingControls&&!Input.GetKey(KeyCode.F1)&&!Input.GetKey(KeyCode.Escape)&&!Input.GetMouseButton(0))suppressClosingControls=false;
-            if(Input.GetKeyDown(KeyCode.F1))Toggle();
-            else if(IsOpen&&Input.GetKeyDown(KeyCode.Escape))BackFromMenu();
+            RouteControlInput(Input.GetKey(KeyCode.F1),Input.GetKey(KeyCode.Escape),
+                !Application.isFocused||InputCovered,Input.GetKey(KeyCode.Return)||Input.GetKey(KeyCode.Backspace));
         }
         internal void ProcessControlInput(bool onlineHeld,bool cancelHeld,bool blocked,bool navigationControlsHeld=false)
         {
             if(!ManagedControlInput)return;
             SynchronizeRaceVisibility();
-            bool onlinePressed=onlineHeld&&!previousOnlineHeld;
-            bool cancelPressed=cancelHeld&&!previousCancelHeld;
-            previousOnlineHeld=onlineHeld;previousCancelHeld=cancelHeld;
-            if(DisconnectedFinishVisible||ResultsVisible||session!=null&&session.StateName=="Returning")return;
-            // Managed input has one focus owner: the host supplies `blocked`
-            // from the same focus state used to sample controls and drive.
-            if(suppressClosingControls&&!onlineHeld&&!cancelHeld&&!navigationHeld&&!Input.GetMouseButton(0))suppressClosingControls=false;
-            // Release independently of navigation routing: another modal's
-            // release guard can temporarily prevent ProcessMenuNavigation.
-            if(!chatEditing&&!usernameTyping&&!onlineHeld&&!cancelHeld&&!navigationControlsHeld&&!Input.anyKey&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
-            if(blocked||CapturesTextInput)return;
-            if(onlinePressed)Toggle();
-            else if(IsOpen&&cancelPressed)BackFromMenu();
+            RouteControlInput(onlineHeld,cancelHeld,blocked,navigationControlsHeld);
+        }
+        private void RouteControlInput(bool onlineHeld,bool cancelHeld,bool blocked,bool navigationControlsHeld){
+            var action=InputRouter.ProcessOnline(new Idas3MenuInputRouter.OnlineSample {
+                Toggle=onlineHeld,Cancel=cancelHeld,CloseHeld=navigationHeld,NavigationHeld=navigationControlsHeld,
+                PointerHeld=Input.GetMouseButton(0),AnyKey=Input.anyKey
+            },new Idas3MenuInputRouter.OnlineContext {
+                Open=IsOpen,Blocked=blocked,Terminal=DisconnectedFinishVisible||ResultsVisible||session!=null&&session.StateName=="Returning",
+                TextEditing=chatEditing||usernameTyping,Frame=Time.frameCount
+            });
+            if(action==Idas3MenuInputRouter.OnlineAction.Toggle)Toggle();
+            else if(action==Idas3MenuInputRouter.OnlineAction.Back)BackFromMenu();
         }
         internal void ProcessMenuNavigation(int horizontal,int vertical,bool confirm,bool back,bool blocked,double now,bool wheel=false){
             steeringOnly=wheel;
@@ -175,7 +170,6 @@ namespace Idas3.Multiplayer
             if(!IsOpen)return;
             if(CapturesTextInput){
                 controllerFocus.Poll(horizontal,vertical,confirm,back,true,now);
-                if(!chatEditing&&!usernameTyping&&!confirm&&!back&&horizontal==0&&vertical==0&&!previousOnlineHeld&&!previousCancelHeld&&Time.frameCount>chatBlockThroughFrame)chatReleaseBlocked=false;
                 return;
             }
             if(controllerFocus.Poll(horizontal,vertical,confirm,back,blocked||InputCovered||Idas3MenuPointer.Active,now)){
@@ -196,7 +190,7 @@ namespace Idas3.Multiplayer
         private void EndUsernameTyping(){
             if(!usernameTyping)return;
             usernameTyping=usernameFocusRequested=usernameSubmitArmed=false;
-            chatReleaseBlocked=true;chatBlockThroughFrame=Time.frameCount+1;controllerFocus.Reset();
+            InputRouter.OnlineTextEnded(Time.frameCount);controllerFocus.Reset();
         }
         private void SaveUsername(){
             if(!session.SaveOnlineUsername(usernameDraft,out usernameNotice))return;
@@ -237,7 +231,7 @@ namespace Idas3.Multiplayer
         private void EndChatEditing(){
             if(!chatEditing)return;
             chatEditing=chatFocusRequested=chatSubmitArmed=false;
-            chatReleaseBlocked=true;chatBlockThroughFrame=Time.frameCount+1;controllerFocus.Reset();
+            InputRouter.OnlineTextEnded(Time.frameCount);controllerFocus.Reset();
         }
         private void SubmitChat(){
             if(!session.CanChat||string.IsNullOrWhiteSpace(chatDraft))return;

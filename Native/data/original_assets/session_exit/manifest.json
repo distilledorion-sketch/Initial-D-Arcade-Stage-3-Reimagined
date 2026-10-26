@@ -1,0 +1,52 @@
+{
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source": "driveA/HOSTFS/model",
+  "banks": [
+    {
+      "bank": "levelup_dr",
+      "chunks": 1,
+      "textures": 1,
+      "outputs": {
+        "levelup_dr.idasmesh": "3efa78a070e874990fa9108f71658fefb921f5f25d97d05c0212afc58451d045",
+        "textures/textures.idastex": "a309422eef0164b552e7eccaf5fa826b81598e4167c6b70b67c0017fb01c7ae9"
+      }
+    },
+    {
+      "bank": "levelup_bu",
+      "chunks": 1,
+      "textures": 1,
+      "outputs": {
+        "levelup_bu.idasmesh": "45930beba4aa8cb66b821134697f223df30e9df9e365e965a4f499be06d31e9a",
+        "textures/textures.idastex": "a45da25846b2afb7eb391c0604d4a49b0819547cf177ce21d5f749fd3a3f2fed"
+      }
+    },
+    {
+      "bank": "levelup_vs",
+      "chunks": 2,
+      "textures": 2,
+      "outputs": {
+        "levelup_vs.idasmesh": "a54f269820f00fac4aa820b5ad85b939ebf92b1c01f1fce7a3e2c5cfaba271ad",
+        "textures/textures.idastex": "b482b84f7fde9b4214857b04bbd3fe82a258eeca8351b8ee693ca0f72f96b509"
+      }
+    },
+    {
+      "bank": "gameover_v3",
+      "chunks": 11,
+      "textures": 2,
+      "outputs": {
+        "gameover_v3.idasmesh": "3f63bc86a0808b1ff1576cc15e4e279c32e17d1e1a4d9bf519215a42ba5f51f5",
+        "textures/textures.idastex": "f01b424f991166c1b83a8b6f0fc6a77a0e322c84a96ea88e08268e7dd4c23677"
+      }
+    },
+    {
+      "bank": "ejectcard",
+      "chunks": 4,
+      "textures": 4,
+      "outputs": {
+        "ejectcard.idasmesh": "8184512cabbb0f560b30dc979afdfbfee5c25e807ec8e6393c21f63a704be6b0",
+        "textures/textures.idastex": "1e15ffa7192267c175881e4ace5764e4ebbedc0f28e6b2e34ffe8e48436f639e"
+      }
+    }
+  ],
+  "scope": "Unmodified original artwork; no executable copied."
+}

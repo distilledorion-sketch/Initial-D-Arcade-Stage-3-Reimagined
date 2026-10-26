@@ -22,8 +22,8 @@ NATIVE_TESTS = (
     "host_steering_smoothing", "physics", "race", "original_host_input",
     "original_driving_session", "online_race_timeline", "online_scored_finish", "original_race_rules",
     "original_collision_reference", "native_multiplayer", "native_asset_storage",
-    "unity_shared_renderer",
-    "local_driver_profiles", "local_driver_profile_recovery", "online_result_reward",
+    "unity_shared_renderer", "unity_ui_memory", "unity_ui_capture", "unity_ui_reload", "hud_composition_perf", "course_mesh_cache",
+    "local_driver_profiles", "local_driver_profile_recovery", "online_result_reward", "time_attack_ghost",
 )
 INPUT_TREES = ("Assets", "Packages", "ProjectSettings", "Native/data", "RuntimeAssets", "ThirdParty")
 
@@ -84,6 +84,26 @@ def require_clean_unity_build(report):
         raise ValueError("Unity build lacks explicit clean player-data and script rebuild evidence")
 
 
+def require_submission_versions(root):
+    """Reject a candidate which cannot submit its own results; no service access."""
+    root = Path(root)
+    sources = (
+        ("player", "ProjectSettings/ProjectSettings.asset", r"^\s*bundleVersion:\s*(\S+)\s*$"),
+        ("client", "Assets/Scripts/Idas3CommunityTimes.cs", r'public const string RequiredSubmissionBuild\s*=\s*"([^"\r\n]+)";'),
+        ("backend", "Leaderboard/src/core.mjs", r"export const REQUIRED_CLIENT_BUILD\s*=\s*'([^'\r\n]+)';"),
+        ("deployment", "Leaderboard/wrangler.jsonc", r'"REQUIRED_CLIENT_BUILD"\s*:\s*"([^"\r\n]+)"'),
+    )
+    versions = {}
+    for name, filename, pattern in sources:
+        matches = re.findall(pattern, (root / filename).read_text(encoding="utf-8-sig"), re.M)
+        if len(matches) != 1 or not re.fullmatch(r"\d+\.\d+\.\d+-community-replays\.\d+", matches[0]):
+            raise ValueError("Missing or ambiguous submission version: " + name)
+        versions[name] = matches[0]
+    if len(set(versions.values())) != 1:
+        raise ValueError("Submission version mismatch: " + repr(versions))
+    return versions
+
+
 def find_visual_studio():
     vswhere = Path(os.environ.get("ProgramFiles(x86)", "C:/Program Files (x86)")) / "Microsoft Visual Studio/Installer/vswhere.exe"
     data = json.loads(subprocess.check_output([str(vswhere), "-latest", "-products", "*", "-requires",
@@ -116,6 +136,8 @@ def main():
     original = args.original_image.resolve(strict=True)
     run = verify.Run(output, "fresh-build")
     try:
+        run.summary["submissionVersions"] = require_submission_versions(ROOT)
+        run.save()
         version = re.search(r"^m_EditorVersion: (\S+)", (ROOT / "ProjectSettings/ProjectVersion.txt").read_text(), re.M)[1]
         unity = (args.unity or Path("C:/Program Files/Unity/Hub/Editor") / version / "Editor/Unity.exe").resolve(strict=True)
         studio, generator = find_visual_studio()
@@ -169,6 +191,8 @@ def main():
         require_clean_unity_build(unity_report)
         if unity_report["unityVersion"] != version:
             raise RuntimeError("Built with a different Unity version than the project requires")
+        if unity_report["applicationVersion"] != run.summary["submissionVersions"]["player"]:
+            raise RuntimeError("Built player version differs from its submission policy")
         if Path(unity_report["output"]).resolve() != output / "player":
             raise RuntimeError("Unity built a different player path")
         player = verify.candidate_inventory(output / "player")

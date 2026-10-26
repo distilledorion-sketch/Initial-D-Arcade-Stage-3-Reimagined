@@ -213,6 +213,9 @@ int main(int argc,char** argv)try{
             }
             for(auto& chunk:scene.model.chunks)for(auto& batch:chunk.batches)for(auto& v:batch.vertices)v.position.y+=.25f;
             cache.invalidate();Mesh expected,actual;expected.originalCar(scene.model,first,{0,0,0},0);cache.appendTo(actual,scene.model,first);equal(expected,actual);
+            require(cache.retainedBytes()>0,"Populated course cache has no retained buffers");
+            cache.clear();require(cache.retainedBytes()==0,"Course owner release retained buffers");
+            Mesh restored;cache.appendTo(restored,scene.model,first);equal(expected,restored);
             ++scenes;
         }
     }

@@ -109,7 +109,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
     }
     internal static void PreparePhysicalInput(ref Func<KeyCode,bool> key)
     {if(active!=null&&!active.finished)key=active.KeyHeld;}
-    private bool KeyHeld(KeyCode key)=>physicalKey!=KeyCode.None&&key==physicalKey;
+    private bool KeyHeld(KeyCode key)=>host.DiagnosticFocusOverride!=false&&physicalKey!=KeyCode.None&&key==physicalKey;
     private static bool HasForeground()
     {
         GetWindowThreadProcessId(GetForegroundWindow(),out uint process);
@@ -169,6 +169,50 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         Check(Math.Abs((int)host.DiagnosticSubmittedInput.leftTrigger-102)<=1,"Held steering blocked fresh brake input during the native race");
         Pad(.3f);yield return Frames(3);Pad(.3f,.2f);yield return Frames(4);CheckDriving("race-reconnect-recovered",77,6553);
         Pad();yield return Frames(3);
+    }
+    private IEnumerator ShortcutFocusChecks()
+    {
+        stage="online-shortcut-focus";Pad();physicalKey=KeyCode.None;yield return Frames(5);
+        host.PauseMenu.SetOpen(false);menu.SetOpen(false);yield return Frames(5);
+        host.DiagnosticFocusOverride=false;yield return Frames(4);
+        Check(host.PauseMenu.IsOpen&&(host.Status.flags&2u)!=0,"Offline focus loss must retain the normal paused race");
+        physicalKey=KeyCode.F1;yield return Frames(4);
+        host.DiagnosticFocusOverride=true;yield return Frames(6);
+        Check(!menu.IsOpen,"F1 held across neutral focus gap reopened Online");
+        physicalKey=KeyCode.None;yield return Frames(5);physicalKey=KeyCode.F1;yield return Frames(5);
+        Check(menu.IsOpen,"Fresh F1 failed after focused release");physicalKey=KeyCode.None;yield return Frames(5);
+        host.DiagnosticFocusOverride=false;yield return Frames(4);physicalKey=KeyCode.Escape;yield return Frames(4);
+        host.DiagnosticFocusOverride=true;yield return Frames(6);
+        Check(menu.IsOpen,"Escape held across neutral focus gap closed Online");
+        physicalKey=KeyCode.None;yield return Frames(5);physicalKey=KeyCode.Escape;yield return Frames(5);
+        Check(!menu.IsOpen,"Fresh Escape failed after focused release");physicalKey=KeyCode.None;yield return Frames(5);
+        // Exercise the actual text-exit methods without submitting a name or
+        // sending chat. The private session has no peer or public activity.
+        foreach(string kind in new[]{"Username","Chat"}){
+            menu.SetOpen(true);yield return Frames(5);
+            var flags=System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic;
+            typeof(Idas3MultiplayerMenu).GetField(kind=="Username"?"usernameTyping":"chatEditing",flags).SetValue(menu,true);
+            typeof(Idas3MultiplayerMenu).GetMethod(kind=="Username"?"EndUsernameTyping":"EndChatEditing",flags).Invoke(menu,null);
+            host.DiagnosticFocusOverride=false;yield return Frames(4);
+            Check(menu.CapturesTextInput,kind+" exit lost its release guard while unfocused");
+            physicalKey=KeyCode.F1;host.DiagnosticFocusOverride=true;yield return Frames(6);
+            Check(menu.IsOpen&&menu.CapturesTextInput,kind+" exit replayed the held online shortcut");
+            physicalKey=KeyCode.None;yield return Frames(5);
+            Check(!menu.CapturesTextInput,kind+" exit did not release on focused neutral input");
+            physicalKey=KeyCode.F1;yield return Frames(5);Check(!menu.IsOpen,kind+" exit blocked a fresh online shortcut");
+            physicalKey=KeyCode.None;yield return Frames(5);
+        }
+        Observe("online-shortcut-and-text-focus-recovered");
+        // Losing focus deliberately pauses an offline race in unity_bridge.
+        // Online closes back to that pause menu. Resume through a fresh Escape
+        // before the existing held-driving tests, rather than treating the
+        // expected pause as a stale online input lock.
+        Check(host.PauseMenu.IsOpen&&(host.Status.flags&2u)!=0,"Online focus checks lost the offline pause state");
+        ulong frozen=host.Status.simulationTicks;
+        physicalKey=KeyCode.Escape;yield return Frames(5);physicalKey=KeyCode.None;
+        yield return Until(()=>!host.PauseMenu.IsOpen&&(host.Status.flags&2u)==0&&host.Status.simulationTicks>frozen+3,5,
+            "Fresh Escape did not resume the offline race after online focus checks");
+        Observe("online-focus-pause-resumed");
     }
     private IEnumerator FocusAction(string suffix){
         for(int i=0;i<120&&(menu.ControllerSelection==null||!menu.ControllerSelection.EndsWith(suffix,StringComparison.Ordinal));++i)yield return Button(GamepadButton.DpadDown);
@@ -337,6 +381,7 @@ public sealed class Idas3OnlineControllerSmoke : MonoBehaviour
         pulse=116;yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1025u)==0,40,"Quick start did not reach the running race");
         Pad(.6f,-.35f);yield return Frames(30);CheckDriving("baseline-controller",153,-11469);
         if(physicalSlot<0)Check(host.Status.speedMetresPerSecond>0,"Controller throttle did not move the native car");
+        if(!online&&!requirePhysical){yield return ShortcutFocusChecks();Pad(.6f,-.35f);yield return Frames(5);}
 
         for(int cycle=0;cycle<3;++cycle)
         {

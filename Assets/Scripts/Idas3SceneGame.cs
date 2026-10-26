@@ -14,6 +14,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     public int renderWidth = 1280, renderHeight = 720;
     public bool audioEnabled = true;
     [SerializeField] private string stage;
+    private bool stageIsMenu;
+    private int stageNumber = int.MinValue;
     [SerializeField] private float speedKmh;
     [SerializeField] private float simulationAndSubmissionMs;
     private bool ready, stopping;
@@ -41,6 +43,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     internal Idas3CustomRaceMusic CustomMusic {get;private set;}
     private bool saveCarLevelsLoaded, saveCarLevelsWarned;
     private int musicPickerContext;
+    private string musicControlHintInput;
+    private static readonly Func<KeyCode,bool> ReadPhysicalKey = Input.GetKey, ReadNoKey = NoKeyHeld;
     internal Idas3RaceMusicCatalog RaceMusic => raceMusic;
     internal Idas3RaceMusicMenu RaceMusicMenu => raceMusicMenu;
     private readonly Idas3MenuInputRouter menuInput = new Idas3MenuInputRouter();
@@ -78,6 +82,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     internal float RendererMilliseconds { get; private set; }
     internal float UiMilliseconds { get; private set; }
     internal float NetworkMilliseconds { get; private set; }
+    internal float CommandMilliseconds { get; private set; }
     private bool performanceDiagnostics;
     private bool loadKeepAliveRegistered;
     // Root the reverse-P/Invoke delegate for the entire managed lifetime. It
@@ -98,6 +103,16 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private static extern int Idas3SceneStep(ref Idas3Native.FrameInput frame);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)]
     private static extern int Idas3SceneShutdown();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void ConfigureSilentTestOutput()
+    {
+        if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-test-silent") < 0) return;
+        // Mute the final listener before any scene starts audio. Keep sources
+        // and the native mixer running for state/timing diagnostics.
+        AudioListener.volume = 0;
+        Debug.Log("IDAS3 diagnostic output muted before scene load.");
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -160,7 +175,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             diagnostic = Idas3RaceMusicSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3AttractOptionsSmoke.Configure(ref saves) || diagnostic;
             diagnosticMode = diagnostic || (importedTest && (Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-smoke")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-menu-smoke")>=0));
-            performanceDiagnostics = diagnostic && (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-multiplayer-profile") >= 0);
+            performanceDiagnostics = diagnostic && (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-transition-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-multiplayer-profile") >= 0);
             MatchOutputResolution();
             if (!diagnostic && !Directory.Exists(saves))
             {
@@ -209,6 +224,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             Debug.Log("IDAS3 Unity scene ready: native simulation, Unity meshes/materials/cameras/UI and AudioSource. No external framebuffer.");
             multiplayer = new Idas3MultiplayerSession(Status.car,saves);
             multiplayerMenu = gameObject.AddComponent<Idas3MultiplayerMenu>();
+            multiplayerMenu.InputRouter = menuInput;
             multiplayerMenu.Initialize(multiplayer);
             if(!diagnosticMode){multiplayer.InitializeOnlinePresence();multiplayer.PublishActivity=!Application.isEditor;}
             gameOptions = new Idas3GameOptions();
@@ -361,7 +377,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             pauseMenu.FrameRate = Time.unscaledDeltaTime > 0 ? 1f / Time.unscaledDeltaTime : 0;
             pauseMenu.SetContext(OnlineRace, CanOpenPause && !OnlineRace, Idas3CourseCatalog.SceneName(Status), (Status.flags & 8192u) != 0);
             pauseMenu.FullTuneAvailable=pauseMenu.IsOpen&&!multiplayer.InLobby&&!multiplayer.Busy&&!multiplayer.ChallengerPending&&Idas3Native.Idas3SceneCanFullTune()==1;
+            double commandBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
             ExecutePauseCommands();
+            if(performanceDiagnostics)CommandMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-commandBegan)*1000);
             if (stopping) return;
             if (Focused && !pauseMenu.IsOpen && !controlBindings.SuppressInput && Input.GetKeyDown(KeyCode.F11)) ToggleFullscreen();
             bool muteBackground = gameOptions.Current.muteWhenUnfocused && !Focused;
@@ -391,7 +409,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                     !saveMenuOwnsPointer&&!menuInput.SavePointerReleaseBlocked);
                 controllerDevices.TryRead(out physicalPad);
             }
-            Func<KeyCode,bool> physicalKey = Focused ? Input.GetKey : NoKeyHeld;
+            Func<KeyCode,bool> physicalKey = Focused ? ReadPhysicalKey : ReadNoKey;
             bool diagnosticPad = Idas3MultiplayerSmoke.PreparePhysicalInput(ref physicalKey, ref physicalPad);
             diagnosticPad |= Idas3ControlsSmoke.PreparePhysicalInput(ref physicalKey, ref physicalPad);
             diagnosticPad |= Idas3ModeFlowSmoke.PreparePhysicalInput(ref physicalKey, ref physicalPad);
@@ -708,7 +726,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
         string hint = opponent || lobby ? ViewChangeHint() : "VIEW CHANGE";
         multiplayerMenu.MusicSelectionAllowed = lobby;
         multiplayerMenu.SelectedMusicTitle = CustomMusic.SelectedTitle;
-        multiplayerMenu.MusicControlHint = "HOLD " + hint + " TO SELECT MUSIC";
+        if(musicControlHintInput!=hint){
+            musicControlHintInput=hint;
+            multiplayerMenu.MusicControlHint = "HOLD " + hint + " TO SELECT MUSIC";
+        }
         var sample = new Idas3MenuInputRouter.MusicSample {
             Navigation = MenuInputSample(frame), Delete = Held(frame, 46),
             ViewHeld = controlBindings.ViewChangeHeld, AnyControlHeld = MusicControlsHeld(frame),
@@ -896,10 +917,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private Idas3MenuInputRouter.Sample MenuInputSample(Idas3Native.FrameInput raw) => new Idas3MenuInputRouter.Sample {
         Escape = Held(raw, 27), Back = Held(raw, 8), Confirm = Held(raw, 13), Buttons = raw.padButtons,
+        ViewChange = Held(raw, 67) || (raw.padButtons & 0x8000u) != 0,
         // Start is already translated by the binding layer. Treating it as a
         // second toggle would immediately close a menu opened with Start.
-        CloseHeld = Held(raw, 27) || Held(raw, 13) || (raw.padButtons & 0x3010) != 0 ||
-            (pauseMenu.AttractOptions && controlBindings.ViewChangeHeld) || (!diagnosticMode && Input.GetMouseButton(0)),
+        CloseHeld = (pauseMenu.AttractOptions && controlBindings.ViewChangeHeld) || (!diagnosticMode && Input.GetMouseButton(0)),
         Vertical = (Held(raw, 40) || (raw.padButtons & 2) != 0 || raw.thumbLY < -16000 ? 1 : 0)
             - (Held(raw, 38) || (raw.padButtons & 1) != 0 || raw.thumbLY > 16000 ? 1 : 0),
         Horizontal = (Held(raw, 39) || (raw.padButtons & 8) != 0 || raw.thumbLX > 16000 ? 1 : 0)
@@ -913,6 +934,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         var command = menuInput.Process(sample, new Idas3MenuInputRouter.Context {
             Focused = (frame.flags & 1) != 0, OnlineBlocksInput = multiplayerMenu.BlocksGameInput,
             PauseOpen = pauseMenu.IsOpen, CanOpenPause = CanOpenPause, Now = Time.realtimeSinceStartupAsDouble,
+            CardForcedQuit = (Status.flags & 134217728u) != 0 && !OnlineRace,
             PointerActive = Idas3MenuPointer.Active, NavigationHeld = MenuNavigationHeld(frame)
         });
         switch (command.Kind)
@@ -954,7 +976,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
         began = performanceDiagnostics ? Time.realtimeSinceStartupAsDouble : 0;
         ui.ApplyFrame();
         if (performanceDiagnostics) UiMilliseconds = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
-        stage = (Status.flags & 1) != 0 ? "Menu " + Status.frontendStage : "Race " + Status.racePhase;
+        bool menuStage=(Status.flags&1)!=0;
+        int number=menuStage?Status.frontendStage:Status.racePhase;
+        if(stageIsMenu!=menuStage||stageNumber!=number){
+            stageIsMenu=menuStage;stageNumber=number;
+            stage=(menuStage?"Menu ":"Race ")+number;
+        }
         speedKmh = Status.speedMetresPerSecond * 3.6f;
     }
     private void Fail(string message)

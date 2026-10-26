@@ -97,10 +97,24 @@ int main(int argc,char** argv)try{
                     <<hasWarning()<<','<<draws<<','<<app->authorityRace->frame()<<','<<app->authorityRace->digest()<<'\n';report.flush();
             };
             capture("intro-start",!boost);
+            const bool initialLights=app->playerProjectedHeadlight.enabled();
+            app->input.pressed['H']=true;app->commands(1./60.);app->input.pressed['H']=false;
+            check(app->playerProjectedHeadlight.enabled()!=initialLights,"Showcase blocked headlight toggle");
+            app->input.down['W']=app->input.down['D']=true;
             for(unsigned tick=0;tick<120;++tick)app->advanceStartPresentation(1./60.);
+            const auto revs=app->showcaseTransmission.filtered18;
+            const auto rightSteer=app->showcaseWheels.steeringRadians;
+            check(revs>3000&&std::abs(rightSteer)>.1f,"Showcase blocked neutral revs or wheel steering");
+            check(app->showcaseTransmission.gear00==0,"Showcase engaged a driving gear");
             check(app->vsActive&&app->vsBanner.sourceTick()==120,"First showcase shot ended early");capture("shot-one",!boost);
+            app->input.down['W']=app->input.down['D']=false;app->input.down['A']=true;
+            app->input.pressed['H']=true;app->commands(1./60.);app->input.pressed['H']=false;
+            check(app->playerProjectedHeadlight.enabled()==initialLights,"Second showcase toggle did not restore lights");
             app->advanceStartPresentation(1./60.);check(app->vsShot==1,"Second showcase shot did not begin");capture("shot-two",!boost);
             for(unsigned tick=121;tick<240;++tick)app->advanceStartPresentation(1./60.);
+            check(app->showcaseTransmission.filtered18<revs&&app->showcaseWheels.steeringRadians*rightSteer<0,
+                "Releasing accelerator or reversing steering did not update showcase");
+            app->input.down['A']=false;
             check(app->vsActive&&app->vsBanner.sourceTick()==240,"Showcase lost its terminal display frame");capture("intro-last",!boost);
             app->advanceStartPresentation(1./60.);check(!app->vsActive,"Showcase warning owner survived its completion");capture("countdown",false);
             capture("driving-repaint",false);

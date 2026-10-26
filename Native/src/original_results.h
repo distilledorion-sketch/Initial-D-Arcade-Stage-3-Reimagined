@@ -16,6 +16,9 @@ struct OriginalBattleResultsState {
     // only consumes that frame's visibility, including repeated/pause paints.
     bool balanceHighlighted=false,balanceVisible=true;
     std::uint32_t frame60=0;
+    // This race's earned finish-overlay notices, not points-panel content or
+    // flags left over from an earlier race.
+    std::uint32_t levelNoticeFlags=0;
 };
 // Source timing stores intermediate checkpoints separately from the finish.
 void completeOriginalResultSections(OriginalBattleResultsState&);
@@ -24,9 +27,13 @@ public:
     static OriginalBattleResults load(const std::filesystem::path& gameRoot);
     std::vector<OriginalHudDraw> drawList(const OriginalBattleResultsState& state)const;
     void paint(std::span<std::uint32_t> argb,int width,int height,const OriginalBattleResultsState& state,bool straightAlphaOverlay=false)const;
+    void paintFinishNotice(std::span<std::uint32_t> argb,int width,int height,
+        const OriginalBattleResultsState& state,std::uint32_t finishFrame)const;
 private:
     NativeModel model_;
     NativeTextureBank textures_;
+    std::array<NativeModel,3> levelModels_;
+    std::array<NativeTextureBank,3> levelTextures_;
 };
 // Original0C0CEB20 normal-layout Time Attack record display. The race owner
 // supplies the frozen cumulative timestamps; this component does not change

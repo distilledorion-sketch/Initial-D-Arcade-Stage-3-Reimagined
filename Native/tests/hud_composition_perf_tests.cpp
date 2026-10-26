@@ -7,6 +7,8 @@
 #include <iostream>
 #include <new>
 #include <stdexcept>
+#include <string_view>
+#include <unordered_map>
 
 namespace { bool countAllocations=false;std::size_t allocations=0,allocatedBytes=0;
 void* allocate(std::size_t size){if(countAllocations){++allocations;allocatedBytes+=size;}if(void* p=std::malloc(size?size:1))return p;throw std::bad_alloc();}
@@ -17,9 +19,10 @@ void operator delete(void* p)noexcept{std::free(p);}void operator delete[](void*
 void operator delete(void* p,std::size_t)noexcept{std::free(p);}void operator delete[](void* p,std::size_t)noexcept{std::free(p);}
 using namespace idas3;
 int main(int argc,char** argv)try{
- if(argc!=3)throw std::runtime_error("hud_composition_perf_tests asset-root report-directory");
+ if(argc!=3&&(argc!=4||std::string_view(argv[3])!="--expect-no-alloc"))throw std::runtime_error("hud_composition_perf_tests asset-root report-directory [--expect-no-alloc]");
+ const bool expectNoAlloc=argc==4;
  const auto hud=OriginalRaceHud::load(argv[1]);const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
- std::ofstream parity(out/"parity.csv");parity<<"layout,tach,state,pixel_hash,draw_hash,vertex_hash,draws,vertices\n";
+ std::ofstream parity(out/"parity.csv");parity<<"layout,tach,state,pixel_hash,draw_hash,vertex_hash,draws,vertices,visual_draw_hash\n";
  unsigned cases=0;
  for(unsigned layout=0;layout<2;++layout)for(unsigned tach=0;tach<4;++tach)for(unsigned phase=0;phase<12;++phase){
   OriginalHudState s;s.tachType=tach;s.alternateLayout=layout!=0;s.edgeAnchored=true;s.timePanel=true;
@@ -35,7 +38,22 @@ int main(int argc,char** argv)try{
   UnityUiFrame f{sizeof(f)};if(!Idas3UiGetFrame(&f)||f.unresolvedSurfaces)throw std::runtime_error("HUD command capture failed");
   std::vector<UnityUiDraw> draws(f.drawCount);std::vector<UnityUiVertex> vertices(f.vertexCount);
   Idas3UiCopyDraws(draws.data(),int(draws.size()));Idas3UiCopyVertices(vertices.data(),int(vertices.size()));
-  parity<<layout<<','<<tach<<','<<phase<<','<<pixelHash<<','<<hashBytes(1469598103934665603ull,draws.data(),draws.size()*sizeof(UnityUiDraw))<<','<<hashBytes(1469598103934665603ull,vertices.data(),vertices.size()*sizeof(UnityUiVertex))<<','<<draws.size()<<','<<vertices.size()<<'\n';++cases;
+  // Texture IDs are handles, not artwork. Compare every command field plus
+  // exact dimensions/pixels so lossless texture sharing can change handles.
+  std::unordered_map<unsigned,std::uint64_t> textureHashes;
+  std::uint64_t visualDrawHash=1469598103934665603ull;
+  for(auto draw:draws){
+   if(!textureHashes.contains(draw.texture)){
+    UnityUiTextureInfo info{sizeof(info)};
+    if(!Idas3UiGetTextureInfo(draw.texture,&info))throw std::runtime_error("HUD texture unavailable");
+    std::vector<unsigned char> rgba(info.bytes);
+    if(Idas3UiCopyTextureRGBA(draw.texture,rgba.data(),int(rgba.size()))!=int(rgba.size()))throw std::runtime_error("HUD texture copy failed");
+    textureHashes[draw.texture]=hashBytes(hashBytes(1469598103934665603ull,&info,sizeof(info)),rgba.data(),rgba.size());
+   }
+   const auto textureHash=textureHashes.at(draw.texture);draw.texture=0;
+   visualDrawHash=hashBytes(hashBytes(visualDrawHash,&draw,sizeof(draw)),&textureHash,sizeof(textureHash));
+  }
+  parity<<layout<<','<<tach<<','<<phase<<','<<pixelHash<<','<<hashBytes(1469598103934665603ull,draws.data(),draws.size()*sizeof(UnityUiDraw))<<','<<hashBytes(1469598103934665603ull,vertices.data(),vertices.size()*sizeof(UnityUiVertex))<<','<<draws.size()<<','<<vertices.size()<<','<<visualDrawHash<<'\n';++cases;
  }
  // Warm the capture pools before measuring only the production HUD command path.
  OriginalHudState s;s.tachType=3;s.timePanel=true;s.edgeAnchored=true;s.speedKmh=151;s.rpm=8500;s.gear=4;s.sectionCount=3;
@@ -46,7 +64,10 @@ int main(int argc,char** argv)try{
   const auto before=std::chrono::steady_clock::now();countAllocations=trial>0;
   for(unsigned i=0;i<frames;++i){Idas3UiBeginFrame(1280,720);unityUiClear(pixels.data(),1280,720);s.rpm=8000.f+float(i%1000);hud.paint(pixels,1280,720,s);unityUiSubmit(pixels.data(),1280,720,false,false,false);}
   countAllocations=false;const auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-before).count();
-  if(trial)perf<<trial<<','<<frames<<','<<ms<<','<<allocations<<','<<allocatedBytes<<'\n';
+  if(trial){
+   perf<<trial<<','<<frames<<','<<ms<<','<<allocations<<','<<allocatedBytes<<'\n';perf.flush();
+   if(expectNoAlloc&&allocations)throw std::runtime_error("Warmed HUD composition still allocates");
+  }
  }
  std::cout<<"PASS "<<cases<<" software-pixel/GPU-command snapshots and five 1000-frame allocation/timing trials\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

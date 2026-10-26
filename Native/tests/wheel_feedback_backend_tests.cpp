@@ -171,9 +171,34 @@ void selectionAndFocus(){
     Fixture stopped;testForeground=false;
     require(!stopped.subject.setForce(firstGuid,.5f)&&stopped.input.creates==0,"Background process opened a device");
 }
+void savedSteeringTransport(){
+    // Exercise the exported ABI with foreground forcibly absent: the board
+    // consumes telemetry, but no discovery, acquisition or output can occur.
+    testForeground=false;backend.foregroundWindow=testWindow;
+    Idas3WheelRaceState state{};
+    state.size=sizeof(state);state.version=2;state.driving=1;
+    state.strength=.5f;state.speedKmh=80;state.deltaSeconds=1.f/60;
+    for(int level=0;level<=8;++level){
+        cabinetOwner.reset();idas3ffb::reset();state.cardSteeringLevel=level;
+        require(Idas3WheelUpdateCabinet(firstGuid,&state)==0,"Background telemetry acquired wheel");
+        require(cabinetOwner.lastLimit()==std::clamp(90+idas3ffb::strengthLimitB[level],1,127),
+                "Saved steering dial did not cross the exported race-state ABI");
+    }
+    state.size=52;state.version=1;state.cardSteeringLevel=999;
+    cabinetOwner.reset();Idas3WheelUpdateCabinet(firstGuid,&state);
+    require(cabinetOwner.lastLimit()==100,"Legacy v1 payload read the v2 tail");
+    state.size=sizeof(state);state.version=2;
+    for(int invalid:{-2,9,999}){
+        state.cardSteeringLevel=invalid;cabinetOwner.reset();
+        require(Idas3WheelUpdateCabinet(firstGuid,&state)==0&&cabinetOwner.lastLimit()==0,
+                "Invalid saved steering dial reached the force owner");
+    }
+    require(!backend.device&&!backend.input,"Telemetry-only test touched hardware");
+    Idas3WheelStop();
+}
 }
 int main()try{
-    happyPath();rejectedInputs();failures();selectionAndFocus();
+    happyPath();rejectedInputs();failures();selectionAndFocus();savedSteeringTransport();
     std::cout<<"PASS "<<checks<<" fake-device force/lease/cache/GUID/focus/cleanup/failure checks. No physical device discovery, acquisition or motor calls.\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"FAIL "<<error.what()<<'\n';return 1;}

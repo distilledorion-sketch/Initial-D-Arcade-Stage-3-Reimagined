@@ -59,8 +59,13 @@ void advanceOriginalTuningPreview(OriginalTuningPreviewState& s){
     }
     ++s.frames;
 }
+std::uint16_t advanceOriginalPasswordCar(float& radians){
+    //10F420 advances BEFORE10F480 draws;1F6780 converts its float yaw to FSCA.
+    radians+=std::bit_cast<float>(0x3c449ba6u);
+    return std::uint16_t(std::int32_t(radians*std::bit_cast<float>(0x4622f983u)));
+}
 OriginalTuningPreviewScene originalTuningPreviewScene(unsigned car,std::uint32_t angle,const OriginalFscaTable& trig,unsigned scene){
-    if(car>=35||scene>2)throw std::out_of_range("Original tuning preview car/scene");
+    if(car>=35||scene>3)throw std::out_of_range("Original tuning preview car/scene");
     OriginalTuningPreviewScene out;auto base=originalIdentityMatrix();
     if(scene==2){
         //081530..08155C supplies fixed eye(0,1,2.8),target(0,.65,0)
@@ -71,7 +76,16 @@ OriginalTuningPreviewScene originalTuningPreviewScene(unsigned car,std::uint32_t
             0x3f800000u,0u,0u,0u,0u,0x3f7e05ecu,0x3dfe05eeu,0u,
             0u,0xbdfe05eeu,0x3f7e05ecu,0u,0u,0xbf251d72u,0xc039c121u,0x3f800000u};
         for(unsigned i=0;i<16;++i)base.elements[i]=std::bit_cast<float>(words[i]);
-    }else{
+        // Unlike result070E62 and ranking07F3EE, Continue does NOT pop this
+        // matrix before078720. That child pushes the still-current matrix
+        // and multiplies the supplied copy with1F64A0: the view is applied
+        // twice. Reproduce that complete call chain, not an extra host offset.
+        const auto parent=base;
+        for(unsigned col=0;col<4;++col){
+            const auto v=transformOriginalVector(parent,{parent.elements[col*4],parent.elements[col*4+1],parent.elements[col*4+2],parent.elements[col*4+3]});
+            for(unsigned row=0;row<4;++row)base.elements[col*4+row]=v[row];
+        }
+    }else if(scene!=3){
         // ARankinTA07F3D6 supplies-.8 before RX1024; AResult supplies-.4.
         translateOriginalMatrix(base,{0,std::bit_cast<float>(scene==1?0xbf4ccccdu:0xbecccccdu),-6});
         rotateOriginalMatrixPhase(base,0,1024,trig);

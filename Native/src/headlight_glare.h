@@ -49,17 +49,23 @@ public:
         const auto view=normalized(target-eye),across=normalized(cross(view,cameraUp)),up=normalized(cross(across,view));
         unsigned submitted=0;const auto& lamps=cars_[car];
         for(unsigned i=0;i<lamps.count;++i){
-            //0D39E8..0D3A14 moves the optical quad0.3m along the car's
-            // normalized forward column, clear of the lamp/body surface.
-            const auto center=body+rotate(lamps.positions[i]+Vec3{0,0,.3f});
+            // Keep the optical sprite attached to the authored lamp. The
+            // cabinet's 0.3m forward offset floats visibly ahead of the body
+            // in the host's freely positioned cameras. A small camera-facing
+            // bias prevents z-fighting without moving the light into the road.
+            const auto lens=body+rotate(lamps.positions[i]);
+            const auto center=lens+normalized(eye-lens)*.015f;
             if(dot(center-eye,view)<=0)continue;
             const float alpha=strength(center,rotate({0,0,1}),eye)*std::clamp(opening,0.f,1.f);
             if(alpha<=0)continue;
             for(const auto& batch:model_.chunks[lamps.style].batches){
-                // Keep source blending/UVs. Depth testing hides lamps behind
-                // scenery; no depth writes or face culling for optical quads.
+                // 0D40E8..0D40F6 supplies the visibility owner's ARGB opacity.
+                // The stored texture-alpha-only material ignores vertex alpha;
+                // enable it and modulate texture RGBA by the owner's fade.
+                // Keep source blend factors/UVs and depth-test against scenery.
                 const auto isp=(batch.ich[1]&~(3u<<27))|(1u<<26);
-                mesh.beginRange(textureBase+batch.material[9],batch.ich[2],batch.ich[0],isp,
+                const auto tsp=batch.ich[2]|(1u<<20)|(3u<<6);
+                mesh.beginRange(textureBase+batch.material[9],tsp,batch.ich[0],isp,
                     batch.material[2],true,true,0,false,std::nullopt,false,viewMask);
                 for(auto index:batch.indices){const auto& v=batch.vertices[index];
                     //0D40DC scales the source one-unit sprite to1.5m.

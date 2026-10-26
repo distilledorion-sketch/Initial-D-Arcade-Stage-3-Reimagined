@@ -23,8 +23,9 @@ public sealed class Idas3CustomRaceMusic : MonoBehaviour
     internal bool Busy {get;private set;}
     internal string LastError {get;private set;}
     internal string FolderPath {get;private set;}
-    internal int SelectedId {get {var t=Idas3SoundRoomCatalog.Find(library.selectedPackaged);if(catalog.State.selectedIndex==-2&&t!=null)return t.id;int i=library.songs.FindIndex(s=>s.file==library.selected);return catalog.State.selectedIndex==-2&&i>=0?FirstId+i:catalog.State.selectedIndex;}}
-    internal string SelectedTitle {get {var t=Idas3SoundRoomCatalog.Find(library.selectedPackaged);if(catalog.State.selectedIndex==-2&&t!=null)return t.title;int i=library.songs.FindIndex(s=>s.file==library.selected);return catalog.State.selectedIndex==-2&&i>=0?library.songs[i].title:catalog.SelectedTitle;}}
+    private int SelectedCustomIndex(){for(int i=0;i<library.songs.Count;++i)if(library.songs[i].file==library.selected)return i;return -1;}
+    internal int SelectedId {get {if(catalog.State.selectedIndex!=-2)return catalog.State.selectedIndex;var t=Idas3SoundRoomCatalog.Find(library.selectedPackaged);if(t!=null)return t.id;int i=SelectedCustomIndex();return i>=0?FirstId+i:catalog.State.selectedIndex;}}
+    internal string SelectedTitle {get {if(catalog.State.selectedIndex!=-2)return catalog.SelectedTitle;var t=Idas3SoundRoomCatalog.Find(library.selectedPackaged);if(t!=null)return t.title;int i=SelectedCustomIndex();return i>=0?library.songs[i].title:catalog.SelectedTitle;}}
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneSetCustomRaceMusic([In] short[] samples,int count,int rate,int channels,int context);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneSetCustomRaceMusicLoop([In] short[] samples,int count,int rate,int channels,int context,int loopStart,int loopEnd);
     internal void Initialize(string saveRoot,Idas3RaceMusicMenu view,Idas3RaceMusicCatalog original,string musicFolder=null){

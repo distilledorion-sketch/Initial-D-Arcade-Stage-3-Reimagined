@@ -2,6 +2,8 @@
 #include "original_time_attack_visit.h"
 #include "original_time_attack_background.h"
 #include "original_time_attack_stats.h"
+#include "original_net_password.h"
+#include "original_matrix.h"
 #include "original_ranking_data.h"
 #include "original_gasstand_data.h"
 #include "unity_ui_capture.h"
@@ -18,7 +20,7 @@ using Stage=OriginalTimeAttackVisit::Stage;
 using Route=OriginalTimeAttackVisit::Route;
 using Command=OriginalLegendReturnCommand;
 constexpr std::array<const char*,8> mapNames{"myogi","usui","akagi","akina","happo","iroha","syomaru","tuchizaka"};
-float f(unsigned word){return std::bit_cast<float>(word);}
+constexpr float f(unsigned word){return std::bit_cast<float>(word);}
 bool valid(const OriginalTimeAttackVisit::Setup& s){return (s.condition<18||(s.condition<idas3::supportedConditionCount&&!s.customCourseName.empty()&&!s.customMaps.empty()&&s.customMaps.size()<=5))&&s.weather<2&&s.car<35;}
 void putWord(OriginalRankingRecord& r,unsigned offset,std::uint32_t word){
     for(unsigned i=0;i<4;++i)r.bytes[offset+i]=std::uint8_t(word>>(i*8));
@@ -87,6 +89,21 @@ std::vector<OriginalTimeAttackCountdownDraw> originalTimeAttackCountdownDraws(st
     if(seconds>=10)draws.push_back({seconds/10u+1u,f(0x40a66666)*100.f,-f(0xbe23d70a)*100.f});
     return draws;
 }
+OriginalNetPasswordHighlight originalNetPasswordHighlight(std::uint32_t frame){
+    //130BE4..130C5E, including1F9FE0's integer-angle rational sine. That
+    // routine reduces with a single pi/2 literal, unlike originalSinF32.
+    float angle=float(std::uint16_t(frame*728u))*f(0x40c90fdb);
+    angle*=f(0x37800000);angle*=.5f;
+    const auto quadrant=std::int32_t(angle/f(0x3fc90fdb)+.5f);
+    const float reduced=angle-float(quadrant)*f(0x3fc90fdb);
+    const float squared=reduced*reduced;float fraction=0;
+    for(int divisor=11;divisor>2;divisor-=2)fraction=squared/(float(divisor)-fraction);
+    const float tangent=reduced/(1.f-fraction);
+    float sine=(tangent+tangent)/std::fma(tangent,tangent,1.f);
+    if(quadrant&1)sine=-sine;
+    const auto intensity=std::uint32_t(std::fma(sine,.4f,.5f)*255.f);
+    return {std::fma(sine,.2f,1.f),intensity*0x01010101u};
+}
 void OriginalTimeAttackDrivingTrace::recordFrame(float speed,float distance,float throttle,float brake,bool wall,std::uint32_t ticks){
     // Thirty minutes at 60 Hz is also the local record validity ceiling. Do
     // not permit bad host samples to turn a graph into unbounded geometry.
@@ -102,6 +119,8 @@ bool OriginalTimeAttackVisit::available(const std::filesystem::path& root){
     return std::filesystem::exists(base/"lecture/lecture.idasmesh")&&
         std::filesystem::exists(base/"lecture/textures/textures.idastex")&&
         std::filesystem::exists(root/"data/original_assets/attract/ranking/v3sT13rankin/v3sT13rankin.idasmesh")&&
+        std::filesystem::exists(root/"data/original_assets/saved_data/password/password.idasmesh")&&
+        std::filesystem::exists(root/"data/original_assets/saved_data/password_sprite/original_rip.tbl")&&
         OriginalRivalDialogScene::available(root);
 }
 void OriginalTimeAttackVisit::load(const std::filesystem::path& root){
@@ -116,6 +135,13 @@ void OriginalTimeAttackVisit::load(const std::filesystem::path& root){
     ranking_=loadBank(rank,"v3sT13rankin");common_=loadBank(rank,"v3sT00common");
     select_=loadBank(root/"data/original_assets/name_entry","select");
     alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
+    auto spritePath=root/"data/original_assets/saved_data/password_sprite";
+    if(originalUiLanguage()==1&&std::filesystem::exists(root/"data/localization/ja/original_assets/saved_data/password_sprite/original_rip.tbl"))spritePath=root/"data/localization/ja/original_assets/saved_data/password_sprite";
+    passwordSprites_=NativeSpriteBank::load(spritePath/"original_rip.tbl",spritePath/"original_rip.bin");
+    passwordSpriteTextures_=NativeTextureBank::load(spritePath/"textures/textures.idastex");
+    password_=loadBank(root/"data/original_assets/saved_data","password");
+    passwordTitle_=loadBank(root/"data/original_assets/results","v3sT14password");
+    selectionCommon_=loadBank(root/"data/original_assets/menus/v3","v3sS00common");
     choices_.load(root);font_=MenuFont::load(root);loaded_=true;
 }
 void OriginalTimeAttackVisit::finish(Route route){route_=route;stage_=Stage::Finished;}
@@ -151,10 +177,16 @@ void OriginalTimeAttackVisit::beginAfterResults(const Setup& s){
     // Show the board after every completed run, even outside its top ten.
     // The cabinet's ARankinTA rank<10 gate hides a populated community board
     // from most players. Browsing it must not change qualification or awards.
-    // Time-up and unavailable rows still go directly to Continue.
-    if(std::int32_t(s.resultStatus)<=1&&!rows_.empty()){
+    // Time-up skips the password; completed runs without rows still get it.
+    if(s.resultStatus<=1&&!rows_.empty()){
         stage_=Stage::Ranking;timerTicks_=900;rankingFadeAlpha_=255;rankingSettle_=0;
-    }else beginContinue();
+    }else beginPassword();
+}
+void OriginalTimeAttackVisit::beginPassword(){
+    // The cabinet code has nine course IDs. Do not encode a custom course as
+    // an unrelated arcade course, or issue a password for an unfinished run.
+    if(setup_.resultStatus>1||!setup_.ticks6000||setup_.condition>=18){beginContinue();return;}
+    stage_=Stage::Password;frame_=phase_=selected_=0;fade_=15;timerTicks_=2479;
 }
 void OriginalTimeAttackVisit::beginContinue(){
     frame_=0;phase_=0;fade_=0;selected_=0;timerTicks_=879;
@@ -198,8 +230,16 @@ void OriginalTimeAttackVisit::advance(const Input& input){
         else if(phase_==1)rankingFadeAlpha_=0;
         else if(phase_==2){rankingFadeAlpha_=unsigned((30-fade_)*255/30);if(--fade_==0){phase_=3;rankingSettle_=0;}}
         else if(phase_==3)rankingFadeAlpha_=255;
-        if(phase_==3&&++rankingSettle_>3){beginContinue();return;}
+        if(phase_==3&&++rankingSettle_>3){beginPassword();return;}
         if((phase_==1&&(input.confirm||input.skip))||timerTicks_==0){if(phase_<2)phase_=2;}
+        return;
+    }
+    if(stage_==Stage::Password){
+        if(timerTicks_)--timerTicks_;
+        if(phase_==0){if(--fade_<0){fade_=0;phase_=1;}}
+        else if(phase_==1){if(input.confirm||input.skip||!timerTicks_)phase_=2;}
+        else if(phase_==2){if(++fade_>15){fade_=15;phase_=3;selected_=0;}}
+        else if(++selected_>3)beginContinue();
         return;
     }
     if(stage_==Stage::Continue){
@@ -221,7 +261,7 @@ void OriginalTimeAttackVisit::advance(const Input& input){
     }
 }
 std::uint32_t OriginalTimeAttackVisit::fadeArgb()const{
-    return stage_==Stage::Lecture?std::uint32_t(std::clamp(fade_,0,15)*255/15)<<24:
+    return stage_==Stage::Lecture||stage_==Stage::Password?std::uint32_t(std::clamp(fade_,0,15)*255/15)<<24:
         stage_==Stage::Ranking?rankingFadeAlpha_<<24:0;
 }
 void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int width,int height)const{
@@ -325,15 +365,58 @@ void OriginalTimeAttackVisit::paintRanking(std::span<std::uint32_t> target,int w
     }
     if(!setup_.customCourseName.empty())c.text(font_,setup_.customCourseName.c_str(),28,13,28.f);
 }
+void OriginalTimeAttackVisit::paintPassword(std::span<std::uint32_t> target,int width,int height)const{
+    const Canvas c(target,width,height);
+    struct Layer{NativeModelChunk chunk;const NativeTextureBank* textures;float depth;};std::vector<Layer> layers;
+    const auto add=[&](const Bank& bank,unsigned index){for(const auto& batch:bank.model.chunks.at(index).batches){float z=0;for(const auto& v:batch.vertices)z+=v.position.z;
+        NativeModelChunk item;item.batches.push_back(batch);layers.push_back({std::move(item),&bank.textures,batch.vertices.empty()?0:z/batch.vertices.size()});}};
+    add(selectionCommon_,20);add(passwordTitle_,0);add(passwordTitle_,1);add(password_,0);
+    std::stable_sort(layers.begin(),layers.end(),[](const auto& a,const auto& b){return a.depth<b.depth;});
+    SpritePlacement placement;placement.scale=100*c.fit;placement.invertY=true;placement.authoredHeight=0;placement.offsetX=c.left;placement.offsetY=c.top;placement.defaultOriginalUiColors=true;
+    for(const auto& layer:layers)compositeOriginalMenuChunk(target,width,height,*layer.textures,layer.chunk,placement);
+    OriginalNetPasswordInput in;in.course=setup_.condition/2;in.direction=setup_.condition&1;
+    in.weather=setup_.weather;in.night=setup_.night;in.ticks6000=setup_.ticks6000;
+    in.car=setup_.car;in.manual=setup_.manual;in.name=setup_.nameGlyphs;in.salt=setup_.passwordSalt;
+    const auto code=originalNetPassword(in);float x=25;
+    SpritePlacement sprites;sprites.scale=c.fit;sprites.offsetX=c.left;sprites.offsetY=c.top;
+    // 130980 draws the two halves of the website plaque. The remaining
+    // sprites are the older title, replaced by v3sT14password above.
+    for(unsigned i=0;i<2;++i){const auto& sprite=passwordSprites_.sprites.at(i);compositeOriginalSprite(target,width,height,passwordSpriteTextures_.at(sprite.texture),sprite,sprites);}
+    for(unsigned i=0;i<code.size();++i){if(i==3||i==7||i==11)x+=20;
+        auto item=password_.model.chunks.at(3);const auto glyph=originalNetPasswordGlyph(code[i]);
+        for(auto& batch:item.batches)for(auto& v:batch.vertices){
+            const auto col=int(v.u),row=int(-v.v);v.u=float(glyph%8+col)/8;v.v=1.f-float(glyph/8+row)/8;
+        }
+        SpritePlacement p;p.scale=100*c.fit;p.invertY=true;p.authoredHeight=0;
+        p.offsetX=c.left+x*c.fit;p.offsetY=c.top;p.defaultOriginalUiColors=true;
+        compositeOriginalMenuChunk(target,width,height,password_.textures,item,p);x+=25;
+    }
+    //130C7A draws v3sT14password chunk2 through the pulsing additive
+    // material. Scale about the original screen origin, not its left edge.
+    // The owner advances at60Hz; repainting must never advance this phase.
+    const auto highlight=originalNetPasswordHighlight(frame_);
+    auto glow=passwordTitle_.model.chunks.at(2);
+    auto matrix=originalIdentityMatrix();scaleOriginalMatrix(matrix,{highlight.scaleX,1.f,1.f});
+    constexpr float originX=f(0xc04ccccd),originY=f(0x4019999a);
+    translateOriginalMatrix(matrix,{originX,originY,f(0xbe197f63)});
+    for(auto& batch:glow.batches){
+        batch.material[3]=batch.material[5]=highlight.color;
+        batch.ich[2]|=0x001000c0u; //0D7E20: vertex alpha and modulate RGBA
+        for(auto& v:batch.vertices){const auto p=transformOriginalPoint(matrix,{v.position.x,v.position.y,v.position.z});v.position={p[0]-originX,p[1]-originY,p[2]};}
+    }
+    compositeOriginalMenuChunk(target,width,height,passwordTitle_.textures,glow,placement);
+    for(const auto& d:originalTimeAttackCountdownDraws(timerTicks_))c.chunk(select_.model,select_.textures,d.chunk,d.x,d.y);
+}
 void OriginalTimeAttackVisit::paint(std::span<std::uint32_t> target,int width,int height)const{
     if(width<=0||height<=0||target.size()<std::size_t(width)*height)throw std::invalid_argument("Invalid Time Attack visit destination");
     if(!loaded_||!active())return;
     if(stage_==Stage::Lecture)paintLecture(target,width,height);
     else if(stage_==Stage::Ranking)paintRanking(target,width,height);
+    else if(stage_==Stage::Password)paintPassword(target,width,height);
     else if(stage_==Stage::Continue){
         // AContinue owns a fresh077C80(selcrs2) car scene. The race owner
         // renders it behind this choice; prior lecture/ranking panels close.
-        choices_.paintChoice(target,width,height,OriginalLegendChoiceKind::Continue,selected_,timerTicks_);
+        choices_.paintChoice(target,width,height,OriginalLegendChoiceKind::Continue,selected_,timerTicks_,phase_==1,frame_);
     }
 }
 }

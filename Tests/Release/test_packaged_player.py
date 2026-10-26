@@ -1,11 +1,12 @@
 """Exercise failure, isolation and evidence boundaries without launching a game."""
 import json
+import io
 import copy
 from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "Tools"))
 import verify_packaged_player as player
@@ -206,6 +207,45 @@ class PackagedPlayerTests(unittest.TestCase):
         self.assertFalse(run.summary["releaseReady"])
         self.assertTrue(run.summary["checks"][1]["passed"])
         self.assertIn("capture timed out", run.summary["checks"][0]["error"])
+
+    def test_cleanup_waits_for_taskkill_and_is_idempotent(self):
+        run = player.verify.Run(self.root / "cleanup", "packaged-all")
+        players = player.Players(run, self.root / "unused", "test-version")
+        child = Mock(pid=123, **{"poll.return_value": None, "wait.return_value": 0})
+        log = io.BytesIO()
+        players.owned.append((child, log))
+        with patch.object(player.subprocess, "run") as taskkill:
+            players.close()
+            players.close()
+        taskkill.assert_called_once()
+        child.wait.assert_called_once_with(timeout=1)
+        child.kill.assert_not_called()
+        self.assertTrue(log.closed)
+        self.assertEqual(players.owned, [])
+
+    def test_cleanup_attempts_every_child_and_retains_only_unfinished_ownership(self):
+        run = player.verify.Run(self.root / "cleanup", "packaged-all")
+        players = player.Players(run, self.root / "unused", "test-version")
+        unfinished = Mock(pid=123, **{"poll.return_value": None})
+        unfinished.wait.side_effect = player.subprocess.TimeoutExpired("fixture", 1)
+        unfinished.kill.side_effect = PermissionError("still running")
+        finished = Mock(pid=124, **{"poll.return_value": 0})
+        pending_log, finished_log = io.BytesIO(), io.BytesIO()
+        players.owned.extend([(unfinished, pending_log), (finished, finished_log)])
+        with patch.object(player.subprocess, "run") as taskkill:
+            with self.assertRaisesRegex(RuntimeError, "1 owned"):
+                players.close()
+            self.assertEqual(players.owned, [(unfinished, pending_log)])
+            self.assertFalse(pending_log.closed)
+            self.assertTrue(finished_log.closed)
+            finished.poll.assert_called_once()
+            unfinished.wait.side_effect = None
+            unfinished.wait.return_value = 0
+            players.close()
+            players.close()
+        self.assertEqual(taskkill.call_count, 2)
+        self.assertTrue(pending_log.closed)
+        self.assertEqual(players.owned, [])
 
     def prepare_evidence(self):
         inventory = {"files": {"InitialDUnity.exe": {"bytes": 1, "sha256": "fixture"}}}

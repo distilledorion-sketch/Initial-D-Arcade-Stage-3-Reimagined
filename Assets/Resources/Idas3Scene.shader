@@ -41,6 +41,7 @@ Shader "IDAS3/Original Scene Material"
    #pragma fragment mainPS
    #pragma multi_compile_local _ IDAS_IMPORTED_COURSE
    #pragma multi_compile_instancing
+   #pragma multi_compile_local _ IDAS_NATIVE_SOURCE_COURSE IDAS_NATIVE_SOURCE_NOCLIP
    #include "Idas3SceneCommon.cginc"
    ENDHLSL
   }

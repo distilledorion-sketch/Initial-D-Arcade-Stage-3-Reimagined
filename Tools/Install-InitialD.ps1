@@ -150,7 +150,7 @@ if([string]::IsNullOrWhiteSpace($Destination)){$Destination=Join-Path $installer
 $Destination=[IO.Path]::GetFullPath($Destination)
 Assert-PlainPath $Destination
 if((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count){throw 'The installation folder must be empty. Existing players should use the game updater.'}
-$version='0.3.95-community-replays.51';$tag='v'+$version
+$version='0.3.95-community-replays.52';$tag='v'+$version
 $repo='distilledorion-sketch/Initial-D-Arcade-Stage-3-Reimagined'
 $web=[Net.WebClient]::new();$web.Headers['User-Agent']='Initial-D-Setup';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 $cache=Join-Path $installerRoot ('.initial-d-download-'+[Guid]::NewGuid().ToString('N'))

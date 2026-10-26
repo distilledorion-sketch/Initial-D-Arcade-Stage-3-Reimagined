@@ -85,6 +85,13 @@ void Mesh::append(const Mesh& mesh){
         else vertices.insert(vertices.end(),mesh.vertices.begin()+range.first,mesh.vertices.begin()+range.first+range.count);
     }
 }
+std::size_t CourseMeshCache::retainedBytes()const{
+    const auto meshBytes=[](const Mesh& m){return m.vertices.capacity()*sizeof(Vertex)+m.ranges.capacity()*sizeof(MeshRange);};
+    std::size_t bytes=meshBytes(mesh_)+meshBytes(scratch_)+previousAssembly_.instances.capacity()*sizeof(NativeModelInstance)+
+        instanceVertices_.capacity()*sizeof(std::size_t)+objectMeshes_.capacity()*sizeof(ObjectMesh);
+    for(const auto& item:objectMeshes_)bytes+=meshBytes(item.mesh)+meshBytes(item.scratch)+item.assembly.instances.capacity()*sizeof(NativeModelInstance)+item.instanceVertices.capacity()*sizeof(std::size_t);
+    return bytes;
+}
 void CourseMeshCache::prepare(const NativeModel& model,const NativeAssembly& assembly,bool courseGeometry){
     if(model_!=&model||assembly_!=&assembly||courseGeometry_!=courseGeometry){
         static const bool sectorRebuildBaseline=std::getenv("IDAS3_SECTOR_REBUILD_BASELINE")!=nullptr;

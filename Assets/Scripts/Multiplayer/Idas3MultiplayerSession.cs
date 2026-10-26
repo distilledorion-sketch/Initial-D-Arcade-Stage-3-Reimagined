@@ -358,7 +358,24 @@ namespace Idas3.Multiplayer
             OpenMenu(); if (!RequireOnlineUsername() || nativeRace || DisconnectedFinish || !Available || Busy || InLobby) return;
             ResetPeer(); localNonce=Nonce(); ClearError(); state="Connecting"; operationAt=Now; transport.Join(code);
         }
-        public void RefreshRooms() { OpenMenu(); if (!nativeRace && !DisconnectedFinish && Available && !InLobby && !Busy) { ClearError(); transport.Browse(); } }
+        private bool roomBrowserVisible;
+        private double nextRoomRefresh;
+        internal void PollRoomBrowser(bool visible,double now)
+        {
+            if(!visible){roomBrowserVisible=false;return;}
+            if(!roomBrowserVisible){roomBrowserVisible=true;nextRoomRefresh=0;}
+            // Wait for sign-in/other operations instead of losing the initial
+            // request. Background discovery must not dismiss a connection error.
+            if(TransportIndex!=0||!Available||Busy||InLobby||nativeRace||DisconnectedFinish||now<nextRoomRefresh)return;
+            nextRoomRefresh=now+15;
+            transport.Browse();
+        }
+        public void RefreshRooms() {
+            OpenMenu();
+            if (!nativeRace && !DisconnectedFinish && Available && !InLobby && !Busy) {
+                ClearError();nextRoomRefresh=Time.realtimeSinceStartupAsDouble+15;transport.Browse();
+            }
+        }
         public void QuickMatch()
         {
             OpenMenu();if(!RequireOnlineUsername()||nativeRace||DisconnectedFinish||!Available||Busy||InLobby||!(transport is IIdas3MatchmakingTransport matchmaking))return;
@@ -917,6 +934,12 @@ namespace Idas3.Multiplayer
         void AfterFrameCore()
         {
             if(DisconnectedFinish||state=="Returning"||!nativeRace||!HandshakeComplete)return;
+            AfterRaceFrame();
+        }
+        // Keep packet closures below the idle/offline guard. Otherwise the C#
+        // compiler allocates their captured pose before the early return.
+        void AfterRaceFrame()
+        {
             var pose=new Idas3CarSnapshot{size=128,version=1};
             Require(Idas3MultiplayerNative.Idas3MultiplayerGetLocalSnapshot(ref pose)==1,Idas3Native.Error());LocalSnapshot=pose;
             if(ExperimentalAuthority){AfterAuthorityFrame();return;}

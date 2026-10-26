@@ -19,6 +19,8 @@ namespace idas3::original {
 std::string originalTimeAttackStartIntervalText(std::uint32_t ticks6000);
 struct OriginalTimeAttackCountdownDraw { unsigned chunk;float x,y; };
 std::vector<OriginalTimeAttackCountdownDraw> originalTimeAttackCountdownDraws(std::uint32_t ticks);
+struct OriginalNetPasswordHighlight { float scaleX;std::uint32_t color; };
+OriginalNetPasswordHighlight originalNetPasswordHighlight(std::uint32_t frame);
 // Host telemetry, sampled once per running 60 Hz simulation frame. This is
 // measured data for the analysis graph, not synthesized source replay data.
 struct OriginalTimeAttackDrivingSample {
@@ -42,7 +44,7 @@ private:
 // the time / NEW RECORD summary. HLecture precedes common results.
 class OriginalTimeAttackVisit {
 public:
-    enum class Stage : std::uint8_t { Inactive,Lecture,Ranking,Continue,Finished };
+    enum class Stage : std::uint8_t { Inactive,Lecture,Ranking,Continue,Finished,Password };
     enum class Route : std::uint8_t { None,Points,Retry,Exit };
     struct MapPage {
         std::vector<OriginalTimeAttackDrivingLine> road,driving;
@@ -52,7 +54,7 @@ public:
         std::string customCourseName;
         std::vector<MapPage> customMaps;
         unsigned condition=0,weather=0,car=0; // condition = source course*2+direction
-        std::uint32_t resultStatus=0,ticks6000=0,recordFlags=0;
+        std::uint32_t resultStatus=0,ticks6000=0,recordFlags=0,passwordSalt=0;
         // Captured BEFORE insertion using source032000's strict comparison.
         // A top-ten run need not beat the course/model/personal best.
         // Qualification does not gate post-race leaderboard visibility.
@@ -96,8 +98,9 @@ public:
     const std::vector<OriginalRankingRecord>& rankingRows()const{return rows_;}
 private:
     struct Bank { NativeModel model; NativeTextureBank textures; };
-    Bank lecture_,ranking_,common_,select_;
-    NativeTextureBank alphabet_;
+    Bank lecture_,ranking_,common_,select_,password_,passwordTitle_,selectionCommon_;
+    NativeTextureBank alphabet_,passwordSpriteTextures_;
+    NativeSpriteBank passwordSprites_;
     std::array<Bank,8> maps_;
     OriginalRivalDialogScene choices_;
     MenuFont font_;
@@ -116,6 +119,8 @@ private:
     bool loaded_=false;
     void finish(Route);
     void beginContinue();
+    void beginPassword();
+    void paintPassword(std::span<std::uint32_t>,int,int)const;
     void prepareRanking();
     void paintLecture(std::span<std::uint32_t>,int,int)const;
     void paintRanking(std::span<std::uint32_t>,int,int)const;

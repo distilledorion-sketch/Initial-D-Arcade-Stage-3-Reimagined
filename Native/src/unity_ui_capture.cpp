@@ -23,6 +23,10 @@ struct Capture {
  std::unordered_map<const std::uint32_t*,Surface> surfaces;
  std::vector<NativeImage> textures;
  std::unordered_map<const std::uint32_t*,std::pair<std::size_t,unsigned>> texturePointers;
+ // Exported IDs outlive their original banks because cached surfaces refer
+ // to them. Reuse identical immutable pixels on reload instead of retaining
+ // another native copy and causing another Unity GPU upload each visit.
+ std::unordered_multimap<std::uint64_t,unsigned> textureContents;
  std::map<std::wstring,unsigned> glyphs;
 };
 Capture& state(){static Capture s;return s;}
@@ -43,12 +47,28 @@ bool performanceBaseline(){
 unsigned texture(const NativeImage& image){
  auto& s=state();const auto pointer=image.argb.data();const auto bytes=image.argb.size();
  if(auto it=s.texturePointers.find(pointer);it!=s.texturePointers.end()&&it->second.first==bytes)return it->second.second;
+ std::uint64_t hash=1469598103934665603ull;
+ hash=(hash^image.width)*1099511628211ull;hash=(hash^image.height)*1099511628211ull;
+ for(auto pixel:image.argb)hash=(hash^pixel)*1099511628211ull;
+ const auto [begin,end]=s.textureContents.equal_range(hash);
+ for(auto it=begin;it!=end;++it){const auto& saved=s.textures[it->second];
+  // The hash only selects candidates. Exact comparison keeps collisions,
+  // alpha changes and same-sized but different artwork visually distinct.
+  if(saved.width==image.width&&saved.height==image.height&&saved.argb==image.argb){
+   s.texturePointers[pointer]={bytes,it->second};return it->second;
+  }
+ }
  if(s.textures.size()>=16384)throw std::runtime_error("Unity UI source texture budget exceeded");
- const auto index=unsigned(s.textures.size());s.textures.push_back(image);s.texturePointers[pointer]={bytes,index};return index;
+ const auto index=unsigned(s.textures.size());s.textures.push_back(image);s.textureContents.emplace(hash,index);s.texturePointers[pointer]={bytes,index};return index;
 }
 Surface& surface(const std::uint32_t* pointer,int width,int height){auto& s=state().surfaces[pointer];s.width=width;s.height=height;return s;}
-void append(Surface& dst,const Surface& src,float sx,float sy,float ox,float oy,unsigned flags=0,float opacity=1){
- for(auto d:src.draws){
+struct SourceClip{float left,top,right,bottom;};
+void append(Surface& dst,const Surface& src,float sx,float sy,float ox,float oy,unsigned flags=0,float opacity=1,const SourceClip* clip=nullptr){
+ // Source and destination can alias. Index only the original draw extent,
+ // and fetch vertices by index so vector growth cannot invalidate a reader.
+ const auto count=src.draws.size();
+ for(std::size_t at=0;at<count;++at){auto d=src.draws[at];
+  if(clip){d.clipLeft=std::max(d.clipLeft,clip->left);d.clipTop=std::max(d.clipTop,clip->top);d.clipRight=std::min(d.clipRight,clip->right);d.clipBottom=std::min(d.clipBottom,clip->bottom);}
   if(d.clipRight<=d.clipLeft||d.clipBottom<=d.clipTop)continue;
   const auto first=unsigned(dst.vertices.size());
   for(unsigned i=d.first;i<d.first+d.count;++i){auto v=src.vertices[i];v.x=v.x*sx+ox;v.y=v.y*sy+oy;dst.vertices.push_back(v);}
@@ -78,17 +98,21 @@ void unityUiClear(const std::uint32_t* target,int width,int height,unsigned argb
 void unityUiCopy(const std::uint32_t* destination,const std::uint32_t* source,int width,int height,float sx,float sy,float ox,float oy,bool add,bool additive){
  if(!unityUiEnabled())return;auto& s=state();const auto found=s.surfaces.find(source);
  if(found==s.surfaces.end()){++s.frame.unresolvedSurfaces;return;}
- const Surface copied=found->second;auto& dst=surface(destination,width,height);if(!add){dst.vertices.clear();dst.draws.clear();}
- append(dst,copied,sx,sy,ox,oy,additive?4u:0u);
+ if(destination==source&&!add){
+  const Surface copied=found->second;auto& dst=surface(destination,width,height);dst.vertices.clear();dst.draws.clear();
+  append(dst,copied,sx,sy,ox,oy,additive?4u:0u);return;
+ }
+ const auto& src=found->second;auto& dst=surface(destination,width,height);if(!add){dst.vertices.clear();dst.draws.clear();}
+ append(dst,src,sx,sy,ox,oy,additive?4u:0u);
 }
 void unityUiCopyRegion(const std::uint32_t* target,int width,int height,float left,float top,float right,float bottom,float x,float y,float w,float h){
  if(!unityUiEnabled()||right<=left||bottom<=top)return;auto& st=state();auto found=st.surfaces.find(target);if(found==st.surfaces.end()){++st.frame.unresolvedSurfaces;return;}
- auto copy=found->second;for(auto& d:copy.draws){d.clipLeft=std::max(d.clipLeft,left);d.clipTop=std::max(d.clipTop,top);d.clipRight=std::min(d.clipRight,right);d.clipBottom=std::min(d.clipBottom,bottom);}
- append(surface(target,width,height),copy,w/(right-left),h/(bottom-top),x-left*w/(right-left),y-top*h/(bottom-top));
+ const SourceClip clip{left,top,right,bottom};auto& dst=surface(target,width,height);
+ append(dst,dst,w/(right-left),h/(bottom-top),x-left*w/(right-left),y-top*h/(bottom-top),0,1,&clip);
 }
 bool unityUiCopyImage(const std::uint32_t* destination,int width,int height,const NativeImage& image,float x,float y,float w,float h,float opacity){
  if(!unityUiEnabled())return false;const auto found=state().surfaces.find(image.argb.data());if(found==state().surfaces.end())return false;
- const auto copy=found->second;append(surface(destination,width,height),copy,w/image.width,h/image.height,x,y,0,opacity);return true;
+ const auto& src=found->second;append(surface(destination,width,height),src,w/image.width,h/image.height,x,y,0,opacity);return true;
 }
 void unityUiSolid(const std::uint32_t* target,int width,int height,float x,float y,float w,float h,unsigned argb){
  if(!unityUiEnabled())return;static const NativeImage white{1,1,{0xffffffff}};

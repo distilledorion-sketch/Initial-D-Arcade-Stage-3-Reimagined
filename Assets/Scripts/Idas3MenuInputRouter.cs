@@ -5,13 +5,16 @@ internal sealed partial class Idas3MenuInputRouter
     internal enum Action { None, OnlineNavigation, PauseBack, PauseActivate, PauseNavigate, OpenPause }
     internal struct Sample
     {
-        internal bool Escape, Back, Confirm, CloseHeld;
+        internal bool Escape, Back, Confirm, ViewChange;
+        // Context-specific extras (pointer or attract View Change). Common
+        // menu keys/buttons are derived below, never duplicated by adapters.
+        internal bool CloseHeld;
         internal uint Buttons;
         internal int Horizontal, Vertical;
     }
     internal struct Context
     {
-        internal bool Focused, OnlineBlocksInput, PauseOpen, CanOpenPause, PointerActive, NavigationHeld;
+        internal bool Focused, OnlineBlocksInput, PauseOpen, CanOpenPause, PointerActive, NavigationHeld, CardForcedQuit;
         internal double Now;
     }
     internal struct Command
@@ -51,8 +54,10 @@ internal sealed partial class Idas3MenuInputRouter
         if (!focused) focusReleaseBlocked = true;
     }
 
-    private static bool NavigationHeld(Sample sample) => sample.Escape || sample.Back || sample.Confirm ||
-        sample.CloseHeld || (sample.Buttons & 0x301Fu) != 0 || sample.Horizontal != 0 || sample.Vertical != 0;
+    private static bool ClosingControlHeld(Sample sample) => sample.Escape || sample.Back || sample.Confirm ||
+        sample.CloseHeld || (sample.Buttons & 0x3010u) != 0;
+    private static bool NavigationHeld(Sample sample) => ClosingControlHeld(sample) ||
+        (sample.Buttons & 0xFu) != 0 || sample.Horizontal != 0 || sample.Vertical != 0;
 
     internal Command Process(Sample sample, Context context)
     {
@@ -69,7 +74,7 @@ internal sealed partial class Idas3MenuInputRouter
             focusReleaseBlocked = true;
             navigationAxis = 0;
         }
-        else if (!sample.CloseHeld) suppressClosingControls = false;
+        else if (!ClosingControlHeld(sample)) suppressClosingControls = false;
 
         // Online owns navigation before pause; the host forwards focus and
         // capture guards to that menu even while no command may be activated.
@@ -90,7 +95,7 @@ internal sealed partial class Idas3MenuInputRouter
             if (pausePointer.Block(context.PointerActive, context.NavigationHeld)) navigationAxis = 0;
             else if (openingReleaseBlocked)
             {
-                if (!sample.CloseHeld) openingReleaseBlocked = false;
+                if (!ClosingControlHeld(sample)) openingReleaseBlocked = false;
             }
             else if (escapePressed || backPressed || (buttons & 0x2000) != 0)
                 return new Command { Kind = Action.PauseBack };
@@ -107,6 +112,11 @@ internal sealed partial class Idas3MenuInputRouter
                         Horizontal = sample.Vertical == 0 ? sample.Horizontal : 0, Vertical = sample.Vertical };
             }
         }
+        // The original card option gives Start + View Change to the native
+        // race owner. Do not consume that chord by opening the host pause menu.
+        else if (context.CardForcedQuit && context.CanOpenPause && !suppressClosingControls &&
+            sample.ViewChange && (sample.Escape || (sample.Buttons & 0x10u) != 0))
+            return default;
         else if (escapePressed && context.CanOpenPause && !suppressClosingControls)
         {
             ownsFrame = true;

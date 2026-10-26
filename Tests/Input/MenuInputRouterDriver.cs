@@ -17,6 +17,18 @@ internal static class MenuInputRouterDriver
     {
         var router = new Router();
         var driving = new Router.Context { Focused = true, CanOpenPause = true };
+        var cardDriving = driving; cardDriving.CardForcedQuit = true;
+        var quitChord = new Router.Sample { Escape = true, ViewChange = true, Buttons = 0x8010 };
+        Check(router.Process(quitChord, cardDriving).Kind == Router.Action.None && !router.BlocksGameInput(false, false, 0),
+            "enabled card forced-quit chord reaches native offline race");
+        router = new Router();
+        Check(router.Process(quitChord, driving).Kind == Router.Action.OpenPause,
+            "disabled card forced-quit chord retains normal pause");
+        router = new Router();
+        var cardOnline = cardDriving; cardOnline.OnlineBlocksInput = true;
+        Check(router.Process(quitChord, cardOnline).Kind == Router.Action.OnlineNavigation,
+            "online menu retains ownership over card forced-quit chord");
+        router = new Router();
         var start = new Router.Sample { Escape = true, Buttons = 0x10, CloseHeld = true };
         Check(router.Process(start, driving).Kind == Router.Action.OpenPause, "bound Start opens pause once");
         router.VisibilityChanged(true, 10);
@@ -91,6 +103,95 @@ internal static class MenuInputRouterDriver
         MusicChecks();
         FrontendChecks();
         FocusGapChecks();
+        ClosingControlChecks();
+        OnlineOwnershipChecks();
+    }
+
+    private static void OnlineOwnershipChecks()
+    {
+        var router = new Router();
+        var context = new Router.OnlineContext { Open = true, Frame = 1 };
+        var toggle = new Router.OnlineSample { Toggle = true };
+        var cancel = new Router.OnlineSample { Cancel = true };
+        Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.Toggle, "fresh online shortcut toggles once");
+        Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.None, "held online shortcut does not repeat");
+        router.ProcessOnline(default, context);
+        Check(router.ProcessOnline(cancel, context) == Router.OnlineAction.Back, "fresh online cancel returns one level");
+        context.Open = false; router.ProcessOnline(default, context);
+        Check(router.ProcessOnline(cancel, context) == Router.OnlineAction.None, "online cancel cannot act on a closed menu");
+
+        foreach (bool terminal in new[] { false, true })
+        {
+            router = new Router(); context.Open = true;
+            context.Blocked = !terminal; context.Terminal = terminal;
+            router.OnlineClosed(); router.OnlineTextEnded(1);
+            context.Frame = 10; router.ProcessOnline(default, context);
+            Check(router.OnlineClosingControls && router.OnlineCapturesText(false, 10), "blocked/terminal neutral cannot release another screen's guards");
+            context.Blocked = context.Terminal = false;
+            Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.None, "held shortcut cannot reopen online after focus/terminal coverage");
+            Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.None, "online shortcut waits through a continued hold");
+            router.ProcessOnline(default, context);
+            Check(!router.OnlineClosingControls && !router.OnlineCapturesText(false, 10), "focused neutral releases online and text guards");
+            Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.Toggle, "fresh shortcut works after focused release");
+        }
+
+        router = new Router(); context.TextEditing = true; context.Frame = 20;
+        Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.None, "text entry owns F1 while editing");
+        router.OnlineTextEnded(20); context.TextEditing = false;
+        router.ProcessOnline(default, context);
+        Check(router.OnlineCapturesText(false, 20), "text closing frame remains covered");
+        context.Frame = 21; router.ProcessOnline(default, context);
+        Check(router.OnlineCapturesText(false, 21), "text following frame remains covered");
+        context.Frame = 22;
+        router.ProcessOnline(new Router.OnlineSample { AnyKey = true }, context);
+        Check(router.OnlineCapturesText(false, 22), "typing key held after blur retains text guard");
+        router.ProcessOnline(new Router.OnlineSample { NavigationHeld = true }, context);
+        Check(router.OnlineCapturesText(false, 22), "held controller navigation after blur retains text guard");
+        router.ProcessOnline(new Router.OnlineSample { PointerHeld = true }, context);
+        Check(router.OnlineCapturesText(false, 22), "held text-ending click retains text guard");
+        router.ProcessOnline(default, context);
+        Check(!router.OnlineCapturesText(false, 22), "neutral input releases text without needing menu-navigation polling");
+        Check(router.ProcessOnline(cancel, context) == Router.OnlineAction.Back, "fresh cancel works after text release");
+        context.Blocked = true; router.ProcessOnline(default, context); context.Blocked = false;
+        router.ProcessOnline(new Router.OnlineSample { AnyKey = true }, context);
+        Check(router.ProcessOnline(toggle, context) == Router.OnlineAction.Toggle, "unrelated held driving key does not prevent fresh online shortcut");
+        router.OnlineClosed(); context.Open = false;
+        router.ProcessOnline(new Router.OnlineSample { NavigationHeld = true, CloseHeld = true }, context);
+        Check(router.OnlineClosingControls, "held confirm/back still owns a closing overlay");
+        router.ProcessOnline(new Router.OnlineSample { NavigationHeld = true }, context);
+        Check(!router.OnlineClosingControls, "held steering does not keep a closed overlay blocking driving");
+    }
+
+    private static void ClosingControlChecks()
+    {
+        // The scene adapter supplies each key/button once; the router owns
+        // which of those controls must be released when a menu closes.
+        foreach (var held in new[] {
+            new Router.Sample { Back = true },
+            new Router.Sample { Escape = true },
+            new Router.Sample { Confirm = true },
+            new Router.Sample { Buttons = 0x1000 },
+            new Router.Sample { Buttons = 0x2000 },
+            new Router.Sample { Buttons = 0x10 },
+            new Router.Sample { CloseHeld = true }
+        })
+        {
+            var router = new Router();
+            var driving = new Router.Context { Focused = true, CanOpenPause = true };
+            router.VisibilityChanged(false, 1);
+            router.Process(held, driving);
+            Check(router.SuppressClosingControls, "every closing key/button retains the transition guard");
+            Check(router.BlocksGameInput(false, true, 10), "held closing control cannot reach the original frontend");
+            Check(!router.BlocksGameInput(false, false, 10), "closing key mask permits unrelated driving after transition");
+            router.Process(default, driving);
+            Check(!router.SuppressClosingControls, "focused release clears the closing control guard");
+        }
+        var opening = new Router();
+        opening.VisibilityChanged(true, 1);
+        var back = new Router.Sample { Back = true };
+        Check(opening.Process(back, Paused()).Kind == Router.Action.None, "opening release guard includes Backspace");
+        opening.Process(default, Paused());
+        Check(opening.Process(back, Paused()).Kind == Router.Action.PauseBack, "fresh Backspace works after opening release");
     }
 
     private static void FocusGapChecks()

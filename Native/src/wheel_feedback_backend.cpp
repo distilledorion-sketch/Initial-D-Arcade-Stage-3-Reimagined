@@ -469,8 +469,12 @@ int IDAS3_WHEEL_CALL Idas3WheelUpdateCabinet(const char* guidUtf8,
         const Idas3WheelRaceState* state) noexcept {
     try{
         std::lock_guard lock(backend.mutex);
-        if(!state||state->size!=sizeof(Idas3WheelRaceState)||state->version!=1u){
+        if(!state||!((state->size==52&&state->version==1u)||
+                     (state->size==sizeof(Idas3WheelRaceState)&&state->version==2u))){
             backend.stopWithMessage("Unsupported wheel race state layout. Feedback stopped.");return 0;}
+        const int cardSteering=state->version==2u?state->cardSteeringLevel:-1;
+        if(cardSteering < -1 || cardSteering > 8){
+            backend.stopWithMessage("Invalid saved steering setting. Feedback stopped.");return 0;}
         idas3ffb::OwnerInput input{};
         input.driving=state->driving!=0u;
         input.carIndex=int(state->carIndex);
@@ -478,6 +482,7 @@ int IDAS3_WHEEL_CALL Idas3WheelUpdateCabinet(const char* guidUtf8,
         input.headingError=state->headingError;input.wallLateral=state->wallLateral;
         input.impact=state->impact;input.wallContact=state->wallContact!=0u;
         input.strength=state->strength;input.invert=state->invert!=0u;
+        input.cardSteeringLevel=cardSteering;
         cabinetOwner.update(input,state->deltaSeconds);
         const auto cabinet=cabinetFromBoard();
         return backend.setCabinet(guidUtf8,cabinet)?1:0;
