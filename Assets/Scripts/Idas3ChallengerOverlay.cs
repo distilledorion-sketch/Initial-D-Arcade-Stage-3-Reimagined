@@ -19,7 +19,7 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
     public bool SearchingVisible => session!=null&&session.IsQuickMatching&&!session.HandshakeComplete&&
         !session.IsRacing&&!Active&&host.Ready&&(host.Status.flags&(1u|32u|512u|1024u|4096u))==0&&host.Status.racePhase<3;
     internal int Announcements { get; private set; }
-    Camera overlayCamera;
+    Camera overlayCamera,sourceCamera;
     Canvas canvas;
     RawImage shade,bandImage,eyeImage,titleImage,flashImage,badge;
     RectTransform band;
@@ -46,7 +46,7 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
     }
     public void Initialize(Idas3SceneGame owner,Idas3MultiplayerSession connection)
     {
-        host=owner;session=connection;
+        host=owner;session=connection;sourceCamera=host.GetComponent<Camera>();
         Texture2D Load(int i){var t=Resources.Load<Texture2D>("Challenger/interrupt_"+i);if(t==null)throw new InvalidOperationException("Missing original challenger texture "+i);return t;}
         background=Load(0);eyes=Load(1);lettering=Load(2);flash=Load(3);accepting=Load(4);
         CreateCanvas();session.ChallengerFound+=Begin;
@@ -71,7 +71,10 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
     void LateUpdate()=>ApplyFrame();
     internal void ApplyFrame(){
         if(overlayCamera==null)return;
-        var source=host.GetComponent<Camera>();overlayCamera.targetTexture=source.targetTexture;
+        bool searching=SearchingVisible;
+        overlayCamera.enabled=Active||searching;canvas.enabled=overlayCamera.enabled;
+        if(!overlayCamera.enabled)return;
+        var source=sourceCamera;overlayCamera.targetTexture=source.targetTexture;
         overlayCamera.rect=new Rect(0,0,1,1);
         int width=source.targetTexture!=null?source.targetTexture.width:Screen.width;
         int height=source.targetTexture!=null?source.targetTexture.height:Screen.height;
@@ -94,8 +97,7 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
         badge.rectTransform.anchoredPosition=new Vector2(
             (centerX-safeLeft)/fit-badge.rectTransform.sizeDelta.x*.5f*hudScale,
             -(centerY-safeTop)/fit+badge.rectTransform.sizeDelta.y*.5f*hudScale);
-        overlayCamera.enabled=Active||SearchingVisible;canvas.enabled=overlayCamera.enabled;
-        shade.gameObject.SetActive(Active);bandImage.gameObject.SetActive(Active);badge.gameObject.SetActive(SearchingVisible);
+        shade.gameObject.SetActive(Active);bandImage.gameObject.SetActive(Active);badge.gameObject.SetActive(searching);
         if(Active){
             float age=(float)(Time.realtimeSinceStartupAsDouble-began);
             float slide=(1-Mathf.SmoothStep(0,1,Mathf.Clamp01(age/.2f)))*640;

@@ -154,6 +154,7 @@ void Frontend::change(int delta) {
     // A native key repeat traverses the original choice set. Animation and
     // original cabinet wheel repeat timing are not asserted by this function.
     switch(stage) {
+    case FrontendStage::SavedData:savedData_->change(delta);break;
     case FrontendStage::SaveSelect:
         if(saveDeleteRequested>=0)break;
         if(saveDeleteOpen)saveDeleteSelected=wrapped(saveDeleteSelected+delta,2);
@@ -222,6 +223,7 @@ bool Frontend::back() {
     synchronizeStage();
     if(carConfirmationFrame>=0)return true;
     if(stage==FrontendStage::Title) return false;
+    if(stage==FrontendStage::SavedData){savedData_->cancel();return true;}
     if(stage==FrontendStage::Name){if(inputReady())nameInput.backPressed=true;return true;}
     // Main12AD80 has confirm/timeout input, no cancel branch.
     if(stage==FrontendStage::TuningCourse){
@@ -263,6 +265,10 @@ bool Frontend::back() {
 void Frontend::selectSavedCarTuningCourse(){
     savedCarTuningCourse=true;stage=FrontendStage::TuningCourse;synchronizeStage();
 }
+void Frontend::selectSavedData(){
+    if(!savedData_){savedData_=std::make_unique<original::OriginalSavedData>();savedData_->load(projectRoot);}
+    stage=FrontendStage::SavedData;synchronizeStage();savedData_->begin(battleProfile);
+}
 void Frontend::selectSavedCarTransmission(bool returnToCar){
     if(stage==FrontendStage::Transmission&&(savedCarTransmission||confirmationInProgress()))return;
     savedCarTransmission=true;savedTransmissionReturnToCar=returnToCar;
@@ -296,6 +302,7 @@ void Frontend::driverProfileLoaded(){
     }
 }
 void Frontend::changeColor(int delta){
+    if(stage==FrontendStage::SavedData){if(delta)savedData_->moveRow(delta);return;}
     if(stage==FrontendStage::SaveSelect){change(-delta);return;}
     if(stage==FrontendStage::Name){if(inputReady()&&delta)nameInput.rowJump=delta>0?-1:1;return;}
     synchronizeStage();if(stage!=FrontendStage::Car||!inputReady()||!delta)return;
@@ -309,6 +316,7 @@ bool Frontend::confirm() {
     synchronizeStage();
     if(!inputReady())return false;
     if(startRequested)return false;
+    if(stage==FrontendStage::SavedData){savedData_->confirm();return false;}
     if(stage==FrontendStage::Title){titleConfirmPending=true;return false;}
     if(stage==FrontendStage::SaveSelect){
         if(saveFileChosen||saveCarChangeRequested||saveDeleteRequested>=0)return false;
@@ -417,7 +425,7 @@ void Frontend::synchronizeSelectionMusicStage(){
     // and it leads straight into Make, so it takes TYPE too. Left on the
     // default SELECT it stopped, unloaded and reloaded the bank one frame
     // after the player picked a file.
-    const auto cue=stage==FrontendStage::SaveSelect||stage==FrontendStage::Make||stage==FrontendStage::Car||stage==FrontendStage::Transmission||stage==FrontendStage::Name||stage==FrontendStage::TuningCourse
+    const auto cue=stage==FrontendStage::SavedData||stage==FrontendStage::SaveSelect||stage==FrontendStage::Make||stage==FrontendStage::Car||stage==FrontendStage::Transmission||stage==FrontendStage::Name||stage==FrontendStage::TuningCourse
         ?original::OriginalSelectionMusicCue::Type:original::OriginalSelectionMusicCue::Select;
     appendSelectionMusic(original::requestOriginalSelectionMusic(selectionMusic,cue));
 }
@@ -533,6 +541,13 @@ void Frontend::advance(double seconds,bool modeCovered) {
     advanceMenuBackdrop(seconds);
     const auto updateOwner=[&]() -> bool {
         ++carFrame;
+        if(stage==FrontendStage::SavedData){
+            const auto events=savedData_->advance(battleProfile);
+            menuCueIds.insert(menuCueIds.end(),events.soundGroups.begin(),events.soundGroups.end());
+            driverProfileCommit|=events.profileWritten;
+            if(events.parentRequested){selectSavedCarTransmission();return true;}
+            return false;
+        }
         if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::BuntaChallenge)
             buntaBadgeFrame=std::min(buntaBadgeFrame+1,34u);
         if(selectionExitFrame>=0){
@@ -1023,6 +1038,7 @@ const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     const int drawWidth=std::max(1,int(640.f*fit)),drawHeight=std::max(1,int(480.f*fit));
     const int left=(width-drawWidth)/2,top=(height-drawHeight)/2;
+    if(menuMargins&&stage==FrontendStage::SavedData)savedData_->paintBackground(displayPixels,width,height);
     unityUiCopy(displayPixels.data(),canvas.data(),width,height,float(drawWidth)/640,float(drawHeight)/480,float(left),float(top),true);
     if(!unityUiEnabled()){
     std::vector<int> columns(std::size_t(drawWidth),0);
@@ -1031,7 +1047,7 @@ const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
         for(int x=0;x<drawWidth;++x)destination[x]=row[columns[std::size_t(x)]];}
     }
     if(showingGasstand())gasstand.extendBackdrop(displayPixels,width,height);
-    else if(menuMargins)paintMenuMargins(displayPixels,width,height);
+    else if(menuMargins&&stage!=FrontendStage::SavedData)paintMenuMargins(displayPixels,width,height);
     if(stage==FrontendStage::Title&&attractChildId==7)demoOverlays.extendBackdrop(displayPixels,width,height,titleFrame?titleFrame-1:0);
     displayedCanvas=&canvas;displayedRevision=canvasRevision;displayedWidth=width;displayedHeight=height;
     displayedBackdropFrame=menuBackdropFrame;
@@ -1058,6 +1074,12 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
     if(make<0 || make>=7 || car<0 || car>=35 || course<0 || (course>=9 && (!isImportedCourse(course) || !importedArtwork(course).size()))) throw std::out_of_range("Invalid native menu selection");
     if(stage==FrontendStage::Car)synchronizeCarousel();
     if(stage==FrontendStage::Course)synchronizeCourseCarousel();
+    if(stage==FrontendStage::SavedData){
+        const std::vector<int> key{int(stage),int(savedData_->state().frame448)};
+        if(key==previousKey)return pixels;previousKey=key;++canvasRevision;
+        pixels.assign(width*height,0xff000000u);unityUiClear(pixels.data(),width,height,0xff000000u);
+        savedData_->paint(pixels,width,height,battleProfile);return pixels;
+    }
     if(stage==FrontendStage::TuningCourse){
         const std::vector<int> key{int(stage),int(tuningCourseMenu.frame492)};
         if(key==previousKey)return pixels;previousKey=key;++canvasRevision;

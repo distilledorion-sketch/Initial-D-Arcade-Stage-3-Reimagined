@@ -54,9 +54,13 @@ namespace Idas3.Multiplayer
             public string sha256;
         }
         private readonly string directory;
+        private readonly Advance progression;
+        internal string SaveRoot => Path.GetDirectoryName(directory);
         public string LastRecovery {get;private set;}
-        public Idas3MultiplayerRecords(string saveRoot)
+        public Idas3MultiplayerRecords(string saveRoot) : this(saveRoot, Next) { }
+        internal Idas3MultiplayerRecords(string saveRoot, Advance progression)
         {
+            this.progression = progression ?? throw new ArgumentNullException(nameof(progression));
             if(string.IsNullOrWhiteSpace(saveRoot))throw new ArgumentException("An actual save root is required.",nameof(saveRoot));
             directory=Path.Combine(Path.GetFullPath(saveRoot),"online_records_v1");
         }
@@ -67,6 +71,28 @@ namespace Idas3.Multiplayer
         }
         public Idas3BattleRecord Read(int car)=>Load(car,out _).record;
         public int ReadLevelPoints(int car){var saved=Load(car,out _);return checked((int)((saved.record.level-1)*100+saved.experience));}
+        internal void CaptureResultBaseline(int car,out int points,out string[] resetKeys)
+        {
+            var saved=Load(car,out _);
+            points=checked((int)((saved.record.level-1)*100+saved.experience));
+            resetKeys=(string[])saved.appliedResetKeys.Clone();
+        }
+        internal bool ResultWasReset(int car,string[] resetKeys)
+        {
+            ValidateResetKeys(resetKeys);
+            return HasNewReset(Load(car,out _),resetKeys);
+        }
+        private static bool HasNewReset(State state,string[] resetKeys)
+        {
+            var previous=new HashSet<string>(resetKeys,StringComparer.Ordinal);
+            foreach(string key in state.appliedResetKeys)if(!previous.Contains(key))return true;
+            return false;
+        }
+        internal Idas3BattleRecord CommitRecovered(int car,ulong raceId,bool won,Idas3BattleRecord opponent,string[] resetKeys)
+        {
+            ValidateResetKeys(resetKeys);
+            return Commit(car,raceId,won,opponent,progression,resetKeys);
+        }
 
         // The native evaluator owns the original progression arithmetic. This
         // store neither infers levels from win ratio nor awards tuning points.
@@ -80,13 +106,13 @@ namespace Idas3.Multiplayer
                 throw new InvalidOperationException("Original online record update failed: "+Idas3Native.Error());
             Validate(after);if(nextExperience>99)throw new InvalidDataException("Invalid original battle experience.");return after;
         }
-        private delegate Idas3BattleRecord Advance(Idas3BattleRecord before,bool won,Idas3BattleRecord opponent,uint experience,out uint nextExperience);
+        internal delegate Idas3BattleRecord Advance(Idas3BattleRecord before,bool won,Idas3BattleRecord opponent,uint experience,out uint nextExperience);
         public Idas3BattleRecord Commit(int car,ulong raceId,bool won,Idas3BattleRecord opponent)
         {
-            return Commit(car,raceId,won,opponent,Next);
+            return Commit(car,raceId,won,opponent,progression);
         }
         private Idas3BattleRecord Commit(int car,ulong raceId,bool won,Idas3BattleRecord opponent,
-            Advance advance)
+            Advance advance,string[] resultResetKeys=null)
         {
             if(raceId==0)throw new ArgumentOutOfRangeException(nameof(raceId));Validate(opponent);
             var state=Load(car,out bool primaryValid);string id=raceId.ToString(CultureInfo.InvariantCulture);
@@ -94,7 +120,11 @@ namespace Idas3.Multiplayer
                 if(receipt.won!=won||!receipt.opponent.Equals(opponent))throw new InvalidDataException("Conflicting result for a recorded online race.");
                 return state.record;
             }
-            var after=advance(state.record,won,opponent,state.experience,out uint experience);Validate(after);
+            // An admin reset newer than the durable result intent takes
+            // precedence. Retain a receipt even when its history is suppressed.
+            uint experience=state.experience;
+            var after=resultResetKeys!=null&&HasNewReset(state,resultResetKeys)?state.record:
+                advance(state.record,won,opponent,state.experience,out experience);Validate(after);
             if(experience>99)throw new InvalidDataException("Invalid next online battle experience.");
             var receipts=new Receipt[state.receipts.Length+1];Array.Copy(state.receipts,receipts,state.receipts.Length);
             receipts[receipts.Length-1]=new Receipt{raceId=id,won=won,opponent=opponent};

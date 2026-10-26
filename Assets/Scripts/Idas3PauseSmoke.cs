@@ -18,6 +18,9 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     private string root;
     private int checks,pulse;
     private uint padPulse;
+    private int focusHeldKey;
+    private uint focusHeldButtons;
+    private bool FocusGapCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-focus-check")>=0;
     private bool online,finished,driving;
     private double began;
     private readonly List<Observation> observations=new List<Observation>();
@@ -83,7 +86,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         if(active==null||active.finished)return false;
         // Controller pause now has one owner: the actual binding mapper. Do
         // not bypass it by adding a raw Start bit after action translation.
-        pad=new Idas3ControlBindings.PadState{connected=true,buttons=(ushort)active.padPulse};return true;
+        pad=new Idas3ControlBindings.PadState{connected=true,buttons=(ushort)(active.padPulse|
+            (active.host.DiagnosticFocusOverride!=false?active.focusHeldButtons:0))};return true;
     }
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame){
         if(active==null)return true;if(active.finished)return !active.online;
@@ -91,6 +95,10 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
             if(active.driving)frame.SetKey(87);}
         if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}
         if(active.padPulse!=0){frame.padConnected=1;frame.padButtons|=active.padPulse;active.padPulse=0;}
+        if(active.host.DiagnosticFocusOverride!=false){
+            if(active.focusHeldKey!=0)frame.SetKey(active.focusHeldKey);
+            if(active.focusHeldButtons!=0){frame.padConnected=1;frame.padButtons|=active.focusHeldButtons;}
+        }
         return true;
     }
     private void Check(bool ok,string reason){++checks;if(!ok)throw new InvalidOperationException(reason+" flags="+host.Status.flags+" ticks="+host.Status.simulationTicks);}
@@ -110,6 +118,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(options.Current.controllerResponse==0&&Idas3Native.Idas3SceneGetControllerResponse()==0,"Fresh game did not default to Flycast gamepad response");
         Check(host.ControllerDevices.Select("keyboard"),"Could not isolate injected pause controls");yield return Frames(3);driving=true;pulse=116;
         yield return Until(()=>((host.Status.flags&1)==0)&&host.Status.simulationTicks>200,35,"Offline race did not start");
+        if(FocusGapCheck){yield return FocusGapChecks();Finish(true,null);yield break;}
         if(FovCheck){yield return FovChecks();Finish(true,null);yield break;}
         if(NaturalCameraCheck){yield return NaturalCameraChecks();Finish(true,null);yield break;}
         var wheelState=new Idas3Native.WheelState{size=(uint)Marshal.SizeOf<Idas3Native.WheelState>()};
@@ -130,6 +139,22 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         yield return Until(()=>host.Status.simulationTicks>frozen+20,5,"Offline race did not resume after focus recovery");
         padPulse=0x10;yield return Frames(5);Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Controller Start did not open offline pause");
         Observe("offline-start-paused");menu.SetOpen(false);host.DiagnosticFocusOverride=null;Finish(true,null);
+    }
+    private IEnumerator FocusGapChecks(){
+        foreach(int control in new[]{13,27,8,0x1000,0x2000,0x10}){
+            menu.SetOpen(true);yield return Frames(5);
+            host.DiagnosticFocusOverride=false;yield return Frames(3);
+            if(control<=27&&control!=0x10)focusHeldKey=control;else focusHeldButtons=(uint)control;
+            yield return Frames(3);host.DiagnosticFocusOverride=true;yield return Frames(12);
+            Check(menu.IsOpen,"Held menu control activated after neutral focus gap: "+control);
+            focusHeldKey=0;focusHeldButtons=0;yield return Frames(5);
+            if(control<=27&&control!=0x10)focusHeldKey=control;else focusHeldButtons=(uint)control;
+            yield return Frames(5);Check(!menu.IsOpen,"Released menu control failed to resume: "+control);
+            if(control==8)Check((host.DiagnosticSubmittedInput.key0&(1u<<8))==0,
+                "Held closing Backspace leaked into native gameplay");
+            focusHeldKey=0;focusHeldButtons=0;yield return Frames(5);
+            Observe("focused-release-control-"+control);
+        }
     }
     private NativeOptions CameraOptions(){var value=new NativeOptions{size=(uint)Marshal.SizeOf<NativeOptions>()};Check(Idas3SceneGetOptions(ref value)==1&&value.version==1,"Camera options unavailable");return value;}
     private static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value);
@@ -585,7 +610,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     }
     private void WriteReport(bool passed,string error,bool stopped){File.WriteAllText(Path.Combine(root,online?"pause-options-report.json":"report.json"),JsonUtility.ToJson(new Report{
         passed=passed,error=error,online=online,shutdownComplete=stopped,checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,options=options.Current,
-        observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),cameras=cameraObservations.ToArray(),fov=fovObservations.ToArray(),scope=FovCheck?
+        observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),cameras=cameraObservations.ToArray(),fov=fovObservations.ToArray(),scope=FocusGapCheck?
+        "Private native race with normal pause owner and injected keyboard/controller controls. Focus override supplies the neutral input gap seen when hardware is not sampled; held controls must wait for focused release before resuming. No OS Alt-Tab, physical device or visual capture acceptance.":FovCheck?
         "Isolated actual Unity/native race frozen through the ordinary pause owner. Unapplied/cancelled FOV drafts preserve live projection. Production options apply 50/100/150/200 percent to all three authored driving cameras; native camera FOV and VP agree with Unity projection/culling, pose and simulation remain fixed, and any rear-view mirror stays unchanged. Restores authored 100 percent and original view. Scene captures use Camera.Render and omit the managed pause overlay; no live online route or replay camera is exercised.":NaturalCameraCheck?
         "Isolated actual Unity/native race: existing C/controller-Y view control cycles Bumper 0, Chase 1 and Natural 2; Gameplay DEFAULT CAMERA navigates, cancels, applies and reloads Natural without changing other settings or bindings. Native and Unity camera frames stay finite, external views include the player car, and Natural stays stable while paused and resumes with the race. Chase/Natural scene captures omit the managed pause overlay at one frozen simulation tick. No diagnostic camera pose or physics changes are used. "+(SceneOnlyCapture?"Scene-only capture explicitly skips menu OnGUI screenshots; menu appearance is not visually validated.":"Options captures use actual OnGUI Repaint. The no-capture flag skips all screenshot checks."):
         "Actual game/options owners with isolated saves; keyboard/controller input traverses the normal SceneGame pause router. Controller response/deadzone checks use normal gameplay-row navigation and APPLY, native setters/getters, per-response persistence, bounds and isolated legacy JSON migration. Steering smoothing uses the sixth Gameplay slider, one-percent navigation, BACK cancellation, APPLY, native range checks, legacy-off defaults and global save/reload; online clocks and packets are checked while smoothing options remain open. Wheel rows and persistence are tested with live feedback disabled; enabled persistence uses a platform without hardware output. Focus loss uses its diagnostic override through normal managed/native gates. Options images use real OnGUI Repaint on AA1 target. Online snapshots use normal two-client LAN transport; this is not Steam internet or OS Alt-Tab event coverage."},true));}

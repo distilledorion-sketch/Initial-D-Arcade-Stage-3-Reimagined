@@ -32,6 +32,7 @@ void OriginalAudioDsp::configure(const OriginalAudioDspProgram& p,bool preserveS
        (p.ringBaseBytes&2047)||p.initialMemoryWords.size()>65536)
         throw std::invalid_argument("Invalid original DSP ring configuration");
     std::array<Instruction,128> decoded{};
+    unsigned executedSteps=0;
     for(unsigned step=0;step<128;++step){
         const auto& w=p.instructions[step];auto& d=decoded[step];
         d.tra=(w[0]>>9)&127;d.twt=(w[0]&256)!=0;d.twa=(w[0]>>1)&127;
@@ -43,6 +44,11 @@ void OriginalAudioDsp::configure(const OriginalAudioDspProgram& p,bool preserveS
         d.negb=(w[2]&4)!=0;d.zero=(w[2]&2)!=0;d.bsel=(w[2]&1)!=0;
         d.nofl=(w[3]&0x8000)!=0;d.masa=(w[3]>>9)&63;
         d.adreb=(w[3]&256)!=0;d.nxadr=(w[3]&128)!=0;
+        // ACC, fraction, Y and the delayed-read slots are sample-local. Once
+        // the last persistent store has executed, further arithmetic cannot
+        // affect this sample's outputs or any subsequent sample. A final
+        // pending SRAM write is still committed after the loop below.
+        if(d.twt||d.iwt||d.mwt||d.ewt)executedSteps=step+1;
         // The original recovered presets avoid the hardware ambiguities in
         // the numerical references. Fail explicitly if that scope changes.
         if(d.nofl||d.table||d.adrl||d.adreb||d.ira>49||
@@ -52,7 +58,7 @@ void OriginalAudioDsp::configure(const OriginalAudioDspProgram& p,bool preserveS
             throw std::invalid_argument("Original DSP program exceeds the verified instruction subset");
     }
     const bool keep=preserveState&&configured_;
-    program_=p;instructions_=decoded;configured_=true;
+    program_=p;instructions_=decoded;executedSteps_=executedSteps;configured_=true;
     if(!keep)reset();
     else decrement_=((decrement_-1)&(program_.ringLengthWords-1))+1;
 }
@@ -64,7 +70,7 @@ void OriginalAudioDsp::reset(){
 void OriginalAudioDsp::clearProgram(){
     if(!configured_)configure(OriginalAudioDspProgram{});
     program_.instructions={};program_.coefficients={};program_.memoryAddresses={};
-    program_.effectRoutes.fill(0x10);instructions_={};temporary_={};memoryRegisters_={};effects_={};
+    program_.effectRoutes.fill(0x10);instructions_={};executedSteps_=0;temporary_={};memoryRegisters_={};effects_={};
 }
 void OriginalAudioDsp::setEffectRoute(unsigned index,std::uint16_t route){
     if(index>=program_.effectRoutes.size())throw std::out_of_range("Original DSP effect return index");
@@ -78,7 +84,7 @@ OriginalAudioDspFrame OriginalAudioDsp::render(std::span<const std::int32_t,16> 
     // programs access SRAM only on odd steps, so this retains the source
     // kernel's observable ordering while making the deferred write explicit.
     bool writePending=false;unsigned writeAddress=0;std::uint16_t writeValue=0;
-    for(unsigned step=0;step<128;++step){
+    for(unsigned step=0;step<executedSteps_;++step){
         if(writePending){memory_[writeAddress]=writeValue;writePending=false;}
         const auto& d=instructions_[step];
         std::int32_t inputs=0;

@@ -35,7 +35,7 @@ Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcad
 - Day, night and weather conditions supported by each course.
 - Controller, keyboard and supported wheel input.
 - Personal saves, progression, tuning and a Full Tune option.
-- Community Time Attack rankings with downloadable driving replays.
+- Community Time Attack rankings with time-only submissions.
 - Local replay library, camera controls, online opponent POV and replay engine audio.
 - Custom race music: put MP3, OGG and WAV files in `Custom Music` beside the game, or import them in Select BGM. Select BGM also lets you delete custom tracks.
 - Graphics presets, lower output resolutions and adjustable effects/scenery detail.
@@ -46,9 +46,9 @@ This project is a work in progress. Rendering fidelity, performance and multipla
 
 While connected, in-game rankings combine the selected save's personal bests with the current community leaderboard. Offline, only that save's personal records appear. Matching published personal times appear once.
 
-New leaderboard submissions require a complete replay and a supported build. Old personal times are preserved locally and are not uploaded retrospectively. Replay telemetry is useful for reviewing a run; it is not authoritative anti-cheat verification.
+New leaderboard submissions require a supported build; replay recording is optional and is not required to post a time. Old personal times are preserved locally and are not uploaded retrospectively. Submitted times are not authoritative anti-cheat verification.
 
-Personal Online Battle and Legend recordings stay on the player's PC. Only a replay attached to a submitted Time Attack is uploaded. Options > Replays opens the local library and recording controls.
+Personal Time Attack, Online Battle and Legend recordings stay on the player's PC. Community replay uploads and downloads are disabled. Options > Replays opens the local library and recording controls.
 
 ## Build and contribute
 

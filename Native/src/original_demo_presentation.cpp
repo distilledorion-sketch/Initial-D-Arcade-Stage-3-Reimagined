@@ -2,6 +2,7 @@
 #include "original_car_body_position.h"
 #include "original_race_path.h"
 #include "original_rival_appearance_catalog.h"
+#include "original_matrix.h"
 #include "car_catalog.h"
 #include <stdexcept>
 
@@ -61,12 +62,33 @@ void OriginalDemoPresentation::load(const std::filesystem::path& root,const orig
         // Keep counter -1 until this particular source ACar is first selected.
         cars_.emplace(enemy,std::move(asset));
     }
+    projectedTextures_=NativeTextureBank::load(root/"data/original_assets/headlight_projection/textures/textures.idastex");
+    projectedTextureBase_=base;glareTextureBase_=base+unsigned(projectedTextures_.size());
+    glare_.load(root);
     // Evaluate the existing native source queries once during background load.
     // Rendering a shot never seeks using a guessed nearest road or advances
     // collision caches at the host refresh rate.
     const auto path=original::OriginalRacePath::load(root,6);
     const auto collision=original::OriginalCollisionData::load(root/"data/original_physics/collision_k_df_0.rcl");
     std::map<unsigned,OriginalCarBodyPosition> bodyQueries;
+    std::map<unsigned,OriginalHeadlightPresentation> projectors;
+    for(unsigned enemy:enemies)projectors[enemy].load(root);
+    projectedModel_=projectors.begin()->second.model();
+    const auto fsca=original::OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");
+    // Dedicated03F620 dry-night constructor, not the ordinary Akina table:
+    // four downward half-white spots,20/40m falloff and120/130 degree angles.
+    // Use the race's Akina night ambient with the demo's own lamp locations.
+    // The source road projector multiplies destination color; dropping that
+    // ambient would turn every unlit section black and erase the beam.
+    courseLights_=original::originalCourseLighting(3,true,false);courseLights_.count=0;
+    courseLights_.sourceAddress=0x0c03f620;
+    const std::array<Vec3,4> anchors{{{190,1142,-349},{166,1142,-288},{1782,681,-1999},{1816,681,-1995}}};
+    for(unsigned i=0;i<anchors.size();++i){auto& light=courseLights_.lights[courseLights_.count++];
+        light.kind=original::OriginalCourseLightKind::Spot;light.sourceSlot=i;
+        light.position={anchors[i].x,anchors[i].y,anchors[i].z};light.incomingDirection={0,-1,0};light.color={.5f,.5f,.5f};
+        light.distance0=20;light.distance1=40;light.angle0=0x5555;light.angle1=0x5c72;
+        light.coefficientWords[0]=0x4220bf80;light.angleCosines={fsca.sinCos(light.angle0)[1],fsca.sinCos(light.angle1)[1]};
+    }
     std::array<original::OriginalPathCoordinate,2> coordinate{};
     original::OriginalDemoCursor cursor;
     positions_.resize(data.frameCount());
@@ -80,6 +102,21 @@ void OriginalDemoPresentation::load(const std::filesystem::path& root,const orig
             auto& presentation=cars_.at(shot.enemies[slot]).presentation;
             presentation.advanceOriginalFrame(original::OriginalDemoData::headlightsOn(frame,slot));
             positions_[frame].headlights[slot]=presentation.headlightState();
+            // Prepare immutable beam geometry with the recorded 60 Hz poses,
+            // once during background loading. Repainting/seeking must not run
+            // collision work or advance a light at the display refresh rate.
+            auto& projector=projectors.at(shot.enemies[slot]);
+            projector.request(original::OriginalDemoData::headlightsOn(frame,slot),collision,
+                bodyQueries[shot.enemies[slot]].query(),{position.x,position.y,position.z});
+            projector.publish();
+            const auto& vertices=projector.model().chunks[0].batches[0].vertices;
+            std::copy(vertices.begin(),vertices.end(),positions_[frame].projectedHeadlights[slot].begin());
+            auto matrix=original::originalActorMatrix(
+                {position.x,position.y-std::bit_cast<float>(0x3ca3d70au),position.z},
+                {actor.f(24),actor.f(28),actor.f(32)},fsca);
+            original::rotateOriginalMatrixPhase(matrix,1,0x8000,fsca);
+            positions_[frame].lightMatrices[slot]=matrix.elements;
+            projector.advance(collision,matrix.elements);
         }
         if(coordinate[0].index<0)throw std::runtime_error("Original opening path index is negative");
         positions_[frame].pathIndex=unsigned(coordinate[0].index);data.step(cursor);
@@ -106,19 +143,35 @@ bool OriginalDemoPresentation::upload(Renderer& renderer)const{
     // Bases were assigned in source preset order; map iteration is different.
     for(unsigned enemy:{13u,29u,8u,12u,10u,30u}){const auto& car=cars_.at(enemy);
         if(!renderer.loadTextures(car.textures,true)||!renderer.loadTextures(car.plate.textures,true))return false;}
-    return true;
+    return renderer.loadTextures(projectedTextures_,true)&&renderer.loadTextures(glare_.textures,true);
+}
+void OriginalDemoPresentation::bindLighting(Renderer& renderer)const{
+    // Do not draw the old broad analytic beam on top of source projection.
+    renderer.vehicleLights=false;renderer.opponentLights=false;
+    renderer.courseLighting=&lighting_.course;renderer.playerLighting=&lighting_.player;renderer.rivalLighting=&lighting_.rival;
+    renderer.courseFog=nullptr;renderer.supplementalCourseLampLighting=false;
+    renderer.courseLampPositions={{190,1142,-349},{166,1142,-288},{1782,681,-1999},{1816,681,-1995}};
 }
 const Mesh& OriginalDemoPresentation::mesh(const original::OriginalDemoData& data,original::OriginalDemoCursor cursor,unsigned timeline){
     if(meshFrame_==cursor.frame&&meshTimeline_==timeline)return mesh_;
     mesh_.vertices.clear();mesh_.ranges.clear();const auto& camera=data.camera(cursor.frame).world;
     const Vec3 eye=Vec3{camera[12],camera[13],camera[14]}+cameraOffset(cursor.frame);
     mesh_.originalCar(scene_.backgroundModel,scene_.backgroundAssembly(eye),{},0,unsigned(scene_.textures.size()));
-    // Identify both source scenery banks without replacing the intro's
-    // fallback lighting with the race ARRAY lightset. Mark before car append
-    // so identical materials cannot coalesce scenery and a car into one range.
+    // Mark the banks before car append so equal materials cannot coalesce
+    // scenery and a car into one range with the wrong light scope.
     for(auto& range:mesh_.ranges)range.courseGeometry=true;
+    const auto courseBegin=mesh_.ranges.size();
     courseCache_.appendTo(mesh_,scene_.model,scene_.assemblyForPathIndex(positions_.at(cursor.frame).pathIndex),true);
+    for(auto i=courseBegin;i<mesh_.ranges.size();++i)mesh_.ranges[i].courseLighting=true;
+    // The four untextured0x6ff batches in course chunks1/28 contain the
+    // authored street-lamp bulbs/glow. Preserve their unlit source color;
+    // fallback night darkening makes the fixtures look switched off.
+    // Scope this to the demo course before appending any car materials.
+    for(auto& range:mesh_.ranges)if(range.courseGeometry&&range.texture==0xffffffffu&&range.gmp==0x6ff){
+        range.emissive=true;range.courseLighting=false;
+    }
     const auto& shot=data.shots()[cursor.shot];
+    std::array<original::OriginalCarLighting,2> carLights;
     for(unsigned slot=0;slot<2;++slot){
         auto& car=cars_.at(shot.enemies[slot]);const auto& actor=data.actor(cursor.frame,slot);
         CarWheelPose wheels;wheels.steeringRadians=actor.f(60);
@@ -128,8 +181,28 @@ const Mesh& OriginalDemoPresentation::mesh(const original::OriginalDemoData& dat
         const auto& assembly=car.presentation.pose(wheels,original::OriginalDemoData::headlightsOn(timeline,slot),braking);
         const auto position=positions_[cursor.frame].body[slot];
         const float yaw=wrapAngle(actor.f(28)+pi),pitch=-actor.f(24),roll=-actor.f(32);
+        const auto carBegin=mesh_.ranges.size();
         mesh_.originalCar(car.model,assembly,position,yaw,pitch,roll,car.textureBase,car.presentation.illuminatedChunks(),true);
         mesh_.originalCar(car.plate.model,car.plate.assembly(),position,yaw,pitch,roll,car.textureBase+unsigned(car.textures.size()),{},true);
+        for(auto i=carBegin;i<mesh_.ranges.size();++i)if(!mesh_.ranges[i].emissive)mesh_.ranges[i].carLighting=slot+1;
+        carLights[slot]=original::originalCarLighting();
+        carLights[slot].ambient=courseLights_.ambient;
+        original::publishOriginalCarLight(carLights[slot],positions_[cursor.frame].lightMatrices[slot]);
+        original::setOriginalCarLightEnabled(carLights[slot],original::OriginalDemoData::lightEffectsOn(timeline,slot));
+    }
+    lighting_=original::composeOriginalRaceLighting(courseLights_,carLights[0],carLights[1],{3,0,true,false});
+    for(unsigned slot=0;slot<2;++slot){
+        if(!original::OriginalDemoData::lightEffectsOn(timeline,slot))continue;
+        auto& vertices=projectedModel_.chunks[0].batches[0].vertices;
+        const auto& prepared=positions_[cursor.frame].projectedHeadlights[slot];
+        std::copy(prepared.begin(),prepared.end(),vertices.begin());
+        const auto begin=mesh_.ranges.size();mesh_.originalWorldChunk(projectedModel_,0,projectedTextureBase_);
+        for(auto i=begin;i<mesh_.ranges.size();++i)mesh_.ranges[i].emissive=true;
+        const auto& actor=data.actor(cursor.frame,slot);
+        const Vec3 target=eye-Vec3{camera[8],camera[9],camera[10]},up{camera[4],camera[5],camera[6]};
+        glare_.append(mesh_,shot.cars[slot],positions_[cursor.frame].body[slot],
+            wrapAngle(actor.f(28)+pi),-actor.f(24),-actor.f(32),true,
+            positions_[cursor.frame].headlights[slot].fraction,eye,target,up,glareTextureBase_,1);
     }
     meshFrame_=cursor.frame;meshTimeline_=timeline;return mesh_;
 }

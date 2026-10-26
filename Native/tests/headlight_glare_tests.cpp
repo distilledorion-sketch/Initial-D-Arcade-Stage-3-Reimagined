@@ -14,6 +14,11 @@ int main(int argc,char** argv)try{
     const float diagonal=HeadlightGlare::strength({},{0,0,1},{10,0,10});
     check(diagonal>.1f&&diagonal<.13f,"Glare lost source sixth-power facing");
     const Vec3 eye{0,.6f,0},aim{0,.6f,-1},body{0,.3f,-12};
+    // AE86's authored optical anchors sit at z=2.055. The old 0.3m
+    // forward displacement detached the halo when viewed up close.
+    Mesh anchored;glare.append(anchored,0,body,0,0,0,true,1,eye,aim,{0,1,0},0,1);
+    for(const auto& vertex:anchored.vertices)
+        check(std::abs(vertex.position.z-(body.z+2.055f))<=.016f,"Headlight glow floats ahead of the lamp");
     for(unsigned car=0;car<35;++car){
         Mesh mesh;const auto count=glare.append(mesh,car,body,0,0,0,true,1,eye,aim,{0,1,0},0,1);
         check(count==(car==20?4:2),"Missing source lamp anchors");
@@ -45,6 +50,26 @@ int main(int argc,char** argv)try{
         check((differences(pixels,true)>100)==bool(mask&2),"Rearview glare missing or leaked camera mask");
         check(capture(mesh,"glare-repeat")==pixels,"Glare changed on identical repaint");
     }
+    // The source hilight material uses texture alpha only until its draw
+    // owner supplies opacity. Check final GPU pixels: merely putting the
+    // facing/opening fade in vertex alpha did not actually fade this material.
+    const auto energy=[&](const auto& pixels){std::uint64_t value=0;
+        for(std::size_t i=0;i<pixels.size();++i)for(unsigned shift:{0u,8u,16u})
+            value+=unsigned(std::max(0,int((pixels[i]>>shift)&255)-int((dark[i]>>shift)&255)));
+        return double(value);
+    };
+    for(unsigned car:{0u,8u,19u,20u}){
+        const auto lit=[&](float yaw,float opening,const char* suffix){Mesh mesh;
+            glare.append(mesh,car,body,yaw,0,0,true,opening,eye,aim,{0,1,0},0,1);
+            return energy(capture(mesh,("fade-"+std::to_string(car)+suffix).c_str()));
+        };
+        const double full=lit(0,1,"-full"),quarter=lit(0,.25f,"-quarter"),angled=lit(.785398163f,1,"-angled");
+        check(full>1000,"Head-on glare fixture is blank");
+        check(quarter>full*.15&&quarter<full*.35,"Headlight material ignores popup opening opacity");
+        check(angled>0&&angled<full*.3,"Headlight material ignores the angular fade");
+        check(lit(1.570796327f,1,"-side")==0,"Headlights leave a floating glow beside the car");
+        check(lit(3.141592654f,1,"-rear")==0,"Headlights leave a floating glow behind the car");
+    }
     Mesh wall;wall.box({0,.6f,-5},{20,10,1},0,{.05f,.05f,.05f,1});
     const auto blocked=capture(wall,"glare-wall");
     glare.append(wall,0,body,0,0,0,true,1,eye,aim,{0,1,0},0,3);
@@ -65,6 +90,22 @@ int main(int argc,char** argv)try{
         const auto after=capture(mesh,("car-"+std::to_string(car)+"-after").c_str());
         unsigned changed=0;for(std::size_t i=0;i<before.size();++i)changed+=before[i]!=after[i];
         check(changed>100,"Glare anchors hidden by actual car body");
+        // Close showcase view: two cars share this adapter, just as the
+        // player and rival do. Check the fade on top of real body geometry.
+        Mesh pair;
+        const std::array<Vec3,2> positions{{{-1.6f,.3f,-7},{1.6f,.3f,-7}}};
+        const std::array<float,2> yaws{{.6f,-.6f}};
+        for(unsigned slot=0;slot<2;++slot)
+            pair.originalCar(model,presentation.pose({},true),positions[slot],yaws[slot],0,0,0,presentation.illuminatedChunks());
+        const auto unlit=capture(pair,("pair-"+std::to_string(car)+"-off").c_str());
+        for(unsigned slot=0;slot<2;++slot)
+            glare.append(pair,car,positions[slot],yaws[slot],0,0,true,1,eye,aim,{0,1,0},unsigned(textures.size()),1);
+        const auto lit=capture(pair,("pair-"+std::to_string(car)+"-on").c_str());
+        for(unsigned slot=0;slot<2;++slot){unsigned visible=0;
+            for(unsigned y=0;y<h;++y)for(unsigned x=slot*w/2;x<(slot+1)*w/2;++x)
+                visible+=unlit[y*w+x]!=lit[y*w+x];
+            check(visible>0,"Showcase glow missing from one car");
+        }
     }
     std::cout<<"PASS "<<checks<<" original lamp, facing, toggle, popup, camera mask, GPU visibility and occlusion checks.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

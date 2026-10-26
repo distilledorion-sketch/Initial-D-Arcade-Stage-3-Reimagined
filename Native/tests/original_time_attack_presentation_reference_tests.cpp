@@ -25,7 +25,7 @@ int main(int argc,char** argv){try{
    const bool press=scenario==1||(scenario==2&&tick==100)||(scenario==3&&tick==15);
    memory.write8(0x0c92ed00,press?0x80:0);cpu.r[4]=obj;cpu.r[15]=stack;cpu.pr=stop;
    instructions+=cpu.run(0x0c07f340,stop,10000);visit.advance({press});
-   require(sourceFinished==(visit.stage()==OriginalTimeAttackVisit::Stage::Continue),"Native/source ranking exit tick mismatch");++comparisons;
+   require(sourceFinished==(visit.stage()==OriginalTimeAttackVisit::Stage::Password),"Native/source ranking exit tick mismatch");++comparisons;
    if(sourceFinished)break;
    require(memory.read32(fadeObj+16)==visit.phase()+1,"Native/source ranking fade phase mismatch");
    require(memory.read32(fadeObj+32)==(visit.fadeArgb()>>24),"Native/source ranking fade alpha mismatch");comparisons+=2;
@@ -75,5 +75,22 @@ int main(int argc,char** argv){try{
   comparisons+=4;
   if(two){require(draws[1].chunk==((bcd>>4)&15)+1&&draws[1].x==tensX&&draws[1].y==y,"Source countdown tens/anchor");comparisons+=3;}
  }
- std::cout<<"PASS source presentation:4 ranking timelines,17 advice rows,1680 countdown cases,"<<comparisons<<" comparisons,"<<instructions<<" original instructions\n";
+ // Execute the omitted130BE4..130C5E highlight, including both unhooked
+ //1F9FE0 sine calls and the original integer color conversion. Only matrix
+ // submission is a boundary. Cover the entire password visit and phase wrap.
+ for(unsigned frame=0;frame<2520;++frame){
+  memory.clear();memory.zeroRegion(obj,0x100000);RefCpu cpu(memory);
+  constexpr unsigned material=obj+0x1000;
+  cpu.r[9]=obj+0x1bc;cpu.r[14]=stack;cpu.r[15]=stack+0x400;
+  memory.write32(obj+488,frame);memory.write32(stack+108,obj);memory.write32(obj+428,material);
+  float scale=0;
+  cpu.callHooks[0x0c1f69d0]=[&](auto& c){scale=c.getFloat(4);require(c.getFloat(5)==1.f&&c.getFloat(6)==1.f,"Password glow changes vertical scale");};
+  cpu.callHooks[0x0c1f6ac0]=[&](auto& c){require(c.fr[4]==0xc04ccccdu&&c.fr[5]==0x4019999au&&c.fr[6]==0xbe197f63u,"Password glow source origin");};
+  for(unsigned address:{0x0c1fbd60u,0x0c1f65c0u})cpu.callHooks[address]=[](auto&){};
+  instructions+=cpu.run(0x0c130be4,0x0c130c60,10000);
+  const auto native=originalNetPasswordHighlight(frame);
+  require(std::bit_cast<unsigned>(native.scaleX)==std::bit_cast<unsigned>(scale),"Password highlight width differs from arcade");
+  require(native.color==memory.read32(material+4),"Password highlight intensity differs from arcade");comparisons+=4;
+ }
+ std::cout<<"PASS source presentation:4 ranking timelines,17 advice rows,1680 countdown cases,2520 password highlight frames,"<<comparisons<<" comparisons,"<<instructions<<" original instructions\n";
 }catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<'\n';return 1;}}

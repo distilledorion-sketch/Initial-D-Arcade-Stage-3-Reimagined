@@ -1,0 +1,40 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\cardcheck_car\\cardcheck_car_tex.tbl",
+  "payload": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\cardcheck_car\\cardcheck_car_tex.bin.nz",
+  "table_sha256": "b61431800e0c3e19cec432b1b8bfd686b8c4b524bc2a134a1806d1001b77685e",
+  "payload_sha256": "fb97b92b8380b79dfba2b7c1a68821a7ff4b5cee51c95de203d3c656355fe5c6",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 256,
+      "height": 512,
+      "format": 2,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "bae4ffab8610450fcdfa148eae476d23fae5e2b7c426378c80e7f4ecf6a300e3",
+      "rgba_sha256": "6f0d0b40115d845dfbd1d40fbeb5b6f02a251f0e8b3433ac9398f3ee14fbcfd9",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 256,
+      "height": 512,
+      "format": 2,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 262144,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "206c5c73bad18df012181edcc055f7ea12557fc4181622e238d1447bc662c0ed",
+      "rgba_sha256": "0efa04710424d5cc1ba7963f819ee60984560fa207e836725aec0b3af5ba466c",
+      "file": "texture_001.png"
+    }
+  ]
+}

@@ -49,8 +49,9 @@ def safe_lstat(path):
 
 with patch.object(Path, 'iterdir', safe_iterdir), patch.object(Path, 'lstat', safe_lstat):
     assert {p.relative_to(player).as_posix() for p in release.collect_player_files(player)} == set(required)
-    report = release.build(player, fixture/'full.zip')
+    report = release.build(player, fixture/'Candidate-full.zip', candidate_only=True)
 assert report['customMusicEntriesExcluded']
+assert report['candidateOnly'] and not report['releaseReady']
 with zipfile.ZipFile(report['archive']) as archive:
     assert set(archive.namelist()) == set(required)
 

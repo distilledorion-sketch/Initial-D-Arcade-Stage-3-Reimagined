@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import tempfile
 import uuid
 from test_build_compatibility import find_compiler
 
@@ -42,13 +43,22 @@ def main():
     (proof / "compile.log").write_text(compiled.stdout + compiled.stderr, encoding="utf-8")
     if compiled.returncode:
         raise RuntimeError(compiled.stdout + compiled.stderr)
-    run = subprocess.run([str(exe), str(proof / ("fixtures-" + uuid.uuid4().hex))],
+    # The framework test host retains legacy MAX_PATH handling. Keep its live
+    # fixtures independent of the checkout/report path, then retain a copy with
+    # the evidence. This does not alter the Unity game's storage behavior.
+    fixture_root = Path(tempfile.mkdtemp(prefix="idas3-records-"))
+    run = subprocess.run([str(exe), str(fixture_root / "run")],
         capture_output=True, text=True, encoding="utf-8")
     (proof / "checks.log").write_text(run.stdout + run.stderr, encoding="utf-8")
+    fixture_copy = proof / ("fixtures-" + uuid.uuid4().hex)
+    shutil.copytree(fixture_root, fixture_copy)
+    if fixture_root.resolve().parent != Path(tempfile.gettempdir()).resolve() or not fixture_root.name.startswith("idas3-records-"):
+        raise RuntimeError("Refusing to clean an unexpected fixture path")
+    shutil.rmtree(fixture_root)
     checks = [line.split("\t", 1)[1] for line in run.stdout.splitlines() if line.startswith("PASS\t")]
     report = {"passed": run.returncode == 0, "count": len(checks), "checks": checks,
         "source_sha256": {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sources},
-        "compiler": str(compiler), "serializer": str(library),
+        "compiler": str(compiler), "serializer": str(library), "fixtures": str(fixture_copy),
         "scope": "Production storage with real filesystem failures/recovery, real Newtonsoft public-field JSON and independent v1 checksum fixture. Deterministic injected progression. No Unity player, native progression, live EOS or real player saves."}
     (proof / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     if run.returncode:

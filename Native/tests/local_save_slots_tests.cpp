@@ -1,15 +1,70 @@
 #include "local_save_slots.h"
 #include <filesystem>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
+#include <vector>
 #if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
 #include <windows.h>
+#include <winioctl.h>
 #endif
 using namespace idas3;
+
+namespace {
+// Windows users can create directory junctions without the symbolic-link
+// privilege. Exercise the same external-target deletion boundary even on a
+// machine where create_directory_symlink is denied; do not change OS policy.
+bool createSaveTestLink(const std::filesystem::path& target,
+                       const std::filesystem::path& link,
+                       std::error_code& error) {
+    std::filesystem::create_directory_symlink(target, link, error);
+    if (!error) return false;
+#if defined(_WIN32)
+    const auto absolute = std::filesystem::absolute(target).lexically_normal().wstring();
+    const auto substitute = std::wstring(L"\\??\\") + absolute;
+    const auto bytes = (substitute.size() + 1 + absolute.size() + 1) * sizeof(wchar_t);
+    struct MountPoint {
+        DWORD tag;
+        WORD length, reserved;
+        WORD substituteOffset, substituteLength, printOffset, printLength;
+    };
+    static_assert(sizeof(MountPoint) == 16);
+    if (bytes + sizeof(MountPoint) > MAXIMUM_REPARSE_DATA_BUFFER_SIZE)
+        throw std::runtime_error("Save junction fixture path is too long");
+    std::vector<unsigned char> buffer(sizeof(MountPoint) + bytes);
+    MountPoint header{IO_REPARSE_TAG_MOUNT_POINT, WORD(8 + bytes), 0, 0,
+        WORD(substitute.size() * sizeof(wchar_t)),
+        WORD((substitute.size() + 1) * sizeof(wchar_t)),
+        WORD(absolute.size() * sizeof(wchar_t))};
+    std::memcpy(buffer.data(), &header, sizeof(header));
+    std::memcpy(buffer.data() + sizeof(header), substitute.c_str(), (substitute.size() + 1) * sizeof(wchar_t));
+    std::memcpy(buffer.data() + sizeof(header) + header.printOffset, absolute.c_str(), (absolute.size() + 1) * sizeof(wchar_t));
+    if (!CreateDirectoryW(link.c_str(), nullptr))
+        throw std::runtime_error("Could not create the owned save junction fixture");
+    const auto handle = CreateFileW(link.c_str(), GENERIC_WRITE, 0, nullptr, OPEN_EXISTING,
+        FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+    DWORD written = 0;
+    const bool created = handle != INVALID_HANDLE_VALUE && DeviceIoControl(handle,
+        FSCTL_SET_REPARSE_POINT, buffer.data(), DWORD(buffer.size()), nullptr, 0, &written, nullptr);
+    if (handle != INVALID_HANDLE_VALUE) CloseHandle(handle);
+    if (!created) {
+        // This is the new empty fixture directory, not a recursive cleanup.
+        RemoveDirectoryW(link.c_str());
+        throw std::runtime_error("Neither symbolic-link nor junction fixtures could be created");
+    }
+    if (std::filesystem::canonical(link) != std::filesystem::canonical(target))
+        throw std::runtime_error("Save junction fixture resolved to the wrong target");
+    error.clear();
+    return true;
+#else
+    return false;
+#endif
+}
+}
 
 int main(int argc, char** argv) try {
     if (argc != 2) throw std::invalid_argument("a writable working directory is required");
@@ -168,15 +223,15 @@ int main(int argc, char** argv) try {
     ++cases;
 #endif
 
-    // Linked slot trees must never delete their external target. Symlink
-    // creation may require OS privileges, so keep the other checks portable.
+    // Linked slot trees must never delete their external target. On Windows,
+    // use junctions when the symbolic-link privilege is unavailable.
     const auto linkedRoot = root / "linked-store";
     const auto outside = root / "outside-slot";
     std::filesystem::create_directories(linkedRoot);
     putFile(outside / "save.txt", neighbourManifest);
     putFile(outside / "keep.txt", "outside data");
     std::error_code linkError;
-    std::filesystem::create_directory_symlink(outside, linkedRoot / "slot_1", linkError);
+    const bool topJunction = createSaveTestLink(outside, linkedRoot / "slot_1", linkError);
     if (!linkError) {
         LocalSaveSlots linked(linkedRoot);
         if (!linked.at(0).used || linked.erase(0) || !linked.at(0).used ||
@@ -185,13 +240,16 @@ int main(int argc, char** argv) try {
         std::filesystem::remove(linkedRoot / "slot_1");
         ++cases;
 
-        std::filesystem::create_directory_symlink(outside, afterErase.profileDirectory(0) / "linked-records", linkError);
+        const bool nestedJunction = createSaveTestLink(outside, afterErase.profileDirectory(0) / "linked-records", linkError);
         if (linkError) throw std::runtime_error("Could not seed a nested save link");
         if (afterErase.erase(0) || !afterErase.at(0).used || readFile(neighbourCar) != "neighbour tune" ||
             readFile(outside / "keep.txt") != "outside data")
             throw std::runtime_error("Deleting a nested link damaged either save");
         std::filesystem::remove(afterErase.profileDirectory(0) / "linked-records");
         ++cases;
+        std::cout << "Linked deletion checks exercised: top-level "
+                  << (topJunction ? "junction" : "symbolic link") << ", nested "
+                  << (nestedJunction ? "junction" : "symbolic link") << '\n';
     } else {
         std::cout << "NOTE symlink deletion checks skipped: " << linkError.message() << '\n';
     }

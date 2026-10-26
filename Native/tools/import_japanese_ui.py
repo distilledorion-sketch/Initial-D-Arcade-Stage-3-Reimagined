@@ -75,6 +75,10 @@ def ranges(*items):
 
 
 MAPPINGS = {
+    # Reviewed card/Saved Data banks: Japan keeps additional legacy panels.
+    'v3sS10conf': {i:i for i in (*range(1,23),24,25,26)},
+    'cardcheck': {**ranges((0,5,0),(6,46,8),(48,54,52),(55,60,73),(66,86,87),(88,89,125),(92,132,130),(134,136,172))},
+
     'game2d': ranges((9, 9, 8), (91, 91, 90), (96, 96, 95),
                      (145, 145, 142), (147, 181, 144)),
     'v3sS00common': {21:21, 51:50},
@@ -102,7 +106,8 @@ MAPPINGS = {
 IDENTITY = set('''adv_newtitle adv_title v3sB01course v3sK01course v3sS04maker
 v3sS06mission v3sS07tune v3sS11mode v3sT02route v3sT03weather v3sT04time
 mode_bunta v3sS08name game2d_intr game2d_ta game2d_vs result v3sT14password
-continue v3sK17continue v3sK12shop select adv_caution loadcmn loadvs loadwait ending'''.split())
+continue v3sK17continue v3sK12shop select adv_caution loadcmn loadvs loadwait ending
+levelup_dr levelup_bu levelup_vs gameover_v3 ejectcard password cardcheck_car'''.split())
 
 
 def bounds(chunk):

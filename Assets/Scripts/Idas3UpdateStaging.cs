@@ -32,25 +32,25 @@ public static class Idas3UpdateStaging {
     public static void NoLinks(string path){
         for(string p=Path.GetFullPath(path);!string.IsNullOrEmpty(p);p=Path.GetDirectoryName(p)){
             if(string.Equals(p.TrimEnd(Path.DirectorySeparatorChar),Path.GetPathRoot(p).TrimEnd(Path.DirectorySeparatorChar),StringComparison.OrdinalIgnoreCase))break;
-            if((File.Exists(p)||Directory.Exists(p))&&(File.GetAttributes(p)&FileAttributes.ReparsePoint)!=0)throw new IOException("Update folders cannot contain links.");
+            if((File.Exists(Idas3UpdatePaths.FileSystemPath(p))||Directory.Exists(Idas3UpdatePaths.FileSystemPath(p)))&&(File.GetAttributes(Idas3UpdatePaths.FileSystemPath(p))&FileAttributes.ReparsePoint)!=0)throw new IOException("Update folders cannot contain links.");
         }
     }
-    public static string Hash(string path){using(var input=File.OpenRead(path))using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(input)).Replace("-","").ToLowerInvariant();}
+    public static string Hash(string path){using(var input=File.OpenRead(Idas3UpdatePaths.FileSystemPath(path)))using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(input)).Replace("-","").ToLowerInvariant();}
     private static void PutString(BinaryWriter writer,string value){writer.Write(value.Length);writer.Write(Encoding.Unicode.GetBytes(value));}
     private static byte[] Digest(string value){var bytes=new byte[32];if(value!=null)for(int i=0;i<32;i++)bytes[i]=Convert.ToByte(value.Substring(i*2,2),16);return bytes;}
     public static string Prepare(string root,string session,string archive,string digest,bool patch,string baseVersion,string targetVersion,int parentId,long parentFileTime,Func<string,Patch> parse,Action<int,int> progress=null,string contentArchive=null,string contentDigest=null){
         root=Path.GetFullPath(root);session=Path.GetFullPath(session);NoLinks(root);NoLinks(session);
-        if(!File.Exists(Path.Combine(root,"InitialDUnity.exe")))throw new IOException("Game executable is missing.");
+        if(!File.Exists(Idas3UpdatePaths.FileSystemPath(Path.Combine(root,"InitialDUnity.exe"))))throw new IOException("Game executable is missing.");
         if(!string.Equals(Path.GetFullPath(archive),Inside(session,"game.zip"),StringComparison.OrdinalIgnoreCase)||!Regex.IsMatch(digest??"",@"\A[0-9a-f]{64}\z")||Hash(archive)!=digest)throw new IOException("Update archive verification failed.");
         string stage=Inside(session,"stage"),backup=Inside(session,"backup");
-        if(Directory.Exists(stage)||Directory.Exists(backup))throw new IOException("Update session already used.");
+        if(Directory.Exists(Idas3UpdatePaths.FileSystemPath(stage))||Directory.Exists(Idas3UpdatePaths.FileSystemPath(backup)))throw new IOException("Update session already used.");
         var records=new List<Record>();var inventory=new Dictionary<string,PatchFile>(StringComparer.OrdinalIgnoreCase);
         var archives=new List<ZipArchive>();
         try {
-            var zip=ZipFile.OpenRead(archive);archives.Add(zip);
+            var zip=ZipFile.OpenRead(Idas3UpdatePaths.FileSystemPath(archive));archives.Add(zip);
             if(contentArchive!=null){
                 if(patch||!string.Equals(Path.GetFullPath(contentArchive),Inside(session,"content.zip"),StringComparison.OrdinalIgnoreCase)||!Regex.IsMatch(contentDigest??"",@"\A[0-9a-f]{64}\z")||Hash(contentArchive)!=contentDigest)throw new IOException("Additional content verification failed.");
-                archives.Add(ZipFile.OpenRead(contentArchive));
+                archives.Add(ZipFile.OpenRead(Idas3UpdatePaths.FileSystemPath(contentArchive)));
             }
             if(patch){
                 try{
@@ -79,27 +79,27 @@ public static class Idas3UpdateStaging {
             if(patch)foreach(var file in inventory.Values){
                 if(file.included){if(!entries.ContainsKey(file.path))throw new PatchRejectedException("Missing patch payload.");continue;}
                 string dest=Inside(root,file.path);NoLinks(dest);
-                if(!File.Exists(dest)||new FileInfo(dest).Length!=file.size||Hash(dest)!=file.sha256)throw new PatchRejectedException("Existing files need a full download.");
+                if(!File.Exists(Idas3UpdatePaths.FileSystemPath(dest))||new FileInfo(Idas3UpdatePaths.FileSystemPath(dest)).Length!=file.size||Hash(dest)!=file.sha256)throw new PatchRejectedException("Existing files need a full download.");
                 records.Add(new Record{path=file.path,oldHash=file.sha256,newHash=file.sha256,size=file.size});
                 if(progress!=null)progress(++completed,total);
             }
-            long existing=0;foreach(string name in entries.Keys){string path=Inside(root,name);if(File.Exists(path))existing=checked(existing+new FileInfo(path).Length);}
+            long existing=0;foreach(string name in entries.Keys){string path=Inside(root,name);if(File.Exists(Idas3UpdatePaths.FileSystemPath(path)))existing=checked(existing+new FileInfo(Idas3UpdatePaths.FileSystemPath(path)).Length);}
             var tempDrive=new DriveInfo(Path.GetPathRoot(session));var targetDrive=new DriveInfo(Path.GetPathRoot(root));
             long reserve=64L*1024*1024;
             if(tempDrive.AvailableFreeSpace<expanded+existing+reserve+(tempDrive.Name==targetDrive.Name?expanded:0)||targetDrive.AvailableFreeSpace<expanded+reserve)throw new IOException("Not enough free disk space for the update.");
-            Directory.CreateDirectory(stage);Directory.CreateDirectory(backup);
+            Directory.CreateDirectory(Idas3UpdatePaths.FileSystemPath(stage));Directory.CreateDirectory(Idas3UpdatePaths.FileSystemPath(backup));
             foreach(var pair in entries){
-                string name=pair.Key,dest=Inside(root,name),staged=Inside(stage,name);Directory.CreateDirectory(Path.GetDirectoryName(staged));
-                using(var input=pair.Value.Open())using(var output=new FileStream(staged,FileMode.CreateNew,FileAccess.Write))input.CopyTo(output);
-                if(new FileInfo(staged).Length!=pair.Value.Length)throw new IOException("Extracted size mismatch.");
-                string next=Hash(staged),old=File.Exists(dest)?Hash(dest):null;
+                string name=pair.Key,dest=Inside(root,name),staged=Inside(stage,name);Directory.CreateDirectory(Idas3UpdatePaths.FileSystemPath(Path.GetDirectoryName(staged)));
+                using(var input=pair.Value.Open())using(var output=new FileStream(Idas3UpdatePaths.FileSystemPath(staged),FileMode.CreateNew,FileAccess.Write))input.CopyTo(output);
+                if(new FileInfo(Idas3UpdatePaths.FileSystemPath(staged)).Length!=pair.Value.Length)throw new IOException("Extracted size mismatch.");
+                string next=Hash(staged),old=File.Exists(Idas3UpdatePaths.FileSystemPath(dest))?Hash(dest):null;
                 if(patch&&next!=inventory[name].sha256)throw new PatchRejectedException("Patch payload hash mismatch.");
                 records.Add(new Record{path=name,oldHash=old,newHash=next,size=pair.Value.Length,changed=old!=next});
                 if(progress!=null)progress(++completed,total);
             }
         } finally {foreach(var opened in archives)opened.Dispose();}
         string plan=Inside(session,"install.plan");
-        using(var writer=new BinaryWriter(new FileStream(plan,FileMode.CreateNew,FileAccess.Write))){
+        using(var writer=new BinaryWriter(new FileStream(Idas3UpdatePaths.FileSystemPath(plan),FileMode.CreateNew,FileAccess.Write))){
             writer.Write(Encoding.ASCII.GetBytes("IDUPD002"));PutString(writer,root);writer.Write(parentId);writer.Write(parentFileTime);writer.Write(records.Count);
             foreach(var r in records){PutString(writer,r.path);writer.Write((byte)(r.changed?1:0));writer.Write((byte)(r.oldHash!=null?1:0));writer.Write(r.size);writer.Write(Digest(r.oldHash));writer.Write(Digest(r.newHash));}
         }

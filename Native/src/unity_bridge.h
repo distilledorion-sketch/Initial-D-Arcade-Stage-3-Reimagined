@@ -83,7 +83,7 @@ typedef struct Idas3WheelState {
     uint32_t size,version;
     uint64_t simulationTicks;
     float speed,steering,headingError,wallLateral,impact;
-    uint32_t flags; //1 active driving,2 wall contact; steering positive right
+    uint32_t flags; //1 active driving,2 wall contact,4 saved steering present; bits8..11 dial0..8; steering positive right
 } Idas3WheelState;
 // Read-only signals for optional host HUD themes. Does not change simulation.
 typedef struct Idas3HudTelemetry {
@@ -184,6 +184,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetAuraStatus(int side,I
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerGetHudStatus(Idas3MultiplayerHudStatus* status);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerCopyHudText(int side,char* destination,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerDiagnosticFinish(uint64_t ticks60);
+// Read-only ordinary control guidance, restricted to marked private LAN tests.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerScoredDiagnosticControls(float* values,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerNextBattleRecord(const Idas3BattleRecord* before,int won,const Idas3BattleRecord* opponent,uint32_t experience,Idas3BattleRecord* after,uint32_t* nextExperience);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCopyPreRaceBattleRecord(int side,char* destination,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetRaceMusicState(Idas3RaceMusicState* state);
@@ -266,6 +268,10 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetGo(int released);
 // selected-car rewards and starts original menus after authority validation.
 // An identical repeat is a no-op.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner);
+// Prepare is read-only for disk; persist this intent before applying either
+// reward store. Recovery also works before scene initialization.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uint32_t* points,uint32_t* before,uint32_t* after,uint32_t count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
 // Local original-menu presentation. These calls do not award or alter results.
 // Input flags: 1 blocked, 2 peer left, 4 peer ready, 8 record save failed.

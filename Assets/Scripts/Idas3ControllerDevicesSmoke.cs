@@ -25,7 +25,12 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
     private bool finished;
     private double began;
     private readonly List<string> captures = new List<string>();
-    [Serializable] private class Report { public bool passed,shutdownComplete;public int checks;public string error,scope,applicationVersion;public string[] captures; }
+    private readonly List<SelectionObservation> selection = new List<SelectionObservation>();
+    [Serializable] private class SelectionObservation {
+        public string stage,active;public double elapsed;
+        public bool pauseOpen,attractOptions,capturing,bindingBlocked;
+    }
+    [Serializable] private class Report { public bool passed,shutdownComplete;public int checks;public string error,scope,applicationVersion;public string[] captures;public SelectionObservation[] selection; }
     [StructLayout(LayoutKind.Explicit,Size=20)] private struct GenericState : IInputStateTypeInfo
     {
         [FieldOffset(0)] public uint buttons;
@@ -134,6 +139,25 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
         yield return Frames(6);
         Check(host.ControllerDevices.SelectedKey==key,"Controller selector changed unexpectedly.");
     }
+    private void ObserveSelection(string stage,string expected,double elapsed=0)
+    {
+        string name=host.ControllerDevices.ActiveName;
+        selection.Add(new SelectionObservation{stage=stage,active=name,elapsed=elapsed,
+            pauseOpen=host.PauseMenu.IsOpen,attractOptions=host.PauseMenu.AttractOptions,
+            capturing=host.ControlBindings.IsCapturing,bindingBlocked=host.ControlBindings.SuppressInput});
+        Check(!host.PauseMenu.IsOpen&&!host.ControlBindings.IsCapturing&&!host.ControlBindings.SuppressInput,
+            "Automatic-selection fixture is covered by a menu or input-release guard at "+stage);
+        Check(name.Contains(expected),"Unexpected active controller at "+stage+": "+name);
+    }
+    private IEnumerator KeepSelection(string stage,string expected,double seconds)
+    {
+        double start=Time.realtimeSinceStartupAsDouble;
+        do{
+            yield return null;
+            Check(host.ControllerDevices.ActiveName.Contains(expected),"Controller changed during "+stage);
+        }while(Time.realtimeSinceStartupAsDouble-start<seconds);
+        ObserveSelection(stage,expected,Time.realtimeSinceStartupAsDouble-start);
+    }
     private IEnumerator Run()
     {
         yield return Frames(5);Check(host.Ready,"Player did not initialize");host.DiagnosticFocusOverride=true;
@@ -151,13 +175,27 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
         Pad(alpha,new GamepadState());Pad(beta,new GamepadState());Wheel();yield return Frames(8);
         string alphaKey=DeviceKey("Alpha"),betaKey=DeviceKey("Beta"),genericKey=DeviceKey("Wheel");
         Check(alphaKey!=betaKey&&betaKey!=genericKey,"Distinct controllers share selector keys");
-        yield return Select("automatic");
+        yield return Select(alphaKey);yield return Select("automatic");
+        // Y is View Change: holding it at attract opens Options and correctly
+        // locks automatic source changes. Use an unbound shoulder for activity.
+        Pad(alpha,new GamepadState().WithButton(GamepadButton.LeftShoulder));yield return Frames(3);
+        // A delayed virtual copy must not steal a source that is still held.
+        // Use elapsed time, because six rendered frames can be much shorter
+        // than the production half-second neutral guard.
+        Pad(beta,new GamepadState().WithButton(GamepadButton.West));
+        yield return KeepSelection("held-secondary-ignored","Alpha",.65);
+        Pad(alpha,new GamepadState());
+        yield return KeepSelection("stale-secondary-ignored","Alpha",.65);
+        Pad(beta,new GamepadState());yield return Frames(3);
         Pad(beta,new GamepadState().WithButton(GamepadButton.West));yield return Frames(6);
-        Check(host.ControllerDevices.ActiveName.Contains("Beta"),"Automatic mode did not select the controller receiving input");
-        Pad(beta,new GamepadState());yield return Frames(6);
-        Check(host.ControllerDevices.ActiveName.Contains("Beta"),"A resting generic pedal stole automatic selection");
-        Pad(alpha,new GamepadState().WithButton(GamepadButton.North));yield return Frames(6);
-        Check(host.ControllerDevices.ActiveName.Contains("Alpha"),"Automatic mode did not switch to a second active controller");
+        ObserveSelection("fresh-beta-selected","Beta");
+        Pad(beta,new GamepadState());
+        yield return KeepSelection("neutral-beta-retained","Beta",.65);
+        Pad(alpha,new GamepadState().WithButton(GamepadButton.LeftShoulder));yield return Frames(6);
+        ObserveSelection("fresh-alpha-selected","Alpha");
+        // Explicit selection remains immediate even while the former source
+        // is held. The automatic guard must never override that preference.
+        yield return Select(betaKey);ObserveSelection("explicit-beta-selected","Beta");
         Pad(alpha,new GamepadState());yield return Frames(6);
         yield return Select(alphaKey);string alphaProfile=host.ControllerDevices.ActiveProfileKey;
         pulse=116;yield return Until(()=>((host.Status.flags&1)==0)&&host.Status.simulationTicks>240,40,"Native race did not start");
@@ -364,7 +402,7 @@ public sealed class Idas3ControllerDevicesSmoke : MonoBehaviour
         if(finished)return;finished=true;bool stopped=false;
         try{foreach(var device in new InputDevice[]{alpha,beta,generic,hidPedals,hidWheel})if(device!=null&&device.added)InputSystem.RemoveDevice(device);host.DiagnosticFocusOverride=null;host.StopNative();stopped=!host.Ready;}
         catch(Exception e){passed=false;error=(error??"")+e;}
-        File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed&&stopped,shutdownComplete=stopped,checks=checks,error=error,captures=captures.ToArray(),applicationVersion=Application.version,
+        File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed&&stopped,shutdownComplete=stopped,checks=checks,error=error,captures=captures.ToArray(),selection=selection.ToArray(),applicationVersion=Application.version,
             scope="Private actual Unity player. Simulated gamepads, a custom wheel, and autogenerated HID wheel/pedal descriptors use Unity state events and production discovery, selection, per-device profiles, binding capture, pause and native driving. Covers missing saved-device fallback at startup and during play/menus, keyboard recovery with all controllers disconnected, stable fallback input, preference preservation, occupied-button swap, extra joystick buttons, reversed resting pedal, steering directions, reconnect, keyboard-only mode, inherited phantom HID trigger rejection, descriptor buttons/hats, both pedal polarities, and Escape/timeout/mouse cancellation with held shortcuts. Diagnostic discovery excludes physical devices. Does not exercise physical USB/Bluetooth hardware. "+(captures.Count>0?"Includes rendered UI captures.":"Input-only run; UI rendering not checked.")},true));
         Debug.Log((passed?"PASS":"FAIL")+" controller devices "+error);
 #if UNITY_EDITOR

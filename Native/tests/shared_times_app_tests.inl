@@ -93,7 +93,7 @@ int runSharedTimeAppTests(App& app){
     auto require=[&](bool ok,const char* msg){++checks;if(!ok)throw std::runtime_error(msg);};
     app.multiplayer.active=false;app.paused=app.loadingActive=false;app.input={};
     app.preRaceDialogueActive=app.legendVisitActive=app.buntaVisitActive=app.timeAttackVisitActive=false;
-    std::string lastPayload;std::vector<std::uint8_t> lastReplay;
+    std::string lastPayload;
     for(unsigned course:{0u,1u,3u,9u,10u}){
         app.validationMode=true;app.sharedFinishJson.clear();app.setSharedRecords({},true);
         TimeAttackEntry remote{course*2,0,0,5000000};remote.nameGlyphs={162,163,164,221,221};app.sharedRecords.record(remote);
@@ -116,9 +116,15 @@ int runSharedTimeAppTests(App& app){
         }
         require(app.race.phase==RacePhase::Finished&&!app.race.timeUp,"Original gates produce a completed time attack");
         require(!app.sharedFinishJson.empty(),"New finish publishes an upload payload");runs<<app.sharedFinishJson<<'\n';
-        require(!app.sharedFinishReplay.empty(),"Completed race publishes its matching replay");
-        {std::ofstream replay(output/("native-replay-"+std::to_string(course)+".idr"),std::ios::binary);replay.write(reinterpret_cast<const char*>(app.sharedFinishReplay.data()),app.sharedFinishReplay.size());}
-        auto payload=app.sharedFinishJson;lastPayload=payload;lastReplay=app.sharedFinishReplay;for(unsigned i=0;i<10;++i)app.simulate({});require(app.sharedFinishJson==payload,"Result frames do not duplicate the payload");
+        require(Idas3SharedReadReplay(nullptr,0)==0,"Completed time must not expose a leaderboard replay");
+        std::array<std::uint8_t,4> sentinel{1,2,3,4};
+        require(Idas3SharedReadReplay(sentinel.data(),int(sentinel.size()))==0&&sentinel==std::array<std::uint8_t,4>{1,2,3,4},"Disabled replay export touched caller memory");
+        // Explicitly encode only this isolated fixture for local codec checks.
+        // Production finish publication must not allocate this replay payload.
+        const auto localReplay=app.recording.sharedBytes(app.race.elapsed6000);
+        require(!localReplay.empty(),"Local recording remains available after a finish");
+        {std::ofstream replay(output/("native-replay-"+std::to_string(course)+".idr"),std::ios::binary);replay.write(reinterpret_cast<const char*>(localReplay.data()),localReplay.size());}
+        auto payload=app.sharedFinishJson;lastPayload=payload;for(unsigned i=0;i<10;++i)app.simulate({});require(app.sharedFinishJson==payload,"Result frames do not duplicate the payload");
         app.sharedFinishJson.clear();for(unsigned i=0;i<10;++i)app.simulate({});require(app.sharedFinishJson.empty(),"Acknowledged payload remains consumed");
         require(app.sharedRecords.entries().size()==1&&app.sharedRecords.entries()[0].ticks6000==5000000,"Local finish does not mutate remote cache");
     }
@@ -127,6 +133,6 @@ int runSharedTimeAppTests(App& app){
     require(app.race.timeUp&&app.sharedFinishJson.empty(),"Timeout does not submit a completed run");
     // Leave one controlled, completed run for the marked Unity integration
     // diagnostic to upload. The remote test installation is hidden afterward.
-    app.sharedFinishJson=lastPayload;app.sharedFinishReplay=lastReplay;app.menu=true;
+    app.sharedFinishJson=lastPayload;app.menu=true;
     log<<"PASS "<<checks<<" shared record selection, original/imported finish payloads, one-shot consumption and timeout checks\n";return 0;
 }

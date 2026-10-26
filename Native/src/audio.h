@@ -99,10 +99,12 @@ public:
     void playChallengerCue(){if(nativeOneShots)nativeOneShots->play(20,3);}
     void resetRaceEffects();
     void selectOriginalEngine(const std::filesystem::path& root,const original::OriginalBattleProfile& profile);
+    bool cardRaceMusicOff=false; // Saved Data BGM OFF; preserves output/mute preferences.
     // Replay controls drive the existing car instrument on its audio clock,
     // independently of physics and the gameplay random seed.
     void setReplayEngine(const original::OriginalEngineControlInput& input){replayEngineInput=input;replayEngineEnabled=true;}
-    void useDevelopmentEngine(){nativeEngine.reset();presentationEngine.reset();nativeTire.reset();}
+    void setShowcaseEngine(const original::OriginalEngineControlInput& input){showcaseEngineInput=input;}
+    void useDevelopmentEngine(){nativeEngine.reset();presentationEngine.reset();nativeTire.reset();onlineEngineOutput=false;}
     void stepOriginalEngine(const original::OriginalEngineControlInput& input,std::uint32_t& sharedSeed);
     void requestOriginalTire(const original::OriginalAngularResult& feedback);
     void finishSoundFrame(std::uint32_t& sharedSeed);
@@ -158,6 +160,7 @@ private:
     std::unique_ptr<OriginalEnginePlayback> presentationEngine;
     bool replayEngineEnabled=false;
     original::OriginalEngineControlInput replayEngineInput{};
+    original::OriginalEngineControlInput showcaseEngineInput{800.f,0,0,true};
     std::uint32_t presentationSeed=1;
     std::uint64_t presentationPcmFrames=0,presentationControlFrames=0;
     std::unique_ptr<OriginalTirePlayback> nativeTire;
@@ -170,6 +173,9 @@ private:
     original::OriginalSelectionMusicState resultMusicManager;
     original::OriginalTireAudioState tireState;
     bool pendingEngineFrame=false;
+    // Confirmations update instrument controls, not the output clock. A late
+    // peer must not drain a fixed amount of pre-rendered engine PCM.
+    bool onlineEngineOutput=false;
     // PCM follows the60Hz simulation clock, independently of rendering FPS.
     // Bounded queue prevents diagnostics or a stalled output from growing RAM.
     // Keep the source DSP sends on the same clock as their dry samples. The

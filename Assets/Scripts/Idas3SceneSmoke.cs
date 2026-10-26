@@ -8,7 +8,7 @@ using UnityEngine;
 using Unity.Profiling;
 
 // Opt-in integration validation; normal play neither injects input nor captures.
-public sealed class Idas3SceneSmoke : MonoBehaviour
+public sealed partial class Idas3SceneSmoke : MonoBehaviour
 {
     private static Idas3SceneSmoke active;
     private Idas3SceneGame host;
@@ -33,10 +33,12 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowValue(int field);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneReplayCaptureDiagnostic(int enabled);
     private Camera perfMainCamera;
+    private Idas3SceneRenderer perfScene;
     private Vector3 diagnosticPoseTarget;
     private ulong introFirstRenderedFrame;
     private int depthCourse=8,doorFrame=600;
     private bool realDelta;
+    private int perfRealPacedSeconds;
     private RenderTexture hires;
     private double began;
     private readonly List<Shot> shots = new List<Shot>();
@@ -112,13 +114,16 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     }
     [Serializable] private struct PerfSample {
         public int index,unityFrame,meshes,uiDraws,uploadedVertices,geometryUploads,materialUpdates,uiIndexUploads,uiCommandRebuilds;
-        public int depthCandidates,depthDraws,depthRebuilds;
+        public int depthCandidates,depthDraws,depthRebuilds,depthMaterials,depthMaterialGroups;
+        public int depthSourceDraws,depthBatchUploadVertices,depthBatchRebuilds,depthBatchCapacityVertices;
         public int mainViewExcludedRanges,mainViewExcludedVertices,mirrorViewExcludedRanges,mirrorViewExcludedVertices;
         public long drawCalls,batches,setPassCalls;
         public double sceneRenderMs;
         public uint ranges,vertices;
         public ulong nativeFrame,simulationTicks,timingFrameStart;
         public double wallMs,submissionMs,nativeMs,rendererMs,uiMs,cpuFrameMs,cpuMainMs,cpuRenderMs,gpuMs;
+        public int uiReusedVertices,uiConvertedVertices,uiGeometryChunks;
+        public bool sceneLayoutReused; public int sceneLayoutRejectReason;
         public long mainThreadAllocatedBytes;
         public float speed;
         public float courseDistance,courseLength,raceProgress,travel;
@@ -134,7 +139,13 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         public string schema="idas3-race-performance-v1",unityVersion,device,graphicsApi,mode,settings,commandLine;
         public string scope="Normal automatic rendering, fixed 1/60 native input, held throttle with no steering. FrameTimingManager values can lag the current source frame and unavailable values are -1. Allocation deltas cover the main thread, not native/GPU memory or the audio thread. No captures, readbacks or file writes occur during measurement.";
         public int course,warmupFrames,sampleFrames,width,height,antialiasing,vSync,targetFrameRate,mainCameraRenderEvents,allCameraRenderEvents;
+        public int expectedManualCameraRenderEvents;
+        public bool realTimePaced; public int requestedSimulationTicks;
         public bool baseline,nightRequested,wetRequested,frameTimingEnabled,mirrorEnabled,developmentBuild;
+        public bool mainThreadAllocationCounterValid;
+        public long allocationProbeBytes;
+        public bool allocationTrace;
+        public int allocationTraceMeasuredFrames;
         public ulong firstNativeFrame,lastNativeFrame,firstSimulationTick,lastSimulationTick;
         public int replayFramesBefore,replayFramesAfter,rivalReplayFramesBefore,rivalReplayFramesAfter;
         public bool replayCaptureEnabled;
@@ -173,6 +184,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(Array.IndexOf(args,"-idas3-scene-night-check")>=0){Directory.CreateDirectory(saves);File.WriteAllText(Path.Combine(saves,"settings.txt"),"3 0 0 0 1 1 1 0\n");}
         bool requestedDepth=Array.IndexOf(args,"-idas3-scene-depth-check")>=0;
         bool requestedPerf=Array.IndexOf(args,"-idas3-scene-perf-check")>=0;
+        bool requestedTransitions=Array.IndexOf(args,"-idas3-scene-transition-check")>=0;
         bool requestedRival=Array.IndexOf(args,"-idas3-scene-rival-check")>=0;
         int selectedRivalRecord=DiagnosticInt(args,"-idas3-scene-rival-record",0,0,16);
         if(requestedRival&&selectedRivalRecord!=0&&selectedRivalRecord!=1&&selectedRivalRecord!=16)
@@ -203,7 +215,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             File.WriteAllText(Path.Combine(saves,"native_selection.txt"),"0 0\n");
         }
         if(requestedRival)SeedRivalProfile(saves,selectedRivalRecord);
-        if(requestedPerf){
+        if(requestedPerf||requestedTransitions){
             Directory.CreateDirectory(saves);
             // F5 resets wet and route. Start dry/day, then select the requested
             // TA conditions through the original choice owners below.
@@ -225,10 +237,13 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         active.introCheck=requestedIntro;active.introFoliageCheck=requestedFoliage;
         active.carDoorCheck=requestedDoor;active.doorFrame=selectedDoorFrame;
         active.perfCheck=requestedPerf;active.perfCourse=selectedPerfCourse;
+        active.transitionCheck=requestedTransitions;
         active.perfWarmup=selectedPerfWarmup;active.perfFrames=selectedPerfFrames;
         active.perfNight=selectedPerfNight;active.perfWet=selectedPerfWet;
         active.perfFullDrive=Array.IndexOf(args,"-idas3-perf-full-drive")>=0;
         active.perfReverse=Array.IndexOf(args,"-idas3-perf-reverse")>=0;
+        active.perfRealPacedSeconds=DiagnosticInt(args,"-idas3-perf-real-seconds",0,0,90);
+        if(active.perfRealPacedSeconds>0)active.perfFrames=90000;
         active.perfLegend=Array.IndexOf(args,"-idas3-scene-perf-legend")>=0;
         active.rivalCheck=requestedRival;active.rivalRecord=selectedRivalRecord;
         active.retireCheck=Array.IndexOf(args,"-idas3-scene-retire-check")>=0;
@@ -236,7 +251,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         active.cullCheck=Array.IndexOf(args,"-idas3-scene-cull-check")>=0||requestedDepth||requestedIntro||requestedRival;
         if (!Application.isEditor) Screen.SetResolution(Array.IndexOf(args,"-idas3-scene-wide-check")>=0?1600:1280,Array.IndexOf(args,"-idas3-scene-wide-check")>=0?700:720,FullScreenMode.Windowed);
         if (Array.IndexOf(args,"-idas3-scene-render-check") >= 0||Array.IndexOf(args,"-idas3-scene-resolution-check") >= 0||active.realtimeAudio||active.cullCheck) AudioListener.volume=0;
-        if(requestedPerf){
+        if(requestedPerf||requestedTransitions){
             Screen.SetResolution(2560,1080,FullScreenMode.Windowed);
             QualitySettings.antiAliasing=4;QualitySettings.vSyncCount=0;Application.targetFrameRate=-1;
             AudioListener.volume=0;
@@ -261,8 +276,9 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     {
         if(finished)return;
         if(host.Failure!=null){Finish(false,host.Failure);return;}
+        if(transitionProfiler!=null&&transitionProfiler.Failure!=null){Finish(false,transitionProfiler.Failure);return;}
         if(Time.realtimeSinceStartupAsDouble-began>(legendCheck||headlightCheck?2400:600)){Finish(false,"Scene smoke exceeded its time budget.");return;}
-        if(!perfCheck&&host.Ready&&host.SubmissionMilliseconds>0&&host.Status.racePhase==2&&(host.Status.flags&1)==0)
+        if(!perfCheck&&!transitionCheck&&host.Ready&&host.SubmissionMilliseconds>0&&host.Status.racePhase==2&&(host.Status.flags&1)==0)
             submitTimes.Add(host.SubmissionMilliseconds);
     }
     private void Check(bool condition,string why){
@@ -487,6 +503,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         yield return Frames(3);Check(host.Ready,"Scene host did not initialize.");
         host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Isolate physical controller input");yield return Frames(4);
+        if(transitionCheck){yield return TransitionCycles();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-language")>=0){yield return LanguageCheck();yield break;}
         if(rivalCheck){yield return RivalCheck();yield break;}
         if(perfCheck){yield return PerformanceCheck();yield break;}
@@ -1018,12 +1035,22 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     {
         ++perfAllRenders;if(camera==perfMainCamera)++perfMainRenders;
     }
-    private static void RenderPerformanceStack(List<Camera> cameras)
+    private Idas3UnityUi perfUi;
+    private bool PerformanceCameraActive(Camera camera) => perfScene.RequiresCamera(camera) && perfUi.RequiresCamera(camera);
+    private void RestorePerformanceStack(List<Camera> cameras)
+    {
+        foreach(var camera in cameras)camera.enabled=PerformanceCameraActive(camera);
+    }
+    private int RenderPerformanceStack(List<Camera> cameras)
     {
         // ApplyFrame re-enables source cameras each update. Disable the entire
         // measured stack again before rendering to prevent automatic duplicates.
         foreach(var camera in cameras)camera.enabled=false;
-        foreach(var camera in cameras)camera.Render();
+        // The finish camera can remove the mirror. Do not render or restore a
+        // stale mirror just because it was present at the start of the race.
+        int rendered=0;
+        foreach(var camera in cameras)if(PerformanceCameraActive(camera)){camera.Render();++rendered;}
+        return rendered;
     }
     private static PerfMetric SummarizePerformance(string name,PerfSample[] samples,Func<PerfSample,double> value)
     {
@@ -1040,6 +1067,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     {
         Idas8ImportedTreeChecks.Run();
         var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();
+        perfScene=scene;perfUi=ui;
         perfMainCamera=host.GetComponent<Camera>();
         Check(perfMainCamera.targetTexture==null,"Performance benchmark must use normal window rendering.");
         bool captureScreens=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-no-captures")<0;
@@ -1220,13 +1248,13 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         var renderStack=new List<Camera>();
         if(manualRender){
             foreach(var camera in Resources.FindObjectsOfTypeAll<Camera>())
-                if((camera.enabled||camera==perfMainCamera)&&camera.gameObject.activeInHierarchy&&camera.targetTexture==hires)renderStack.Add(camera);
+                if(camera.gameObject.activeInHierarchy&&camera.targetTexture==hires)renderStack.Add(camera);
             renderStack.Sort((a,b)=>{int order=a.depth.CompareTo(b.depth);return order!=0?order:string.CompareOrdinal(a.name,b.name);});
             Check(renderStack.Contains(perfMainCamera)&&(!scene.MirrorCamera.enabled||renderStack.Contains(scene.MirrorCamera)),"Performance stack omitted a world camera");
         }
         held=87;
         for(int i=0;i<perfWarmup;++i){if(timingEnabled)FrameTimingManager.CaptureFrameTimings();yield return null;if(manualRender)RenderPerformanceStack(renderStack);}
-        foreach(var camera in renderStack)camera.enabled=true;
+        RestorePerformanceStack(renderStack);
         scene.VerifyViewCulling(Check);
         Check(host.Status.speedMetresPerSecond>1,"Performance warmup did not accelerate the original car.");
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-imported-headlight-check")>=0)
@@ -1235,30 +1263,69 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
         if(captureScreens&&perfWet)yield return Capture("wet-moving-bumper",true);
         if(captureScreens&&perfLegend)yield return Capture("legend-mirror-moving",true);
         if(captureScreens&&manualRender&&!perfWet&&!perfLegend)yield return Capture("dry-moving-bumper",true);
+        Idas3ResourceCensus.Capture(root,"race-start");
         // Warmup/captures restore camera.enabled. Do not let that setup frame
         // add an automatic render to the explicitly measured offscreen stack.
         if(manualRender)foreach(var camera in renderStack)camera.enabled=false;
         var importedCourse=FindAnyObjectByType<Idas8HakoneCourse>();
         if(perfCourse==16||perfCourse==17)importedCourse.VerifyTreeState();
+        // The previous setup frame includes screenshots/census I/O. Consume
+        // that wall-time delta before starting the audio/physics measurement.
+        // Run the full rendering workload while the real-time clock settles.
+        if(perfRealPacedSeconds>0){
+            realDelta=true;
+            for(int warm=0;warm<8;warm++){
+                yield return null;
+                if(manualRender)RenderPerformanceStack(renderStack);
+            }
+        }
         Camera.onPostRender+=CountPerformanceRender;
         report.audioBefore=Idas3UnityAudio.ReadStatistics();
         report.replayCaptureEnabled=captureEnabled;
         report.replayFramesBefore=Idas3SceneModeFlowValue(32);report.rivalReplayFramesBefore=Idas3SceneModeFlowValue(33);
         report.firstNativeFrame=host.Status.renderedFrames;report.firstSimulationTick=host.Status.simulationTicks;
+        // Some player runtimes expose the allocation API but return zero even
+        // for known allocations. Calibrate before timing; unavailable data must
+        // not be reported as an allocation-free race. No forced collection.
+        long allocationProbeStart=GC.GetAllocatedBytesForCurrentThread();
+        var allocationProbe=new byte[65536];
+        report.allocationProbeBytes=GC.GetAllocatedBytesForCurrentThread()-allocationProbeStart;
+        GC.KeepAlive(allocationProbe);
+        report.mainThreadAllocationCounterValid=report.allocationProbeBytes>=65536;
+        bool allocationRequested=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-perf-allocations")>=0;
+        if(allocationRequested){
+            Check(Debug.isDebugBuild,"Allocation call stacks require the private development player");
+            StartAllocationTrace();
+            yield return null;yield return null;
+            ProbeAllocationTrace();
+            yield return null;yield return null;
+            report.allocationTrace=true;
+            report.scope+=" A bounded allocation call-stack trace was recorded. Trace I/O and development profiling add overhead; timings are not release FPS. Read allocation sizes from GC.Alloc metadata in allocations.raw, not marker timing values.";
+        }
+        // Probe yields are warmup frames, outside the measured submission count.
+        report.firstNativeFrame=host.Status.renderedFrames;report.firstSimulationTick=host.Status.simulationTicks;
         for(int generation=0;generation<report.gcCollections.Length;++generation)report.gcCollections[generation]=GC.CollectionCount(generation);
         ulong lastTiming=0,lastNative=host.Status.renderedFrames;
         long previousAllocated=GC.GetAllocatedBytesForCurrentThread();
+        if(perfRealPacedSeconds>0){
+            Check(perfFullDrive,"Real-time window requires route controls");
+            realDelta=true;report.realTimePaced=true;report.fullDrive=false;
+            report.requestedSimulationTicks=perfRealPacedSeconds*60;
+            report.scope="Private real-time paced route segment with normal elapsed-time simulation and audio. Rendering mode is identified by command line and render counters. Hidden explicit GPU-completed rendering measures frame work, not displayed FPS. No lower graphics settings. Segment coverage only, not full-race completion.";
+        }
         long beganTicks=System.Diagnostics.Stopwatch.GetTimestamp(),previousTicks=beganTicks;
         double tickMilliseconds=1000.0/System.Diagnostics.Stopwatch.Frequency;
         // All arrays and delegates are prepared before this loop. No captures,
         // JSON serialization or filesystem traffic. The optional one-pixel
         // GPU completion probe is the only readback, and is reported explicitly.
-        int measuredFrames=0;
+        int measuredFrames=0,expectedManualRenders=0;
         for(int i=0;i<perfFrames;++i){
+            if(allocationRequested&&i==0)AllocationTraceMarker("IDAS3.MeasureWindowStart");
+            if(allocationRequested&&i==60){AllocationTraceMarker("IDAS3.MeasureWindowEnd");StopAllocationTrace();report.allocationTraceMeasuredFrames=i;}
             if(timingEnabled)FrameTimingManager.CaptureFrameTimings();
             yield return null;
             long renderStart=System.Diagnostics.Stopwatch.GetTimestamp();
-            if(manualRender)RenderPerformanceStack(renderStack);
+            if(manualRender)expectedManualRenders+=RenderPerformanceStack(renderStack);
             if(waitGpu){
                 var previousTarget=RenderTexture.active;RenderTexture.active=hires;
                 completionPixel.ReadPixels(new Rect(0,0,1,1),0,0,false);
@@ -1272,12 +1339,17 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             Check(status.renderedFrames==lastNative+1,"Performance measurement skipped a native source frame.");
             var sample=new PerfSample{index=i,unityFrame=Time.frameCount,nativeFrame=status.renderedFrames,
                 simulationTicks=status.simulationTicks,wallMs=(now-previousTicks)*tickMilliseconds,
-                mainThreadAllocatedBytes=Math.Max(0,allocated-previousAllocated),submissionMs=host.SubmissionMilliseconds,
+                mainThreadAllocatedBytes=report.mainThreadAllocationCounterValid?Math.Max(0,allocated-previousAllocated):-1,submissionMs=host.SubmissionMilliseconds,
                 nativeMs=host.NativeStepMilliseconds,rendererMs=host.RendererMilliseconds,uiMs=host.UiMilliseconds,
                 meshes=scene.ActiveMeshCount,ranges=source.rangeCount,vertices=source.vertexCount,uiDraws=ui.DrawCount,
                 uiIndexUploads=ui.IndexUploadCount,uiCommandRebuilds=ui.CommandRebuildCount,
+                uiReusedVertices=ui.ReusedUiVertices,uiConvertedVertices=ui.ConvertedUiVertices,uiGeometryChunks=ui.UiGeometryChunks,
+                sceneLayoutReused=scene.SceneLayoutReused,sceneLayoutRejectReason=scene.SceneLayoutRejectReason,
                 uploadedVertices=scene.UploadedVertexCount,geometryUploads=scene.GeometryUploadCount,materialUpdates=scene.MaterialUpdateCount,
                 depthCandidates=scene.DepthCandidateCount,depthDraws=scene.DepthDrawCount,depthRebuilds=scene.DepthBufferRebuildCount,
+                depthMaterials=scene.DepthMaterialCount,depthMaterialGroups=scene.DepthMaterialGroups,
+                depthSourceDraws=scene.DepthSourceDrawCount,depthBatchUploadVertices=scene.DepthBatchUploadVertices,
+                depthBatchRebuilds=scene.DepthBatchRebuildCount,depthBatchCapacityVertices=scene.DepthBatchCapacityVertices,
                 mainViewExcludedRanges=scene.MainViewExcludedRanges,mainViewExcludedVertices=scene.MainViewExcludedVertices,
                 mirrorViewExcludedRanges=scene.MirrorViewExcludedRanges,mirrorViewExcludedVertices=scene.MirrorViewExcludedVertices,
                 drawCalls=drawCalls.Valid?drawCalls.LastValue:-1,batches=batches.Valid?batches.LastValue:-1,setPassCalls=setPass.Valid?setPass.LastValue:-1,sceneRenderMs=renderMs,
@@ -1298,19 +1370,22 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
                 report.finalDistance=driveTelemetry[0];report.courseLength=driveTelemetry[1];report.furthestRaceProgress=driveTelemetry[3];
             }
             samples[i]=sample;measuredFrames=i+1;lastNative=status.renderedFrames;previousTicks=now;previousAllocated=allocated;
+            if(perfRealPacedSeconds>0&&status.simulationTicks-report.firstSimulationTick>=(ulong)report.requestedSimulationTicks)break;
             if(perfFullDrive&&report.finishedRace)break;
         }
         if(perfFullDrive){Idas3SceneCourseDriveDiagnostic(0,null,0);Array.Resize(ref samples,measuredFrames);report.samples=samples;report.sampleFrames=measuredFrames;}
+        StopAllocationTrace();
         report.measuredSeconds=(previousTicks-beganTicks)/(double)System.Diagnostics.Stopwatch.Frequency;
         if(completionPixel!=null)Destroy(completionPixel);
         if(perfCourse==16||perfCourse==17)importedCourse.VerifyTreeState();
         Camera.onPostRender-=CountPerformanceRender;held=0;
-        foreach(var camera in renderStack)camera.enabled=true;
+        RestorePerformanceStack(renderStack);
         scene.VerifyViewCulling(Check);
         report.lastNativeFrame=host.Status.renderedFrames;report.lastSimulationTick=host.Status.simulationTicks;
         report.replayFramesAfter=Idas3SceneModeFlowValue(32);report.rivalReplayFramesAfter=Idas3SceneModeFlowValue(33);
         Check(captureEnabled?report.replayFramesAfter>report.replayFramesBefore:report.replayFramesAfter==0,"Capture on/off comparison took effect");
         report.mainCameraRenderEvents=perfMainRenders;report.allCameraRenderEvents=perfAllRenders;
+        report.expectedManualCameraRenderEvents=expectedManualRenders;
         report.audioAfter=Idas3UnityAudio.ReadStatistics();
         for(int generation=0;generation<report.gcCollections.Length;++generation)
             report.gcCollections[generation]=GC.CollectionCount(generation)-report.gcCollections[generation];
@@ -1324,18 +1399,26 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             SummarizePerformance("meshes",samples,s=>s.meshes),SummarizePerformance("ranges",samples,s=>s.ranges),
             SummarizePerformance("vertices",samples,s=>s.vertices),SummarizePerformance("uploadedVertices",samples,s=>s.uploadedVertices),
             SummarizePerformance("geometryUploads",samples,s=>s.geometryUploads),SummarizePerformance("materialUpdates",samples,s=>s.materialUpdates),
+            SummarizePerformance("depthMaterials",samples,s=>s.depthMaterials),SummarizePerformance("depthMaterialGroups",samples,s=>s.depthMaterialGroups),
+            SummarizePerformance("depthSourceDraws",samples,s=>s.depthSourceDraws),SummarizePerformance("depthBatchUploadVertices",samples,s=>s.depthBatchUploadVertices),
+            SummarizePerformance("depthBatchRebuilds",samples,s=>s.depthBatchRebuilds),SummarizePerformance("depthBatchCapacityVertices",samples,s=>s.depthBatchCapacityVertices),
             SummarizePerformance("mainViewExcludedRanges",samples,s=>s.mainViewExcludedRanges),SummarizePerformance("mainViewExcludedVertices",samples,s=>s.mainViewExcludedVertices),
             SummarizePerformance("mirrorViewExcludedRanges",samples,s=>s.mirrorViewExcludedRanges),SummarizePerformance("mirrorViewExcludedVertices",samples,s=>s.mirrorViewExcludedVertices),
             SummarizePerformance("uiDraws",samples,s=>s.uiDraws),SummarizePerformance("uiIndexUploads",samples,s=>s.uiIndexUploads),
             SummarizePerformance("uiCommandRebuilds",samples,s=>s.uiCommandRebuilds)};
         File.WriteAllText(Path.Combine(root,"performance.json"),JsonUtility.ToJson(report,true));
         if(manualRender)Check(perfMainRenders==measuredFrames,"Every measured frame must render exactly once");
-        if(manualRender)Check(perfAllRenders==measuredFrames*renderStack.Count,"Camera stack skipped or duplicated a measured render");
+        if(manualRender)Check(perfAllRenders==expectedManualRenders,"Camera stack skipped or duplicated a measured render");
         if(!offscreen)Check(perfMainRenders>=measuredFrames-2,"Unity skipped normal camera rendering during the benchmark; timing is not representative.");
         else Check(report.lastNativeFrame-report.firstNativeFrame==(ulong)measuredFrames,"CPU benchmark skipped scene submissions");
-        if(perfFullDrive)Check(report.finishedRace&&!report.timeUp,"Course driver did not finish the race; do not count this as full-track coverage.");
+        if(perfRealPacedSeconds>0){
+            Check(report.lastSimulationTick-report.firstSimulationTick>=(ulong)report.requestedSimulationTicks,"Real-time window ended early");
+            double sourceSeconds=(report.lastSimulationTick-report.firstSimulationTick)/60.0;
+            Check(Math.Abs(sourceSeconds-report.measuredSeconds)<Math.Max(.10,sourceSeconds*.02),"Source clock differs from elapsed time");
+        }else if(perfFullDrive)Check(report.finishedRace&&!report.timeUp,"Course driver did not finish the race; do not count this as full-track coverage.");
         Check(report.audioAfter.consumedFrames>report.audioBefore.consumedFrames,"Unity audio did not run during performance measurement.");
         if(frameCap>0)Idas3FramePacingChecks.RunPlatform(host.GameOptions);
+        Idas3ResourceCensus.Capture(root,"race-end");
         Finish(true,null);
     }
     // Course-selectable depth/sorting investigation. All capture machinery and
@@ -1770,6 +1853,8 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
     private void Finish(bool passed,string error)
     {
         if(finished)return;finished=true;frozen=true;
+        StopAllocationTrace();
+        if(transitionProfiler!=null)transitionProfiler.StopAndSave(passed,error);
         if(perfCheck)Camera.onPostRender-=CountPerformanceRender;
         host.StopNative();submitTimes.Sort();
         bool stopped=false;
@@ -1780,6 +1865,7 @@ public sealed class Idas3SceneSmoke : MonoBehaviour
             unityVersion=Application.unityVersion,device=SystemInfo.graphicsDeviceName,
             elapsedSeconds=Time.realtimeSinceStartupAsDouble-began,captures=shots.ToArray()};
         if(perfCheck)report.scope="Opt-in race performance benchmark with isolated saves and original handling. See performance.json for exact rendering mode, antialiasing, driving controls, GPU-completion/readback scope, sample rows, timing availability and camera render events.";
+        if(transitionCheck)report.scope="Private repeated track changes through source menus and managed pause commands, fixed native ticks, offscreen AA4 rendering after LateUpdate. See transitions.json for frame timing and checkpoint memory. Snapshots/captures are excluded from timing; this is not foreground frame pacing.";
         if(cullCheck)report.scope="Opt-in Myogi culling regression at 2560x1080: source Time Attack bumper/chase, Legend bumper/mirror/chase, fixed-step driving, and camera-only tree106 close-ups. Source buffers are hashed for matched baseline/fix comparison. A passing harness establishes execution and capture invariants; visual comparison is separate.";
         if(depthCheck)report.scope="Opt-in depth/sorting investigation on course "+depthCourse+" at 2560x1080 with diagnostic AA1/manual camera rendering: Time Attack bumper/chase and twelve fixed 120-frame driving intervals, plus an optional frozen camera probe. Native geometry hashes and source depth/list counts permit matched comparisons. A passing harness establishes capture invariants, not visual correctness.";
         if(introCheck)report.scope="Opt-in source intro child7 car investigation at 2560x1080 with diagnostic AA1/manual camera rendering. Logo cards3-5 use15 source ticks per update; child6 and the captured intro use single ticks. Captures span early camera cuts, consecutive body-motion frames, and headlight transitions. Intro-relative native update counts, source geometry hashes, range/depth census and selected geometry/lighting dumps support matched visual audits. Passing establishes capture invariants, not car visual correctness.";

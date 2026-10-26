@@ -78,8 +78,11 @@ OriginalRaceHud OriginalRaceHud::load(const std::filesystem::path& root){
     return out;
 }
 std::vector<OriginalHudDraw> OriginalRaceHud::drawList(const OriginalHudState& s)const{
+    std::vector<OriginalHudDraw> out;buildDrawList(s,out);return out;
+}
+void OriginalRaceHud::buildDrawList(const OriginalHudState& s,std::vector<OriginalHudDraw>& out)const{
     if(s.tachType>3||s.gear>6||s.sectionCapacity>4||s.sectionCount>s.sectionCapacity||!std::isfinite(s.speedKmh)||!std::isfinite(s.rpm))throw std::invalid_argument("Original HUD state out of supported bounds");
-    std::vector<OriginalHudDraw> out;
+    out.clear();
     const auto identity=original::originalIdentityMatrix();
     const auto polygon=[&](unsigned index,const original::OriginalMatrix& matrix){out.push_back({OriginalHudDraw::Kind::polygon,index,0xffffffff,matrix});};
     const auto sprite=[&](unsigned index,unsigned texture=0xffffffff){out.push_back({OriginalHudDraw::Kind::sprite,index,texture,identity});};
@@ -89,7 +92,7 @@ std::vector<OriginalHudDraw> OriginalRaceHud::drawList(const OriginalHudState& s
             :s.finishBanner==OriginalHudState::FinishBanner::timeUp?183u
             :s.finishBanner==OriginalHudState::FinishBanner::win?184u:185u;
         polygon(chunk,identity);
-        return out;
+        return;
     }
     // The source normal-layout panel with its independent +D0/+D4 slides.
     // Alternate-layout's separate animated timers remain independently scoped.
@@ -106,15 +109,15 @@ std::vector<OriginalHudDraw> OriginalRaceHud::drawList(const OriginalHudState& s
         // 8DB8..8EF8: original TIME/TOTAL TIME/SECTION TIME labels, colored
         // backing strips and authored row labels. Preserve submission order.
         auto m=identity;original::translateOriginalMatrix(m,{-s.slide208,lit(0xbc23d70a),0});
-        polygon(136,m);polygon(123,m);polygon(101,m);
+        polygon(136,m);polygon(123,m);if(!s.simpleTime)polygon(101,m);
         m=identity;original::translateOriginalMatrix(m,{-s.slide208,lit(0xbca3d70a),0});
-        for(unsigned i=0;i<s.sectionCapacity;i++)polygon(87+i,m);
+        if(!s.simpleTime)for(unsigned i=0;i<s.sectionCapacity;i++)polygon(87+i,m);
         m=identity;original::translateOriginalMatrix(m,{-s.slide212,lit(0x80000000),0});
-        polygon(remaining<=5?135:134,m);polygon(137,m);polygon(92,m);
+        polygon(remaining<=5?135:134,m);polygon(137,m);if(!s.simpleTime)polygon(92,m);
         // 8F10..9510: cumulative records are converted to section durations
         // by065DF0..065E32. Future rows keep the original -1 sentinel.
         m=identity;std::uint32_t previous=0;
-        for(unsigned row=0;row<s.sectionCapacity;row++){
+        for(unsigned row=0;!s.simpleTime&&row<s.sectionCapacity;row++){
             const bool recorded=row<s.sectionCount;
             const bool active=row==s.sectionCount;
             if(!recorded&&!active)break;
@@ -166,27 +169,30 @@ std::vector<OriginalHudDraw> OriginalRaceHud::drawList(const OriginalHudState& s
     }
     // Source 0C9C32..0C9C40: display flag 00400000 selects original chunk 4.
     if(s.timeExtended)polygon(4,identity);
-    return out;
 }
 void OriginalRaceHud::paint(std::span<std::uint32_t> argb,int width,int height,const OriginalHudState& state)const{
     if(width<=0||height<=0||argb.size()!=std::size_t(width)*height)throw std::invalid_argument("Invalid HUD destination");
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     const float centeredX=(float(width)-640.f*fit)*.5f,centeredY=(float(height)-480.f*fit)*.5f;
-    auto commands=drawList(state);
+    // These synchronous painters never call back into HUD painting. Keep
+    // small per-thread workspaces instead of allocating every frame/glyph.
+    thread_local std::vector<OriginalHudDraw> commands;
+    buildDrawList(state,commands);
     // Only positions change per draw. Do not clone every batch, index array,
     // UV and material for every instrument on every frame.
-    std::vector<Vec3> transformedPositions;transformedPositions.reserve(maxChunkVertices_);
-    if(state.timePanel&&!state.alternateLayout){
-        // Original z places the label quads in front of their backing strips.
-        // This CPU compositor has no depth buffer, so submit those strips first.
-        std::stable_partition(commands.begin(),commands.end(),[](const auto& d){return d.kind==OriginalHudDraw::Kind::polygon&&(d.index==92||d.index==134||d.index==135||d.index==137);});
-    }
+    thread_local std::vector<Vec3> transformedPositions;transformedPositions.reserve(maxChunkVertices_);
+    thread_local OriginalSprite sprite;
+    const bool backingFirst=state.timePanel&&!state.alternateLayout;
     // This essential HUD has two recovered depth bands: model view z=-.15
     // plus tiny authored model z, and RIP instruments z=-.1. Submit all of the
     // farther polygons before the nearer sprites in this flat CPU compositor.
     // The drawList retains the original submission order for differential tests.
-    for(const auto kind:{OriginalHudDraw::Kind::polygon,OriginalHudDraw::Kind::sprite})for(const auto& draw:commands){
-        if(draw.kind!=kind)continue;
+    // Three stable passes preserve the former stable_partition result without
+    // allocating its temporary buffer: panel backings, other polygons, sprites.
+    for(unsigned layer=0;layer<3;++layer)for(const auto& draw:commands){
+        const bool backing=backingFirst&&(draw.index==92||draw.index==134||draw.index==135||draw.index==137);
+        const unsigned drawLayer=draw.kind==OriginalHudDraw::Kind::sprite?2u:backing?0u:1u;
+        if(drawLayer!=layer)continue;
         const bool timer=draw.kind==OriginalHudDraw::Kind::polygon&&draw.index<187;
         // The race-end announcement is a centred banner, not an instrument
         // group, so widescreen must not anchor it to an edge.
@@ -204,7 +210,7 @@ void OriginalRaceHud::paint(std::span<std::uint32_t> argb,int width,int height,c
             // constant colors; the menu1B8240 placeholder override is not used.
             compositeOriginalMenuChunk(argb,width,height,modelTextures_,chunk,placement,transformedPositions);
         }else{
-            auto sprite=sprites_.sprites.at(draw.index);
+            sprite=sprites_.sprites.at(draw.index);
             if(draw.textureOverride!=0xffffffff)sprite.texture=draw.textureOverride;
             if(state.alternateLayout){
                 // Constructor7D88..7F44 writes these exact top-left positions.

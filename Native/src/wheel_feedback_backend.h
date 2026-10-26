@@ -53,7 +53,7 @@ IDAS3_WHEEL_EXPORT int IDAS3_WHEEL_CALL Idas3WheelSetCabinetState(const char* gu
 // whole force model stays on the native side where it is testable.
 struct Idas3WheelRaceState {
     std::uint32_t size;              // caller sets sizeof(Idas3WheelRaceState)
-    std::uint32_t version;           // 1
+    std::uint32_t version;           // 2; legacy version1 has only the first52 bytes
     std::uint32_t driving;           // 0 releases the wheel between races
     std::uint32_t carIndex;          // 0..34; picks the cabinet's per-car force limit
     float speedKmh;
@@ -65,8 +65,9 @@ struct Idas3WheelRaceState {
     float strength;                  // [0,1] the player's feedback setting
     std::uint32_t invert;
     float deltaSeconds;              // frame time, used only to age the rumble
+    std::int32_t cardSteeringLevel;   // v2: -1 legacy default, 0..8 Saved Data dial
 };
-static_assert(sizeof(Idas3WheelRaceState)==52);
+static_assert(sizeof(Idas3WheelRaceState)==56);
 
 // Run one frame of the cabinet board and apply it to the wheel. Same ownership,
 // foreground and lease rules as the calls below. Returns 1 on success.

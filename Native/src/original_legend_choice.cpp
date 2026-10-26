@@ -1,4 +1,5 @@
 #include "original_legend_choice.h"
+#include <algorithm>
 
 namespace idas3::original {
 namespace {
@@ -41,7 +42,7 @@ void appendPanels(std::vector<Draw>& draws){
 }
 
 std::vector<OriginalLegendChoiceDraw> originalLegendChoiceDraws(OriginalLegendChoiceKind kind,
-    std::uint32_t selected,std::uint32_t timerTicks){
+    std::uint32_t selected,std::uint32_t timerTicks,bool confirming,std::uint32_t confirmFrame){
     std::vector<Draw> draws;
     const bool chosen=selected!=0;
     auto dim=layer(Bank::Continue,13,0,0,dimDepth);
@@ -79,6 +80,10 @@ std::vector<OriginalLegendChoiceDraw> originalLegendChoiceDraws(OriginalLegendCh
         appendTimer(draws,timerTicks);
         break;
     }
+    // 0F0E40/0F0E9E: the chosen highlight flashes on confirmation,
+    // using the owner's 60 Hz counter. Repainting must not advance it.
+    if(confirming&&!(confirmFrame&6u))
+        std::erase_if(draws,[](const Draw& d){return d.z==markDepth;});
     return draws;
 }
 }

@@ -455,9 +455,9 @@ void prepareModeFlowFixture(App& app,unsigned scene){
             if(scene==6)app.results.recordFlags=0;
             app.audio.beginResultMusic();app.beginTimeAttackVisit(false);
             // Fixture6 isolates the Continue screen for menu-navigation tests.
-            // Completed nonrecord runs now visit the leaderboard first too.
+            // Completed runs visit Ranking and Password before Continue.
             if(scene==6){
-                for(unsigned frame=0;frame<100&&app.timeAttackVisit.stage()==original::OriginalTimeAttackVisit::Stage::Ranking;++frame)
+                for(unsigned frame=0;frame<200&&app.timeAttackVisit.stage()!=original::OriginalTimeAttackVisit::Stage::Continue;++frame)
                     app.timeAttackVisit.advance({true});
                 app.prepareTimeAttackBackdrop();
             }

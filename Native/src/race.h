@@ -54,6 +54,9 @@ public:
     void beginCapture(bool details);
     void record(std::uint64_t tick,Vec3 position,float yaw,float speed,int gear,const ReplayDetail* detail=nullptr);
     bool save(const std::string& filename) const;
+    // Format once for last-run and optional best-run copies. Each file retains
+    // independent publication/failure handling; an empty second path skips it.
+    std::array<bool,2> saveCopies(const std::string& first,const std::string& second) const;
     bool load(const std::string& filename);
     // Portable little-endian pose replay: 20 Hz plus the exact final frame.
     std::vector<std::uint8_t> sharedBytes(std::uint32_t finish) const;

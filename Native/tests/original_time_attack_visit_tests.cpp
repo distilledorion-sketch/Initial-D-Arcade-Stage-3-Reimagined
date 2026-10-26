@@ -152,7 +152,31 @@ int main(int argc,char** argv){try{
     for(unsigned i=0;i<100;++i)visit.advance({});picture(out/"ranking.ppm",visit);
     visit.advance({true});require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking&&visit.phase()==2,"Ranking confirm starts original exit fade");
     for(unsigned i=0;i<32;++i)visit.advance({});require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Ranking exit holds30 fade ticks plus settled black");
-    visit.advance({});require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue&&visit.countdownTicks()==879,"Ranking goes to continue after source fade/dwell, timer879");
+    visit.advance({});require(visit.stage()==OriginalTimeAttackVisit::Stage::Password&&visit.countdownTicks()==2479,"Completed ranking leads to NetRankings password");
+    for(unsigned i=0;i<16;++i)visit.advance({});picture(out/"password.ppm",visit);
+    {
+        auto bright=visit;for(unsigned i=16;i<23;++i)bright.advance({});
+        auto dim=bright;for(unsigned i=23;i<68;++i)dim.advance({});
+        picture(out/"password-highlight-bright.ppm",bright);picture(out/"password-highlight-dim.ppm",dim);
+        const auto frame=bright.frame(),ticks=bright.countdownTicks();
+        for(const auto size:std::array<std::array<int,2>,3>{{{640,480},{1280,720},{1920,1080}}}){
+            const int w=size[0],h=size[1];const float fit=std::min(w/640.f,h/480.f),left=(w-640*fit)*.5f;
+            std::vector<unsigned> a(w*h,0xff000000),b=a,again=a;bright.paint(a,w,h);dim.paint(b,w,h);bright.paint(again,w,h);
+            require(a==again&&bright.frame()==frame&&bright.countdownTicks()==ticks,"Password repaint advances pulse or countdown");
+            unsigned changed=0,orange=0;
+            for(int y=int(125*fit);y<int(155*fit);++y)for(int x=int(left+25*fit);x<int(left+615*fit);++x){
+                const auto p=a[y*w+x];changed+=p!=b[y*w+x];orange+=((p>>16)&255)>((p>>8)&255)+20&&((p>>8)&255)>(p&255)+10;
+            }
+            require(changed>300*fit*fit&&orange>100*fit*fit,"Password orange glow missing, static, or misaligned");
+        }
+        Idas3UiEnable(1);std::vector<unsigned> capture(640*480);Idas3UiBeginFrame(640,480);bright.paint(capture,640,480);
+        unityUiSubmit(capture.data(),640,480,false,false,false);
+        UnityUiFrame ui{};ui.size=sizeof(ui);Idas3UiGetFrame(&ui);std::vector<UnityUiDraw> draws(ui.drawCount);Idas3UiCopyDraws(draws.data(),int(draws.size()));
+        require(std::any_of(draws.begin(),draws.end(),[](const auto& d){return ((d.tsp>>29)&7)==1&&((d.tsp>>26)&7)==1&&(d.tsp&0x001000c0u)==0x001000c0u;}),"Unity capture lost additive password glow");
+        Idas3UiEnable(0);
+    }
+    visit.advance({true});for(unsigned i=0;i<20;++i)visit.advance({});
+    require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue&&visit.countdownTicks()==879,"Password advances to Continue with a fresh timer");
     picture(out/"continue.ppm",visit);
     visit.advance({false,false,true});require(visit.selectedIndex()==1,"Continue option changes");
     events=visit.takeEvents();require(events.size()==1&&events[0].command==OriginalLegendReturnCommand::Cue&&events[0].a==2,"Continue selection original cue2");
@@ -186,14 +210,14 @@ int main(int argc,char** argv){try{
         fullBoard.localRecords.resize(11);
     }
     auto emptyBoard=setup;emptyBoard.localRecords.clear();visit.beginAfterResults(emptyBoard);
-    require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"An empty ranking skips to Continue without a blank leaderboard");
+    require(visit.stage()==OriginalTimeAttackVisit::Stage::Password,"Completed run without rankings still receives its password");
     setup.courseRankingQualified=true;visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Non-best top-ten insertion still receives ranking page");
     require(visit.countdownTicks()==900,"ARankinTA exact900-frame expiry");
     for(unsigned i=0;i<29;++i)visit.advance({true});require(visit.phase()==0,"Original entry fade gates confirmation for29 ticks");
     visit.advance({true});require(visit.phase()==2,"Original entry fade permits confirm on30th tick");
     visit.beginAfterResults(setup);for(unsigned i=0;i<899;++i)visit.advance({});require(visit.phase()==1&&visit.countdownTicks()==1,"Ranking holds through899th owner tick");
     visit.advance({});require(visit.phase()==2&&visit.countdownTicks()==0,"900th tick starts exit fade");
-    for(unsigned i=0;i<33;++i)visit.advance({});require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Expired ranking exits through original fade/settle");
+    for(unsigned i=0;i<33;++i)visit.advance({});require(visit.stage()==OriginalTimeAttackVisit::Stage::Password,"Expired ranking exits through original fade/settle to password");
     setup.resultStatus=2;visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Top-ten flag cannot qualify time-up");
     setup.courseRankingQualified=false;setup.resultStatus=2;
     setup.freePlay=false;setup.canContinue=false;visit.beginAfterResults(setup);visit.advance({true});for(unsigned i=0;i<41;++i)visit.advance({});require(visit.route()==OriginalTimeAttackVisit::Route::Exit,"No granted continuation cannot accept");

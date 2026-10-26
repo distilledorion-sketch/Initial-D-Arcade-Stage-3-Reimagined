@@ -32,7 +32,8 @@ public:
     void paint(std::span<std::uint32_t> target,int width,int height)const;
     // Paints a Legend return choice overlay over whatever is already drawn.
     void paintChoice(std::span<std::uint32_t> target,int width,int height,
-        OriginalLegendChoiceKind,std::uint32_t selected,std::uint32_t timerTicks)const;
+        OriginalLegendChoiceKind,std::uint32_t selected,std::uint32_t timerTicks,
+        bool confirming=false,std::uint32_t confirmFrame=0)const;
     // Pointer hit against the authored Continue label geometry, in 640x480
     // source coordinates. Returns 0 Yes, 1 No, or -1 outside either label.
     int hitContinue(float x,float y,unsigned selected)const;

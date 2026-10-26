@@ -58,6 +58,7 @@ struct UiState {
     const RaceClock* race=nullptr;
     // The race-end announcement holds the road view before the results.
     OriginalHudState::FinishBanner finishBanner=OriginalHudState::FinishBanner::none;
+    std::uint32_t finishNoticeFrame=0;
     const OriginalResultsState* results=nullptr;
     const OriginalBattleResultsState* battleResults=nullptr;
     double bestTime=0;
@@ -124,7 +125,7 @@ private:
     // up, the player sits fixed inside the frame, and the opponent appears
     // only while inside that window.
     void map(const Course& course,float x,float y,float w,float h,
-        const VehicleState& player,const VehicleState* rival);
+        const VehicleState& player,const VehicleState* rival,int cardNavigation=0);
     // The whole authored route, for the course-selection panel.
     void routePreview(const Course& course,float x,float y,float w,float h);
     // The map field is see-through in the cabinet artwork, so it writes its

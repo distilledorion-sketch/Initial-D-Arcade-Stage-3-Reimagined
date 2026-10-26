@@ -23,6 +23,7 @@
 #include "original_tuning_course_menu.h"
 #include "original_tuning_course_presentation.h"
 #include "original_driver_entry_route.h"
+#include "original_saved_data.h"
 #include <array>
 #include <filesystem>
 #include <future>
@@ -31,7 +32,7 @@
 #include <vector>
 
 namespace idas3 {
-enum class FrontendStage { Title, SaveSelect, Make, Car, Transmission, Mode, Course, Route, Weather, Time, Rival, Name, TuningCourse };
+enum class FrontendStage { Title, SaveSelect, Make, Car, Transmission, Mode, Course, Route, Weather, Time, Rival, Name, TuningCourse, SavedData };
 
 // Original artwork and authored mesh chunks with native selection/navigation.
 // Car-strip transforms and confirmation shrink use original 1B5880/1B5B40
@@ -106,6 +107,9 @@ public:
     // Continue and Change Car choose transmission without repeating driver
     // setup. The host persists the profile only after the owner completes.
     void selectSavedCarTransmission(bool returnToCar=false);
+    void selectSavedData();
+    void nextSavedDataPage(){if(stage==FrontendStage::SavedData&&savedData_)savedData_->nextPage();}
+    const original::OriginalSavedData* savedData()const{return savedData_.get();}
     void setNameSteering(float steering);
     const original::OriginalNameEntryState& nameEntryState()const{return nameState;}
     const OriginalNameEntryPresentation& nameEntryPresentation()const{return *namePresentation;}
@@ -149,6 +153,7 @@ public:
     unsigned attractScript()const{return gasstand.state().script;}
     bool confirmationInProgress()const{return carConfirmationFrame>=0 || (stage==FrontendStage::Name&&nameState.phase588>=2) || (stage==FrontendStage::TuningCourse&&tuningCourseMenu.phase464>=2) || (stage==FrontendStage::Title&&(titleConfirmPending||attractExit.pendingFrames348));}
     bool inputReady()const{return !confirmationInProgress() &&
+        (stage!=FrontendStage::SavedData || (savedData_&&savedData_->ready())) &&
         (stage!=FrontendStage::Make || (observedStage==stage&&stageInitialized&&makerTransition.phase448==1)) &&
         (stage!=FrontendStage::Car || (observedStage==stage&&stageInitialized&&carTransition.phase456==1)) &&
         (stage!=FrontendStage::Transmission || (observedStage==stage&&stageInitialized&&transmissionTransition.phase476==1)) &&
@@ -156,6 +161,7 @@ public:
         (stage!=FrontendStage::TuningCourse || (observedStage==stage&&stageInitialized&&tuningCourseMenu.phase464==1)) &&
         (stage!=FrontendStage::Mode || (observedStage==stage&&stageInitialized&&modeTransition.phase468==1));}
     std::uint32_t screenFadeArgb()const{return selectionExitFrame>=0?(std::uint32_t(std::min(selectionExitFrame,15)*255/15)<<24):stage==FrontendStage::Title?(titleExitBlack?0xff000000u:attractChildId==11?original::originalGasstandFadeArgb(gasstand.state()):attractChildId>=3&&attractChildId<=5?attractCards.fadeArgb():titleFade):
+        stage==FrontendStage::SavedData&&savedData_?savedData_->fadeArgb():
         stage==FrontendStage::Make&&makerTransition.overlayEnabled460?original::originalMakerFadeArgb(makerTransition):
         stage==FrontendStage::Car&&carTransition.overlayEnabled472?original::originalCarMenuFadeArgb(carTransition):
         stage==FrontendStage::Transmission&&transmissionTransition.overlayEnabled464?original::originalTransmissionMenuFadeArgb(transmissionTransition):
@@ -246,6 +252,7 @@ private:
     original::OriginalNameEntryTables nameTables;
     original::OriginalNameEntryState nameState;
     original::OriginalNameEntryInput nameInput;
+    std::unique_ptr<original::OriginalSavedData> savedData_;
     std::unique_ptr<OriginalNameEntryPresentation> namePresentation;
     std::unique_ptr<original::OriginalTuningData> tuningData;
     std::unique_ptr<OriginalTuningCoursePresentation> tuningPresentation;

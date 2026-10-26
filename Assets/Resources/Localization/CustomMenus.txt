@@ -180,6 +180,12 @@ TIME UP	タイムアップ	时间到
 YOU WIN	あなたの勝ち	您获胜了
 YOU LOSE	あなたの負け	您落败了
 Battle record could not be saved.	対戦記録を保存できませんでした。	无法保存对战记录。
+Race result screen could not be prepared.	レース結果画面を表示できませんでした。	无法显示比赛结果画面。
+Your rewards are saved. Retry the result screen or exit the game.	獲得した報酬は保存済みです。結果画面を再試行するか、ゲームを終了してください。	奖励已保存。请重试结果画面或退出游戏。
+Your result is saved for recovery. Retry saving, or exit and recover it next launch.	結果は復旧用に保存されています。保存を再試行するか、終了して次回起動時に復旧してください。	比赛结果已保存，可供恢复。请重试保存，或退出并在下次启动时恢复。
+The result has not been saved. Check free space and folder access, then retry. Exiting now may lose this result.	結果はまだ保存されていません。空き容量とフォルダーのアクセス権を確認して再試行してください。今終了すると結果が失われる場合があります。	比赛结果尚未保存。请检查可用空间和文件夹权限，然后重试。现在退出可能会丢失本次结果。
+RETRY RESULT	結果を再試行	重试结果
+EXIT GAME	ゲームを終了	退出游戏
 Room closed.	ルームを閉じました。	房间已关闭。
 Steam is unavailable. Sign in, then try Quick Match again.	Steamを利用できません。ログインして再度クイックマッチを試してください。	Steam不可用。请登录后重试快速匹配。
 Waiting for another driver — checking other open rooms…	対戦相手を待機中 — 他の公開ルームを確認しています…	等待其他车手，正在检查其他公开房间…
@@ -660,6 +666,7 @@ UPDATE CHECK	更新の確認	更新检查
 UPDATE	更新する	更新
 FULL REPAIR	完全修復	完整修复
 LATER	あとで	稍后
+Cancel matchmaking or leave your room before installing an update.	更新をインストールする前に、マッチングを中止するかルームから退出してください。	安装更新前，请取消匹配或离开房间。
 CONTINUE TO GAME	ゲームを続ける	继续游戏
 INSTALLED VERSION	現在のバージョン	已安装版本
 Return to the title screen to check for updates.	タイトル画面に戻ってから更新を確認してください。	请返回标题画面检查更新。

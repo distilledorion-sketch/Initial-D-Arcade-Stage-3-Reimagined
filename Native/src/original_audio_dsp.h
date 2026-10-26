@@ -51,6 +51,7 @@ private:
     std::array<std::int16_t,16> effects_{};
     std::vector<std::uint16_t> memory_;
     unsigned decrement_=1;
+    unsigned executedSteps_=0;
     std::uint64_t frames_=0;
     bool configured_=false;
 };

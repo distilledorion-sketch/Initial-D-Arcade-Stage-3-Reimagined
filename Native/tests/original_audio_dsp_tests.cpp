@@ -78,6 +78,25 @@ void focused(){
     dsp.configure(p,true);require(stateHash(dsp)==hash&&dsp.frames()==frames,"Preserved DSP state");
     dsp.configure(p);require(dsp.frames()==0&&dsp.decrementCounter()==1,"Fresh DSP phase");
     require(std::all_of(dsp.memory().begin(),dsp.memory().end(),[](auto v){return v==0x6000;}),"Source floating silence initialization");
+    // Persistent stores at the final instruction must not be dropped, and its
+    // deferred SRAM write still commits after execution leaves the program.
+    p={};p.instructions[126]={0,0xb000,2,0};p.coefficients[126]=32760;
+    p.instructions[127]={std::uint16_t(0x100|(7<<1)),0,0x5002,0};
+    dsp.configure(p);in[0]=0x12340;r=dsp.render(in);
+    const auto finalValue=std::int32_t((std::int64_t(in[0])*16*4095)>>12);
+    require(r.effects[0]==std::int16_t(finalValue>>8)&&dsp.temporary()[8]==finalValue,
+        "Final-instruction output and TEMP store");
+    require(dsp.memory()[1]==packOriginalDspFloat(finalValue),"Final-instruction deferred SRAM write");
+    // A preserved all-arithmetic program has no persistent stores. It retains
+    // earlier effect outputs and ring state while its sample clock advances.
+    const auto priorEffects=r.effects;const auto priorMemory=dsp.memory();
+    const auto priorTemporary=dsp.temporary();const auto priorRegisters=dsp.memoryRegisters();
+    const auto priorPhase=dsp.decrementCounter();const auto priorFrames=dsp.frames();
+    p={};dsp.configure(p,true);r=dsp.render(in);
+    require(r.effects==priorEffects&&dsp.memory()==priorMemory&&dsp.temporary()==priorTemporary&&
+        dsp.memoryRegisters()==priorRegisters,"Store-free program changed persistent DSP state");
+    require(dsp.frames()==priorFrames+1&&dsp.decrementCounter()==priorPhase-1,
+        "Store-free program did not advance the sample clock");
     // Unsupported hardware modes must fail rather than silently approximate.
     for(unsigned kind=0;kind<7;++kind){
         p=passThrough();

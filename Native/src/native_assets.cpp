@@ -253,8 +253,9 @@ void compositeOriginalMenuChunk(std::span<std::uint32_t> target,int width,int he
     }
     static const NativeImage white{1,1,{0xffffffff}};
     std::size_t vertexIndex=0;
-    // Reuse capacity across material batches; the source geometry/indices stay immutable.
-    std::vector<ScreenVertex> transformed;
+    // Painting is synchronous and does not re-enter this function. Retain a
+    // per-thread workspace across chunks/frames; source geometry stays immutable.
+    thread_local std::vector<ScreenVertex> transformed;
     for(const auto& batch:chunk.batches){
         const auto tex=batch.material[9];const NativeImage& image=tex==0xffffffff?white:textures.at(tex);
         // Original UI helper 1B8240 writes GMP params=0x600 and replaces

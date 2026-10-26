@@ -129,7 +129,7 @@ int OriginalRivalDialogScene::hitContinue(float x,float y,unsigned selected)cons
     return -1;
 }
 void OriginalRivalDialogScene::paintChoice(std::span<std::uint32_t> target,int width,int height,
-    OriginalLegendChoiceKind kind,std::uint32_t selected,std::uint32_t timerTicks)const{
+    OriginalLegendChoiceKind kind,std::uint32_t selected,std::uint32_t timerTicks,bool confirming,std::uint32_t confirmFrame)const{
     if(width<=0||height<=0||target.size()!=std::size_t(width)*height)
         throw std::invalid_argument("Invalid original legend choice destination");
     if(!loaded_)return;
@@ -138,7 +138,7 @@ void OriginalRivalDialogScene::paintChoice(std::span<std::uint32_t> target,int w
     // The hardware sorts these layers by depth, so the dimmer sits behind the
     // prompt and the countdown digits sit in front. Each layer keeps its own
     // imported material, including the dimmer's half-transparent black.
-    auto layers=originalLegendChoiceDraws(kind,selected,timerTicks);
+    auto layers=originalLegendChoiceDraws(kind,selected,timerTicks,confirming,confirmFrame);
     std::stable_sort(layers.begin(),layers.end(),
         [](const OriginalLegendChoiceDraw& a,const OriginalLegendChoiceDraw& b){return a.z<b.z;});
     for(const auto& draw:layers){

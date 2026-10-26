@@ -23,9 +23,11 @@ public static class Idas3MeterLayoutBounds
     internal static int MissingAlphaBoundsCount=>missingAlpha.Count;
     internal static int SampledStyleCount=>sampledStyles;
     static string HashResource(string path){
+        if(path=="ArcadeHud/Catalog/catalog")return Idas3ArcadeMeterCatalog.SourceSha256;
         var resource=Resources.Load<TextAsset>(path);
         if(!resource)return "";
-        using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(resource.bytes)).Replace("-","").ToLowerInvariant();
+        try{using(var hash=SHA256.Create())return BitConverter.ToString(hash.ComputeHash(resource.bytes)).Replace("-","").ToLowerInvariant();}
+        finally{Resources.UnloadAsset(resource);}
     }
     static bool Finite(float value)=>!float.IsNaN(value)&&!float.IsInfinity(value);
     static bool Valid(Rect rect)=>Finite(rect.x)&&Finite(rect.y)&&Finite(rect.width)&&Finite(rect.height)&&rect.width>0&&rect.height>0;
@@ -37,6 +39,7 @@ public static class Idas3MeterLayoutBounds
         var resource=Resources.Load<TextAsset>("ArcadeHud/Catalog/layout-bounds");if(!resource)return;
         BakedCatalog baked;
         try{baked=JsonUtility.FromJson<BakedCatalog>(resource.text);}catch(ArgumentException){return;}
+        finally{Resources.UnloadAsset(resource);}
         if(!Current(baked))return;
         var entries=new Dictionary<int,Rect>();
         foreach(var entry in baked.layouts){
@@ -70,7 +73,9 @@ public static class Idas3MeterLayoutBounds
         if(loaded)return;loaded=true;
         var resource=Resources.Load<TextAsset>("ArcadeHud/Catalog/alpha-bounds");
         if(!resource)return;
-        var catalog=JsonUtility.FromJson<AlphaCatalog>(resource.text);
+        AlphaCatalog catalog;
+        try{catalog=JsonUtility.FromJson<AlphaCatalog>(resource.text);}
+        finally{Resources.UnloadAsset(resource);}
         if(catalog?.textures==null)return;
         foreach(var item in catalog.textures){
             if(item==null)continue;

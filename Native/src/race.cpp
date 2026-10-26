@@ -70,10 +70,20 @@ std::vector<std::uint8_t> Replay::sharedBytes(std::uint32_t finish) const {
     return out;
 }
 bool Replay::save(const std::string& filename) const {
-    if(frames.empty()||truncated) return false;
-    const auto tmp=filename+".tmp";
-    std::ofstream out(tmp); if(!out) return false;
-    out<<"tick,speed,yaw,pos_x,pos_y,pos_z,gear"<<(finishTicks6000?",finish_ticks6000\n":"\n");
+    return saveCopies(filename,{})[0];
+}
+std::array<bool,2> Replay::saveCopies(const std::string& first,const std::string& second) const {
+    std::array<bool,2> saved{};
+    if(frames.empty()||truncated) return saved;
+    const std::array<std::string,2> filenames{first,second};
+    std::array<std::ofstream,2> outputs;
+    for(unsigned i=0;i<2;++i){
+        if(filenames[i].empty()||(i==1&&first==second))continue;
+        outputs[i].open(filenames[i]+".tmp");
+        if(outputs[i])outputs[i]<<"tick,speed,yaw,pos_x,pos_y,pos_z,gear"<<(finishTicks6000?",finish_ticks6000\n":"\n");
+    }
+    if(!outputs[0].is_open()&&!outputs[1].is_open())return saved;
+    const auto write=[&](const char* data,std::streamsize count){for(auto& out:outputs)if(out.is_open()&&out)out.write(data,count);};
     // Locale-independent round-trip float precision, buffered as a block.
     // Per-value iostream formatting used to stall the finish frame twice:
     // once for last_run and once for a new personal-best ghost.
@@ -81,27 +91,33 @@ bool Replay::save(const std::string& filename) const {
     const auto integer=[&](auto value){cursor=std::to_chars(cursor,buffer.data()+buffer.size(),value).ptr;};
     const auto scalar=[&](float value){cursor=std::to_chars(cursor,buffer.data()+buffer.size(),value,std::chars_format::general,9).ptr;};
     for(const auto& f:frames) {
-        if(buffer.data()+buffer.size()-cursor<512){out.write(buffer.data(),cursor-buffer.data());cursor=buffer.data();}
+        if(buffer.data()+buffer.size()-cursor<512){write(buffer.data(),cursor-buffer.data());cursor=buffer.data();}
         integer(f.tick);*cursor++=',';scalar(f.speed);*cursor++=',';scalar(f.yaw);*cursor++=',';
         scalar(f.position.x);*cursor++=',';scalar(f.position.y);*cursor++=',';scalar(f.position.z);*cursor++=',';integer(f.gear);
         if(finishTicks6000){*cursor++=',';integer(&f==&frames.back()?finishTicks6000:0);}
         *cursor++='\n';
     }
-    out.write(buffer.data(),cursor-buffer.data());
-    out.close();if(!out) return false;
-    std::error_code ec;
-    std::filesystem::rename(tmp,filename,ec);
+    write(buffer.data(),cursor-buffer.data());
+    for(unsigned i=0;i<2;++i){
+        auto& out=outputs[i];if(!out.is_open())continue;
+        out.close();if(!out)continue;
+        const auto& filename=filenames[i];const auto tmp=filename+".tmp";
+        std::error_code ec;
+        std::filesystem::rename(tmp,filename,ec);
     // On Windows rename does not replace an existing file. Keep previous ghost
     // recoverable while installing the completely-written replacement.
-    if(ec) {
-        const auto old=filename+".previous";
-        std::filesystem::remove(old,ec);ec.clear();
-        std::filesystem::rename(filename,old,ec);if(ec) return false;
-        std::filesystem::rename(tmp,filename,ec);
-        if(ec) { std::error_code restore;std::filesystem::rename(old,filename,restore);return false; }
-        std::filesystem::remove(old,ec);
+        if(ec) {
+            const auto old=filename+".previous";
+            std::filesystem::remove(old,ec);ec.clear();
+            std::filesystem::rename(filename,old,ec);if(ec)continue;
+            std::filesystem::rename(tmp,filename,ec);
+            if(ec){std::error_code restore;std::filesystem::rename(old,filename,restore);continue;}
+            std::filesystem::remove(old,ec);
+        }
+        saved[i]=true;
     }
-    return true;
+    if(!second.empty()&&first==second)saved[1]=saved[0];
+    return saved;
 }
 bool Replay::load(const std::string& filename) {
     frames.clear();truncated=false;finishTicks6000=0;std::ifstream in(filename);if(!in) return false;

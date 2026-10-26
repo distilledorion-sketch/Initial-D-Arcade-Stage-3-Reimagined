@@ -24,6 +24,12 @@ OriginalBattleResults OriginalBattleResults::load(const std::filesystem::path& r
     out.model_=NativeModel::load(path/"result.idasmesh");
     out.textures_=NativeTextureBank::load(path/"textures/textures.idastex");
     if(out.model_.chunks.size()!=43||out.textures_.sourceSize()!=10)throw std::runtime_error("Original battle results bank identity mismatch");
+    const std::array<std::string,3> names{"levelup_dr","levelup_bu","levelup_vs"};
+    for(unsigned i=0;i<names.size();++i){
+        const auto folder=root/"data/original_assets/session_exit"/names[i];
+        out.levelModels_[i]=NativeModel::load(folder/(names[i]+".idasmesh"));
+        out.levelTextures_[i]=NativeTextureBank::load(folder/"textures/textures.idastex");
+    }
     return out;
 }
 std::vector<OriginalHudDraw> OriginalBattleResults::drawList(const OriginalBattleResultsState& s)const{
@@ -112,6 +118,25 @@ void OriginalBattleResults::paint(std::span<std::uint32_t> argb,int width,int he
         }
         for(auto& batch:chunk.batches)for(auto& vertex:batch.vertices){const auto p=original::transformOriginalPoint(matrix,{vertex.position.x,vertex.position.y,vertex.position.z});vertex.position={p[0],p[1],p[2]};}
         compositeOriginalMenuChunk(argb,width,height,textures_,chunk,placement);
+    }
+}
+void OriginalBattleResults::paintFinishNotice(std::span<std::uint32_t> argb,int width,int height,
+    const OriginalBattleResultsState& state,std::uint32_t finishFrame)const{
+    if(width<=0||height<=0||argb.size()!=std::size_t(width)*height)throw std::invalid_argument("Invalid finish notice destination");
+    const float fit=std::min(float(width)/640.f,float(height)/480.f);
+    SpritePlacement placement;placement.scale=100.f*fit;placement.invertY=true;
+    placement.authoredHeight=0;placement.defaultOriginalUiColors=true;
+    placement.offsetX=(float(width)-640.f*fit)*.5f;placement.offsetY=(float(height)-480.f*fit)*.5f;
+    // This belongs to the race-finish road view, before HResult's points.
+    // 16C080 gives Bunta/Battle notices priority, then Racer Level Up after
+    // 180 source ticks. The artwork contains the original lettering/shading.
+    const bool other=state.profileMode==2?(state.levelNoticeFlags&0x100000u)!=0:
+        state.profileMode==3?(state.levelNoticeFlags&0xc0000u)!=0:false;
+    if(state.profileMode!=1){
+        int bank=-1;unsigned chunk=0;
+        if((state.levelNoticeFlags&0x200000u)&&(!other||finishFrame>180))bank=0;
+        else if(other){bank=state.profileMode==2?1:2;chunk=bank==2&&(state.levelNoticeFlags&0x40000u)?1u:0u;}
+        if(bank>=0)compositeOriginalMenuChunk(argb,width,height,levelTextures_[bank],levelModels_[bank].chunks.at(chunk),placement);
     }
 }
 OriginalTimeAttackResults OriginalTimeAttackResults::load(const std::filesystem::path& root){

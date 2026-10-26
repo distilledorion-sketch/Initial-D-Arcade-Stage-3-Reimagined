@@ -8,10 +8,11 @@ namespace idas3::original {
 // Result-owned preview, separate from the racing model and saved profile.
 class OriginalTuningPreviewPresentation {
 public:
-    void load(const std::filesystem::path& root,const OriginalBattleProfile&,bool timeAttackRanking=false,bool continueScreen=false);
+    void load(const std::filesystem::path& root,const OriginalBattleProfile&,bool timeAttackRanking=false,bool continueScreen=false,bool passwordScreen=false);
     // Exactly once per original owner tick, including pre-child result frames.
     // Applies ordered source events, captures this frame's visible pose, then
-    // advances078680. mesh() and repeated host renders never advance time.
+    // advances078680. Password instead advances10F420 before capturing its
+    // visible pose. mesh() and repeated host renders never advance time.
     void consume(std::span<const OriginalTuningPreviewEvent>,const OriginalBattleProfile&,
         const OriginalTuningData&,OriginalTuningChildKind);
     const Mesh& mesh();
@@ -42,6 +43,8 @@ private:
     bool meshDirty_=true;
     bool timeAttackRanking_=false;
     bool continueScreen_=false;
+    bool passwordScreen_=false;
+    float passwordAngle_=0;
     Mesh mesh_;
     void rebuild();
 };

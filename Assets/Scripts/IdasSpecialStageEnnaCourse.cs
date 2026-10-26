@@ -33,15 +33,37 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
     int spectatorCount,expectedSpectators;
     Idas3SceneGame host;bool loaded,visible;int samples=-1;
     public bool Loaded=>loaded;
+    bool diagnosticTiming;
+    internal double DiagnosticUpdateMs {get;private set;}
+    internal int RetainedMeshCount=>meshes.Count;
+    internal int RetainedMaterialCount=>materials.Count;
+    internal int RetainedTextureCount=>textures.Count;
+    internal long RetainedResourceBytes(){
+        long bytes=0;
+        foreach(var mesh in meshes)if(mesh!=null)bytes+=UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(mesh);
+        foreach(var material in materials)if(material!=null)bytes+=UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(material);
+        foreach(var texture in textures)if(texture!=null)bytes+=UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(texture);
+        return bytes;
+    }
     uint Flags=>Idas3ReplayViewer.Instance!=null?Idas3ReplayViewer.Instance.Status.flags:host!=null?host.Status.flags:0;
-    void Start(){host=FindAnyObjectByType<Idas3SceneGame>();}
+    void Start(){host=FindAnyObjectByType<Idas3SceneGame>();diagnosticTiming=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-transition-check")>=0;}
     void LateUpdate(){
+        if(!diagnosticTiming){UpdateScene();return;}
+        double began=Time.realtimeSinceStartupAsDouble;
+        try{UpdateScene();}finally{DiagnosticUpdateMs=(Time.realtimeSinceStartupAsDouble-began)*1000;}
+    }
+    void UpdateScene(){
         bool active=(Flags&SceneFlag)!=0&&(Flags&(1u|4096u|262144u))==0;
         if(active&&(!loaded||LoadedCourseId!=CourseId(Flags))){
             try{ClearScenery();Load(CourseId(Flags));}catch(Exception e){Debug.LogException(e);enabled=false;Application.Quit(1);return;}
         }
         if(active!=visible){foreach(Transform child in transform)child.gameObject.SetActive(active);visible=active;}
-        if(!active)return;
+        if(!active){
+            // Preserve menus/results, but do not retain an entire hidden track
+            // while the original or Stage 8/Zero scenery owns another race.
+            if(loaded&&(Flags&8u)!=0&&(Flags&(1u|1024u|4096u|262144u))==0)ClearScenery();
+            return;
+        }
         UpdateSceneryVisibility();
         bool reverse=(Flags&32768u)!=0;
         for(int i=0;i<2;++i)gates[i].SetActive((i==1)==reverse);
@@ -101,16 +123,25 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         var directShader=Resources.Load<Shader>("Idas3SceneDirect");Require(directShader!=null&&directShader.isSupported,"Direct D3 scene shader unavailable");
         bool gateBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-enna-gates-baseline")>=0;
         bool geometryBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-geometry-stage-baseline")>=0;
+        bool readableTextureBaseline=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-smoke")>=0&&
+            Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-special-readable-textures-baseline")>=0;
         foreach(var name in manifest.textureNames){
             Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
             Require(Path.GetFileName(name)==name,"Enna texture name");
             var texture=new Texture2D(2,2,TextureFormat.RGBA32,true);textures.Add(texture);
-            Require(texture.LoadImage(File.ReadAllBytes(Path.Combine(root,"textures",name+".png"))),"Enna texture decode");
+            // Scenery only samples these textures on the GPU. Release decoded
+            // CPU pixels after upload, retaining the same image and mip chain.
+            Require(texture.LoadImage(File.ReadAllBytes(Path.Combine(root,"textures",name+".png")),!readableTextureBaseline),"Enna texture decode");
             texture.name=name;texture.filterMode=FilterMode.Trilinear;texture.anisoLevel=8;
             // Authored paired guardrail and gate faces need geometry-stage
             // rejection. All other imported vertices pass through unchanged.
             bool paired=IsPairedTexture(manifest,name)&&!(gateBaseline&&IsPairedGateTexture(name));
             var material=new Material(geometryBaseline||paired?shader:directShader){name="Enna "+name,mainTexture=texture,renderQueue=900,enableInstancing=true};materials.Add(material);
+            // In crs02 the sign front (part 91) follows its coplanar riveted
+            // plate (part 90). Both skins have the same winding. Preserve that
+            // authored order, independent of Unity's material/object IDs when
+            // another course is unloaded. Cars/headlights still render later.
+            if(name=="IONA_NIT008_027")material.renderQueue=901;
             material.EnableKeyword("IDAS_IMPORTED_COURSE");material.SetFloat("_ImportedNight",1);material.SetFloat("_ImportedCutoff",.3f);
             material.SetFloat("_ImportedPs2Lighting",1);
             material.SetFloat("_TrackSurface",1);
@@ -249,7 +280,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         }
         foreach(var mesh in meshes)Destroy(mesh);foreach(var material in materials)Destroy(material);foreach(var texture in textures)Destroy(texture);
         meshes.Clear();materials.Clear();textures.Clear();Array.Clear(gates,0,2);Array.Clear(skies,0,2);
-        scenerySections.Clear();sceneryNode=-1;
+        scenerySections.Clear();sceneryNode=-1;weatherLighting=null;
         loaded=visible=false;LoadedCourseId=-1;spectatorCount=0;appliedWeather=samples=-1;
     }
     void OnDestroy(){ClearScenery();}

@@ -11,5 +11,9 @@ int main()try{
             throw std::runtime_error("AUTO replaced an explicit built-in/custom selection");
     }
     if(heard.size()!=12)throw std::runtime_error("AUTO never selected every Stage 3 race song");
+    for(unsigned i=0;i<30;++i)if(automatic.select(-1,true)!=previous)
+        throw std::runtime_error("Saved Data FIX changed the automatic race song");
+    if(automatic.select(7,true)!=7||automatic.select(-2,true)!=-2)
+        throw std::runtime_error("Saved Data FIX replaced an explicit built-in/custom song");
     std::cout<<"PASS 500 automatic race selections; all 12 songs, no consecutive repeats, explicit choices preserved\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

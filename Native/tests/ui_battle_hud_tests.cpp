@@ -136,6 +136,7 @@ int main(int argc,char** argv)try{
         hud.setLightsOffAdvantage(hide);
         const auto p=hud.paint(online);const std::vector<std::uint32_t> actual(p,p+n);
         require(hud.lastBattlePresentation().advantageHidden==(night&&hide&&!lights),"Lights-off gap applied outside night/opponent/option condition");
+        require(hud.lastBattlePresentation().localMapMarkers==1&&hud.lastBattlePresentation().opponentMapMarkers==unsigned(!night||lights),"Blind Attack must conceal only the night opponent's map marker, independently of the distance preference");
         require(hud.lastBattlePresentation().signedAdvantage==25.f,"Hiding advantage modified race distance");
         OriginalBattleHudState expected;expected.flags104=0x001fffff;expected.profileMode0C31C99C=3;expected.frame204=42;
         expected.validity96=night&&hide&&!lights?-1.f:peer.rivalPositionFraction;expected.signedAdvantage100=25.f;
@@ -157,8 +158,35 @@ int main(int argc,char** argv)try{
         require(pendingFinish[y*w+x]==beforeFinish[y*w+x],"Online result wait drew the placeholder finish/status panel");
     save(output/"online-pending-result.bmp",std::vector<std::uint32_t>(pendingFinish,pendingFinish+n),w,h);
     auto offlineFinish=online;offlineFinish.multiplayer=false;offlineFinish.onlineBattleHud.active=false;
-    const auto fallback=hud.paint(offlineFinish);
-    require(fallback[184*w+415]!=beforeFinish[184*w+415],"Offline fallback finish panel was removed");
+    offlineFinish.message.clear();offlineFinish.course=&course;offlineFinish.rearView=false;
+    // Timeout clears the live record pointer before the original announcement.
+    // The former no-results branch then painted the engineering course/weather
+    // labels over TIME IS UP. Compare the complete production overlay against
+    // the original finish art, in both languages and at three aspect ratios.
+    for(unsigned language=0;language<2;++language){
+        setOriginalUiLanguage(language);Hud finishHud;finishHud.loadOriginal(argv[1]);
+        const auto finishArt=OriginalRaceHud::load(argv[1]);
+        for(const auto viewport:std::array<std::array<int,2>,3>{{{640,480},{1280,720},{2560,1080}}}){
+            const int ww=viewport[0],hh=viewport[1];finishHud.resize(ww,hh);
+            for(const auto banner:{OriginalHudState::FinishBanner::timeUp,OriginalHudState::FinishBanner::finish}){
+                offlineFinish.finishBanner=banner;onlineClock.timeUp=banner==OriginalHudState::FinishBanner::timeUp;
+                const auto live=finishHud.paint(offlineFinish);
+                const std::vector<std::uint32_t> actual(live,live+std::size_t(ww)*hh);
+                std::vector<std::uint32_t> expected(actual.size());OriginalHudState original;
+                original.finishBanner=banner;original.edgeAnchored=true;finishArt.paint(expected,ww,hh,original);
+                require(actual==expected,"Original Time Attack finish has development labels or a placeholder panel");
+                if(ww==1280)save(output/("ta-finish-"+std::to_string(language)+"-"+std::to_string(unsigned(banner))+".bmp"),actual,ww,hh);
+            }
+        }
+    }
+    setOriginalUiLanguage(0);offlineFinish.finishBanner=OriginalHudState::FinishBanner::none;
+    const auto finishGap=hud.paint(offlineFinish);
+    const std::vector<std::uint32_t> gap(finishGap,finishGap+n);
+    offlineFinish.message="Development finish status must remain hidden";
+    require(std::equal(gap.begin(),gap.end(),hud.paint(offlineFinish)),"Transition between original finish screens exposed a development status panel");
+    const auto blank=std::all_of(gap.begin()+184*w+411,gap.begin()+184*w+869,[](auto p){return p==0;});
+    require(blank,"Transition between original finish screens exposed the development result panel");
+    onlineClock.timeUp=false;
     online.message.clear();
     online.finishBanner=OriginalHudState::FinishBanner::win;hud.paint(online);
     require(!hud.lastBattlePresentation().online&&!hud.lastBattlePresentation().game2dCommands&&!hud.lastBattlePresentation().playerGlyphs,"Finish announcement retained racing HUD snapshot");

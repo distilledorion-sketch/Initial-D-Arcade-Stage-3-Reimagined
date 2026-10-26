@@ -19,7 +19,13 @@ std::array<float,3> originalTuningPreviewIncomingLight();
 struct OriginalTuningPreviewScene {
     OriginalMatrix background,shadow,car,reflection;
 };
-// Parent scene0=result070E4A,1=post-race ranking07F3D4,2=Continue081530.
+//12FE30 ->0A8580: descriptor24AE64 plus the owner's(0,.5,.8) offset.
+// Password is a world-space showroom, not the ranking's pretransformed model.
+inline constexpr std::array<float,3> originalPasswordEye{0,2.5f,-5.2f};
+inline constexpr std::array<float,3> originalPasswordTarget{0,.5f,.8f};
+std::uint16_t advanceOriginalPasswordCar(float& radians);
+// Parent scene0=result070E4A,1=post-race ranking07F3D4,2=Continue081530,
+//3=Password10F480 (its camera is applied by the renderer).
 // Each parent supplies its own matrix to shared preview draw078720.
 OriginalTuningPreviewScene originalTuningPreviewScene(unsigned car,std::uint32_t angle,const OriginalFscaTable&,unsigned scene=0);
 }

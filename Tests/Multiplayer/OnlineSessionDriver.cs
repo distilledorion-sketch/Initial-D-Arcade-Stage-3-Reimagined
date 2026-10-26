@@ -181,10 +181,33 @@ internal static class OnlineSessionDriver
             using(var f=new Fixture(false))Check(f.Session.SaveOnlineUsername("During sign-in",out var error)&&f.Session.Busy&&!f.Session.RequiresOnlineUsername,"First-use name can be saved while initial service sign-in is still pending");
         }finally{UnityEngine.PlayerPrefs.SetString(Idas3OnlineUsername.PreferenceKey,previous);}
     }
+    static void RoomBrowser(){
+        using(var f=new Fixture(false)){
+            f.Transport.AllowBrowse=true;
+            f.Session.PollRoomBrowser(true,10);
+            Check(f.Transport.Browses==0,"Browser waits for async sign-in");
+            f.Transport.FinishInitialization=true;f.Session.BeforeFrame();
+            f.Session.PollRoomBrowser(true,11);
+            Check(f.Transport.Browses==1,"Open browser fetches rooms when sign-in completes");
+            f.Session.PollRoomBrowser(true,25.9);
+            Check(f.Transport.Browses==1,"Browser does not flood discovery each frame");
+            f.Transport.Fail("Previous connection failed");
+            f.Session.PollRoomBrowser(true,26);
+            Check(f.Transport.Browses==2&&f.Session.ErrorText=="Previous connection failed","Periodic discovery preserves the connection error");
+            f.Session.PollRoomBrowser(false,41);f.Session.PollRoomBrowser(false,100);
+            Check(f.Transport.Browses==2,"Closed browser stops discovery");
+            f.Session.PollRoomBrowser(true,101);
+            Check(f.Transport.Browses==3,"Reopening immediately refreshes stale rooms");
+            f.Session.QuickMatch();f.Session.PollRoomBrowser(true,200);
+            Check(f.Transport.Browses==3,"Discovery does not interrupt Quick Match");
+            f.Session.CancelQuickMatch();f.Transport.AttachRoom();f.Session.PollRoomBrowser(true,201);
+            Check(f.Transport.Browses==3,"Discovery does not interrupt an existing lobby");
+        }
+    }
     static int Main(){
         try{
             bool relay=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-p2p-check")>=0;
-            if(!relay){Initialization();QueueCancellationAndErrors();HandshakeAndLan();PlayerIdentityDetails();UsernameAdmissionAndPresence();}
+            if(!relay){Initialization();QueueCancellationAndErrors();HandshakeAndLan();PlayerIdentityDetails();UsernameAdmissionAndPresence();RoomBrowser();}
             RelayScope(relay);Console.WriteLine("TOTAL\t"+checks);return 0;
         }
         catch(Exception error){Console.Error.WriteLine(error);return 1;}

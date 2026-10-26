@@ -62,8 +62,10 @@ void EngineAudio::playRaceCue(unsigned bank,unsigned cue){
 }
 void EngineAudio::resetRaceEffects(){backfireFrames_=0;if(nativeOneShots)for(unsigned bank:{22u,24u,25u})nativeOneShots->stopBank(bank);}
 void EngineAudio::selectOriginalEngine(const std::filesystem::path& root,const original::OriginalBattleProfile& profile){
+    cardRaceMusicOff=profile.byte(1184)==1;
     backfireFrames_=0;
-    replayEngineEnabled=false;
+    replayEngineEnabled=false;onlineEngineOutput=false;
+    showcaseEngineInput={800.f,0,0,true};
     endResultMusic();
     selectOriginalSoundSet(4);
     if(!nativeEngine)nativeEngine=std::make_unique<OriginalEnginePlayback>(root);
@@ -139,6 +141,9 @@ void EngineAudio::finishSoundFrame(std::uint32_t& seed){
 void EngineAudio::applyConfirmedOnlineAudio(std::span<const original::OriginalEngineCommand> engine,
         std::span<const original::OriginalTireCommand> tires){
     if(!nativeEngine)return;
+    if(!onlineEngineOutput){
+        onlineEngineOutput=true;engineRead=engineCount=0;enginePrimed=false;pendingEngineFrame=false;
+    }
     if(backfireFrames_)--backfireFrames_;
     nativeEngine->applyContinuous(engine);
     for(const auto& command:engine){
@@ -146,7 +151,7 @@ void EngineAudio::applyConfirmedOnlineAudio(std::span<const original::OriginalEn
         else if(command.target==original::OriginalEngineCommandTarget::RaceCue1424E0)playRaceCue(5,unsigned(command.value));
     }
     if(nativeTire)for(const auto& command:tires)nativeTire->apply(command);
-    pendingEngineFrame=true;++engineStats.simulationFrames;renderOriginalEngineFrame();
+    ++engineStats.simulationFrames;
 }
 void EngineAudio::renderOriginalEngineFrame(){
     if(!pendingEngineFrame)return;pendingEngineFrame=false;
@@ -372,20 +377,34 @@ std::array<short,2> EngineAudio::renderStereo(float rpm,float throttle,float spe
                 if(active&&!musicPaused&&!vehicleMuted){
                     if((raceMusicHeld||replayEngineEnabled)&&presentationEngine){
                         if(presentationPcmFrames%735==0){
-                            original::OriginalEngineControlInput idle;
-                            // 15E8FA's stationary tach floor, zero throttle.
-                            // No car state, tire audio, race cues or shared RNG
-                            // may advance during the held presentation.
-                            idle.rpm=800.f;idle.gear=1;idle.suppressShiftRelease=true;
+                            // The showcase owner supplies neutral revs using
+                            // the original powertrain tables. Audio uses its
+                            // private seed; driving and tire state stay frozen.
                             if(replayEngineEnabled){
                                 presentationEngine->step(replayEngineInput,presentationSeed,[&](unsigned bank,unsigned cue){playRaceCue(bank,cue);});
                                 replayEngineInput.suppressShiftRelease=false;
-                            }else presentationEngine->step(idle,presentationSeed,{});
+                            }else presentationEngine->step(showcaseEngineInput,presentationSeed,{});
                             presentationEngine->finishSoundFrame();++presentationControlFrames;
                         }
                         const auto pcm=presentationEngine->renderFrame();
                         for(unsigned c=0;c<2;++c)engine[c]=pcm.dry[c]/32768.f;
                         dspInput=pcm.effects;++presentationPcmFrames;
+                    }else if(onlineEngineOutput){
+                        // Sustain the last confirmed instrument state through
+                        // packet delays; confirmed one-shots still run once in
+                        // applyConfirmedOnlineAudio. Never tick physics or RNG.
+                        const auto pcm=nativeEngine->renderFrame();
+                        const auto rawTire=nativeTire?nativeTire->renderFrame():0;
+                        const auto tire=std::int32_t(float(rawTire)*.45f);
+                        for(unsigned c=0;c<2;++c){
+                            engine[c]=(pcm.dry[c]+(gains.engine==gains.tires?tire:0))/32768.f;
+                            engineStats.dryEnergy+=double(pcm.dry[c])*pcm.dry[c];
+                        }
+                        if(gains.engine!=gains.tires)tires=tire/32768.f;
+                        dspInput=pcm.effects;
+                        for(auto value:pcm.effects)engineStats.effectSendEnergy+=double(value)*value;
+                        engineStats.tireEnergy+=double(rawTire)*rawTire;++engineStats.pcmFrames;
+                        if(nativeTire){engineStats.tireCues=nativeTire->startedCues();engineStats.tireSamples=nativeTire->startedSamples();}
                     }else if(engineCount){const auto& pcm=engineFrames[engineRead];
                         // Preserve the old integer summation exactly when both sliders match.
                         const auto tire=tireFrames[engineRead];
@@ -418,7 +437,7 @@ std::array<short,2> EngineAudio::renderStereo(float rpm,float throttle,float spe
             // level would attenuate them again; retain it only for source cues.
             const float streamMixGain=musicScene==1||musicScene==4?music_loudness::raceMixGain:.38f;
             for(unsigned channel=0;channel<2;++channel){float song=0;
-                if(play){const auto next=music.looping&&music.loopEnd&&frame+1>=loopEnd?music.loopStart:std::min(frame+1,music.frames()-1);
+                if(play&&!(cardRaceMusicOff&&(musicScene==1||musicScene==4))){const auto next=music.looping&&music.loopEnd&&frame+1>=loopEnd?music.loopStart:std::min(frame+1,music.frames()-1);
                     const auto a=frame*music.channels+std::min(channel,music.channels-1),b=next*music.channels+std::min(channel,music.channels-1);const float fraction=float(musicFrame-frame);song=(music.samples[a]+(music.samples[b]-music.samples[a])*fraction)/32768.f;}
                 // Desktop gain/headroom is applied AFTER original effects.
                 // The shared return gain stays constant across scenes so a

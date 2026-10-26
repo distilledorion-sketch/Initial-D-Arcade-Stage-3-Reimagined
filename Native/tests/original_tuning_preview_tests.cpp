@@ -11,9 +11,9 @@ int main(int argc,char**argv)try{
     auto require=[&](bool result,const char* message){++checks;if(!result)throw std::runtime_error(message);};
     for(unsigned car=0;car<35;++car){
         auto p=makeOriginalFreshBattleProfile();p.setu(16,car);p.setu(76,5);p.setu(72,1000000);
-        for(unsigned bad:{originalCarColorCounts[car],8u,0xffffffffu})for(unsigned view=0;view<3;++view){
+        for(unsigned bad:{originalCarColorCounts[car],8u,0xffffffffu})for(unsigned view=0;view<4;++view){
             auto invalid=p;invalid.setu(64,bad);const auto saved=invalid.words;
-            OriginalTuningPreviewPresentation recovered;recovered.load(argv[1],invalid,view==1,view==2);
+            OriginalTuningPreviewPresentation recovered;recovered.load(argv[1],invalid,view==1||view==3,view==2,view==3);
             require(((recovered.appearance().word>>25)&7)==0,"Invalid saved paint did not use safe factory color");
             require(!recovered.mesh().vertices.empty(),"Recovered results/ranking/continue car missing");
             require(invalid.words==saved,"Paint recovery rewrote the saved driver");
@@ -41,6 +41,7 @@ int main(int argc,char**argv)try{
             const auto* address=mesh.vertices.data();const auto phase=preview.nextState().angle;
             require(preview.mesh().vertices.data()==address&&preview.nextState().angle==phase,"Host render advanced preview clock");};
         OriginalTuningPreviewPresentation continuation;continuation.load(argv[1],p,false,true);
+        require(continuation.eye.x==0&&continuation.eye.y==0&&continuation.eye.z==0,"Continue applied a second host camera");
         for(unsigned frame=0;frame<512;++frame){
             if(frame%64==0){
                 const auto& mesh=continuation.mesh();
@@ -48,6 +49,8 @@ int main(int argc,char**argv)try{
                 for(const auto& range:mesh.ranges){
                     if(range.texture<continuation.groundTextures().size()||range.originalLightDirection)continue;
                     for(unsigned i=range.first;i<range.first+range.count;++i){const auto q=mesh.vertices.at(i).position-continuation.eye;
+                        const auto& vertex=mesh.vertices.at(i);
+                        if((range.tsp&(1u<<20))&&vertex.color.a==0&&vertex.offsetColor.a==0)continue;
                         require(q.z<-.01f,"Continue car crossed camera");
                         const float x=q.x/(-q.z*tangent*continuation.aspect),y=q.y/(-q.z*tangent);
                         require(std::abs(x)<.96f&&y<.5f&&y>-.96f,"Continue car clipped or overlaps choice panel");
@@ -55,6 +58,26 @@ int main(int argc,char**argv)try{
                 }
             }
             continuation.consume({},p,data,OriginalTuningChildKind::none);
+        }
+        OriginalTuningPreviewPresentation password;password.load(argv[1],p,true,false,true);
+        const auto forward=normalized(password.target-password.eye),right=normalized(cross(forward,Vec3{0,1,0})),up=cross(right,forward);
+        for(unsigned frame=0;frame<525;++frame){
+            password.consume({},p,data,OriginalTuningChildKind::none);
+            if(frame==0)require(password.visibleState().angle==125,"Password did not rotate before its first draw");
+            if(frame%64==0){
+                const auto& mesh=password.mesh();const auto phase=password.visibleState().angle;
+                require(password.mesh().vertices.data()==mesh.vertices.data()&&password.visibleState().angle==phase,"Password repaint advanced camera/rotation");
+                const float tangent=std::tan(password.verticalFieldOfView*.5f);
+                for(const auto& range:mesh.ranges){
+                    if(range.texture<password.groundTextures().size()||range.originalLightDirection)continue;
+                    for(unsigned i=range.first;i<range.first+range.count;++i){const auto q=mesh.vertices.at(i).position-password.eye;
+                        const auto& vertex=mesh.vertices.at(i);
+                        if((range.tsp&(1u<<20))&&vertex.color.a==0&&vertex.offsetColor.a==0)continue;
+                        const float depth=dot(q,forward),x=dot(q,right)/(depth*tangent*password.aspect),y=dot(q,up)/(depth*tangent);
+                        require(depth>.01f&&std::abs(x)<.99f&&std::abs(y)<.99f,"Password car crossed camera or clipped viewport");
+                    }
+                }
+            }
         }
         validate();require(preview.visibleState().angle==8192,"Constructor angle");
         preview.consume({},p,data,OriginalTuningChildKind::none);

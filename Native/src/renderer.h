@@ -75,6 +75,10 @@ public:
 class CourseMeshCache {
 public:
     void invalidate(){assembly_=nullptr;model_=nullptr;}
+    // Invalidation preserves reusable capacity. A scenery-owner change must
+    // also release its transformed geometry and object windows.
+    void clear(){*this=CourseMeshCache{};}
+    std::size_t retainedBytes()const;
     void appendTo(Mesh& destination,const NativeModel& model,const NativeAssembly& assembly,bool courseGeometry=false);
     // Splice separately selected scenery into the cached static course. Only
     // new/changed instances are transformed again, never the whole course.

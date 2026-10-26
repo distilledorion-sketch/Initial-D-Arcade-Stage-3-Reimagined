@@ -78,6 +78,14 @@ int main() try {
     // Every torque the board reports is an exact multiple of 1/128, because the
     // wire carries an integer and nothing below the board divides it.
     const float steps = right * 128.0f;
+    for(int card=0;card<9;++card){
+        auto input=driving(1.f,.5f);input.cardSteeringLevel=card;
+        restart(owner);run(owner,input,512);
+        require(owner.lastLimit()==std::clamp(carLimit[0]+strengthLimitA[5]+strengthLimitB[card],1,127),
+            "Saved Data steering uses its own cabinet dial without changing the output slider");
+        input.driving=false;owner.update(input,1.f/60.f);
+        require(!snapshot().active,"Card steering cannot enable feedback outside driving");
+    }
     near(steps, std::round(steps), 1e-3f, "torque lands on the board's own 1/128 grid");
     restart(owner); run(owner, driving(0.0f), 512);
     near(snapshot().torque, 0.0f, 1e-6f, "a centred wheel is left alone");

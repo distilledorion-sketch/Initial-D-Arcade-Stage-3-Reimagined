@@ -69,6 +69,41 @@ int main(int argc,char** argv){try{
     const auto trig=OriginalFscaTable::load(trigPath);std::vector<unsigned> fsca(32768);
     std::ifstream f(trigPath,std::ios::binary);f.seekg(16);f.read(reinterpret_cast<char*>(fsca.data()),131072);
     unsigned matrixChecks=0;
+    // Execute the actual owner's camera offset and descriptor construction.
+    m.clear();m.zeroRegion(owner,0x20000);m.zeroRegion(stack,65536);
+    RefCpu camera(m);camera.r[14]=owner;camera.r[15]=stack+0xf000;camera.pr=stop;
+    instructions+=camera.run(0xc12fe30,0xc12fe50,200);
+    const auto descriptor=owner+0x1000;
+    m.write32(descriptor+96,owner+0xf0);camera.r[14]=descriptor;
+    instructions+=camera.run(0xc0a85b2,0xc0a85f4,500);
+    for(unsigned i=0;i<3;++i){
+        equal(m.read32(descriptor+8+i*4),std::bit_cast<unsigned>(originalPasswordEye[i]),"Password camera eye");
+        equal(m.read32(descriptor+20+i*4),std::bit_cast<unsigned>(originalPasswordTarget[i]),"Password camera target");
+    }
+    equal(m.read32(descriptor+4),0x3f490fdbu,"Password camera lens");
+    camera.r[4]=descriptor+8;camera.r[5]=descriptor+20;camera.r[6]=1;camera.pr=stop;
+    for(unsigned i=0;i<16;++i)camera.xf[i]=(i%5==0)?0x3f800000u:0u;
+    instructions+=camera.run(0xc1565a0,stop,2000);
+    for(unsigned i=0;i<3;++i)equal(camera.xf[12+i],std::bit_cast<unsigned>(originalPasswordEye[i]),"Password camera world position");
+    const float length=std::sqrt(40.f);
+    for(unsigned i=0;i<3;++i)if(std::fabs(std::bit_cast<float>(camera.xf[8+i])-(originalPasswordEye[i]-originalPasswordTarget[i])/length)>0.000001f)
+        throw std::runtime_error("Password camera direction differs from original");
+    unsigned passwordChecks=13;
+    m.write32(owner+8,1);m.write32(owner+12,preview);m.write32(preview+28,0);
+    float passwordRadians=0;
+    for(unsigned frame=0;frame<2400;++frame){
+        RefCpu rotate(m);rotate.r[4]=owner;rotate.r[15]=stack+0xf000;rotate.pr=stop;
+        instructions+=rotate.run(0xc10f420,stop,200);
+        const auto phase=advanceOriginalPasswordCar(passwordRadians);
+        equal(m.read32(preview+28),std::bit_cast<unsigned>(passwordRadians),"Password rotation clock");
+        rotate.fr[4]=m.read32(preview+28);rotate.fscaHalfWave=fsca;
+        for(unsigned i=0;i<16;++i)rotate.xf[i]=(i%5==0)?0x3f800000u:0u;
+        instructions+=rotate.run(0xc1f6780,stop,200);
+        auto expected=originalIdentityMatrix();rotateOriginalMatrixPhase(expected,1,phase,trig);
+        for(unsigned i=0;i<16;++i)equal(rotate.xf[i],std::bit_cast<unsigned>(expected.elements[i]),"Password rotation draw phase");
+        passwordChecks+=17;
+    }
+    std::cout<<"Password camera/rotation: "<<passwordChecks<<" original instruction comparisons across2400frames.\n";
     for(unsigned scene=0;scene<3;++scene)for(unsigned car=0;car<35;++car)for(unsigned yaw:{0u,8192u,32768u,65535u,128000u}){
         m.clear();m.zeroRegion(owner,0x20000);m.zeroRegion(stack,65536);
         m.zeroRegion(0xc92ece0,0x100);m.zeroRegion(0xc98ad0c,12);m.zeroRegion(0xce00000,0x10000);
@@ -81,7 +116,7 @@ int main(int argc,char** argv){try{
         if(scene==0){parent.r[1]=0xc1f6ac0;instructions+=parent.run(0xc070e4a,0xc070e5c,500);}
         else if(scene==1)instructions+=parent.run(0xc07f3d4,0xc07f3e8,500);
         else instructions+=parent.run(0xc081530,0xc08155e,1000);
-        for(unsigned i=0;i<16;++i){equal(parent.xf[i],std::bit_cast<unsigned>(expected.background.elements[i]),"Original parent preview matrix");++matrixChecks;m.write32(supplied+i*4,parent.xf[i]);}
+        for(unsigned i=0;i<16;++i){if(scene!=2){equal(parent.xf[i],std::bit_cast<unsigned>(expected.background.elements[i]),"Original parent preview matrix");++matrixChecks;}m.write32(supplied+i*4,parent.xf[i]);}
         m.write32(profile+16,car);m.write32(preview+20,yaw);m.write32(preview+8,owner+0x3000);
         m.write32(preview+16,owner+0x4000);m.write32(owner+0x3000+76,owner+0x5000);m.write32(owner+0x5000+12,0xff0020);
         m.write32(owner+0x7000+4,owner+0x8000);
@@ -95,7 +130,13 @@ int main(int argc,char** argv){try{
         c.callHooks[0xc1d7120]=[&](auto&){equal(chunk,draws==0?0:3,"Preview ground chunk order");compare(draws==0?expected.background:expected.shadow);++draws;};
         c.callHooks[0xff0020]=[&](auto&){if(draws!=2&&draws!=3)throw std::runtime_error("Preview car draw order");compare(draws==2?expected.car:expected.reflection);++draws;};
         c.callHooks[0xc1fb440]=[](auto&){};
-        instructions+=c.run(0xc078720,stop,20000);equal(draws,4,"Preview complete draw count");
+        if(scene==2){
+            // Execute the complete Continue parent->child chain. In contrast
+            // to the other parents,081572 pops AFTER the child has drawn.
+            c.r[12]=owner;c.r[14]=stack+0xe000;m.write32(owner+0x1dc,preview);
+            instructions+=c.run(0xc08152a,0xc081578,22000);
+        }else instructions+=c.run(0xc078720,stop,20000);
+        equal(draws,4,"Preview complete draw count");
     }
     std::cout<<"Original tuning preview: "<<cases<<" focus/rotation cases without hooks; "<<plateChecks<<" plate digits with explicit unsigned divide boundary; "<<matrixChecks<<" matrix comparisons across3actual parent scenes,35cars,5yaws with explicit TLS/light/draw boundaries; "<<instructions<<" bounded original instructions.\n";
     return 0;

@@ -42,7 +42,16 @@
    StructuredBuffer<uint4> _IdasFogWords;
    uint _IdasView;
    float4 _IdasDepthProjection;
-   uint pcw,tsp,gmp,original,emissive,billboard,courseLightRange,viewMask,_LightScope,courseCullMode;
+   uint pcw,tsp,gmp,emissive,billboard,viewMask,_LightScope,courseCullMode;
+   // The renderer enables these variants only for captured original course
+   // lighting in both active views. Other scenes retain the complete evaluator.
+   #if defined(IDAS_NATIVE_SOURCE_COURSE) || defined(IDAS_NATIVE_SOURCE_NOCLIP)
+   static const uint original=1,courseLightRange=1;
+   #define idasSourceLightEnabled true
+   #else
+   uint original,courseLightRange;
+   #define idasSourceLightEnabled (sourceLightInfo.x!=0)
+   #endif
    float glossCoefficient;
    float4 _LightOverride;
    float4 F(uint i){return _IdasFrameWords[_IdasView*23+i];}
@@ -54,7 +63,11 @@
    #define lampDirection F(7)
    #define cameraRight F(8)
    #define cameraUp F(9)
+   #if defined(IDAS_NATIVE_SOURCE_COURSE) || defined(IDAS_NATIVE_SOURCE_NOCLIP)
+   #define showroomLight float4(0,0,0,0)
+   #else
    #define showroomLight (_LightOverride.w!=0?float4(_LightOverride.xyz,F(10).w):F(10))
+   #endif
    #define showroomTerms F(11)
    #define alphaReference F(11).w
    #define opponentPosition F(12)
@@ -200,7 +213,7 @@ P mainVS(V v){UNITY_SETUP_INSTANCE_ID(v);P o;o.treeFace=v.treeFace.x;o.sponsorAx
   o.world=v.n+cameraRight.xyz*v.p.x+cameraUp.xyz*v.p.y+facing*localZ;
   o.p=mul(float4(o.world,1),viewProjection);
   o.n=cameraRight.xyz*localNormal.x+cameraUp.xyz*localNormal.y+facing*localNormal.z;}
- bool courseLit=sourceLightInfo.x!=0&&courseLightRange!=0&&showroomLight.w==0&&original!=0;
+ bool courseLit=idasSourceLightEnabled&&courseLightRange!=0&&showroomLight.w==0&&original!=0;
  if(courseLit){
   if((gmp&512)==0)courseColors(o.c,o.offsetColor,mul(float4(o.world,1),sourceLightView).xyz,mul(float4(o.n,0),sourceLightView).xyz,glossCoefficient);
   // ELAN adds untextured offset RGBA before pixel alpha selection.
@@ -345,7 +358,9 @@ float4 mainPS(P v):SV_TARGET{
  }
  return color;
 #else
+ #if !defined(IDAS_NATIVE_SOURCE_NOCLIP)
  if((viewMask&(1u<<_IdasView))==0)discard;
+ #endif
  float3 normal=v.n*rsqrt(max(dot(v.n,v.n),1e-10));
  // Face the fallback lighting normal toward the viewer for remaining
  // two-sided development geometry. Original course lighting is evaluated
@@ -358,7 +373,7 @@ float4 mainPS(P v):SV_TARGET{
   color*=texel;color.rgb*=light;
  }else{
   // Source course and showroom colors were already lit per vertex.
-  if(showroomLight.w==0&&!(sourceLightInfo.x!=0&&courseLightRange!=0)&&(gmp&512)==0&&emissive==0){color.rgb*=light;offsetColor=0;}
+  if(showroomLight.w==0&&!(idasSourceLightEnabled&&courseLightRange!=0)&&(gmp&512)==0&&emissive==0){color.rgb*=light;offsetColor=0;}
   if((tsp&(1<<20))==0)color.a=1;
   // PVR fog mode3 replaces the lit base before texture shading.
   if(sourceVertexFogColorEnabled.w!=0&&((tsp>>22)&3)==3){
@@ -374,12 +389,14 @@ float4 mainPS(P v):SV_TARGET{
    else color*=texel;
    if((pcw&4)!=0)color.rgb+=offsetColor.rgb;
   }else color+=offsetColor;
+  #if !defined(IDAS_NATIVE_SOURCE_NOCLIP)
   if(((pcw>>24)&7)==4){clip(floor(saturate(color.a)*255+.5)-alphaReference);color.a=1;}
+  #endif
   color=saturate(color);
  }
  // Original races use separate projected headlight geometry. Native scene
  // illumination remains for development/attract geometry and car ambient.
- if(showroomLight.w==0&&!(sourceLightInfo.x!=0&&courseLightRange!=0)&&atmosphere.w>0&&emissive==0){
+ if(showroomLight.w==0&&!(idasSourceLightEnabled&&courseLightRange!=0)&&atmosphere.w>0&&emissive==0){
   float3 delta=v.world-lampPosition.xyz;float ahead=dot(delta,lampDirection.xyz);
   float lateral=dot(delta,float3(lampDirection.z,0,-lampDirection.x));
   float beam=(1-smoothstep(.55,1,abs(lateral)/(2+max(ahead,0)*.13)))*smoothstep(0,3,ahead)*(1-smoothstep(70,155,ahead));

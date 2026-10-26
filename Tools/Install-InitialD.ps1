@@ -17,9 +17,18 @@ function Get-GameFileHash([string]$Path) {
     }
 }
 
+function Get-ReleaseArchiveNames([string]$Version) {
+    if($Version -cnotmatch '^(\d+\.\d+\.\d+)-community-replays\.(\d+)$'){throw 'Unsupported release version.'}
+    $shortVersion=$Matches[1]+'.'+$Matches[2]
+    return @("Initial-D-Arcade-Stage-3-Reimagined-$shortVersion-Windows-x64.zip","Initial-D-Additional-Courses-$Version.zip")
+}
+
 function Assert-PlainPath([string]$Path) {
     for($part=[IO.Path]::GetFullPath($Path);$part;$part=[IO.Path]::GetDirectoryName($part)) {
-        if((Test-Path -LiteralPath $part) -and ((Get-Item -LiteralPath $part -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {throw 'Installation paths must not contain links.'}
+        try {$attributes=[IO.File]::GetAttributes($part)}
+        catch [IO.FileNotFoundException] {continue}
+        catch [IO.DirectoryNotFoundException] {continue}
+        if($attributes -band [IO.FileAttributes]::ReparsePoint) {throw 'Installation paths must not contain links.'}
     }
 }
 function Get-GameEntryPath([string]$Root,[string]$Name) {
@@ -35,12 +44,46 @@ function Get-GameEntryPath([string]$Root,[string]$Name) {
     Assert-PlainPath $target
     return $target
 }
+function Remove-SetupStaging([string]$Stage,[string]$Parent) {
+    $stageRoot=[IO.Path]::GetFullPath($Stage)
+    $parentRoot=[IO.Path]::GetFullPath($Parent)
+    if(![IO.Path]::GetDirectoryName($stageRoot).Equals($parentRoot,[StringComparison]::OrdinalIgnoreCase) -or
+        [IO.Path]::GetFileName($stageRoot) -cnotmatch '^\.initial-d-extract-[0-9a-f]{32}$') {throw 'Unexpected setup cleanup path.'}
+    Assert-PlainPath $stageRoot
+    if(!(Test-Path -LiteralPath $stageRoot)){return}
+    # Validate every descendant before deleting anything. Delete exact files
+    # and then empty directories; never follow a link or recursively remove
+    # an unvalidated tree. This folder belongs to this invocation only.
+    $pending=[Collections.Generic.Stack[string]]::new();$pending.Push($stageRoot)
+    $folders=[Collections.Generic.List[string]]::new();$files=[Collections.Generic.List[string]]::new()
+    while($pending.Count) {
+        $directory=$pending.Pop();Assert-PlainPath $directory;$folders.Add($directory)
+        foreach($entry in [IO.Directory]::GetFileSystemEntries($directory)) {
+            $entry=[IO.Path]::GetFullPath($entry)
+            if(!$entry.StartsWith($stageRoot+'\',[StringComparison]::OrdinalIgnoreCase)){throw 'Setup cleanup escaped its temporary folder.'}
+            Assert-PlainPath $entry
+            if([IO.File]::GetAttributes($entry) -band [IO.FileAttributes]::Directory){$pending.Push($entry)}else{$files.Add($entry)}
+        }
+    }
+    foreach($file in $files){Assert-PlainPath $file;[IO.File]::Delete($file)}
+    for($index=$folders.Count-1;$index -ge 0;$index--){Assert-PlainPath $folders[$index];[IO.Directory]::Delete($folders[$index],$false)}
+}
 function Expand-GameArchives([string[]]$Archives,[string]$Target) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $Target=[IO.Path]::GetFullPath($Target)
+    $volumeRoot=[IO.Path]::GetPathRoot($Target)
+    if($Target.TrimEnd([char[]]'\/').Equals($volumeRoot.TrimEnd([char[]]'\/'),[StringComparison]::OrdinalIgnoreCase)){throw 'Choose a game folder, not the root of a drive.'}
+    # GetDirectoryName treats a trailing separator as a child boundary. Strip
+    # it so the temporary folder always remains a sibling of the destination.
+    $Target=$Target.TrimEnd([char[]]'\/')
     Assert-PlainPath $Target
     if((Test-Path -LiteralPath $Target) -and @(Get-ChildItem -LiteralPath $Target -Force).Count){throw 'Choose an empty folder. Use the in-game updater for an existing installation.'}
+    $targetExisted=[IO.Directory]::Exists($Target)
+    $parent=[IO.Path]::GetDirectoryName($Target)
+    if(!$parent){throw 'Choose a game folder, not the root of a drive.'}
     $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $opened=[Collections.Generic.List[object]]::new(); $entries=[Collections.Generic.List[object]]::new(); $expanded=[long]0
+    $stage=$null;$removedEmptyTarget=$false;$originalAccess=$null;$originalAttributes=$null
     try {
         # Validate every archive before creating game files.
         foreach($archive in $Archives) {
@@ -51,18 +94,52 @@ function Expand-GameArchives([string[]]$Archives,[string]$Target) {
                 if(!$entry.Name){continue}
                 if(!$seen.Add($entry.FullName.Replace('\','/'))){throw 'Duplicate game file across downloads.'}
                 $expanded+=$entry.Length;if($expanded -gt 24GB){throw 'Archive exceeds game size limit.'}
-                $entries.Add(@{entry=$entry;path=$path})
+                $entries.Add(@{entry=$entry;name=$entry.FullName.Replace('\','/')})
             }
         }
         foreach($name in @('InitialDUnity.exe','UnityPlayer.dll','InitialDUnity_Data/globalgamemanagers','InitialDUnity_Data/Managed/Assembly-CSharp.dll','InitialDUnity_Data/StreamingAssets/GUNSAI/menu.idastex','InitialDUnity_Data/StreamingAssets/ODAWARA/menu.idastex')) {if(!$seen.Contains($name)){throw "Game package is incomplete: $name"}}
         if(([IO.DriveInfo]::new([IO.Path]::GetPathRoot([IO.Path]::GetFullPath($Target)))).AvailableFreeSpace -lt $expanded+128MB){throw 'Not enough disk space to install the game.'}
-        foreach($item in $entries) {
-            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($item.path))|Out-Null
-            $entryInput=$item.entry.Open();$entryOutput=[IO.File]::Open($item.path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write)
-            try{$entryInput.CopyTo($entryOutput)}finally{$entryOutput.Dispose();$entryInput.Dispose()}
-            if((Get-Item -LiteralPath $item.path).Length -ne $item.entry.Length){throw 'Extracted file size mismatch.'}
+        # The final folder must stay absent/empty until both archives extract.
+        # A sibling keeps the final directory rename on the same volume.
+        $candidate=Join-Path $parent ('.initial-d-extract-'+[Guid]::NewGuid().ToString('N'))
+        Assert-PlainPath $candidate
+        if(Test-Path -LiteralPath $candidate){throw 'Temporary installation folder already exists.'}
+        [IO.Directory]::CreateDirectory($candidate)|Out-Null;$stage=$candidate
+        if([IO.Directory]::Exists($Target) -ne $targetExisted){throw 'The installation folder changed while extracting. Nothing was replaced.'}
+        if($targetExisted) {
+            $originalAccess=[IO.Directory]::GetAccessControl($Target)
+            $originalAttributes=[IO.File]::GetAttributes($Target)
+            [IO.Directory]::SetAccessControl($stage,$originalAccess)
         }
-    } finally {foreach($zip in $opened){$zip.Dispose()}}
+        foreach($item in $entries) {
+            $path=Get-GameEntryPath $stage $item.name
+            [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($path))|Out-Null
+            $entryInput=$null;$entryOutput=$null
+            try {
+                $entryInput=$item.entry.Open();$entryOutput=[IO.File]::Open($path,[IO.FileMode]::CreateNew,[IO.FileAccess]::Write)
+                $entryInput.CopyTo($entryOutput)
+            } finally {if($entryOutput){$entryOutput.Dispose()};if($entryInput){$entryInput.Dispose()}}
+            if(([IO.FileInfo]::new($path)).Length -ne $item.entry.Length){throw 'Extracted file size mismatch.'}
+        }
+        Assert-PlainPath $Target;Assert-PlainPath $stage
+        if([IO.Directory]::Exists($Target) -ne $targetExisted){throw 'The installation folder changed while extracting. Nothing was replaced.'}
+        if($targetExisted) {
+            # Delete only an empty destination. Concurrently created data makes
+            # this fail safely, instead of replacing somebody else's files.
+            if(@(Get-ChildItem -LiteralPath $Target -Force).Count){throw 'The installation folder changed while extracting. Nothing was replaced.'}
+            if($null -ne $originalAttributes){[IO.File]::SetAttributes($stage,$originalAttributes)}
+            [IO.Directory]::Delete($Target,$false);$removedEmptyTarget=$true
+        }
+        [IO.Directory]::Move($stage,$Target);$stage=$null;$removedEmptyTarget=$false
+    } finally {
+        foreach($zip in $opened){$zip.Dispose()}
+        if($removedEmptyTarget -and !(Test-Path -LiteralPath $Target)) {
+            Assert-PlainPath $Target;[IO.Directory]::CreateDirectory($Target)|Out-Null
+            if($originalAccess){[IO.Directory]::SetAccessControl($Target,$originalAccess)}
+            if($null -ne $originalAttributes){[IO.File]::SetAttributes($Target,$originalAttributes)}
+        }
+        if($stage){try{Remove-SetupStaging $stage $parent}catch{Write-Warning ('Could not clean temporary setup files: '+$stage)}}
+    }
 }
 
 # Dot-sourcing exposes only the validation/extraction functions for private tests.
@@ -79,7 +156,7 @@ if([string]::IsNullOrWhiteSpace($Destination)){$Destination=Join-Path $installer
 $Destination=[IO.Path]::GetFullPath($Destination)
 Assert-PlainPath $Destination
 if((Test-Path -LiteralPath $Destination) -and @(Get-ChildItem -LiteralPath $Destination -Force).Count){throw 'The installation folder must be empty. Existing players should use the game updater.'}
-$version='0.3.95-community-replays.51';$tag='v'+$version
+$version='0.3.95-community-replays.52';$tag='v'+$version
 $repo='distilledorion-sketch/Initial-D-Arcade-Stage-3-Reimagined'
 $web=[Net.WebClient]::new();$web.Headers['User-Agent']='Initial-D-Setup';[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 $cache=Join-Path $installerRoot ('.initial-d-download-'+[Guid]::NewGuid().ToString('N'))
@@ -88,7 +165,7 @@ try {
     Write-Host 'Checking the official release...'
     $release=$web.DownloadString("https://api.github.com/repos/$repo/releases/tags/$tag")|ConvertFrom-Json
     if($release.draft -or $release.prerelease -or $release.tag_name -ne $tag){throw 'The requested release is not available.'}
-    $names=@('Initial-D-Arcade-Stage-3-Reimagined-0.3.95.51-Windows-x64.zip',"Initial-D-Additional-Courses-$version.zip")
+    $names=Get-ReleaseArchiveNames $version
     $archives=@()
     foreach($name in $names) {
         $assetMatches=@($release.assets|Where-Object{$_.name -ceq $name})
