@@ -20,7 +20,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 MANAGED_TESTS = (
     "build_compatibility", "eos_platform", "eos_packets", "eos_room_rules",
-    "eos_sanctions", "eos_transport", "eos_activity", "online_session",
+    "eos_sanctions", "eos_transport", "eos_activity", "online_session", "race_progress",
     "online_player_directory", "online_directory_http", "record_storage",
     "lobby_chat_session", "online_username", "admin_stats_session", "result_settlement", "result_journal",
 )

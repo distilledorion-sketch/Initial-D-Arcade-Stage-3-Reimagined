@@ -9,7 +9,7 @@ internal sealed partial class Idas3MenuInputRouter
     internal struct MusicContext
     {
         internal bool Focused, Blocked, MenuOpen, BlocksGameInput, SearchFocused, PointerActive, NavigationHeld;
-        internal bool LobbyAllowed, OpponentAllowed;
+        internal bool LobbyAllowed, OpponentAllowed, Gameplay;
         internal float DeltaSeconds;
         internal double Now;
     }
@@ -47,8 +47,20 @@ internal sealed partial class Idas3MenuInputRouter
     {
         var previous = previousMusic;
         previousMusic = sample;
+        bool waitingForRelease = musicReleaseBlocked;
         var command = new MusicCommand { BlocksGameInput = context.BlocksGameInput || musicReleaseBlocked };
+        if (context.Gameplay && !context.MenuOpen && !context.OpponentAllowed && !context.LobbyAllowed)
+        {
+            musicHoldSeconds = 0;
+            musicReleaseBlocked = false;
+            command.BlocksGameInput = context.BlocksGameInput;
+            return command;
+        }
         if (!context.Focused) musicFocusReleaseBlocked = true;
+        // Release observation must not depend on another menu's guard. Online
+        // text capture and this latch can otherwise keep each other blocked.
+        // The original command still consumes this frame; no action is fired.
+        if (context.Focused && !sample.AnyControlHeld) musicReleaseBlocked = false;
         if (!context.Focused || context.Blocked)
         {
             musicHoldSeconds = 0;
@@ -64,7 +76,7 @@ internal sealed partial class Idas3MenuInputRouter
             command.BlocksGameInput |= context.MenuOpen || context.LobbyAllowed || context.OpponentAllowed;
             return command;
         }
-        if (musicReleaseBlocked)
+        if (waitingForRelease)
         {
             if (!sample.AnyControlHeld) musicReleaseBlocked = false;
             command.BlocksGameInput = true; // The release frame is consumed too.

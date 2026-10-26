@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.95-community-replays.53 - October 26, 2026
+
+- Online races now retry stalled input synchronization through the reliable channel. If confirmed race progress cannot recover within 15 seconds, the race ends without recording a result or awarding points, even when pings still arrive.
+
+- Fix menu transition guards retaining ownership of driving controls after entering an online race or rematch. Saved Data mouse input, closed online chat and music controls no longer suppress race input indefinitely; open overlays and their closing frames still consume input.
+- Allow focused physical release to clear a covered menu's guard, preventing chat and music transitions from blocking each other. Unfocused neutral samples still cannot rearm menu actions.
+
+Both online drivers should update. Controlled local tests reproduce the old control lock and indefinite synchronization stall, and verify guard release, reliable recovery, neutral disconnects and rematches. The exact reported live incident has not been independently reproduced; EOS testing on two Windows PCs using separate Internet connections remains pending. This update is published at the owner's request before the complete stable acceptance matrix is finished.
+
+Version .53 is required for new community Time Attack submissions. Existing scores are retained; leaderboard replay uploads remain disabled.
+
 ## 0.3.95-community-replays.52 - October 26, 2026
 
 This full release combines the stabilization work and subsequent desktop fixes since .51. The owner requested publication before the complete stable acceptance matrix was finished, including real matchmaking and room-code races on two Windows PCs using different Internet connections. Performance improvements vary by track and hardware; this is not a verified universal 30% FPS increase.

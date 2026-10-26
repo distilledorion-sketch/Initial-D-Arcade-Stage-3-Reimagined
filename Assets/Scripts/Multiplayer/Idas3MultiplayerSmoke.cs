@@ -570,9 +570,11 @@ namespace Idas3.Multiplayer
             if(courseDrawCheck)CheckLockedCourseDraw();
             if(musicCheck)yield return Idas3RaceMusicSmoke.VerifyOnlineRace(host,root,role);
             Phase("racing");driving=true;
+            if(InputReleaseCheck)yield return VerifyInputReleaseDuringRace("first-race");
             yield return Until(()=>raceObserved&&session.RemoteSnapshotsReceived>=10&&lastLocal.raceTicks-firstLocalTick>=90,25,"Race snapshots did not begin moving.");
             Check(!host.ControlBindings.SuppressInput,"Private neutral input did not clear the controller-change release latch.");
             Check((host.DiagnosticSubmittedInput.flags&2u)==0&&HasKey(host.DiagnosticSubmittedInput,87),"Mapped private throttle did not reach the native driving packet.");
+            if(RaceProgressCheck){yield return VerifyRaceProgress();Finish(true,null);yield break;}
             if(ManualCheck)yield return VerifyManualShifts();
             if(HeadlightsCheck)yield return VerifyOpponentHeadlights();
             if(showcaseCheck||ObserveStartOnly)Check(showcaseObserver.OnlineCheckPassed,showcaseObserver.OnlineCheckError??"Online presentation check failed.");
@@ -602,6 +604,7 @@ namespace Idas3.Multiplayer
             menu.Toggle();yield return Frames(3);liveMenuReopened=menu.IsOpen;
             Check(liveMenuReopened,"The same live race could not reopen its F1 menu after automatic closure.");
             menu.Toggle();yield return Frames(3);Check(!menu.IsOpen,"Live race menu could not close again.");
+            if(InputReleaseCheck)yield return VerifyInputReleaseDuringRace("closed-live-overlay");
             yield return CaptureWorld("race-bumper-late");
             pulse=67;yield return Frames(8);yield return CaptureWorld("race-chase-late");
             if(courseDrawCheck){menu.SetOpen(true);yield return Frames(3);yield return CaptureMenu("selected-course");menu.SetOpen(false);yield return Frames(3);}
@@ -859,6 +862,7 @@ namespace Idas3.Multiplayer
                 report.secondCountdown=previousPhase==5&&digits.Count==3&&digits[0]==3&&digits[1]==2&&digits[2]==1;
                 Check(report.secondCountdown&&session.RaceReleased,"Second race did not complete source 3,2,1 and synchronized GO.");
                 Phase("driving-second-race");driving=true;
+                if(InputReleaseCheck)yield return VerifyInputReleaseDuringRace("rematch");
                 yield return Until(()=>session.LocalSnapshot.raceTicks>=300&&session.RemoteSnapshot.raceTicks>=300&&session.RemoteSnapshotsReceived>=50&&session.LocalSnapshot.speed>3&&session.RemoteSnapshot.speed>3,35,"Second race did not resume local/remote driving and snapshots.");
                 PeerGeometry(out int peerRanges,out int mainRanges);report.secondLocalTicks=session.LocalSnapshot.raceTicks;report.secondRemoteTicks=session.RemoteSnapshot.raceTicks;report.secondReceived=session.RemoteSnapshotsReceived;report.secondSent=session.SnapshotsSent;
                 report.secondDrive=peerRanges>0&&mainRanges>0&&(host.Status.flags&16u)!=0;
