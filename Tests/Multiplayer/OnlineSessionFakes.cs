@@ -66,7 +66,7 @@ namespace Idas3.Multiplayer
         public void Host(string name){IsBusy=true;Status="Creating room";}
         public void HostQuickMatch(string name)=>throw new InvalidOperationException("Queue must not create a fallback room");
         public void Join(string code)=>throw new InvalidOperationException("Queue must not join a discovered room");
-        internal bool AllowBrowse;
+        internal bool AllowBrowse = false;
         internal int Browses;
         public void Browse(){if(!AllowBrowse)throw new InvalidOperationException("Queue must not use legacy discovery");++Browses;}
     }
