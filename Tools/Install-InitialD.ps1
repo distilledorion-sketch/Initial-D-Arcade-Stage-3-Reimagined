@@ -17,6 +17,12 @@ function Get-GameFileHash([string]$Path) {
     }
 }
 
+function Get-ReleaseArchiveNames([string]$Version) {
+    if($Version -cnotmatch '^(\d+\.\d+\.\d+)-community-replays\.(\d+)$'){throw 'Unsupported release version.'}
+    $shortVersion=$Matches[1]+'.'+$Matches[2]
+    return @("Initial-D-Arcade-Stage-3-Reimagined-$shortVersion-Windows-x64.zip","Initial-D-Additional-Courses-$Version.zip")
+}
+
 function Assert-PlainPath([string]$Path) {
     for($part=[IO.Path]::GetFullPath($Path);$part;$part=[IO.Path]::GetDirectoryName($part)) {
         try {$attributes=[IO.File]::GetAttributes($part)}
@@ -159,7 +165,7 @@ try {
     Write-Host 'Checking the official release...'
     $release=$web.DownloadString("https://api.github.com/repos/$repo/releases/tags/$tag")|ConvertFrom-Json
     if($release.draft -or $release.prerelease -or $release.tag_name -ne $tag){throw 'The requested release is not available.'}
-    $names=@('Initial-D-Arcade-Stage-3-Reimagined-0.3.95.51-Windows-x64.zip',"Initial-D-Additional-Courses-$version.zip")
+    $names=Get-ReleaseArchiveNames $version
     $archives=@()
     foreach($name in $names) {
         $assetMatches=@($release.assets|Where-Object{$_.name -ceq $name})

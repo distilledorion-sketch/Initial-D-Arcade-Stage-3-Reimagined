@@ -208,6 +208,7 @@ def run_source(run, args):
     run.command("packaged-player-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_packaged_player.py"])
     run.command("background-player-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_background_player.py"])
     run.command("setup-package-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_setup_package.py"])
+    run.command("setup-download-names", [sys.executable, "-X", "utf8", "Tests/Updates/test_setup_download_names.py"])
     run.command("release-acceptance-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_release_acceptance.py"])
     run.command("publication-tool-tests", [sys.executable, "-X", "utf8", "Tests/Release/test_publication.py"])
     folder = run.output / "menu-input-router"
