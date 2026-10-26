@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.3.95-community-replays.52 - October 25, 2026 (release candidate)
+## 0.3.95-community-replays.52 - October 26, 2026
 
-This candidate combines the stabilization work and subsequent desktop fixes since .51. Stable release acceptance is still pending, including real matchmaking and room-code races on two Windows PCs using different Internet connections. Performance improvements vary by track and hardware; this is not a verified universal 30% FPS increase.
+This full release combines the stabilization work and subsequent desktop fixes since .51. The owner requested publication before the complete stable acceptance matrix was finished, including real matchmaking and room-code races on two Windows PCs using different Internet connections. Performance improvements vary by track and hardware; this is not a verified universal 30% FPS increase.
 
 - Reduce repeated mesh, HUD, material and input allocations, reuse prepared imported-course geometry, and release obsolete course resources during transitions. Preserve the current graphics and course detail.
 - Reduce finish-line replay saving work by sharing serialization between the last run and personal-best ghost. Online leaderboards continue to store times without replays.
@@ -14,7 +14,9 @@ This candidate combines the stabilization work and subsequent desktop fixes sinc
 - Centralize pause, music and online menu input ownership; suppress held controls across focus changes and menu transitions.
 - Recover interrupted online result saves without granting rewards twice. Improve updater recovery, long Windows path handling, localized errors and package verification.
 
-Validation and outstanding acceptance checks are recorded with the candidate. This source update alone does not change the live leaderboard policy or publish an automatic game update.
+- Derive setup download filenames from the pinned version, fixing a stale core filename, and include standalone recovery tools for interrupted updates.
+
+Existing players can use the in-game updater, with changed-file patches for .20 through .51. New installations use `Initial-D-Setup-0.3.95.52.zip`. Version .52 is required for new community Time Attack submissions; existing leaderboard scores are preserved and leaderboard replay uploads remain disabled. The release notes list the completed checks and remaining verification limits.
 
 ## 0.3.95-community-replays.51 - October 18, 2026
 
