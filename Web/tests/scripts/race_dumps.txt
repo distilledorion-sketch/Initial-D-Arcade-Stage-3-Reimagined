@@ -1,0 +1,5 @@
+# Used after to_race.txt (the runner concatenates them). Captures frames at idle and while driving.
+# g<name> = scene frame, u<name> = UI draw lists, taken at the same moment.
+w120 gshots/race_idle ushots/race_idle
+t0:255:240 w30 gshots/race_throttle ushots/race_throttle
+x-20000:90 t0:255:60 gshots/race_steer ushots/race_steer

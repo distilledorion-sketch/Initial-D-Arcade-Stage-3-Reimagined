@@ -1,0 +1,16 @@
+--- a/Native/src/frontend.cpp	2026-11-04 08:17:54.084899812 +0100
++++ b/Native/src/frontend.cpp	2026-11-04 08:17:54.109958939 +0100
+@@ -117,7 +117,13 @@
+     demoOverlays.load(rootPath);
+     rankingRecords=original::OriginalRankingRecords::load(rootPath/"data/original_assets/attract/ranking/factory_records.idasrank");
+     attractAudioEvents.clear();
++#if defined(IDAS3_WEB)
++    // Single-threaded WebAssembly cannot start the worker below, and libc++ then blocks forever in the
++    // future's destructor. Skip the preload: bank() loads a bank synchronously on first use.
++    if(false){
++#else
+     if(preloadArtwork){
++#endif
+         // Load native menu banks while the title is visible. The worker owns
+         // its result completely; the UI adopts it only after completion.
+         // Early navigation can still load one needed bank synchronously.

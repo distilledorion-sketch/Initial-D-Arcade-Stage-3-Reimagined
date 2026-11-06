@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Initial D Arcade Stage 3 Reimagined (web)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; overscroll-behavior: none;
+    touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; background: #000; }
+  #overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; color: #e8ecf4; font: 16px/1.4 system-ui, sans-serif; text-align: center; padding: 24px; background: #050608; }
+  #overlay.hidden { display: none; }
+  #overlay h1 { font-size: 20px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+  #overlay p { margin: 0; max-width: 34em; color: #aab3c4; }
+  #bar { width: min(420px, 80vw); height: 6px; background: #1d2230; border-radius: 3px; overflow: hidden; }
+  #bar > div { height: 100%; width: 0; background: #3f8cff; transition: width .2s; }
+  button { font: inherit; color: #fff; background: #2a62d6; border: 0; border-radius: 8px; padding: 12px 22px; }
+  #stats { position: fixed; left: 6px; top: 6px; color: #9f9; font: 11px/1.3 ui-monospace, monospace; white-space: pre;
+    background: rgba(0,0,0,.55); padding: 4px 6px; border-radius: 4px; pointer-events: none; display: none; }
+  #gate { position: fixed; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 14px; color: #e8ecf4; font: 16px/1.45 system-ui, sans-serif; text-align: center; padding: 24px; background: #050608; overflow: auto; }
+  #gate.hidden { display: none; }
+  #gate h1 { font-size: 20px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+  #gate p { margin: 0; max-width: 36em; color: #aab3c4; }
+  #gate .small { font-size: 13px; color: #7d889b; }
+  #gate.drag { outline: 2px dashed #3f8cff; outline-offset: -12px; }
+  #gateMessage { min-height: 1.4em; color: #e8ecf4; }
+  #gateMessage.bad { color: #ff9a9a; }
+  #gateBar { width: min(420px, 80vw); height: 6px; background: #1d2230; border-radius: 3px; overflow: hidden; visibility: hidden; }
+  #gateBar > div { height: 100%; width: 0; background: #3f8cff; }
+  /* ---- touch controls ---- */
+  #touch { position: fixed; inset: 0; z-index: 3; pointer-events: none; display: none; --u: min(100vw, 100vh);
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #touch.on { display: block; }
+  #touch.mode-drive .menu, #touch.mode-menu .drive { display: none; }
+  #touch .zone { position: absolute; left: 0; top: 12%; width: 48%; bottom: 0; pointer-events: auto; }
+  #touch .ring { display: none; position: absolute; width: calc(var(--u) * .34); height: calc(var(--u) * .12); margin: calc(var(--u) * -.06) 0 0 calc(var(--u) * -.17);
+    border: 2px solid rgba(255,255,255,.35); border-radius: 999px; background: rgba(255,255,255,.06); pointer-events: none; }
+  #touch .ring i { position: absolute; left: 50%; top: 50%; width: calc(var(--u) * .09); height: calc(var(--u) * .09); margin: calc(var(--u) * -.045) 0 0 calc(var(--u) * -.045);
+    border-radius: 50%; background: rgba(255,255,255,.55); }
+  #touch .ctl { position: absolute; pointer-events: auto; display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,.9); font: 600 calc(var(--u) * .032)/1 system-ui, sans-serif; letter-spacing: .04em;
+    background: rgba(20,24,34,.45); border: 2px solid rgba(255,255,255,.35); border-radius: calc(var(--u) * .03); backdrop-filter: blur(2px);
+    -webkit-tap-highlight-color: transparent; }
+  #touch .ctl.held { background: rgba(63,140,255,.65); border-color: #fff; }
+  #touch .pedal { width: calc(var(--u) * .2); }
+  #touch .gas { right: 2.5%; bottom: 5%; height: calc(var(--u) * .46); }
+  #touch .brake { right: calc(2.5% + var(--u) * .23); bottom: 5%; height: calc(var(--u) * .3); }
+  #touch .shift { right: 2.5%; width: calc(var(--u) * .1); height: calc(var(--u) * .1); }
+  #touch .shift.up { bottom: calc(5% + var(--u) * .5); }
+  #touch .shift.down { right: calc(2.5% + var(--u) * .12); bottom: calc(5% + var(--u) * .5); }
+  #touch .small { width: calc(var(--u) * .11); height: calc(var(--u) * .075); font-size: calc(var(--u) * .024); }
+  #touch .pause { right: 2.5%; top: 3%; }
+  #touch .view { left: 3%; top: 3%; }
+  #touch .lights { left: calc(3% + var(--u) * .13); top: 3%; }
+  #touch .dpad { width: calc(var(--u) * .13); height: calc(var(--u) * .13); }
+  #touch .dpad.up { left: calc(3% + var(--u) * .14); bottom: calc(5% + var(--u) * .28); }
+  #touch .dpad.down { left: calc(3% + var(--u) * .14); bottom: 5%; }
+  #touch .dpad.left { left: 3%; bottom: calc(5% + var(--u) * .14); }
+  #touch .dpad.right { left: calc(3% + var(--u) * .28); bottom: calc(5% + var(--u) * .14); }
+  #touch .round { width: calc(var(--u) * .17); height: calc(var(--u) * .17); border-radius: 50%; }
+  #touch .ok { right: 3%; bottom: calc(5% + var(--u) * .08); }
+  #touch .back { right: calc(3% + var(--u) * .2); bottom: 5%; }
+  #touch .menu.view { left: auto; right: 3%; top: 3%; }
+  #fs { position: fixed; top: calc(env(safe-area-inset-top) + 6px); left: 50%; transform: translateX(-50%); z-index: 4; display: none;
+    padding: 6px 14px; font-size: 13px; background: rgba(20,24,34,.55); border: 1px solid rgba(255,255,255,.3); }
+  #fs.available { display: block; }
+  #snd { position: fixed; z-index: 4; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 6px); margin-top: 38px; padding: 4px 12px;
+    font-size: 12px; background: rgba(20,24,34,.55); border: 1px solid rgba(255,255,255,.3); opacity: .8; display: none; }
+  #snd.available { display: block; }
+  body:not(.touchui) #snd { top: 6px; margin-top: 0; left: auto; right: 8px; transform: none; }
+  #rotate { position: fixed; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center; text-align: center;
+    background: #050608; color: #e8ecf4; font: 18px/1.5 system-ui, sans-serif; padding: 24px; }
+  @media (orientation: portrait) and (pointer: coarse) { #rotate { display: flex; } }
+  #error { color: #ff8a8a; white-space: pre-wrap; text-align: left; font: 12px ui-monospace, monospace; max-height: 40vh; overflow: auto; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="touch"></div>
+<button id="fs" type="button">Fullscreen</button>
+<button id="snd" type="button" aria-label="Sound">Sound on</button>
+<div id="rotate">Rotate your device to landscape to play.</div>
+<div id="stats"></div>
+<div id="gate">
+  <h1>GDS-0033 REQUIRED</h1>
+  <p>This game needs your own original <b>Initial D Arcade Stage 3 GDS-0033</b> disc dump. Choose either <b>gds-0033.chd</b>, or all four files <b>gds-0033.cue</b>, <b>gds-0033-track1.bin</b>, <b>-track2.bin</b> and <b>-track3.bin</b>.</p>
+  <button id="pick" type="button">Choose disc files</button>
+  <input id="files" type="file" multiple accept=".chd,.cue,.bin" hidden>
+  <div id="gateBar"><div></div></div>
+  <p id="gateMessage"></p>
+  <p class="small">The files are only read inside your browser to verify them and are never uploaded. The check runs every time you open the game; the game does not include or download any disc files.</p>
+</div>
+<div id="overlay" class="hidden">
+  <h1>Initial D Arcade Stage 3 Reimagined</h1>
+  <p id="message">Starting…</p>
+  <div id="bar"><div></div></div>
+  <div id="error"></div>
+</div>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

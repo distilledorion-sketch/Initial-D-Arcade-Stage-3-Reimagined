@@ -1,0 +1,18 @@
+--- a/Native/src/main.cpp	2026-11-04 08:22:53.838017849 +0100
++++ b/Native/src/main.cpp	2026-11-04 08:22:53.850934710 +0100
+@@ -2600,7 +2600,14 @@
+             demoPreparationStarted=true;
+             // Load source scene/cars and evaluate recorded path/body queries
+             // while the original logo/caution owners are on screen.
+-            demoPreparation=std::async(std::launch::async,[directory=root]{
++#if defined(IDAS3_WEB)
++            // Single-threaded WebAssembly cannot start a worker (libc++ would block forever): defer the
++            // preparation to the first get(), which runs it synchronously.
++            constexpr auto demoLaunch=std::launch::deferred;
++#else
++            constexpr auto demoLaunch=std::launch::async;
++#endif
++            demoPreparation=std::async(demoLaunch,[directory=root]{
+                 auto result=std::make_unique<OriginalDemoPresentation>();
+                 const auto data=original::OriginalDemoData::load(directory);
+                 result->load(directory,data);return result;

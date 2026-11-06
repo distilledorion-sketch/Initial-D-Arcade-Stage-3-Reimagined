@@ -1,0 +1,9 @@
+{
+  "name": "Initial D Arcade Stage 3 Reimagined (web)",
+  "short_name": "Initial D 3",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#000000"
+}

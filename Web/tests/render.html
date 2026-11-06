@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>renderer test</title>
+<style>body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script type="module">
+import { Renderer } from '/www/renderer.js';
+import { parseFrameDump, parseUiDump } from '/tests/dump.js';
+const q = new URLSearchParams(location.search);
+const canvas = document.getElementById('c');
+(async () => {
+  try {
+    const frame = parseFrameDump(await (await fetch(q.get('frame'))).arrayBuffer());
+    const ui = q.get('ui') ? parseUiDump(await (await fetch(q.get('ui'))).arrayBuffer()) : null;
+    canvas.width = frame.width; canvas.height = frame.height;
+    // Count every WebGL call made while rendering: a stable, hardware-independent proxy for CPU cost.
+    const counts = {};
+    let total = 0, counting = false;
+    for (const name of Object.getOwnPropertyNames(WebGL2RenderingContext.prototype)) {
+      const d = Object.getOwnPropertyDescriptor(WebGL2RenderingContext.prototype, name);
+      if (typeof d.value !== 'function' || name === 'constructor') continue;
+      const original = d.value;
+      WebGL2RenderingContext.prototype[name] = function (...args) { if (counting) { counts[name] = (counts[name] || 0) + 1; ++total; } return original.apply(this, args); };
+    }
+    const r = new Renderer(canvas, { preserveDrawingBuffer: true });
+    r.render(frame, ui); r.present(); r.gl.finish();           // warm-up frame: creates textures, programs, caches
+    counting = true;
+    const t0 = performance.now();
+    r.render(frame, ui);
+    r.present();
+    counting = false;
+    const cpuMs = performance.now() - t0;
+    r.gl.finish();
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    window.__result = { ok: true, ms: cpuMs, glCalls: total, topCalls: top, stats: r.stats, width: frame.width, height: frame.height,
+      ranges: frame.rangeCount, vertices: frame.vertexCount, views: frame.viewCount };
+  } catch (e) {
+    window.__result = { ok: false, error: String(e && e.stack || e) };
+  }
+})();
+</script>

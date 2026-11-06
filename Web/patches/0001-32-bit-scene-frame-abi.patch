@@ -1,0 +1,15 @@
+--- a/Native/src/unity_scene_capture.h
++++ b/Native/src/unity_scene_capture.h
+@@ -62,5 +62,11 @@
+ };
+ }
+ static_assert(sizeof(Idas3SceneVertex)==64&&sizeof(Idas3SceneRange)==64);
+-static_assert(sizeof(Idas3SceneCamera)==72&&sizeof(Idas3SceneFrame)==256);
++static_assert(sizeof(Idas3SceneCamera)==72);
++// The published frame holds seven pointers. Its 256-byte layout is the 64-bit ABI the Unity host
++// reads; a 32-bit (WebAssembly) build lays the same struct out smaller and its host reads it by
++// the offsets in Web/www/abi.js instead.
++#if UINTPTR_MAX>0xffffffffu
++static_assert(sizeof(Idas3SceneFrame)==256);
++#endif
+ #endif
