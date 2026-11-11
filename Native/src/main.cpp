@@ -360,7 +360,10 @@ struct App {
     float replayAdvantage=0;
     Replay rivalRecording;
     std::string localReplayJson;
-    std::vector<std::uint8_t> localReplayPlayer,localReplayRival;
+    std::vector<std::uint8_t> localReplayPlayer,localReplayRival,localReplayTelemetry;
+    // Shift buttons of the inputs given to the solver this tick, for IDT1:
+    // press edges (0x10 down, 0x20 up) and held buttons (1 down, 2 up).
+    std::uint8_t replayShiftEdges=0,replayShiftHeld=0;
     void setSharedRecords(TimeAttackRecords next,bool enabled){
         sharedRecords=std::move(next);sharedRecordsEnabled=enabled;combinedRecordsDirty=true;
     }
@@ -2110,7 +2113,7 @@ struct App {
             originalSession.setRaceAutomaticBrake(true);
             const original::OriginalHostControls braking{d.steer,0,1,false,false};
             auto inputs=original::adaptOriginalHostInput(originalInput,braking,d.automatic,false,0);
-            inputs.suppressRawThrottle0C2F4BC8=1;
+            inputs.suppressRawThrottle0C2F4BC8=1;noteReplayShift(inputs,braking,false);
             const auto effects=originalSession.tick(inputs);
             if(effects.invalidScalarDiagnostics)throw std::runtime_error("Post-race braking produced invalid physics");
             projectOriginalPose(true);advanceOriginalCamera();projectRivalPose(true);advanceProjectedHeadlights();
@@ -2141,6 +2144,7 @@ struct App {
             if(justFinished){controls={d.steer,0,1,false,false};originalSession.setRaceAutomaticBrake(true);}
             auto inputs=original::adaptOriginalHostInput(originalInput,controls,d.automatic,startFrame.gearEnabled&&!justFinished,0);
             if(justFinished)inputs.suppressRawThrottle0C2F4BC8=1;
+            noteReplayShift(inputs,controls,startFrame.gearEnabled&&!justFinished);
             //062DE0 feeds06A420's accumulated path-distance difference to
             // the local battle solver; solo modes receive exact +0. Local
             // race initialization leaves the linked-race override at0.
@@ -2262,6 +2266,13 @@ struct App {
             trace.mark("finish.bestRunState");
         }
     }
+    void noteReplayShift(const original::OriginalVehicleInputs& in,const original::OriginalHostControls& controls,bool gearEnabled){
+        replayShiftEdges=std::uint8_t(in.pressedByte&0x30u);
+        // Same rule as original_vehicle.cpp: an H-pattern selection below the
+        // current gear is a downshift press for steering memory.
+        if(!in.automaticMode&&gearEnabled&&in.requestedGear>=1&&int(in.requestedGear)<vehicle.gear)replayShiftEdges|=0x10u;
+        replayShiftHeld=std::uint8_t((controls.shiftDown?1u:0u)|(controls.shiftUp?2u:0u));
+    }
     void captureReplayFrame(){
         // Credits must work with battle-replay saving disabled. Capture only
         // live Legend racing, before the optional archive's early return.
@@ -2283,7 +2294,15 @@ struct App {
         detail.elapsed=race.elapsed6000;detail.remaining=raceFeedback.displayedRemaining;detail.sections=race.sectionTimes6000;detail.sector=unsigned(race.sector);detail.capacity=race.sectionCapacity;
         const auto& lamps=carPresentation.headlightState();detail.lightCounter=lamps.counter;detail.lightMaximum=lamps.maximumPhase;detail.lightPhase=lamps.phase;detail.lightVisible=unsigned(lamps.visible);detail.lightFraction=lamps.fraction;
         detail.lights=unsigned(playerProjectedHeadlight.enabled());detail.progress=race.progress;detail.extension=raceFeedback.extensionTicks;
-        recording.record(replayTick,vehicle.position,vehicle.yaw,vehicle.speed,vehicle.gear,originalHandling?&detail:nullptr);
+        ReplayTelemetry telemetry;
+        if(originalHandling){
+            const auto& loss=presentedSession().vehicle().loss;
+            const auto& drive=presentedSession().vehicle().drive;
+            telemetry={vehicle.slip,vehicle.yawRate,loss.speedLoss0CAA9880,loss.persistentPenalty0CAA9884,vehicle.wallImpactSpeed,
+                drive.f(0x288),drive.f(0x284),
+                (vehicle.wallContact?1u:0u)|(replayShiftEdges&0x10u?2u:0u)|(replayShiftEdges&0x20u?4u:0u)|(replayShiftHeld&1u?8u:0u)|(replayShiftHeld&2u?16u:0u)};
+        }
+        recording.record(replayTick,vehicle.position,vehicle.yaw,vehicle.speed,vehicle.gear,originalHandling?&detail:nullptr,originalHandling?&telemetry:nullptr);
         if(archiveThisRace&&archiveMode!=0&&rivalVisible){
             archiveRivalCar=loadedRivalCar;
             ReplayDetail other=detail;other.rpm=rivalVehicle.rpm;other.bodyPosition=rivalBodyWorld;
@@ -2314,7 +2333,7 @@ struct App {
         else {meta<<",\"playerName\":"<<std::quoted(vsBanner.profileDisplayName(battleProfile));if(archiveMode==2)meta<<",\"opponentName\":"<<std::quoted(OriginalVsBanner::rivalDisplayName(unsigned(archiveRivalEnemy)));}
         meta<<",\"opponentManual\":"<<unsigned(!archiveOpponentAutomatic)<<",\"opponentTelemetry\":"<<unsigned(bool(authorityRace));
         meta<<'}';
-        localReplayJson=meta.str();localReplayPlayer=std::move(bytes);localReplayRival=std::move(other);
+        localReplayJson=meta.str();localReplayPlayer=std::move(bytes);localReplayRival=std::move(other);localReplayTelemetry=recording.telemetryBytes();
     }
     void saveResultProfile(){
         if(multiplayer.active||validationMode)return;

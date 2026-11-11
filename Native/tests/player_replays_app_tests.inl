@@ -14,8 +14,9 @@ int runPlayerReplayAppTests(App& a){
     require(a.recording.frames.size()>100&&a.rivalRecording.frames.size()==a.recording.frames.size(),"Legend did not capture both cars");
     require(a.rivalRecording.frames.back().position.x==a.rivalVehicle.position.x,"Legend opponent pose differs");
     a.validationMode=false;a.publishLocalReplay();require(!a.localReplayJson.empty()&&a.sharedFinishJson.empty(),"Legend replay entered shared queue");
+    require(a.localReplayTelemetry.size()==16+32*a.recording.frames.size()&&a.localReplayTelemetry[0]=='I'&&a.localReplayTelemetry[3]=='1',"Legend replay omitted IDT1 telemetry");
     const auto write=[&](const char* mode){std::ofstream(out/(std::string(mode)+".json"))<<a.localReplayJson;for(unsigned part=0;part<2;++part){const auto& bytes=part?a.localReplayRival:a.localReplayPlayer;std::ofstream f(out/(std::string(mode)+(part?"-opponent.idr":"-player.idr")),std::ios::binary);f.write(reinterpret_cast<const char*>(bytes.data()),bytes.size());}};
-    write("legend");a.localReplayJson.clear();a.localReplayPlayer.clear();a.localReplayRival.clear();
+    write("legend");a.localReplayJson.clear();a.localReplayPlayer.clear();a.localReplayRival.clear();a.localReplayTelemetry.clear();
     a.validationMode=true;a.replayRecordingFlags=2;
     Idas3MultiplayerConfig config{sizeof(config),2,0,0,0,0,0,1,0,1};
     auto local=original::makeOriginalFreshBattleProfile(),remote=local;remote.setu(16,1);

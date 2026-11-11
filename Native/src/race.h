@@ -40,7 +40,16 @@ struct ReplayDetail {
 };
 static_assert(sizeof(ReplayDetail)==132);
 inline constexpr std::array<unsigned,12> replayProfileOffsets{32,64,44,48,52,56,60,76,152,156,160,164};
-struct ReplayFrame { std::uint64_t tick; Vec3 position; float yaw,speed; int gear; ReplayDetail detail{}; };
+// IDT1 is a local-only analysis stream beside IDR2, one sample per IDR2 frame.
+// IDR2 bytes stay unchanged for ghosts, Community Times and the service.
+struct ReplayTelemetry {
+    float slip=0,yawRate=0,speedLoss=0,penalty=0,wallImpact=0;
+    float pendingRotation=0,applyingRotation=0; // drive +288 / +284 steering memory
+    // bit0 wall contact, bit1/2 shift down/up press edge, bit3/4 down/up held.
+    std::uint32_t flags=0;
+};
+static_assert(sizeof(ReplayTelemetry)==32);
+struct ReplayFrame { std::uint64_t tick; Vec3 position; float yaw,speed; int gear; ReplayDetail detail{}; ReplayTelemetry telemetry{}; };
 class Replay {
 public:
     static constexpr std::size_t maxFrames=60*60*30; // Thirty minutes at 60 Hz.
@@ -52,7 +61,7 @@ public:
     // Exact original finish timestamp; zero means telemetry without a finish.
     std::uint32_t finishTicks6000=0;
     void beginCapture(bool details);
-    void record(std::uint64_t tick,Vec3 position,float yaw,float speed,int gear,const ReplayDetail* detail=nullptr);
+    void record(std::uint64_t tick,Vec3 position,float yaw,float speed,int gear,const ReplayDetail* detail=nullptr,const ReplayTelemetry* telemetry=nullptr);
     bool save(const std::string& filename) const;
     // Format once for last-run and optional best-run copies. Each file retains
     // independent publication/failure handling; an empty second path skips it.
@@ -60,6 +69,8 @@ public:
     bool load(const std::string& filename);
     // Portable little-endian pose replay: 20 Hz plus the exact final frame.
     std::vector<std::uint8_t> sharedBytes(std::uint32_t finish) const;
+    // IDT1 v2: 16-byte header, then 32-byte samples aligned with detailed frames.
+    std::vector<std::uint8_t> telemetryBytes() const;
     ReplayFrame sample(double tick) const;
 };
 // Wall-clock accumulation is separate from simulation time. Focus/pause clears it.

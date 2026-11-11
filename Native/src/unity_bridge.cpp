@@ -315,12 +315,14 @@ void IDAS3_UNITY_CALL Idas3SharedAckFinish(){auto& r=unityRuntime();std::lock_gu
 int IDAS3_UNITY_CALL Idas3ReplayRecordingOptions(uint32_t flags){auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);if(!r.app||(flags&~15u))return 0;r.app->replayRecordingFlags=flags;if((flags&8)&&!r.app->battle&&!r.app->multiplayer.active&&!r.app->replayPlaybackActive)r.app->archiveThisRace=true;return 1;}
 int IDAS3_UNITY_CALL Idas3LocalReplayRead(int part,uint8_t* output,int capacity){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);if(!r.app||r.app->localReplayJson.empty())return 0;
-    const auto& a=*r.app;if(part<0||part>2)return -1;
-    const auto size=part==0?a.localReplayJson.size():part==1?a.localReplayPlayer.size():a.localReplayRival.size();
+    const auto& a=*r.app;if(part<0||part>3)return -1;
+    // Part 3 is the optional local-only IDT1 analysis stream.
+    const void* data=part==0?static_cast<const void*>(a.localReplayJson.data()):part==1?static_cast<const void*>(a.localReplayPlayer.data()):part==2?static_cast<const void*>(a.localReplayRival.data()):static_cast<const void*>(a.localReplayTelemetry.data());
+    const auto size=part==0?a.localReplayJson.size():part==1?a.localReplayPlayer.size():part==2?a.localReplayRival.size():a.localReplayTelemetry.size();
     if(!output)return int(size);if(capacity<int(size))return -1;
-    if(size)std::memcpy(output,part==0?static_cast<const void*>(a.localReplayJson.data()):part==1?static_cast<const void*>(a.localReplayPlayer.data()):static_cast<const void*>(a.localReplayRival.data()),size);return int(size);
+    if(size)std::memcpy(output,data,size);return int(size);
 }
-void IDAS3_UNITY_CALL Idas3LocalReplayAck(){auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);if(r.app){r.app->localReplayJson.clear();r.app->localReplayPlayer.clear();r.app->localReplayRival.clear();}}
+void IDAS3_UNITY_CALL Idas3LocalReplayAck(){auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);if(r.app){r.app->localReplayJson.clear();r.app->localReplayPlayer.clear();r.app->localReplayRival.clear();r.app->localReplayTelemetry.clear();}}
 int IDAS3_UNITY_CALL Idas3SharedReadPersonalImport(char* output,int capacity){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app)return -1;
