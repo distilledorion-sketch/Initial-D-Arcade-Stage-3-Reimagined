@@ -45,7 +45,8 @@ inline constexpr std::array<unsigned,12> replayProfileOffsets{32,64,44,48,52,56,
 struct ReplayTelemetry {
     float slip=0,yawRate=0,speedLoss=0,penalty=0,wallImpact=0;
     float pendingRotation=0,applyingRotation=0; // drive +288 / +284 steering memory
-    // bit0 wall contact, bit1/2 shift down/up press edge, bit3/4 down/up held.
+    // bit0 wall contact, bit1/2 shift down/up press edge, bit3/4 down/up held,
+    // bits5..7 steering source (HostInput::steeringSource).
     std::uint32_t flags=0;
 };
 static_assert(sizeof(ReplayTelemetry)==32);
@@ -69,8 +70,9 @@ public:
     bool load(const std::string& filename);
     // Portable little-endian pose replay: 20 Hz plus the exact final frame.
     std::vector<std::uint8_t> sharedBytes(std::uint32_t finish) const;
-    // IDT1 v3: 16-byte header, then 32-byte samples aligned with detailed frames.
+    // IDT1 v4: 16-byte header, then 32-byte samples aligned with detailed frames.
     // v3 records the applied speed loss; v2 sampled it after it was cleared.
+    // v4 adds the steering source (flags bits 5..7).
     std::vector<std::uint8_t> telemetryBytes() const;
     ReplayFrame sample(double tick) const;
 };

@@ -4,13 +4,16 @@
 #include <stdexcept>
 
 namespace idas3::original {
+float effectiveSteeringDeadzone(ControllerResponse response,float steeringDeadzone){
+    return steeringDeadzone<0?(response==ControllerResponse::Previous?.13f:
+        response==ControllerResponse::FlycastGamepad?.1f:0.f):steeringDeadzone;
+}
 OriginalHostControls controllerHostControls(std::int16_t steeringAxis,
     std::int16_t pairedAxis,std::uint8_t throttle,std::uint8_t brake,
     ControllerResponse response,float steeringDeadzone){
     if(!std::isfinite(steeringDeadzone)||(steeringDeadzone!=-1.f&&(steeringDeadzone<0||steeringDeadzone>.3f)))
         throw std::invalid_argument("Steering deadzone must be0..0.3 or the profile default");
-    const float deadzone=steeringDeadzone<0?(response==ControllerResponse::Previous?.13f:
-        response==ControllerResponse::FlycastGamepad?.1f:0.f):steeringDeadzone;
+    const float deadzone=effectiveSteeringDeadzone(response,steeringDeadzone);
     if(response==ControllerResponse::Previous){
         float axis=steeringAxis/32767.f;
         axis=std::abs(axis)<deadzone?0:std::copysign((std::abs(axis)-deadzone)/(1.f-deadzone),axis);

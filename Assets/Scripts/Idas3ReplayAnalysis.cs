@@ -19,7 +19,7 @@ public sealed class Idas3ReplayAnalysis
     public const float ApplyingLimit = 70; // original_dynamics.cpp clamps +284 to [-70, 70].
 
     public readonly int Count;
-    public readonly bool Detailed, HasTelemetry, HasRotation, HasShiftButtons, HasSpeedLoss;
+    public readonly bool Detailed, HasTelemetry, HasRotation, HasShiftButtons, HasSpeedLoss, HasSteeringSource;
     public readonly double[] Seconds;
     public readonly int[] Gear;
     public readonly float[] SpeedKmh, Rpm, Throttle, Brake, SteeringInput, WheelDegrees, DriftDegrees, YawRateDegrees, HeadingDegrees;
@@ -28,10 +28,28 @@ public sealed class Idas3ReplayAnalysis
     // Steering memory (+288 pending, +284 applying), right-positive like steering.
     public readonly float[] PendingRotation, ApplyingRotation;
     public readonly bool[] Wall, DownPress, UpPress, DownHeld, UpHeld;
+    // Per-frame steering source (Idas3ReplayData.SteeringInput, 0 = none).
+    public readonly int[] SteeringSource;
+    // Whole-run input device and steering settings, "" for older recordings.
+    public readonly string SteeringSetup;
     public readonly Event[] Events;
     public readonly Section[] Sections;
     public readonly float MaxSpeedKmh, MaxPenalty, MaxSpeedLoss, MaxAbsDrift, MaxAbsYawRate, MaxAbsPending;
 
+    static readonly string[] SteeringNames = { "Unknown", "Keyboard", "D-pad", "Analog", "Wheel", "Mixed" };
+    public static string SteeringName(Idas3ReplayData.SteeringInput input) => SteeringNames[(int)input];
+    // Dead zone and response only shape analog input; smoothing applies to all.
+    public static string DescribeSteering(Idas3ReplayData.Details m)
+    {
+        var input = m.PrimarySteering; var parts = new List<string>();
+        if (input != Idas3ReplayData.SteeringInput.Unknown) parts.Add(SteeringName(input));
+        bool analog = input == Idas3ReplayData.SteeringInput.Unknown || m.steeringTicks[3] > 0 || m.steeringTicks[4] > 0;
+        if (analog && m.steeringResponse >= 0) parts.Add(Idas3ReplayData.SteeringResponses[m.steeringResponse]);
+        if (analog && m.steeringDeadzone >= 0) parts.Add("DZ " + (m.steeringDeadzone * 100).ToString("0") + "%");
+        if (m.steeringSmoothing >= 0) parts.Add("smooth " + m.steeringSmoothing.ToString("0.00"));
+        string text = string.Join(" · ", parts);
+        return m.steeringSettingsChanged == 1 ? text + " (changed mid-race)" : text;
+    }
     public static float InputFromWheelAngle(float radians) => radians / (Mathf.PI * WheelAngleScale);
     // Clockwise-positive steering-wheel rotation for an original input value.
     public static float WheelDegreesFromInput(float input) => -Mathf.Clamp(input, -1, 1) * LockDegrees;
@@ -42,6 +60,8 @@ public sealed class Idas3ReplayAnalysis
         var telemetry = replay.Telemetry; HasTelemetry = telemetry != null && telemetry.Length == Count;
         HasRotation = HasShiftButtons = HasTelemetry && replay.RotationRecorded;
         HasSpeedLoss = HasTelemetry && replay.SpeedLossRecorded;
+        HasSteeringSource = HasTelemetry && replay.SteeringRecorded; SteeringSource = new int[Count];
+        SteeringSetup = DescribeSteering(replay.Metadata);
         Seconds = new double[Count]; Gear = new int[Count];
         SpeedKmh = new float[Count]; Rpm = new float[Count]; Throttle = new float[Count]; Brake = new float[Count];
         SteeringInput = new float[Count]; WheelDegrees = new float[Count]; DriftDegrees = new float[Count]; YawRateDegrees = new float[Count];
@@ -71,6 +91,7 @@ public sealed class Idas3ReplayAnalysis
                 // Memory shares the original steering sign: positive is LEFT.
                 PendingRotation[i] = -t.pendingRotation; ApplyingRotation[i] = -t.applyingRotation;
                 DownPress[i] = t.ShiftDown; UpPress[i] = t.ShiftUp; DownHeld[i] = t.DownHeld; UpHeld[i] = t.UpHeld;
+                if (HasSteeringSource) SteeringSource[i] = t.SteeringSource;
             }
             int a = Math.Max(0, i - 1), b = Math.Max(1, i); if (b >= Count) b = Count - 1;
             float dt = (float)(Seconds[b] - Seconds[a]);

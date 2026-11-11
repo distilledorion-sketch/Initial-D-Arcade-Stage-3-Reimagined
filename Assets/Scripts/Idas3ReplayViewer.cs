@@ -374,6 +374,11 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         Seek(analysis.Events[index].seconds);playing=false;SilenceAudio();
     }
     static string Clock(double value) => string.Format("{0}:{1:00.000}", (int)value / 60, value % 60);
+    string Steering(Idas3ReplayData.Details m)
+    {
+        string setup = telemetry.Analysis?.SteeringSetup ?? Idas3ReplayAnalysis.DescribeSteering(m);
+        return setup.Length == 0 ? "" : "  ·  " + setup;
+    }
     void OnGUI()
     {
         if (!startupInitialized || !Idas3RomGate.Verified) return;
@@ -402,7 +407,7 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         if (Idas3MenuGui.Button("Replay library", GUILayout.Width(90))) Browse();
         GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button("Close viewer", GUILayout.Width(120))) Application.Quit(); GUILayout.EndHorizontal();
         GUI.enabled = true;
-        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); }
+        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + Steering(m) + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); }
         if (message != null) Idas3MenuGui.Label(message);
         GUILayout.EndArea();
         if (replay == null) return;

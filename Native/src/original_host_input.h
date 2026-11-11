@@ -13,6 +13,8 @@ enum class ControllerResponse { FlycastGamepad=0, Previous=1, FlycastWheel=2 };
 // Host-only response, before the calibrated cabinet boundary. The Flycast
 // profiles reproduce v2.5 JVS axis ranges with default game calibration;
 // gamepad uses a 10% radial dead zone, wheel uses no dead zone.
+// The dead zone actually applied: -1 selects the response profile's default.
+float effectiveSteeringDeadzone(ControllerResponse response,float steeringDeadzone);
 OriginalHostControls controllerHostControls(std::int16_t steeringAxis,
     std::int16_t pairedAxis,std::uint8_t throttle,std::uint8_t brake,
     ControllerResponse response,float steeringDeadzone=-1.f);

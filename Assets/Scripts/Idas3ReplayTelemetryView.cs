@@ -11,7 +11,7 @@ internal sealed class Idas3ReplayTelemetryView : IDisposable
     const double PressFlashSeconds = .2;
     Idas3ReplayAnalysis analysis; double duration = 1;
     Texture2D white, wheel, triangle, triangleOutline;
-    GUIStyle small, tiny, big, header;
+    GUIStyle small, tiny, tinyCenter, big, header;
     public bool PanelVisible = true;
     public Idas3ReplayAnalysis Analysis => analysis;
 
@@ -34,6 +34,7 @@ internal sealed class Idas3ReplayTelemetryView : IDisposable
         {
             small = new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = false, padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0), alignment = TextAnchor.MiddleLeft };
             tiny = new GUIStyle(small) { fontSize = 10 };
+            tinyCenter = new GUIStyle(tiny) { alignment = TextAnchor.MiddleCenter };
             header = new GUIStyle(small) { fontSize = 13, fontStyle = FontStyle.Bold };
             big = new GUIStyle(small) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
         }
@@ -172,6 +173,8 @@ internal sealed class Idas3ReplayTelemetryView : IDisposable
             Text(new Rect(x, y, w, 16), Idas3MenuLocalization.Format("Steering {0}  ·  input {1}%", Side(a.WheelDegrees[i], "°"), Signed(-a.SteeringInput[i] * 100, "0")), small, Color.white);
             Bar(new Rect(x, y + 18, w, 6), a.WheelDegrees[i] / Idas3ReplayAnalysis.LockDegrees, true, SteeringColor);
             Text(new Rect(x, y + 25, 60, 12), "L 270°", tiny, dim); Text(new Rect(x + w - 44, y + 25, 44, 12), "R 270°", tiny, dim);
+            if (a.HasSteeringSource && a.SteeringSource[i] > 0)
+                Text(new Rect(x + 50, y + 25, w - 100, 12), Idas3MenuLocalization.T(Idas3ReplayAnalysis.SteeringName((Idas3ReplayData.SteeringInput)a.SteeringSource[i])), tinyCenter, SteeringColor);
         }
         else Text(new Rect(x, y, w, 16), Idas3MenuLocalization.T("Steering") + ": " + NotRecorded, small, dim);
         y += 40;

@@ -40,12 +40,13 @@ int main(){try{
     require(std::memcmp(&restored,&detail,sizeof(detail))==0,"RPM, body, suspension, wheels and clocks retain exact source bits");
     Replay analysed,plain;analysed.detailed=plain.detailed=true;ReplayTelemetry telemetry{.0123f,-1.5f,.36f,1.2f,4.75f,-12.5f,33.25f,1|2|4|8};
     analysed.record(1,{1,2,3},.3f,42,4,&detail,&telemetry);plain.record(1,{1,2,3},.3f,42,4,&detail);
-    telemetry.penalty=.98765f;telemetry.applyingRotation=-69.75f;telemetry.flags=16;analysed.record(2,{2,3,4},.4f,43,5,&detail,&telemetry);plain.record(2,{2,3,4},.4f,43,5,&detail);
+    telemetry.penalty=.98765f;telemetry.applyingRotation=-69.75f;telemetry.flags=16|(4u<<5);analysed.record(2,{2,3,4},.4f,43,5,&detail,&telemetry);plain.record(2,{2,3,4},.4f,43,5,&detail);
     auto stream=analysed.telemetryBytes();
     auto word=[&](std::size_t at){return unsigned(stream[at])|(unsigned(stream[at+1])<<8)|(unsigned(stream[at+2])<<16)|(unsigned(stream[at+3])<<24);};
-    require(stream.size()==16+2*32&&word(0)==0x31544449&&word(4)==3&&word(8)==32&&word(12)==2,"IDT1 v3 header and frame count");
+    require(stream.size()==16+2*32&&word(0)==0x31544449&&word(4)==4&&word(8)==32&&word(12)==2,"IDT1 v4 header and frame count");
     ReplayTelemetry restoredTelemetry;std::memcpy(&restoredTelemetry,stream.data()+16+32,sizeof(restoredTelemetry));
-    require(std::memcmp(&restoredTelemetry,&telemetry,sizeof(telemetry))==0,"IDT1 keeps exact penalty, rotation memory, wall and shift bits");
+    require(std::memcmp(&restoredTelemetry,&telemetry,sizeof(telemetry))==0,"IDT1 keeps exact penalty, rotation memory, wall, shift and steering source bits");
+    require(word(16+32+28)>>5==4,"IDT1 keeps the steering source");
     require(word(16+28)==(1u|2u|4u|8u),"IDT1 keeps a same-frame down and up shift");
     require(analysed.sharedBytes(148)==plain.sharedBytes(148),"IDT1 capture leaves IDR2 bytes unchanged");
     analysed.frames.back().tick=4;require(analysed.telemetryBytes().empty(),"IDT1 rejects a missing simulation frame");

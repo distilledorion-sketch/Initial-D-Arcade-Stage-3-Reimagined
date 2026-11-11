@@ -38,7 +38,7 @@ public static class Idas3ReplayAnalysisTests
         }
         return raw;
     }
-    // version 3 = applied speed loss; version 2 = 32-byte samples with rotation memory; version 1 = first 24-byte build.
+    // version 4 = steering source bits; version 3 = applied speed loss; version 2 = 32-byte samples with rotation memory; version 1 = first 24-byte build.
     static byte[] Telemetry(Idas3ReplayData.TelemetrySample[] samples, int count, uint version = 3, uint? strideOverride = null)
     {
         int stride = version == 1 ? 24 : 32;
@@ -55,9 +55,9 @@ public static class Idas3ReplayAnalysisTests
         return raw;
     }
     static Idas3ReplayData.Details Metadata() => new Idas3ReplayData.Details { condition = 6, car = 0, manual = 1, ticks6000 = Count * 100 };
-    static byte[] Package(byte[] raw, byte[] telemetry)
+    static byte[] Package(byte[] raw, byte[] telemetry, Idas3ReplayData.Details metadata = null)
     {
-        var metadata = Metadata(); var player = Idas3ReplayCodec.Encode(raw);
+        metadata ??= Metadata(); var player = Idas3ReplayCodec.Encode(raw);
         var stored = telemetry == null ? null : Idas3ReplayCodec.Encode(telemetry, Idas3ReplayCodec.Telemetry);
         metadata.telemetryBytes = stored?.Length ?? 0;
         return Idas3ReplayLibrary.Package(metadata, player, Array.Empty<byte>(), stored);
@@ -116,7 +116,34 @@ public static class Idas3ReplayAnalysisTests
         Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 2, 24))));
         var second = Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 2)));
         Check(second.RotationRecorded && !second.SpeedLossRecorded && !new Idas3ReplayAnalysis(second).HasSpeedLoss && new Idas3ReplayAnalysis(second).SpeedLoss[200] == 0, "IDT1 v2 speed loss is treated as not recorded");
-        Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 4))));
+        Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 5))));
+        Check(!replay.SteeringRecorded && !new Idas3ReplayAnalysis(replay).HasSteeringSource && replay.Metadata.PrimarySteering == Idas3ReplayData.SteeringInput.Unknown &&
+            replay.Metadata.steeringResponse == -1 && new Idas3ReplayAnalysis(replay).SteeringSetup == "", "IDT1 v3 and older metadata have unknown steering");
+        // v4: keyboard first half, analog stick second half; bits 5..7.
+        var sourced = (Idas3ReplayData.TelemetrySample[])samples.Clone();
+        for (int i = 0; i < Count; i++) sourced[i].flags |= (uint)(i < 300 ? 1 : 3) << 5;
+        var steeringMeta = Metadata(); steeringMeta.steeringTicks = new[] { 0, 300, 0, 300, 0 };
+        steeringMeta.steeringResponse = 0; steeringMeta.steeringDeadzone = .1f; steeringMeta.steeringSmoothing = .25f;
+        var fourth = Idas3ReplayData.Parse(Package(raw, Telemetry(sourced, Count, 4), steeringMeta));
+        Check(fourth.SteeringRecorded && fourth.SpeedLossRecorded && fourth.Telemetry[10].SteeringSource == 1 && fourth.Telemetry[400].SteeringSource == 3 && fourth.Telemetry[350].ShiftUp, "IDT1 v4 keeps steering source beside shift bits");
+        var sourcedAnalysis = new Idas3ReplayAnalysis(fourth);
+        Check(sourcedAnalysis.HasSteeringSource && sourcedAnalysis.SteeringSource[299] == 1 && sourcedAnalysis.SteeringSource[300] == 3, "Analysis exposes per-frame steering source");
+        Check(fourth.Metadata.PrimarySteering == Idas3ReplayData.SteeringInput.Mixed && fourth.Metadata.steeringDeadzone == .1f && fourth.Metadata.steeringSmoothing == .25f, "Split steering reads as mixed with its settings");
+        Check(sourcedAnalysis.SteeringSetup == "Mixed · Flycast gamepad · DZ 10% · smooth 0.25", "Steering setup summary: " + sourcedAnalysis.SteeringSetup);
+        var legacyJson = JsonUtility.FromJson<Idas3ReplayData.Details>("{\"condition\":6}");
+        Check(legacyJson.PrimarySteering == Idas3ReplayData.SteeringInput.Unknown && legacyJson.steeringResponse == -1 && legacyJson.steeringDeadzone == -1 && legacyJson.steeringSmoothing == -1, "Older metadata without steering fields reads as unknown");
+        var mostly = new Idas3ReplayData.Details { steeringTicks = new[] { 40, 5, 0, 0, 95 }, steeringResponse = 2, steeringDeadzone = 0, steeringSmoothing = 0, steeringSettingsChanged = 1 };
+        Check(mostly.PrimarySteering == Idas3ReplayData.SteeringInput.Wheel && Idas3ReplayAnalysis.DescribeSteering(mostly) == "Wheel · Flycast wheel · DZ 0% · smooth 0.00 (changed mid-race)", "Dominant wheel ignores idle ticks and flags changed settings");
+        var keys = new Idas3ReplayData.Details { steeringTicks = new[] { 9, 100, 0, 0, 0 }, steeringResponse = 0, steeringDeadzone = .1f, steeringSmoothing = 0 };
+        Check(Idas3ReplayAnalysis.DescribeSteering(keys) == "Keyboard · smooth 0.00", "Keyboard-only runs omit analog dead zone");
+        var badSource = (Idas3ReplayData.TelemetrySample[])sourced.Clone(); badSource[7].flags = 5u << 5; Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(badSource, Count, 4), steeringMeta)));
+        Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(sourced, Count, 3)))); // v3 with source bits
+        foreach (var broken in new Action<Idas3ReplayData.Details>[] {
+            m => m.steeringTicks = new[] { 0, 1, 2, 3 }, m => m.steeringTicks = new[] { 0, -1, 0, 0, 0 }, m => m.steeringTicks = new[] { 0, Count, 0, 1, 0 },
+            m => m.steeringResponse = 3, m => m.steeringDeadzone = .31f, m => m.steeringSmoothing = 1.5f, m => m.steeringSmoothing = float.NaN, m => m.steeringSettingsChanged = 2 })
+        {
+            var m = Metadata(); broken(m); Reject(() => Idas3ReplayData.Parse(Package(raw, null, m)));
+        }
         Check(Idas3ReplayData.Parse(Package(raw, null)).Telemetry == null, "Recordings without IDT1 still open");
         Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples[..^1], Count - 1))));
         var bad = (Idas3ReplayData.TelemetrySample[])samples.Clone(); bad[7].penalty = float.NaN; Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(bad, Count))));

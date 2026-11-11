@@ -116,6 +116,9 @@ const std::array<const char*,9> courseIds={"k_ez","s_nm","h_hd","k_df","s_vh","s
 const std::array<const char*,9> courseNames={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow"};
 struct HostInput {
     std::uint8_t requestedGear=0;
+    // Replay label from the Unity mapper: 0 none, 1 keyboard, 2 D-pad,
+    // 3 analog stick, 4 wheel. Standalone polling leaves it unknown (0).
+    std::uint8_t steeringSource=0;
     std::array<bool,256> down{},pressed{};
     XINPUT_STATE pad{};WORD oldButtons=0,pressedButtons=0;bool connected=false;
 #if !defined(IDAS3_PORTABLE_SCENE)
@@ -364,6 +367,15 @@ struct App {
     // Shift buttons of the inputs given to the solver this tick, for IDT1:
     // press edges (0x10 down, 0x20 up) and held buttons (1 down, 2 up).
     std::uint8_t replayShiftEdges=0,replayShiftHeld=0;
+    // Per-race steering source tick counts (HostInput::steeringSource order)
+    // and the steering settings in force at the first recorded frame.
+    std::array<std::uint32_t,5> replaySteeringTicks{};
+    struct ReplaySteeringSettings{int response=0;float deadzone=0,smoothing=0;
+        bool operator==(const ReplaySteeringSettings&) const=default;};
+    ReplaySteeringSettings replaySteeringSettings;bool replaySteeringSettingsChanged=false;
+    ReplaySteeringSettings currentSteeringSettings() const{
+        return {int(controllerResponse),original::effectiveSteeringDeadzone(controllerResponse,steeringDeadzone),steeringSmoothing.amount()};
+    }
     void setSharedRecords(TimeAttackRecords next,bool enabled){
         sharedRecords=std::move(next);sharedRecordsEnabled=enabled;combinedRecordsDirty=true;
     }
@@ -2300,8 +2312,13 @@ struct App {
             const auto& drive=state.drive;
             telemetry={vehicle.slip,vehicle.yawRate,state.appliedSpeedLoss,state.loss.persistentPenalty0CAA9884,vehicle.wallImpactSpeed,
                 drive.f(0x288),drive.f(0x284),
-                (vehicle.wallContact?1u:0u)|(replayShiftEdges&0x10u?2u:0u)|(replayShiftEdges&0x20u?4u:0u)|(replayShiftHeld&1u?8u:0u)|(replayShiftHeld&2u?16u:0u)};
+                (vehicle.wallContact?1u:0u)|(replayShiftEdges&0x10u?2u:0u)|(replayShiftEdges&0x20u?4u:0u)|(replayShiftHeld&1u?8u:0u)|(replayShiftHeld&2u?16u:0u)|
+                (std::uint32_t(input.steeringSource)<<5)};
         }
+        const auto settings=currentSteeringSettings();
+        if(recording.frames.empty()){replaySteeringTicks={};replaySteeringSettings=settings;replaySteeringSettingsChanged=false;}
+        else if(!(settings==replaySteeringSettings))replaySteeringSettingsChanged=true;
+        ++replaySteeringTicks[std::min<unsigned>(input.steeringSource,4)];
         recording.record(replayTick,vehicle.position,vehicle.yaw,vehicle.speed,vehicle.gear,originalHandling?&detail:nullptr,originalHandling?&telemetry:nullptr);
         if(archiveThisRace&&archiveMode!=0&&rivalVisible){
             archiveRivalCar=loadedRivalCar;
@@ -2332,6 +2349,11 @@ struct App {
         if(archiveMode==1)meta<<",\"playerName\":"<<std::quoted(multiplayer.localName)<<",\"opponentName\":"<<std::quoted(multiplayer.remoteName);
         else {meta<<",\"playerName\":"<<std::quoted(vsBanner.profileDisplayName(battleProfile));if(archiveMode==2)meta<<",\"opponentName\":"<<std::quoted(OriginalVsBanner::rivalDisplayName(unsigned(archiveRivalEnemy)));}
         meta<<",\"opponentManual\":"<<unsigned(!archiveOpponentAutomatic)<<",\"opponentTelemetry\":"<<unsigned(bool(authorityRace));
+        if(replaySteeringTicks[0]+replaySteeringTicks[1]+replaySteeringTicks[2]+replaySteeringTicks[3]+replaySteeringTicks[4]<=recording.frames.size()){
+            meta<<",\"steeringTicks\":[";for(unsigned i=0;i<5;++i){if(i)meta<<',';meta<<replaySteeringTicks[i];}meta<<"]";
+        }
+        meta<<",\"steeringResponse\":"<<replaySteeringSettings.response<<",\"steeringDeadzone\":"<<replaySteeringSettings.deadzone<<
+            ",\"steeringSmoothing\":"<<replaySteeringSettings.smoothing<<",\"steeringSettingsChanged\":"<<unsigned(replaySteeringSettingsChanged);
         meta<<'}';
         localReplayJson=meta.str();localReplayPlayer=std::move(bytes);localReplayRival=std::move(other);localReplayTelemetry=recording.telemetryBytes();
     }
