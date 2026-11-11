@@ -18,6 +18,7 @@ public sealed class Idas3ReplayData
     public struct Pose { public uint tick; public Vector3 position; public float yaw, speed; public int gear; public uint[] state; }
     // Optional IDT1 sample aligned with Frames; absent from older recordings.
     // v1 (first local build) has no rotation memory or shift-button bits.
+    // v1/v2 sampled speedLoss after the frame cleared it, so it is always 0.
     public struct TelemetrySample
     {
         public float slip, yawRate, speedLoss, penalty, wallImpact, pendingRotation, applyingRotation; public uint flags;
@@ -28,6 +29,7 @@ public sealed class Idas3ReplayData
     public bool Detailed { get; private set; }
     public TelemetrySample[] Telemetry { get; private set; }
     public bool RotationRecorded { get; private set; }
+    public bool SpeedLossRecorded { get; private set; }
     public uint[] Appearance { get; private set; }
     public Idas3ReplayData Opponent { get; private set; }
     public Details Metadata { get; private set; }
@@ -118,8 +120,8 @@ public sealed class Idas3ReplayData
         var result=new Idas3ReplayData { Metadata = metadata, Frames = frames, Detailed = detailed, Appearance = appearance };
         if(telemetryBytes.Length>0){
             if(!detailed)throw new InvalidDataException("Replay telemetry requires a detailed recording.");
-            result.Telemetry=ParseTelemetry(Idas3ReplayCodec.Decode(telemetryBytes,Idas3ReplayCodec.Telemetry),frames.Length,out bool rotation);
-            result.RotationRecorded=rotation;
+            result.Telemetry=ParseTelemetry(Idas3ReplayCodec.Decode(telemetryBytes,Idas3ReplayCodec.Telemetry),frames.Length,out bool rotation,out bool speedLoss);
+            result.RotationRecorded=rotation;result.SpeedLossRecorded=speedLoss;
         }
         if(opponentBytes.Length>0){
             var other=JsonUtility.FromJson<Details>(JsonUtility.ToJson(metadata));other.car=metadata.opponentCar;other.manual=metadata.opponentManual;other.opponentBytes=0;other.telemetryBytes=0;other.splits=null;other.nameGlyphs=null;
@@ -128,9 +130,9 @@ public sealed class Idas3ReplayData
         }
         return result;
     }
-    static TelemetrySample[] ParseTelemetry(byte[] raw,int frames,out bool rotation)
+    static TelemetrySample[] ParseTelemetry(byte[] raw,int frames,out bool rotation,out bool speedLoss)
     {
-        uint version=raw.Length<16?0:BitConverter.ToUInt32(raw,4);int stride=version==1?24:version==2?32:0;rotation=version==2;
+        uint version=raw.Length<16?0:BitConverter.ToUInt32(raw,4);int stride=version==1?24:version==2||version==3?32:0;rotation=version>=2;speedLoss=version==3;
         if(stride==0||BitConverter.ToUInt32(raw,0)!=Idas3ReplayCodec.Telemetry||BitConverter.ToUInt32(raw,8)!=stride||
             BitConverter.ToUInt32(raw,12)!=frames||raw.Length!=16L+(long)stride*frames)throw new InvalidDataException("Replay telemetry does not match its frames.");
         uint maximumFlags=rotation?31u:1u;

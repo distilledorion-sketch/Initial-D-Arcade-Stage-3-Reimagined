@@ -2296,9 +2296,9 @@ struct App {
         detail.lights=unsigned(playerProjectedHeadlight.enabled());detail.progress=race.progress;detail.extension=raceFeedback.extensionTicks;
         ReplayTelemetry telemetry;
         if(originalHandling){
-            const auto& loss=presentedSession().vehicle().loss;
-            const auto& drive=presentedSession().vehicle().drive;
-            telemetry={vehicle.slip,vehicle.yawRate,loss.speedLoss0CAA9880,loss.persistentPenalty0CAA9884,vehicle.wallImpactSpeed,
+            const auto& state=presentedSession().vehicle();
+            const auto& drive=state.drive;
+            telemetry={vehicle.slip,vehicle.yawRate,state.appliedSpeedLoss,state.loss.persistentPenalty0CAA9884,vehicle.wallImpactSpeed,
                 drive.f(0x288),drive.f(0x284),
                 (vehicle.wallContact?1u:0u)|(replayShiftEdges&0x10u?2u:0u)|(replayShiftEdges&0x20u?4u:0u)|(replayShiftHeld&1u?8u:0u)|(replayShiftHeld&2u?16u:0u)};
         }

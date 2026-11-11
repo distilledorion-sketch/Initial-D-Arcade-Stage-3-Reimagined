@@ -69,7 +69,8 @@ public:
     bool load(const std::string& filename);
     // Portable little-endian pose replay: 20 Hz plus the exact final frame.
     std::vector<std::uint8_t> sharedBytes(std::uint32_t finish) const;
-    // IDT1 v2: 16-byte header, then 32-byte samples aligned with detailed frames.
+    // IDT1 v3: 16-byte header, then 32-byte samples aligned with detailed frames.
+    // v3 records the applied speed loss; v2 sampled it after it was cleared.
     std::vector<std::uint8_t> telemetryBytes() const;
     ReplayFrame sample(double tick) const;
 };

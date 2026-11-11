@@ -75,7 +75,7 @@ std::vector<std::uint8_t> Replay::telemetryBytes() const {
     std::vector<std::uint8_t> out;out.reserve(16+32*frames.size());
     auto u32=[&](std::uint32_t n){for(unsigned b=0;b<4;++b)out.push_back(std::uint8_t(n>>(b*8)));};
     auto scalar=[&](float n){u32(std::bit_cast<std::uint32_t>(n));};
-    u32(0x31544449);u32(2);u32(32);u32(std::uint32_t(frames.size()));
+    u32(0x31544449);u32(3);u32(32);u32(std::uint32_t(frames.size()));
     for(std::size_t i=0;i<frames.size();++i){
         if(i&&frames[i].tick!=frames[i-1].tick+1)return {};
         const auto& t=frames[i].telemetry;

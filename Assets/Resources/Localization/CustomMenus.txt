@@ -673,7 +673,6 @@ No shifts yet	シフトなし	尚未换挡
 same frame	同フレーム	同一帧
 Pending rotation	保留中の回転	待施加旋转
 Applying rotation	適用中の回転	施加中旋转
-Wheel slip	タイヤスリップ	车轮打滑
 Speed loss	速度ロス	速度损失
 Heading error	向きの誤差	航向误差
 WALL	壁	撞墙

@@ -55,6 +55,7 @@ OriginalVehicleStepResult stepOriginalVehicle(OriginalVehicleState& s,
     s.drive.setf(0x220,drive.field220);s.drive.setf(0x238,drive.velocity238);
     s.drive.setf(0x240,drive.delta240);s.drive.setu(0x400,drive.field400);
     s.loss.speedLoss0CAA9880=s.transmissionGlobals.loss9880;
+    s.appliedSpeedLoss=s.transmissionGlobals.loss9880;
     finishOriginalDriveState(s.drive,s.loss,s.tail,
         {s.transmission.gear00,s.transmission.filtered18,s.transmission.delta24,
          s.transmissionGlobals.coupledSnapshot98ac,in.gearEnabled,in.elapsedFrames0C900E84},math);

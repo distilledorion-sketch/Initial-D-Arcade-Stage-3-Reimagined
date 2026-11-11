@@ -62,7 +62,7 @@ int main(int argc,char**argv)try{
     for(const auto address:{0x0C900E40u,0x0C900EC0u,0x0C8FF380u,0x0C900E54u,0x0C90094Cu,0x0C900E30u,0x0C900EF8u,0x0C900E4Cu,0x0C900EB0u})memory.writeFloat(address,1);
     // Execute actual142520 in its explicit disabled platform-service mode.
     const auto serviceModeAddress=memory.read32(0x0C142564);memory.write8(serviceModeAddress,1);
-    std::size_t instructions=0,comparisons=0;
+    std::size_t instructions=0,comparisons=0,appliedLossFrames=0;
     for(std::uint32_t tick=0;tick<600;++tick){
         OriginalVehicleInputs in;
         in.analog={std::uint16_t((128+int(50*std::sin(float(tick)*.03f)))<<8),std::uint16_t((tick%180<140?139:32)<<8),std::uint16_t((tick%180>=160?100:32)<<8)};
@@ -73,6 +73,8 @@ int main(int argc,char**argv)try{
         RefCpu cpu(memory);cpu.r[15]=0x0CFFF100;cpu.pr=0x0F000000;
         instructions+=cpu.run(0x0C15CEC0,0x0F000000,20000);
         stepOriginalVehicle(state,in,p,{originalSinF32,originalCosF32,originalFiprDot3});
+        // 0CAA9880 is cleared before the frame ends; telemetry keeps the applied loss.
+        if(state.appliedSpeedLoss>0&&state.loss.speedLoss0CAA9880==0)++appliedLossFrames;
         const auto equal=[&](std::uint32_t address,std::uint32_t actual){
             ++comparisons;const auto expected=memory.read32(address);
             if(expected!=actual){std::cerr<<"FULL FRAME MISMATCH tick="<<tick<<" address="<<std::hex<<address<<" expected="<<expected<<" actual="<<actual<<std::dec<<'\n';throw std::runtime_error("Full original frame differential failed");}
@@ -92,6 +94,7 @@ int main(int argc,char**argv)try{
         equal(0x0CAA9CE0,bits(h.mean0CAA9CE0));equal(0x0CAA9CE4,h.counter0CAA9CE4);equal(0x0CAA9CE8,h.counter0CAA9CE8);equal(0x0CAA9CEC,h.counter0CAA9CEC);
         equal(0x0CAA9CFC,g.downCounter9cfc);equal(0x0C91FB4C,g.flag91fb4c);
     }
+    if(appliedLossFrames==0)throw std::runtime_error("Applied speed loss was not kept for replay telemetry");
     std::cout<<"PASS 600 sequential complete CEC0 frames, "<<comparisons<<" bit-exact state/global/history comparisons, "<<instructions
       <<" decoded original instructions. Zero hooks; actual original trig,142520 disabled service policy and15ECE0 execute. Synthetic road/contact inputs; upstream collision pipeline remains unvalidated.\n";
     return 0;

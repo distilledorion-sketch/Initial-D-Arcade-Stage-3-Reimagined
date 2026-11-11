@@ -6,7 +6,7 @@ using UnityEngine;
 internal sealed class Idas3ReplayTelemetryView : IDisposable
 {
     static readonly Color SteeringColor = new Color(1f, .82f, .25f), PenaltyColor = new Color(1f, .38f, .32f), DriftColor = new Color(.55f, 1f, .45f),
-        YawColor = new Color(.85f, .55f, 1f), PendingColor = new Color(.45f, .7f, 1f), ApplyingColor = new Color(1f, .6f, .2f);
+        YawColor = new Color(.85f, .55f, 1f), PendingColor = new Color(.45f, .7f, 1f), ApplyingColor = new Color(1f, .6f, .2f), SpeedLossColor = new Color(1f, .6f, .5f);
     static readonly Color ShiftColor = new Color(.45f, .85f, 1f), SameFrameColor = new Color(1f, .72f, .1f), WallColor = new Color(1f, .3f, .25f), SectionColor = new Color(1f, 1f, 1f, .7f);
     const double PressFlashSeconds = .2;
     Idas3ReplayAnalysis analysis; double duration = 1;
@@ -140,7 +140,7 @@ internal sealed class Idas3ReplayTelemetryView : IDisposable
         else Rotated(rect, angle, triangleOutline, new Color(1, 1, 1, a.HasShiftButtons ? .45f : .25f));
     }
 
-    public const float PanelWidth = 264, PanelHeight = 566;
+    public const float PanelWidth = 264, PanelHeight = 513;
     public void DrawPanel(Rect area, double seconds)
     {
         if (analysis == null || analysis.Count == 0) return;
@@ -217,29 +217,18 @@ internal sealed class Idas3ReplayTelemetryView : IDisposable
         }
         y += 56;
 
-        Text(new Rect(x, y, w, 16), Idas3MenuLocalization.T("Wheel slip"), small, dim); y += 17;
-        for (int wIndex = 0; wIndex < 4; wIndex++)
-        {
-            var cell = new Rect(x + (wIndex % 2) * (w / 2 + 2), y + (wIndex / 2) * 16, w / 2 - 4, 14);
-            Text(new Rect(cell.x, cell.y, 22, 14), Idas3ReplayAnalysis.WheelNames[wIndex], tiny, dim);
-            if (a.WheelSlipAvailable)
-            {
-                float slip = a.WheelSlip[wIndex][i];
-                Bar(new Rect(cell.x + 22, cell.y + 3, cell.width - 66, 8), slip * 2, true, slip > 0 ? new Color(1f, .6f, .2f) : new Color(.4f, .7f, 1f));
-                Text(new Rect(cell.xMax - 42, cell.y, 42, 14), Signed(slip * 100, "0") + "%", tiny, Color.white);
-            }
-            else Text(new Rect(cell.x + 22, cell.y, cell.width - 22, 14), NotRecorded, tiny, dim);
-        }
-        y += 36;
-
         if (a.HasTelemetry)
         {
             Text(new Rect(x, y, 86, 14), Idas3MenuLocalization.T("Penalty"), small, PenaltyColor);
             Bar(new Rect(x + 88, y + 4, w - 140, 7), a.Penalty[i] / Mathf.Max(.01f, a.MaxPenalty), false, PenaltyColor);
             Text(new Rect(x + w - 48, y, 48, 14), a.Penalty[i].ToString("0.000"), tiny, Color.white);
-            Text(new Rect(x, y + 17, 86, 14), Idas3MenuLocalization.T("Speed loss"), small, new Color(1f, .6f, .5f));
-            Bar(new Rect(x + 88, y + 21, w - 140, 7), a.SpeedLoss[i] / Mathf.Max(.01f, a.MaxSpeedLoss), false, new Color(1f, .6f, .5f));
-            Text(new Rect(x + w - 48, y + 17, 48, 14), a.SpeedLoss[i].ToString("0.000"), tiny, Color.white);
+            if (a.HasSpeedLoss)
+            {
+                Text(new Rect(x, y + 17, 86, 14), Idas3MenuLocalization.T("Speed loss"), small, SpeedLossColor);
+                Bar(new Rect(x + 88, y + 21, w - 156, 7), a.SpeedLoss[i] / Mathf.Max(.01f, a.MaxSpeedLoss), false, SpeedLossColor);
+                Text(new Rect(x + w - 64, y + 17, 64, 14), (a.SpeedLoss[i] > 0 ? "−" : "") + a.SpeedLoss[i].ToString("0.0") + " km/h/s", tiny, Color.white);
+            }
+            else Text(new Rect(x, y + 17, w, 14), Idas3MenuLocalization.T("Speed loss") + ": " + NotRecorded, small, dim);
             Text(new Rect(x, y + 34, w - 60, 14), Idas3MenuLocalization.T("Heading error") + " " + Signed(a.HeadingError[i], "0.000"), small, Color.white);
             int wall = a.LastEvent(Idas3ReplayAnalysis.EventKind.Wall, seconds);
             bool hot = a.Wall[i] || (wall >= 0 && seconds - a.Events[wall].seconds < .4);

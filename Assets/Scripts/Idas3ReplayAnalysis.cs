@@ -11,7 +11,6 @@ public sealed class Idas3ReplayAnalysis
     // original_controls.cpp negates host steering, so +0x1CC is a LEFT input.
     public const float WheelAngleScale = 0.235f;
     public const float LockDegrees = 270; // 540 degrees lock to lock.
-    public static readonly string[] WheelNames = { "FR", "FL", "RR", "RL" }; // car_wheel_pose.h
     public enum EventKind { Shift, Wall, Section }
     // down/up are recorded shift-button press edges; both on one frame is a
     // same-frame shift that may leave the gear unchanged.
@@ -20,17 +19,15 @@ public sealed class Idas3ReplayAnalysis
     public const float ApplyingLimit = 70; // original_dynamics.cpp clamps +284 to [-70, 70].
 
     public readonly int Count;
-    public readonly bool Detailed, HasTelemetry, HasRotation, HasShiftButtons;
+    public readonly bool Detailed, HasTelemetry, HasRotation, HasShiftButtons, HasSpeedLoss;
     public readonly double[] Seconds;
     public readonly int[] Gear;
     public readonly float[] SpeedKmh, Rpm, Throttle, Brake, SteeringInput, WheelDegrees, DriftDegrees, YawRateDegrees, HeadingDegrees;
+    // SpeedLoss is the deceleration the loss applied, in km/h per second.
     public readonly float[] Penalty, SpeedLoss, HeadingError, WallImpact;
     // Steering memory (+288 pending, +284 applying), right-positive like steering.
     public readonly float[] PendingRotation, ApplyingRotation;
     public readonly bool[] Wall, DownPress, UpPress, DownHeld, UpHeld;
-    // Rotation per wheel in rad/s, and slip against ground speed (0 = rolling).
-    public readonly float[][] WheelSpin = new float[4][], WheelSlip = new float[4][];
-    public readonly bool WheelSlipAvailable;
     public readonly Event[] Events;
     public readonly Section[] Sections;
     public readonly float MaxSpeedKmh, MaxPenalty, MaxSpeedLoss, MaxAbsDrift, MaxAbsYawRate, MaxAbsPending;
@@ -44,6 +41,7 @@ public sealed class Idas3ReplayAnalysis
         var frames = replay.Frames; Count = frames.Length; Detailed = replay.Detailed;
         var telemetry = replay.Telemetry; HasTelemetry = telemetry != null && telemetry.Length == Count;
         HasRotation = HasShiftButtons = HasTelemetry && replay.RotationRecorded;
+        HasSpeedLoss = HasTelemetry && replay.SpeedLossRecorded;
         Seconds = new double[Count]; Gear = new int[Count];
         SpeedKmh = new float[Count]; Rpm = new float[Count]; Throttle = new float[Count]; Brake = new float[Count];
         SteeringInput = new float[Count]; WheelDegrees = new float[Count]; DriftDegrees = new float[Count]; YawRateDegrees = new float[Count];
@@ -51,7 +49,6 @@ public sealed class Idas3ReplayAnalysis
         Penalty = new float[Count]; SpeedLoss = new float[Count]; HeadingError = new float[Count]; WallImpact = new float[Count]; Wall = new bool[Count];
         PendingRotation = new float[Count]; ApplyingRotation = new float[Count];
         DownPress = new bool[Count]; UpPress = new bool[Count]; DownHeld = new bool[Count]; UpHeld = new bool[Count];
-        for (int w = 0; w < 4; w++) { WheelSpin[w] = new float[Count]; WheelSlip[w] = new float[Count]; }
         double last = frames[^1].tick;
         for (int i = 0; i < Count; i++)
         {
@@ -68,7 +65,9 @@ public sealed class Idas3ReplayAnalysis
             if (HasTelemetry)
             {
                 var t = telemetry[i];
-                Penalty[i] = t.penalty; SpeedLoss[i] = t.speedLoss; HeadingError[i] = t.slip; WallImpact[i] = t.wallImpact; Wall[i] = t.WallContact;
+                // +238 is m/s and the loss is taken once per 60 Hz frame.
+                if (HasSpeedLoss) SpeedLoss[i] = t.speedLoss * 3.6f * 60;
+                Penalty[i] = t.penalty; HeadingError[i] = t.slip; WallImpact[i] = t.wallImpact; Wall[i] = t.WallContact;
                 // Memory shares the original steering sign: positive is LEFT.
                 PendingRotation[i] = -t.pendingRotation; ApplyingRotation[i] = -t.applyingRotation;
                 DownPress[i] = t.ShiftDown; UpPress[i] = t.ShiftUp; DownHeld[i] = t.DownHeld; UpHeld[i] = t.UpHeld;
@@ -83,7 +82,6 @@ public sealed class Idas3ReplayAnalysis
                 DriftDegrees[i] = Drift(frames[a].position, frames[b].position, p.yaw, dt);
             }
         }
-        WheelSlipAvailable = Detailed && Count > 2 && ComputeWheelSpin(frames);
         Events = BuildEvents(replay);
         Sections = BuildSections(replay, sectionReference);
         for (int i = 0; i < Count; i++)
@@ -104,44 +102,6 @@ public sealed class Idas3ReplayAnalysis
         if (vx * vx + vz * vz < 9) return 0;
         float forward = vx * Mathf.Sin(yaw) + vz * Mathf.Cos(yaw), right = -vx * Mathf.Cos(yaw) + vz * Mathf.Sin(yaw);
         return -Mathf.Atan2(right, forward) * Mathf.Rad2Deg;
-    }
-
-    // Wheel angles are stored modulo 2*pi, which aliases near pi rad/frame at
-    // racing speed. Estimate the rolling radius from slow frames, then unwrap
-    // each step to the turn nearest the ground-speed expectation.
-    bool ComputeWheelSpin(Idas3ReplayData.Pose[] frames)
-    {
-        var radii = new List<float>();
-        for (int i = 1; i < Count; i++)
-        {
-            float dt = (float)(Seconds[i] - Seconds[i - 1]), ground = frames[i].speed * dt;
-            if (dt <= 0 || frames[i].speed < 3 || frames[i].speed > 25) continue;
-            for (int w = 0; w < 4; w++)
-            {
-                float step = Mathf.Abs(DeltaRadians(Idas3ReplayData.Scalar(frames[i - 1].state[11 + w]), Idas3ReplayData.Scalar(frames[i].state[11 + w])));
-                if (step > .02f && step < 1.5f) radii.Add(ground / step);
-            }
-        }
-        if (radii.Count < 8) return false;
-        radii.Sort(); float radius = radii[radii.Count / 2];
-        if (!(radius > .1f && radius < 1)) return false;
-        for (int i = 1; i < Count; i++)
-        {
-            float dt = (float)(Seconds[i] - Seconds[i - 1]); if (dt <= 0) continue;
-            float expected = frames[i].speed * dt / radius;
-            for (int w = 0; w < 4; w++)
-            {
-                float step = Mathf.Abs(DeltaRadians(Idas3ReplayData.Scalar(frames[i - 1].state[11 + w]), Idas3ReplayData.Scalar(frames[i].state[11 + w])));
-                float best = step;
-                for (int k = 1; k <= 3; k++)
-                    foreach (float candidate in new[] { k * 2 * Mathf.PI - step, k * 2 * Mathf.PI + step })
-                        if (Mathf.Abs(candidate - expected) < Mathf.Abs(best - expected)) best = candidate;
-                WheelSpin[w][i] = best / dt;
-                WheelSlip[w][i] = frames[i].speed > 3 ? best * radius / (frames[i].speed * dt) - 1 : 0;
-            }
-        }
-        for (int w = 0; w < 4; w++) { WheelSpin[w][0] = WheelSpin[w][1]; WheelSlip[w][0] = WheelSlip[w][1]; }
-        return true;
     }
 
     Event[] BuildEvents(Idas3ReplayData replay)

@@ -38,8 +38,8 @@ public static class Idas3ReplayAnalysisTests
         }
         return raw;
     }
-    // version 2 = 32-byte samples with rotation memory; version 1 = first 24-byte build.
-    static byte[] Telemetry(Idas3ReplayData.TelemetrySample[] samples, int count, uint version = 2, uint? strideOverride = null)
+    // version 3 = applied speed loss; version 2 = 32-byte samples with rotation memory; version 1 = first 24-byte build.
+    static byte[] Telemetry(Idas3ReplayData.TelemetrySample[] samples, int count, uint version = 3, uint? strideOverride = null)
     {
         int stride = version == 1 ? 24 : 32;
         var raw = new byte[16 + samples.Length * stride];
@@ -49,7 +49,7 @@ public static class Idas3ReplayAnalysisTests
             int at = 16 + i * stride; var t = samples[i];
             BitConverter.GetBytes(t.slip).CopyTo(raw, at); BitConverter.GetBytes(t.yawRate).CopyTo(raw, at + 4); BitConverter.GetBytes(t.speedLoss).CopyTo(raw, at + 8);
             BitConverter.GetBytes(t.penalty).CopyTo(raw, at + 12); BitConverter.GetBytes(t.wallImpact).CopyTo(raw, at + 16);
-            if (version == 2) { BitConverter.GetBytes(t.pendingRotation).CopyTo(raw, at + 20); BitConverter.GetBytes(t.applyingRotation).CopyTo(raw, at + 24); }
+            if (version >= 2) { BitConverter.GetBytes(t.pendingRotation).CopyTo(raw, at + 20); BitConverter.GetBytes(t.applyingRotation).CopyTo(raw, at + 24); }
             BitConverter.GetBytes(t.flags).CopyTo(raw, at + stride - 4);
         }
         return raw;
@@ -73,14 +73,11 @@ public static class Idas3ReplayAnalysisTests
         Check(Idas3ReplayAnalysis.WheelDegreesFromInput(4) == -270, "Wheel rotation clamps at lock");
 
         var frames = Frames();
-        float radius = .3f; float wheel = 0;
         for (int i = 0; i < Count; i++)
         {
             var f = frames[i];
-            if (i >= 500) f.speed = 70; // 3.9 rad per frame: aliased past pi.
+            if (i >= 500) f.speed = 70;
             if (i > 0) f.position = frames[i - 1].position + new Vector3(0, 0, f.speed / 60);
-            wheel = Mathf.Repeat(wheel + f.speed / 60 / radius, 2 * Mathf.PI);
-            for (int w = 0; w < 4; w++) f.state[11 + w] = Bits(wheel);
             f.state[0] = Bits(5000 + i); f.state[6] = Bits(-fullLeft * .5f);
             f.state[15] = Bits(1); f.gear = i < 300 ? 3 : i < 451 ? 4 : 3;
             if (i >= 200) { f.state[23] = 1; f.state[19] = 20000; }
@@ -103,11 +100,12 @@ public static class Idas3ReplayAnalysisTests
         samples[350].flags = 2 | 4 | 8 | 16; samples[351].flags = 8 | 16; samples[352].flags = 8;
         // Down press at 450, gear follows one frame later at 451.
         samples[450].flags = 2 | 8;
+        samples[200].speedLoss = .01f; // m/s taken this frame
 
         // Package format: IDT1 rides after IDR2 and is optional.
         var replay = Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count)));
         Check(replay.Telemetry != null && replay.Telemetry.Length == Count && replay.Telemetry[102].wallImpact == 5 && replay.Telemetry[102].WallContact, "IDT1 telemetry parsed beside IDR2");
-        Check(replay.RotationRecorded && replay.Telemetry[60].pendingRotation == 12.5f && replay.Telemetry[60].applyingRotation == -40, "IDT1 v2 keeps steering memory");
+        Check(replay.SpeedLossRecorded && replay.RotationRecorded && replay.Telemetry[60].pendingRotation == 12.5f && replay.Telemetry[60].applyingRotation == -40, "IDT1 v2 keeps steering memory");
         var press = replay.Telemetry[350];
         Check(press.ShiftDown && press.ShiftUp && press.DownHeld && press.UpHeld && !replay.Telemetry[352].UpHeld && replay.Telemetry[352].DownHeld, "Shift press and held bits round-trip");
         var v1Samples = new Idas3ReplayData.TelemetrySample[Count];
@@ -116,7 +114,9 @@ public static class Idas3ReplayAnalysisTests
         Check(first.Telemetry != null && !first.RotationRecorded && first.Telemetry[102].WallContact && first.Telemetry[60].pendingRotation == 0, "IDT1 v1 recordings open without rotation memory");
         Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 1)))); // v1 with shift bits
         Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 2, 24))));
-        Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 3))));
+        var second = Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 2)));
+        Check(second.RotationRecorded && !second.SpeedLossRecorded && !new Idas3ReplayAnalysis(second).HasSpeedLoss && new Idas3ReplayAnalysis(second).SpeedLoss[200] == 0, "IDT1 v2 speed loss is treated as not recorded");
+        Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples, Count, 4))));
         Check(Idas3ReplayData.Parse(Package(raw, null)).Telemetry == null, "Recordings without IDT1 still open");
         Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(samples[..^1], Count - 1))));
         var bad = (Idas3ReplayData.TelemetrySample[])samples.Clone(); bad[7].penalty = float.NaN; Reject(() => Idas3ReplayData.Parse(Package(raw, Telemetry(bad, Count))));
@@ -141,9 +141,8 @@ public static class Idas3ReplayAnalysisTests
         Check(a.HasRotation && a.HasShiftButtons, "Analysis sees rotation memory and shift buttons");
         Check(a.PendingRotation[60] == -12.5f && a.ApplyingRotation[60] == 40 && a.MaxAbsPending == 12.5f, "Rotation memory is right-positive like steering");
         Check(a.DownHeld[351] && a.UpHeld[351] && a.DownHeld[352] && !a.UpHeld[352] && !a.DownPress[351], "Held buttons separate from press edges");
-        Check(a.WheelSlipAvailable, "Rolling radius estimated from recorded wheel rotation");
-        Near(a.WheelSlip[0][100], 0, .02f, "Rolling wheel has no slip"); Near(a.WheelSpin[0][100], 20 / radius, .5f, "Wheel spin in rad/s");
-        Near(a.WheelSlip[0][550], 0, .02f, "Aliased fast wheel is unwrapped"); Near(a.WheelSpin[0][550], 70 / radius, 1, "Fast wheel spin in rad/s");
+        Check(a.HasSpeedLoss, "Analysis sees applied speed loss");
+        Near(a.SpeedLoss[200], 2.16f, .001f, "Speed loss is km/h per second"); Check(a.SpeedLoss[199] == 0, "No loss on other frames");
         Near(a.SpeedKmh[0], 72, .01f, "Speed in km/h");
 
         int shifts = 0, walls = 0, sections = 0;
