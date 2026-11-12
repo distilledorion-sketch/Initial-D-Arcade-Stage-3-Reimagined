@@ -78,10 +78,15 @@ public sealed class Idas3UpdaterFlowSmoke : MonoBehaviour
             if(File.Exists(reportPath))throw new IOException("Do not overwrite updater flow evidence.");
             var config=JsonUtility.FromJson<Config>(File.ReadAllText(configPath));
             string folder=Path.GetDirectoryName(configPath);
-            if(config==null||!File.Exists(Path.Combine(folder,"ISOLATED_UPDATE_TEST.txt"))||
-                !string.Equals(Path.GetDirectoryName(Path.GetFullPath(config.gameRoot)),folder,StringComparison.OrdinalIgnoreCase))
+            if(config==null||!File.Exists(Path.Combine(folder,"ISOLATED_UPDATE_TEST.txt")))
                 throw new IOException("Updater game must be a direct child of its marked disposable fixture.");
-            Idas3UpdateStaging.NoLinks(folder);Idas3UpdateStaging.NoLinks(config.gameRoot);
+            // Compare canonical fixture ownership while preserving the supplied
+            // spelling for the real updater's Steam-library/temporary aliases.
+            folder=Idas3UpdatePaths.ResolveDirectory(folder);
+            string fixtureGame=Idas3UpdatePaths.ResolveDirectory(config.gameRoot);
+            if(!string.Equals(Path.GetDirectoryName(fixtureGame),folder,StringComparison.OrdinalIgnoreCase))
+                throw new IOException("Updater game must be a direct child of its marked disposable fixture.");
+            Idas3UpdateStaging.NoLinks(folder);Idas3UpdateStaging.NoLinks(fixtureGame);
             RequireLoopback(config.url);
             if(!string.IsNullOrEmpty(config.patchUrl))RequireLoopback(config.patchUrl);
             if(!string.IsNullOrEmpty(config.contentUrl))RequireLoopback(config.contentUrl);

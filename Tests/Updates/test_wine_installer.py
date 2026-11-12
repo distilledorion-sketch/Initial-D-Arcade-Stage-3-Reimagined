@@ -3,11 +3,16 @@ from pathlib import Path
 import hashlib,json,os,shutil,struct,subprocess,tempfile,time
 root=Path(__file__).resolve().parents[2]
 proof=Path(os.environ.get('IDAS3_UPDATE_TEST_OUTPUT',root/'Verification/wine-updater-20260922'))
-proof.mkdir(parents=True,exist_ok=True)
+proof.mkdir(parents=True,exist_ok=False)
 base=Path(tempfile.mkdtemp(prefix='idas3-updater-wine-',dir=str(Path.home())));prefix=base/'prefix'
 env=dict(os.environ,WINEPREFIX=str(prefix),WINEDEBUG='-all',WINEDLLOVERRIDES='mscoree,mshtml=')
 wine='/usr/lib/wine/wine64'
-helper=root/'Native/build-update-helper/Idas3UpdateInstaller.exe';child=root/'Native/build-update-helper/UpdateTestChild.exe'
+helper=Path(os.environ.get('IDAS3_UPDATE_TEST_HELPER',root/'Assets/Resources/UpdateInstaller.exe.bytes')).resolve(strict=True)
+child=Path(os.environ.get('IDAS3_UPDATE_TEST_CHILD',root/'Native/build-update-helper/UpdateTestChild.exe')).resolve(strict=True)
+# Exercise the exact selected payload, including the shipping embedded helper.
+# Its .bytes extension is a Unity resource convention, not an executable name.
+helper_hash=hashlib.sha256(helper.read_bytes()).hexdigest()
+helper_copy=base/'install.exe';shutil.copyfile(helper,helper_copy);helper=helper_copy
 prefer_c_drive=False
 def win(path):
     path=path.resolve()
@@ -87,5 +92,5 @@ def alias_overlap(name,session_inside_game):
     results.append(dict(test=name,passed=True));print(name+': PASS',flush=True)
 alias_overlap('aliased-session-inside-game',True)
 alias_overlap('aliased-game-inside-session',False)
-report=dict(passed=True,tests=results,wine=subprocess.check_output([wine,'--version'],env=env,text=True).strip(),prefix=str(prefix),externalPowerShellOrDotNetRequired=False)
+report=dict(passed=True,tests=results,wine=subprocess.check_output([wine,'--version'],env=env,text=True).strip(),prefix=str(prefix),helperSha256=helper_hash,childSha256=hashlib.sha256(child.read_bytes()).hexdigest(),externalPowerShellOrDotNetRequired=False)
 (proof/'wine-report.json').write_text(json.dumps(report,indent=2));print(json.dumps(report),flush=True)

@@ -199,10 +199,28 @@ void verifySaveDeletion() {
     saves.stage=FrontendStage::Make;saves.hoverSaveMenu(390,288);
     require(!saves.clickSaveMenu(390,288)&&noRequest(),"Confirmation pointer targets must not run on another screen");
 }
+void verifyNoManualInspection(){
+    Frontend saves;saves.stage=FrontendStage::SaveSelect;
+    saves.saveFiles[0]={true,"CHRIS","AE86 TRUENO","B1","2026/09/23",3661,9};
+    saves.clickSaveMenu(150,130);
+    const auto before=saves.battleProfile.words;
+    for(unsigned uses:{0u,1u,50u}){
+        saves.battleProfile.setu(1140,uses);
+        saves.clickSaveMenu(520,410);saves.hoverSaveMenu(520,410);
+        require(saves.stage==FrontendStage::SaveSelect&&!saves.inspectingCar()&&
+            !saves.takeSaveFileChosen()&&!saves.takeSaveCarChangeRequested()&&saves.takeSaveDeleteRequested()<0,
+            "The removed inspection button must not expose a hidden click target");
+        saves.saveActionSelected=0;
+        for(int step=0;step<12;++step){saves.change(1);require(saves.saveActionSelected==((step+1)%3),"Save actions must contain only Continue, Change Car and Delete Save");}
+    }
+    saves.battleProfile.setu(1140,original::makeOriginalFreshBattleProfile().u(1140));
+    require(saves.battleProfile.words==before,"Removed inspection navigation changed the profile");
+}
 int main(int argc,char**argv) {
     try {
         verifySaveActions();
         verifySaveDeletion();
+        verifyNoManualInspection();
         Frontend menu;
         require(!menu.back(),"Back on title should report exit");
         std::set<int> allCars,allChunks;
@@ -451,7 +469,17 @@ int main(int argc,char**argv) {
             }
             {
                 Frontend records;records.initialize(argv[1]);records.stage=FrontendStage::Course;
-                TimeAttackBest best{1000000,1100000};records.timeAttackBest=[&](unsigned,unsigned,unsigned){return best;};
+                TimeAttackBest best{1000000,1100000,34};records.timeAttackBest=[&](unsigned,unsigned,unsigned){return best;};
+                require(records.courseRecordCars()==std::array<unsigned,2>{34,0},"TOTAL and MODEL must identify different record cars");
+                const auto rx8=records.paint(640,480);best.courseCar=7;
+                const auto skyline=records.paint(640,480);
+                if(argc>2){const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
+                    saveBitmap(out/"course-record-car-names.bmp",skyline,640,480);}
+                require(rx8!=skyline,"Equal record time with a new car failed to refresh its name");
+                unsigned namePixels=0;
+                for(unsigned y=354;y<375;++y)for(unsigned x=145;x<430;++x)namePixels+=rx8[y*640+x]!=skyline[y*640+x];
+                require(namePixels>25,"Course record car lettering is missing beside the TOTAL time");
+                best.model=0;require(records.courseRecordCars()[1]==35,"Empty MODEL record invented a car");best.model=1100000;
                 const auto before=records.paint(1280,720);best.course=900000;
                 const auto after=records.paint(1280,720);require(before!=after,"New course record did not invalidate menu cache");
                 const auto partition=original::originalRecordPartition(6,false);

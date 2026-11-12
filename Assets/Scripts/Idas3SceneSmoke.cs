@@ -114,6 +114,7 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
     }
     [Serializable] private struct PerfSample {
         public int index,unityFrame,meshes,uiDraws,uploadedVertices,geometryUploads,materialUpdates,uiIndexUploads,uiCommandRebuilds;
+        public int meshResizes,materialConfigurations,queueUpdates,dynamicRangeReuses,compatibleRangeReuses;
         public int depthCandidates,depthDraws,depthRebuilds,depthMaterials,depthMaterialGroups;
         public int depthSourceDraws,depthBatchUploadVertices,depthBatchRebuilds,depthBatchCapacityVertices;
         public int mainViewExcludedRanges,mainViewExcludedVertices,mirrorViewExcludedRanges,mirrorViewExcludedVertices;
@@ -196,7 +197,8 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         bool selectedPerfWet=Array.IndexOf(args,"-idas3-scene-perf-wet")>=0;
         bool requestedFoliage=Array.IndexOf(args,"-idas3-scene-intro-foliage-check")>=0;
         bool requestedDoor=Array.IndexOf(args,"-idas3-scene-car-door-check")>=0;
-        bool requestedIntro=Array.IndexOf(args,"-idas3-scene-intro-check")>=0||requestedFoliage||requestedDoor;
+        bool requestedIntro=Array.IndexOf(args,"-idas3-scene-intro-check")>=0||requestedFoliage||requestedDoor||
+            Array.IndexOf(args,"-idas3-scene-intro-trails-check")>=0;
         int selectedDoorFrame=600,doorFrameAt=Array.IndexOf(args,"-idas3-scene-door-frame");
         if(requestedDoor&&doorFrameAt>=0){
             if(doorFrameAt+1>=args.Length||!int.TryParse(args[doorFrameAt+1],out selectedDoorFrame)||(selectedDoorFrame!=90&&selectedDoorFrame!=600))
@@ -407,6 +409,7 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         if(world){
             Check(record.meshRenderers>0,"No Unity mesh renderers exist.");Check(record.textures>1,"No scene textures imported.");
             var scene=host.GetComponent<Idas3SceneRenderer>();scene.VerifyViewCulling(Check);
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-geometry-check")>=0)scene.VerifySceneBuffers(Check);
             record.mainViewExcludedRanges=scene.MainViewExcludedRanges;record.mainViewExcludedVertices=scene.MainViewExcludedVertices;
             record.mirrorViewExcludedRanges=scene.MirrorViewExcludedRanges;record.mirrorViewExcludedVertices=scene.MirrorViewExcludedVertices;
             foreach(var geometry in FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None)){
@@ -503,6 +506,10 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         yield return Frames(3);Check(host.Ready,"Scene host did not initialize.");
         host.DiagnosticFocusOverride=true;
         Check(host.ControllerDevices.Select("keyboard"),"Isolate physical controller input");yield return Frames(4);
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-capacity-check")>=0){yield return CommunityCapacityCheck();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-display-check")>=0){yield return CommunityDisplayCheck();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-pending-check")>=0){yield return CommunityPendingCheck();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-refresh-check")>=0){yield return CommunityRefreshCheck();yield break;}
         if(transitionCheck){yield return TransitionCycles();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-language")>=0){yield return LanguageCheck();yield break;}
         if(rivalCheck){yield return RivalCheck();yield break;}
@@ -940,7 +947,9 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         // their light effects change at500 and535. Consecutive samples expose
         // unstable body surfaces without conflating them with a camera cut.
         bool extended=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-intro-extended")>=0;
-        int[] samples=extended?new[]{24,90,180,186,188,190,250,372,374,376,480,481,482,483,499,500,501,534,535,536,600,750,752,900,1295,1420}:
+        bool trails=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-intro-trails-check")>=0;
+        int[] samples=trails?new[]{500,501,535,536,851,901,2568,3037,5551,5721}:
+            extended?new[]{24,90,180,186,188,190,250,372,374,376,480,481,482,483,499,500,501,534,535,536,600,750,752,900,1295,1420}:
             new[]{90,180,190,250,480,481,482,535,600,900};
         foreach(int sample in samples){
             while(host.Status.renderedFrames-introFirstRenderedFrame<(ulong)sample)yield return null;
@@ -948,6 +957,7 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
             Check(host.Status.renderedFrames-introFirstRenderedFrame==(ulong)sample,"Intro diagnostic skipped the requested source update.");
             Check(scene.CurrentFrame.vertexCount>0&&scene.CurrentFrame.rangeCount>0,"Intro demo submitted no native scene geometry.");
             yield return Capture("intro-"+sample.ToString("0000"),true);
+            if(trails)yield return IntroLampTrailProbe(scene,sample);
             if(introFoliageCheck&&sample==900)yield return IntroFoliageProbe(scene);
             if(carDoorCheck&&sample==doorFrame)yield return CarDoorProbe(scene);
         }
@@ -1117,7 +1127,10 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         Check(Idas3SceneModeFlowValue(30)==perfCourse,"Performance course carousel did not select the requested course.");
         for(int choice=0;(host.Status.flags&1)!=0&&choice<6;++choice){
             int stage=host.Status.frontendStage;
-            if(perfLegend&&stage==10&&perfWet){yield return Key(39);yield return Frames(8);yield return Key(39);yield return Frames(8);}
+            if(perfLegend&&stage==10){
+                int rival=DiagnosticInt(Environment.GetCommandLineArgs(),"-idas3-perf-rival-choice",perfWet?2:0,0,5);
+                for(int step=0;step<rival;++step){yield return Key(39);yield return Frames(8);}
+            }
             Check(stage>=6&&stage<=10,"Performance setup reached an unexpected selection owner.");
             int conditions=Idas3SceneModeFlowValue(31);
             if(!perfLegend&&stage==7&&perfReverse){yield return Key(39);yield return Frames(6);}
@@ -1186,6 +1199,32 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
             Finish(true,null);yield break;
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-map-check")>=0){
+            if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-map-fidelity")>=0){
+                Check(offscreen,"Map fidelity captures need the private render target");
+                held=0;
+                Check(Idas3SceneCourseDriveDiagnostic(2,driveTelemetry,12)==1,"Map route controls unavailable");
+                foreach(float fraction in new[]{.10f,.17f}){
+                    int frames=0;
+                    do {
+                        yield return null;
+                        Check(Idas3SceneCourseDriveDiagnostic(-1,driveTelemetry,12)==1,"Map route telemetry unavailable");
+                    } while(driveTelemetry[0]<fraction*driveTelemetry[1]&&++frames<12000);
+                    Check(driveTelemetry[1]>0&&driveTelemetry[0]>=fraction*driveTelemetry[1],"Map route did not reach the requested capture point");
+                    File.WriteAllText(Path.Combine(root,"map-progress-"+Mathf.RoundToInt(fraction*100)+".txt"),
+                        "Distance="+driveTelemetry[0]+"; length="+driveTelemetry[1]+"; fraction="+(driveTelemetry[0]/driveTelemetry[1]));
+                    foreach(var resolution in new[]{new Vector2Int(640,480),new Vector2Int(1280,720)}){
+                        hires.Release();hires.width=resolution.x;hires.height=resolution.y;Check(hires.Create(),"Map capture resize failed");
+                        foreach(int zoom in new[]{2,0}){
+                            host.GameOptions.BeginEdit();var mapValues=host.GameOptions.Draft;
+                            mapValues.minimapSize=0;mapValues.minimapZoom=zoom;mapValues.minimapDisplay=0;
+                            Check(host.GameOptions.ApplyDraft(),"Map fidelity settings apply failed");
+                            yield return Frames(2);
+                            yield return Capture("map-"+Mathf.RoundToInt(fraction*100)+"-"+resolution.x+"x"+resolution.y+"-zoom-"+(50+zoom*25),true);
+                        }
+                    }
+                }
+                Idas3SceneCourseDriveDiagnostic(0,null,0);Finish(true,null);yield break;
+            }
             for(int size=0;size<3;++size){
                 host.GameOptions.BeginEdit();host.GameOptions.Draft.minimapSize=size;
                 Check(host.GameOptions.ApplyDraft(),"Minimap size apply failed");
@@ -1346,6 +1385,9 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
                 uiReusedVertices=ui.ReusedUiVertices,uiConvertedVertices=ui.ConvertedUiVertices,uiGeometryChunks=ui.UiGeometryChunks,
                 sceneLayoutReused=scene.SceneLayoutReused,sceneLayoutRejectReason=scene.SceneLayoutRejectReason,
                 uploadedVertices=scene.UploadedVertexCount,geometryUploads=scene.GeometryUploadCount,materialUpdates=scene.MaterialUpdateCount,
+                meshResizes=scene.MeshResizeCount,materialConfigurations=scene.MaterialConfigurationCount,
+                queueUpdates=scene.QueueUpdateCount,dynamicRangeReuses=scene.DynamicRangeReuseCount,
+                compatibleRangeReuses=scene.CompatibleRangeReuseCount,
                 depthCandidates=scene.DepthCandidateCount,depthDraws=scene.DepthDrawCount,depthRebuilds=scene.DepthBufferRebuildCount,
                 depthMaterials=scene.DepthMaterialCount,depthMaterialGroups=scene.DepthMaterialGroups,
                 depthSourceDraws=scene.DepthSourceDrawCount,depthBatchUploadVertices=scene.DepthBatchUploadVertices,
@@ -1399,6 +1441,9 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
             SummarizePerformance("meshes",samples,s=>s.meshes),SummarizePerformance("ranges",samples,s=>s.ranges),
             SummarizePerformance("vertices",samples,s=>s.vertices),SummarizePerformance("uploadedVertices",samples,s=>s.uploadedVertices),
             SummarizePerformance("geometryUploads",samples,s=>s.geometryUploads),SummarizePerformance("materialUpdates",samples,s=>s.materialUpdates),
+            SummarizePerformance("meshResizes",samples,s=>s.meshResizes),SummarizePerformance("materialConfigurations",samples,s=>s.materialConfigurations),
+            SummarizePerformance("queueUpdates",samples,s=>s.queueUpdates),SummarizePerformance("dynamicRangeReuses",samples,s=>s.dynamicRangeReuses),
+            SummarizePerformance("compatibleRangeReuses",samples,s=>s.compatibleRangeReuses),
             SummarizePerformance("depthMaterials",samples,s=>s.depthMaterials),SummarizePerformance("depthMaterialGroups",samples,s=>s.depthMaterialGroups),
             SummarizePerformance("depthSourceDraws",samples,s=>s.depthSourceDraws),SummarizePerformance("depthBatchUploadVertices",samples,s=>s.depthBatchUploadVertices),
             SummarizePerformance("depthBatchRebuilds",samples,s=>s.depthBatchRebuilds),SummarizePerformance("depthBatchCapacityVertices",samples,s=>s.depthBatchCapacityVertices),
@@ -1419,6 +1464,8 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         Check(report.audioAfter.consumedFrames>report.audioBefore.consumedFrames,"Unity audio did not run during performance measurement.");
         if(frameCap>0)Idas3FramePacingChecks.RunPlatform(host.GameOptions);
         Idas3ResourceCensus.Capture(root,"race-end");
+        if(captureScreens&&Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-scene-geometry-check")>=0)
+            yield return Capture("race-finished",true);
         Finish(true,null);
     }
     // Course-selectable depth/sorting investigation. All capture machinery and
@@ -1874,6 +1921,10 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         if(rivalCheck)report.scope="Opt-in rival intro/prompt regression with a NEW private checksummed profile, seeded rival record "+rivalRecord+". Real source menu owners select Myogi rival0; original intro cue, advancing music cursor, actual pre-listener Unity PCM and visible AA1/manual screenshots are checked. Optional post-result coverage uses a naturally timed-out stationary race, then actual Continue/rematch selection, confirmation and race release. A pass verifies owner/audio/capture invariants; single-prompt artwork correctness requires visual review and native painter tests. See rival-observations.json and PCM WAV files.";
         if(submitTimes.Count>0){report.medianSubmissionMs=submitTimes[submitTimes.Count/2];report.p95SubmissionMs=submitTimes[Math.Min(submitTimes.Count-1,(int)(submitTimes.Count*.95))];}
         if(retireCheck)report.scope="Isolated Legend retirement through actual managed pause commands, timeout cutscene, Continue/rematch refusal, rendered reply and return to Course6. Native tests separately check once-only loss/progress and online rejection.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-refresh-check")>=0)report.scope="Offline private Akina race while production leaderboard response processing runs in the background. Synthetic 2,000-entry responses; coroutine timings and advancing simulation, not Internet/VPN or displayed-FPS validation. See community-refresh.json.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-capacity-check")>=0)report.scope="Full server-shaped leaderboard through managed validation and native shared-record storage, with exact readback and failure atomicity. Pending-queue recovery is verified separately in the Editor checks. No public service or personal saves.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-display-check")>=0)report.scope="Native personal/community display cache timings and exact sequential-reference comparisons, followed by isolated five-slot/legacy-card ownership and actual race-target checks. See shared-cache-native.txt and record-separation-native.txt. Hidden muted player, no public service or personal saves.";
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-community-pending-check")>=0)report.scope="Ordered pending-time persistence during real Akina simulation, native finish acknowledgement after durable storage, failed writes/retry and destruction. Private synthetic queue, hidden muted player; no public HTTP, VPN or displayed-FPS validation. See community-pending.json.";
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(report,true));
         Debug.Log((passed?"PASS":"FAIL")+" Unity scene smoke: "+error);
 #if UNITY_EDITOR

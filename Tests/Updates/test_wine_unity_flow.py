@@ -19,8 +19,8 @@ proof.mkdir(parents=True, exist_ok=False)
 base = Path(tempfile.mkdtemp(prefix='idas3-unity-updater-', dir=str(Path.home())))
 prefix = base / 'prefix'
 wine = '/usr/lib/wine/wine64'
-player = root / 'Builds/MenuFontCheck/InitialDUnity.exe'
-child = root / 'Native/build-update-helper/UpdateTestChild.exe'
+player = Path(os.environ['IDAS3_FLOW_TEST_PLAYER']).resolve(strict=True)
+child = Path(os.environ.get('IDAS3_UPDATE_TEST_CHILD', root / 'Native/build-update-helper/UpdateTestChild.exe')).resolve(strict=True)
 version = re.search(r'^  bundleVersion: (.+)$', (root / 'ProjectSettings/ProjectSettings.asset').read_text(), re.M).group(1).strip()
 env = dict(os.environ, WINEPREFIX=str(prefix), WINEDEBUG='-all',
            WINEDLLOVERRIDES='mscoree,mshtml=;winemenubuilder.exe=d')
@@ -29,26 +29,54 @@ def win(path):
     # Deliberately retain aliases so production code has to handle them.
     return 'Z:' + str(path.absolute()).replace('/', '\\')
 
+def unix(path):
+    if path.startswith('C:\\'):
+        return prefix / 'drive_c' / path[3:].replace('\\', '/')
+    assert path.startswith('Z:\\'), path
+    return Path(path[2:].replace('\\', '/'))
+
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         self.server.downloads.append(self.path)
+        if self.path == '/content.zip' and self.server.interrupt_content:
+            data = (Path(self.directory) / 'content.zip').read_bytes()
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data[:len(data) // 2])
+            self.wfile.flush()
+            self.close_connection = True
+            return
         super().do_GET()
 
     def log_message(self, *args):
         pass
 
 results = []
-for name in os.environ.get('IDAS3_FLOW_CASES', 'plain,steam-library-link,linked-game-file,linked-content-directory,patch,damaged-retained,corrupt-download,temp-link,linked-cache-root').split(','):
+report = {'passed': False, 'fixture': str(base), 'player': str(player),
+          'runnerSha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+          'assemblySha256': hashlib.sha256((player.parent / 'InitialDUnity_Data/Managed/Assembly-CSharp.dll').read_bytes()).hexdigest(),
+          'helperSha256': hashlib.sha256((root / 'Assets/Resources/UpdateInstaller.exe.bytes').read_bytes()).hexdigest(),
+          'wine': subprocess.check_output([wine, '--version'], env=env, text=True).strip(), 'results': results,
+          'scope': 'Isolated loopback Unity updater under Wine; no live game, public release or Proton acceptance.'}
+(proof / 'report.json').write_text(json.dumps(report, indent=2))
+for name in os.environ.get('IDAS3_FLOW_CASES', 'plain,steam-library-link,linked-game-file,linked-content-directory,patch,damaged-retained,corrupt-download,split-full,split-patch-fallback,corrupt-content,interrupted-content,temp-link,linked-cache-root,unmarked-fixture,foreign-game').split(','):
     folder = base / name
-    game = folder / 'game space 日本'
+    game = folder / 'game space 日本' if name != 'foreign-game' else folder / 'not-direct-child/game space 日本'
     game.mkdir(parents=True)
-    (folder / 'ISOLATED_UPDATE_TEST.txt').write_text('Disposable Unity updater fixture')
+    if name != 'unmarked-fixture':
+        (folder / 'ISOLATED_UPDATE_TEST.txt').write_text('Disposable Unity updater fixture')
     originals = {'InitialDUnity.exe': child.read_bytes(), 'UnityPlayer.dll': b'old engine',
                  'InitialDUnity_Data/globalgamemanagers': b'old metadata',
                  'InitialDUnity_Data/Managed/Assembly-CSharp.dll': b'old scripts'}
     targets = {**originals, 'UnityPlayer.dll': b'new engine',
                'InitialDUnity_Data/globalgamemanagers': b'new metadata',
                'InitialDUnity_Data/Managed/Assembly-CSharp.dll': b'new scripts'}
+    split = name in ('split-full', 'split-patch-fallback', 'corrupt-content', 'interrupted-content')
+    courses = {'InitialDUnity_Data/StreamingAssets/GUNSAI/menu.idastex': b'new Gunsai',
+               'InitialDUnity_Data/StreamingAssets/ODAWARA/menu.idastex': b'new Odawara'} if split else {}
+    originals.update({key: b'old course' for key in courses})
+    targets.update(courses)
     for relative, data in {**originals, 'userdata/card.json': b'keep save', 'rom/keep.bin': b'keep original'}.items():
         path = game / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -56,9 +84,15 @@ for name in os.environ.get('IDAS3_FLOW_CASES', 'plain,steam-library-link,linked-
     archive = folder / 'update.zip'
     with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_DEFLATED) as output:
         for relative, data in targets.items():
-            output.writestr(relative, data)
+            if relative not in courses:
+                output.writestr(relative, data)
+    content = folder / 'content.zip'
+    if split:
+        with zipfile.ZipFile(content, 'x', compression=zipfile.ZIP_DEFLATED) as output:
+            for relative, data in courses.items():
+                output.writestr(relative, data)
     patch = None
-    if name in ('patch', 'damaged-retained'):
+    if name in ('patch', 'damaged-retained', 'split-patch-fallback'):
         patch = folder / 'patch.zip'
         manifest = {'schema': 1, 'baseVersion': version, 'targetVersion': '99.0.0', 'files': []}
         with zipfile.ZipFile(patch, 'w', compression=zipfile.ZIP_DEFLATED) as output:
@@ -69,7 +103,7 @@ for name in os.environ.get('IDAS3_FLOW_CASES', 'plain,steam-library-link,linked-
                     output.writestr(relative, data)
             output.writestr('update-patch.json', json.dumps(manifest))
         assert patch.stat().st_size < archive.stat().st_size
-    if name == 'damaged-retained':
+    if name in ('damaged-retained', 'split-patch-fallback'):
         originals['InitialDUnity.exe'] += b'changed after initial installation'
         (game / 'InitialDUnity.exe').write_bytes(originals['InitialDUnity.exe'])
     outside = None
@@ -113,24 +147,31 @@ for name in os.environ.get('IDAS3_FLOW_CASES', 'plain,steam-library-link,linked-
         cache.symlink_to(outside, target_is_directory=True)
     server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(folder)))
     server.downloads = []
+    server.interrupt_content = name == 'interrupted-content'
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     case_proof = proof / name
     case_proof.mkdir()
-    config = case_proof / 'config.json'
+    # The diagnostic requires its marker and game to share this exact parent.
+    config = folder / 'config.json'
     url = f'http://127.0.0.1:{server.server_port}'
     configuration = {'gameRoot': win(game_arg), 'url': url + '/update.zip',
                      'sha256': '0' * 64 if name == 'corrupt-download' else hashlib.sha256(archive.read_bytes()).hexdigest(), 'bytes': archive.stat().st_size}
     if patch:
         configuration.update(patchUrl=url + '/patch.zip', patchSha256=hashlib.sha256(patch.read_bytes()).hexdigest(), patchBytes=patch.stat().st_size)
+    if split:
+        configuration.update(contentUrl=url + '/content.zip', contentSha256='0' * 64 if name == 'corrupt-content' else hashlib.sha256(content.read_bytes()).hexdigest(), contentBytes=content.stat().st_size)
     config.write_text(json.dumps(configuration))
+    shutil.copyfile(config, case_proof / 'config.json')
     try:
         with (case_proof / 'wine.log').open('w') as log:
-            process = subprocess.run([wine, win(player), '-batchmode', '-nographics',
+            process = subprocess.run([wine, win(player), '-batchmode', '-nographics', '-nosound', '-idas3-test-silent',
                                       '-idas3-updater-flow-smoke', win(config), '-logFile', win(case_proof / 'player.log')],
                                      cwd=player.parent, env=run_env, stdout=log, stderr=subprocess.STDOUT, timeout=180)
-        flow_path = case_proof / 'unity-flow.json'
+        flow_path = folder / 'unity-flow.json'
         flow = json.loads(flow_path.read_text()) if flow_path.exists() else {'error': 'No Unity flow report'}
+        if flow_path.exists():
+            shutil.copyfile(flow_path, case_proof / 'unity-flow.json')
         deadline = time.monotonic() + 15
         while flow.get('reachedShutdown') and not (game / 'restarted.txt').exists() and time.monotonic() < deadline:
             time.sleep(.1)
@@ -149,20 +190,42 @@ for name in os.environ.get('IDAS3_FLOW_CASES', 'plain,steam-library-link,linked-
         result = {'name': name, 'exitCode': process.returncode, 'applied': applied, 'unchanged': unchanged,
                   'restarted': (game / 'restarted.txt').exists(), 'downloads': server.downloads, 'flow': flow}
         results.append(result)
-        print(json.dumps(result), flush=True)
+        (proof / 'report.json').write_text(json.dumps(report, indent=2))
+        print(f"{name}: exit={process.returncode}, applied={applied}, restarted={result['restarted']}, downloads={server.downloads}", flush=True)
         if os.environ.get('IDAS3_FLOW_EXPECT_FIXED') == '1':
-            allowed = name not in ('linked-game-file', 'linked-content-directory', 'corrupt-download', 'linked-cache-root')
+            allowed = name not in ('linked-game-file', 'linked-content-directory', 'corrupt-download', 'corrupt-content', 'interrupted-content', 'linked-cache-root', 'unmarked-fixture', 'foreign-game')
             assert applied == allowed and bool(flow.get('reachedShutdown')) == allowed and result['restarted'] == allowed, result
+            if allowed:
+                assert process.returncode == 0, result
+                session = unix(next(entry['session'] for entry in reversed(flow['observations']) if entry['session']))
+                status = json.loads((session / 'result.json').read_text())
+                assert status['passed'] and status['cleanupSafe'] and not status['rollbackNeeded'], status
+                assert hashlib.sha256((session / 'install.exe').read_bytes()).hexdigest() == report['helperSha256']
+                assert all(not (session / payload).exists() for payload in ('stage', 'backup', 'game.zip', 'content.zip'))
+                result.update(embeddedHelperVerified=True, payloadsCleaned=True)
             if name == 'patch':
                 assert server.downloads == ['/patch.zip'], server.downloads
             if name == 'damaged-retained':
                 assert server.downloads == ['/patch.zip', '/update.zip'], server.downloads
-            if name == 'linked-cache-root':
+            if split:
+                expected = ['/patch.zip', '/update.zip', '/content.zip'] if name == 'split-patch-fallback' else ['/update.zip', '/content.zip']
+                assert server.downloads == expected, server.downloads
+            if name in ('linked-cache-root', 'unmarked-fixture', 'foreign-game'):
                 assert not server.downloads, server.downloads
             if not allowed:
                 assert unchanged and process.returncode != 0, result
+            result['passed'] = True
+            (proof / 'report.json').write_text(json.dumps(report, indent=2))
+    except subprocess.TimeoutExpired:
+        # Terminate only this newly created prefix, including a helper that
+        # could otherwise outlive the timed-out Unity process.
+        subprocess.run(['/usr/lib/wine/wineserver', '-k'], env=env, timeout=15, check=True)
+        report['error'] = 'Timed out: ' + name
+        (proof / 'report.json').write_text(json.dumps(report, indent=2))
+        raise
     finally:
         server.shutdown()
         server.server_close()
         thread.join(timeout=5)
-(proof / 'report.json').write_text(json.dumps({'fixture': str(base), 'wine': subprocess.check_output([wine, '--version'], env=env, text=True).strip(), 'results': results}, indent=2))
+report['passed'] = os.environ.get('IDAS3_FLOW_EXPECT_FIXED') == '1'
+(proof / 'report.json').write_text(json.dumps(report, indent=2))

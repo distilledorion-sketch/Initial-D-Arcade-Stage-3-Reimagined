@@ -4,8 +4,8 @@
 #include <iostream>
 #include <map>
 
-// Real App showcase and command-renderer regression. Physics is held at its
-// initialized boundary so presentation must not alter either numerical car.
+// Real App showcase and command-renderer regression. Neutral driving inputs
+// are synchronized with a second numerical peer while race clocks remain held.
 // All storage belongs to the required new evidence directory.
 int main(int argc,char** argv)try{
     if(argc<3||argc>4)throw std::runtime_error("Native root, NEW evidence directory, optional arcade language required");
@@ -76,12 +76,24 @@ int main(int argc,char** argv)try{
             app->multiplayer.records[0]={120,60,1,0};app->multiplayer.records[1]={24,6,1,0};
             app->enableAuthority(++raceId,true,boost);
             check(app->authorityRace->setup().boost==boost,"Native authority did not own the selected boost rule");
-            const auto digest=app->authorityRace->digest(),authorityFrame=app->authorityRace->frame();
+            original::OnlineRaceSimulation peer(root,app->authorityRace->setup());
+            original::OnlineRaceLink peerLink(peer,raceId,slot!=0);
+            original::OriginalHostInputState peerInput;
+            const auto advance=[&](){
+                const auto frame=app->authorityRace->frame();
+                app->advanceStartPresentation(1./60.);
+                check(app->authorityRace->frame()==frame+1,"Showcase failed to advance neutral inputs");
+                peerLink.receive(app->authorityLink->packet());
+                check(peerLink.step(original::adaptOriginalHostInput(peerInput,{},true,false,0)),"Peer stalled during showcase");
+                app->authorityLink->receive(peerLink.packet());app->authorityLink->reconcile();
+                peerLink.receive(app->authorityLink->packet());peerLink.reconcile();
+                check(app->authorityRace->digest()==peer.digest(),"Showcase peers disagree");
+            };
             const auto raceProfile=app->battleProfile.words,frontendProfile=app->frontend.battleProfile.words;
             const auto remoteProfile=app->multiplayer.remoteProfile.words,savedProfile=app->multiplayer.savedProfile.words;
             const auto authorityProfiles=app->authorityRace->setup().profiles;
             const auto unchanged=[&](){
-                check(app->authorityRace->digest()==digest&&app->authorityRace->frame()==authorityFrame,"Showcase changed the authority simulation");
+                check(app->authorityRace->start().remaining()==240&&!app->authorityRace->start().started(),"Showcase advanced race countdown");
                 check(app->battleProfile.words==raceProfile&&app->frontend.battleProfile.words==frontendProfile&&
                     app->multiplayer.remoteProfile.words==remoteProfile&&app->multiplayer.savedProfile.words==savedProfile,"Showcase changed profile points, tuning or records");
                 for(unsigned side=0;side<2;++side)check(app->authorityRace->setup().profiles[side].words==authorityProfiles[side].words,"Showcase changed authority profile inputs");
@@ -92,7 +104,9 @@ int main(int argc,char** argv)try{
             check(hasWarning()==!boost,"Boost Off warning disagrees with native authority");
             check(app->vsBanner.displayName(0)=="HOST"&&app->vsBanner.displayName(1)=="GUEST","Warning changed slot-ordered player labels");
             const auto capture=[&](const char* phase,bool expected){
+                const auto digest=app->authorityRace->digest(),authorityFrame=app->authorityRace->frame();
                 const auto draws=render();check((draws>0)==expected,"Submitted warning artwork disagrees with showcase state");unchanged();
+                check(app->authorityRace->digest()==digest&&app->authorityRace->frame()==authorityFrame,"Repainting advanced driving");
                 report<<slot<<','<<match<<','<<boost<<','<<phase<<','<<app->vsBanner.sourceTick()<<','<<app->vsActive<<','
                     <<hasWarning()<<','<<draws<<','<<app->authorityRace->frame()<<','<<app->authorityRace->digest()<<'\n';report.flush();
             };
@@ -101,7 +115,7 @@ int main(int argc,char** argv)try{
             app->input.pressed['H']=true;app->commands(1./60.);app->input.pressed['H']=false;
             check(app->playerProjectedHeadlight.enabled()!=initialLights,"Showcase blocked headlight toggle");
             app->input.down['W']=app->input.down['D']=true;
-            for(unsigned tick=0;tick<120;++tick)app->advanceStartPresentation(1./60.);
+            for(unsigned tick=0;tick<120;++tick)advance();
             const auto revs=app->showcaseTransmission.filtered18;
             const auto rightSteer=app->showcaseWheels.steeringRadians;
             check(revs>3000&&std::abs(rightSteer)>.1f,"Showcase blocked neutral revs or wheel steering");
@@ -110,14 +124,27 @@ int main(int argc,char** argv)try{
             app->input.down['W']=app->input.down['D']=false;app->input.down['A']=true;
             app->input.pressed['H']=true;app->commands(1./60.);app->input.pressed['H']=false;
             check(app->playerProjectedHeadlight.enabled()==initialLights,"Second showcase toggle did not restore lights");
-            app->advanceStartPresentation(1./60.);check(app->vsShot==1,"Second showcase shot did not begin");capture("shot-two",!boost);
-            for(unsigned tick=121;tick<240;++tick)app->advanceStartPresentation(1./60.);
+            advance();check(app->vsShot==1,"Second showcase shot did not begin");capture("shot-two",!boost);
+            for(unsigned tick=121;tick<180;++tick)advance();
             check(app->showcaseTransmission.filtered18<revs&&app->showcaseWheels.steeringRadians*rightSteer<0,
                 "Releasing accelerator or reversing steering did not update showcase");
+            app->input.down['W']=true;
+            for(unsigned tick=180;tick<240;++tick)advance();
             app->input.down['A']=false;
             check(app->vsActive&&app->vsBanner.sourceTick()==240,"Showcase lost its terminal display frame");capture("intro-last",!boost);
-            app->advanceStartPresentation(1./60.);check(!app->vsActive,"Showcase warning owner survived its completion");capture("countdown",false);
+            advance();check(!app->vsActive,"Showcase warning owner survived its completion");capture("countdown",false);
             capture("driving-repaint",false);
+            const auto lastRpm=app->vehicle.rpm;
+            check(lastRpm>3000,"Countdown handoff test never revved the car");
+            app->simulate(app->driver());
+            peerLink.receive(app->authorityLink->packet());
+            check(peerLink.step(original::adaptOriginalHostInput(peerInput,{},true,false,0)),"Peer stalled at countdown");
+            app->authorityLink->receive(peerLink.packet());app->authorityLink->reconcile();
+            peerLink.receive(app->authorityLink->packet());peerLink.reconcile();
+            check(app->authorityRace->digest()==peer.digest(),"Countdown handoff desynchronized peers");
+            check(app->originalRaceOwnerFrame==1&&app->authorityRace->start().remaining()==239&&app->vehicle.rpm>=lastRpm*.9f,
+                "First online countdown frame lost showcase RPM or timer boundary");
+            app->input.down['W']=false;
             app->leaveMultiplayer();check(!app->authorityRace&&!app->multiplayer.active&&!app->vsActive,"Mode return retained warning authority/owner");
             for(unsigned side=0;side<2;++side)check(app->profiles.load(profiles[side].u(16)).profile.words==profiles[side].words,"Showcase or rematch changed an isolated saved profile");
             ++match;++matches;
@@ -141,6 +168,6 @@ int main(int argc,char** argv)try{
     check(!app->multiplayer.active&&!app->authorityRace&&!app->vsActive,"Replay retained an online showcase");
     app->beginVsBanner();check(!app->vsActive,"Replay began a live showcase");check(render()==0,"Replay submitted Boost Off artwork");
     for(unsigned side=0;side<2;++side)check(app->profiles.load(profiles[side].u(16)).profile.words==profiles[side].words,"Offline/replay suppression changed saved profile data");
-    std::ofstream(out/"PASS.txt")<<checks<<" application checks; "<<matches<<" authority matches across both slots, Off/On/Off rematches, exact source texture submission, intro-only removal, no-authority/offline/replay suppression; authority digests and profiles unchanged\n";
+    std::ofstream(out/"PASS.txt")<<checks<<" application checks; "<<matches<<" authority matches across both slots, Off/On/Off rematches, exact source texture submission, intro-only removal, no-authority/offline/replay suppression; neutral frames agree with peer, clocks held and profiles unchanged\n";
     std::cout<<"PASS "<<checks<<" online Boost Off application checks\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

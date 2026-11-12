@@ -4,6 +4,7 @@
 #include "unity_ui_capture.h"
 #include <fstream>
 #include <iostream>
+#include <set>
 using namespace idas3;using namespace idas3::original;
 unsigned checks=0;void check(bool b,const char* s){++checks;if(!b)throw std::runtime_error(s);}
 void picture(std::filesystem::path path,const std::vector<unsigned>& pixels,int width=640,int height=480){std::ofstream f(path,std::ios::binary);f<<"P6\n"<<width<<' '<<height<<"\n255\n";for(auto p:pixels){char b[]{char(p>>16),char(p>>8),char(p)};f.write(b,3);}}
@@ -12,6 +13,23 @@ int main(int argc,char** argv){try{
  auto profile=makeOriginalFreshBattleProfile();profile.setu(16,0);profile.setu(40,0);profile.setu(76,5);for(unsigned i=0;i<5;++i)profile.setu(44+i*4,162);profile.setu(72,5000);profile.setu(1140,50);profile.setu(1180,3);profile.setByte(161,1);
  registerOriginalPersonalTimeAttackRecord(profile,originalRecordPartition(6,false),1185888,0,{});
  OriginalSavedData screen;screen.load(root);screen.begin(profile);for(unsigned i=0;i<16;++i)screen.advance(profile);check(screen.ready(),"Saved Data entry fade never completed");
+ // Render every car with the stale maker workspace reported on old saves.
+ // All seven manufacturer strips must differ, while cars of the same maker
+ // (including the appended RX-8, ER34 and Evos) must show the same strip.
+ {constexpr std::array<unsigned,35> makers{0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,3,3,3,4,4,4,4,4,5,5,5,6,1,3,3,4};
+  std::array<std::vector<unsigned>,7> strips;
+  for(unsigned car=0;car<35;++car){
+   auto saved=profile;saved.setu(16,car);saved.setu(40,0);
+   std::vector<unsigned> pixels(640*480,0xff000000);screen.paint(pixels,640,480,saved);
+   std::vector<unsigned> strip;for(unsigned y=188;y<214;++y)for(unsigned x=260;x<560;++x)strip.push_back(pixels[y*640+x]);
+   if(strips[makers[car]].empty())strips[makers[car]]=strip;
+   else check(strips[makers[car]]==strip,"Saved Data manufacturer disagrees with the selected car");
+   saved.setu(40,6);std::vector<unsigned> stale(640*480,0xff000000);screen.paint(stale,640,480,saved);
+   check(pixels==stale,"Stale maker selection changed the saved car's manufacturer");
+   if(car==7)picture(out/"nissan-manufacturer.ppm",pixels);
+  }
+  check(std::set<std::vector<unsigned>>(strips.begin(),strips.end()).size()==7,"Saved Data collapses different manufacturers to the same label");
+ }
  auto before=profile;for(unsigned page:{0u,1u,2u,3u,5u,6u,7u}){
   check(screen.state().page492==page,"Saved Data page order differs from supplied video");std::vector<unsigned> pixels(640*480,0xff000000);screen.paint(pixels,640,480,profile);picture(out/("page-"+std::to_string(page)+".ppm"),pixels);
   if(page==2){auto night=profile;registerOriginalPersonalTimeAttackRecord(night,originalRecordPartition(6,false),1185882,1,{});
@@ -114,5 +132,43 @@ int main(int argc,char** argv){try{
  OriginalTimeAttackVisit visit;visit.load(root);OriginalTimeAttackVisit::Setup setup;setup.condition=6;setup.car=0;setup.ticks6000=1185888;setup.nameGlyphs.fill(162);
  visit.beginAfterResults(setup);check(visit.stage()==OriginalTimeAttackVisit::Stage::Password,"Completed unranked finish skipped password");for(unsigned i=0;i<16;++i)visit.advance({});std::vector<unsigned> pixels(640*480,0);visit.paint(pixels,640,480);picture(out/"password.ppm",pixels);visit.advance({true});for(unsigned i=0;i<20;++i)visit.advance({});check(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Password failed to continue");
  setup.resultStatus=2;visit.beginAfterResults(setup);check(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Time-up incorrectly issued a password");setup.resultStatus=0xffffffff;visit.beginAfterResults(setup);check(visit.stage()==OriginalTimeAttackVisit::Stage::Continue,"Invalid result issued a password");
- std::cout<<checks<<" Saved Data, profile isolation, configuration and finish-routing checks passed\n";return 0;
+ // Durable inspection completion is a short, read-only source page. Its
+ // acknowledgment gate cannot be bypassed by Confirm or page/config input.
+ {auto inspected=profile;inspected.setByte(1192,0);inspected.setByte(152,1);const auto savedWords=inspected.words;
+  screen.beginInspectionCompletion(inspected);
+  for(unsigned frame=1;frame<=61;++frame){
+   screen.confirm();screen.nextPage();screen.moveRow(-1);screen.change(1);screen.cancel();
+   const auto e=screen.advance(inspected);
+   check(!e.parentRequested&&!e.profileWritten,"Inspection completion wrote or left before acknowledgment gate");
+   check(screen.state().phase452==(frame<=15?0u:1u),"Inspection confirmation bypassed first60 completion ticks");
+   check(screen.state().page492==0&&inspected.words==savedWords,"Completion input changed pages or saved progress");
+   if(frame==16){std::vector<unsigned> pixels(640*480);screen.paint(pixels,640,480,inspected);picture(out/"inspection-complete-overlay.ppm",pixels);}
+  }
+  screen.confirm();screen.advance(inspected);check(screen.state().phase452==2,"Inspection confirmation stayed blocked after acknowledgment delay");
+  bool exit=false;for(unsigned i=0;i<16;++i)exit|=screen.advance(inspected).parentRequested;
+  check(exit&&inspected.words==savedWords,"Inspection exit failed or rewrote the profile");
+  screen.beginInspectionCompletion(inspected);for(unsigned frame=0;frame<152;++frame)screen.advance(inspected);
+  check(!screen.inspectionOverlayVisible()&&screen.ready(),"Inspection Complete did not clear after150 ticks");
+  std::vector<unsigned> shortPage(640*480),repeat(640*480);screen.paint(shortPage,640,480,inspected);screen.paint(repeat,640,480,inspected);
+  check(shortPage==repeat,"Inspection painting advanced animation");picture(out/"inspection-short-summary.ppm",shortPage);
+  auto pointsOnly=inspected;pointsOnly.setu(72,123456);pointsOnly.setu(1140,987);screen.paint(repeat,640,480,pointsOnly);
+  check(shortPage==repeat,"Inspection summary accidentally shows ordinary points/use-counter rows");
+  auto packageOnly=inspected;packageOnly.setByte(152,0);screen.paint(repeat,640,480,packageOnly);
+  check(shortPage!=repeat,"Inspection summary ignores changed customization option");
+  for(unsigned y=0;y<480;++y)for(unsigned x=0;x<640;++x)if(shortPage[y*640+x]!=repeat[y*640+x])
+   check(x>=340&&x<485&&y>=345&&y<385,"Inspection package label overlaps a different row");
+  frontend.battleProfile=inspected;frontend.selectInspectionCompletion();frontend.advance(16./60.);
+  const auto withOverlay=frontend.paint(640,480);frontend.advance(136./60.);const auto withoutOverlay=frontend.paint(640,480);
+  check(withOverlay!=withoutOverlay,"Frontend cached the completion overlay after it expired");
+  check(!frontend.takeDriverProfileCommit()&&frontend.battleProfile.words==savedWords,"Inspection completion queued an ordinary autosave");
+  frontend.confirm();frontend.advance(17./60.);check(frontend.stage==FrontendStage::Mode,"Inspection completion returned to transmission instead of Mode");
+  check(!frontend.takeDriverProfileCommit(),"Inspection Mode handoff queued a duplicate save");
+  screen.beginInspectionCompletion(inspected);
+  for(unsigned frame=1;frame<=911;++frame){const auto e=screen.advance(inspected);
+   check(e.parentRequested==(frame==911),"Inspection timeout differs from source879-tick timer and two fades");
+   check(!e.profileWritten&&inspected.words==savedWords,"Inspection timeout rewrote saved progress");
+  }
+  screen.begin(inspected);check(!screen.inspectionCompletion(),"Ordinary Saved Data retained inspection state");
+ }
+ std::cout<<checks<<" Saved Data, inspection, profile isolation, configuration and finish-routing checks passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

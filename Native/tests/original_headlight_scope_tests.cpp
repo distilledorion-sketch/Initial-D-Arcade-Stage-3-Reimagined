@@ -72,5 +72,53 @@ int main(int argc,char**argv)try{
   check(events==std::vector<unsigned>{40}&&m.read8(race+1704)==0,"Rear scene called once and context restored");
   ++cases;
  }
- std::cout<<"PASS "<<cases<<" cases / "<<checks<<" checks / "<<instructions<<" original instructions. Actual parent primary/rear blocks,034E60,0D7EC0,matrix copy,mode/gate branches; body/course/PVR/working-update/publish leaves hooked. No global view-visibility policy or projection-math claim.\n";
+ // The common replay draw is used by the derived ending owner too. Execute
+ // its real night gate and E31A0 blind-attack state machine, not a copy of
+ // those conditions. On/off functions also run; only the road-bind leaf is
+ // replaced, alongside the already independently tested projection math.
+ check(m.read32(0xc387ebc+44)==0xc0e31a0,"Ending uses common replay lamp request callback");
+ for(unsigned night=0;night<3;++night)for(unsigned cars=0;cars<4;++cars)
+ for(unsigned prior=0;prior<4;++prior)for(unsigned wanted=0;wanted<4;++wanted)
+ for(unsigned present=0;present<4;++present)for(unsigned attached=0;attached<2;++attached){
+  m.clear();m.zeroRegion(race,0xa0000);
+  m.write32(race+12,0xc387ebc);m.write32(race+0xf0,night);
+  m.write32(vt+128+20,0xc228a60);
+  std::vector<unsigned> events,expected;RefCpu c(m);
+  for(unsigned i=0;i<2;++i){const auto car=i?rival:player,p=projection+4096*i,actor=0xd080000+4096*i;
+   m.write32(race+0x2a0+i*4,(cars&(1u<<i))?car:0);
+   m.write32(race+0x3fc+i*4,(prior>>i)&1);
+   m.write8(car+81,(prior>>i)&1);m.write32(car+2636,(present&(1u<<i))?p:0);
+   m.write32(car+2468,vt+128);m.write32(p,0xc38760c);m.write32(p+8,p+512);
+   m.write32(car+0x95c,actor);m.write32(car+0x960,attached?actor+512:0);
+   m.write32(actor+80,(wanted&(1u<<i))?0:0x10000);
+   m.write32(actor+512+80,(wanted&(1u<<i))?0:0x10000);
+   for(unsigned j=0;j<16;++j)m.write32(car+2404+j*4,0x3f000000+i*0x10000+j*0x100);
+  }
+  c.callHooks[0xc0d84a0]=[&](auto&q){check(q.r[4]==projection||q.r[4]==projection+4096,"Replay publishes its own projection");events.push_back(q.r[4]==projection?13:23);};
+  c.callHooks[0xc035160]=[&](auto&q){check(q.r[4]==player||q.r[4]==rival,"Replay on-edge road binding owner");events.push_back(q.r[4]==player?14:24);};
+  c.callHooks[0xc1f6610]=[](auto&){};c.callHooks[0xc1f65c0]=[](auto&){};c.callHooks[0xc1fa9e0]=[](auto&){};
+  c.callHooks[0xc1d7120]=[&](auto&q){check(q.r[4]==projection+512||q.r[4]==projection+4096+512,"Replay draws prior published model");events.push_back(q.r[4]==projection+512?11:21);};
+  c.callHooks[0xc0d50a0]=[&](auto&q){const unsigned i=q.r[4]==projection?0:1,car=i?rival:player;
+   check(q.r[4]==projection+4096*i,"Replay projection advance owner");
+   for(unsigned j=0;j<16;++j)check(m.read32(q.r[5]+4*j)==m.read32(car+2404+4*j),"Replay uses published visual matrix");
+   events.push_back(i?22:12);
+  };
+  for(unsigned i=0;i<2;++i)if(cars&(1u<<i)){
+   c.r[13]=i?rival:player;c.r[15]=stack+0xff00;
+   instructions+=c.run(0xc034b8e,0xc034bac,100);
+   if((prior&present)&(1u<<i))expected.push_back(i?23:13);
+  }
+  c.r[12]=race;c.r[15]=stack+0xff00;
+  instructions+=c.run(0xc0e3700,night==1?0xc0e374a:0xc0e38b4,3000);
+  for(unsigned i=0;i<2;++i)if(cars&(1u<<i)){
+   const bool on=((night==1?wanted:prior)&(1u<<i))!=0;
+   check(m.read8((i?rival:player)+81)==unsigned(on),"Replay keeps the recorded lamp state under the night gate");
+   check(m.read32(race+0x3fc+i*4)==unsigned(on),"Replay latch follows lamp request");
+   if(night!=1)continue;
+   if(on&&!(prior&(1u<<i)))expected.push_back(i?24:14);
+   if(on&&(present&(1u<<i))){expected.push_back(i?21:11);expected.push_back(i?22:12);}
+  }
+  check(events==expected,"Replay publish -> recorded lamp request -> prior mesh draw -> next projection order");++cases;
+ }
+ std::cout<<"PASS "<<cases<<" cases / "<<checks<<" checks / "<<instructions<<" original instructions. Actual primary/rear and replay night blocks, ending vtable, E31A0 blind-attack requests,035120/035200,034E60,0D7EC0,matrix copy,mode/gate branches; body/course/PVR/road-bind/working-update/publish leaves hooked. No projection-math or whole replay-owner ordering claim.\n";
 }catch(const std::exception&e){std::cerr<<e.what()<<'\n';return 1;}

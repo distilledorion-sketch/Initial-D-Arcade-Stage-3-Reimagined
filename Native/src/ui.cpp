@@ -28,6 +28,7 @@ void Hud::loadOriginal(const std::filesystem::path& root){
     originalBattleResults=OriginalBattleResults::load(root);
     originalBattleNames=OriginalBattleNames::load(root);
     waterCupArtwork_.load(root);
+    navigation_.setRoot(root);
     portraits.clear();
     for(std::uint32_t enemy=0;enemy<31;++enemy){const std::string name(original::originalBattlePortraitBank(enemy,0));if(portraits.contains(name))continue;
         const auto folder=root/"data/original_assets/hud/faces"/name;
@@ -150,10 +151,14 @@ void Hud::routePreview(const Course& c,float x,float y,float w,float h){
     }
 }
 void Hud::map(const Course& c,float x,float y,float w,float h,
-        const VehicleState& player,const VehicleState* rival,int cardNavigation){
+        const VehicleState& player,const VehicleState* rival,int cardNavigation,
+        bool night,float progress,float rivalProgress){
     const UnityUiHudScope mapGroup(5);
     const int display=cardNavigation==1?2:cardNavigation==2?1:mapDisplay_;
     if(display==2||c.points.size()<2||!pixels)return;
+    // The navigation frame is 96x96 on the arcade canvas. The paper cup has
+    // its own already recovered placement and retains the passed rectangle.
+    if(display==0){x=12;y=370;w=h=96;}
     const float mapScale=1.f+.25f*float(mapSize_);
     // Grow upward and rightward; retain the original left/bottom margins.
     y+=h*(1.f-mapScale);w*=mapScale;h*=mapScale;
@@ -170,11 +175,50 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
             (left+right)*.5f,(top+bottom)*.5f,100.f*fit*mapScale);
         return;
     }
-    // Sampled from the cabinet: a muted green field you can see the road
-    // through, a dark outline with a lighter inner edge, and a near-black road.
-    constexpr COLORREF field=RGB(120,142,130),outline=RGB(16,20,18),
-        innerEdge=RGB(150,158,150),road=RGB(16,22,17);
-    const float border=std::max(1.f,2.f*fit*mapScale),inner=std::max(1.f,fit*mapScale);
+    mapX0_=std::max(0,int(left));mapY0_=std::max(0,int(top));
+    mapX1_=std::min(width,int(std::ceil(right)));mapY1_=std::min(height,int(std::ceil(bottom)));
+    const float zoom=.5f+.25f*float(mapZoom_);
+    const float border=2.f*fit*mapScale,inner=0;
+    const float cx=(left+right)*.5f,cy=(top+bottom)*.5f;
+    if(auto* bank=navigation_.find(c.id)){
+        const auto fraction=[&](const VehicleState& car,float value){
+            return value>=0?value:c.project(car.position).sample.distance/std::max(1.f,c.length);
+        };
+        const auto point=bank->sample(fraction(player,progress),c.reversed);
+        const std::span<std::uint32_t> target(pixels,std::size_t(width)*height);
+        bank->paint(target,width,height,left+border,top+border,w*fit-2*border,zoom,night,point);
+        const auto chunkAt=[&](unsigned index,float px,float py,float desiredWidth){
+            const auto& chunk=bank->model.chunks.at(index);
+            float minX=INFINITY,maxX=-INFINITY,minY=INFINITY,maxY=-INFINITY;
+            for(const auto& batch:chunk.batches)for(const auto& v:batch.vertices){
+                minX=std::min(minX,v.position.x);maxX=std::max(maxX,v.position.x);
+                minY=std::min(minY,v.position.y);maxY=std::max(maxY,v.position.y);
+            }
+            SpritePlacement place;place.scale=desiredWidth/(maxX-minX);place.invertY=true;place.authoredHeight=0;
+            place.offsetX=px-(minX+maxX)*.5f*place.scale;place.offsetY=py+(minY+maxY)*.5f*place.scale;
+            place.straightAlphaOverlay=true;
+            place.sourceTextureFiltering=true;
+            compositeOriginalMenuChunk(target,width,height,bank->textures,chunk,place);
+        };
+        chunkAt(bank->frame,cx,cy,w*fit);
+        const float marker=11.362f*fit*mapScale;
+        if(rival){
+            const auto other=bank->sample(fraction(*rival,rivalProgress),c.reversed);
+            const float u=other.u-point.u,v=other.v-point.v;
+            const float scale=(w*fit-2*border)/(2.f*bank->extent)*zoom;
+            float dx=(-point.dv*u+point.du*v)*scale,dy=-(point.du*u+point.dv*v)*scale;
+            const float limit=(w*fit-2*border-marker)*.5f;
+            const float over=std::max(std::abs(dx),std::abs(dy))/limit;
+            if(over>1){dx/=over;dy/=over;}
+            chunkAt(bank->rival,cx+dx,cy+dy,marker*.9f);++battlePresentation_.opponentMapMarkers;
+        }
+        chunkAt(bank->player,cx,cy,marker);++battlePresentation_.localMapMarkers;
+        return;
+    }
+    // Imported courses have no cabinet navigation bank. Match its field and
+    // Akina's world-space coverage; road width must not change map zoom.
+    const COLORREF field=night?RGB(40,63,53):RGB(76,114,96);
+    constexpr COLORREF outline=RGB(0,0,0),road=RGB(0,0,0);
     // Strokes, not filled rectangles: a filled one under the field would sit
     // behind it and make the whole panel opaque once the quads composite.
     const auto outlineRect=[&](float bx,float by,float bw,float bh,COLORREF colour,float t){
@@ -182,19 +226,14 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
         mapFill(bx,by+t,t,bh-2*t,colour,255);mapFill(bx+bw-t,by+t,t,bh-2*t,colour,255);
     };
     outlineRect(left,top,right-left,bottom-top,outline,border);
-    outlineRect(left+border,top+border,right-left-2*border,bottom-top-2*border,innerEdge,inner);
     const float fieldLeft=left+border+inner,fieldTop=top+border+inner;
     const float fieldRight=right-border-inner,fieldBottom=bottom-border-inner;
-    mapFill(fieldLeft,fieldTop,fieldRight-fieldLeft,fieldBottom-fieldTop,field,140);
+    mapFill(fieldLeft,fieldTop,fieldRight-fieldLeft,fieldBottom-fieldTop,field,119);
     mapX0_=std::max(0,int(left));mapY0_=std::max(0,int(top));
     mapX1_=std::min(width,int(right));mapY1_=std::min(height,int(bottom));
     // The car sits at the centre of the frame, as it does on the cabinet.
-    const float cx=(fieldLeft+fieldRight)*.5f,cy=(fieldTop+fieldBottom)*.5f;
-    // A stretch of road, not the route: the window is sized from the road's own
-    // width so every course reads at the same zoom.
-    const float roadWidth=std::max(1.f,c.sample(c.length*.5f).width);
-    const float zoom=.5f+.25f*float(mapZoom_);
-    const float scale=(fieldBottom-fieldTop)/(roadWidth*10.f)*zoom;
+    // Keep world coverage constant even when an imported road is wider.
+    const float scale=(fieldBottom-fieldTop)/384.f*zoom;
     const float sine=std::sin(player.yaw),cosine=std::cos(player.yaw);
     const auto project=[&](const Vec3& p,float& px,float& py){
         const float ox=p.x-player.position.x,oz=p.z-player.position.z;
@@ -344,7 +383,10 @@ const std::uint32_t* Hud::paint(const UiState& s){
         // Square and on the source canvas, anchored to the bottom left.
         // The opponent's lights-off state conceals their map marker during a
         // night battle. Keep our own marker and the actual race position intact.
-        if(!settledResults&&!announcement&&s.car)map(c,14,352,112,112,*s.car,blindAttack?nullptr:s.rival,s.frontend?s.frontend->battleProfile.byte(1186):0);
+        if(!settledResults&&!announcement&&s.car)map(c,14,352,112,112,*s.car,blindAttack?nullptr:s.rival,
+            s.frontend?s.frontend->battleProfile.byte(1186):0,s.night,
+            s.progress/std::max(1.f,c.length),s.multiplayer?s.onlineBattleHud.rivalPositionFraction:
+                s.battle?s.battleRivalPositionFraction:-1.f);
         if(race.originalTiming&&!useOriginalHud){
             label(28,110,"TIME "+std::to_string(std::max(0,(race.remaining6000+5999)/6000)),25,yellow,true);
             label(28,148,"SECTION TIME",15,white,true);

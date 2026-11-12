@@ -30,6 +30,7 @@ inline std::uint64_t onlineContactEffectsDigest(const idas3::original::OnlineRac
     for(const auto& driving:frame.driving){
         add(driving.bodyCollision.active);add(std::bit_cast<std::uint32_t>(driving.bodyCollision.x));add(std::bit_cast<std::uint32_t>(driving.bodyCollision.z));
         add(driving.feedback142460.size());for(auto cue:driving.feedback142460)add(cue);
+        add(driving.acceptedContactCues.size());for(auto cue:driving.acceptedContactCues)add(cue);
         add(driving.completion.requestCue4);add(driving.newImpactRecords.size());
     }
     return hash;

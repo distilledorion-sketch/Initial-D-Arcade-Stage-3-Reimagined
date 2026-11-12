@@ -26,6 +26,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3UnityUi ui;
     private Idas3UnityAudio sound;
     private Idas3MultiplayerSession multiplayer;
+    private ulong presentedOnlineRace;
     private Idas3MultiplayerMenu multiplayerMenu;
     private Idas3ChallengerOverlay challenger;
     private Idas3GameOptions gameOptions;
@@ -84,6 +85,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     internal float UiMilliseconds { get; private set; }
     internal float NetworkMilliseconds { get; private set; }
     internal float CommandMilliseconds { get; private set; }
+    internal int PerformanceSampleFrame { get; private set; } = -1;
     private bool performanceDiagnostics;
     private bool loadKeepAliveRegistered;
     // Root the reverse-P/Invoke delegate for the entire managed lifetime. It
@@ -176,7 +178,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             diagnostic = Idas3RaceMusicSmoke.Configure(ref saves) || diagnostic;
             diagnostic = Idas3AttractOptionsSmoke.Configure(ref saves) || diagnostic;
             diagnosticMode = diagnostic || (importedTest && (Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-smoke")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-menu-smoke")>=0));
-            performanceDiagnostics = diagnostic && (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-transition-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-multiplayer-profile") >= 0);
+            performanceDiagnostics = Idas3StutterTrace.Requested || diagnostic && (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-transition-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-multiplayer-profile") >= 0);
+            if (Idas3StutterTrace.Requested)
+                gameObject.AddComponent<Idas3StutterTrace>().Initialize(this, Path.Combine(diagnosticMode ? saves : Application.persistentDataPath, "Diagnostics"));
             MatchOutputResolution();
             if (!diagnostic && !Directory.Exists(saves))
             {
@@ -242,6 +246,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             replayLibrary=gameObject.AddComponent<Idas3ReplayLibrary>();replayLibrary.Initialize(this,pauseMenu,saves);
             if(!diagnosticMode)gameObject.AddComponent<Idas3CommunityTimes>().Initialize(this,gameOptions,pauseMenu);
             pauseMenu.InitializeBindings(controlBindings);
+            controllerDevices.IsWheelAccessory=controlBindings.IsWheelAccessory;
             controllerDevices.Initialize(saves);
             controllerDevices.ActiveDeviceChanged += ControllerDeviceChanged;
             ControllerDeviceChanged();
@@ -359,11 +364,20 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private void Update()
     {
+        if (performanceDiagnostics) {
+            PerformanceSampleFrame = Time.frameCount;
+            NativeStepMilliseconds = RendererMilliseconds = UiMilliseconds = NetworkMilliseconds = CommandMilliseconds = 0;
+        }
         if(!ready&&!stopping&&failure==null){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();return;}
         if (!ready || stopping || failure != null) return;
         try
         {
             double networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
+            // The previous frame's LateUpdate scenery loaders and first draw
+            // have completed now. Reporting ready inside the native Start call
+            // lets a fast peer start while this client is still loading.
+            multiplayer.ConfirmRacePresentation(presentedOnlineRace);
+            presentedOnlineRace=0;
             multiplayer.BeforeFrame();
             if(performanceDiagnostics)NetworkMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
             challenger.Tick();
@@ -502,6 +516,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (performanceDiagnostics) NativeStepMilliseconds = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
             RefreshScene();
             simulationAndSubmissionMs = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
+            if(multiplayer.IsRacing&&!multiplayer.RaceReleased&&!multiplayer.DisconnectedFinish)
+                presentedOnlineRace=multiplayer.CurrentRaceId;
             networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
             multiplayer.AfterFrame();
             if(performanceDiagnostics)NetworkMilliseconds+=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
@@ -647,6 +663,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private bool MusicLobbyAllowed => multiplayerMenu.IsOpen && !multiplayerMenu.CapturesTextInput && multiplayer.InLobby && !multiplayer.IsRacing && !multiplayer.Busy && !multiplayer.HasCourseDraw;
     private bool MusicOpponentAllowed => raceMusic.State.opponentEligible != 0 && !multiplayerMenu.IsOpen && !pauseMenu.IsOpen;
+    private bool MusicSelectionHintVisible => raceMusic.State.hintVisible != 0 && !multiplayerMenu.IsOpen && !pauseMenu.IsOpen;
     private string ViewChangeHint()
     {
         string keyboard = controlBindings.BindingName(Idas3ControlBindings.ActionId.Camera, Idas3ControlBindings.Slot.Primary, false);
@@ -725,7 +742,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
         bool opponent = MusicOpponentAllowed, lobby = MusicLobbyAllowed;
         multiplayerMenu.RaceHudActive = (Status.flags & 1u) == 0;
         if (raceMusicMenu.IsOpen && !(musicPickerContext == 1 ? lobby : opponent)) raceMusicMenu.SetOpen(false);
-        string hint = opponent || lobby ? ViewChangeHint() : "VIEW CHANGE";
+        bool selectionHint = MusicSelectionHintVisible;
+        string hint = selectionHint || lobby ? ViewChangeHint() : "VIEW CHANGE";
         multiplayerMenu.MusicSelectionAllowed = lobby;
         multiplayerMenu.SelectedMusicTitle = CustomMusic.SelectedTitle;
         if(musicControlHintInput!=hint){
@@ -758,7 +776,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             case Idas3MenuInputRouter.MusicAction.OpenOpponent: OpenRaceMusic(0); break;
         }
         // Opening the picker resets hold progress in its visibility callback.
-        raceMusicMenu.SetContext(opponent, command.ShowHoldProgress ? menuInput.MusicHoldProgress : 0, hint);
+        raceMusicMenu.SetContext(selectionHint, command.ShowHoldProgress ? menuInput.MusicHoldProgress : 0, hint);
         if (command.BlocksGameInput) NeutralizeControls(ref frame);
         return command.BlocksGameInput;
     }

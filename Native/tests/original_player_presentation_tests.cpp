@@ -31,12 +31,24 @@ int main(int argc,char** argv)try{
     unsigned appearances=0,frames=0,tuned=0;
     for(unsigned car=0;car<35;++car){
         const auto folder=root/"data/original_models"/originalCarFolders[car];
+        const auto parts=OriginalCarParts::load(folder/"assembly_parts.bin");
+        const auto checkEffectOrigins=[&](const CarPresentation& presentation){
+            const auto origins=presentation.originalEffectOrigins();
+            for(unsigned wheel=0;wheel<4;++wheel)for(unsigned axis=0;axis<3;++axis){
+                float expected=parts.transforms[wheel<2?14:15].translation[axis];
+                if(axis==0&&(wheel&1))expected=-expected;
+                ++comparisons;
+                if(std::bit_cast<unsigned>(origins[wheel][axis])!=std::bit_cast<unsigned>(expected))
+                    throw std::runtime_error("Original effect mount changed with profile appearance");
+            }
+        };
         const auto authored=NativeModel::load(folder/(std::string(originalCarFolders[car])+".idasmesh"));
         auto fresh=makeOriginalFreshBattleProfile();fresh.setu(16,car);
         for(unsigned color=0;color<originalCarColorCounts[car];++color)try{
             auto profile=fresh;profile.setu(64,color);
             auto native=CarPresentation::loadPlayerProfile(root,profile);
             auto legacy=CarPresentation::load(root,car,authored.chunks.size(),color);
+            checkEffectOrigins(native);checkEffectOrigins(legacy);
             auto model=authored,captured=authored;native.applyMaterials(model);legacy.applyMaterials(captured);
             const auto plate=OriginalNumberPlate::load(root,car,color);
             if(!native.usesPlayerProfile())throw std::runtime_error("Saved profile consumer inactive");
@@ -62,6 +74,7 @@ int main(int argc,char** argv)try{
         }catch(const std::exception& e){throw std::runtime_error("car "+std::to_string(car)+" color "+std::to_string(color)+": "+e.what());}
         const auto checkTuned=[&](const OriginalBattleProfile& profile){
             auto native=CarPresentation::loadPlayerProfile(root,profile);auto model=authored;native.applyMaterials(model);
+            checkEffectOrigins(native);
             for(bool lights:{false,true}){native.resetHeadlights();const auto& assembly=native.pose({},lights,true);
                 if(assembly.instances.empty()||native.profilePlateAssembly().instances.size()!=12)throw std::runtime_error("Tuned body/plate missing");
                 for(const auto& instance:assembly.instances){

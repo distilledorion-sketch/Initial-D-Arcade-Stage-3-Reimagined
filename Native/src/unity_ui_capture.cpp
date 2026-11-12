@@ -79,10 +79,10 @@ void append(Surface& dst,const Surface& src,float sx,float sy,float ox,float oy,
 bool unityUiEnabled(){return state().enabled;}
 bool unityUiFrameReuseEnabled(){return unityUiEnabled()&&!performanceBaseline();}
 void unityUiForgetTexture(const NativeImage& image){state().texturePointers.erase(image.argb.data());}
-bool unityUiTriangle(const std::uint32_t* target,int width,int height,const NativeImage& image,UnityUiVertex a,UnityUiVertex b,UnityUiVertex c,float opacity,unsigned tsp,bool original,unsigned pcw){
+bool unityUiTriangle(const std::uint32_t* target,int width,int height,const NativeImage& image,UnityUiVertex a,UnityUiVertex b,UnityUiVertex c,float opacity,unsigned tsp,bool original,unsigned pcw,bool sourceTextureFiltering){
  if(!unityUiEnabled())return false;
  auto& out=surface(target,width,height);const auto first=unsigned(out.vertices.size());out.vertices.insert(out.vertices.end(),{a,b,c});
- out.draws.push_back({first,3,texture(image),tsp,pcw,(original?1u:0u)|(state().hudGroup<<8),opacity,0,0,0,float(width),float(height)});return true;
+ out.draws.push_back({first,3,texture(image),tsp,pcw,(original?1u:0u)|(sourceTextureFiltering?16u:0u)|(state().hudGroup<<8),opacity,0,0,0,float(width),float(height)});return true;
 }
 unsigned unityUiHudGroup(){return state().hudGroup;}
 unsigned unityUiSetHudGroup(unsigned group){auto& value=state().hudGroup;const auto old=value;value=group;return old;}

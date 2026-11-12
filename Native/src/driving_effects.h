@@ -13,6 +13,7 @@ public:
         Vec3 position{};
         float yaw=0,speed=0,slip=0;
         bool grounded=false,visible=false;
+        std::array<bool,4> smokeSuppressed{};
     };
     static constexpr unsigned markCapacity=2048,smokeCapacity=128;
     void reset(){*this=DrivingEffects{};}
@@ -34,6 +35,7 @@ public:
             if(emission_[c]>=.05f){
                 emission_[c]=std::fmod(emission_[c],.05f);
                 for(unsigned side=0;side<2;++side){const unsigned w=side+2;
+                    if(car.smokeSuppressed[w])continue;
                     auto& p=smoke_[smokeCursor_++%smokeCapacity];
                     p={car.points[w]+car.normals[w]*.24f,forward(car.yaw)*(.06f*car.speed)+Vec3{0,.8f,0},.65f,.16f,strength,c};
                 }

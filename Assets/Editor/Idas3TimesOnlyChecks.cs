@@ -1,12 +1,20 @@
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public static class Idas3TimesOnlyChecks {
     const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
     static int checks;
     static int PendingCount(Idas3CommunityTimes uploader)=>(int)typeof(Idas3CommunityTimes).GetProperty("PendingCount",Private).GetValue(uploader);
+    internal static bool Commit(Idas3CommunityTimes uploader,Idas3CommunityTimes.Run run){
+        var task=(Task)typeof(Idas3CommunityTimes).GetMethod("QueueFinish",Private).Invoke(uploader,new object[]{run});
+        var watch=System.Diagnostics.Stopwatch.StartNew();while(!task.IsCompleted){if(watch.Elapsed.TotalSeconds>30)throw new TimeoutException("Pending queue write");Thread.Sleep(1);}
+        Check((bool)typeof(Idas3CommunityTimes).GetMethod("PublishPending",Private).Invoke(uploader,new object[]{task}),"Queue write committed");
+        var result=task.GetType().GetProperty("Result").GetValue(task);return (bool)result.GetType().GetField("changed").GetValue(result);
+    }
     static void Check(bool condition,string message){if(!condition)throw new Exception(message);checks++;}
     static Idas3CommunityTimes.Run RunData()=>new Idas3CommunityTimes.Run{
         id=Guid.NewGuid().ToString(),ruleset=Idas3CommunityTimes.Ruleset,build=Idas3CommunityTimes.RequiredSubmissionBuild,
@@ -14,7 +22,7 @@ public static class Idas3TimesOnlyChecks {
         nameGlyphs=new[]{162,163,164,221,221},splits=new[]{300000,600000,900000,1200001}
     };
     public static void Run(){
-        var output=Path.GetFullPath("Verification/leaderboard-times-only-20261018");Directory.CreateDirectory(output);
+        checks=0;var output=Path.GetFullPath(Environment.GetEnvironmentVariable("IDAS3_TIMES_ONLY_AUDIT")??"Verification/leaderboard-times-only-20261018");Directory.CreateDirectory(output);
         var folder=Path.Combine(output,"client-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(folder);
         var go=new GameObject("Time-only isolated checks");
         try{
@@ -24,19 +32,18 @@ public static class Idas3TimesOnlyChecks {
             settings.replayOnline=settings.replayLegend=true;Check(Idas3ReplayLibrary.RecordingFlags(settings)==7,"Personal recordings keep independent mode flags");
             var uploader=go.AddComponent<Idas3CommunityTimes>();
             typeof(Idas3CommunityTimes).GetField("folder",Private).SetValue(uploader,folder);
-            var queue=typeof(Idas3CommunityTimes).GetMethod("QueueFinish",Private);
             var run=RunData();
             Check(Idas3CommunityTimes.Uploadable(run),"Fresh result must not need a recording");
             var json=Idas3CommunityTimes.TimeSubmissionJson(run);
             Check(json.Length<1024,"Small JSON result only");
             Check(JsonUtility.FromJson<Idas3CommunityTimes.Run>(json).ticks6000==1200001,"Exact finish precision");
-            Check((bool)queue.Invoke(uploader,new object[]{run}),"Commit result without native replay access");
+            Check(Commit(uploader,run),"Commit result without native replay access");
             Check(PendingCount(uploader)==1&&File.Exists(Path.Combine(folder,"pending.json")),"Durable pending time");
             Check(Directory.GetFiles(folder,"*.idr").Length==0,"No replay upload cache created");
             var slower=RunData();slower.ticks6000++;slower.splits[3]++;
-            Check(!(bool)queue.Invoke(uploader,new object[]{slower})&&PendingCount(uploader)==1,"Slower pending result does not replace best");
+            Check(!Commit(uploader,slower)&&PendingCount(uploader)==1,"Slower pending result does not replace best");
             var faster=RunData();faster.ticks6000--;faster.splits[3]--;
-            Check((bool)queue.Invoke(uploader,new object[]{faster})&&PendingCount(uploader)==1,"Faster pending result replaces best");
+            Check(Commit(uploader,faster)&&PendingCount(uploader)==1,"Faster pending result replaces best");
             Check(File.ReadAllText(Path.Combine(folder,"pending.json")).Contains(faster.id),"Replacement saved atomically");
             var oldReplay=Path.Combine(folder,faster.id+".idr");File.WriteAllText(oldReplay,"obsolete cache");
             var personal=Path.Combine(folder,"personal.idreplay");File.WriteAllText(personal,"keep personal replay");

@@ -123,12 +123,13 @@ typedef struct Idas3PreRaceStatus {
     float eyeX,eyeY,eyeZ,targetX,targetY,targetZ,verticalFov;
     uint32_t condition;
 } Idas3PreRaceStatus;
-// A local next-race choice. -1 uses Speedy Speed Boy (index1).
-// eligible is only the native opponent-selection context, not managed lobbies.
+// A local next-race choice. -1 chooses an automatic Stage 3 race song.
+// eligible covers idle course/conditions/rival selection, not managed lobbies.
+// hintVisible also covers intermediate confirmations, ending at race loading.
 typedef struct Idas3RaceMusicState {
     uint32_t size,version,eligible,count;
     int32_t selectedIndex,activeIndex;
-    uint32_t opponentId,reserved;
+    uint32_t opponentId,hintVisible; // Uses the formerly reserved word; ABI size unchanged.
 } Idas3RaceMusicState;
 // Read-only mixer timeline; separate from the stable driving/music-choice ABI.
 typedef struct Idas3RaceAudioStatus {
@@ -168,6 +169,11 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weath
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayHud(int elapsed6000,int finish6000,const int* splits,int count,const int* glyphs,int glyphCount);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAppearance(const uint32_t* values,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDetailFrame(const uint8_t* values,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayBackfire(int playerFrame,int opponentFrame);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDustTimeline(const uint8_t* values,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDustSeek(uint32_t step);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplaySmokeTimeline(const uint8_t* values,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplaySmokeSeek(uint32_t step);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAudio(double deltaSeconds,int playing,int reset,float master,float engine,float effects);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayPose(double tick,float x,float y,float z,float yaw,float speed,int gear,float pitch,int cameraMode,float orbit,int width,int height);
 // Scene-mode/main-thread only. Never advances input, dialogue, or audio.
@@ -196,7 +202,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCopyRaceMusicText(int index,in
 // Returns source stage1/2/3; -1 for an invalid catalog index.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetRaceMusicStage(int index);
 // Queues and persists only; never changes playing music. context0 requires
-// native opponent selection; context1 is a managed idle multiplayer lobby.
+// native course/conditions/rival selection; context1 is an idle multiplayer lobby.
 // The managed owner validates lobby state. Native active multiplayer/loading/
 // VS/dialogue states reject either context. Applied at the next race start.
 // Index0 (Gamble Rumble) is retained as metadata but cannot be selected.

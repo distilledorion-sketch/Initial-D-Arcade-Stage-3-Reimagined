@@ -40,8 +40,8 @@ namespace Idas3.Multiplayer
         public Idas3AuthorityStatus AuthorityStatus { get; private set; }
         readonly byte[] authorityPacket=new byte[1064];
         ulong authorityPacketFrame;
-        const double AuthorityRecoveryDelay=1,AuthorityRecoveryInterval=.5,AuthorityProgressTimeout=15;
-        bool authorityProgressStarted,authorityRecovering;
+        const double AuthorityRecoveryDelay=1,AuthorityRecoveryInterval=.25,AuthorityProgressTimeout=15;
+        bool authorityProgressStarted,authorityRecovering,authorityReliableFallback;
         ulong authorityLastConfirmed;
         double authorityProgressAt,authorityRecoverySentAt;
         internal int AuthorityRecoveryPacketsSent { get; private set; }
@@ -168,6 +168,7 @@ namespace Idas3.Multiplayer
         public int RemoteCar => remoteCar;
         string remoteName = "Other driver", compatibility;
         bool localReady, remoteReady, nativeRace, remoteLoaded, releaseAck, disposing, leaving, helloSent, finishSent, resultSent, polling;
+        bool localPresentationReady, loadedSent;
         bool remoteFinished, remoteTimeUp;
         ulong remoteFinishTicks;
         double lastHeard, lastPing, lastPose, releaseAt, operationAt, peerOffset, bestRtt = double.MaxValue;
@@ -282,7 +283,7 @@ namespace Idas3.Multiplayer
             "AE86 TRUENO","AE86 LEVIN","AE85 LEVIN","SW20 MR2","ZZW30 MR-S","SXE10 ALTEZZA","ST205 CELICA",
             "BNR32 SKYLINE","BNR34 SKYLINE","S13 SILVIA","S14 SILVIA Q's","S14 SILVIA K's","S15 SILVIA",
             "RPS13 180SX","RPS13 SILEIGHTY","EK9 CIVIC","EG6 CIVIC","DC2 INTEGRA","AP1 S2000",
-            "CE9A LANCER","CN9A LANCER","CT9A LANCER","FD3S RX-7 Type R","FD3S RX-7 Spirit R","FC3S RX-7",
+            "CE9A LANCER","CN9A LANCER","CT9A LANCER","FD3S RX-7 Spirit R","FD3S RX-7 Type R","FC3S RX-7",
             "NA6CE ROADSTER","NB8C ROADSTER","GC8 IMPREZA","GDB IMPREZA","GC8 IMPREZA Type R",
             "EA11R CAPPUCCINO","ER34 SKYLINE","CP9A LANCER V","CP9A LANCER VI","SE3P RX-8"
         };
@@ -336,9 +337,17 @@ namespace Idas3.Multiplayer
             }
             return changed;
         }
+        public bool CanSelectTransport(int index)
+        {
+            if (nativeRace || DisconnectedFinish || InLobby || IsQuickMatching || index < 0 || index > 1) return false;
+            // A local room must not depend on completing Internet sign-in.
+            // SetTransport retires the old provider and detaches its callbacks.
+            // Room creation/join, matchmaking and race transitions remain locked.
+            return !Busy || index == 1 && TransportIndex == 0 && transport is Idas3EosTransport && !Available && state == "Offline";
+        }
         public void SelectTransport(int index)
         {
-            if (nativeRace || DisconnectedFinish || InLobby || Busy || index < 0 || index > 1) return;
+            if (!CanSelectTransport(index)) return;
             if (TransportIndex == index && Available) return;
             TransportIndex = index;
             SetTransport(index == 0 ? (IIdas3Transport)new Idas3EosTransport() : new Idas3TcpTransport()); OpenMenu();
@@ -632,14 +641,14 @@ namespace Idas3.Multiplayer
                         Require(winningChoice.Equals(winnerSlot==0?RemoteChoice:LocalChoice),"Selected race does not match that driver's agreed course pick.");
                         Require(m.Position==m.Length,"Unexpected extra race selection data.");
                         raceId=incomingRace;CourseWinnerSlot=winnerSlot;selectedChoice=winningChoice;
-                        LoadRace();Send(Packet.Loaded,w=>w.Write(raceId));break;
+                        LoadRace();break;
                     case Packet.Loaded:
                         if(r.ReadUInt64()!=raceId)break;Require(IsHost&&nativeRace&&!RaceReleased,"Unexpected loading acknowledgement.");
                         remoteLoaded=true;lastHeard=Now;break;
                     case Packet.Release:
                         ulong startId=r.ReadUInt64();double hostAt=r.ReadDouble();
                         if(startId!=raceId)break;
-                        Require(!IsHost&&nativeRace&&!RaceReleased&&Finite(hostAt)&&bestRtt<2,"Invalid start synchronization.");
+                        Require(!IsHost&&nativeRace&&localPresentationReady&&loadedSent&&!RaceReleased&&Finite(hostAt)&&bestRtt<2,"Invalid start synchronization.");
                         releaseAt=hostAt-peerOffset;Require(releaseAt>Now-.1&&releaseAt<Now+10,"Start synchronization arrived outside the allowed window. Please retry.");
                         state="Countdown";Send(Packet.ReleaseAck,w=>w.Write(raceId));break;
                     case Packet.ReleaseAck:
@@ -787,6 +796,7 @@ namespace Idas3.Multiplayer
         {
             Require(nativeRace&&Idas3MultiplayerNative.Idas3MultiplayerLeave()==1,Idas3Native.Error());
             retiredRaceIds.Add(raceId);raceId=0;nativeRace=false;RaceReleased=false;
+            localPresentationReady=loadedSent=false;
             localReady=remoteReady=remoteLoaded=releaseAck=finishSent=resultSent=remoteFinished=remoteTimeUp=false;
             releaseAt=lastPose=previousPoseAt=newestPoseAt=0;remoteFinishTicks=0;poseCount=0;
             LocalSnapshot=RemoteSnapshot=previousPose=default;RemoteSnapshotsReceived=SnapshotsSent=0;
@@ -815,6 +825,7 @@ namespace Idas3.Multiplayer
             LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
             TuningPointsEarned=BattlePointsEarned=0;
             state="Loading";operationAt=Now;releaseAt=0;RaceReleased=remoteLoaded=releaseAck=finishSent=resultSent=remoteFinished=false;
+            localPresentationReady=loadedSent=false;
             LocalSnapshot=RemoteSnapshot=previousPose=default;RemoteSnapshotsReceived=SnapshotsSent=0;ResultText="";
             poseCount=0;
             var config=new Idas3MultiplayerConfig{size=40,version=ExperimentalAuthority?2u:1u,course=(uint)Course,reverse=Reverse?1u:0u,wet=Wet?1u:0u,night=Night?1u:0u,
@@ -825,13 +836,22 @@ namespace Idas3.Multiplayer
             }
             nativeRace=true;
             pendingAuthorityWinner=-3;pendingAuthorityRecord=null;AuthorityStatus=default;
-            authorityProgressStarted=authorityRecovering=false;
+            authorityProgressStarted=authorityRecovering=authorityReliableFallback=false;
             AuthorityRecoveryPacketsSent=AuthorityRecoveries=0;
             if(ExperimentalAuthority)Require(Idas3MultiplayerNative.Idas3MultiplayerEnableAuthorityRules(raceId,RemoteSavedCar.Automatic?1:0,BoostEnabled?1:0,CollisionsEnabled?1:0)==1,Idas3Native.Error());
             Require(Idas3Native.Idas3SceneSetPreRaceNames(Clean(transport?.LocalName),remoteName)==1,Idas3Native.Error());
             var localStats=RaceLocalRecord;var remoteStats=RaceRemoteRecord;
             Require(Idas3MultiplayerNative.Idas3MultiplayerSetBattleRecords(ref localStats,ref remoteStats)==1,Idas3Native.Error());
             lastHeard=Now;operationAt=Now;status=CourseDrawText+". Loading both cars, then the showcase and countdown.";
+        }
+        // Called on the Unity update AFTER a frame presented this race. The
+        // native load alone is insufficient: imported scenery loads later in
+        // LateUpdate. Do not send Loaded or choose a start time before that
+        // work has returned. Race identity rejects stale rematch callbacks.
+        internal void ConfirmRacePresentation(ulong presentedRace)
+        {
+            if(nativeRace&&!DisconnectedFinish&&state=="Loading"&&presentedRace!=0&&presentedRace==raceId)
+                localPresentationReady=true;
         }
         public void BeforeFrame()
         {
@@ -883,7 +903,11 @@ namespace Idas3.Multiplayer
             if(state=="Returning")return;
             if(nativeRace&&!RaceReleased) {
                 if(now-operationAt>65) {Fail("The second driver did not finish loading the race.");return;}
-                if(IsHost&&remoteLoaded&&releaseAt==0&&bestRtt<2) {
+                if(!IsHost&&localPresentationReady&&!loadedSent){
+                    loadedSent=true;Send(Packet.Loaded,w=>w.Write(raceId));
+                }
+                if(DisconnectedFinish)return;
+                if(IsHost&&localPresentationReady&&remoteLoaded&&releaseAt==0&&bestRtt<2) {
                     releaseAt=now+Math.Max(1.0,bestRtt*4);state="Countdown";
                     Send(Packet.Release,w=>{w.Write(raceId);w.Write(releaseAt);});
                 }
@@ -920,10 +944,11 @@ namespace Idas3.Multiplayer
             // alive, not that either car can advance. Only newly confirmed
             // simulation frames reset this deadline.
             if(!RaceReleased||state!="Racing"||snapshot.winner!=-3){
-                authorityProgressStarted=authorityRecovering=false;return true;
+                authorityProgressStarted=authorityRecovering=authorityReliableFallback=false;return true;
             }
-            // SetGo releases the car showcase before the fixed-step race
-            // begins. Frame zero during that presentation is not packet loss.
+            // SetGo releases the opening sequence. Frame zero before its
+            // first neutral input tick is not packet loss; subsequent opening
+            // frames use the same progress watchdog as the countdown/race.
             if(!authorityProgressStarted&&snapshot.frame==0)return true;
             double now=Now;
             if(!authorityProgressStarted||snapshot.confirmed!=authorityLastConfirmed){
@@ -931,9 +956,9 @@ namespace Idas3.Multiplayer
                     ++AuthorityRecoveries;
                     Debug.Log("IDAS3 race input recovery completed: frame="+snapshot.frame+" confirmed="+snapshot.confirmed);
                 }
+                if(!authorityProgressStarted)authorityRecoverySentAt=now;
                 authorityProgressStarted=true;authorityRecovering=false;
-                authorityLastConfirmed=snapshot.confirmed;authorityProgressAt=now;authorityRecoverySentAt=now;
-                return true;
+                authorityLastConfirmed=snapshot.confirmed;authorityProgressAt=now;
             }
             if(now-authorityProgressAt>=AuthorityProgressTimeout){
                 Debug.LogWarning("IDAS3 race input progress timeout: frame="+snapshot.frame+" confirmed="+snapshot.confirmed+
@@ -941,10 +966,18 @@ namespace Idas3.Multiplayer
                 Fail("Race synchronization stopped responding. No result or points were recorded. Please rejoin the room.");
                 return false;
             }
-            if(now-authorityProgressAt>=AuthorityRecoveryDelay&&now-authorityRecoverySentAt>=AuthorityRecoveryInterval){
+            if(now-authorityProgressAt>=AuthorityRecoveryDelay){
                 if(!authorityRecovering)Debug.LogWarning("IDAS3 race input recovery started: frame="+snapshot.frame+
                     " confirmed="+snapshot.confirmed+" verified="+snapshot.verified+" stalled="+snapshot.stalled);
-                authorityRecovering=true;authorityRecoverySentAt=now;recover=true;
+                authorityRecovering=authorityReliableFallback=true;
+            }
+            // A confirmed burst can have arrived over the reliable route; it
+            // does not prove the unreliable stream recovered. Retain a bounded
+            // reliable copy of history for this race, replacing at most four
+            // ordinary packets per second. The native history and physics are
+            // unchanged, and loading/the next race clears this fallback.
+            if(authorityReliableFallback&&now-authorityRecoverySentAt>=AuthorityRecoveryInterval){
+                authorityRecoverySentAt=now;recover=true;
             }
             return true;
         }
@@ -1057,6 +1090,7 @@ namespace Idas3.Multiplayer
             matchAnnounced=false;ChallengerPending=false;
             HandshakeComplete=false;helloSent=false;remoteNonce=0;localReady=remoteReady=false;bestRtt=double.MaxValue;PingMilliseconds=-1;recentRtt.Clear();RecentRttMilliseconds=JitterMilliseconds=0;
             remoteLoaded=releaseAck=false;releaseAt=0;lastPing=0;
+            localPresentationReady=loadedSent=false;
             pendingPings.Clear();
             revision=localPlayerSerial=remotePlayerSerial=localSelectionSerial=acknowledgedLocalPlayerSerial=0;CourseWinnerSlot=-1;selectedChoice=default;
             RemoteChoice=new Idas3RaceChoice(3,false,false,true);
@@ -1068,6 +1102,7 @@ namespace Idas3.Multiplayer
         void StopRace()
         {
             if(nativeRace) {Idas3MultiplayerNative.Idas3MultiplayerLeave();nativeRace=false;}
+            localPresentationReady=loadedSent=false;
             RaceReleased=false;releaseAt=0;
         }
         void DisconnectRace(string reason)

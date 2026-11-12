@@ -14,6 +14,30 @@ node --test test/*.test.mjs
 
 The tests use an in-memory database and never submit to the public service.
 
+## Public snapshot read costs
+
+Apply the additive `0014_leaderboard_snapshot_cache.sql` migration before
+deploying the current Worker. Do not rerun older destructive/reset migrations.
+Public v1/v2 snapshots share persisted D1 ranking results, keyed by ruleset and
+historical-import selection. A normal refresh performs one indexed query
+against the cache, revision and season rows instead of recalculating rankings.
+Database triggers invalidate results in the same transaction as score changes,
+installation bans/unbans and season changes, including writes by older Workers
+or direct administrator SQL. Rebuilds read revision, season and rankings in
+one transaction; conditional publication prevents a concurrent write from
+making an old snapshot current. Simultaneous misses in one Worker isolate
+share a rebuild only when their revisions match.
+
+Public responses remain `no-store`; rate limits, maintenance and ruleset
+validation still run before cache access. Required-build and replay policy
+are applied on every response. Authentication, online bans and activity
+reports are not cached. Uploads, individual website boards and top-ten
+retention keep their existing behavior. This cache contains only derived
+public entries; deleting its contents merely forces a rebuild.
+
+Production verification and the initial read-cost measurements are documented
+in [the November 4 cost audit](../docs/leaderboard-cost-2026-11-04.md).
+
 ## Maintenance
 
 Set the Worker secret `MAINTENANCE` to `true` to pause writes and scheduled

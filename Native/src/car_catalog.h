@@ -2,6 +2,11 @@
 #include <array>
 #include <string_view>
 namespace idas3 {
+// Cabinet manufacturer IDs, including the cars appended after the main roster.
+// A saved profile's maker-selection workspace can still contain its default.
+inline constexpr std::array<unsigned,35> originalCarManufacturerIds = {
+    0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,2,2,2,2,3,3,3,4,4,4,4,4,5,5,5,6,1,3,3,4
+};
 // Original ID0..34 from0C2EF384/0C2EF410; no alphabetical remapping.
 inline constexpr std::array<std::string_view,35> originalCarFolders = {
     "toyota_ae86t", // 0

@@ -26,7 +26,7 @@ class ProcessInfo(ctypes.Structure):
 
 class BackgroundPlayer:
     """Small Popen-compatible owner for one process and its private desktop."""
-    def __init__(self, command, cwd, stdout):
+    def __init__(self, command, cwd, stdout, *, render_window=False):
         if os.name != "nt":
             raise OSError("Background player isolation requires Windows")
         self.args, self.returncode, self.pid = command, None, None
@@ -57,7 +57,9 @@ class BackgroundPlayer:
         startup = StartupInfo()
         startup.cb = ctypes.sizeof(startup)
         startup.lpDesktop = self.desktop_name
-        startup.dwFlags, startup.wShowWindow = 1, 0  # STARTF_USESHOWWINDOW / SW_HIDE
+        # IMGUI captures require a drawable window. It still belongs only to
+        # this unshown desktop, which we never switch to or activate.
+        startup.dwFlags, startup.wShowWindow = 1, 4 if render_window else 0
         info = ProcessInfo()
         try:
             # No inherited handles. Unity writes its complete log via -logFile.

@@ -5,6 +5,9 @@
 #include "original_race_rules.h"
 #include "original_race_start.h"
 #include "original_tire_audio.h"
+#include "car_smoke_state.h"
+#include "replay_car_smoke.h"
+#include "race.h"
 
 namespace idas3 {struct ImportedCourse;}
 namespace idas3::original {
@@ -12,8 +15,12 @@ struct OnlineRaceSetup {
     std::shared_ptr<const idas3::ImportedCourse> imported;
     std::uint32_t condition=0;
     bool wet=false,collisions=true,boost=false;
+    // The presentation owner requests these neutral input frames before the
+    // countdown. They belong to the shared rollback timeline on both peers.
+    std::uint32_t showcaseFrames=0;
     std::array<OriginalBattleProfile,2> profiles;
     std::array<bool,2> automatic{true,true};
+    bool night=false;
 };
 struct OnlineRaceFrame {
     std::uint64_t frame=0;
@@ -23,6 +30,12 @@ struct OnlineRaceFrame {
     std::array<OriginalRaceRuleState,2> states;
     std::array<std::vector<OriginalEngineCommand>,2> engine;
     std::array<std::vector<OriginalTireCommand>,2> tires;
+    // Regenerated on rollback; consumers persist only confirmed outputs.
+    std::array<ReplayCarSmokeFrame,2> smokeInputs;
+    bool smokeAvailable=false;
+    // Numerical pose/telemetry for this exact tick, regenerated on rollback.
+    // Body placement, lamps and presentation timers are bound by the recorder.
+    std::array<ReplayFrame,2> replayPoses{};
 };
 // Keep source sub-frame crossing precision when deciding a photo finish.
 inline int resolveOnlineRaceWinner(const std::array<OriginalRaceRuleState,2>& states){
@@ -62,6 +75,7 @@ public:
     const OnlineRaceSetup& setup()const;
     const OnlineRaceFrame& lastFrame()const;
     const OriginalRaceStart& start()const;
+    const CarSmokeState& smoke(unsigned view)const;
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

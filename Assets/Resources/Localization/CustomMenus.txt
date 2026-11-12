@@ -785,3 +785,9 @@ Use no more than 16 characters.	16文字以内で入力してください。	请
 Use visible characters without formatting or angle brackets.	表示できる文字を使用してください。書式制御文字や山括弧（< >）は使用できません。	请使用可见字符，不要使用格式控制字符或尖括号（< >）。
 Your online username could not be saved. Please try again.	オンラインユーザー名を保存できませんでした。もう一度お試しください。	无法保存您的在线用户名。请重试。
 Leave the room or queue before changing your online username.	オンラインユーザー名を変更する前にルームまたはマッチングから退出してください。	更改在线用户名之前，请先退出房间或匹配队列。
+INSPECT CAR	車両点検	车辆检查
+PLAY INSPECTION SCREENS	車両点検の画面を再生	播放车辆检查画面
+YOUR CAR AND SAVE WILL NOT CHANGE	車両やセーブデータは変更されません	车辆和存档不会改变
+SAVE FAILED - PLEASE RETRY	保存できません。もう一度お試しください	保存失败，请重试
+SAVE CHANGED - PLEASE RETRY	セーブが更新されました。やり直してください	存档已更改，请重试
+SAVED CAR IS NOT READY	この車両は点検できません	此车辆暂时无法检查

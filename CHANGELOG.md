@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.95-community-replays.54 - November 12, 2026
+
+### Changes since .53
+
+- Correct card uses to count each accepted card session, rather than each race. Continued races and online rematches share that use. A card's final use remains playable through Continue; renewal appears on the next card entry.
+- Restore functional card renewal: choose transmission and tuning package, then transfer the card with 50 uses remaining. Keeping the package preserves tuning; changing it follows the original reset rules while keeping engine level, points and records. Cancelling or failing to save preserves the existing card.
+- Correct the default minimap scale and colouring using the arcade navigation artwork.
+- Keep the Hold Y music hint available after mode selection through the race-condition selections.
+- Restore rear-light trails in attract demonstrations and improve the Legend ending's camera, lighting and recorded effects, including smoke, rain, snow, exhaust flashes, tyre marks and road-contact leaves.
+- Correct stationary/replayed smoke and dust behaviour, including unwanted effects in the rear-view mirror.
+- Improve controller discovery and reconnection across input backends, online loading readiness and stalled-input recovery, and LAN host address selection.
+- Reduce two-car rendering allocations and move leaderboard refresh, ranking processing and pending-upload work away from active racing. Handle larger course rankings and pending queues.
+- Improve EOS packet-backlog handling and limit callback bursts. Add an optional local stutter trace for investigating remaining reports.
+- Correct Tsubaki fork-island collision and retain the tested Linux/Wine updater fixes.
+- Include leaderboard read-cost caching and online-name display corrections in the source update.
+
+### Install or update
+
+Both online drivers should update. Version .54 is required for new community Time Attack submissions. Existing leaderboard scores remain; online replay uploads/downloads remain disabled.
+
+Existing installations: use the in-game updater. Changed-file patches support .20 through .53. Fresh installs: extract **Initial-D-Setup-0.3.95.54.zip** and run **Install Initial D.cmd**. For manual installation, extract the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Supply your own original game data. Saves, settings, ROMs, personal replays and custom music are preserved.
+
+### Verification limits
+
+Card renewal was checked across 1,260 car/package/transmission combinations, original-code reference tests, a natural final-use timeout and muted in-game menu/save checks. Individual fixes have focused native and managed regression evidence. Separate-network EOS races and the broader physical-hardware acceptance matrix remain unverified. This release does not claim a measured 30% FPS improvement or complete arcade parity. Previous per-race card uses are not retroactively refunded without session history.
+
 ## 0.3.95-community-replays.53 - October 26, 2026
 
 - Online races now retry stalled input synchronization through the reliable channel. If confirmed race progress cannot recover within 15 seconds, the race ends without recording a result or awarding points, even when pings still arrive.

@@ -76,8 +76,10 @@ struct OriginalOneShotPlayback::Impl {
         ++stats.notes;stats.peakVoices=std::max(stats.peakVoices,active());
     }
 };
-OriginalOneShotPlayback::OriginalOneShotPlayback(const std::filesystem::path& root):impl_(std::make_unique<Impl>()){
+OriginalOneShotPlayback::OriginalOneShotPlayback(const std::filesystem::path& root,unsigned onlyBank):impl_(std::make_unique<Impl>()){
+    if(onlyBank)bankIndex(onlyBank);
     for(unsigned index=0;index<bankNumbers.size();++index){
+        if(onlyBank&&bankNumbers[index]!=onlyBank)continue;
         auto& bank=impl_->banks[index];const unsigned number=bankNumbers[index];const auto name="PACK"+std::to_string(number);
         const auto bytes=read(root/"data/original_audio"/(number==21?"menu":"race")/(name+".dtpk"));
         const auto fixture=read(root/"data/original_audio/oneshot"/(name+".idso"));Reader r{fixture};

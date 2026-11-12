@@ -643,6 +643,12 @@ public sealed partial class Idas3ControlBindings
     {
         if (!pad.connected||(reconnectHeldAxes&AxisMask(input))!=0) return 0;
         ushort mask = ButtonMask(input); if (mask != 0) return (pad.buttons & ~reconnectHeldButtons & mask) != 0 ? 32768 : 0;
+        return RawMagnitude(pad,input);
+    }
+    private static int RawMagnitude(PadState pad,PadInput input)
+    {
+        if(!pad.connected)return 0;
+        ushort mask=ButtonMask(input);if(mask!=0)return (pad.buttons&mask)!=0?32768:0;
         switch (input)
         {
             case PadInput.LeftTrigger: return pad.leftTrigger * 32768 / 255;

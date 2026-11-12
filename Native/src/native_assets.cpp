@@ -88,10 +88,10 @@ std::uint32_t pvrBlend(std::uint32_t dst,std::uint32_t src,std::uint32_t tsp,flo
 float edge(const ScreenVertex& a,const ScreenVertex& b,float x,float y){return (b.x-a.x)*(y-a.y)-(b.y-a.y)*(x-a.x);}
 bool topLeft(const ScreenVertex& a,const ScreenVertex& b){return a.y>b.y||(a.y==b.y&&a.x<b.x);}
 void triangle(std::span<std::uint32_t> target,int width,int height,const NativeImage& image,
-    ScreenVertex a,ScreenVertex b,ScreenVertex c,float opacity,std::uint32_t tsp=(1u<<15)|(1u<<16)|(1u<<20)|(3u<<6),bool originalMaterial=false,std::uint32_t pcw=0x0a,bool straightAlphaOverlay=false,bool softwareOnly=false){
+    ScreenVertex a,ScreenVertex b,ScreenVertex c,float opacity,std::uint32_t tsp=(1u<<15)|(1u<<16)|(1u<<20)|(3u<<6),bool originalMaterial=false,std::uint32_t pcw=0x0a,bool straightAlphaOverlay=false,bool softwareOnly=false,bool sourceTextureFiltering=false){
     float area=edge(a,b,c.x,c.y);if(std::abs(area)<1e-7f)return;
     if(!softwareOnly&&unityUiTriangle(target.data(),width,height,image,{a.x,a.y,a.u,a.v,a.color,a.offset},
-        {b.x,b.y,b.u,b.v,b.color,b.offset},{c.x,c.y,c.u,c.v,c.color,c.offset},opacity,tsp,originalMaterial,pcw))return;
+        {b.x,b.y,b.u,b.v,b.color,b.offset},{c.x,c.y,c.u,c.v,c.color,c.offset},opacity,tsp,originalMaterial,pcw,sourceTextureFiltering))return;
     if(area<0){std::swap(b,c);area=-area;}
     const int minx=std::max(0,int(std::floor(std::min({a.x,b.x,c.x}))));
     const int maxx=std::min(width,int(std::ceil(std::max({a.x,b.x,c.x}))));
@@ -118,6 +118,22 @@ void triangle(std::span<std::uint32_t> target,int width,int height,const NativeI
         auto tx=sampleCoord(u,image.width,(tsp&(1u<<16))!=0,(tsp&(1u<<18))!=0);
         auto ty=sampleCoord(v,image.height,(tsp&(1u<<15))!=0,(tsp&(1u<<17))!=0);
         auto color=image.argb[std::size_t(ty)*image.width+tx];
+        if(sourceTextureFiltering&&((tsp>>13)&3)){
+            const float sx=u*image.width-.5f,sy=v*image.height-.5f;
+            const float x0=std::floor(sx),y0=std::floor(sy),fx=sx-x0,fy=sy-y0;
+            const auto texel=[&](float x,float y){
+                auto ix=sampleCoord((x+.5f)/image.width,image.width,(tsp&(1u<<16))!=0,(tsp&(1u<<18))!=0);
+                auto iy=sampleCoord((y+.5f)/image.height,image.height,(tsp&(1u<<15))!=0,(tsp&(1u<<17))!=0);
+                return image.argb[std::size_t(iy)*image.width+ix];
+            };
+            const auto a00=texel(x0,y0),a10=texel(x0+1,y0),a01=texel(x0,y0+1),a11=texel(x0+1,y0+1);
+            color=0;
+            for(int shift:{0,8,16,24}){
+                const float a=std::lerp(float((a00>>shift)&255),float((a10>>shift)&255),fx);
+                const float b=std::lerp(float((a01>>shift)&255),float((a11>>shift)&255),fx);
+                color|=std::uint32_t(std::lround(std::lerp(a,b,fy)))<<shift;
+            }
+        }
         if(tsp&(1u<<19))color|=0xff000000u;
         const float texAlpha=float(color>>24)/255;
         std::uint32_t modulated=texelColor?color:0;
@@ -273,7 +289,7 @@ void compositeOriginalMenuChunk(std::span<std::uint32_t> target,int width,int he
                 (placement.invertY?placement.authoredHeight-position.y:position.y)*placement.scale+placement.offsetY,v.u,v.v,color,offset});
         }
         for(std::size_t i=0;i<batch.indices.size();i+=3)triangle(target,width,height,image,
-            transformed[batch.indices[i]],transformed[batch.indices[i+1]],transformed[batch.indices[i+2]],placement.opacity,batch.ich[2],true,batch.ich[0],placement.straightAlphaOverlay,placement.softwareOnly);
+            transformed[batch.indices[i]],transformed[batch.indices[i+1]],transformed[batch.indices[i+2]],placement.opacity,batch.ich[2],true,batch.ich[0],placement.straightAlphaOverlay,placement.softwareOnly,placement.sourceTextureFiltering);
     }
 }
 }

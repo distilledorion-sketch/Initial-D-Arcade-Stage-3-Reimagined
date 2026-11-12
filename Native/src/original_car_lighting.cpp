@@ -77,4 +77,39 @@ OriginalRaceLightingSets composeOriginalRaceLighting(const OriginalCourseLightin
         if(out.hasRival){append(out.rival,player.ownSpot);append(out.course,rival.ownSpot);append(out.player,rival.ownSpot);}}
     return out;
 }
+OriginalCarLighting originalReplayCarLighting(const OriginalCarLightingSetup&setup,
+    const OriginalLightMatrix& world,float gain,bool headlights){
+    auto car=originalCarLighting();
+    car.ambient=originalCourseCarAmbient(setup);car.gain=gain;
+    publishOriginalCarLight(car,world);setOriginalCarLightEnabled(car,headlights);
+    return car;
+}
+OriginalCourseLight originalReplayCameraLight(const OriginalLightMatrix&view,bool wet,const OriginalFscaTable&trig){
+    // Actual1F66A0 rigid inverse, followed by E33D4's half turn, offset and
+    // X rotation. Keep the ordered FIPR sums and source FSCA phases.
+    auto world=originalIdentityMatrix();
+    for(unsigned row=0;row<3;++row){
+        for(unsigned col=0;col<3;++col)world.elements[col*4+row]=view[row*4+col];
+        double dot=double(view[row*4])*view[12];dot+=double(view[row*4+1])*view[13];
+        dot+=double(view[row*4+2])*view[14];dot+=0.;
+        world.elements[12+row]=0.f-float(dot);
+    }
+    rotateOriginalMatrixPhase(world,1,0x8000,trig);
+    translateOriginalMatrix(world,{0,5,15});
+    rotateOriginalMatrixPhase(world,0,0xe001,trig);
+    OriginalCourseLight light;light.kind=OriginalCourseLightKind::Spot;light.sourceSlot=0x3f8;
+    light.color=wet?OriginalLightVector{.2f,.2f,.2f}:OriginalLightVector{.5f,.5f,.5f};
+    light.distance0=60;light.distance1=100;light.angle0=light.angle1=0x1555;
+    light.coefficientWords={0x4316bfc0,0x00003f80};
+    light.angleCosines.fill(trig.sinCos(0x1555)[1]);
+    for(unsigned i=0;i<3;++i){light.position[i]=world.elements[12+i];light.incomingDirection[i]=world.elements[8+i];}
+    return light;
+}
+OriginalRaceLightingSets composeOriginalReplayLighting(const OriginalCourseLighting&base,
+    const OriginalCarLighting&player,const OriginalCarLighting&rival,const OriginalCarLightingSetup&setup,
+    const OriginalCourseLight&cameraLight){
+    auto out=composeOriginalRaceLighting(base,player,rival,setup);
+    if(setup.night){append(out.course,cameraLight);append(out.player,cameraLight);if(out.hasRival)append(out.rival,cameraLight);}
+    return out;
+}
 } // namespace idas3::original

@@ -1,6 +1,7 @@
 from pathlib import Path
 import struct,json,math,hashlib,re,sys
 from stage8_yabx import load,value,string
+from tsubaki_fork import export_island
 import argparse,subprocess,mmap
 parser=argparse.ArgumentParser(description="Import Tsubaki Line scenery and authored road from a local Arcade Stage 8 installation")
 parser.add_argument('--source',type=Path,required=True)
@@ -175,6 +176,7 @@ metadata=dict(materials=materials,checkpoints=checkpoints,times=times,instances=
     source='Initial D Arcade Stage 8 / Tsubaki '+variant,assets=files,pathPoints=len(paths[0]),shapes=len(shapes),triangles=sum(len(t)//3 for _,_,_,t in shapes))
 (DEST/'scene.json').write_text(json.dumps(metadata,indent=2));print(metadata['triangles'],'triangles',len(textures),'textures')
 if variant=='day_dry':
+    export_island(ROOT/'collision/tsubaki_collision.bin', DEST/'fork_island.json')
     lamp=(ROOT/'path/tsubaki_path_light.pa8').read_bytes();n=struct.unpack_from('<I',lamp,12)[0]
     assert lamp[:4]==b'Path' and len(lamp)==32+n*48 and n<=1024
     positions=[row[:3] for row in struct.iter_unpack('<12f',lamp[32:])]

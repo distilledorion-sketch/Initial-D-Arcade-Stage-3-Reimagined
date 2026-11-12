@@ -1,0 +1,40 @@
+{
+  "schema": "idas3-direct-textures-v1",
+  "table": "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\effect\\taillight\\taillight_tex.tbl",
+  "payload": "C:\\Users\\Chris\\AppData\\Local\\Temp\\idas3-lamp-texture-e9g8fbx5\\taillight.bin",
+  "table_sha256": "d63baac47f54b5a1df46c17d4fc5db7db6da503ef4c0ea8724f92aef5758412b",
+  "payload_sha256": "dea1f58e9248fc3ca9a4685bfc14543f930bb35db9ffdef6ad67191fd8850f97",
+  "pixel_roundtrip": "All original 16-bit texels verified by exact decode/repack",
+  "layout_evidence": "Explicit layout parameter; verify material TCW scan-order before binding.",
+  "private_original_assets": true,
+  "textures": [
+    {
+      "index": 0,
+      "width": 128,
+      "height": 32,
+      "format": 2,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 0,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "3ca81ea7d528e6b7b38df31a817d06309ab810d6254921f185b44093b6cbc5df",
+      "rgba_sha256": "427ed94b584c2167d556ce7e1b5b7be6e2c5b3d0bb279cd498b1023e6d85423e",
+      "file": "texture_000.png"
+    },
+    {
+      "index": 1,
+      "width": 128,
+      "height": 32,
+      "format": 2,
+      "flags": 13,
+      "reserved": 0,
+      "offset": 8192,
+      "tail": 0,
+      "layout": "twiddled",
+      "source_texels_sha256": "1ffb238953739f0a919dc45639e5f51d72c7fa1839c06623bca643a1fa19d722",
+      "rgba_sha256": "dea6e6c91899e2a4abc8b613f0088dd326c287a266da1659c826808d898b167d",
+      "file": "texture_001.png"
+    }
+  ]
+}

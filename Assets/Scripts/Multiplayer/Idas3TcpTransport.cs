@@ -49,9 +49,12 @@ namespace Idas3.Multiplayer
         {
             Leave();
             try {
+                var address = loopbackOnly ? "127.0.0.1" : LanAddress();
+                if (address == null)
+                    throw new InvalidOperationException("No local IPv4 address is available. Connect to Wi-Fi or Ethernet before hosting a LAN race.");
                 listener = new TcpListener(loopbackOnly ? IPAddress.Loopback : IPAddress.Any, port);
                 listener.Start(2); IsHost = true;
-                RoomCode = (loopbackOnly ? "127.0.0.1" : LanAddress()) + ":" + port;
+                RoomCode = address + ":" + port;
                 Status = "Waiting for another driver at " + RoomCode;
                 PeerChanged?.Invoke();
             } catch (Exception e) { Fail("Could not host LAN race: " + e.Message); }
@@ -85,6 +88,26 @@ namespace Idas3.Multiplayer
             packet[2] = (byte)(data.Length >> 16); packet[3] = (byte)(data.Length >> 24);
             Buffer.BlockCopy(data, 0, packet, 4, data.Length);
             outbound.Enqueue(packet); queuedBytes += packet.Length;
+            // StartRace sends Load immediately before synchronous native loading.
+            // Flush writable bytes now so the guest enters Loading before the
+            // host stops polling. Do not dispatch incoming callbacks here: the
+            // native race must exist before a Loaded reply can be processed.
+            try { FlushOutbound(); }
+            catch (SocketException e) {
+                if (e.SocketErrorCode != SocketError.WouldBlock && e.SocketErrorCode != SocketError.IOPending)
+                    Fail("LAN connection lost: " + e.SocketErrorCode);
+            } catch (Exception e) { Fail("LAN connection failed: " + e.Message); }
+        }
+        void FlushOutbound()
+        {
+            int operations = 0;
+            while (Connected && peer != null && outbound.Count > 0 && ++operations <= 64 && peer.Poll(0, SelectMode.SelectWrite)) {
+                var head = outbound.Peek();
+                int sent = peer.Send(head, sendOffset, head.Length - sendOffset, SocketFlags.None);
+                if (sent == 0) { Fail("The other driver disconnected."); return; }
+                sendOffset += sent;
+                if (sendOffset == head.Length) { queuedBytes -= head.Length; outbound.Dequeue(); sendOffset = 0; }
+            }
         }
         public void Poll()
         {
@@ -99,15 +122,8 @@ namespace Idas3.Multiplayer
                     else if (Time.realtimeSinceStartupAsDouble - connectingAt > 10) Fail("LAN connection timed out. Check the address and host firewall.");
                 }
                 if (!Connected || peer == null) return;
+                FlushOutbound();
                 int operations = 0;
-                while (outbound.Count > 0 && ++operations <= 64 && peer.Poll(0, SelectMode.SelectWrite)) {
-                    var head = outbound.Peek();
-                    int sent = peer.Send(head, sendOffset, head.Length - sendOffset, SocketFlags.None);
-                    if (sent == 0) { Fail("The other driver disconnected."); return; }
-                    sendOffset += sent;
-                    if (sendOffset == head.Length) { queuedBytes -= head.Length; outbound.Dequeue(); sendOffset = 0; }
-                }
-                operations = 0;
                 while (Connected && peer != null && ++operations <= 64 && peer.Poll(0, SelectMode.SelectRead)) {
                     int count = peer.Receive(receive, received, receive.Length - received, SocketFlags.None);
                     if (count == 0) { Fail("The other driver disconnected."); return; }
@@ -150,16 +166,43 @@ namespace Idas3.Multiplayer
         public void Dispose() { Leave(); Available = false; }
         static string LanAddress()
         {
-            try {
-                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces()) {
-                    if (nic.OperationalStatus != OperationalStatus.Up || nic.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+            try { return LanAddress(NetworkInterface.GetAllNetworkInterfaces()); }
+            catch { return null; }
+        }
+        internal static string LanAddress(IEnumerable<NetworkInterface> interfaces)
+        {
+            string selected = null; int selectedRank = -1;
+            foreach (var nic in interfaces) {
+                try {
+                    var kind = nic.NetworkInterfaceType;
+                    if (nic.OperationalStatus != OperationalStatus.Up || kind == NetworkInterfaceType.Loopback) continue;
                     var properties = nic.GetIPProperties();
-                    if (properties.GatewayAddresses.Count == 0) continue;
-                    foreach (var address in properties.UnicastAddresses)
-                        if (address.Address.AddressFamily == AddressFamily.InterNetwork) return address.Address.ToString();
-                }
-            } catch { }
-            return "127.0.0.1";
+                    bool gateway = false;
+                    foreach (var route in properties.GatewayAddresses)
+                        if (UsableLanAddress(route.Address)) { gateway = true; break; }
+                    // A local network needs no Internet gateway. Prefer ordinary
+                    // Ethernet/Wi-Fi over PPP/tunnel routes, retaining VPN-only
+                    // LAN use when no ordinary adapter is available. Equal ranks
+                    // retain OS enumeration order; multi-homed hosts can still
+                    // be reached at any of their bound local IPv4 addresses.
+                    int rank = (kind == NetworkInterfaceType.Tunnel || kind == NetworkInterfaceType.Ppp ? 0 : 100) + (gateway ? 20 : 0);
+                    foreach (var entry in properties.UnicastAddresses) {
+                        var address = entry.Address;
+                        if (!UsableLanAddress(address)) continue;
+                        var bytes = address.GetAddressBytes();
+                        int addressRank = rank + (bytes[0] == 169 && bytes[1] == 254 ? 0 : 10);
+                        if (addressRank > selectedRank) { selected = address.ToString(); selectedRank = addressRank; }
+                    }
+                } catch (NetworkInformationException) { }
+                  catch (NotSupportedException) { }
+            }
+            return selected;
+        }
+        static bool UsableLanAddress(IPAddress address)
+        {
+            if (address == null || address.AddressFamily != AddressFamily.InterNetwork) return false;
+            var first = address.GetAddressBytes()[0];
+            return first != 0 && first != 127 && first < 224;
         }
     }
 }

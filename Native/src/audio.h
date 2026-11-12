@@ -4,6 +4,8 @@
 #include <mmsystem.h>
 #endif
 #include <array>
+#include <deque>
+#include "audio_peak_limiter.h"
 #include "original_audio.h"
 #include "music_catalog.h"
 #include "original_menu_audio.h"
@@ -96,7 +98,11 @@ public:
     // sound request. The recovered flash uses two original 60 Hz frames.
     int backfireFrame()const{return backfireFrames_?int(2-backfireFrames_):-1;}
     // Interrupt owner16CCC4 calls141F40(3,1): persistent PACK20 A9 cue3.
-    void playChallengerCue(){if(nativeOneShots)nativeOneShots->play(20,3);}
+    // Stop the preceding score/SFX and key off its continuous engine voices.
+    // Preserve suspended clocks so a failed handshake can resume offline play.
+    void beginChallenger();
+    void endChallenger();
+    bool challengerActive()const{return challengerActive_;}
     void resetRaceEffects();
     void selectOriginalEngine(const std::filesystem::path& root,const original::OriginalBattleProfile& profile);
     bool cardRaceMusicOff=false; // Saved Data BGM OFF; preserves output/mute preferences.
@@ -104,12 +110,15 @@ public:
     // independently of physics and the gameplay random seed.
     void setReplayEngine(const original::OriginalEngineControlInput& input){replayEngineInput=input;replayEngineEnabled=true;}
     void setShowcaseEngine(const original::OriginalEngineControlInput& input){showcaseEngineInput=input;}
-    void useDevelopmentEngine(){nativeEngine.reset();presentationEngine.reset();nativeTire.reset();onlineEngineOutput=false;}
+    void useDrivingEngineForShowcase(bool useDriving){showcaseDrivingEngine=useDriving;}
+    // Read-only diagnostic for comparing presentation with source driving audio.
+    const original::OriginalEngineControlInput& showcaseEngineControl()const{return showcaseEngineInput;}
+    void useDevelopmentEngine(){nativeEngine.reset();presentationEngine.reset();nativeTire.reset();onlineEngineOutput=false;resetEngineVoiceHistory();}
     void stepOriginalEngine(const original::OriginalEngineControlInput& input,std::uint32_t& sharedSeed);
     void requestOriginalTire(const original::OriginalAngularResult& feedback);
     void finishSoundFrame(std::uint32_t& sharedSeed);
     void applyConfirmedOnlineAudio(std::span<const original::OriginalEngineCommand> engine,
-        std::span<const original::OriginalTireCommand> tires);
+        std::span<const original::OriginalTireCommand> tires,std::span<const std::uint32_t> contactCues={});
     // Same mixer used by waveOut and bounded offline application checks.
     std::array<short,2> renderStereo(float rpm,float throttle,float speed,float slip,bool active);
     // Host output controls, not the original instrument/manager volume state.
@@ -128,6 +137,13 @@ public:
     std::shared_ptr<const OriginalAudioClip> customRaceMusic;
     bool enabled=true;
 private:
+    AudioPeakLimiter outputLimiter_;
+    bool challengerActive_=false;
+    std::unique_ptr<OriginalOneShotPlayback> challengerCue_;
+    OriginalAudioDsp challengerDsp_;
+    std::unique_ptr<OriginalIcsPlayer> challengerEngine_;
+    AudioPeakLimiter challengerLimiter_;
+    std::array<short,2> renderChallenger();
     unsigned backfireFrames_=0;
     // Four short buffers keep menu feedback below the previous93ms queue.
     static constexpr int samples=512,buffers=4;
@@ -159,6 +175,7 @@ private:
     // gameplay RNG. This separate source instrument has only an audio clock.
     std::unique_ptr<OriginalEnginePlayback> presentationEngine;
     bool replayEngineEnabled=false;
+    bool showcaseDrivingEngine=false;
     original::OriginalEngineControlInput replayEngineInput{};
     original::OriginalEngineControlInput showcaseEngineInput{800.f,0,0,true};
     std::uint32_t presentationSeed=1;
@@ -183,6 +200,18 @@ private:
     std::vector<OriginalIcsMixFrame> engineFrames=std::vector<OriginalIcsMixFrame>(8820);
     std::vector<std::int32_t> tireFrames=std::vector<std::int32_t>(8820);
     std::size_t engineRead=0,engineCount=0;
+    // One voice checkpoint per generated735-sample block, retaining the block
+    // at the output head. Reconstruct only when interrupted, not per sample.
+    struct EngineVoiceCheckpoint {
+        std::uint64_t firstSample;
+        OriginalIcsPlayer voices;
+    };
+    std::deque<EngineVoiceCheckpoint> engineVoiceCheckpoints_;
+    std::uint64_t engineSamplesWritten_=0;
+    enum class EngineOutputSource { None, Presentation, Online, Queued };
+    EngineOutputSource lastEngineOutputSource_=EngineOutputSource::None;
+    void resetEngineVoiceHistory();
+    std::unique_ptr<OriginalIcsPlayer> snapshotOutputEngine()const;
     bool enginePrimed=false;
     OriginalEngineAudioStatistics engineStats;
     void appendEngineFrame(const OriginalIcsMixFrame& frame,std::int32_t tire=0);

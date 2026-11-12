@@ -1,7 +1,8 @@
 import html from './index.html';
 import {replaysDisabled,legacyRunMetadata,purgeReplayObjects} from './times-only.mjs';
 import {verifyConnectIdentity,checkOnlinePlayer,searchOnlinePlayers,moderateOnlinePlayer} from './online-players.mjs';
-import {COURSES,validateRun,publicRun,rankedSql,sha,token,sameSecret,REQUIRED_CLIENT_BUILD,supportedBuild} from './core.mjs';
+import {COURSES,validateRun,publicRun,sha,token,sameSecret,REQUIRED_CLIENT_BUILD,supportedBuild} from './core.mjs';
+import {readSnapshot} from './snapshot-cache.mjs';
 import {MAX_REPLAY,validateReplay,replayCsv,decodeReplay,compressReplay} from './replay.mjs';
 import {readStoredReplay,storeObjectReplay,moveReplayToObjectStorage,replayKey} from './replay-storage.mjs';
 import {retainedSql,retentionEnabled,pruneStatement,qualifiesForBoard,cleanupReplayObjects} from './retention.mjs';
@@ -259,12 +260,11 @@ async function handle(request,env){
  if((path==='/api/v1/snapshot'||path==='/api/v2/snapshot')&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'read:'+ip);
   if(url.searchParams.get('ruleset')!==env.RULESET)return json({error:'Update the game to use this leaderboard.'},409);
-  const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
-  const rows=(await env.DB.prepare(rankedSql).bind(env.RULESET,epoch,url.searchParams.get('imports')==='1'?1:0).all()).results;
+  const {epoch,entries}=await readSnapshot(env,url.searchParams.get('imports')==='1'?1:0);
   // Released clients reject the entire v1 snapshot if replayAvailable is false.
   // Preserve that legacy validation bit only here; downloads always return 410.
   // Website boards and updated clients use truthful availability (v2 snapshot).
-  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replaysEnabled:!replaysDisabled(env),entries:rows.map(r=>({...publicRun(r),...(replaysDisabled(env)?{replayAvailable:path==='/api/v1/snapshot'}:{})}))});
+  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replaysEnabled:!replaysDisabled(env),entries:entries.map(r=>({...r,...(replaysDisabled(env)?{replayAvailable:path==='/api/v1/snapshot'}:{})}))});
  }
  return json({error:'Not found.'},404);
 }

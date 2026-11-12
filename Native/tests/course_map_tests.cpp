@@ -3,19 +3,20 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <fstream>
 #include <stdexcept>
 namespace idas3 {
 const std::vector<std::uint32_t>& Frontend::paint(int,int){throw std::logic_error("Unexpected frontend in the isolated map test");}
 struct CourseMapTestAccess {
     // The geometry the race HUD actually uses, on the source 640x480 canvas.
-    static constexpr float x=14,y=352,w=112,h=112;
+    static constexpr float x=12,y=370,w=96,h=96;
     static inline int size=0,zoom=2;
     static std::vector<std::uint32_t> render(Hud& hud,const Course& course,int width,int height,
-            const VehicleState& car,const VehicleState* rival){
+            const VehicleState& car,const VehicleState* rival,bool night=false){
         hud.resize(width,height);hud.setMapSize(size);hud.setMapZoom(zoom);GdiFlush();
         // A nonzero background makes any write outside the frame visible.
         for(std::size_t i=0;i<std::size_t(width)*height;++i)hud.pixels[i]=0xff000000u|unsigned((i*2654435761u)&0xffffffu);
-        hud.map(course,x,y,w,h,car,rival);
+        hud.map(course,x,y,w,h,car,rival,0,night);
         GdiFlush();return {hud.pixels,hud.pixels+std::size_t(width)*height};
     }
     // The frame in device pixels, for the containment check.
@@ -24,24 +25,59 @@ struct CourseMapTestAccess {
     static float fit(const Hud& hud){return std::min(float(hud.width)/640.f,float(hud.height)/480.f);}
     static void frame(const Hud& hud,int& x0,int& y0,int& x1,int& y1){
         const float f=fit(hud),base=float(hud.height)-480.f*f;
-        const float edge=112.f*(1.f+.25f*size);
-        x0=int(14.f*f);y0=int(base+(464.f-edge)*f);x1=int((14.f+edge)*f)+1;y1=int(base+464.f*f)+1;
+        const float edge=w*(1.f+.25f*size);
+        x0=int(x*f);y0=int(base+(y+h-edge)*f);x1=int((x+edge)*f)+1;y1=int(base+(y+h)*f)+1;
     }
     static std::pair<int,int> center(const Hud& hud){
         const float f=fit(hud),base=float(hud.height)-480.f*f;
-        const float edge=112.f*(1.f+.25f*size);
-        return {int((14.f+edge*.5f)*f),int(base+(464.f-edge*.5f)*f)};
+        const float edge=w*(1.f+.25f*size);
+        return {int((x+edge*.5f)*f),int(base+(y+h-edge*.5f)*f)};
     }
 };
 }
 int main(int argc,char** argv)try{
     using namespace idas3;
-    if(argc!=2)throw std::invalid_argument("game-root required");
+    if(argc!=2&&argc!=3)throw std::invalid_argument("game-root [capture-directory] required");
     const std::filesystem::path root=argv[1];
     Hud hud;hud.loadOriginal(root);
     using A=CourseMapTestAccess;
     unsigned cases=0;
-    const auto course=Course::load(root/"data/courses","s_nm","s_nm",false);
+    for(const auto* circuit:{"k_ez","s_nm"})for(bool reverse:{false,true}){
+        OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find(circuit);
+        auto first=bank.sample(.17f,reverse),later=bank.sample(2.17f,reverse);
+        if(std::abs(first.u-later.u)>1e-5f||std::abs(first.v-later.v)>1e-5f||
+           std::abs(first.du-later.du)>1e-5f||std::abs(first.dv-later.dv)>1e-5f)
+            throw std::runtime_error("Circuit navigation pinned a later-lap opponent at the finish");
+        ++cases;
+    }
+    // Sample a real navigation texture at the exact junction of four texels.
+    // Its filtered value must be their average, with the unfiltered path still
+    // selecting one texel. This catches accidental changes to ordinary UI.
+    {
+        OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find("k_df");
+        auto chunk=bank.model.chunks.at(bank.day);auto& batch=chunk.batches.at(0);
+        const auto& image=bank.textures.at(batch.material[9]);unsigned sx=0,sy=0;bool found=false;
+        for(unsigned y=0;y+1<image.height&&!found;++y)for(unsigned x=0;x+1<image.width;++x){
+            if(image.argb[y*image.width+x]!=image.argb[y*image.width+x+1]){sx=x;sy=y;found=true;break;}
+        }
+        if(!found)throw std::runtime_error("Navigation filter fixture has no contrasting texels");
+        const unsigned samples[]={image.argb[sy*image.width+sx],image.argb[sy*image.width+sx+1],image.argb[(sy+1)*image.width+sx],image.argb[(sy+1)*image.width+sx+1]};
+        unsigned expected=0;
+        for(unsigned shift:{0,8,16,24}){unsigned sum=0;for(auto sample:samples)sum+=(sample>>shift)&255;expected|=((sum+2)/4)<<shift;}
+        batch.ich[0]=8;batch.ich[2]=(1u<<29)|(1u<<20)|(1u<<16)|(1u<<15)|(1u<<13)|(3u<<6);
+        batch.material[2]=1;batch.material[3]=0xffffffffu;
+        for(auto& vertex:batch.vertices){vertex.u=float(sx+1)/image.width;vertex.v=float(sy+1)/image.height;}
+        SpritePlacement placement;placement.invertY=true;placement.authoredHeight=0;placement.sourceTextureFiltering=true;
+        std::array<unsigned,1> filtered{},nearest{};
+        compositeOriginalMenuChunk(filtered,1,1,bank.textures,chunk,placement);
+        placement.sourceTextureFiltering=false;compositeOriginalMenuChunk(nearest,1,1,bank.textures,chunk,placement);
+        if(filtered[0]!=expected||nearest[0]!=samples[3]||filtered==nearest)throw std::runtime_error("Source navigation filtering changed texel colour or ignored the opt-in");
+        ++cases;
+    }
+    auto course=Course::load(root/"data/courses","s_nm","s_nm",false);
+    // The generated fallback still rotates with the physical car. Arcade
+    // banks below instead follow their original navigation-path tangent.
+    course.id="imported-map-test";
     if(course.points.size()<64)throw std::runtime_error("The map test needs a real course");
 
     const auto carAt=[&](float distance,float yawOffset){
@@ -136,6 +172,38 @@ int main(int argc,char** argv)try{
     if(wide[std::size_t(cy)*1280+cx]!=close[std::size_t(cy)*1280+cx])
         throw std::runtime_error("Zoom changed the fixed player marker");
     cases+=2;
+    // The old tests only asserted movement. Pin the actual arcade defaults:
+    // coverage is per-course, artwork/tint come from the recovered bank, and
+    // widening road edges or steering in place cannot zoom/rotate that map.
+    const auto save=[&](const std::filesystem::path& path,const auto& pixels,int w,int h){
+        BITMAPFILEHEADER file{};file.bfType=0x4d42;file.bfOffBits=sizeof(file)+sizeof(BITMAPINFOHEADER);file.bfSize=file.bfOffBits+DWORD(pixels.size()*4);
+        BITMAPINFOHEADER info{};info.biSize=sizeof(info);info.biWidth=w;info.biHeight=-h;info.biPlanes=1;info.biBitCount=32;
+        std::ofstream f(path,std::ios::binary);f.write(reinterpret_cast<const char*>(&file),sizeof(file));f.write(reinterpret_cast<const char*>(&info),sizeof(info));f.write(reinterpret_cast<const char*>(pixels.data()),pixels.size()*4);
+    };
+    for(const auto* id:{"k_ez","s_nm","h_hd","k_df","s_vh","s_uh","n_sy","k_tu"})for(bool reverse:{false,true}){
+        auto c=Course::load(root/"data/courses",id,id,reverse);
+        const auto p=c.sample(c.length*.17f);VehicleState car;car.position=p.center;car.yaw=std::atan2(p.tangent.x,p.tangent.z);
+        A::size=0;A::zoom=2;
+        for(auto [w,h]:{std::pair{640,480},std::pair{1280,720}})for(bool night:{false,true}){
+            const auto image=A::render(hud,c,w,h,car,nullptr,night);
+            auto wideRoad=c;for(auto& l:wideRoad.left)l=l*4;for(auto& r:wideRoad.right)r=r*4;
+            if(image!=A::render(hud,wideRoad,w,h,car,nullptr,night))throw std::runtime_error("Road width changed original navigation");
+            auto turned=car;turned.yaw+=1.2f;
+            if(image!=A::render(hud,c,w,h,turned,nullptr,night))throw std::runtime_error("Car yaw replaced the navigation-path heading");
+            int x0,y0,x1,y1;A::frame(hud,x0,y0,x1,y1);
+            for(int y=0;y<h;++y)for(int x=0;x<w;++x)if(x<x0||x>=x1||y<y0||y>=y1){
+                const auto i=std::size_t(y)*w+x;
+                if(image[i]!=(0xff000000u|unsigned((i*2654435761u)&0xffffffu)))throw std::runtime_error("Original navigation escaped its frame");
+            }
+            A::zoom=0;const auto zoomOut=A::render(hud,c,w,h,car,nullptr,night);A::zoom=2;
+            if(image==zoomOut)throw std::runtime_error(std::string("Original navigation zoom-out has no effect: ")+id+(reverse?" reverse":" forward")+(night?" night":" day"));
+            if(argc==3&&std::string_view(id)=="k_df"){
+                std::filesystem::create_directories(argv[2]);
+                save(std::filesystem::path(argv[2])/(std::string("akina-")+(reverse?"up-":"down-")+(night?"night-":"day-")+std::to_string(w)+".bmp"),image,w,h);
+            }
+            cases+=4;
+        }
+    }
     std::cout<<"PASS "<<cases<<" course map cases across three sizes, three zoom-out levels and four viewports: framed window, "
              <<"fixed player indicator, heading-up rotation, following, opponent in and out of range.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

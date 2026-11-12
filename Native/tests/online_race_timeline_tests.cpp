@@ -35,7 +35,21 @@ struct Baseline {std::vector<std::array<OriginalVehicleInputs,2>> inputs;std::ve
 Baseline record(const std::filesystem::path& root,const OnlineRaceSetup& selected,unsigned frames){
     OnlineRaceSimulation sim(root,selected);std::array<OriginalHostInputState,2> inputState{};Baseline result;
     for(unsigned frame=0;frame<frames;++frame){auto input=driving(sim,inputState,frame);result.inputs.push_back(input);
+        const std::array<std::int32_t,2> previousContactCooldown{sim.car(0).contactSoundCooldown(),sim.car(1).contactSoundCooldown()};
         const auto effect=sim.step(input);result.hashes.push_back(sim.digest());result.contactEffects.push_back(onlineContactEffectsDigest(effect));
+        for(unsigned slot=0;slot<2;++slot){
+            const auto& contact=effect.driving[slot];const auto cooldown=sim.car(slot).contactSoundCooldown();
+            require(contact.acceptedContactCues.size()<=1,"Online frame accepted overlapping non-forced contact cues");
+            if(contact.acceptedContactCues.empty())require(std::uint32_t(cooldown)==std::uint32_t(previousContactCooldown[slot])-1u,
+                "Online contact queue was absent or did not tick exactly once");
+            else require(cooldown>=9&&cooldown<=28,"Online contact cooldown did not use the source 10..29 frame range");
+        }
+        if(frame<selected.showcaseFrames){
+            require(effect.start.countdownRemaining==240&&effect.start.countdownDigit==-1&&!effect.start.runRules&&!effect.start.go,"Showcase advanced countdown/rules");
+            for(unsigned slot=0;slot<2;++slot)require(sim.car(slot).vehicle().transmission.gear00==0,"Showcase engaged a driving gear");
+        }
+        if(frame==selected.showcaseFrames)require(effect.start.countdownRemaining==239&&effect.start.countdownDigit==3,"Countdown did not start after showcase");
+        if(frame==selected.showcaseFrames+179)require(effect.start.go&&effect.start.runRules,"GO timing changed after showcase");
         for(unsigned slot=0;slot<2;++slot){result.impacts+=effect.driving[slot].newImpactRecords.size();const auto& actor=sim.car(slot).actor();
             for(unsigned offset:{0u,4u,8u,24u,28u,32u})require(std::isfinite(actor.f(offset)),"Non-finite baseline pose");}
         require(effect.driving[0].bodyCollision.active==effect.driving[1].bodyCollision.active,"Collision active flag differs between cars");
@@ -232,7 +246,7 @@ Report run(const std::filesystem::path& root,const OnlineRaceSetup& selected,con
 }
 }
 int main(int argc,char** argv)try{
-    if(argc<2)throw std::invalid_argument("online_race_timeline_tests native_root [report.csv] [frames=1800] [cases=18]");
+    if(argc<2)throw std::invalid_argument("online_race_timeline_tests native_root [report.csv] [frames=1800] [cases=18] [imported_root|showcase] [showcase]");
     const std::filesystem::path root=argv[1];
     if(argc>2&&std::string(argv[2])=="--recovery"){wireOutageRecovery(root);return 0;}
     unsigned frames=argc>3?std::stoul(argv[3]):1800,cases=argc>4?std::stoul(argv[4]):18;
@@ -240,7 +254,8 @@ int main(int argc,char** argv)try{
     if(csv)csv<<"case,condition,car0,car1,ping_ms,jitter_ms,loss_pct,confirmed_peer_frames,contacts,wall_impacts,host_rollbacks,client_rollbacks,replayed_frames,max_depth,p99_both_peers_ms,max_both_peers_ms,max_correction_units,history_bytes_both_peers,packets,lost,duplicate,desyncs\n";
     std::uint64_t checked=0,contacts=0;
     for(unsigned scenario=0;scenario<cases;++scenario){auto selected=setup(scenario);
-        if(argc>5){
+        if((argc>5&&std::string(argv[5])=="showcase")||(argc>6&&std::string(argv[6])=="showcase"))selected.showcaseFrames=241;
+        if(argc>5&&std::string(argv[5])!="showcase"){
             selected.condition=6+(scenario&1);selected.wet=(scenario&2)!=0;
             selected.imported=std::make_shared<const idas3::ImportedCourse>(idas3::ImportedCourse::load(argv[5]));
             const auto a=selected.imported->onlineSpawn(scenario&1,0),b=selected.imported->onlineSpawn(scenario&1,1);

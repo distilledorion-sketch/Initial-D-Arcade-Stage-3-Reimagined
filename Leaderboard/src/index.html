@@ -20,7 +20,10 @@ const cars=["AE86 TRUENO","AE86 LEVIN","AE85 LEVIN","SW20 MR2","ZZW30 MR-S","SXE
 // Display grouping only: option values remain the original car IDs used by
 // existing times and replays, including the models appended to the catalog.
 const carGroups=[['Toyota',[0,1,2,3,4,5,6]],['Nissan',[7,8,31,9,10,11,12,13,14]],['Honda',[15,16,17,18]],['Mitsubishi',[19,20,32,33,21]],['Mazda',[22,23,24,34,25,26]],['Subaru',[27,28,29]],['Suzuki',[30]]];
-const nameOf=g=>g.filter(n=>n!==221).map(n=>n>=162&&n<=187?String.fromCharCode(65+n-162):n>=188&&n<=197?String((n-187)%10):n===220?' ':'◇').join('')||'DRIVER';
+// IDs 0..220 from Native/data/original_frontend/name_entry.bin (EUC-JP).
+// Fold fullwidth ASCII/space as the game's name decoder does; 221 is padding.
+const nameGlyphs='アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨッラリルレロワヲンャュョァィゥェォーガギグゲゴザジズゼゾダヂヅデドバビブベボパピプペポあいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよっらりるれろわをんゃゅょぁぃぅぇぉーがぎぐげござじずぜぞだぢづでどばびぶべぼぱぴぷぺぽABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890<>+*‐=;:/\\_|・×○!?()@^〜 ';
+const nameOf=g=>g.filter(n=>n!==221).map(n=>nameGlyphs[n]??'◇').join('')||'DRIVER';
 const time=t=>{let ms=Math.floor(t/6);return Math.floor(ms/60000)+"′"+String(Math.floor(ms/1000)%60).padStart(2,'0')+'″'+String(ms%1000).padStart(3,'0');};
 let snapshot=[],page=0;
 let onlinePage=0,onlineQuery='',onlineLookupSerial=0,onlineDirectoryLoaded=false,onlineSelected=null,onlineActionBusy=false,adminSessionGeneration=0;

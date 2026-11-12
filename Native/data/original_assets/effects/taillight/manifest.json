@@ -1,0 +1,35 @@
+{
+  "schema": "idas3-original-lamp-trails-v1",
+  "source_image_sha256": "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335",
+  "source": "HOSTFS/model/effect/taillight",
+  "anchor_table": "0C33C5F4",
+  "equivalent_driving_anchor_table": "0C337AD0",
+  "owner": "0C1A9CE0",
+  "lamp": "0C1A9320",
+  "strip": "0C1A91A0",
+  "chunks": 8,
+  "textures": 2,
+  "cars": 35,
+  "decoded_polygon_sha256": "701ac28eb02db1e20e2b3b0756cfb3f02da382a66c8acd5ed0d860e5bbc31cd8",
+  "source_sha256": {
+    "taillight_pol.bin.nz": "701ac28eb02db1e20e2b3b0756cfb3f02da382a66c8acd5ed0d860e5bbc31cd8",
+    "taillight_pol.tbl": "dc39da06c04af25c33beebe72cfd912de8c0f4daeb88c0510f1ce2391d28d9c0",
+    "taillight_tex.bin.nz": "dea1f58e9248fc3ca9a4685bfc14543f930bb35db9ffdef6ad67191fd8850f97",
+    "taillight_tex.tbl": "d63baac47f54b5a1df46c17d4fc5db7db6da503ef4c0ea8724f92aef5758412b"
+  },
+  "outputs": {
+    "taillight.idasmesh": {
+      "bytes": 4176,
+      "sha256": "b25ef40813170991fa8387a413d5b3c54ed3e891f76e7dbd9b6a4fddfceee66e"
+    },
+    "anchors.bin": {
+      "bytes": 2280,
+      "sha256": "930da40d75af6079826e0aba46e6c5173a9a23c7bc27d9b69e4e66eac8420251"
+    },
+    "textures\\textures.idastex": {
+      "bytes": 32816,
+      "sha256": "4a4bf76de4dc6d2ee282127e6d163bdd0bd0ec9918a1ef5d7c53fff107886b00"
+    }
+  },
+  "scope": "Unchanged original lamp art, material words and body-local anchors. Runtime visibility, camera history and integration require separate verification."
+}

@@ -31,8 +31,8 @@ int main(int argc,char** argv)try{
     const auto rivals=OriginalRivalData::load(root/"data/original_rival");
     constexpr std::uint32_t collisionBase=0x0CB00000,pathBase=0x0CD00000,alternateBase=0x0CD10000;
     constexpr std::uint32_t stack=0x0CFFF800,stop=0x0F000000,profile=0x0C31C99C;
-    std::size_t frames=0,contacts=0,resets=0;
-    for(std::uint32_t variant=0;variant<4;++variant){
+    std::size_t frames=0,contacts=0,resets=0,acceptedContacts=0,suppressedContacts=0;
+    for(bool contactAudio:{false,true})for(std::uint32_t variant=0;variant<4;++variant){
         OriginalDrivingSession session;
         memory.clear();memory.zeroRegion(0x0C8FF000,0x1C0000);memory.zeroRegion(0x0CFF0000,0x10000);
         memory.zeroRegion(0x0C401B04,1248);memory.zeroRegion(profile,0x500);
@@ -79,6 +79,15 @@ int main(int argc,char** argv)try{
         if(session.rivalInitialized()!=(reset==0)||session.rivalActive()!=(reset==0))throw std::runtime_error("Session rival reset status mismatch");
         //062FA0's race auto-brake clear is part of the existing host reset.
         memory.write32(0x0C9008F4,memory.read32(0x0C9008F4)&~0x2000u);
+        constexpr std::uint32_t contactQueue=0x0D030000;
+        if(contactAudio){
+            memory.zeroRegion(contactQueue,0x1000);memory.write32(contactQueue+40,0x0C31EC1C);
+            // zeroRegion supplies unread backing, not an overwrite of the
+            // preceding reset's writes. This fixture loads a fresh scene queue.
+            memory.write32(contactQueue+48,0);
+            memory.write32(0x0C8FF1CC,contactQueue);memory.write8(0x0C31DE55,0);
+            session.setContactSoundQueueActive(true);
+        }
         for(std::uint32_t tick=0;tick<(reset==0?600u:60u);++tick){
             OriginalVehicleInputs in;in.calibration={128,32,32};in.automaticMode=true;in.gearEnabled=true;
             const int steering=tick>=120&&tick<220?6:tick>=220&&tick<320?-6:0;
@@ -95,7 +104,13 @@ int main(int argc,char** argv)try{
             RefCpu cpu(memory);cpu.fscaHalfWave=halfWave;cpu.r[15]=cpu.r[14]=stack;
             std::vector<std::uint32_t> cues;std::size_t diagnostics=0,audio=0;
             OriginalContactCompletionEffects expectedAudio;
-            cpu.callHooks[0x0C142460]=[&](RefCpu& c){cues.push_back(c.r[4]);};
+            if(contactAudio){
+                cpu.callHooks[0x0C1ED9C0]=[&](RefCpu& c){
+                    if((c.r[4]&0xffff)!=0x02a9)throw std::runtime_error("Unexpected source contact command");
+                    cues.push_back(c.r[4]>>16);
+                };
+                cpu.callHooks[0x0C2223B8]=[](RefCpu& c){c.fpul=c.r[4]/c.r[5];};
+            }else cpu.callHooks[0x0C142460]=[&](RefCpu& c){cues.push_back(c.r[4]);};
             cpu.callHooks[0x0C055D60]=[&](RefCpu&){++diagnostics;};
             cpu.callHooks[0x0C142860]=[&](RefCpu& c){++audio;expectedAudio.engineChannel=c.r[4];expectedAudio.gear=c.r[5];expectedAudio.engineValue=c.getFloat(4);expectedAudio.engineScale=c.getFloat(5);expectedAudio.throttle=c.getFloat(6);};
             const float progress=reset==2?-float(tick*3):0.f;const auto correctionMode=(tick/20)&1u;
@@ -159,6 +174,11 @@ int main(int argc,char** argv)try{
             at(0x0CA9B360,body.count0CA9B360);
             for(unsigned i=0;i<32;++i)for(unsigned j=0;j<3;++j)at(0x0CA9B364+i*12+j*4,bits(body.intersections0CA9B364[i][j]));
             auto nativeCues=effects.feedback142460;if(effects.completion.requestCue4)nativeCues.push_back(4);
+            if(contactAudio){
+                suppressedContacts+=nativeCues.size()-effects.acceptedContactCues.size();
+                nativeCues=effects.acceptedContactCues;acceptedContacts+=nativeCues.size();
+                equal(memory.read32(contactQueue+48),std::uint32_t(session.contactSoundCooldown()),"contact queue cooldown");
+            }
             equal(std::uint32_t(cues.size()),std::uint32_t(nativeCues.size()),"cue count");for(std::size_t i=0;i<cues.size();++i)equal(cues[i],nativeCues[i],"cue id");
             equal(std::uint32_t(diagnostics),effects.invalidScalarDiagnostics,"diagnostics");equal(1,std::uint32_t(audio),"audio call count");
             equal(expectedAudio.engineChannel,effects.completion.engineChannel,"audio channel");equal(expectedAudio.gear,effects.completion.gear,"audio gear");
@@ -166,6 +186,11 @@ int main(int argc,char** argv)try{
             for(std::size_t i=0;i<effects.newImpactRecords.size();++i){
                 const auto& record=effects.newImpactRecords[i];for(std::size_t j=0;j<3;++j)at(impactPositionPointer+std::uint32_t(i*12+j*4),bits(record.position[j]));
                 at(impactMagnitudePointer+std::uint32_t(i*4),bits(record.magnitude));at(impactTickPointer+std::uint32_t(i*4),record.tick);++impactRecords;
+            }
+            if(contactAudio){
+                RefCpu outer(memory);outer.r[4]=contactQueue;outer.r[15]=stack;outer.pr=stop;
+                instructions+=outer.run(0x0C143680,stop,100);session.finishSoundFrame({});
+                equal(memory.read32(contactQueue+48),std::uint32_t(session.contactSoundCooldown()),"outer contact queue tick");
             }
             if(reset==0&&tick==250){
                 const auto savedPlayer=session.vehicle().drive.words;const auto savedRival=session.rivalActor().words;
@@ -178,6 +203,7 @@ int main(int argc,char** argv)try{
     }
     }
     if(!contacts)throw std::runtime_error("Integration fixture did not exercise actual body contact");
+    if(!acceptedContacts||!suppressedContacts)throw std::runtime_error("Rival fixture missed contact acceptance/suppression");
     std::cout<<"PASS "<<resets<<" complete159720 setups and "<<frames<<" sequential159920 player/rival frames, "<<contacts<<" contact frames, "<<comparisons<<" bit comparisons, "<<instructions
-        <<" original instructions, "<<impactRecords<<" impact records. Both Akina/Tsuchisaka directions; primary/alternate paths, profile31 override and sparse disabled resets. Only platform audio/cue/diagnostic/digital-reset hooks; no driving, rival, pair, query, matrix, math, publication or recovery hooks.\n";
+        <<" original instructions, "<<impactRecords<<" impact records. Both Akina/Tsuchisaka directions; primary/alternate paths, profile31 override and sparse disabled resets. Source contact queue enabled/absent, "<<acceptedContacts<<" accepted and "<<suppressedContacts<<" suppressed cues. Enabled contact path executes original queue/RNG instructions with final sound-command sink and integer quotient hooks; engine/diagnostic/digital-reset boundaries remain. No driving, rival, pair, query, matrix, math, publication or recovery hooks.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

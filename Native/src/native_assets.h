@@ -100,6 +100,9 @@ struct SpritePlacement {
     // Menu-chunk asset measurements need pixels even when Unity capture is on.
     // Do not export temporary measurement surfaces or alter global capture state.
     bool softwareOnly=false;
+    // Opt in to the source TSP filter on scrolling navigation textures.
+    // Other UI retains its established sampling until verified separately.
+    bool sourceTextureFiltering=false;
 };
 // CPU triangle compositor shared by native menus and deterministic UI previews.
 // The original strip order is (0,1,2),(2,1,3). UVs, colors and authored positions

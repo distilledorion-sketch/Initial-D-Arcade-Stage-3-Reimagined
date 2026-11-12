@@ -103,6 +103,19 @@ internal static class ResultJournalDriver
         Check(ReadProfile(dir)[18]==2321&&store.Read(8).Equals(Idas3BattleRecord.Fresh),"New reset suppresses old battle progression but preserves earned tuning");
         Check(store.Commit(8,123,true,Idas3BattleRecord.Fresh).Equals(Idas3BattleRecord.Fresh),"Suppressed result still has a receipt preventing later replay");
     }
+    static void TimeoutCardPlay(){
+        var dir=Path.Combine(root,"timeout-card-play");Directory.CreateDirectory(dir);
+        var before=Before();before[1140/4]=1;SaveProfile(dir,before);
+        var after=(uint[])before.Clone();
+        var reward=new Idas3ResultJournal.Reward{selection=13,points=0,before=before,after=after};
+        var request=Idas3ResultJournal.Request(8,9123,-1,false,Idas3BattleRecord.Fresh,Idas3BattleRecord.Fresh,6000,6000);
+        var store=Store(dir);var journal=new Idas3ResultJournal(store);
+        Reject(()=>journal.Settle(request,()=>reward,_=>throw new IOException("simulated result interruption")),"Double-timeout card play retains recovery intent");
+        Check(journal.Recover(r=>Apply(dir,r))&&ReadProfile(dir)[1140/4]==1&&ReadProfile(dir)[18]==before[18],"Double-timeout recovery preserves card uses and points");
+        Check(!journal.Recover(r=>Apply(dir,r))&&store.Read(8).battles==0,"Timeout retry does not consume again or add battle history");
+        journal.Settle(request,()=>throw new Exception("must not prepare twice"),r=>Apply(dir,r));
+        Check(ReadProfile(dir)[1140/4]==1,"Repeated timeout receipt cannot consume plays");
+    }
     static void Signal(string dir){File.WriteAllText(Path.Combine(dir,"ready"),"ready");Thread.Sleep(Timeout.Infinite);}
     static void Child(string dir,string boundary){
         FileStream locked=null;
@@ -153,7 +166,7 @@ internal static class ResultJournalDriver
             root=Path.GetFullPath(args[0]);native=args[1]=="native";
             if(args.Length==4){Child(root,args[3]);return 0;}
             if(Directory.Exists(root))throw new Exception("Fixture directory must be new");
-            Directory.CreateDirectory(root);Basic();Errors();Reset();Interruptions();
+            Directory.CreateDirectory(root);Basic();Errors();Reset();TimeoutCardPlay();Interruptions();
             Console.WriteLine("PASS\t"+checks+" journal assertions completed; native recovery="+native);return 0;
         }catch(Exception error){Console.Error.WriteLine(error);return 1;}
     }

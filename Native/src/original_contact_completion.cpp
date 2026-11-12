@@ -5,7 +5,7 @@ namespace idas3::original {
 OriginalContactCompletionEffects finishOriginalContactFrame(OriginalDriveState& d,
     const idas3::OriginalTransmissionState& transmission,
     OriginalContactCompletionState& state,const OriginalContactCompletionInputs& inputs,
-    const OriginalContactEngineOutput& engineOutput){
+    const OriginalContactEngineOutput& engineOutput,const OriginalContactCueOutput& contactOutput){
     OriginalContactCompletionEffects effects;
     effects.gear=transmission.gear00;
     effects.engineValue=transmission.tach1c>0.f?transmission.tach1c:0.f;
@@ -19,6 +19,9 @@ OriginalContactCompletionEffects finishOriginalContactFrame(OriginalDriveState& 
     state.cues0C900E5C[2]=0;state.cues0C900E5C[3]=0;
     if(timer==9){
         effects.requestCue4=true;
+        // 142460 can consume the shared RNG through its scene queue. It runs
+        // before the history writes and the completion RNG/steering-mask step.
+        if(contactOutput)contactOutput(4,state.randomSeed0C37C778);
         const auto count=d.u(0x3F8)+1u;
         d.setu(0x3F8,count);
         if(std::bit_cast<std::int32_t>(count)<=98){

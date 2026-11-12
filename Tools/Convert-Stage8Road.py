@@ -3,6 +3,7 @@ import json, math, struct
 from pathlib import Path
 import argparse
 from tsubaki_guardrails import align_guardrails
+from tsubaki_fork import partition_rows
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output',type=Path,required=True)
 root=parser.parse_args().output
@@ -23,19 +24,25 @@ for suffix,points in zip(['','_l','_r'],roads):
     (root/f'tsubaki_path{suffix}.bin').write_bytes(struct.pack('<II',n,3)+b''.join(struct.pack('<3f',*p) for p in points))
 # Preserve every road-edge point when the signed 16-bit contact index permits.
 # Coarsening Tsubaki's tight bends can put the wall behind its visible edge.
-samples=list(range(len(collision_roads[0])))
-vertices=[]
-for i in samples:
-    a,c=collision_roads[1][i],collision_roads[2][i];direction=norm(sub(c,a));offset=tuple(x*8 for x in direction)
-    vertices.extend([sub(a,offset),a,c,tuple(x+y for x,y in zip(c,offset))])
+vertices=[];rows=[]
+for points in partition_rows(root,collision_roads):
+    row=[];unique={}
+    for point in points:
+        if point not in unique:
+            unique[point]=len(vertices);vertices.append(point)
+        row.append(unique[point])
+    rows.append(row)
 tri=[]
-for i in range(len(samples)-1):
-    for strip in range(3):
-        a=4*i+strip;c=a+1;d=a+5;e=a+4
+for previous,current in zip(rows,rows[1:]):
+    for strip in range(5):
+        a,c=previous[strip:strip+2];e,d=current[strip:strip+2]
         for ids in [(a,c,d),(a,d,e)]:
+            if len(set(ids))<3:continue
             p,q,r=(vertices[j] for j in ids)
-            if cross(sub(q,p),sub(r,p))[1]<0:ids=(ids[0],ids[2],ids[1])
-            tri.append(list(ids)+[-1,-1,-1,0,0 if strip==1 else -32768])
+            area=cross(sub(q,p),sub(r,p))[1]
+            assert abs(area)>1e-8,'Degenerate fork contact triangle'
+            if area<0:ids=(ids[0],ids[2],ids[1])
+            tri.append(list(ids)+[-1,-1,-1,0,0 if strip in (1,3) else -32768])
 assert len(vertices)<32768 and len(tri)<32768
 edges={}; normals=[[0.,0.,0.] for p in vertices]
 for i,t in enumerate(tri):

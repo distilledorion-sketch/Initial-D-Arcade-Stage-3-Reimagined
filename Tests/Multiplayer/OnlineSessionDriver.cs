@@ -38,6 +38,21 @@ internal static class OnlineSessionDriver
     }
     static void Initialization(){
         using(var f=new Fixture(false)){
+            Check(f.Session.CanSelectTransport(1)&&!f.Session.CanSelectTransport(0)&&!f.Session.CanSelectTransport(-1)&&!f.Session.CanSelectTransport(2),
+                "Menu enables only a valid LAN escape during initial sign-in");
+            f.Session.SelectTransport(1);
+            Check(f.Session.TransportIndex==1&&f.Session.Available&&Get(f.Session,"transport") is Idas3TcpTransport,
+                "LAN can be selected while initial online sign-in is pending");
+            Check(f.Transport.Disposals==1&&!f.Session.Busy,
+                "Choosing LAN disposes the pending online transport and ends its busy state");
+            f.Transport.Fail("Late online initialization failure");
+            Check(f.Session.TransportIndex==1&&f.Session.Available&&f.Session.ErrorText=="",
+                "A retired online provider cannot replace the LAN status with a late failure");
+            f.Session.SelectTransport(0);
+            Check(f.Session.TransportIndex==0&&!f.Session.Available&&f.Session.Busy,
+                "Returning from LAN starts the ordinary online initialization path");
+        }
+        using(var f=new Fixture(false)){
             Check(f.Session.TransportIndex==0&&f.Session.TransportName=="Online","Default provider is online with the EOS provider and without Steam");
             Check(!f.Session.Available&&f.Session.Busy&&f.Session.StatusText=="Signing in","Async initialization exposes busy status before service availability");
             f.Session.InitializeOnlinePresence();Check(f.Transport.Initializations==1,"Repeated menu initialization retains one in-flight service initialization");
@@ -58,6 +73,7 @@ internal static class OnlineSessionDriver
             f.Session.QuickMatch();
             Check(f.Transport.Starts==1&&f.Session.IsQuickMatching&&f.Session.Busy,"Quick Match uses the managed queue without fallback room discovery");
             Check(f.Session.StatusText==f.Transport.Status&&f.Session.StateName=="Matching","Queued search status comes from the service provider");
+            Check(!f.Session.CanSelectTransport(1),"Menu does not offer transport switching during a queued search");
             f.Session.SelectTransport(1);Check(f.Session.TransportIndex==0,"Transport cannot change during an active queued search");
             f.Transport.ReentrantCancellation=true;f.Session.CancelQuickMatch();
             Check(f.Transport.Cancellations==1&&f.Transport.Leaves==1&&!f.Session.IsQuickMatching&&!f.Session.Busy,"Cancel dispatches one queue cancellation and one room leave");

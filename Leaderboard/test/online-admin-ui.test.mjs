@@ -52,6 +52,28 @@ test('public rankings never request or display the private player directory',asy
  assert.equal(ui.calls.some(call=>call.path.startsWith('/api/admin/')),false);
 });
 
+test('public and admin run tables show Japanese and symbol names as literal text',async()=>{
+ const runs=[
+  {nameGlyphs:[0,6,20,221,221],expected:'アキナ'},
+  {nameGlyphs:[198,163,199,221,221],expected:'<B>'},
+  {nameGlyphs:[198,200,211,212,199],expected:'<+×○>'},
+ ].map((entry,i)=>({id:String(i),player:firstId,condition:0,weather:0,car:0,
+  ticks6000:1200000+i,night:0,manual:1,points:100,epoch:1,...entry}));
+ for(const pathname of ['/','/admin']){
+  const ui=app(pathname,path=>response(path.startsWith('/api/admin/runs')?{runs,epoch:1}:
+   path.startsWith('/api/admin/online-players')?{players:[],page:0,hasMore:false}:
+   path.startsWith('/api/v1/board')?{entries:runs,generatedAt:1730000000,epoch:1}:{available:false}));
+  await tick();
+  const rows=ui.$(pathname==='/'?'rows':'adminRows').children;
+  assert.equal(rows.length,runs.length);
+  rows.forEach((row,i)=>{
+   const cell=row.children[pathname==='/'?1:0];
+   assert.equal(cell.textContent,runs[i].expected+(pathname==='/'?'':'\n'+firstId.slice(0,8)));
+   assert.equal(cell.children.length,0,'A name must not create HTML elements');
+  });
+ }
+});
+
 test('an unauthenticated admin page cannot fetch the directory',async()=>{
  const ui=app('/admin',()=>response({error:'Sign in required.'},401));await tick();
  assert.equal(ui.$('adminBody').hidden,true);

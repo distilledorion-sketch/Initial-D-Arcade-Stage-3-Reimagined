@@ -4,6 +4,7 @@ using System.Collections.Generic;
 // Only external SDK/Unity boundaries are substituted. The production platform
 // lifecycle, callback queue and authentication state machine compile unchanged.
 namespace UnityEngine {
+    public static class Time {public static int frameCount;}
     public class Object {public static void DontDestroyOnLoad(Object value){}}
     public class MonoBehaviour:Object {}
     public enum HideFlags {HideInHierarchy}

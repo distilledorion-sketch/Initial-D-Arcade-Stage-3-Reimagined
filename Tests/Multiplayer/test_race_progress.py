@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--compiler')
     parser.add_argument('--report-dir', type=Path, required=True)
     parser.add_argument('--baseline', action='store_true')
+    parser.add_argument('--sustained', action='store_true')
     args = parser.parse_args()
     proof = args.report_dir.resolve()
     proof.mkdir(parents=True, exist_ok=False)
@@ -45,7 +46,7 @@ def main():
     (proof / 'compile.log').write_text(result.stdout + result.stderr, encoding='utf-8')
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
-    run = subprocess.run([str(exe), *(['baseline'] if args.baseline else [])], capture_output=True, text=True, encoding='utf-8', timeout=60)
+    run = subprocess.run([str(exe), *(['baseline'] if args.baseline else ['sustained'] if args.sustained else [])], capture_output=True, text=True, encoding='utf-8', timeout=60)
     (proof / 'checks.log').write_text(run.stdout + run.stderr, encoding='utf-8')
     checks = [line.split('\t', 1)[1] for line in run.stdout.splitlines() if line.startswith('PASS\t')]
     report = dict(passed=run.returncode == 0, baseline=args.baseline, scope=__doc__, count=len(checks), checks=checks,

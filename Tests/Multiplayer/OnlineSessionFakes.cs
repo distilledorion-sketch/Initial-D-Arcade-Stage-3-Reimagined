@@ -56,8 +56,8 @@ namespace Idas3.Multiplayer
         }
         internal void Fail(string reason)=>Error?.Invoke(reason);
         internal void AttachRoom(){IsHost=true;RoomCode="ABC123";if(!IsMatching)IsBusy=false;}
-        internal void EstablishRoute(){
-            IsMatching=IsBusy=false;Connected=IsHost=true;RoomCode="ABC123";
+        internal void EstablishRoute(bool host=true){
+            IsMatching=IsBusy=false;Connected=true;IsHost=host;RoomCode="ABC123";
             Status="Peer route established";PeerChanged?.Invoke();
         }
         internal void Deliver(byte[] packet)=>Message?.Invoke(packet);
@@ -81,7 +81,12 @@ namespace Idas3.Multiplayer
             if(selection!=13)return 0;words[4]=8;return 2;
         }
         internal static int Idas3MultiplayerCurrentCar()=>13;
+#if IDAS3_RACE_LOADING_TEST
+        internal static int Starts,Releases;
+        internal static int Idas3MultiplayerEnableAuthorityRules(ulong race,int automatic,int boost,int collisions)=>1;
+#else
         internal static int Idas3MultiplayerEnableAuthorityRules(ulong race,int automatic,int boost,int collisions)=>throw Unexpected();
+#endif
 #if IDAS3_RACE_PROGRESS_TEST
         internal static Idas3AuthorityStatus Sample=new Idas3AuthorityStatus{size=96,version=1,winner=-3};
         internal static int Disconnects,InputReceives;
@@ -97,9 +102,16 @@ namespace Idas3.Multiplayer
         internal static int Idas3MultiplayerAuthorityStatus(ref Idas3AuthorityStatus status)=>throw Unexpected();
         internal static int Idas3MultiplayerGetRemoteSnapshot(ref Idas3CarSnapshot snapshot)=>throw Unexpected();
 #endif
+#if IDAS3_RACE_LOADING_TEST
+        internal static Action StartAction;
+        internal static int Idas3MultiplayerStartSaved(ref Idas3MultiplayerConfig config,int selection,uint[] local,uint[] remote,uint count){++Starts;StartAction?.Invoke();return 1;}
+        internal static int Idas3MultiplayerSetBattleRecords(ref Idas3BattleRecord local,ref Idas3BattleRecord remote)=>1;
+        internal static int Idas3MultiplayerSetGo(int released){Releases+=released;return 1;}
+#else
         internal static int Idas3MultiplayerStartSaved(ref Idas3MultiplayerConfig config,int selection,uint[] local,uint[] remote,uint count)=>throw Unexpected();
         internal static int Idas3MultiplayerSetBattleRecords(ref Idas3BattleRecord local,ref Idas3BattleRecord remote)=>throw Unexpected();
         internal static int Idas3MultiplayerSetGo(int released)=>throw Unexpected();
+#endif
 #if IDAS3_RESULT_SETTLEMENT_TEST
         internal static int ResultCalls,PointsCalls,RecordCalls,NativeAwards,PointsToAward,PresentedPoints;
         internal static uint PresentedLevel;
@@ -130,7 +142,9 @@ namespace Idas3.Multiplayer
         internal static int Idas3MultiplayerGetLocalSnapshot(ref Idas3CarSnapshot snapshot)=>throw Unexpected();
 #endif
         internal static int Idas3MultiplayerApplyRemoteSnapshot(ref Idas3CarSnapshot snapshot)=>throw Unexpected();
-#if IDAS3_RECORD_STORAGE_INTEGRATION
+#if IDAS3_RACE_LOADING_TEST
+        internal static int Idas3MultiplayerLeave()=>1;
+#elif IDAS3_RECORD_STORAGE_INTEGRATION
         internal static int Idas3MultiplayerLeave(){++NativeLeaves;OnNativeLeave?.Invoke();return 1;}
 #else
         internal static int Idas3MultiplayerLeave()=>throw Unexpected();

@@ -76,4 +76,27 @@ OriginalCardCheckEvents tickOriginalCardCheck(OriginalCardCheckState& s,Original
     out.parentRequested=transition.parentRequested;
     return out;
 }
+OriginalCardCheckEvents tickOriginalRenewCardCheck(OriginalRenewCardCheckState& s,
+    OriginalBattleProfile& p,bool confirm,bool nextPage,bool cardWriteReady){
+    auto& card=s.card;
+    card.confirm516=confirm?1:0;card.view520=nextPage?16:0;
+    const auto kind=p.byte(1192);
+    switch(s.writePhase532){
+    case 0:
+        card.canConfirm524=0;
+        if((kind==1&&cardWriteReady)||kind==2)++s.writePhase532;
+        break;
+    case 1:
+        if(kind==1){
+            ++s.writeFrame536;
+            if(float(signedWord(s.writeFrame536))>150.f)s.writePhase532=2;
+            if(signedWord(s.writeFrame536)<=60)break;
+        }
+        card.canConfirm524=1;
+        break;
+    case 2:card.canConfirm524=1;break;
+    default:break;
+    }
+    return tickOriginalCardCheckTransition(card,p);
+}
 }

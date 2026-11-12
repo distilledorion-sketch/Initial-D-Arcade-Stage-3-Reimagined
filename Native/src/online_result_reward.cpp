@@ -17,7 +17,7 @@ std::filesystem::path OnlineResultReward::directory(int selection)const{
     return slots.profileDirectory(unsigned(selected.slot));
 }
 OnlineResultReward::Plan OnlineResultReward::prepare(int selection,
-        const original::OriginalBattleProfile& selected,bool won)const{
+        const original::OriginalBattleProfile& selected,bool won,bool awardPoints)const{
     const auto target=decodeOnlineCarSelection(selection);
     const LocalDriverProfiles profiles(directory(selection));
     if(target.car<0||selected.u(16)!=unsigned(target.car)||selected.u(72)>999999999)
@@ -27,8 +27,11 @@ OnlineResultReward::Plan OnlineResultReward::prepare(int selection,
         throw std::runtime_error("Online tuning profile could not be read; existing files were preserved");
     Plan plan;plan.selection=selection;plan.before=stored.profile;plan.after=selected;
     const auto balance=selected.u(72);
-    const auto earned=std::min(std::uint64_t(balance)+(won?2000u:1000u),std::uint64_t(999999999));
+    const auto earned=std::min(std::uint64_t(balance)+(awardPoints?(won?2000u:1000u):0u),std::uint64_t(999999999));
     plan.after.setu(72,std::uint32_t(earned));plan.points=std::uint32_t(earned-balance);
+    // Card entry owns the counter. Results (including rematches and timeouts)
+    // retain its persisted value rather than charging another use.
+    plan.after.setu(1140,plan.before.u(1140));
     return plan;
 }
 void OnlineResultReward::apply(const Plan& plan)const{

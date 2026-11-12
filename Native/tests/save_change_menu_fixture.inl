@@ -11,6 +11,7 @@ struct SaveChangeFixtureState {
     unsigned fullTuneCandidate=2;
     std::map<std::string,std::vector<char>> transmissionFiles,transmissionOtherSlot;
     std::array<LocalDriverProfiles::Loaded,35> transmissionProfiles{};
+    std::set<std::pair<int,unsigned>> transmissionAcceptedCards;
     LocalSaveSlots::Slot transmissionSlot{};
     bool transmissionSnapshot=false;
     bool seeded=false;
@@ -343,6 +344,7 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
         const LocalDriverProfiles profiles(app.saveSlots.profileDirectory(0));
         for(unsigned car=0;car<35;++car)saveChangeFixture.transmissionProfiles[car]=profiles.load(car);
         saveChangeFixture.transmissionFiles=saveChangeFiles(app);
+        saveChangeFixture.transmissionAcceptedCards=app.acceptedCards;
         saveChangeFixture.transmissionOtherSlot=saveDeleteFiles(app,1);
         saveChangeFixture.transmissionSnapshot=true;return;
     }
@@ -371,6 +373,9 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
         saveChangeCheck(app.frontend.automatic==(transmission==0)&&app.frontend.battleProfile.u(68)==transmission,
             "Confirmed transmission and the live selected-car profile disagree");
         auto expected=saveChangeFixture.transmissionProfiles.at(car).profile;
+        // A newly accepted card consumes one use; changing transmission within
+        // its existing session does not. Other profile bytes remain exact.
+        if(!saveChangeFixture.transmissionAcceptedCards.contains({0,car}))expected.setu(1140,expected.u(1140)-1);
         original::applyOriginalAcceptedCardFlag(expected);original::finishOriginalDriverSetupFlag(expected);expected.setByte(1192,0);
         const auto& identity=saveChangeFixture.transmissionSlot;
         expected.setu(76,identity.nameLength);
@@ -407,7 +412,11 @@ void prepareSaveChangeMenuFixture(App& app,unsigned scene){
         const auto saved=profiles.load(0);
         saveChangeCheck(saved.origin==LocalDriverProfiles::Origin::Saved&&saved.profile.u(68)==1,"Continue regression did not restore the original Manual selection");
         auto expected=saveChangeFixture.first;expected.setu(1176,saved.profile.u(1176));
-        saveChangeCheck(saved.profile.words==expected.words,"Continue changed the original car beyond its transmission and menu timer");
+        // The dedicated acceptance checks assert exact counts. This fixture
+        // compares the unrelated progress after several explicit card entries.
+        saveChangeCheck(saved.profile.u(1140)<=expected.u(1140),"Continue granted card uses");
+        expected.setu(1140,saved.profile.u(1140));
+        saveChangeCheck(saved.profile.words==expected.words,"Continue changed the original car beyond transmission, card uses and menu timer");
         saveChangeFixture.first=saved.profile;saveChangeFixture.files=saveChangeFiles(app);return;
     }
     throw std::invalid_argument("Unknown save-change menu fixture");

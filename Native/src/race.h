@@ -1,5 +1,7 @@
 #pragma once
 #include "math_types.h"
+#include "replay_roadside_dust.h"
+#include "replay_car_smoke.h"
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -40,11 +42,13 @@ struct ReplayDetail {
 };
 static_assert(sizeof(ReplayDetail)==132);
 inline constexpr std::array<unsigned,12> replayProfileOffsets{32,64,44,48,52,56,60,76,152,156,160,164};
-struct ReplayFrame { std::uint64_t tick; Vec3 position; float yaw,speed; int gear; ReplayDetail detail{}; };
+struct ReplayFrame { std::uint64_t tick; Vec3 position; float yaw,speed; int gear; ReplayDetail detail{};std::uint32_t dustStep=0;int backfire=-1; };
 class Replay {
 public:
     static constexpr std::size_t maxFrames=60*60*30; // Thirty minutes at 60 Hz.
     std::vector<ReplayFrame> frames;
+    std::vector<ReplayRoadsideDustFrame> dustFrames;
+    std::vector<ReplayCarSmokeFrame> smokeFrames;
     bool truncated=false;
     bool detailed=false;
     std::array<std::uint32_t,12> profile{};
@@ -52,7 +56,12 @@ public:
     // Exact original finish timestamp; zero means telemetry without a finish.
     std::uint32_t finishTicks6000=0;
     void beginCapture(bool details);
-    void record(std::uint64_t tick,Vec3 position,float yaw,float speed,int gear,const ReplayDetail* detail=nullptr);
+    void beginBackfireCapture();
+    void beginDustCapture();
+    void recordDust(const ReplayRoadsideDustFrame& input);
+    void beginSmokeCapture();
+    void recordSmoke(const ReplayCarSmokeFrame& input);
+    void record(std::uint64_t tick,Vec3 position,float yaw,float speed,int gear,const ReplayDetail* detail=nullptr,int backfire=-1);
     bool save(const std::string& filename) const;
     // Format once for last-run and optional best-run copies. Each file retains
     // independent publication/failure handling; an empty second path skips it.
@@ -61,6 +70,8 @@ public:
     // Portable little-endian pose replay: 20 Hz plus the exact final frame.
     std::vector<std::uint8_t> sharedBytes(std::uint32_t finish) const;
     ReplayFrame sample(double tick) const;
+private:
+    bool dustCapture_=false,smokeCapture_=false,backfireCapture_=false;
 };
 // Wall-clock accumulation is separate from simulation time. Focus/pause clears it.
 class FixedClock {

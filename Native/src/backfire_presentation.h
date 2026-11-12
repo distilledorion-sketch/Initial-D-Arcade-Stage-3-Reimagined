@@ -4,14 +4,21 @@
 #include "original_matrix.h"
 #include "original_backfire_lighting.h"
 #include "original_car_lighting.h"
+#include "original_backfire.h"
 
 namespace idas3 {
 // Recovered bkfire chunks 0/1, exhaust mounts and rotations. The host binds
 // the flash to its accepted engine cue instead of adding the original draw
-// owner's random draw to gameplay/network state. No extra sound is played.
+// owner's random draw to gameplay/network state. Ending playback instead
+// supplies the source-owned frame, variation and recorded world transform.
 class BackfirePresentation {
 public:
     NativeTextureBank textures;
+    static bool eligible(const original::OriginalCarAppearanceConfig& appearance){
+        const unsigned muffler=(appearance.word>>19)&7u;
+        // Source17D6C0; reject out-of-catalog mount indices in corrupt data.
+        return appearance.car==19&&(appearance.word&0x40000000u)&&muffler>=1&&muffler<=3;
+    }
     static bool visible(int frame,const original::OriginalCarAppearanceConfig& appearance){
         const unsigned muffler=(appearance.word>>19)&7u;
         return frame>=0&&frame<=1&&appearance.car==19&&muffler>=1&&muffler<=3;
@@ -52,6 +59,16 @@ public:
         for(unsigned row=0;row<4;++row)for(unsigned col=0;col<4;++col)instance.transform[row*4+col]=matrix.elements[col*4+row];
         const auto first=mesh.ranges.size();mesh.originalCar(model_,assembly,body,yaw,pitch,roll,textureBase);
         for(auto i=first;i<mesh.ranges.size();++i){mesh.ranges[i].emissive=true;mesh.ranges[i].viewMask=viewMask;}
+        return true;
+    }
+    bool appendOriginal(Mesh& mesh,int frame,const original::OriginalCarAppearanceConfig& appearance,
+            const original::OriginalMatrix& world,float variation,unsigned textureBase)const{
+        if(!eligible(appearance)||!visible(frame,appearance)||model_.chunks.empty())return false;
+        const auto matrix=original::originalBackfireDrawMatrix(world,((appearance.word>>19)&7u)-1,variation,trig_);
+        NativeAssembly assembly;auto& instance=assembly.instances.emplace_back();instance.chunk=unsigned(frame);
+        for(unsigned row=0;row<4;++row)for(unsigned col=0;col<4;++col)instance.transform[row*4+col]=matrix.elements[col*4+row];
+        const auto first=mesh.ranges.size();mesh.originalCar(model_,assembly,{0,0,0},0,textureBase);
+        for(auto i=first;i<mesh.ranges.size();++i){mesh.ranges[i].emissive=true;mesh.ranges[i].viewMask=1;}
         return true;
     }
 private:

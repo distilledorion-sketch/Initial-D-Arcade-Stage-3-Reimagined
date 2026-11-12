@@ -50,7 +50,11 @@ namespace UnityEngine {
 }
 public static class Idas3Native {
     public static string Error()=>"Fixture must not invoke native game state";
+#if IDAS3_RACE_LOADING_TEST
+    public static int Idas3SceneSetPreRaceNames(string local,string remote)=>1;
+#else
     public static int Idas3SceneSetPreRaceNames(string local,string remote)=>throw new InvalidOperationException(Error());
+#endif
 }
 public static class Idas3CourseCatalog {
     public const int Count=18;

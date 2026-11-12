@@ -1,0 +1,37 @@
+{
+  "schema": "idas3-original-smoke-grids-v1",
+  "source_polygon_sha256": "edfcaa7af093897087cc88ea779248e118535b0b86eb27c89ec971779a9abbb5",
+  "source_table_sha256": "6c90aa047f0f138539e7f17e6176b0d20b836ff727717812dd1af5d08a5b4d8f",
+  "runtime_sha256": "9ced1134dc2cab5e975282e0e63992297c7afb9625ba5a411e066dbeb33d1cff",
+  "runtime_bytes": 257048,
+  "grids": [
+    {
+      "chunk": 0,
+      "width": 16,
+      "height": 16,
+      "vertices": 480,
+      "triangles": 450,
+      "source_offset": 0,
+      "source_bytes": 11712
+    },
+    {
+      "chunk": 1,
+      "width": 20,
+      "height": 20,
+      "vertices": 760,
+      "triangles": 722,
+      "source_offset": 11712,
+      "source_bytes": 18432
+    },
+    {
+      "chunk": 2,
+      "width": 32,
+      "height": 32,
+      "vertices": 1984,
+      "triangles": 1922,
+      "source_offset": 30144,
+      "source_bytes": 47808
+    }
+  ],
+  "scope": "Original grid geometry, strip topology, normals, UV indices and material words. No geometry or texture simplification. Runtime controller integration and visual validation remain separate."
+}

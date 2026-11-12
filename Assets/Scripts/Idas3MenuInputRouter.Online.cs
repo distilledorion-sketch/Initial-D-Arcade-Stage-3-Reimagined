@@ -16,7 +16,14 @@ internal sealed partial class Idas3MenuInputRouter
     private int onlineTextBlockThroughFrame = -1;
     internal bool OnlineToggleHeld => previousOnline.Toggle;
     internal bool OnlineClosingControls => onlineClosingControls;
-    internal void OnlineClosed() { onlineClosingControls = true; }
+    internal void OnlineClosed()
+    {
+        onlineClosingControls = true;
+        // The closing Escape/Start also belongs to the online overlay after
+        // its transition frames. Mask it from pause and the native race until
+        // released, while allowing held throttle and steering to resume.
+        suppressClosingControls = true;
+    }
     internal void OnlineTextEnded(int frame)
     {
         onlineTextReleaseBlocked = true;

@@ -12,7 +12,7 @@ public:
         original::OriginalBattleProfile before{},after{};
     };
     explicit OnlineResultReward(std::filesystem::path saveRoot):root_(std::move(saveRoot)){}
-    Plan prepare(int selection,const original::OriginalBattleProfile& selected,bool won)const;
+    Plan prepare(int selection,const original::OriginalBattleProfile& selected,bool won,bool awardPoints=true)const;
     void apply(const Plan& plan)const;
 private:
     std::filesystem::path directory(int selection)const;

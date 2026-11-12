@@ -138,7 +138,7 @@ namespace Idas3.Multiplayer
                     throw new InvalidDataException("Invalid empty result tuning snapshot.");
             }else{
                 int car=reward.selection<40?reward.selection-5:(reward.selection-40)%35;
-                if(reward.selection<5||reward.selection>=215||car!=entry.car||entry.winner<0||
+                if(reward.selection<5||reward.selection>=215||car!=entry.car||(entry.winner<0&&reward.points!=0)||
                     reward.before.Length!=307||reward.after.Length!=307||reward.before[4]!=(uint)car||reward.after[4]!=(uint)car||
                     reward.after[18]>999999999||reward.after[18]<reward.points)
                     throw new InvalidDataException("Invalid selected result tuning snapshot.");

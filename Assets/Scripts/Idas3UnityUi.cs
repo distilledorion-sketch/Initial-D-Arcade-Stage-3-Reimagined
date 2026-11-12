@@ -241,7 +241,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     }
     Material GetMaterial(Draw draw)
     {
-        ulong key = draw.tsp | ((ulong)(draw.pcw & 12) << 32) | ((ulong)(draw.flags & 5) << 40);
+        ulong key = draw.tsp | ((ulong)(draw.pcw & 12) << 32) | ((ulong)(draw.flags & 21) << 40);
         if (materials.TryGetValue(key, out var material)) return material;
         material = new Material(shader) { name = "Original UI material " + key.ToString("X"), hideFlags = HideFlags.DontSave };
         bool original = (draw.flags & 1) != 0;
@@ -249,6 +249,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         if ((draw.flags & 4) != 0) dst = 1;
         material.SetInteger("_Tsp", unchecked((int)draw.tsp)); material.SetInteger("_Pcw", (int)draw.pcw);
         material.SetInteger("_Original", original ? 1 : 0); material.SetInteger("_SourceIsOne", src == 1 ? 1 : 0);
+        material.SetInteger("_SourceTextureFiltering", (draw.flags & 16) != 0 ? 1 : 0);
         material.SetInt("_SrcBlend", (int)Blend(src, true)); material.SetInt("_DstBlend", (int)Blend(dst, false));
         materials.Add(key, material); return material;
     }
@@ -494,6 +495,14 @@ public sealed class Idas3UnityUi : MonoBehaviour
         check(aligned,"HUD pieces separated or unrelated layers changed");
     }
     // Explicit captures render the same overlay cameras as the normal player.
+    internal Vector3[] ReplayCheckPositions()
+    {
+        var frame=new Frame{size=(uint)Marshal.SizeOf<Frame>()};
+        if(Idas3UiGetFrame(ref frame)!=1)throw new InvalidOperationException("No replay UI frame");
+        var positions=new Vector3[frame.vertexCount];
+        for(int i=0;i<positions.Length;++i)positions[i]=meshVertices[i].position;
+        return positions;
+    }
     public void RenderOverlayForCapture()
     {
         if(source==null||sceneRenderer!=null&&!sceneRenderer.ShowGameHud)return;

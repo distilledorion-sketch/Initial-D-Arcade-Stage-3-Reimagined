@@ -14,9 +14,12 @@ Shader "Idas3/Original UI"
    sampler2D _MainTex;
    float4 _MainTex_TexelSize, _Canvas, _Clip, _Tint;
    float _Opacity;
-   uint _Tsp, _Pcw, _Original, _SourceIsOne;
+   uint _Tsp, _Pcw, _Original, _SourceIsOne, _SourceTextureFiltering;
    struct Input { float4 position:POSITION; float2 uv:TEXCOORD0; float4 color:COLOR; float4 offset:TEXCOORD1; };
-   struct Output { float4 position:SV_POSITION; float2 uv:TEXCOORD0; float4 color:COLOR; float4 offset:TEXCOORD1; float2 pixel:TEXCOORD2; };
+   // MSAA pixel centers can lie outside a covered sprite edge. Keep UVs
+   // inside the primitive so negative wrapping UVs cannot sample its last
+   // texture row below the artwork (notably replay TIME EXTENSION).
+   struct Output { float4 position:SV_POSITION; centroid float2 uv:TEXCOORD0; float4 color:COLOR; float4 offset:TEXCOORD1; float2 pixel:TEXCOORD2; };
    Output vert(Input i) { Output o; o.position=float4(2*i.position.x/_Canvas.x-1,1-2*i.position.y/_Canvas.y,0,1); o.position.y*=_ProjectionParams.x;
     o.uv=i.uv; o.color=i.color; o.offset=i.offset; o.pixel=i.position.xy; return o; }
    float coord(float uv,float size,bool clampUv,bool mirrorUv) {
@@ -24,10 +27,20 @@ Shader "Idas3/Original UI"
     float base=floor(uv), part=uv-base; if(mirrorUv && (int(base)&1))part=1-part;
     return (clamp(floor(part*size),0,size-1)+.5)/size;
    }
+   float4 sourceTexel(float2 at) {
+    float2 uv=float2(coord(at.x,_MainTex_TexelSize.z,(_Tsp&(1u<<16))!=0,(_Tsp&(1u<<18))!=0),coord(at.y,_MainTex_TexelSize.w,(_Tsp&(1u<<15))!=0,(_Tsp&(1u<<17))!=0));
+    return tex2Dlod(_MainTex,float4(uv,0,0));
+   }
    float4 frag(Output i):SV_TARGET {
     clip(i.pixel-_Clip.xy); clip(_Clip.zw-i.pixel);
-    float2 uv=float2(coord(i.uv.x,_MainTex_TexelSize.z,(_Tsp&(1u<<16))!=0,(_Tsp&(1u<<18))!=0),coord(i.uv.y,_MainTex_TexelSize.w,(_Tsp&(1u<<15))!=0,(_Tsp&(1u<<17))!=0));
-    float4 sample=tex2Dlod(_MainTex,float4(uv,0,0)); if(_Tsp&(1u<<19))sample.a=1;
+    float4 sample;
+    if(_SourceTextureFiltering && ((_Tsp>>13)&3u)) {
+     float2 at=i.uv*_MainTex_TexelSize.zw-.5, weight=frac(at);
+     float2 base=(floor(at)+.5)*_MainTex_TexelSize.xy;
+     sample=lerp(lerp(sourceTexel(base),sourceTexel(base+float2(_MainTex_TexelSize.x,0)),weight.x),
+                 lerp(sourceTexel(base+float2(0,_MainTex_TexelSize.y)),sourceTexel(base+_MainTex_TexelSize.xy),weight.x),weight.y);
+    } else sample=sourceTexel(i.uv);
+    if(_Tsp&(1u<<19))sample.a=1;
     float4 vertex=i.color;if(_Original && !(_Tsp&(1u<<20)))vertex.a=1;
     float4 value=vertex;
     if(_Pcw&8) { uint env=(_Tsp>>6)&3;

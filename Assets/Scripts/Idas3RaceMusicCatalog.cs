@@ -12,7 +12,7 @@ internal sealed class Idas3RaceMusicCatalog
     {
         public uint size,version,opponentEligible,count;
         public int selectedIndex,activeIndex;
-        public uint opponentId,reserved;
+        public uint opponentId,hintVisible;
     }
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)]
     private static extern int Idas3SceneGetRaceMusicState(ref MusicState state);

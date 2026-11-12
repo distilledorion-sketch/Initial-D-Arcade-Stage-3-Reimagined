@@ -42,15 +42,10 @@ namespace Idas3.Multiplayer
             if (!force && now < retryAt) return false;
             try
             {
-                if (winner == -1)
-                {
-                    // Double timeout has neither tuning nor history to persist.
-                    ApplyNative();Record=previous;
-                }
-                else {
-                    var saved=journal.Settle(request,PrepareReward,_=>{DurableIntent=true;ApplyNative();});
-                    Record=saved.record;PointsEarned=saved.battlePoints;
-                }
+                // Journal the receipt even for a double timeout, without points
+                // or a win/loss. Card entry, not race results, owns remaining uses.
+                var saved=journal.Settle(request,PrepareReward,_=>{DurableIntent=true;ApplyNative();});
+                Record=saved.record;PointsEarned=saved.battlePoints;
                 Complete = true; Failure = null;
                 return true;
             }

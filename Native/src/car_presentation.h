@@ -20,6 +20,7 @@ public:
     // Advance once per original 60 Hz presentation frame, independently of render FPS.
     // The first requested state initializes immediately, including fresh night cars.
     void advanceOriginalFrame(bool lightsOn);
+    OriginalHeadlightState nextHeadlightState(bool lightsOn)const;
     void resetHeadlights(){headlights_.reset();}
     const OriginalHeadlightState& headlightState()const{return headlights_;}
     // Recorded attract frames restore their already evaluated60Hz motor state.
@@ -29,6 +30,7 @@ public:
     const NativeAssembly& assembly()const{return posedAssembly_;}
     const NativeAssembly& profilePlateAssembly()const{return profilePlateAssembly_;}
     bool usesPlayerProfile()const{return profileMaterials_.has_value();}
+    const original::OriginalCarAppearanceConfig& appearance()const{return profileInput_.appearance;}
     std::size_t lightingAttachmentCount(bool lightsOn,bool braking)const{return lightingStates_[unsigned(braking)+2*unsigned(lightsOn)].extras.instances.size();}
     std::size_t animatedInstanceCount()const{return programs_.size();}
     std::span<const std::uint32_t> illuminatedChunks()const{return illuminatedChunks_;}
@@ -39,6 +41,9 @@ public:
     // explicitly selected layer masks and resource bindings.
     void raceReflections(bool enabled){profileInput_.overlayLayers=enabled?1u:0u;}
     std::array<Vec3,4> wheelOrigins()const;
+    // Source028940 mount points for original effects. Unlike host collision
+    // probes these retain authored Y and exclude cosmetic wheel offsets.
+    std::array<std::array<float,3>,4> originalEffectOrigins()const;
     std::size_t materialPatchCount()const{return materials_.size();}
 private:
     static CarPresentation loadAppearance(const std::filesystem::path& root,const std::filesystem::path& base,unsigned carId,std::size_t chunkCount);

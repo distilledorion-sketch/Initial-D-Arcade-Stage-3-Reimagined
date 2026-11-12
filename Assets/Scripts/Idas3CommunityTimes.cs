@@ -5,17 +5,19 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
 
 // HTTP service is optional and independent of multiplayer, the simulation and saves.
 // No network wait is ever made from the game's Update or native render lock.
-public sealed class Idas3CommunityTimes : MonoBehaviour
+public sealed partial class Idas3CommunityTimes : MonoBehaviour
 {
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
-    public const string RequiredSubmissionBuild="0.3.95-community-replays.53";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.54";
     public const int FirstReplaySeason=2;
     [Serializable] public sealed class Run {
         public string id,ruleset,build;
@@ -25,13 +27,19 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         public int[] nameGlyphs,splits;
     }
     [Serializable] public sealed class Snapshot {public string ruleset;public int epoch;public long generatedAt;public Run[] entries;}
-    [Serializable] private sealed class Pending {public List<Run> runs=new List<Run>();}
+    [Serializable] internal sealed class Pending {public List<Run> runs=new List<Run>();}
     [Serializable] private sealed class Identity {public string token;}
     private Idas3SceneGame host;private Idas3GameOptions options;private Idas3PauseMenu menu;
     private string folder,credential;private Pending pending=new Pending();private Snapshot snapshot;
     private bool enabledLast,cacheDirty,registered,applied;private double nextNetwork,confirmedUntil;
     private string status="Connecting to community times…";
-    private long responseCode;private string responseText;
+    private long responseCode;private byte[] responseBody;
+    internal const int MaximumResponseBytes=2*1024*1024;
+    // Per direction/weather: course top ten plus other models' bests, or one
+    // pending personal best per model. Keep both tied to the current catalog.
+    internal static int MaximumSnapshotEntries=>Idas3CourseCatalog.ConditionCount*2*(10+35-1);
+    internal static int MaximumPendingRuns=>Idas3CourseCatalog.ConditionCount*2*35;
+    private readonly CancellationTokenSource lifetime=new CancellationTokenSource();
     internal int PendingCount=>pending.runs.Count;
     private readonly byte[] finishBuffer=new byte[4096];
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SharedReadFinish([Out] byte[] buffer,int capacity);
@@ -51,7 +59,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
             if(File.Exists(Path.Combine(folder,"identity.json")))credential=Read<Identity>("identity.json",1024)?.token;
             if(string.IsNullOrEmpty(credential)||credential.Length!=64){byte[] bytes=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(bytes);credential=BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();Write("identity.json",new Identity{token=credential});}
             if(File.Exists(Path.Combine(folder,"pending.json")))pending=Read<Pending>("pending.json",2*1024*1024)??new Pending();
-            pending.runs.RemoveAll(r=>!Uploadable(r));if(pending.runs.Count>2112)pending.runs.RemoveRange(2112,pending.runs.Count-2112);
+            pending.runs.RemoveAll(r=>!Uploadable(r));if(pending.runs.Count>MaximumPendingRuns)pending.runs.RemoveRange(MaximumPendingRuns,pending.runs.Count-MaximumPendingRuns);
             Write("pending.json",pending);CleanReplayFiles();
             if(File.Exists(Path.Combine(folder,"snapshot.json"))){try{snapshot=Read<Snapshot>("snapshot.json",2*1024*1024);if(!UsableCommunitySnapshot(snapshot))snapshot=null;}catch(Exception){snapshot=null;}}
             cacheDirty=true;StartCoroutine(Collect());if(!diagnosticOffline)StartCoroutine(Synchronize());
@@ -59,10 +67,18 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         }catch(Exception e){status="Community storage unavailable. Local records remain active.";Debug.LogWarning("Community times initialization: "+e.GetType().Name);menu.CommunityStatus=status;}
     }
     private T Read<T>(string name,long max){var p=Path.Combine(folder,name);if(new FileInfo(p).Length>max)throw new IOException("Community file too large.");return JsonUtility.FromJson<T>(File.ReadAllText(p));}
-    private void Write(string name,object value){string dest=Path.Combine(folder,name),temp=dest+".tmp";File.WriteAllText(temp,JsonUtility.ToJson(value),new UTF8Encoding(false));if(File.Exists(dest))File.Replace(temp,dest,null);else File.Move(temp,dest);}
-    private void CleanReplayFiles(){
+    private void Write(string name,object value)=>WriteCache(folder,name,value,CancellationToken.None);
+    private static void WriteCache(string directory,string name,object value,CancellationToken stop){
+        string json=JsonUtility.ToJson(value),dest=Path.Combine(directory,name),temp=dest+".tmp";
+        stop.ThrowIfCancellationRequested();
+        File.WriteAllText(temp,json,new UTF8Encoding(false));
+        stop.ThrowIfCancellationRequested();
+        if(File.Exists(dest))File.Replace(temp,dest,null);else File.Move(temp,dest);
+    }
+    private void CleanReplayFiles()=>CleanReplayFiles(folder);
+    private static void CleanReplayFiles(string directory){
         // Only the obsolete leaderboard upload cache, never personal replays.
-        foreach(string path in Directory.GetFiles(folder,"*.idr")){
+        foreach(string path in Directory.GetFiles(directory,"*.idr")){
             string id=Path.GetFileNameWithoutExtension(path);
             if(Guid.TryParseExact(id,"D",out _))File.Delete(path);
         }
@@ -76,15 +92,6 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
     public static string TimeSubmissionJson(Run run){
         if(!Uploadable(run))throw new InvalidDataException("Invalid Time Attack submission.");
         return JsonUtility.ToJson(run);
-    }
-    private bool QueueFinish(Run run){
-        var existing=pending.runs.Find(r=>r.condition==run.condition&&r.weather==run.weather&&r.car==run.car);
-        if(existing!=null&&existing.ticks6000<=run.ticks6000)return false;
-        if(existing==null&&pending.runs.Count>=2112)throw new IOException("Upload queue is full.");
-        run.replayVersion=0;run.replayAvailable=false;
-        var next=new Pending{runs=new List<Run>(pending.runs)};if(existing!=null)next.runs.Remove(existing);next.runs.Add(run);
-        Write("pending.json",next);pending=next;nextNetwork=0;CleanReplayFiles();
-        return true;
     }
     public static bool SupportedBuild(string build){
         const string pattern=@"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([a-z][a-z0-9-]*)\.(0|[1-9]\d*))?$";
@@ -110,7 +117,7 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         int prior=0,count=0;bool ended=false;foreach(int n in r.splits){if(n==0){ended=true;continue;}if(ended||n<=prior||n>r.ticks6000)return false;prior=n;count++;}
         return (r.imported==1&&count==0)||(count>=2&&prior==r.ticks6000);
     }
-    private static bool ValidSnapshot(Snapshot s){if(s==null||s.ruleset!=Ruleset||s.entries==null||s.entries.Length>2112)return false;foreach(var r in s.entries)if(!Valid(r))return false;return true;}
+    private static bool ValidSnapshot(Snapshot s){if(s==null||s.ruleset!=Ruleset||s.entries==null||s.entries.Length>MaximumSnapshotEntries)return false;foreach(var r in s.entries)if(!Valid(r))return false;return true;}
     internal static bool UsableCommunitySnapshot(Snapshot s){
         if(!ValidSnapshot(s)||s.epoch<FirstReplaySeason)return false;
         foreach(var r in s.entries)if(r.epoch!=s.epoch||r.imported!=0||!SupportedBuild(r.build))return false;
@@ -130,7 +137,19 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         while(host!=null&&host.Ready){
             bool enabled=options.Current.communityTimes;
             try{
-                if(enabled!=enabledLast){enabledLast=enabled;cacheDirty=true;nextNetwork=0;confirmedUntil=0;if(!enabled){pending.runs.Clear();Write("pending.json",pending);CleanReplayFiles();status="Sharing is off. Personal records are active.";}else status="Connecting to community times…";}
+                if(enabled!=enabledLast){enabledLast=enabled;cacheDirty=true;nextNetwork=0;confirmedUntil=0;if(!enabled){clearWrite=ClearPending();status="Sharing is off. Personal records are active.";}else status="Connecting to community times…";}
+                if(clearWrite!=null&&clearWrite.IsCompleted){if(!PublishPending(clearWrite))status="Could not save upload queue. Retrying.";clearWrite=null;}
+                if(finishWrite!=null&&finishWrite.IsCompleted){
+                    if(PublishPending(finishWrite)){
+                        // A slow disk can outlast a race. Never acknowledge a
+                        // newer native finish while committing the earlier one.
+                        int latest=Idas3SharedReadFinish(finishBuffer,finishBuffer.Length);
+                        if(latest>0&&Encoding.UTF8.GetString(finishBuffer,0,latest)==finishPayload)Idas3SharedAckFinish();
+                        if(finishWrite.Result.changed)nextNetwork=0;
+                    }else status="Could not save upload queue. Retrying.";
+                    finishWrite=null;finishPayload=null;
+                }
+                if(!enabled&&pending.runs.Count>0&&clearWrite==null)clearWrite=ClearPending();
                 if(Application.internetReachability==NetworkReachability.NotReachable)confirmedUntil=0;
                 bool use=UseCommunityRecords(enabled,snapshot,Time.realtimeSinceStartupAsDouble,confirmedUntil);
                 if(use!=applied)cacheDirty=true;
@@ -141,13 +160,14 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
                     if(Idas3SharedSetRecords(data,data.Length/14,use?1:0)==1){cacheDirty=false;applied=use;}
                 }
                 int length=Idas3SharedReadFinish(finishBuffer,finishBuffer.Length);
-                if(length>0){
+                if(length>0&&finishWrite==null){
+                    bool acknowledge=true;
                     if(enabled){var run=JsonUtility.FromJson<Run>(Encoding.UTF8.GetString(finishBuffer,0,length));if(Valid(run)){
                         run.id=Guid.NewGuid().ToString();run.ruleset=Ruleset;run.build=Application.version;run.epoch=snapshot?.epoch??FirstReplaySeason;
                         if(!SubmissionBuild(run.build))status="Only game build "+RequiredSubmissionBuild+" can share Time Attack runs.";
-                        else QueueFinish(run);
+                        else {finishPayload=Encoding.UTF8.GetString(finishBuffer,0,length);finishWrite=QueueFinish(run);acknowledge=false;}
                     }else status="This run could not be shared: checkpoint validation failed.";}
-                    if(length>0)Idas3SharedAckFinish();
+                    if(acknowledge)Idas3SharedAckFinish();
                 }
             }catch(Exception e){status="Community cache unavailable; racing continues.";Debug.LogWarning("Community times cache: "+e.GetType().Name);}
             menu.CommunityStatus=status+(pending.runs.Count>0?" Pending runs: "+pending.runs.Count+".":"")+(applied?" Rankings combine your personal bests and current community times.":"");
@@ -155,26 +175,66 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
         }
     }
     private IEnumerator Request(string path,string payload=null,bool authorize=false){
-        responseCode=0;responseText="";
+        responseCode=0;responseBody=null;
         using(var request=new UnityWebRequest(ServiceUrl+path,payload==null?"GET":"POST")){
-            request.downloadHandler=new DownloadHandlerBuffer();request.timeout=10;
+            var response=new LimitedResponse();request.downloadHandler=response;request.timeout=10;
             if(payload!=null){request.uploadHandler=new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));request.SetRequestHeader("Content-Type","application/json");}
             if(authorize)request.SetRequestHeader("Authorization","Bearer "+credential);
             UnityWebRequestAsyncOperation operation=null;try{operation=request.SendWebRequest();}catch(Exception){status="Community times offline; uploads will retry.";}
-            if(operation!=null){yield return operation;responseCode=request.responseCode;responseText=request.downloadHandler.text;if(responseText.Length>2*1024*1024){responseCode=0;responseText="";}}
+            if(operation!=null){
+                yield return operation;
+                if(!response.Exceeded){
+                    responseCode=request.responseCode;
+                    if(responseCode==200&&request.result==UnityWebRequest.Result.Success)responseBody=response.Body;
+                    else if(responseCode==200)responseCode=0;
+                }
+            }
         }
     }
     private IEnumerator RefreshSnapshot(){
         yield return Request("/api/v2/snapshot?ruleset="+Ruleset+"&imports=1");
+        yield return ProcessSnapshot(responseCode,responseBody);
+    }
+    internal static Task<Snapshot> PrepareSnapshot(byte[] body,string directory,int minimumEpoch,CancellationToken stop){
+        // Only detached plain data crosses this boundary. JsonUtility's string
+        // overloads are thread-safe; no scene, options, native API or Unity time
+        // is accessed here. A slow disk must not block the game's frame loop.
+        return Task.Run(()=>{
+            try {
+                stop.ThrowIfCancellationRequested();
+                if(body==null||body.Length>MaximumResponseBytes)return null;
+                var next=JsonUtility.FromJson<Snapshot>(Encoding.UTF8.GetString(body));
+                if(!UsableCommunitySnapshot(next)||next.epoch<minimumEpoch)return null;
+                WriteCache(directory,"snapshot.json",next,stop);
+                return next;
+            }catch(Exception){return null;}
+        });
+    }
+    internal IEnumerator ProcessSnapshot(long code,byte[] body){
         confirmedUntil=0;cacheDirty=true;
-        if(responseCode==200){try{
-            var next=JsonUtility.FromJson<Snapshot>(responseText);
-            if(!UsableCommunitySnapshot(next)||(snapshot!=null&&next.epoch<snapshot.epoch))throw new InvalidDataException();
-            Write("snapshot.json",next);snapshot=next;confirmedUntil=Time.realtimeSinceStartupAsDouble+75;
-            status="Community times updated. Personal records stay with your save.";
-        }catch(Exception){status="Community response unavailable; using personal records.";}}
+        if(code==200){
+            var work=PrepareSnapshot(body,folder,snapshot?.epoch??FirstReplaySeason,lifetime.Token);
+            while(!work.IsCompleted)yield return null;
+            if(lifetime.IsCancellationRequested||!options.Current.communityTimes)yield break;
+            var next=work.GetAwaiter().GetResult();
+            if(next!=null){snapshot=next;confirmedUntil=Time.realtimeSinceStartupAsDouble+75;
+                status="Community times updated. Personal records stay with your save.";}
+            else status="Community response unavailable; using personal records.";
+        }
         else status="Community times offline; using personal records.";
     }
+    internal sealed class LimitedResponse : DownloadHandlerScript {
+        private readonly MemoryStream body=new MemoryStream();
+        internal bool Exceeded {get;private set;}
+        internal byte[] Body=>Exceeded?null:body.ToArray();
+        internal LimitedResponse():base(new byte[8192]){}
+        protected override bool ReceiveData(byte[] data,int length){
+            if(Exceeded||data==null||length<0||length>data.Length||body.Length+length>MaximumResponseBytes){Exceeded=true;return false;}
+            body.Write(data,0,length);return true;
+        }
+        public override void Dispose(){body.Dispose();base.Dispose();}
+    }
+    private void OnDestroy(){if(stopping)return;stopping=true;lifetime.Cancel();lifetime.Dispose();}
     private IEnumerator Synchronize(){
         yield return new WaitForSecondsRealtime(5);
         while(host!=null&&host.Ready){
@@ -187,12 +247,15 @@ public sealed class Idas3CommunityTimes : MonoBehaviour
             // Maximum one upload per second, preserving the server's rate limit.
             int sent=0;while(options.Current.communityTimes&&pending.runs.Count>0&&sent<5){
                 var run=pending.runs[0];
-                if(!Uploadable(run)){pending.runs.Remove(run);Write("pending.json",pending);continue;}
+                if(!Uploadable(run)){bool removed=false;yield return CommitPending(RemovePending(run.id),ok=>removed=ok);if(!removed)break;continue;}
                 if(!options.Current.communityTimes)break;
                 yield return Request("/api/v3/runs",TimeSubmissionJson(run),true);
-                if(responseCode==200||responseCode==400||responseCode==409){pending.runs.Remove(run);try{Write("pending.json",pending);}catch(Exception){status="Could not save upload queue.";}if(responseCode!=200)status="A run was rejected by the leaderboard.";sent++;}
+                if(responseCode==200||responseCode==400||responseCode==409){
+                    bool removed=false;yield return CommitPending(RemovePending(run.id),ok=>removed=ok);
+                    if(!removed){status="Could not save upload queue. Uploads will retry.";break;}
+                    if(responseCode!=200)status="A run was rejected by the leaderboard.";sent++;
+                }
                 else{status=responseCode==403?"This installation is blocked from sharing.":"Upload pending; the service will retry.";if(responseCode==401)registered=false;break;}
-                try{CleanReplayFiles();}catch(Exception){Debug.LogWarning("Could not clean acknowledged replay file.");}
                 yield return new WaitForSecondsRealtime(1);
             }
             if(sent>0&&options.Current.communityTimes)yield return RefreshSnapshot();

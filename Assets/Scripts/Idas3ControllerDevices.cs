@@ -7,7 +7,6 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Controls;
 using UnityEngine.InputSystem.HID;
-using UnityEngine.InputSystem.XInput;
 
 // Device discovery/selection is separate from action bindings and native input
 // response. Explicit preferences survive temporary fallback. A menu locks a
@@ -23,6 +22,7 @@ public sealed class Idas3ControllerDevices : IDisposable
     {
         public string key, profile;
         public IReadOnlyList<Idas3ControllerControl> controls;
+        public Idas3ControlBindings.PadState pad;
     }
     [Serializable] private sealed class Preference
     {
@@ -77,6 +77,8 @@ public sealed class Idas3ControllerDevices : IDisposable
     };
     public string LastError { get; private set; }
     public event Action ActiveDeviceChanged;
+    // The binding owner identifies explicitly configured Xbox-style shifters.
+    public Func<string,bool> IsWheelAccessory { get; set; }
     private bool Specific => preference.key != "automatic" && preference.key != "keyboard";
 
     public Idas3ControllerDevices() : this(() => Time.realtimeSinceStartupAsDouble, Idas3Native.ReadGamepad) { }
@@ -155,7 +157,6 @@ public sealed class Idas3ControllerDevices : IDisposable
         if (!initialized) return;
         double time = now(); bool scan = dirty || time >= nextScan;
         if (scan) nextScan = time + .5;
-        bool rawConnected = false;
         foreach (var device in xbox)
         {
             if (device.choice.connected || scan)
@@ -164,9 +165,8 @@ public sealed class Idas3ControllerDevices : IDisposable
                 if (connected != device.choice.connected) { dirty = true; device.firstValues = true; }
                 device.choice.connected = connected; device.pad = pad;
             }
-            rawConnected |= device.choice.connected;
         }
-        if (scan || dirty) RefreshUnityDevices(rawConnected);
+        if (scan || dirty) RefreshUnityDevices();
         Device activity = null;
         foreach (var device in devices)
         {
@@ -174,7 +174,8 @@ public sealed class Idas3ControllerDevices : IDisposable
             ReadDevice(device);
             bool changed = ObserveActivity(device);
             if (ReferenceEquals(device, active) && (changed || HeldGamepadInput(device))) activeLastInput = time;
-            if (changed && !(device.generic && active != null && active.generic && active.choice.connected)) activity = device;
+            if (changed && !(active != null && active.generic && active.choice.connected &&
+                (device.generic || IsWheelAccessory?.Invoke(device.profile)==true))) activity = device;
         }
         // Steam Input can expose a physical pad and a delayed virtual copy.
         // Keep the current source while it is being used, then allow a fresh
@@ -213,8 +214,9 @@ public sealed class Idas3ControllerDevices : IDisposable
         if (dirty) { RebuildChoices(); dirty = false; }
         rigSamples.Clear();
         if(active!=null&&active.generic&&active.choice.connected&&preference.key!="keyboard")
-            foreach(var device in devices)if(device.generic&&device.choice.connected&&device!=active){
-                device.rig.key=device.choice.key;device.rig.profile=device.profile;device.rig.controls=device.controls;rigSamples.Add(device.rig);
+            foreach(var device in devices)if(device.choice.connected&&device!=active&&
+                (device.generic||IsWheelAccessory?.Invoke(device.profile)==true)){
+                device.rig.key=device.choice.key;device.rig.profile=device.profile;device.rig.controls=device.controls;device.rig.pad=device.pad;rigSamples.Add(device.rig);
             }
     }
     public bool TryRead(out Idas3ControlBindings.PadState state)
@@ -236,16 +238,18 @@ public sealed class Idas3ControllerDevices : IDisposable
         catch (DllNotFoundException) { xinputAvailable = false; return false; }
         catch (EntryPointNotFoundException) { xinputAvailable = false; return false; }
     }
-    private void RefreshUnityDevices(bool rawConnected)
+    private void RefreshUnityDevices()
     {
         foreach (var entry in unityDevices.Values) entry.seen = false;
         var newlyConnected = new List<Device>();
         foreach (var input in InputSystem.devices)
         {
             if (!input.added || !input.enabled || (discoveryFilter != null && !discoveryFilter(input)) || !GamingDevice(input)) continue;
-            // Windows Input System mirrors the same XInput ports. The native
-            // API is authoritative for these four pads and preserves every bit.
-            if (rawConnected && (input is XInputControllerWindows || string.Equals(input.description.interfaceName, "XInput", StringComparison.OrdinalIgnoreCase))) continue;
+            // A native XInput port does not identify every device exposed by
+            // Unity's backend. Keep its Xbox devices selectable as well: an
+            // idle physical port must not hide a working virtual controller.
+            // Native slots remain first at startup; the held-source guard in
+            // Tick prevents delayed duplicate samples from stealing control.
             if (!unityDevices.TryGetValue(input.deviceId, out var device))
             {
                 device = CreateDevice(input);

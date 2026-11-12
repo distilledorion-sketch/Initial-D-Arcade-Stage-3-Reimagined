@@ -5,7 +5,8 @@ namespace idas3 {
 struct NativeImage;
 struct UnityUiVertex{float x,y,u,v;std::uint32_t argb,offsetArgb;};
 // Neutral pixel-coordinate UI triangles. Flags:1 original material,2 behind3D,
-//4 outer additive layer,8 grouped race HUD. TSP/PCW retain material semantics.
+//4 outer additive layer,8 grouped race HUD,16 source texture filtering.
+// TSP/PCW retain material semantics.
 struct UnityUiDraw{std::uint32_t first,count,texture,tsp,pcw,flags;float opacity;std::uint32_t reserved;float clipLeft,clipTop,clipRight,clipBottom;};
 struct UnityUiFrame{std::uint32_t size,width,height,drawCount,vertexCount,textureCount,unresolvedSurfaces,reserved;std::uint64_t revision;};
 struct UnityUiTextureInfo{std::uint32_t size,width,height,bytes;};
@@ -17,7 +18,7 @@ bool unityUiFrameReuseEnabled();
 // and cached draw-list texture IDs remain valid; only the source lookup expires.
 void unityUiForgetTexture(const NativeImage& image);
 bool unityUiTriangle(const std::uint32_t* target,int width,int height,const NativeImage& image,
-    UnityUiVertex a,UnityUiVertex b,UnityUiVertex c,float opacity,std::uint32_t tsp,bool original,std::uint32_t pcw);
+    UnityUiVertex a,UnityUiVertex b,UnityUiVertex c,float opacity,std::uint32_t tsp,bool original,std::uint32_t pcw,bool sourceTextureFiltering=false);
 // Mark a complete race HUD so Unity applies one shared layout transform.
 void unityUiMarkHud(const std::uint32_t* target);
 // Groups:0 messages,1 timer,2 instruments,3 records,4 mirror,5 map,6 Legend,7 online.

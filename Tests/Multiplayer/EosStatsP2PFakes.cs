@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 namespace UnityEngine { public static class Debug { public static readonly List<string> Messages = new List<string>(); public static void Log(object value) { Messages.Add(value.ToString()); } } }
+namespace UnityEngine { public static class Time { public static int frameCount=0; } }
 
 // SDK/platform/owner test boundary. The actual P2P lifecycle and packet
 // reassembly implementation compile unchanged into this executable.
@@ -37,7 +38,7 @@ namespace Epic.OnlineServices.P2P {
         public PacketReliability Reliability;
         public bool AllowDelayedDelivery, DisableAutoAcceptConnection;
     }
-    public struct ReceivePacketOptions { public ProductUserId LocalUserId; public uint MaxDataSizeBytes; }
+    public struct ReceivePacketOptions { public ProductUserId LocalUserId; public uint MaxDataSizeBytes; public byte? RequestedChannel; }
     public delegate void RequestCallback(ref OnIncomingConnectionRequestInfo info);
     public delegate void ClosedCallback(ref OnRemoteConnectionClosedInfo info);
     public delegate void EstablishedCallback(ref OnPeerConnectionEstablishedInfo info);
@@ -47,10 +48,11 @@ namespace Epic.OnlineServices.P2P {
             internal byte Channel;
             internal byte[] Data;
         }
-        readonly Queue<Packet> incoming = new Queue<Packet>();
+        readonly LinkedList<Packet> incoming = new LinkedList<Packet>();
         internal readonly List<Packet> Sent = new List<Packet>();
         internal string Socket;
         internal int Closed, Removed, Accepted;
+        internal int QueuedPackets => incoming.Count;
         internal Result AcceptResult = Result.Success, SendResult = Result.Success;
         ClosedCallback closedCallback;
         EstablishedCallback establishedCallback;
@@ -63,7 +65,7 @@ namespace Epic.OnlineServices.P2P {
             closedCallback(ref info);
         }
         internal void Inject(byte[] data, byte channel, string user = "peer", string socket = null) {
-            incoming.Enqueue(new Packet { User = user, Socket = socket ?? Socket, Channel = channel, Data = data });
+            incoming.AddLast(new Packet { User = user, Socket = socket ?? Socket, Channel = channel, Data = data });
         }
         public Result SetRelayControl(ref SetRelayControlOptions options) => Result.Success;
         public Result SetPacketQueueSize(ref SetPacketQueueSizeOptions options) => Result.Success;
@@ -83,8 +85,10 @@ namespace Epic.OnlineServices.P2P {
         }
         public Result ReceivePacket(ref ReceivePacketOptions options, ref ProductUserId sender, ref SocketId socket, out byte channel, ArraySegment<byte> buffer, out uint length) {
             channel = 0; length = 0;
-            if (incoming.Count == 0) return Result.NotFound;
-            var next = incoming.Dequeue();
+            var node=incoming.First;
+            while(node!=null&&options.RequestedChannel.HasValue&&node.Value.Channel!=options.RequestedChannel.Value)node=node.Next;
+            if(node==null)return Result.NotFound;
+            var next=node.Value;incoming.Remove(node);
             sender = new ProductUserId(next.User); socket = new SocketId { SocketName = next.Socket }; channel = next.Channel;
             Array.Copy(next.Data, 0, buffer.Array, buffer.Offset, next.Data.Length); length = (uint)next.Data.Length;
             return Result.Success;
@@ -98,12 +102,13 @@ namespace Idas3.Multiplayer {
         internal int Admissions;
         internal bool AdmissionAllowed = true;
         internal string Failure;
-        internal Action<Idas3EosP2P> OnAdmit;
+        internal Action<Idas3EosP2P> OnAdmit=null;
+        internal Action<Idas3EosP2P, byte[]> OnDeliver=null;
         internal string ResetStamp(Epic.OnlineServices.ProductUserId user) => Stamps[user.ToString()];
         internal static string Hash(string value) => "12345678901234567890123456789012";
         internal bool Admitted(Idas3EosP2P route) { return AdmissionAllowed; }
         internal void AnnounceAdmission(Idas3EosP2P route) { ++Admissions; OnAdmit?.Invoke(route); }
-        internal void Deliver(Idas3EosP2P route, byte[] data) { Received.Add(data); }
+        internal void Deliver(Idas3EosP2P route, byte[] data) { Received.Add(data); OnDeliver?.Invoke(route,data); }
         internal void RouteFailed(Idas3EosP2P route, string detail) { Failure = detail; route.Dispose(); }
     }
     internal static class Idas3EosOnlineConfig { internal static bool ForceRelay => false; }

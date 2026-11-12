@@ -25,7 +25,7 @@ let keyFetches=0;
 globalThis.fetch=async(url,options)=>{assert.equal(url,CONNECT_JWKS_URL);assert.equal(options.redirect,'manual');keyFetches++;return keyResponse();};
 after(()=>{globalThis.fetch=originalFetch;db?.close();});
 let source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';");
-for(const file of ['core','replay','replay-storage','retention','online-players','times-only'])source=source.replace(`'./${file}.mjs'`,JSON.stringify(new URL(`../src/${file}.mjs`,import.meta.url).href));
+for(const file of ['core','replay','replay-storage','retention','online-players','times-only','snapshot-cache'])source=source.replace(`'./${file}.mjs'`,JSON.stringify(new URL(`../src/${file}.mjs`,import.meta.url).href));
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
 const adminKey='a'.repeat(64);

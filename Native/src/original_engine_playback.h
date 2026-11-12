@@ -42,6 +42,9 @@ public:
     void applyContinuous(std::span<const original::OriginalEngineCommand> commands);
     void clearDspSends(){player_.clearDspSends();}
     OriginalIcsMixFrame renderFrame(){return player_.renderFrame();}
+    // Capture only the running sample voices. A scene interruption can key
+    // off this copy without advancing controls, gameplay RNG or the resume state.
+    OriginalIcsPlayer snapshotVoices()const{return player_;}
     const original::OriginalEngineConfiguration& configuration()const{return configuration_;}
     const original::OriginalEngineControlState& state()const{return state_;}
     const OriginalSoundCueQueue& releaseQueue()const{return releaseQueue_;}

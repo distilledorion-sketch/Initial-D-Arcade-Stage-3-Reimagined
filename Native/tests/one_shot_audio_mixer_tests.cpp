@@ -57,9 +57,40 @@ void compare(EngineAudio& audio,Reference& reference,unsigned frames,bool enable
 void feed(EngineAudio& audio,Reference& reference,const OriginalSelectionMusicCommands& commands){
     for(const auto& command:commands){audio.selection(command);reference.apply(command);}
 }
+void confirmedContacts(const std::filesystem::path& root){
+    EngineAudio confirmed,direct;
+    for(auto* audio:{&confirmed,&direct}){
+        audio->configure(root);audio->selectOriginalEngine(root,makeOriginalFreshBattleProfile());
+        audio->scene(false,false,false,false,true);
+    }
+    unsigned accepted=0;
+    for(unsigned frame=0;frame<120;++frame){
+        std::vector<OriginalEngineCommand> engine;
+        if(frame%17==0)engine.push_back({OriginalEngineCommandTarget::RaceCue1424A0,0,0,7});
+        if(frame%29==0)engine.push_back({OriginalEngineCommandTarget::RaceCue1424E0,0,0,0});
+        std::vector<std::uint32_t> contact;
+        if(frame%13==0)contact.push_back(std::array<unsigned,3>{1,2,6}[(frame/13)%3]);
+        else if(frame%19==0)contact.push_back(4);
+        accepted+=unsigned(contact.size());
+        // Independent source ordering at the presentation boundary: body/wheel
+        // cue, engine events, completion cue4. Already-accepted cues must not be
+        // subjected to another RNG gate when their network frame is confirmed.
+        if(!contact.empty()&&contact.front()!=4)direct.playRaceCue(2,contact.front());
+        direct.applyConfirmedOnlineAudio(engine,{});
+        if(!contact.empty()&&contact.front()==4)direct.playRaceCue(2,4);
+        confirmed.applyConfirmedOnlineAudio(engine,{},contact);
+        for(unsigned i=0;i<735;++i)require(confirmed.renderStereo(0,0,0,0,false)==direct.renderStereo(0,0,0,0,false),
+            "Confirmed contact PCM differs from direct source-ordered presentation");
+        require(confirmed.oneShotStatistics().cues==direct.oneShotStatistics().cues,
+            "Network confirmation replayed or suppressed an accepted contact cue");
+    }
+    require(accepted>10,"Confirmed-contact fixture did not exercise enough accepted cues");
+    std::cout<<"Confirmed contact playback: "<<accepted<<" accepted cues, 88200 exact stereo frames with misfire/turbo overlap; no second gate.\n";
+}
 }
 int main(int argc,char** argv)try{
     if(argc!=2)throw std::runtime_error("Expected game root");
+    confirmedContacts(argv[1]);
     EngineAudio audio;audio.configure(argv[1]);audio.scene(true,false,false);Reference reference(argv[1]);
     // Attract has no PACK21/race scene manager: input cannot manufacture a cue.
     audio.playMenuCue(OriginalMenuCue::Confirm);audio.playTuningCue(12);audio.playRaceCue(4,1);

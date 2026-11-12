@@ -15,7 +15,10 @@ public sealed class Idas3ReplayData
         public string playerName,opponentName;
         public int[] nameGlyphs, splits;
     }
-    public struct Pose { public uint tick; public Vector3 position; public float yaw, speed; public int gear; public uint[] state; }
+    public struct Pose { public uint tick; public Vector3 position; public float yaw, speed; public int gear; public uint[] state; public uint dustStep, backfire; }
+    public byte[] DustFrames { get; private set; } = Array.Empty<byte>();
+    public byte[] SmokeFrames { get; private set; } = Array.Empty<byte>();
+    public const int DustFrameBytes=124, SmokeFrameBytes=136, MaxDustFrames=109024;
     public bool Detailed { get; private set; }
     public uint[] Appearance { get; private set; }
     public Idas3ReplayData Opponent { get; private set; }
@@ -70,15 +73,23 @@ public sealed class Idas3ReplayData
         if ((!detailed && magic != 0x31524449) || binary.ReadUInt32() != metadata.ticks6000) throw new InvalidDataException("Replay does not match its result.");
         uint count = binary.ReadUInt32();
         if (binary.ReadUInt32() != 60 || count < 2 || count > (detailed ? 108001 : 36001)) throw new InvalidDataException("Unsupported replay timeline.");
-        uint[] appearance = null;
+        uint[] appearance = null;uint revision=0,stride=28,dustCount=0;int effectFrameBytes=0;
         if (detailed)
         {
-            if (binary.ReadUInt32() != 96 || binary.ReadUInt32() != 160 || binary.ReadUInt32() != 1 || binary.ReadUInt32() != 12) throw new InvalidDataException("Unsupported detailed replay.");
+            uint header=binary.ReadUInt32();
+            stride=binary.ReadUInt32();revision=binary.ReadUInt32();
+            if(revision<1||revision>4||header!=(revision==4?100u:96u)||stride!=(revision==4?168u:revision>=2?164u:160u)||binary.ReadUInt32()!=12)throw new InvalidDataException("Unsupported detailed replay.");
             appearance = new uint[15]; for (int i = 0; i < 15; i++) appearance[i] = binary.ReadUInt32();
-            if (binary.ReadUInt32() != 0 || appearance[0] > 1 || appearance[1] >= 93 || appearance[7] > 5) throw new InvalidDataException("Invalid replay appearance.");
+            dustCount=binary.ReadUInt32();
+            effectFrameBytes=revision==4?unchecked((int)binary.ReadUInt32()):revision==3?SmokeFrameBytes:revision==2?DustFrameBytes:0;
+            if((effectFrameBytes!=0&&effectFrameBytes!=DustFrameBytes&&effectFrameBytes!=SmokeFrameBytes)||
+                ((dustCount==0)!=(effectFrameBytes==0))||dustCount>MaxDustFrames||
+                (dustCount>0&&(opponentTrack||metadata.condition>=18||
+                (effectFrameBytes==DustFrameBytes&&(metadata.condition/2!=7||metadata.night!=0||metadata.weather!=0)))))throw new InvalidDataException("Invalid replay effects timeline.");
+            if (appearance[0] > 1 || appearance[1] >= 93 || appearance[7] > 5) throw new InvalidDataException("Invalid replay appearance.");
             for (int i = 2; i < 7; i++) if (appearance[i] > 221) throw new InvalidDataException("Invalid recorded name.");
         }
-        if (binaryStream.Length - binaryStream.Position != count * (detailed ? 160L : 28L))
+        if (binaryStream.Length - binaryStream.Position != count * (long)stride + dustCount * (long)effectFrameBytes)
             throw new InvalidDataException("Unsupported or incomplete replay.");
         var frames = new Pose[count];
         for (int i = 0; i < count; i++)
@@ -97,11 +108,33 @@ public sealed class Idas3ReplayData
                 if (!Finite(Scalar(p.state[29])) || !Finite(Scalar(p.state[31])) || p.state[17] >= 10800000 || (metadata.mode==0&&p.state[17]>metadata.ticks6000+200) || p.state[23] > 4 || p.state[24] < 1 || p.state[24] > 4 || p.state[28] > 1 || p.state[30] > 1) throw new InvalidDataException("Invalid recorded HUD or lights.");
                 if (metadata.mode==0&&i > 0 && p.state[17] < frames[i - 1].state[17] && (i != count - 1 || frames[i - 1].state[17] - p.state[17] > 200)) throw new InvalidDataException("Invalid recorded clock sequence.");
             }
+            if(revision>=2){
+                p.dustStep=binary.ReadUInt32();
+                if(p.dustStep>dustCount||(i>0&&p.dustStep<frames[i-1].dustStep))throw new InvalidDataException("Invalid replay dust clock.");
+            }
+            if(revision==4){p.backfire=binary.ReadUInt32();if(p.backfire>2)throw new InvalidDataException("Invalid recorded backfire state.");}
             frames[i] = p;
+        }
+        var dustFrames=binary.ReadBytes(checked((int)dustCount*effectFrameBytes));
+        if(revision>=2&&frames[^1].dustStep!=dustCount)throw new InvalidDataException("Replay effects extend past their finish.");
+        for(int at=0;at<dustFrames.Length;at+=effectFrameBytes){
+            if(BitConverter.ToUInt32(dustFrames,at)>3)throw new InvalidDataException("Invalid replay dust owner.");
+            for(int n=2;n<31;n++){
+                float value=BitConverter.ToSingle(dustFrames,at+4*n);
+                if(!Finite(value)||Mathf.Abs(value)>1000000||(n==2&&(value<0||value>10000)))throw new InvalidDataException("Invalid replay dust input.");
+            }
+            if(effectFrameBytes==SmokeFrameBytes){
+                uint scene=BitConverter.ToUInt32(dustFrames,at+128),owner=BitConverter.ToUInt32(dustFrames,at);
+                if((scene&~0xfffu)!=0||(scene&15)!=metadata.condition/2||((scene>>4)&1)!=metadata.night||
+                    ((scene>>5)&1)!=metadata.weather||((scene>>6)&15)>8||((owner&1)!=0&&(scene&0x400)!=0)||
+                    ((scene^BitConverter.ToUInt32(dustFrames,128))&0x83f)!=0)
+                    throw new InvalidDataException("Invalid replay smoke scene.");
+            }
         }
         if (Math.Abs((long)frames[frames.Length - 1].tick * 100 - metadata.ticks6000) > 200) throw new InvalidDataException("Replay ends before the finish.");
         if (detailed && metadata.mode==0&&metadata.outcome==0&&frames[^1].state[17] != metadata.ticks6000) throw new InvalidDataException("Recorded finish clock differs from the result.");
-        var result=new Idas3ReplayData { Metadata = metadata, Frames = frames, Detailed = detailed, Appearance = appearance };
+        var result=new Idas3ReplayData { Metadata = metadata, Frames = frames, Detailed = detailed, Appearance = appearance,
+            DustFrames=effectFrameBytes==DustFrameBytes?dustFrames:Array.Empty<byte>(),SmokeFrames=effectFrameBytes==SmokeFrameBytes?dustFrames:Array.Empty<byte>() };
         if(opponentBytes.Length>0){
             var other=JsonUtility.FromJson<Details>(JsonUtility.ToJson(metadata));other.car=metadata.opponentCar;other.manual=metadata.opponentManual;other.opponentBytes=0;other.splits=null;other.nameGlyphs=null;
             result.Opponent=ParseInternal(Idas3ReplayLibrary.Package(other,opponentBytes,Array.Empty<byte>()),true);
@@ -132,6 +165,6 @@ public sealed class Idas3ReplayData
                 state[i] = unchecked((uint)BitConverter.SingleToInt32Bits(v));
             }
         }
-        return new Pose { tick = (uint)tick, position = Vector3.Lerp(a.position, b.position, t), yaw = a.yaw + Mathf.DeltaAngle(a.yaw * Mathf.Rad2Deg, b.yaw * Mathf.Rad2Deg) * Mathf.Deg2Rad * t, speed = Detailed ? a.speed : Mathf.Lerp(a.speed, b.speed, t), gear = t >= 1 ? b.gear : a.gear, state = state };
+        return new Pose { tick = (uint)tick, position = Vector3.Lerp(a.position, b.position, t), yaw = a.yaw + Mathf.DeltaAngle(a.yaw * Mathf.Rad2Deg, b.yaw * Mathf.Rad2Deg) * Mathf.Deg2Rad * t, speed = Detailed ? a.speed : Mathf.Lerp(a.speed, b.speed, t), gear = t >= 1 ? b.gear : a.gear, state = state, dustStep=a.dustStep, backfire=a.backfire };
     }
 }

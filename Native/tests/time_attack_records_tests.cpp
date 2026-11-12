@@ -7,6 +7,7 @@
 using namespace idas3;
 void require(bool x,const char* message){if(!x)throw std::runtime_error(message);}
 std::string read(const std::filesystem::path& file){std::ifstream in(file,std::ios::binary);return {std::istreambuf_iterator<char>(in),{}};}
+#include "time_attack_batch_checks.inl"
 void idZeroMigration(){
     const auto root=std::filesystem::temp_directory_path()/("idas3-record-migration-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
     std::filesystem::create_directories(root);
@@ -100,11 +101,16 @@ void odawaraRevision2Reset(){
     std::cout<<"PASS Odawara revision-2 reset: cabinet, legacy and all five saves; all 35 models/directions/weather; Gunsai/other courses preserved; restored r1 rejected; new slower records survive\n";
 }
 int main(){try{
+    batchChecks();
     idZeroMigration();
     odawaraRevision2Reset();
     TimeAttackRecords records;records.record({6,0,0,1000124});records.record({6,0,1,999996});
     records.record({6,1,0,700000});records.record({7,0,0,600000});
     auto best=records.best(6,0,0);require(best.course==999996&&best.model==1000124,"source course/weather partition and shared course/model records");
+    require(best.courseCar==1,"Course record lost the car that actually set it");
+    require(records.best(8,0,0).courseCar==35,"Empty course invented a record car");
+    records.record({6,0,34,999996});
+    require(records.best(6,0,0).courseCar==1,"Tied course times must keep the first record holder");
     for(unsigned i=0;i<100;++i)records.record({6,0,2,1200000+i*4});
     require(records.entries().size()<=14&&records.best(6,0,2).model==1200000,"retain top ten and every model best");
     const auto file=std::filesystem::temp_directory_path()/"idas3_native_records_test.csv";

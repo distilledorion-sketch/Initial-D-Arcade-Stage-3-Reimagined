@@ -34,4 +34,16 @@ OriginalCardCheckEvents tickOriginalCardCheckTransition(OriginalCardCheckState&,
 // 10C6C0..10C9E6: options edit/commit/cancel, then the common transition.
 // The actual selector interpolation and drawing belong to the presentation.
 OriginalCardCheckEvents tickOriginalCardCheck(OriginalCardCheckState&,OriginalBattleProfile&,const OriginalCardCheckInput&);
+// iSelRenewCardCheck shares iSelCheck's fades and input gates, but does not
+// edit configuration. The host substitutes a durable per-car save for the
+// physical card writer; acknowledge only after that save succeeds.
+struct OriginalRenewCardCheckState {
+    OriginalCardCheckState card;
+    std::uint32_t writePhase532{},writeFrame536{};
+};
+// 10ECC0..10EE16, normal card path (cabinet service-abort input excluded).
+// The common countdown still expires while a physical write is pending in
+// the source. A host must not enter this screen before durable save success.
+OriginalCardCheckEvents tickOriginalRenewCardCheck(OriginalRenewCardCheckState&,
+    OriginalBattleProfile&,bool confirm,bool nextPage,bool cardWriteReady);
 }

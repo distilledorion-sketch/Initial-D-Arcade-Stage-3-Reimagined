@@ -78,6 +78,12 @@ int main(int argc,char** argv)try{
  Idas3UiBeginFrame(64,64);unityUiSubmit(source.argb.data(),64,64,false,false,false);require(frame().drawCount==400,"self append changed original extent");
  require(unityUiCopyImage(source.argb.data(),64,64,source,0,0,64,64,1),"self image-copy failed");
  Idas3UiBeginFrame(64,64);unityUiSubmit(source.argb.data(),64,64,false,false,false);require(frame().drawCount==800,"self image-copy changed original extent");
+ // The map's source filtering survives capture without changing ordinary UI.
+ unityUiClear(source.argb.data(),64,64);triangle(source.argb.data(),image);
+ require(unityUiTriangle(source.argb.data(),64,64,image,{1,2,0,0,0xffffffff,0},{3,4,1,0,0xffffffff,0},{5,6,0,1,0xffffffff,0},1,0,true,0,true),"filtered capture disabled");
+ Idas3UiBeginFrame(64,64);unityUiSubmit(source.argb.data(),64,64,false,false,false);
+ UnityUiDraw filtering[2]{};require(Idas3UiCopyDraws(filtering,2)==2,"filter capture count changed");
+ require((filtering[0].flags&16)==0&&(filtering[1].flags&16)!=0,"source filter escaped its opt-in draw");
  std::cout<<"{\"passed\":true,\"boundedRequired\":"<<(bounded?"true":"false")<<",\"reloads\":32,\"exportedTextures\":"<<repeatedTextures
   <<",\"retainedPixelBytes\":"<<retainedBytes<<",\"copyFrames\":2000,\"copyAllocations\":"<<copyAllocations<<",\"copyAllocatedBytes\":"<<copyBytes
   <<",\"copyMilliseconds\":"<<milliseconds<<",\"visualCommandHash\":\""<<parity<<"\"}\n";

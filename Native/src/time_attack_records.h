@@ -2,6 +2,7 @@
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <span>
 #include <vector>
 
 namespace idas3 {
@@ -17,6 +18,7 @@ struct TimeAttackEntry {
 };
 struct TimeAttackBest {
     std::uint32_t course{},model{};
+    unsigned courseCar=35; // No record: do not invent a car next to the dashes.
 };
 // Native local-profile storage. Original record selectors share course/direction
 // and weather; transmission and time of day do not partition these records.
@@ -28,6 +30,9 @@ public:
     TimeAttackBest best(unsigned condition,unsigned weather,unsigned car)const;
     TimeAttackEntry personalBest(unsigned condition,unsigned weather,unsigned car)const;
     void record(TimeAttackEntry entry);
+    // Same retention and stable tie order as recording each row in order.
+    // Invalid input leaves the existing records unchanged.
+    void recordBatch(std::span<const TimeAttackEntry> entries);
     const std::vector<TimeAttackEntry>& entries()const{return entries_;}
 private:
     std::vector<TimeAttackEntry> entries_;
