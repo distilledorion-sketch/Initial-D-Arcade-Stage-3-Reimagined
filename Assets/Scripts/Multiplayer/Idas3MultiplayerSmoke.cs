@@ -706,14 +706,36 @@ namespace Idas3.Multiplayer
             public bool passed,neutralResult,unhideable,saveUnchanged,acknowledged,windowCardVisible;
             public int checks;public ulong bridgeTicks,sourceTicks,raceTicks;public double frozenSeconds;public string capture;
         }
-        private string SaveFingerprint()
+        private string SaveFingerprint(bool includeResultReceipts=true)
         {
             string directory=Path.Combine(root,"userdata");var files=Directory.GetFiles(directory,"*",SearchOption.AllDirectories);Array.Sort(files,StringComparer.Ordinal);
             var text=new System.Text.StringBuilder();using(var sha=System.Security.Cryptography.SHA256.Create())foreach(string file in files){
-                text.Append(file.Substring(directory.Length+1).Replace('\\','/')).Append('=');
+                string relative=file.Substring(directory.Length+1).Replace('\\','/');
+                if(!includeResultReceipts&&(relative=="online_result_v1.json"||relative=="online_result_v1.json.previous"))continue;
+                text.Append(relative).Append('=');
                 using(var stream=File.OpenRead(file))text.Append(BitConverter.ToString(sha.ComputeHash(stream)).Replace("-",""));text.Append('\n');
             }
             return text.ToString();
+        }
+        private void CheckNeutralResultReceipt(ulong raceId)
+        {
+            // The timeout receipt is expected durable bookkeeping. Validate it
+            // separately while the fingerprint still protects every profile,
+            // setting and leaderboard record byte, including the card counter.
+            string path=Path.Combine(root,"userdata","online_result_v1.json");
+            Check(File.Exists(path)&&File.Exists(path+".previous")&&!File.Exists(path+".pending"),"Neutral result receipt did not finish its durable write.");
+            var journal=new Idas3ResultJournal(new Idas3MultiplayerRecords(Path.Combine(root,"userdata")));
+            var read=typeof(Idas3ResultJournal).GetMethod("Read",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            Check(read!=null,"Production journal reader is unavailable to the diagnostic.");
+            object current=read.Invoke(journal,new object[]{path}),previous=read.Invoke(journal,new object[]{path+".previous"});
+            Check(JsonUtility.ToJson(current)==JsonUtility.ToJson(previous),"Neutral result receipt copies disagree.");
+            var entry=(Idas3ResultJournal.Entry)current.GetType().GetField("entry").GetValue(current);
+            Check(entry.raceId==raceId.ToString(System.Globalization.CultureInfo.InvariantCulture)&&entry.car==session.LocalCar&&
+                entry.winner==-1&&!entry.won&&entry.complete&&entry.battlePoints==0&&entry.reward.points==0&&entry.record.Equals(entry.previous),
+                "Neutral receipt changed points/history or belongs to a different race.");
+            Check(entry.reward.before.Length==entry.reward.after.Length,"Neutral receipt profile sizes differ.");
+            for(int i=0;i<entry.reward.before.Length;++i)
+                Check(entry.reward.before[i]==entry.reward.after[i],"Neutral receipt changed a tuning/profile/card-use word.");
         }
         private Idas3CarSnapshot ReadNativePose()
         {
@@ -728,7 +750,7 @@ namespace Idas3.Multiplayer
         [Serializable] private class ReturnLobbyReport
         {
             public string schema="idas3-connected-lobby-return-v1",role,phase,scope="Two actual isolated LAN clients. First race reaches native source timeout using neutral input and diagnostic 0.25-second frame steps; no result/rule state is forced. Guest uses the normal Enter result action. Both preserve transport/nonces/picks/cars, reset readiness, then re-ready and start a second race at normal wall-clock delta.";
-            public bool passed,naturalFinish,connectedLobby,savesUnchanged,secondCountdown,secondDrive,musicSelectionPreserved;
+            public bool passed,naturalFinish,connectedLobby,savesUnchanged,secondCountdown,secondDrive,musicSelectionPreserved,neutralReceiptVerified;
             public int checks,selectedMusic;public string roomCode,saveFingerprint;public double acceleratedWaitSeconds;
             public ulong firstRaceId,secondRaceId,firstFinishTicks,secondLocalTicks,secondRemoteTicks;
             public long secondReceived,secondSent;public uint[] secondPhases;public int[] secondDigits;
@@ -807,7 +829,7 @@ namespace Idas3.Multiplayer
             try{
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"race-verified.json")),35,"Peer did not finish its first-race validation.");
                 object transport=SessionField<object>("transport");ulong localNonce=SessionField<ulong>("localNonce"),remoteNonce=SessionField<ulong>("remoteNonce");
-                report.firstRaceId=SessionField<ulong>("raceId");report.saveFingerprint=SaveFingerprint();
+                report.firstRaceId=SessionField<ulong>("raceId");report.saveFingerprint=SaveFingerprint(false);
                 host.RaceMusic.Refresh();report.selectedMusic=host.RaceMusic.State.selectedIndex;
                 if(finishMusicCheck)Check(report.selectedMusic==-1,"Private finish-music fixture must retain the game-default song choice.");
                 var localPick=session.LocalChoice;var remotePick=session.RemoteChoice;int localCar=session.LocalCar;
@@ -821,7 +843,8 @@ namespace Idas3.Multiplayer
                 report.naturalFinish=host.Status.racePhase==3&&(session.LocalSnapshot.Finished||session.LocalSnapshot.TimeUp);
                 report.firstFinishTicks=session.LocalSnapshot.raceTicks;
                 Check(report.naturalFinish&&!session.DisconnectedFinish&&session.HandshakeComplete,"Connected result was not a natural native finish.");
-                Check(SaveFingerprint()==report.saveFingerprint,"Natural multiplayer result modified private profile/settings/records.");
+                CheckNeutralResultReceipt(report.firstRaceId);report.neutralReceiptVerified=true;
+                Check(SaveFingerprint(false)==report.saveFingerprint,"Natural multiplayer result modified private profile/settings/records.");
                 yield return Until(()=>menu.ResultsVisible&&menu.IsOpen&&menu.CanAcknowledgeReturnToLobby,5,"Finished race did not expose the controller-accessible Return to Lobby action.");
                 yield return CaptureMenu("return-results");
                 File.WriteAllText(Path.Combine(root,"return-results-ready.json"),"{\"ready\":true}");
@@ -853,7 +876,7 @@ namespace Idas3.Multiplayer
                 foreach(var player in session.Players)Check(!player.Ready,"Return retained another player's Ready state.");
                 Check(session.LocalSnapshot.sequence==0&&session.RemoteSnapshot.sequence==0&&session.SnapshotsSent==0&&session.RemoteSnapshotsReceived==0,"Return retained a prior race snapshot stream.");
                 Check(!host.PauseMenu.IsOpen&&!host.RaceMusicMenu.IsOpen,"Return left another input overlay active.");
-                Check(SaveFingerprint()==report.saveFingerprint,"Returning to connected lobby modified private saves.");
+                Check(SaveFingerprint(false)==report.saveFingerprint,"Returning to connected lobby modified private saves.");
                 if(LobbyChatCheck)yield return VerifyLobbyChat(true);
                 yield return CaptureMenu("returned-connected-lobby");
                 File.WriteAllText(Path.Combine(root,"returned-lobby-verified.json"),"{\"ready\":true}");
@@ -901,7 +924,7 @@ namespace Idas3.Multiplayer
                 host.RaceMusic.Refresh();report.musicSelectionPreserved=host.RaceMusic.State.selectedIndex==report.selectedMusic;
                 Check(report.musicSelectionPreserved,"Result/return flow changed the saved race music choice.");
                 yield return CaptureWorld("returned-lobby-second-race");
-                report.savesUnchanged=SaveFingerprint()==report.saveFingerprint;Check(report.savesUnchanged,"Second multiplayer race changed private saves.");
+                report.savesUnchanged=SaveFingerprint(false)==report.saveFingerprint;Check(report.savesUnchanged,"Second multiplayer race changed private saves.");
                 File.WriteAllText(Path.Combine(root,"second-race-verified.json"),"{\"verified\":true}");
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"second-race-verified.json")),20,"Peer did not verify its second race.");
                 if(showcaseCheck)yield return Idas3MultiplayerPresentationSmoke.VerifyWinnerAndReturn(host,session,root,role);
@@ -909,6 +932,8 @@ namespace Idas3.Multiplayer
                     driving=false;
                     yield return Until(()=>session.CanReturnToLobby,180,"Second race did not reach its result.");
                     yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,30,"Second result omitted original points.");
+                    CheckNeutralResultReceipt(report.secondRaceId);
+                    Check(SaveFingerprint(false)==report.saveFingerprint,"Second timeout changed private progress outside its receipt.");
                     File.WriteAllText(Path.Combine(root,"second-points-ready.txt"),session.ResultText);
                     yield return Until(()=>File.Exists(Path.Combine(peerRoot,"second-points-ready.txt")),10,"Peer did not reach second points page.");
                     if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-waiting-no-check")>=0){
