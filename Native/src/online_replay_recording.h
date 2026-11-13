@@ -14,6 +14,10 @@ namespace idas3 {
 class OnlineReplayRecording {
 public:
     struct Lamps {OriginalHeadlightState state;bool enabled=false;};
+    struct Steering {unsigned source=0;int response=0;float deadzone=0,smoothing=0;unsigned shiftHeld=0;};
+    const std::array<std::uint32_t,5>& steeringTicks()const{return steeringTicks_;}
+    const Steering& steeringSettings()const{return steeringSettings_;}
+    bool steeringSettingsChanged()const{return steeringChanged_;}
     void reset(){*this=OnlineReplayRecording{};}
     void begin(const original::OnlineRaceSimulation& sim,unsigned local){
         if(local>1||sim.frame()!=0)throw std::invalid_argument("Replay requires a fresh online race");
@@ -23,13 +27,13 @@ public:
             feedback_[slot].reset(std::bit_cast<std::int32_t>(sim.rules(slot).state().remaining.value));}
     }
     bool active()const{return active_&&!finished_;}
-    void sampleLamps(std::uint64_t frame,const std::array<Lamps,2>& lamps){
+    void sampleLamps(std::uint64_t frame,const std::array<Lamps,2>& lamps,const Steering& steering){
         if(!active())return;
         if(frame<next_||frame-next_>original::OnlineRaceTimeline::capacity)
             throw std::logic_error("Replay lamp sample outside bounded prediction window");
         auto& entry=lamps_[frame%lamps_.size()];
         if(entry.frame!=absent&&entry.frame!=frame)throw std::logic_error("Unconfirmed replay lamps would be overwritten");
-        entry={frame,lamps};
+        entry={frame,lamps,steering};
     }
     void confirm(const original::OnlineRaceFrame& frame,const original::OnlineRaceSimulation& sim,
             Replay& player,Replay& opponent){
@@ -64,9 +68,14 @@ public:
         // Keep showcase/countdown effect history, but start replay pose time at GO.
         if(!frame.start.runRules)return;
         const auto tick=std::uint64_t(player.frames.size()+1);
-        const auto& local=poses[local_];auto& remote=poses[1-local_];
+        auto& local=poses[local_];auto& remote=poses[1-local_];
+        const auto& steering=entry.steering;
+        local.telemetry.flags|=(std::min(steering.source,4u)<<5)|((steering.shiftHeld&3u)<<3);
+        if(player.frames.empty())steeringSettings_=steering;
+        else if(steering.response!=steeringSettings_.response||steering.deadzone!=steeringSettings_.deadzone||steering.smoothing!=steeringSettings_.smoothing)steeringChanged_=true;
+        ++steeringTicks_[std::min(steering.source,4u)];
         remote.detail.progress=metrics_.advantage(frame.states[local_].progress,frame.states[1-local_].progress);
-        player.record(tick,local.position,local.yaw,local.speed,local.gear,&local.detail,local.backfire);
+        player.record(tick,local.position,local.yaw,local.speed,local.gear,&local.detail,local.backfire,local.telemetryAvailable?&local.telemetry:nullptr);
         opponent.record(tick,remote.position,remote.yaw,remote.speed,remote.gear,&remote.detail,remote.backfire);
         for(unsigned slot=0;slot<2;++slot)if(frame.states[slot].phase==original::OriginalRacePhase::Finished)
             (slot==local_?player:opponent).finishTicks6000=frame.states[slot].times.finishTime;
@@ -76,13 +85,15 @@ public:
     std::uint64_t confirmed()const{return next_;}
 private:
     static constexpr std::uint64_t absent=~std::uint64_t(0);
-    struct Entry {std::uint64_t frame=absent;std::array<Lamps,2> lamps;};
+    struct Entry {std::uint64_t frame=absent;std::array<Lamps,2> lamps;Steering steering;};
     // One extra candidate slot permits a step that reconciles old frames but
     // subsequently stalls. Repeating that attempt replaces only its candidate.
     std::array<Entry,original::OnlineRaceTimeline::capacity+1> lamps_{};
     std::array<OriginalCarBodyPosition,2> bodies_;
     std::array<OriginalRaceFeedback,2> feedback_;
     std::array<unsigned,2> backfireFrames_{};
+    std::array<std::uint32_t,5> steeringTicks_{};
+    Steering steeringSettings_;bool steeringChanged_=false;
     ImportedRoadPresentation localRoad_;
     original::OriginalBattleMetrics metrics_;
     std::uint64_t next_=0;unsigned local_=0;bool active_=false,finished_=false;

@@ -68,6 +68,12 @@ int main(int argc,char** argv)try{
                 for(unsigned slot=0;slot<2;++slot){const auto& actual=(slot==local?app->recording:app->rivalRecording).frames[pose];const auto& wanted=e.frame.replayPoses[slot];
                     check(actual.tick==pose+1&&std::memcmp(&actual.position,&wanted.position,sizeof(Vec3))==0&&actual.yaw==wanted.yaw&&actual.speed==wanted.speed&&actual.gear==wanted.gear,"Saved pose contains visual correction or speculative motion");
                     check(actual.detail.rpm==wanted.detail.rpm&&actual.detail.steering==wanted.detail.steering&&actual.detail.suspension==wanted.detail.suspension&&actual.detail.rotation==wanted.detail.rotation,"Saved pose telemetry is from another tick");
+                    if(slot==local){
+                        check(actual.telemetryAvailable,"Confirmed analysis missing");
+                        check(std::memcmp(&actual.telemetry,&wanted.telemetry,7*sizeof(float))==0,"Analysis retained predicted physics measurements");
+                        check((actual.telemetry.flags&7u)==(wanted.telemetry.flags&7u),"Shift edges or wall flags are from another frame");
+                        check((actual.telemetry.flags>>5)==(tick<500?1u:4u),"Delayed confirmation consumed a later steering source");
+                    }
                     check(actual.backfire==e.flash[slot],"Recorded flash used predicted, later or wrong-player cues");
                     check(actual.detail.elapsed==wanted.detail.elapsed&&actual.detail.sections==wanted.detail.sections,"Saved clocks are from another tick");
                     if(course==16&&slot==local){
@@ -81,6 +87,10 @@ int main(int argc,char** argv)try{
                 }
                 check(app->recording.frames[pose].dustStep==(imported?0:tick+1),"Saved pose and effects have different clocks");++pose; ++poseChecks;
             }
+            if(pose){auto telemetry=app->recording.telemetryBytes();
+                check(telemetry.size()==16+pose*32,"Confirmed analysis stream missing or misaligned");
+                const auto& ticks=app->authorityReplay.steeringTicks();
+                check(ticks[0]==0&&ticks[1]+ticks[4]==pose,"Steering counts include showcase or speculative frames");}
             check(app->recording.frames.size()==pose&&app->rivalRecording.frames.size()==pose,"Recording contains predicted/duplicate poses");
         };
         std::vector<std::uint8_t> staleLocal,staleRemote;
@@ -106,6 +116,7 @@ int main(int argc,char** argv)try{
                 app->playerProjectedHeadlight.request(!app->playerProjectedHeadlight.enabled(),app->presentedSession().collision(),app->playerBody.query(),{a.f(0),a.f(4),a.f(8)});}
             app->setAuthorityRemoteHeadlights(tick+1,(tick/31)%2);
             DriverInput d;d.steer=controls[local].steering;d.throttle=controls[local].throttle;d.brake=controls[local].brake;d.shiftDown=controls[local].shiftDown;d.shiftUp=controls[local].shiftUp;d.automatic=true;
+            app->input.steeringSource=tick<500?1:4;
             if(tick<selected.showcaseFrames)check(app->advanceShowcaseControls(d),"Showcase stalled unexpectedly");else app->simulate(d);
             check(!app->authorityStalled&&link.step(inputs[1-local]),"Unexpected early stall");
             predictedDifferences+=std::memcmp(&app->vehicle.position,&e.frame.replayPoses[local].position,sizeof(Vec3))!=0;
@@ -158,10 +169,10 @@ int main(int argc,char** argv)try{
         const auto finalBytes=app->recording.sharedBytes(unsigned(app->recording.frames.back().tick*100));
         check(app->archivePublished&&!app->localReplayRival.empty()&&app->localReplayPlayer==finalBytes,"App archive did not preserve corrected paired recording");
         // The managed library normally adds the encoded opponent byte count.
-        auto archiveJson=app->localReplayJson;archiveJson.pop_back();archiveJson+=",\"opponentBytes\":"+std::to_string(app->localReplayRival.size())+"}";
+        auto archiveJson=app->localReplayJson;archiveJson.pop_back();archiveJson+=",\"opponentBytes\":"+std::to_string(app->localReplayRival.size())+",\"telemetryBytes\":"+std::to_string(app->localReplayTelemetry.size())+"}";
         std::ofstream archive(out/(stem+".idreplay"),std::ios::binary);const auto size=std::uint32_t(archiveJson.size());
         for(unsigned i=0;i<4;++i)archive.put(char((size>>(8*i))&255));archive<<archiveJson;
-        for(const auto* part:{&app->localReplayPlayer,&app->localReplayRival})archive.write(reinterpret_cast<const char*>(part->data()),part->size());
+        for(const auto* part:{&app->localReplayPlayer,&app->localReplayRival,&app->localReplayTelemetry})archive.write(reinterpret_cast<const char*>(part->data()),part->size());
         check(bool(archive),"Could not save paired archive evidence");
         app->leaveMultiplayer();check(!app->authorityRace&&!app->authorityReplay.active(),"Recorder survived room teardown");
         std::cout<<"PASS "<<stem<<" source_ticks="<<(imported?0:784)<<" pose_frames="<<word(8)<<" showcase="<<selected.showcaseFrames<<" course="<<course<<'\n'<<std::flush;

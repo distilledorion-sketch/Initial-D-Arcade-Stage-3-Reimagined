@@ -1,4 +1,5 @@
 #include "online_race_simulation.h"
+#include "physics.h"
 #include "original_driving_float.h"
 #include "imported_course.h"
 #include "original_engine_playback.h"
@@ -139,6 +140,7 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
             controls.calibration.throttleWord=controls.calibration.brakeWord=32;controls.suppressRawThrottle0C2F4BC8=1;
             controls.pressedByte=0;controls.gearEnabled=false;
         }
+        const auto priorGear=car.vehicle().transmission.gear00;
         car.setPlatformFrame(std::uint32_t(s.state.frame));
         out.driving[slot]=car.tick(controls,&contacts[slot],[&](const OriginalContactCompletionEffects& effect,std::uint32_t& seed){
             OriginalEngineControlInput input;
@@ -157,6 +159,14 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
         auto& pose=out.replayPoses[slot];const auto& drive=car.vehicle().drive;const auto& actor=car.actor();
         pose.tick=out.frame;pose.position={drive.f(0),drive.f(4),drive.f(8)};
         pose.yaw=wrapAngle(drive.f(0x10)+pi);pose.speed=drive.f(0x238);pose.gear=int(car.vehicle().transmission.gear00);
+        // Measurements belong to this exact simulated frame, so rollback and
+        // delayed confirmation cannot replace them with a later render state.
+        auto edges=controls.pressedByte;
+        if(!controls.automaticMode&&controls.gearEnabled&&controls.requestedGear>=1&&controls.requestedGear<priorGear)edges|=0x10u;
+        pose.telemetry={drive.f(0x27c),drive.f(0xdc)/physicsDt,car.vehicle().appliedSpeedLoss,
+            car.vehicle().loss.persistentPenalty0CAA9884,car.roadContact().impact0C900E60,
+            drive.f(0x288),drive.f(0x284),(drive.u(0x150)?1u:0u)|(edges&0x10u?2u:0u)|(edges&0x20u?4u:0u)};
+        pose.telemetryAvailable=true;
         auto& detail=pose.detail;detail.rpm=car.vehicle().transmission.tach1c;
         detail.pitch=-drive.f(0x0c);detail.roll=-drive.f(0x14);detail.steering=actor.f(0x3c);
         for(unsigned i=0;i<4;++i){detail.suspension[i]=actor.f(0x40+i*4);detail.rotation[i]=actor.f(0x60+i*4);}

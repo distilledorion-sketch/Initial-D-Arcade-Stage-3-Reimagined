@@ -2874,7 +2874,14 @@ struct App {
         if(archiveMode==1)meta<<",\"playerName\":"<<std::quoted(multiplayer.localName)<<",\"opponentName\":"<<std::quoted(multiplayer.remoteName);
         else {meta<<",\"playerName\":"<<std::quoted(vsBanner.profileDisplayName(battleProfile));if(archiveMode==2)meta<<",\"opponentName\":"<<std::quoted(OriginalVsBanner::rivalDisplayName(unsigned(archiveRivalEnemy)));}
         meta<<",\"opponentManual\":"<<unsigned(!archiveOpponentAutomatic)<<",\"opponentTelemetry\":"<<unsigned(bool(authorityRace));
-        if(replaySteeringTicks[0]+replaySteeringTicks[1]+replaySteeringTicks[2]+replaySteeringTicks[3]+replaySteeringTicks[4]<=recording.frames.size()){
+        // The confirmed online recorder owns its settings/counts independently of
+        // previous solo runs and of currently predicted host inputs.
+        if(authorityRace){
+            replaySteeringTicks=authorityReplay.steeringTicks();const auto& settings=authorityReplay.steeringSettings();
+            replaySteeringSettings={settings.response,settings.deadzone,settings.smoothing};
+            replaySteeringSettingsChanged=authorityReplay.steeringSettingsChanged();
+        }
+        if(replaySteeringTicks[0]+replaySteeringTicks[1]+replaySteeringTicks[2]+replaySteeringTicks[3]+replaySteeringTicks[4]==recording.frames.size()){
             meta<<",\"steeringTicks\":[";for(unsigned i=0;i<5;++i){if(i)meta<<',';meta<<replaySteeringTicks[i];}meta<<"]";
         }
         meta<<",\"steeringResponse\":"<<replaySteeringSettings.response<<",\"steeringDeadzone\":"<<replaySteeringSettings.deadzone<<

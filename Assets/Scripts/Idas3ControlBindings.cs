@@ -68,6 +68,7 @@ public sealed partial class Idas3ControlBindings
     private readonly Dictionary<string,Idas3ControllerControl> controls = new Dictionary<string,Idas3ControllerControl>(StringComparer.Ordinal);
     private readonly Dictionary<string,float> restValues = new Dictionary<string,float>(StringComparer.Ordinal);
     private readonly HashSet<string> captureHeldButtons = new HashSet<string>(StringComparer.Ordinal);
+    private readonly HashSet<string> polledStartSources = new HashSet<string>(StringComparer.Ordinal);
     private readonly HashSet<string> startBlockedSources = new HashSet<string>(StringComparer.Ordinal);
     private readonly HashSet<KeyCode> startTransitionKeys = new HashSet<KeyCode>();
     private readonly Dictionary<string,uint> startTransitionControls = new Dictionary<string,uint>(StringComparer.Ordinal);
@@ -453,10 +454,11 @@ public sealed partial class Idas3ControlBindings
 
     private HashSet<string> StartSources()
     {
-        var result=new HashSet<string>(StringComparer.Ordinal);
+        var result=polledStartSources;result.Clear();
         if(current==null)return result;
         var binding=current.actions[(int)ActionId.Start];
-        foreach(var key in new[]{binding.key1,binding.key2,binding.key3})if(key!=KeyCode.None&&Held(key))result.Add("key:"+(int)key);
+        void AddKey(KeyCode key){if(key!=KeyCode.None&&Held(key))result.Add("key:"+(int)key);}
+        AddKey(binding.key1);AddKey(binding.key2);AddKey(binding.key3);
         if(!string.IsNullOrEmpty(binding.controlPath)){
             if(CustomAmount(binding)>=.5f)result.Add("control:"+activeProfileKey+":"+binding.controlPath);
         }else if(binding.pad!=PadInput.None&&Digital(binding.pad))result.Add("pad:"+(int)binding.pad);

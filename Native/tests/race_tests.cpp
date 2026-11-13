@@ -41,6 +41,9 @@ int main(){try{
     Replay analysed,plain;analysed.detailed=plain.detailed=true;ReplayTelemetry telemetry{.0123f,-1.5f,.36f,1.2f,4.75f,-12.5f,33.25f,1|2|4|8};
     analysed.record(1,{1,2,3},.3f,42,4,&detail,-1,&telemetry);plain.record(1,{1,2,3},.3f,42,4,&detail);
     telemetry.penalty=.98765f;telemetry.applyingRotation=-69.75f;telemetry.flags=16|(4u<<5);analysed.record(2,{2,3,4},.4f,43,5,&detail,-1,&telemetry);plain.record(2,{2,3,4},.4f,43,5,&detail);
+    require(plain.telemetryBytes().empty(),"Absent telemetry must not become a zero-filled measurement");
+    auto incomplete=analysed;incomplete.frames.back().telemetryAvailable=false;
+    require(incomplete.telemetryBytes().empty(),"Mixed capture must not advertise partial telemetry");
     auto stream=analysed.telemetryBytes();
     auto word=[&](std::size_t at){return unsigned(stream[at])|(unsigned(stream[at+1])<<8)|(unsigned(stream[at+2])<<16)|(unsigned(stream[at+3])<<24);};
     require(stream.size()==16+2*32&&word(0)==0x31544449&&word(4)==4&&word(8)==32&&word(12)==2,"IDT1 v4 header and frame count");

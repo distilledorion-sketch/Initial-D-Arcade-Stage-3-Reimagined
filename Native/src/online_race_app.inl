@@ -150,7 +150,10 @@ void simulateAuthority(const DriverInput& d,bool showcase=false){
             lamps[local].state=carPresentation.nextHeadlightState(lamps[local].enabled);
             lamps[1-local].state=rivalPresentation.nextHeadlightState(lamps[1-local].enabled);
         }
-        authorityReplay.sampleLamps(authorityLink->timeline().frame(),lamps);
+        const auto settings=currentSteeringSettings();
+        authorityReplay.sampleLamps(authorityLink->timeline().frame(),lamps,
+            {this->input.steeringSource,settings.response,settings.deadzone,settings.smoothing,
+             (controls.shiftDown?1u:0u)|(controls.shiftUp?2u:0u)});
     }
     if(!authorityLink->step(input)){authorityStalled=true;return;}
     // The authority owns gear enablement; requested-gear downshifts count once racing.

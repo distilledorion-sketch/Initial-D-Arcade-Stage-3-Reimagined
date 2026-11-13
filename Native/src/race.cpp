@@ -70,7 +70,7 @@ void Replay::record(std::uint64_t tick,Vec3 p,float yaw,float speed,int gear,con
     if(backfireCapture_){if(backfire< -1||backfire>1)truncated=true;else frames.back().backfire=backfire;}
     if(detail)frames.back().detail=*detail;
     else if(detailed)truncated=true; // Never publish partially detailed captures.
-    if(telemetry)frames.back().telemetry=*telemetry;
+    if(telemetry){frames.back().telemetry=*telemetry;frames.back().telemetryAvailable=true;}
 }
 std::vector<std::uint8_t> Replay::sharedBytes(std::uint32_t finish) const {
     if(truncated||frames.empty()||!finish||frames.front().tick>1||frames.back().tick>108000)return {};
@@ -126,7 +126,7 @@ std::vector<std::uint8_t> Replay::telemetryBytes() const {
     auto scalar=[&](float n){u32(std::bit_cast<std::uint32_t>(n));};
     u32(0x31544449);u32(4);u32(32);u32(std::uint32_t(frames.size()));
     for(std::size_t i=0;i<frames.size();++i){
-        if(i&&frames[i].tick!=frames[i-1].tick+1)return {};
+        if(!frames[i].telemetryAvailable||(i&&frames[i].tick!=frames[i-1].tick+1))return {};
         const auto& t=frames[i].telemetry;
         for(float v:{t.slip,t.yawRate,t.speedLoss,t.penalty,t.wallImpact,t.pendingRotation,t.applyingRotation}){if(!std::isfinite(v))return {};scalar(v);}
         u32(t.flags);

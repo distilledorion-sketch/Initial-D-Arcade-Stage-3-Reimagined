@@ -52,7 +52,7 @@ struct ReplayTelemetry {
     std::uint32_t flags=0;
 };
 static_assert(sizeof(ReplayTelemetry)==32);
-struct ReplayFrame { std::uint64_t tick; Vec3 position; float yaw,speed; int gear; ReplayDetail detail{};std::uint32_t dustStep=0;int backfire=-1; ReplayTelemetry telemetry{}; };
+struct ReplayFrame { std::uint64_t tick; Vec3 position; float yaw,speed; int gear; ReplayDetail detail{};std::uint32_t dustStep=0;int backfire=-1; ReplayTelemetry telemetry{};bool telemetryAvailable=false; };
 class Replay {
 public:
     static constexpr std::size_t maxFrames=60*60*30; // Thirty minutes at 60 Hz.
