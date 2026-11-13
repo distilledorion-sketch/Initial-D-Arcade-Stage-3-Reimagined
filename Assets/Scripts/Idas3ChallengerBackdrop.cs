@@ -16,6 +16,7 @@ public sealed class Idas3ChallengerBackdrop : MaskableGraphic
     int frame=-1;
     bool captureMeshPending, captureTopDown;
     public bool Captured { get; private set; }
+    internal bool CaptureIsTopDown=>captureTopDown;
     public override Texture mainTexture=>capture!=null?capture:Texture2D.whiteTexture;
     public void BeginCapture(Camera camera,int width,int height)
     {

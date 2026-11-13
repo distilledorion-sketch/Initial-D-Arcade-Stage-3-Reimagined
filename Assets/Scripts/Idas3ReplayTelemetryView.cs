@@ -147,7 +147,8 @@ internal sealed class Idas3ReplayTelemetryView : IDisposable
         if (analysis == null || analysis.Count == 0) return;
         EnsureResources();
         var a = analysis; int i = a.FrameAt(seconds); float x = area.x + 10, w = area.width - 20, y = area.y + 6;
-        Fill(area, new Color(0, 0, 0, .62f));
+        // Keep the original HUD behind this panel from showing through its measurements.
+        Fill(area, new Color(.035f, .04f, .05f, 1f));
         var dim = new Color(1, 1, 1, .55f);
         Text(new Rect(x, y, w, 18), Idas3MenuLocalization.T("TELEMETRY") + "  (T)", header, Color.white);
         if (!a.HasTelemetry) Text(new Rect(x + 110, y, w - 110, 18), Idas3MenuLocalization.T(a.Detailed ? "older recording" : "legacy recording"), tiny, dim);

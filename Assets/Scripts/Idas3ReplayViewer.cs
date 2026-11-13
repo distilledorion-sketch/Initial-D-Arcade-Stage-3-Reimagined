@@ -400,34 +400,34 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         // Update already routes keyboard/gamepad actions. Do not let IMGUI
         // also submit whichever button last received keyboard focus.
         if(Event.current.type==EventType.KeyDown||Event.current.type==EventType.KeyUp)Event.current.Use();
-        float scale = Mathf.Max(.6f, Mathf.Min(Screen.width / 1280f, Screen.height / 720f));
+        float scale = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));
         float width = Screen.width / scale, height = Screen.height / scale;
         if(browsing){LibraryView(width,height);return;}
-        float panelWidth = Mathf.Min(630, width - 24), panelX = (width - panelWidth) / 2;
+        float panelWidth = Mathf.Min(700, width - 24), panelX = (width - panelWidth) / 2;
         // The driving reference stays available with the playback overlay hidden.
         if(replay!=null&&telemetry.PanelVisible){
             float telemetryX=width-Idas3ReplayTelemetryView.PanelWidth-12;
-            float telemetryY=!controlsVisible||telemetryX>panelX+panelWidth+8?12:104;
+            float telemetryY=!controlsVisible||telemetryX>panelX+panelWidth+8?12:124;
             telemetry.DrawPanel(new Rect(telemetryX,telemetryY,Idas3ReplayTelemetryView.PanelWidth,Idas3ReplayTelemetryView.PanelHeight),seconds);
         }
         if (replay != null && !controlsVisible) return;
-        GUILayout.BeginArea(new Rect(panelX, 12, panelWidth, replay == null ? 135 : 80), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(panelX, 12, panelWidth, replay == null ? 135 : 104), GUI.skin.box);
         GUILayout.BeginHorizontal(); Idas3MenuGui.Label("REPLAY VIEWER", GUILayout.Width(125));
         GUI.enabled = picker == null;
         if (Idas3MenuGui.Button("Open replay…", GUILayout.Width(145)))
         {
             RequestFile();
         }
-        if (Idas3MenuGui.Button("Replay library", GUILayout.Width(90))) Browse();
+        if (Idas3MenuGui.Button("Replay library", GUILayout.Width(125))) Browse();
         GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button("Close viewer", GUILayout.Width(120))) Application.Quit(); GUILayout.EndHorizontal();
         GUI.enabled = true;
-        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + Steering(m) + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); }
+        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); var setup=Steering(m).TrimStart(' ', '\u00b7'); if(setup.Length>0)Idas3MenuGui.RawLabel(setup); }
         if (message != null) Idas3MenuGui.Label(message);
         GUILayout.EndArea();
         if (replay == null) return;
         GUI.enabled = picker == null;
-        float panelHeight=cameraMode==4?195:143;
+        float panelHeight=cameraMode==4?270:186;
         GUILayout.BeginArea(new Rect(panelX, height-panelHeight-12, panelWidth, panelHeight), GUI.skin.box);
         GUILayout.BeginHorizontal();
         if (Idas3MenuGui.Button(playing ? "Pause" : "Play", GUILayout.Width(75))) TogglePlay();
@@ -443,8 +443,8 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         if(slider!=(float)seconds)Seek(slider);
         telemetry.DrawMarkers(GUILayoutUtility.GetLastRect());
         GUILayout.BeginHorizontal();
-        foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (Idas3MenuGui.Button(speed + "×", GUILayout.Width(45))) rate = speed; } GUI.color = Color.white;
-        Idas3MenuGui.Label(cameraMode==3&&!CanSwitchPov?"Space/A: pause   C/Y: camera   Q/E: orbit":"Space/A: pause   C/Y: camera");
+        foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (Idas3MenuGui.Button(speed + "×", GUILayout.Width(50))) rate = speed; } GUI.color = Color.white;
+        GUILayout.FlexibleSpace();
         if(CanSwitchPov&&Idas3MenuGui.Button(opponentPov?"POV: OPPONENT":"POV: YOU",GUILayout.Width(130)))SwitchPov();
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
@@ -452,8 +452,9 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         if(Idas3MenuGui.Button(Idas3MenuLocalization.Format("Telemetry: {0} (T)",Idas3MenuLocalization.T(telemetry.PanelVisible?"ON":"OFF"))))telemetry.PanelVisible=!telemetry.PanelVisible;
         if(Idas3MenuGui.RawButton("◀ [",GUILayout.Width(40)))JumpToEvent(false);
         if(Idas3MenuGui.RawButton("] ▶",GUILayout.Width(40)))JumpToEvent(true);
-        if(Idas3MenuGui.Button("Hide replay overlay (H / Select)"))controlsVisible=false;
+        if(Idas3MenuGui.Button("Hide controls (H / Select)"))controlsVisible=false;
         GUILayout.EndHorizontal();
+        Idas3MenuGui.Label(cameraMode==3&&!CanSwitchPov?"Space/A: pause   C/Y: camera   Q/E: orbit":"Space/A: pause   C/Y: camera");
         if(cameraMode==4){
             GUILayout.BeginHorizontal();Idas3MenuGui.Label("Move speed",GUILayout.Width(80));
             freeSpeed=GUILayout.HorizontalSlider(freeSpeed,1,80);Idas3MenuGui.Label(freeSpeed.ToString("0")+" m/s",GUILayout.Width(60));

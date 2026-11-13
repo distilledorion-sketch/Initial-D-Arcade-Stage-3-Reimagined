@@ -550,7 +550,9 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         yield return OptionsChecks(session);menu.SetOpen(false);yield return Frames(3);
         host.DiagnosticFocusOverride=false;yield return MeasureOnline(session,"online-unfocused");
         Check((host.Status.flags&4)==0,"Forced managed focus loss was not forwarded as native unfocused state");
-        host.DiagnosticFocusOverride=true;padPulse=0x10;yield return Frames(5);
+        // Reacquiring focus deliberately requires a neutral input sample;
+        // press Start after that release, not on the focus-change frame.
+        host.DiagnosticFocusOverride=true;yield return Frames(3);padPulse=0x10;yield return Frames(5);
         Check(menu.IsOpen,"Online controller Start did not open options overlay");Check((host.Status.flags&2)==0,"Online Start paused native race");
         yield return Capture("online-start");yield return MeasureOnline(session,"online-start-overlay");
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0){

@@ -1232,7 +1232,12 @@ namespace Idas3.Multiplayer
                     int y0=Mathf.Clamp(Mathf.FloorToInt(low.y/target.height*snapshot.height),0,snapshot.height-1);
                     int y1=Mathf.Clamp(Mathf.CeilToInt(high.y/target.height*snapshot.height),0,snapshot.height);
                     var pixels=captured.GetPixels32();int green=0;
-                    for(int y=y0;y<y1;y++)for(int x=x0;x<x1;x++){var p=pixels[y*snapshot.width+x];if(p.g>200&&p.r<80&&p.b<80)green++;}
+                    // This reads the raw capture, before the production graphic
+                    // corrects a top-down backbuffer into texture coordinates.
+                    for(int y=y0;y<y1;y++)for(int x=x0;x<x1;x++){
+                        int sourceY=frozen.CaptureIsTopDown?snapshot.height-1-y:y;
+                        var p=pixels[sourceY*snapshot.width+x];if(p.g>200&&p.r<80&&p.b<80)green++;
+                    }
                     Check(green>20,"Frozen picture lost the host's accepting-challengers lettering: "+green);
                 }
                 Destroy(captured);
