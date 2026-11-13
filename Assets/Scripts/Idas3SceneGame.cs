@@ -122,6 +122,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
+        if(Idas3ChallengerGraphicsSmoke.Requested){new GameObject("Private challenger render checks").AddComponent<Idas3ChallengerGraphicsSmoke>();return;}
         if (Idas3ReplayViewer.Requested) return;
 
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-legacy-host") >= 0) return;
@@ -133,7 +134,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void InitializeGame()
     {
         if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished) return;
-        if (Idas3ReplayViewer.Requested) { enabled = false; return; }
+        if (Idas3ReplayViewer.Requested || Idas3ChallengerGraphicsSmoke.Requested) { enabled = false; return; }
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-legacy-host") >= 0) { enabled = false; return; }
         if (instance != null && instance != this) { Destroy(gameObject); return; }
         instance = this;

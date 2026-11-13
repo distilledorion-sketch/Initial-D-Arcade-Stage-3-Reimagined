@@ -14,7 +14,7 @@ public sealed class Idas3ChallengerBackdrop : MaskableGraphic
     Camera captureCamera;
     Material ownedMaterial;
     int frame=-1;
-    bool captureMeshPending;
+    bool captureMeshPending, captureTopDown;
     public bool Captured { get; private set; }
     public override Texture mainTexture=>capture!=null?capture:Texture2D.whiteTexture;
     public void BeginCapture(Camera camera,int width,int height)
@@ -29,6 +29,10 @@ public sealed class Idas3ChallengerBackdrop : MaskableGraphic
             name="Frozen challenger scene",filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp,
             useMipMap=false,autoGenerateMips=false,antiAliasing=1};
         if(!capture.Create())throw new InvalidOperationException("Could not capture challenger scene");
+        // Direct3D screen copies retain the backbuffer's top-down orientation.
+        // Camera render targets are already oriented as texture UVs. Remember
+        // the source at capture time, even if the camera destination later changes.
+        captureTopDown=camera.targetTexture==null&&SystemInfo.graphicsUVStartsAtTop;
         captureCamera=camera;copy=new CommandBuffer{name="Capture scene before challenger notice"};
         // At AfterEverything, CurrentActive may be a temporary UI target.
         // Read the camera's completed destination explicitly.
@@ -60,7 +64,7 @@ public sealed class Idas3ChallengerBackdrop : MaskableGraphic
     }
     public void EndCapture()
     {
-        RemoveCopy();Captured=false;captureMeshPending=false;
+        RemoveCopy();Captured=false;captureMeshPending=false;captureTopDown=false;
         if(capture!=null){capture.Release();if(Application.isPlaying)Destroy(capture);else DestroyImmediate(capture);capture=null;}
         frame=-1;SetAllDirty();
     }
@@ -72,7 +76,7 @@ public sealed class Idas3ChallengerBackdrop : MaskableGraphic
         for(int i=0;i<100;i++){
             Idas3ChallengerAnimation.BackdropVertex(frame,i,out float x,out float y,out byte c);
             mesh.AddVert(new Vector3(rect.xMin+x/640f*rect.width,rect.yMax-y/480f*rect.height,0),
-                new Color32(c,c,c,c),new Vector2(x/640f,1-y/480f));
+                new Color32(c,c,c,c),new Vector2(x/640f,captureTopDown?y/480f:1-y/480f));
         }
         for(int i=2;i<100;i++){
             if((i&1)==0)mesh.AddTriangle(i-2,i-1,i);else mesh.AddTriangle(i-1,i-2,i);

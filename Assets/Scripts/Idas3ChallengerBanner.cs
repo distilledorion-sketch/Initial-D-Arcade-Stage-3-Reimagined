@@ -21,15 +21,17 @@ public sealed class Idas3ChallengerBanner : MonoBehaviour
             Texture texture=Resources.Load<Texture2D>("Challenger/interrupt_"+part.texture);
             if(texture==null)throw new InvalidOperationException("Missing challenger texture "+part.texture);
             if(part.texture==0){
-                // Source U runs from 0 to 2. Avoid changing the shared asset's
+                // Source U runs from 0 to 2; mirror the half-plate so its
+                // outside border stays at the two ends, not across the middle.
+                // Avoid changing the shared asset's
                 // sampler (the import pipeline intentionally clamps UI assets).
                 // Player textures have no CPU pixels. Instantiate(Texture2D)
                 // loses their contents there even though it works in the Editor.
                 repeatedBackground=new RenderTexture(texture.width,texture.height,0,RenderTextureFormat.ARGB32){
-                    name="Original challenger repeat texture",filterMode=texture.filterMode,
-                    wrapModeU=TextureWrapMode.Repeat,wrapModeV=TextureWrapMode.Clamp,
+                    name="Original challenger mirrored plate",filterMode=texture.filterMode,
+                    wrapModeU=TextureWrapMode.Mirror,wrapModeV=TextureWrapMode.Clamp,
                     useMipMap=false,autoGenerateMips=false,antiAliasing=1};
-                if(!repeatedBackground.Create())throw new InvalidOperationException("Cannot create challenger repeat texture");
+                if(!repeatedBackground.Create())throw new InvalidOperationException("Cannot create challenger mirrored plate");
                 var previous=RenderTexture.active;
                 try{Graphics.Blit(texture,repeatedBackground);}finally{RenderTexture.active=previous;}
                 texture=repeatedBackground;
