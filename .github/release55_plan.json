@@ -1,0 +1,32 @@
+{
+  "repository": "distilledorion-sketch/Initial-D-Arcade-Stage-3-Reimagined",
+  "version": "0.3.95-community-replays.55",
+  "releaseId": 444515576,
+  "baselineReleaseId": 424727351,
+  "sourceCommit": "327041483045ccca373d06b3fe46c1598a5c0274",
+  "candidateInventorySha256": "33b7ace9f54fea4d2d6fdacbafb1454d05ce45172cd20816e0ef25f1dc5aab52",
+  "targetDownloads": [
+    {
+      "name": "Initial-D-Arcade-Stage-3-Reimagined-0.3.95.55-Windows-x64.zip",
+      "bytes": 1904079669,
+      "sha256": "04aca7919ba45b19ceb63b6b69a93c9990ac8cc328ffb96d5555ddaec8bbd389"
+    },
+    {
+      "name": "Initial-D-Additional-Courses-0.3.95-community-replays.55.zip",
+      "bytes": 565491232,
+      "sha256": "0eb6e6733ab147490fcd2ae5a43a0eda47e30568000f2a15f7229b3a74b51fa4"
+    }
+  ],
+  "baselineDownloads": [
+    {
+      "name": "Initial-D-Arcade-Stage-3-Reimagined-0.3.95.53-Windows-x64.zip",
+      "sha256": "b7caddf7c5aa8fa3a12b3d36d79084dd6a0572df4c5d8b395c41f6ae5654d7d4",
+      "bytes": 1903394516
+    },
+    {
+      "name": "Initial-D-Additional-Courses-0.3.95-community-replays.53.zip",
+      "sha256": "b8d0c67e9e413f2d1360aa5ab312794a01fc4c94e50b3b830bcf9d81e31f724c",
+      "bytes": 565474970
+    }
+  ]
+}
