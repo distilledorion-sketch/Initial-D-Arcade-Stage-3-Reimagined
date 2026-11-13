@@ -9,7 +9,7 @@ JOIN DISCORD: [https://discord.gg/mJCZ5AvBb](https://discord.gg/fUZySYrPss)
 
 ## Play
 
-1. Download `Initial-D-Setup-0.3.95.55.zip` from **Releases**.
+1. Download `Initial-D-Setup-0.3.95.56.zip` from **Releases**.
 2. Extract it and run `Install Initial D.cmd`. It downloads and verifies the game and additional courses into a new folder.
 3. Put your original **Initial D Arcade Stage 3 GDS-0033** dump in a `rom` folder beside `InitialDUnity.exe`.
 4. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. For a manual installation, extract both the `Windows-x64.zip` and the matching `Initial-D-Additional-Courses` ZIP into the same folder. Source-code ZIPs are the development project, not the playable build.
 
-**Current release:** `0.3.95-community-replays.55` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.56` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `.55` starts fresh Season 2 Time Attack rankings and resets old local Time Attack records and ghosts. It includes the accumulated card-renewal, minimap, smoke, input, online recovery, original driving cadence, force-feedback and controller-vibration fixes. Both online drivers should update; only `.55` can submit new times. Cars, tuning and battle progress remain intact. See the changelog for the complete changes and verification limits.
+**Latest update:** `.56` adds local replay analysis and a configurable Start button, and fixes the upside-down match-found screen and split Challenge Received banner. Both online drivers should update; only `.56` can submit new times. Existing Season 2 records, cars, tuning and battle progress remain intact. See the changelog for details and verification limits.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract both release ZIPs over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use one smaller changed-file patch that includes all required courses. Full Repair in `.44` or newer fetches both parts automatically; if an older updater falls back to its full download, the new game prompts for Full Repair to finish installing missing courses.
 

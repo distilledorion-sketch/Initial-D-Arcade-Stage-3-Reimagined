@@ -17,7 +17,7 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
-    public const string RequiredSubmissionBuild="0.3.95-community-replays.55";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.56";
     public const int FirstReplaySeason=2;
     // Public Season 2 uses database epoch 3; epoch 2 already held earlier runs.
     public const int CurrentSeasonEpoch=3;

@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.95-community-replays.56 - November 13, 2026
+
+### Changes since .55
+
+- Fix the race view and HUD appearing upside down when a match is found. Preserve the arcade Challenge Received animation with correctly oriented captured frames.
+- Remove the vertical split through the Challenge Received banner by mirroring its original background plate correctly.
+- Integrate replay analysis from community PR #12: steering, pedals, RPM, gears, drift/yaw, recorded penalties and speed loss, shift/contact markers, event navigation and section comparisons. Toggle the analysis panel with T or controller D-pad Up.
+- Keep online replay telemetry aligned with confirmed simulation frames and preserve current smoke and exhaust effects. Older recordings remain playable; unavailable measurements are labelled as not recorded.
+- Improve replay viewer panel layout and playback-speed labels so controls remain readable at smaller resolutions.
+- Integrate configurable Start from community PR #3 under Options > Controls. Bind a keyboard key or controller/wheel button; Start is unbound by default, preserving existing controls. Handle held buttons, focus changes, reconnection and rebinding through the current input router.
+- Require .56 for new community Time Attack submissions while preserving all existing Season 2 times and local ghosts. Online replay uploads and downloads remain disabled; replay analysis uses personal local recordings.
+
+### Install or update
+
+Both online drivers must update to the same build. Existing installations can use the in-game updater; changed-file patches support public versions .20 through .53 and .55. Fresh installs: extract **Initial-D-Setup-0.3.95.56.zip** and run **Install Initial D.cmd**. Manual installation requires both the Windows-x64 and matching Additional-Courses ZIPs. Supply your own original game data.
+
+This update preserves cars, tuning, battle/aura progress, settings, existing Season 2 records, ghosts, personal recordings, original game data and custom music. It does not start a new season.
+
+### Verification limits
+
+The integrated changes passed focused Start/input and replay-codec checks, confirmed-frame recording tests, local two-player match-found checks, and upright/seam-free graphics checks at three resolutions. These checks do not establish separate-network EOS reliability or physical-wheel compatibility. Replay measurements are diagnostic information, not proof of cheating.
+
 ## 0.3.95-community-replays.55 - November 13, 2026
 
 ### Changes since .53

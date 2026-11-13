@@ -276,16 +276,16 @@ test('viewer download preserves metadata and every pose without installation ide
  assert.equal((await call('/api/admin/replay?id='+crypto.randomUUID()+'&format=package',null,auth)).status,404);
 });
 test('upload build policy accepts only the exact ROM-required release',()=>{
- assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.55');
+ assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.56');
  assert.equal(supportedBuild(REQUIRED_CLIENT_BUILD),true);
- for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
+ for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.55','0.3.95-community-replays.57','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
  for(const required of ['',null,'invalid','0.3.95-community-replays.*'])assert.equal(supportedBuild(required,required),false);
 });
 test('nonmatching builds are permanently rejected before replay work and without database writes',async()=>{
  await call('/api/v1/register',{token:device});
  env.MIN_CLIENT_BUILD='0.3.95-community-replays.1'; // A stale variable cannot restore the old minimum policy.
  const before=db.prepare('SELECT total_changes() n').get().n;
- for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
+ for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.55','0.3.95-community-replays.57','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
   const response=await uploadReplay(run({build}));assert.equal(response.status,409);
   const error=await response.json();assert.equal(error.code,'client_build_required');assert.equal(error.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(error.permanent,true);assert.ok(error.error.includes(REQUIRED_CLIENT_BUILD));
  }
@@ -397,7 +397,7 @@ test('configured exact release rejects both sides of its version and cached poli
  const health=await(await call('/health')).json();assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(snapshot.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(snapshot.epoch,1);
  assert.equal(db.prepare('SELECT total_changes() n').get().n,before);
- for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56'])assert.equal((await uploadReplay(run({build}))).status,409);
+ for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.55','0.3.95-community-replays.57'])assert.equal((await uploadReplay(run({build}))).status,409);
  assert.equal((await uploadReplay(run())).status,200);
 });
 
@@ -1002,7 +1002,7 @@ test('website and admin omit replay downloads and exports',()=>{
 const season2Sql=readFileSync(new URL('../migrations/0015_season_2_55.sql',import.meta.url),'utf8');
 function season2Cutover(){
  db.exec('BEGIN');
- try{db.exec(season2Sql);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
+ try{db.exec(season2Sql);db.exec(readFileSync(new URL('../migrations/0016_submission_build_56.sql',import.meta.url),'utf8'));db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
  env.LEADERBOARD_SEASON='2';
 }
 const openSeason2=()=>db.exec("UPDATE settings SET value='false' WHERE key='leaderboard_submissions_closed'");
@@ -1079,14 +1079,14 @@ test('Season 2 migration rejects reused current or stored epoch3 and rolls back 
  }
 });
 
-test('Season 2 accepts only new epoch3 .55 times on both supported upload routes and rejects old duplicate queues',async()=>{
+test('Season 2 accepts only new epoch3 current-build times on both supported upload routes and rejects old duplicate queues',async()=>{
  const old=await season1Times();season2Cutover();openSeason2();
  for(const upload of [submitTime,x=>uploadReplay(x,new Uint8Array([1,2,3]))]){
   for(const x of [old,{...old,id:crypto.randomUUID()},run({epoch:1}),run({epoch:4})]){
    const response=await upload(x);assert.equal(response.status,409);
    const rejection=await response.json();assert.equal(rejection.code,'season_closed');assert.equal(rejection.permanent,true);
   }
-  for(const build of ['0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56']){
+  for(const build of ['0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.55','0.3.95-community-replays.57']){
    const response=await upload(run({epoch:3,build}));assert.equal(response.status,409);
    assert.equal((await response.json()).code,'client_build_required');
   }
@@ -1175,4 +1175,23 @@ test('Season 2 website uses public season label rather than internal epoch and m
  assert.match(html,/<h1>Season 2/);assert.match(html,/Season 1 is closed/);
  assert.match(html,/data\.season\|\|2/);assert.doesNotMatch(html,/' · Season '\+data\.epoch/);
  assert.match(html,/if\(r\.archived&&spec\.path==='run'\)continue/);
+});
+
+
+test('release .56 advances only the required build and preserves existing Season 2 times',async()=>{
+ await season1Times();db.exec(season2Sql);openSeason2();env.REQUIRED_CLIENT_BUILD='0.3.95-community-replays.55';
+ const previous=run({epoch:3,build:env.REQUIRED_CLIENT_BUILD});assert.equal((await submitTime(previous)).status,200);
+ const scores=db.prepare('SELECT * FROM runs_storage ORDER BY id').all();
+ const devices=db.prepare('SELECT * FROM devices ORDER BY id').all();
+ const settings=db.prepare("SELECT * FROM settings WHERE key<>'leaderboard_required_build' ORDER BY key").all();
+ const sql=readFileSync(new URL('../migrations/0016_submission_build_56.sql',import.meta.url),'utf8');
+ db.exec(sql);env.REQUIRED_CLIENT_BUILD=REQUIRED_CLIENT_BUILD;
+ assert.deepEqual(db.prepare('SELECT * FROM runs_storage ORDER BY id').all(),scores);
+ assert.deepEqual(db.prepare('SELECT * FROM devices ORDER BY id').all(),devices);
+ assert.deepEqual(db.prepare("SELECT * FROM settings WHERE key<>'leaderboard_required_build' ORDER BY key").all(),settings);
+ assert.equal(db.prepare("SELECT value FROM settings WHERE key='leaderboard_required_build'").get().value,REQUIRED_CLIENT_BUILD);
+ assert.equal((await submitTime(run({epoch:3,build:'0.3.95-community-replays.55'}))).status,409);
+ assert.equal((await submitTime(run({epoch:3,condition:1}))).status,200);
+ const after=db.prepare('SELECT * FROM runs_storage ORDER BY id').all();db.exec(sql);
+ assert.deepEqual(db.prepare('SELECT * FROM runs_storage ORDER BY id').all(),after);
 });

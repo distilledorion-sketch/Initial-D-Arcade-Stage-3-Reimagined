@@ -14,12 +14,16 @@ node --test test/*.test.mjs
 
 The tests use an in-memory database and never submit to the public service.
 
+## Current submission build (.56)
+
+Apply `0016_submission_build_56.sql` after publishing .56 and deploying the matching Worker configuration. This changes only the required upload build. Season 2, existing times, ghosts, identities and moderation remain intact; never rerun a season reset for this update.
+
 ## Season 2 (.55) cutover
 
 The public season is **Season 2** (`LEADERBOARD_SEASON: "2"`). Its internal
 submission namespace is **epoch 3**: epoch 2 was already used by an earlier
 reset and must not be reused. New runs require exactly
-`0.3.95-community-replays.55` and epoch 3. Old queued runs retain their original
+`0.3.95-community-replays.56` and epoch 3. Old queued runs retain their original
 build and epoch and are permanently rejected; they are never relabelled.
 All courses start with empty public boards. Previous server scores remain in
 the authenticated administration archive, with their original metadata and

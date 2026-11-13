@@ -125,7 +125,7 @@ public static class Idas3TimesOnlyChecks {
         Check(File.ReadAllText(Path.Combine(folder,"identity.json"))==identity,"Installation identity preserved");
         Check(!fresh(stale,Idas3CommunityTimes.RequiredSubmissionBuild)&&JsonUtility.ToJson(stale)==oldRun,"Old run cannot be relabeled or mutated");
         foreach(int epoch in new[]{0,1,2,4,int.MaxValue}){var r=RunData();r.epoch=epoch;Check(!Idas3CommunityTimes.Uploadable(r),"Wrong epoch rejected: "+epoch);}
-        foreach(string build in new[]{null,"0.3.95-community-replays.54","0.3.95-community-replays.56","0.3.95-community-replays.055","0.3.95-community-replays.55 ","0.3.95-Community-replays.55"}){
+        foreach(string build in new[]{null,"0.3.95-community-replays.54","0.3.95-community-replays.55","0.3.95-community-replays.57","0.3.95-community-replays.055","0.3.95-community-replays.56 ","0.3.95-Community-replays.56"}){
             var r=RunData();r.build=build;Check(!Idas3CommunityTimes.Uploadable(r),"Submission requires exact declared build: "+build);
         }
         var native=RunData();native.id=native.ruleset=native.build=null;native.epoch=0;
@@ -136,7 +136,8 @@ public static class Idas3TimesOnlyChecks {
         Check(valid(board),"Current Season 2 snapshot accepted");
         foreach(int epoch in new[]{1,2,4}){board.epoch=epoch;Check(!valid(board),"Old or future snapshot namespace rejected: "+epoch);}board.epoch=3;
         foreach(string build in new[]{"0.3.95-community-replays.54","0.3.95-community-replays.055","not-a-build"}){native.build=build;Check(!valid(board),"Old or malformed Season 2 snapshot build rejected: "+build);}
-        native.build="0.3.95-community-replays.56";Check(valid(board)&&!Idas3CommunityTimes.Uploadable(native),"Future supported Season 2 results readable without relaxing exact upload gate");native.build=Idas3CommunityTimes.RequiredSubmissionBuild;
+        native.build="0.3.95-community-replays.55";Check(valid(board)&&!Idas3CommunityTimes.Uploadable(native),"Existing .55 Season 2 times remain readable after updating");
+        native.build="0.3.95-community-replays.57";Check(valid(board)&&!Idas3CommunityTimes.Uploadable(native),"Future supported Season 2 results readable without relaxing exact upload gate");native.build=Idas3CommunityTimes.RequiredSubmissionBuild;
         native.epoch=2;Check(!valid(board),"Mixed-epoch row rejected");native.epoch=3;
         File.WriteAllText(Path.Combine(folder,"pending.json"),JsonUtility.ToJson(new QueueFixture{runs=new[]{native}}));
         File.WriteAllText(Path.Combine(folder,"snapshot.json"),JsonUtility.ToJson(board));
