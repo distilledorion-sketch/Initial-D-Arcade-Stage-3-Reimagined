@@ -443,7 +443,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         if(slider!=(float)seconds)Seek(slider);
         telemetry.DrawMarkers(GUILayoutUtility.GetLastRect());
         GUILayout.BeginHorizontal();
-        foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (Idas3MenuGui.Button(speed + "×", GUILayout.Width(50))) rate = speed; } GUI.color = Color.white;
+        foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (Idas3MenuGui.Button(speed + "×", GUILayout.Width(65))) rate = speed; } GUI.color = Color.white;
         GUILayout.FlexibleSpace();
         if(CanSwitchPov&&Idas3MenuGui.Button(opponentPov?"POV: OPPONENT":"POV: YOU",GUILayout.Width(130)))SwitchPov();
         GUILayout.EndHorizontal();
