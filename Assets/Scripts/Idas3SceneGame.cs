@@ -36,6 +36,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3ControlBindings controlBindings;
     private Idas3ControllerDevices controllerDevices = new Idas3ControllerDevices();
     private Idas3WheelFeedback wheelFeedback;
+    private Idas3ControllerVibration controllerVibration;
+    private bool feedbackExportUnavailable;
     internal Idas3ControllerDevices ControllerDevices => controllerDevices;
     internal Idas3ControlBindings ControlBindings => controlBindings;
     internal Idas3Native.FrameInput DiagnosticSubmittedInput { get; private set; }
@@ -252,6 +254,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             ControllerDeviceChanged();
             pauseMenu.InitializeControllerDevices(controllerDevices);
             wheelFeedback=new Idas3WheelFeedback(diagnosticMode);
+            controllerVibration=new Idas3ControllerVibration(diagnosticMode);
             pauseMenu.InitializeWheelFeedback(wheelFeedback);
             pauseMenu.OpenChanged += PauseVisibilityChanged;
             raceMusic = new Idas3RaceMusicCatalog();
@@ -640,20 +643,32 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void UpdateWheelFeedback()
     {
         if(wheelFeedback==null)return;
-        bool allowed=ready&&!stopping&&Application.isFocused&&!pauseMenu.BlocksGameInput&&
+        bool allowed=ready&&!stopping&&Application.isFocused&&!ReplayViewerOpen&&!pauseMenu.BlocksGameInput&&
             !multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&!controlBindings.SuppressInput;
-        var state=new Idas3Native.WheelState{size=40};
-        if(allowed&&gameOptions.Current.wheelForceFeedback&&Idas3Native.Idas3SceneGetWheelState(ref state)!=1)allowed=false;
-        wheelFeedback.Update(gameOptions.Current,controllerDevices.WheelIdentity,state,Status.car,allowed,Time.realtimeSinceStartupAsDouble);
+        var target=controllerDevices.VibrationTarget;
+        var state=new Idas3Native.FeedbackState{size=40};
+        if(feedbackExportUnavailable)allowed=false;
+        if(allowed){
+            // This read consumes the peak once; share the same snapshot with
+            // both destinations, even with output disabled so old events cannot
+            // reappear when enabled. An older DLL must never revive approximations.
+            try{if(Idas3Native.Idas3SceneGetFeedbackState(ref state)!=1)allowed=false;}
+            catch(EntryPointNotFoundException){feedbackExportUnavailable=true;allowed=false;}
+            catch(DllNotFoundException){feedbackExportUnavailable=true;allowed=false;}
+            catch(BadImageFormatException){feedbackExportUnavailable=true;allowed=false;}
+        }
+        double now=Time.realtimeSinceStartupAsDouble;
+        wheelFeedback.Update(gameOptions.Current,controllerDevices.WheelIdentity,state,allowed,now);
+        controllerVibration.Update(gameOptions.Current,target,state,allowed,now);
     }
-    private void OnApplicationFocus(bool focused){if(!focused)wheelFeedback?.Stop();}
-    private void OnApplicationPause(bool paused){if(paused)wheelFeedback?.Stop();}
-    private void OnDisable(){wheelFeedback?.Stop();}
+    private void OnApplicationFocus(bool focused){if(!focused){wheelFeedback?.Stop();controllerVibration?.Stop();}}
+    private void OnApplicationPause(bool paused){if(paused){wheelFeedback?.Stop();controllerVibration?.Stop();}}
+    private void OnDisable(){wheelFeedback?.Stop();controllerVibration?.Stop();}
     private static bool NoKeyHeld(KeyCode key) => false;
 
     private void ControllerDeviceChanged()
     {
-        wheelFeedback?.Stop();
+        wheelFeedback?.Stop();controllerVibration?.Stop();
         if (controlBindings == null) return;
         Debug.Log("IDAS3 controller input source: "+controllerDevices.ActiveName+"; profile="+controllerDevices.ActiveProfileKey);
         controlBindings.SelectControllerProfile(controllerDevices.ActiveProfileKey,
@@ -803,6 +818,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private void PauseVisibilityChanged(bool open)
     {
+        if(open){wheelFeedback?.Stop();controllerVibration?.Stop();}
         menuInput.VisibilityChanged(open, Time.frameCount);
         if (pauseMenu.AttractOptions)
         {
@@ -1057,6 +1073,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         if(timeAttackGhost!=null)timeAttackGhost.ShowGhost=false;
         raceMusicMenu?.StopPreview();
         if(CustomMusic!=null)CustomMusic.StopAllCoroutines();
+        controllerVibration?.Dispose();
         wheelFeedback?.Dispose();
         if (sound != null) sound.StopOutput();
         multiplayer?.Dispose();

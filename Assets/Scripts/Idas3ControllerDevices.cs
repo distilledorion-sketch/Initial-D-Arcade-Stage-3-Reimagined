@@ -36,6 +36,7 @@ public sealed class Idas3ControllerDevices : IDisposable
         public readonly DeviceChoice choice = new DeviceChoice();
         public string profile, model;
         public InputDevice unity;
+        public Idas3ControllerVibration.ITarget vibration;
         public int slot = -1;
         public bool generic, seen, firstValues = true, descriptorControls;
         public uint vendorId,productId;
@@ -75,6 +76,7 @@ public sealed class Idas3ControllerDevices : IDisposable
         connected=active!=null&&active.choice.connected,key=active?.choice.key??"",
         vendorId=active?.vendorId??0,productId=active?.productId??0
     };
+    internal Idas3ControllerVibration.ITarget VibrationTarget=>active!=null&&active.choice.connected?active.vibration:null;
     public string LastError { get; private set; }
     public event Action ActiveDeviceChanged;
     // The binding owner identifies explicitly configured Xbox-style shifters.
@@ -109,6 +111,7 @@ public sealed class Idas3ControllerDevices : IDisposable
         {
             var device = new Device { slot = i, profile = "xinput:slot:" + i, model = "xinput" };
             device.choice.key = "xinput:" + i; device.choice.label = "Xbox controller — slot " + (i + 1);
+            device.vibration=new Idas3ControllerVibration.XboxTarget((uint)i,()=>device.choice.connected);
             AddStandardControls(device); xbox[i] = device; devices.Add(device);
         }
         initialized = true; dirty = restoreSelection = true; nextScan = 0; xinputAvailable = true;
@@ -118,6 +121,7 @@ public sealed class Idas3ControllerDevices : IDisposable
     public void Dispose()
     {
         if (initialized) InputSystem.onDeviceChange -= OnDeviceChange;
+        foreach(var device in devices)try{device.vibration?.Dispose();}catch(Exception){}
         initialized = false; active = automaticResume = null;rigSamples.Clear();
     }
     private void OnDeviceChange(InputDevice device, InputDeviceChange change) { dirty = true; }
@@ -309,6 +313,7 @@ public sealed class Idas3ControllerDevices : IDisposable
         string profile = "unity:" + model + (string.IsNullOrEmpty(description.serial) ? "" : ":serial:" + Fingerprint(description.serial));
         var device = new Device { unity = input, generic = !(input is Gamepad), profile = profile, model = model,
             vendorId=ids!=null&&ids.vendorId>0?(uint)ids.vendorId:0,productId=ids!=null&&ids.productId>0?(uint)ids.productId:0 };
+        if(input is Gamepad gamepad)device.vibration=new Idas3ControllerVibration.UnityTarget(gamepad);
         device.choice.key = profile + (string.IsNullOrEmpty(description.serial) ? ":device:" + input.deviceId : "");
         string label = string.IsNullOrWhiteSpace(description.product) ? input.displayName : description.product;
         if (string.IsNullOrWhiteSpace(label)) label = input.layout;

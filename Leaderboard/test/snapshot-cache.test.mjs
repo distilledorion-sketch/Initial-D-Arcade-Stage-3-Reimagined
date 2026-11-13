@@ -11,6 +11,9 @@ beforeEach(()=>{
  db=new DatabaseSync(':memory:');db.exec('PRAGMA foreign_keys=ON');
  for(const file of readdirSync(new URL('../migrations/',import.meta.url)).filter(n=>/^\d+.*\.sql$/.test(n)).sort())
   db.exec(readFileSync(new URL('../migrations/'+file,import.meta.url),'utf8'));
+ // The rollover intentionally starts closed. These cache tests model the
+ // published/open season; dedicated Worker tests exercise the closed gate.
+ db.exec("UPDATE settings SET value='false' WHERE key='leaderboard_submissions_closed'");
  queries=[];beforePublish=null;
  const wrap=(sql,args=[])=>({bind(...args){return wrap(sql,args);},
   async first(){queries.push(sql);return db.prepare(sql).get(...args)||null;},

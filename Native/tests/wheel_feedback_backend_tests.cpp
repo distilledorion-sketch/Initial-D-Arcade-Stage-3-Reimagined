@@ -19,6 +19,7 @@ void require(bool condition,const char* message){++checks;if(!condition)throw st
 struct FakeEffect final : IDirectInputEffect {
     int releases=0,stops=0,unloads=0,updates=0;int* failure=nullptr;
     DWORD duration=0,flags=0;LONG magnitude=0;bool loseFocus=false;
+    DICONDITION condition{};DIPERIODIC periodic{};
     UNKNOWN_METHODS
     ULONG STDMETHODCALLTYPE Release() override{++releases;return 0;}
     UNUSED_METHOD(Initialize,(HINSTANCE,DWORD,REFGUID))
@@ -26,7 +27,12 @@ struct FakeEffect final : IDirectInputEffect {
     UNUSED_METHOD(GetParameters,(LPDIEFFECT,DWORD))
     HRESULT STDMETHODCALLTYPE SetParameters(LPCDIEFFECT parameters,DWORD updateFlags) override{
         ++updates;duration=parameters->dwDuration;flags=updateFlags;
-        magnitude=static_cast<DICONSTANTFORCE*>(parameters->lpvTypeSpecificParams)->lMagnitude;
+        if(parameters->cbTypeSpecificParams==sizeof(DICONSTANTFORCE))
+            magnitude=static_cast<const DICONSTANTFORCE*>(parameters->lpvTypeSpecificParams)->lMagnitude;
+        else if(parameters->cbTypeSpecificParams==sizeof(DICONDITION))
+            condition=*static_cast<const DICONDITION*>(parameters->lpvTypeSpecificParams);
+        else if(parameters->cbTypeSpecificParams==sizeof(DIPERIODIC))
+            periodic=*static_cast<const DIPERIODIC*>(parameters->lpvTypeSpecificParams);
         if(loseFocus)testForeground=false;
         return *failure==11?DIERR_INPUTLOST:DI_OK;
     }
@@ -39,10 +45,10 @@ struct FakeEffect final : IDirectInputEffect {
 };
 struct FakeDevice final : IDirectInputDevice8W {
     int failure=-1,releases=0,acquires=0,unacquires=0,effects=0,propertyWrites=0;
-    bool acquired=false,propertyWhileAcquired=false,restoreFails=false;
+    bool acquired=false,propertyWhileAcquired=false,restoreFails=false,optionalEffects=false;
     DWORD autocenter=DIPROPAUTOCENTER_ON,cooperative=0,effectAxis=0,effectDuration=0;
-    FakeEffect effect;
-    FakeDevice(){effect.failure=&failure;}
+    FakeEffect effect,spring,damper,rumble;
+    FakeDevice(){for(auto* item:{&effect,&spring,&damper,&rumble})item->failure=&failure;}
     UNKNOWN_METHODS
     ULONG STDMETHODCALLTYPE Release() override{++releases;return 0;}
     HRESULT STDMETHODCALLTYPE GetCapabilities(LPDIDEVCAPS caps) override{
@@ -80,13 +86,22 @@ struct FakeDevice final : IDirectInputDevice8W {
     UNUSED_METHOD(GetDeviceInfo,(LPDIDEVICEINSTANCEW))
     UNUSED_METHOD(RunControlPanel,(HWND,DWORD))
     UNUSED_METHOD(Initialize,(HINSTANCE,DWORD,REFGUID))
-    HRESULT STDMETHODCALLTYPE CreateEffect(REFGUID,LPCDIEFFECT parameters,LPDIRECTINPUTEFFECT* result,LPUNKNOWN) override{
-        ++effects;effectDuration=parameters->dwDuration;effectAxis=parameters->rgdwAxes[0];*result=&effect;
+    HRESULT STDMETHODCALLTYPE CreateEffect(REFGUID type,LPCDIEFFECT parameters,LPDIRECTINPUTEFFECT* result,LPUNKNOWN) override{
+        ++effects;effectDuration=parameters->dwDuration;effectAxis=parameters->rgdwAxes[0];
+        if(IsEqualGUID(type,GUID_Spring))*result=&spring;
+        else if(IsEqualGUID(type,GUID_Damper))*result=&damper;
+        else if(IsEqualGUID(type,GUID_Sine))*result=&rumble;
+        else *result=&effect;
         return failure==9?E_FAIL:DI_OK;
     }
     UNUSED_METHOD(EnumEffects,(LPDIENUMEFFECTSCALLBACKW,void*,DWORD))
-    HRESULT STDMETHODCALLTYPE GetEffectInfo(LPDIEFFECTINFOW info,REFGUID) override{
-        info->dwEffType=failure==14?DIEFT_PERIODIC:DIEFT_CONSTANTFORCE;return failure==2?DIERR_UNSUPPORTED:DI_OK;
+    HRESULT STDMETHODCALLTYPE GetEffectInfo(LPDIEFFECTINFOW info,REFGUID type) override{
+        if(IsEqualGUID(type,GUID_ConstantForce))
+            info->dwEffType=failure==14?DIEFT_PERIODIC:DIEFT_CONSTANTFORCE;
+        else if(!optionalEffects)return DIERR_UNSUPPORTED;
+        else if(IsEqualGUID(type,GUID_Sine))info->dwEffType=DIEFT_PERIODIC;
+        else info->dwEffType=DIEFT_CONDITION;
+        return failure==2?DIERR_UNSUPPORTED:DI_OK;
     }
     UNUSED_METHOD(GetForceFeedbackState,(LPDWORD))
     UNUSED_METHOD(SendForceFeedbackCommand,(DWORD))
@@ -171,6 +186,101 @@ void selectionAndFocus(){
     Fixture stopped;testForeground=false;
     require(!stopped.subject.setForce(firstGuid,.5f)&&stopped.input.creates==0,"Background process opened a device");
 }
+Idas3WheelCabinetState cabinetRequest(){
+    Idas3WheelCabinetState state{};state.size=sizeof(state);state.version=1;state.active=1;
+    state.power=.5f;state.torque=-.5f;state.spring=.4f;
+    state.damperStrength=2.f/127.f;state.damperParameter=64.f/127.f;
+    state.rumbleIntensity=.3f;state.rumbleFrequencyHz=31.5f;
+    return state;
+}
+LONG expectedMagnitude(float value){return LONG(std::lround(double(value)*10000));}
+void cabinetEffects(){
+    Fixture f;auto& wheel=f.input.wheel;wheel.optionalEffects=true;
+    auto state=cabinetRequest();
+    require(f.subject.setCabinet(firstGuid,state),"Cabinet fixture failed to initialize");
+    require(wheel.effects==4&&wheel.acquires==1,"Cabinet optional effects were not created once");
+    require(wheel.effect.magnitude==-2500,"Cabinet torque changed sign or applied gain twice");
+    require(wheel.spring.condition.lPositiveCoefficient==2000&&
+            wheel.spring.condition.lNegativeCoefficient==2000&&
+            wheel.spring.condition.dwPositiveSaturation==10000&&
+            wheel.spring.condition.dwNegativeSaturation==10000,"Spring coefficient/gain/saturation mismatch");
+    require(wheel.rumble.periodic.dwMagnitude==1500&&wheel.rumble.periodic.dwPeriod==31746,
+            "Rumble gain or 31.5 Hz period changed");
+    for(auto* effect:{&wheel.effect,&wheel.spring,&wheel.damper,&wheel.rumble}){
+        require(effect->duration==100000&&(effect->flags&DIEP_START)!=0,
+                "Cabinet effect is not a refreshed finite 100 ms lease");
+    }
+    for(unsigned pole:{1u,20u,120u})for(float power:{.25f,.5f,1.f}){
+        state.damperParameter=float(pole)/127.f;state.power=power;
+        require(f.subject.setCabinet(firstGuid,state),"Damper pole/gain update failed");
+        const auto& condition=wheel.damper.condition;
+        require(condition.lPositiveCoefficient==expectedMagnitude(float(pole)/127.f)&&
+                condition.lNegativeCoefficient==condition.lPositiveCoefficient,
+                "Damper coefficient ignored pole or was gain-scaled");
+        require(condition.dwPositiveSaturation==DWORD(expectedMagnitude((2.f/127.f)*power))&&
+                condition.dwNegativeSaturation==condition.dwPositiveSaturation,
+                "Damper saturation did not use strength with gain exactly once");
+        require(condition.lOffset==0&&condition.lDeadBand==0,"Damper offset/dead band changed");
+    }
+    require(wheel.effects==4&&wheel.acquires==1,"Cabinet refresh recreated optional effects");
+    state.power=0;
+    require(f.subject.setCabinet(firstGuid,state),"Zero cabinet gain was rejected");
+    for(auto* effect:{&wheel.effect,&wheel.spring,&wheel.damper,&wheel.rumble})
+        require(effect->stops>0,"Zero gain left a cabinet effect playing");
+    Fixture idle;state=cabinetRequest();state.torque=0;state.spring=0;state.rumbleIntensity=0;
+    state.damperParameter=0;
+    require(idle.subject.setCabinet(firstGuid,state)&&idle.input.creates==0,
+            "Zero damper coefficient acquired idle hardware");
+    Fixture constantOnly;
+    require(constantOnly.subject.setCabinet(firstGuid,cabinetRequest())&&constantOnly.input.wheel.effects==1,
+            "Unavailable optional effects prevented constant force");
+}
+void cabinetValidationAndFocus(){
+    for(float invalid:{-.001f,1.001f,std::numeric_limits<float>::quiet_NaN(),std::numeric_limits<float>::infinity()}){
+        Fixture f;auto& wheel=f.input.wheel;wheel.optionalEffects=true;
+        auto state=cabinetRequest();require(f.subject.setCabinet(firstGuid,state),"Invalid-parameter fixture failed");
+        state.damperParameter=invalid;
+        require(!f.subject.setCabinet(firstGuid,state)&&!f.subject.device&&!wheel.acquired,
+                "Invalid damper parameter retained device ownership");
+        for(auto* effect:{&wheel.effect,&wheel.spring,&wheel.damper,&wheel.rumble})
+            require(effect->releases==1&&effect->stops==1&&effect->unloads==1,
+                    "Invalid damper parameter failed to stop and release an effect");
+        require(wheel.autocenter==DIPROPAUTOCENTER_ON&&!wheel.propertyWhileAcquired,
+                "Invalid cabinet parameter failed to restore autocenter");
+    }
+    Fixture f;auto& wheel=f.input.wheel;wheel.optionalEffects=true;
+    require(f.subject.setCabinet(firstGuid,cabinetRequest()),"Cabinet focus fixture failed");
+    wheel.damper.loseFocus=true;
+    require(!f.subject.setCabinet(firstGuid,cabinetRequest())&&!f.subject.device&&!wheel.acquired,
+            "Focus loss during optional effect update retained output");
+    for(auto* effect:{&wheel.effect,&wheel.spring,&wheel.damper,&wheel.rumble})
+        require(effect->releases==1,"Focus loss did not release every cabinet effect");
+}
+void legacyBoardGain(){
+    // The legacy board snapshot already contains its gain. Passing it through
+    // the v1 raw-request adapter must not apply that gain for a second time.
+    idas3ffb::reset();
+    idas3ffb::submit(idas3ffb::CommandEnable,0,1);
+    idas3ffb::submit(idas3ffb::CommandPower,8u<<3,0);
+    idas3ffb::submit(idas3ffb::CommandTorque,1,64); // Code192, raw torque0.5.
+    idas3ffb::submit(idas3ffb::CommandSpring,64,0);
+    idas3ffb::submit(idas3ffb::CommandDamper,2,64);
+    idas3ffb::submit(idas3ffb::CommandRumble,63,25);
+    const auto state=cabinetFromBoard();
+    require(state.power==1.f&&state.active==1,"Legacy adapter reapplies board power");
+    Fixture f;auto& wheel=f.input.wheel;wheel.optionalEffects=true;
+    require(f.subject.setCabinet(firstGuid,state),"Legacy board adapter rejected a valid snapshot");
+    const float power=8.f/15.f;
+    require(wheel.effect.magnitude==expectedMagnitude(.5f*power),"Legacy torque gain was squared");
+    require(wheel.spring.condition.lPositiveCoefficient==expectedMagnitude((64.f/127.f)*power),
+            "Legacy spring gain was squared");
+    require(wheel.damper.condition.lPositiveCoefficient==expectedMagnitude(64.f/127.f)&&
+            wheel.damper.condition.dwPositiveSaturation==DWORD(expectedMagnitude((2.f/127.f)*power)),
+            "Legacy damper coefficient/saturation/gain mismatch");
+    require(wheel.rumble.periodic.dwMagnitude==DWORD(expectedMagnitude(.3f*power)),
+            "Legacy rumble gain was squared");
+    idas3ffb::reset();
+}
 void savedSteeringTransport(){
     // Exercise the exported ABI with foreground forcibly absent: the board
     // consumes telemetry, but no discovery, acquisition or output can occur.
@@ -198,7 +308,8 @@ void savedSteeringTransport(){
 }
 }
 int main()try{
-    happyPath();rejectedInputs();failures();selectionAndFocus();savedSteeringTransport();
+    happyPath();rejectedInputs();failures();selectionAndFocus();cabinetEffects();
+    cabinetValidationAndFocus();legacyBoardGain();savedSteeringTransport();
     std::cout<<"PASS "<<checks<<" fake-device force/lease/cache/GUID/focus/cleanup/failure checks. No physical device discovery, acquisition or motor calls.\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"FAIL "<<error.what()<<'\n';return 1;}

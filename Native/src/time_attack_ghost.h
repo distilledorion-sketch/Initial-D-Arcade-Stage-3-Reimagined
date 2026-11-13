@@ -19,5 +19,8 @@ public:
     // profile directory and five save slots. Optional replay archives are separate.
     // Refuses linked paths/non-file entries and leaves current revision-2 ghosts.
     static bool removeRetiredOdawaraGhosts(const std::filesystem::path& saves);
+    // All known personal-best and per-model telemetry ghosts before the local
+    // season. Keeps current/future season files and general replay archives.
+    static bool removePreviousSeasonGhosts(const std::filesystem::path& saves);
 };
 }

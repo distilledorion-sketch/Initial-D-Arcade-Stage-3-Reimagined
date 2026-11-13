@@ -37,12 +37,12 @@ public static class Idas3CommunityRefreshChecks
                         // Server selects the top ten plus the best of each other car (44 maximum).
                         for(int row=0;row<44&&entries.Count<count;++row)entries.Add(new Idas3CommunityTimes.Run {
                             id=Guid.NewGuid().ToString(),ruleset=Idas3CommunityTimes.Ruleset,
-                            build=Idas3CommunityTimes.RequiredSubmissionBuild,epoch=2,condition=condition,
+                            build=Idas3CommunityTimes.RequiredSubmissionBuild,epoch=Idas3CommunityTimes.CurrentSeasonEpoch,condition=condition,
                             weather=weather,car=row<10?0:row-9,ticks6000=1000000+row,manual=1,night=1,
                             nameGlyphs=new[]{162,163,164,221,221},splits=new[]{250000,500000,750000,1000000+row}
                         });
                     }
-                var fixture=new Idas3CommunityTimes.Snapshot {ruleset=Idas3CommunityTimes.Ruleset,epoch=2,entries=entries.ToArray()};
+                var fixture=new Idas3CommunityTimes.Snapshot {ruleset=Idas3CommunityTimes.Ruleset,epoch=Idas3CommunityTimes.CurrentSeasonEpoch,entries=entries.ToArray()};
                 string json=JsonUtility.ToJson(fixture);
                 var sample=new Sample {entries=entries.Count,bytes=System.Text.Encoding.UTF8.GetByteCount(json),milliseconds=new double[12]};
                 for(int i=-1;i<sample.milliseconds.Length;++i) {
@@ -89,10 +89,11 @@ public static class Idas3CommunityRefreshChecks
                 }
                 return max;
             };
-            var small=new Idas3CommunityTimes.Snapshot {ruleset=Idas3CommunityTimes.Ruleset,epoch=2,entries=new[]{ValidRun()}};
+            var small=new Idas3CommunityTimes.Snapshot {ruleset=Idas3CommunityTimes.Ruleset,epoch=Idas3CommunityTimes.CurrentSeasonEpoch,entries=new[]{ValidRun()}};
             var baselineCache=JsonUtility.FromJson<Idas3CommunityTimes.Snapshot>(File.ReadAllText(Path.Combine(Path.GetDirectoryName(output),"baseline/cache/snapshot.json")));
+            foreach(var row in baselineCache.entries)CurrentFixture(row);
             foreach(int count in new[]{200,2000}) {
-                var fixture=new Idas3CommunityTimes.Snapshot {ruleset=small.ruleset,epoch=2,entries=new Idas3CommunityTimes.Run[count]};
+                var fixture=new Idas3CommunityTimes.Snapshot {ruleset=small.ruleset,epoch=Idas3CommunityTimes.CurrentSeasonEpoch,entries=new Idas3CommunityTimes.Run[count]};
                 for(int n=0;n<count;n++)fixture.entries[n]=baselineCache.entries[n];
                 var bytes=Encoding.UTF8.GetBytes(JsonUtility.ToJson(fixture));
                 var sample=new Sample {entries=count,bytes=bytes.Length,milliseconds=new double[12],mainStepMilliseconds=new double[12]};
@@ -116,7 +117,7 @@ public static class Idas3CommunityRefreshChecks
             small.epoch=1;small.entries[0].epoch=1;
             drain(begin(200,Encoding.UTF8.GetBytes(JsonUtility.ToJson(small))),null);
             check(File.ReadAllText(dest)==saved&&(double)confirmed.GetValue(owner)==0,"Old season cannot replace current records");
-            small.epoch=2;small.entries[0].epoch=2;
+            small.epoch=Idas3CommunityTimes.CurrentSeasonEpoch;small.entries[0].epoch=Idas3CommunityTimes.CurrentSeasonEpoch;
             small.entries[0].build="0.3.94-player-replays.4";
             drain(begin(200,Encoding.UTF8.GetBytes(JsonUtility.ToJson(small))),null);
             check(File.ReadAllText(dest)==saved,"Unsupported build cannot replace current records");
@@ -136,7 +137,7 @@ public static class Idas3CommunityRefreshChecks
             saved=File.ReadAllText(dest);
             using(var stop=new CancellationTokenSource()) {
                 stop.Cancel();
-                var task=(Task<Idas3CommunityTimes.Snapshot>)prepare.Invoke(null,new object[]{validBytes,storage,2,stop.Token});
+                var task=(Task<Idas3CommunityTimes.Snapshot>)prepare.Invoke(null,new object[]{validBytes,storage,Idas3CommunityTimes.CurrentSeasonEpoch,stop.Token});
                 check(task.Wait(30000)&&task.Result==null&&File.ReadAllText(dest)==saved,"Cancelled preparation never commits a cache");
             }
             var responseType=typeof(Idas3CommunityTimes).GetNestedType("LimitedResponse",BindingFlags.NonPublic);
@@ -155,9 +156,11 @@ public static class Idas3CommunityRefreshChecks
             UnityEngine.Debug.Log("COMMUNITY_REFRESH_PASS "+checks.Count);
         } finally {if(go!=null)UnityEngine.Object.DestroyImmediate(go);}
     }
+    static void CurrentFixture(Idas3CommunityTimes.Run row){row.epoch=Idas3CommunityTimes.CurrentSeasonEpoch;row.build=Idas3CommunityTimes.RequiredSubmissionBuild;}
+    static void MarkCurrentStorage(string storage)=>typeof(Idas3CommunityTimes).GetMethod("MigrateSeasonCache",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{storage});
     static Idas3CommunityTimes.Run ValidRun()=>new Idas3CommunityTimes.Run {
         id=Guid.NewGuid().ToString(),ruleset=Idas3CommunityTimes.Ruleset,build=Idas3CommunityTimes.RequiredSubmissionBuild,
-        epoch=2,condition=35,weather=1,car=34,ticks6000=1000000,manual=1,night=1,
+        epoch=Idas3CommunityTimes.CurrentSeasonEpoch,condition=35,weather=1,car=34,ticks6000=1000000,manual=1,night=1,
         nameGlyphs=new[]{162,163,164,221,221},splits=new[]{250000,500000,750000,1000000}
     };
     [Serializable] sealed class CapacityReport {public bool snapshotAccepted;public int snapshotRows,restoredPendingRows;public string[] checks;public string scope="Offline full server-shaped board and pending-queue restore; isolated cache, no HTTP/native game.";}
@@ -168,8 +171,12 @@ public static class Idas3CommunityRefreshChecks
         if(!File.Exists(Path.Combine(output,"PRIVATE_TEST_ONLY.txt")))throw new InvalidOperationException("Private marker required");
         string proof=Path.GetDirectoryName(output),storage=Path.Combine(output,"community");Directory.CreateDirectory(storage);
         File.WriteAllText(Path.Combine(output,"ISOLATED_MODE_FLOW_TEST.txt"),"Private pending-queue recovery check.");
-        File.Copy(Path.Combine(proof,"pending.json"),Path.Combine(storage,"pending.json"));
+        MarkCurrentStorage(storage);
+        var input=JsonUtility.FromJson<PendingFixture>(File.ReadAllText(Path.Combine(proof,"pending.json")));
+        foreach(var row in input.runs)CurrentFixture(row);
+        File.WriteAllText(Path.Combine(storage,"pending.json"),JsonUtility.ToJson(input));
         var data=JsonUtility.FromJson<Idas3CommunityTimes.Snapshot>(File.ReadAllText(Path.Combine(proof,"snapshot.json")));
+        data.epoch=Idas3CommunityTimes.CurrentSeasonEpoch;foreach(var row in data.entries)CurrentFixture(row);
         var usable=typeof(Idas3CommunityTimes).GetMethod("UsableCommunitySnapshot",BindingFlags.Static|BindingFlags.NonPublic);
         var settings=new Idas3GameOptions();typeof(Idas3GameOptions).GetField("current",Private).SetValue(settings,new Idas3GameOptions.Values {communityTimes=true});
         var go=new GameObject("Offline capacity check");
@@ -181,7 +188,7 @@ public static class Idas3CommunityRefreshChecks
             File.WriteAllText(Path.Combine(output,"report.json"),JsonUtility.ToJson(result,true));
             if(!result.snapshotAccepted||result.restoredPendingRows!=2450)throw new Exception("Full community board/queue rejected or truncated");
             var checks=new List<string>();Action<bool,string> check=(pass,label)=>{if(!pass)throw new Exception(label);checks.Add(label);};
-            var original=JsonUtility.FromJson<PendingFixture>(File.ReadAllText(Path.Combine(proof,"pending.json")));
+            var original=input;
             var restored=JsonUtility.FromJson<PendingFixture>(File.ReadAllText(Path.Combine(storage,"pending.json")));
             for(int i=0;i<original.runs.Length;i++)check(JsonUtility.ToJson(original.runs[i])==JsonUtility.ToJson(restored.runs[i]),"Restored pending row intact: "+i);
             var faster=JsonUtility.FromJson<Idas3CommunityTimes.Run>(JsonUtility.ToJson(original.runs[original.runs.Length-1]));
@@ -193,6 +200,7 @@ public static class Idas3CommunityRefreshChecks
             string partialRoot=Path.Combine(output,"partial"),partialStorage=Path.Combine(partialRoot,"community");Directory.CreateDirectory(partialStorage);
             File.WriteAllText(Path.Combine(partialRoot,"ISOLATED_MODE_FLOW_TEST.txt"),"Private smaller queue.");
             var partialRows=new Idas3CommunityTimes.Run[2112];Array.Copy(original.runs,partialRows,partialRows.Length);
+            MarkCurrentStorage(partialStorage);
             File.WriteAllText(Path.Combine(partialStorage,"pending.json"),JsonUtility.ToJson(new PendingFixture {runs=partialRows}));
             var smaller=go.AddComponent<Idas3CommunityTimes>();smaller.Initialize(null,settings,go.GetComponent<Idas3PauseMenu>(),partialStorage,true);
             check(Idas3TimesOnlyChecks.Commit(smaller,faster)&&(int)count.GetValue(smaller)==2113,"New key can extend a queue past the obsolete limit");

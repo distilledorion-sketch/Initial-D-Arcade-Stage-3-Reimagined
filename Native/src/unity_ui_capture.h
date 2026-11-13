@@ -5,7 +5,8 @@ namespace idas3 {
 struct NativeImage;
 struct UnityUiVertex{float x,y,u,v;std::uint32_t argb,offsetArgb;};
 // Neutral pixel-coordinate UI triangles. Flags:1 original material,2 behind3D,
-//4 outer additive layer,8 grouped race HUD,16 source texture filtering.
+//4 outer additive layer,8 grouped race HUD,16 source texture filtering,
+//32 rebuilt navigation distance field.
 // TSP/PCW retain material semantics.
 struct UnityUiDraw{std::uint32_t first,count,texture,tsp,pcw,flags;float opacity;std::uint32_t reserved;float clipLeft,clipTop,clipRight,clipBottom;};
 struct UnityUiFrame{std::uint32_t size,width,height,drawCount,vertexCount,textureCount,unresolvedSurfaces,reserved;std::uint64_t revision;};

@@ -42,6 +42,19 @@ int main(int argc,char** argv)try{
         }
     }
     if(accepted<100||rejected<100)throw std::runtime_error("Insufficient visibility branches");
+    // The race registers ONE smoke view (ARace+76's model at +52).
+    // A rear-view camera exists, but it is not passed to the smoke manager.
+    // Execute the original call site; testing only the projection helper
+    // missed the host's extra, non-arcade mirror submission.
+    m.clear();m.zeroRegion(view,0x10000);
+    constexpr unsigned race=view+0x2000,owner=view+0x4000,manager=view+0x6000;
+    m.write32(owner+0xc0,race);m.write32(owner+0xd4,manager);
+    m.write32(race+0x684,0);
+    RefCpu binding(m);binding.r[14]=owner;binding.r[15]=stack;binding.pr=stop;
+    instructions+=binding.run(0xc0662ae,0xc13e960,100);
+    checks+=4;
+    if(binding.r[4]!=manager||binding.r[5]!=1||binding.r[6]!=race+76+52||binding.r[7]!=0)
+        throw std::runtime_error("Original race smoke view registration differs");
     std::cout<<"PASS "<<cases<<" source smoke visibility cases, "<<checks<<" bitwise checks, "<<instructions
         <<" original instructions; "<<accepted<<" accepted and "<<rejected<<" rejected. Source view setup, rational tangent, plane normalization and scalar world-sphere test execute without hooks.\n";
     return 0;

@@ -48,7 +48,12 @@ public static class Idas3PendingQueueChecks
     static int Count(Idas3CommunityTimes owner)=>(int)typeof(Idas3CommunityTimes).GetProperty("PendingCount",Private).GetValue(owner);
     public static void RunCandidate(){
         string output=Output(),folder=Path.Combine(output,"queue"),file=Path.Combine(folder,"pending.json");Directory.CreateDirectory(folder);
-        string source=File.ReadAllText(Path.Combine(Path.GetDirectoryName(output),"pending.json"));File.WriteAllText(file,source);
+        var fixture=JsonUtility.FromJson<Fixture>(File.ReadAllText(Path.Combine(Path.GetDirectoryName(output),"pending.json")));
+        // These are synthetic current-season queue stress fixtures, not restored
+        // player files. The separate Season2 checks verify rejecting old queues.
+        foreach(var row in fixture.runs){row.epoch=Idas3CommunityTimes.CurrentSeasonEpoch;row.build=Idas3CommunityTimes.RequiredSubmissionBuild;}
+        typeof(Idas3CommunityTimes).GetMethod("MigrateSeasonCache",BindingFlags.Static|BindingFlags.NonPublic).Invoke(null,new object[]{folder});
+        string source=JsonUtility.ToJson(fixture);File.WriteAllText(file,source);
         File.WriteAllText(Path.Combine(output,"ISOLATED_MODE_FLOW_TEST.txt"),"Offline pending writer checks.");
         var go=new GameObject("Private asynchronous queue checks");var checks=new List<string>();
         Action<bool,string> check=(ok,why)=>{if(!ok)throw new Exception(why);checks.Add(why);};

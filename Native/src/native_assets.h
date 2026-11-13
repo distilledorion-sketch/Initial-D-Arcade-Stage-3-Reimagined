@@ -16,11 +16,15 @@ struct NativeImage {
     std::uint32_t width=0,height=0;
     // Straight alpha 0xAARRGGBB; same byte order as the Windows HUD surface.
     std::vector<std::uint32_t> argb;
+    // Navigation artwork: R is signed edge distance, G/B are field/road
+    // alpha. Decode coverage at the final display resolution, not in texels.
+    bool navigationDistanceField=false;
 };
 class NativeTextureBank {
 public:
     static NativeTextureBank load(const std::filesystem::path& path);
     const NativeImage& at(std::uint32_t index)const;
+    void replaceImage(std::uint32_t index,NativeImage image);
     std::size_t size()const{return images.size();}
     // Source identity checks exclude appended localization textures.
     std::size_t sourceSize()const{return sourceCount;}

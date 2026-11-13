@@ -12,11 +12,14 @@ namespace Idas3.Multiplayer
     // Native profiles use absolute compare-and-save; history uses race receipts.
     internal sealed class Idas3ResultJournal
     {
+        internal const uint CurrentRecordSeason=2;
         [Serializable] internal sealed class Reward
         {
             public int selection=-1;
             public uint points;
             public uint[] before=Array.Empty<uint>(),after=Array.Empty<uint>();
+            public uint recordSeason;
+            internal uint EffectiveRecordSeason=>recordSeason==0?1:recordSeason;
         }
         [Serializable] internal sealed class Entry
         {
@@ -33,7 +36,7 @@ namespace Idas3.Multiplayer
         }
         [Serializable] sealed class State
         {
-            public int version=1;
+            public int version=2;
             public long generation;
             public Entry entry;
         }
@@ -42,6 +45,15 @@ namespace Idas3.Multiplayer
             public State state;
             public string sha256;
         }
+        // Version 1's checksum predates recordSeason. Preserve its exact field
+        // order and shape instead of hashing a reserialized version 2 reward.
+        [Serializable] sealed class LegacyReward {public int selection;public uint points;public uint[] before,after;}
+        [Serializable] sealed class LegacyEntry {
+            public string raceId,hostTicks,guestTicks;public int car,winner;public bool won;
+            public Idas3BattleRecord opponent,previous;public int beforePoints;public string[] resetKeys;
+            public LegacyReward reward;public bool complete;public Idas3BattleRecord record;public int battlePoints;
+        }
+        [Serializable] sealed class LegacyState {public int version;public long generation;public LegacyEntry entry;}
         readonly Idas3MultiplayerRecords records;
         readonly string path;
         internal Idas3ResultJournal(Idas3MultiplayerRecords records)
@@ -73,6 +85,7 @@ namespace Idas3.Multiplayer
                         request.opponent,request.previous,Number(request.hostTicks),Number(request.guestTicks));
                     records.CaptureResultBaseline(entry.car,out entry.beforePoints,out entry.resetKeys);
                     entry.reward=prepare();ValidateEntry(entry);
+                    if(entry.reward.recordSeason!=CurrentRecordSeason)throw new InvalidDataException("New result tuning snapshot belongs to another season.");
                     state=new State{generation=checked((state?.generation??0)+1),entry=entry};
                     Write(state);
                 }
@@ -102,6 +115,7 @@ namespace Idas3.Multiplayer
                     records.ReadLevelPoints(entry.car)-entry.beforePoints;
             }else{entry.record=records.Read(entry.car);entry.battlePoints=0;}
             entry.complete=true;
+            if(entry.reward.recordSeason==0)entry.reward.recordSeason=1;
             Write(new State{generation=checked(state.generation+1),entry=entry});
             return entry;
         }
@@ -131,7 +145,7 @@ namespace Idas3.Multiplayer
             if(entry.beforePoints<0||entry.beforePoints>9899||!entry.record.Valid||Math.Abs((long)entry.battlePoints)>9899)
                 throw new InvalidDataException("Invalid result progression snapshot.");
             var reward=entry.reward;
-            if(reward==null||reward.before==null||reward.after==null||reward.points>2000)
+            if(reward==null||reward.before==null||reward.after==null||reward.points>2000||reward.recordSeason>CurrentRecordSeason)
                 throw new InvalidDataException("Invalid result tuning snapshot.");
             if(reward.selection==-1){
                 if(reward.points!=0||reward.before.Length!=0||reward.after.Length!=0)
@@ -148,14 +162,25 @@ namespace Idas3.Multiplayer
             a.hostTicks==b.hostTicks&&a.guestTicks==b.guestTicks&&a.opponent.Equals(b.opponent)&&a.previous.Equals(b.previous);
         static string Hash(State state)
         {
-            using(var sha=SHA256.Create())return Convert.ToBase64String(sha.ComputeHash(new UTF8Encoding(false).GetBytes(JsonUtility.ToJson(state))));
+            object value=state;
+            if(state.version==1){
+                var e=state.entry;var r=e?.reward;
+                value=new LegacyState{version=1,generation=state.generation,entry=e==null?null:new LegacyEntry{
+                    raceId=e.raceId,hostTicks=e.hostTicks,guestTicks=e.guestTicks,car=e.car,winner=e.winner,won=e.won,
+                    opponent=e.opponent,previous=e.previous,beforePoints=e.beforePoints,resetKeys=e.resetKeys,
+                    reward=r==null?null:new LegacyReward{selection=r.selection,points=r.points,before=r.before,after=r.after},
+                    complete=e.complete,record=e.record,battlePoints=e.battlePoints}};
+            }
+            using(var sha=SHA256.Create())return Convert.ToBase64String(sha.ComputeHash(new UTF8Encoding(false).GetBytes(JsonUtility.ToJson(value))));
         }
         State Read(string file)
         {
             if(new FileInfo(file).Length>2*1024*1024)throw new InvalidDataException("Online result journal is too large.");
             var envelope=JsonUtility.FromJson<Envelope>(File.ReadAllText(file));var state=envelope?.state;
-            if(state==null||state.version!=1||state.generation<1||envelope.sha256!=Hash(state))
+            if(state==null||(state.version!=1&&state.version!=2)||state.generation<1||envelope.sha256!=Hash(state))
                 throw new InvalidDataException("Invalid online result journal.");
+            if(state.entry?.reward==null||state.version==1&&state.entry.reward.recordSeason!=0||state.version==2&&state.entry.reward.recordSeason==0)
+                throw new InvalidDataException("Invalid online result journal season.");
             ValidateEntry(state.entry);return state;
         }
         State Load(out bool repair)
@@ -188,6 +213,12 @@ namespace Idas3.Multiplayer
         }
         void Write(State state)
         {
+            if(state.version==1){
+                // A crash during repair may leave both schemas on disk. Give
+                // the upgrade a newer generation before replacing any copy.
+                state.version=2;state.generation=checked(state.generation+1);
+                if(state.entry.reward.recordSeason==0)state.entry.reward.recordSeason=1;
+            }
             ValidateEntry(state.entry);
             WriteFile(path+".pending",state);WriteFile(path,state);WriteFile(path+".previous",state);
             File.Delete(path+".pending");

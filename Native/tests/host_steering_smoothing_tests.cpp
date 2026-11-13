@@ -23,6 +23,26 @@ int main()try{
     for(int tickIndex=0;tickIndex<7;++tickIndex)keyboard=idas3::advanceHostKeyboardSteering(keyboard,0,tick);
     require(close(keyboard,0),"Released keyboard steering must center within 117ms");
     for(float direction:{-1.f,1.f}){float key=idas3::advanceHostKeyboardSteering(0,direction,tick);require(close(key,direction*.1f),"First key tick must respond immediately without full-lock snapping");}
+    // Connecting an idle pad cannot change a keyboard steering sequence.
+    for(bool original:{false,true})for(float direction:{-1.f,1.f}){
+        idas3::HostSteeringSource alone,idlePad;float a=0,b=0;
+        for(unsigned frame=0;frame<90;++frame){
+            const float key=frame<12?direction:frame<25?0:frame<45?-direction:0;
+            a=alone.advance(a,key,0,false,original,tick);
+            b=idlePad.advance(b,key,0,true,original,tick);
+            require(bits(a,b),"Idle controller changed keyboard press, countersteer or release");
+        }
+    }
+    idas3::HostSteeringSource source;
+    float controlled=0;
+    for(unsigned i=0;i<12;++i)controlled=source.advance(controlled,1,0,true,true,tick);
+    require(source.advance(controlled,0,0,true,true,tick)>.8f,"Keyboard release snapped with an idle controller");
+    controlled=source.advance(controlled,1,-.5f,true,true,tick);
+    require(bits(controlled,-.5f),"Active stick failed to take immediate ownership");
+    require(source.advance(controlled,0,0,true,true,tick)==0,"Real stick release inherited the keyboard return ramp");
+    for(unsigned i=0;i<12;++i)controlled=source.advance(controlled,-1,0,true,true,tick);
+    source.reset();
+    require(source.advance(controlled,0,0,true,true,tick)==0,"Lifecycle reset retained keyboard ownership");
     HostSteeringSmoothing bypass;
     require(bypass.amount()==0.f,"Default must preserve existing steering");
     for(int axis=-32768;axis<=32767;++axis){

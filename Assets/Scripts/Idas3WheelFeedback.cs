@@ -6,26 +6,17 @@ using System.Threading;
 
 // Windows wheel output is separate from device input and source physics.
 //
-// The force model is NOT here. The cabinet's own force-feedback board is ported
-// in Native/src/original_ffb.cpp, and the commands sent to it come from
-// Native/src/original_ffb_owner.cpp; this class only decides WHEN a wheel may be
-// driven and hands the native side one frame of telemetry. That split is
-// deliberate: the arcade board quantises torque to a 14-bit field, eases its
-// authority in over the first 256 frames, caps it with a per-car limit read out
-// of the arcade's own table, plays a fixed 31.5 Hz rumble and sends no spring
-// command at all -- none of which survives being re-expressed as a single float
-// here.
+// The original producer runs once per native simulation tick. This adapter
+// converts its completed command values to the device protocol; rendering and
+// worker delivery never advance the original counter or reconstruct physics.
 public sealed class Idas3WheelFeedback : IDisposable
 {
     public sealed class DeviceChoice { public string id,name; internal uint vendorId,productId; }
     internal struct InputIdentity { public string key; public bool connected; public uint vendorId,productId; }
 
-    // One frame of driving, in the units the native owner reads. This is the
-    // whole contract between the game and the cabinet board.
+    // Normalized raw board output. The device backend applies power once.
     internal struct CabinetRequest {
-        public bool driving,wallContact,invert;
-        public int carIndex,cardSteeringLevel;
-        public float speedKmh,steering,headingError,wallLateral,impact,strength,deltaSeconds;
+        public float power,torque,damperStrength,damperParameter,rumbleIntensity,rumbleFrequencyHz;
     }
 
     internal interface IBackend {
@@ -40,19 +31,15 @@ public sealed class Idas3WheelFeedback : IDisposable
             [MarshalAs(UnmanagedType.ByValArray,SizeConst=128)] public byte[] name;
             public uint vendorId,productId;
         }
-        // Mirrors Idas3WheelRaceState v2 in wheel_feedback_backend.h, 56 bytes.
-        [StructLayout(LayoutKind.Sequential)] private struct NativeRaceState {
-            public uint size,version,driving,carIndex;
-            public float speedKmh,steering,headingError,wallLateral,impact;
-            public uint wallContact;
-            public float strength;
-            public uint invert;
-            public float deltaSeconds;
-            public int cardSteeringLevel;
+        // Existing Idas3WheelCabinetState v1 ABI, 40 bytes.
+        [StructLayout(LayoutKind.Sequential)] private struct NativeCabinetState {
+            public uint size,version;
+            public float power,torque,spring,damperStrength,damperParameter,rumbleIntensity,rumbleFrequencyHz;
+            public uint active;
         }
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelRefreshDevices();
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelGetDevice(int index,ref NativeDevice device);
-        [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelUpdateCabinet([MarshalAs(UnmanagedType.LPUTF8Str)]string id,ref NativeRaceState state);
+        [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelSetCabinetState([MarshalAs(UnmanagedType.LPUTF8Str)]string id,ref NativeCabinetState state);
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern void Idas3WheelStop();
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern void Idas3WheelShutdown();
         [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3WheelCopyStatus([Out]byte[] text,int capacity);
@@ -67,49 +54,35 @@ public sealed class Idas3WheelFeedback : IDisposable
             return result;
         }
         public bool Send(string id,CabinetRequest request){
-            var state=new NativeRaceState{
-                size=(uint)Marshal.SizeOf<NativeRaceState>(),version=2,
-                driving=request.driving?1u:0u,
-                carIndex=(uint)Math.Max(0,Math.Min(34,request.carIndex)),
-                speedKmh=request.speedKmh,steering=request.steering,headingError=request.headingError,
-                wallLateral=request.wallLateral,impact=request.impact,
-                wallContact=request.wallContact?1u:0u,
-                strength=request.strength,invert=request.invert?1u:0u,
-                deltaSeconds=request.deltaSeconds,cardSteeringLevel=request.cardSteeringLevel};
-            if(state.size!=56)throw new InvalidOperationException("Wheel race state layout changed.");
-            return Idas3WheelUpdateCabinet(id,ref state)==1;
+            var state=new NativeCabinetState{
+                size=(uint)Marshal.SizeOf<NativeCabinetState>(),version=1,active=1,
+                power=request.power,torque=request.torque,spring=0,
+                damperStrength=request.damperStrength,damperParameter=request.damperParameter,
+                rumbleIntensity=request.rumbleIntensity,rumbleFrequencyHz=request.rumbleFrequencyHz};
+            if(state.size!=40)throw new InvalidOperationException("Wheel board state layout changed.");
+            return Idas3WheelSetCabinetState(id,ref state)==1;
         }
         public void Stop()=>Idas3WheelStop();
         public void Shutdown()=>Idas3WheelShutdown();
         public string Status {get{var bytes=new byte[1024];Idas3WheelCopyStatus(bytes,bytes.Length);return Utf8(bytes);}}
     }
 
-    // Packs one frame of telemetry. Nothing here shapes a force; it only refuses
-    // to pass on values the native owner would have to reject anyway, so a bad
-    // frame stops the wheel here rather than after crossing the boundary.
-    internal static bool Pack(Idas3Native.WheelState state,int car,float dt,float strength,bool invert,out CabinetRequest request){
+    internal static bool Valid(Idas3Native.FeedbackState state)=>state.size==40&&state.version==1&&state.flags==1&&
+        state.torqueCode>=0&&state.torqueCode<=255&&state.damperParameter>=0&&state.damperParameter<=127&&
+        state.rumbleAmplitude>=0&&state.rumbleAmplitude<=47&&state.peakRumbleAmplitude>=0&&state.peakRumbleAmplitude<=47&&
+        state.rumbleFrequencyHalfHz<=127&&((state.rumbleAmplitude<=1&&state.peakRumbleAmplitude<=1)||state.rumbleFrequencyHalfHz>0);
+    internal static float Rumble(int amplitude)=>amplitude<=1?0:(amplitude-1)/80f;
+    internal static bool Pack(Idas3Native.FeedbackState state,float strength,bool invert,out CabinetRequest request){
         request=default;
-        if((state.flags&1)==0)return false;
-        int cardSteering=(state.flags&4)!=0?(int)((state.flags>>8)&15):-1;
-        if(cardSteering>8)return false;
-        if(!Finite(state.speed)||!Finite(state.steering)||!Finite(state.headingError)||
-           !Finite(state.wallLateral)||!Finite(state.impact)||!Finite(dt)||dt<=0||!Finite(strength)||strength<=0)return false;
+        if(!Valid(state)||!Finite(strength)||strength<=0)return false;
+        // Original steering has the opposite sign to the host wheel axis.
+        // This is the only polarity conversion; the backend keeps this sign.
+        float torque=(128-state.torqueCode)/128f;
         request=new CabinetRequest{
-            driving=true,
-            // The cabinet's force limit is per car; without it every car would
-            // pull with the same weight, which the arcade's table says they do not.
-            carIndex=car,
-            cardSteeringLevel=cardSteering,
-            // The native side reads km/h; WheelState.speed is metres per second.
-            speedKmh=Clamp(Math.Abs(state.speed),0,200)*3.6f,
-            steering=Clamp(state.steering,-1,1),
-            headingError=Clamp(state.headingError,-3.2f,3.2f),
-            wallLateral=Clamp(state.wallLateral,-1,1),
-            impact=Clamp(state.impact,0,1),
-            wallContact=(state.flags&2)!=0,
-            strength=Clamp(strength,0,1),
-            invert=invert,
-            deltaSeconds=Clamp(dt,.001f,.05f)};
+            power=Clamp(strength,0,1),torque=invert?-torque:torque,
+            damperStrength=2f/127,damperParameter=state.damperParameter/127f,
+            rumbleIntensity=Rumble(Math.Max(state.rumbleAmplitude,state.peakRumbleAmplitude)),
+            rumbleFrequencyHz=state.rumbleFrequencyHalfHz*.5f};
         return true;
     }
 
@@ -117,9 +90,11 @@ public sealed class Idas3WheelFeedback : IDisposable
     private readonly bool disableOutput;
     private readonly List<DeviceChoice> choices=new List<DeviceChoice>();
     private string sendingDevice,desiredDevice,inputKey;
-    private bool sending,disposed,haveTick;
+    private bool sending,disposed,haveTick,haveTime;
     private ulong lastTick;
-    private double tickChangedAt,nextScan,retryAt,lastSendAt;
+    private double tickChangedAt,nextScan,retryAt,lastSendAt,lastObservedAt,pendingRumbleAt;
+    private int pendingRumble;
+    private uint pendingRumbleFrequencyHalfHz;
     public IReadOnlyList<DeviceChoice> Choices=>choices;
     public string StatusText {get;private set;}="Force feedback is off.";
     public Idas3WheelFeedback(bool disableOutput=false):this(disableOutput?(IBackend)new NativeBackend():new QueuedBackend(new NativeBackend()),disableOutput){}
@@ -148,15 +123,17 @@ public sealed class Idas3WheelFeedback : IDisposable
         StatusText=count>1?"Several matching wheels found. Choose the feedback wheel explicitly.":"Select your feedback wheel here, and bind its steering in CONTROLS.";
         return null;
     }
-    internal void Update(Idas3GameOptions.Values settings,InputIdentity input,Idas3Native.WheelState state,
-        int car,bool allowed,double now)
+    internal void Update(Idas3GameOptions.Values settings,InputIdentity input,Idas3Native.FeedbackState state,
+        bool allowed,double now)
     {
         if(disposed)return;
         if(inputKey!=input.key){Stop();inputKey=input.key;desiredDevice=null;retryAt=0;}
         if(settings==null||!settings.wheelForceFeedback||!Finite(settings.wheelFeedbackStrength)||settings.wheelFeedbackStrength<=0){Stop();StatusText="Force feedback is off.";return;}
         if(disableOutput){Stop();StatusText="Hardware output is disabled during automated testing.";return;}
-        if(!allowed||!input.connected||state.size!=40||state.version!=1||(state.flags&1)==0){Stop();StatusText="Feedback rests in menus, while paused or unfocused, and outside driving.";return;}
-        if(double.IsNaN(now)||double.IsInfinity(now)){Stop();return;}
+        if(!allowed||!input.connected||!Valid(state)){Stop();StatusText="Feedback rests in menus, while paused or unfocused, and outside driving.";return;}
+        if(double.IsNaN(now)||double.IsInfinity(now)||now<0){Stop();return;}
+        if(haveTime&&now<lastObservedAt){Stop();tickChangedAt=now-.101;lastObservedAt=now;return;}
+        lastObservedAt=now;haveTime=true;
         // Device enumeration opens drivers and can stall for many milliseconds.
         // A healthy active wheel needs no repeated inventory scan. Disconnects
         // still fail through Send; idle/retry discovery can then recover it.
@@ -164,29 +141,34 @@ public sealed class Idas3WheelFeedback : IDisposable
         string selected=Resolve(settings.wheelFeedbackDevice,input);
         if(selected==null){Stop();return;}
         if(desiredDevice!=selected){Stop();desiredDevice=selected;retryAt=0;}
-        if(!haveTick||state.simulationTicks!=lastTick){lastTick=state.simulationTicks;tickChangedAt=now;haveTick=true;}
+        if(now-pendingRumbleAt>.1)pendingRumble=0;
+        if(!haveTick||state.simulationTicks!=lastTick){
+            lastTick=state.simulationTicks;tickChangedAt=now;haveTick=true;
+            if(state.peakRumbleAmplitude>pendingRumble){pendingRumble=state.peakRumbleAmplitude;pendingRumbleFrequencyHalfHz=state.rumbleFrequencyHalfHz;pendingRumbleAt=now;}
+        }
         else if(now-tickChangedAt>.1){Stop();StatusText="Feedback stopped: driving updates are stale.";return;}
-        if(now<retryAt||sending&&now-lastSendAt<1.0/60)return;
-        float dt=sending?(float)(now-lastSendAt):1f/60;
-        if(!Pack(state,car,dt,settings.wheelFeedbackStrength,settings.wheelFeedbackInvert,out var request)){
+        if(now<retryAt){pendingRumble=0;return;}
+        if(sending&&now-lastSendAt<1.0/60)return;
+        state.peakRumbleAmplitude=pendingRumble;
+        if(pendingRumble>state.rumbleAmplitude)state.rumbleFrequencyHalfHz=pendingRumbleFrequencyHalfHz;
+        if(!Pack(state,settings.wheelFeedbackStrength,settings.wheelFeedbackInvert,out var request)){
             Stop();StatusText="Feedback stopped: invalid driving data.";return;
         }
         try{
             sendingDevice=selected;
             if(!backend.Send(selected,request)){string error=backend.Status;Stop();retryAt=now+1;StatusText=error;return;}
-            sending=true;lastSendAt=now;StatusText="Feedback active — cabinet board: torque, centring, damper and rumble.";
+            pendingRumble=0;sending=true;lastSendAt=now;StatusText="Feedback active — original steering resistance and vibration.";
         }catch(Exception error){Stop();retryAt=now+1;StatusText="Wheel feedback unavailable: "+error.Message;}
     }
     public void Stop(){
-        // The native Stop also resets the board and its owner, so the next race
-        // starts from the centre and eases in again rather than resuming a force.
+        // Device release must not advance/reset the native simulation owner.
         try{if(sending||sendingDevice!=null)backend.Stop();}catch(Exception){}
-        sending=false;sendingDevice=null;
+        sending=false;sendingDevice=null;pendingRumble=0;
     }
     public void Dispose(){if(disposed)return;Stop();try{backend.Shutdown();}catch(Exception){}disposed=true;}
 
     // All driver calls have one owner outside the render thread. This mailbox
-    // keeps only the newest request; it never synthesizes or repeats telemetry.
+    // keeps the newest continuous state and the largest undelivered rumble.
     // The native backend still checks foreground ownership and uses 100 ms
     // effects. Stop discards queued output and takes priority over discovery.
     internal sealed class QueuedBackend : IBackend {
@@ -198,9 +180,16 @@ public sealed class Idas3WheelFeedback : IDisposable
         private bool discover,stop,shutdown,pending,failed;
         private string id,status="Discovering wheel feedback devices…";
         private CabinetRequest request;
-        private long queuedAt;
-        internal QueuedBackend(IBackend driver){
-            this.driver=driver;
+        private double queuedAt;
+        // The caller sends at most60Hz: eight entries cover every event in
+        // the100ms lease, including both endpoints. Keep the latest continuous
+        // state separate so an expired high peak cannot erase a newer low one.
+        private struct RumbleEvent {internal double at;internal float intensity,frequency;}
+        private readonly RumbleEvent[] pendingRumbles=new RumbleEvent[8];
+        private int pendingRumbleCount;
+        private readonly Func<double> monotonicNow;
+        internal QueuedBackend(IBackend driver,Func<double> monotonicNow=null){
+            this.driver=driver;this.monotonicNow=monotonicNow??(()=>System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency);
             worker=new Thread(Run){IsBackground=true,Name="Wheel feedback output"};
             worker.Start();
         }
@@ -211,21 +200,36 @@ public sealed class Idas3WheelFeedback : IDisposable
         public bool Send(string device,CabinetRequest value){lock(gate){
             if(shutdown)return false;
             if(failed){failed=false;return false;}
-            id=device;request=value;queuedAt=System.Diagnostics.Stopwatch.GetTimestamp();pending=true;wake.Set();return true;
+            double stamp=monotonicNow();
+            if(!pending||id!=device)pendingRumbleCount=0;
+            int kept=0;
+            for(int i=0;i<pendingRumbleCount;++i)if(stamp-pendingRumbles[i].at<=.1)pendingRumbles[kept++]=pendingRumbles[i];
+            pendingRumbleCount=kept;
+            if(value.rumbleIntensity>0){
+                if(pendingRumbleCount==pendingRumbles.Length){
+                    Array.Copy(pendingRumbles,1,pendingRumbles,0,--pendingRumbleCount);
+                }
+                pendingRumbles[pendingRumbleCount++]=new RumbleEvent{at=stamp,intensity=value.rumbleIntensity,frequency=value.rumbleFrequencyHz};
+            }
+            id=device;request=value;queuedAt=stamp;pending=true;wake.Set();return true;
         }}
-        public void Stop(){lock(gate){if(shutdown)return;pending=false;stop=true;wake.Set();}}
-        public void Shutdown(){lock(gate){if(shutdown)return;pending=false;shutdown=true;wake.Set();}}
+        public void Stop(){lock(gate){if(shutdown)return;pending=false;pendingRumbleCount=0;stop=true;wake.Set();}}
+        public void Shutdown(){lock(gate){if(shutdown)return;pending=false;pendingRumbleCount=0;shutdown=true;wake.Set();}}
         public string Status {get{lock(gate)return status;}}
         internal bool WaitForShutdown(int milliseconds)=>worker.Join(milliseconds);
         private void Run(){
+            var recentRumbles=new RumbleEvent[8];
             try{while(true){
                 wake.WaitOne();
                 while(true){
-                    int command;string device=null;CabinetRequest value=default;long stamp=0;
+                    int command,recentRumbleCount=0;string device=null;CabinetRequest value=default;double stamp=0;
                     lock(gate){
                         if(shutdown)command=3;
                         else if(stop){stop=false;command=2;}
-                        else if(pending){pending=false;device=id;value=request;stamp=queuedAt;command=1;}
+                        else if(pending){
+                            pending=false;device=id;value=request;stamp=queuedAt;command=1;
+                            recentRumbleCount=pendingRumbleCount;Array.Copy(pendingRumbles,recentRumbles,recentRumbleCount);pendingRumbleCount=0;
+                        }
                         else if(discover){discover=false;command=0;}
                         else break;
                     }
@@ -234,17 +238,23 @@ public sealed class Idas3WheelFeedback : IDisposable
                         if(command==2)driver.Stop();
                         else if(command==0){var found=driver.Discover();string message=driver.Status;lock(gate){devices=found;status=message;}}
                         else {
-                            double age=(System.Diagnostics.Stopwatch.GetTimestamp()-stamp)/(double)System.Diagnostics.Stopwatch.Frequency;
-                            if(age>.1){driver.Stop();continue;}
+                            double now=monotonicNow(),age=now-stamp;
+                            if(age<0||age>.1){driver.Stop();continue;}
+                            for(int i=0;i<recentRumbleCount;++i){
+                                var item=recentRumbles[i];double eventAge=now-item.at;
+                                if(eventAge>=0&&eventAge<=.1&&item.intensity>value.rumbleIntensity){
+                                    value.rumbleIntensity=item.intensity;value.rumbleFrequencyHz=item.frequency;
+                                }
+                            }
                             bool ok=driver.Send(device,value);
                             // Read driver status before taking the mailbox lock:
                             // even a slow native status call cannot block Update.
                             string message=ok?null:driver.Status;
-                            if(!ok){driver.Stop();lock(gate){failed=true;pending=false;status=message;}}
+                            if(!ok){driver.Stop();lock(gate){failed=true;pending=false;pendingRumbleCount=0;status=message;}}
                         }
                     }catch(Exception error){
                         try{driver.Stop();}catch(Exception){}
-                        lock(gate){failed=true;pending=false;devices.Clear();status="Wheel feedback unavailable: "+error.Message;}
+                        lock(gate){failed=true;pending=false;pendingRumbleCount=0;devices.Clear();status="Wheel feedback unavailable: "+error.Message;}
                     }
                 }
             }}finally{try{driver.Stop();}catch(Exception){}try{driver.Shutdown();}catch(Exception){}wake.Dispose();}

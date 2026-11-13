@@ -241,7 +241,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     }
     Material GetMaterial(Draw draw)
     {
-        ulong key = draw.tsp | ((ulong)(draw.pcw & 12) << 32) | ((ulong)(draw.flags & 21) << 40);
+        ulong key = draw.tsp | ((ulong)(draw.pcw & 12) << 32) | ((ulong)(draw.flags & 53) << 40);
         if (materials.TryGetValue(key, out var material)) return material;
         material = new Material(shader) { name = "Original UI material " + key.ToString("X"), hideFlags = HideFlags.DontSave };
         bool original = (draw.flags & 1) != 0;
@@ -250,6 +250,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         material.SetInteger("_Tsp", unchecked((int)draw.tsp)); material.SetInteger("_Pcw", (int)draw.pcw);
         material.SetInteger("_Original", original ? 1 : 0); material.SetInteger("_SourceIsOne", src == 1 ? 1 : 0);
         material.SetInteger("_SourceTextureFiltering", (draw.flags & 16) != 0 ? 1 : 0);
+        material.SetInteger("_NavigationDistanceField", (draw.flags & 32) != 0 ? 1 : 0);
         material.SetInt("_SrcBlend", (int)Blend(src, true)); material.SetInt("_DstBlend", (int)Blend(dst, false));
         materials.Add(key, material); return material;
     }

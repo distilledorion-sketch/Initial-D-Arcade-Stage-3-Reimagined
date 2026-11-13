@@ -184,7 +184,7 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
         const auto fraction=[&](const VehicleState& car,float value){
             return value>=0?value:c.project(car.position).sample.distance/std::max(1.f,c.length);
         };
-        const auto point=bank->sample(fraction(player,progress),c.reversed);
+        const auto point=bank->sampleCourse(c,fraction(player,progress)*c.length);
         const std::span<std::uint32_t> target(pixels,std::size_t(width)*height);
         bank->paint(target,width,height,left+border,top+border,w*fit-2*border,zoom,night,point);
         const auto chunkAt=[&](unsigned index,float px,float py,float desiredWidth){
@@ -203,10 +203,10 @@ void Hud::map(const Course& c,float x,float y,float w,float h,
         chunkAt(bank->frame,cx,cy,w*fit);
         const float marker=11.362f*fit*mapScale;
         if(rival){
-            const auto other=bank->sample(fraction(*rival,rivalProgress),c.reversed);
-            const float u=other.u-point.u,v=other.v-point.v;
+            const auto other=bank->sampleCourse(c,fraction(*rival,rivalProgress)*c.length);
+            const auto offset=point.offset(other);
             const float scale=(w*fit-2*border)/(2.f*bank->extent)*zoom;
-            float dx=(-point.dv*u+point.du*v)*scale,dy=-(point.du*u+point.dv*v)*scale;
+            float dx=offset[0]*scale,dy=offset[1]*scale;
             const float limit=(w*fit-2*border-marker)*.5f;
             const float over=std::max(std::abs(dx),std::abs(dy))/limit;
             if(over>1){dx/=over;dy/=over;}
@@ -383,10 +383,11 @@ const std::uint32_t* Hud::paint(const UiState& s){
         // Square and on the source canvas, anchored to the bottom left.
         // The opponent's lights-off state conceals their map marker during a
         // night battle. Keep our own marker and the actual race position intact.
+        // Gap-panel validity/progress is not a map coordinate: online uses
+        // zero for any valid packet. Project the displayed rival position.
         if(!settledResults&&!announcement&&s.car)map(c,14,352,112,112,*s.car,blindAttack?nullptr:s.rival,
             s.frontend?s.frontend->battleProfile.byte(1186):0,s.night,
-            s.progress/std::max(1.f,c.length),s.multiplayer?s.onlineBattleHud.rivalPositionFraction:
-                s.battle?s.battleRivalPositionFraction:-1.f);
+            s.progress/std::max(1.f,c.length));
         if(race.originalTiming&&!useOriginalHud){
             label(28,110,"TIME "+std::to_string(std::max(0,(race.remaining6000+5999)/6000)),25,yellow,true);
             label(28,148,"SECTION TIME",15,white,true);

@@ -1,5 +1,6 @@
 #pragma once
 #include "local_driver_profiles.h"
+#include "time_attack_season.h"
 
 namespace idas3 {
 // A result journal retains the exact disk before-image and intended after-image.
@@ -9,6 +10,7 @@ public:
     struct Plan {
         int selection=-1;
         std::uint32_t points=0;
+        unsigned recordSeason=timeAttackSeason;
         original::OriginalBattleProfile before{},after{};
     };
     explicit OnlineResultReward(std::filesystem::path saveRoot):root_(std::move(saveRoot)){}

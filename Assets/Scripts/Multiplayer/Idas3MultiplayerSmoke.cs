@@ -712,6 +712,9 @@ namespace Idas3.Multiplayer
             var text=new System.Text.StringBuilder();using(var sha=System.Security.Cryptography.SHA256.Create())foreach(string file in files){
                 string relative=file.Substring(directory.Length+1).Replace('\\','/');
                 if(!includeResultReceipts&&(relative=="online_result_v1.json"||relative=="online_result_v1.json.previous"))continue;
+                if(!includeResultReceipts&&relative.EndsWith(".profile.lock",StringComparison.Ordinal)){
+                    Check(new FileInfo(file).Length==0,"Profile coordination lock unexpectedly contains progress data.");continue;
+                }
                 text.Append(relative).Append('=');
                 using(var stream=File.OpenRead(file))text.Append(BitConverter.ToString(sha.ComputeHash(stream)).Replace("-",""));text.Append('\n');
             }

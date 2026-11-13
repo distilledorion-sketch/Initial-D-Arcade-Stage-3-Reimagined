@@ -595,6 +595,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0){yield return SaveLastUsedLevel();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-legend-cycle-check")>=0){yield return LegendCycle();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0){yield return RoadsideDustSequence();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-moving-mirror-check")>=0){yield return MovingMirror();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0){yield return StoppedMirror();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0){yield return RoadsideDust();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-car-inspection-check")>=0){yield return CarInspection();yield break;}
@@ -1325,7 +1326,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         if(captureMenu!=null)captureMenu.CancelDiagnosticCapture();
         camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();Destroy(image);target.Release();Destroy(target);
         frozen=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-glare-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-tire-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-leaf-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-flare-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-backfire-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-weather-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-check")>=0||
-            Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0;yield return null;
+            Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-moving-mirror-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0;yield return null;
     }
     private IEnumerator Guard(IEnumerator routine){
         var stack=new Stack<IEnumerator>();stack.Push(routine);

@@ -261,17 +261,18 @@ struct Backend {
         const double bounded=double(value)<-1.0?-1.0:(double(value)>1.0?1.0:double(value));
         return static_cast<LONG>(std::lround(bounded*DI_FFNOMINALMAX));
     }
-    // A condition centred on zero with symmetric coefficients is how the board's
-    // spring and damper read: no offset, no dead band, full saturation.
-    bool applyCondition(IDirectInputEffect* target,float magnitude) noexcept {
+    // Symmetric coefficients, no offset or dead band. Spring uses full
+    // saturation; the board's damper carries its coefficient and saturation
+    // separately, so changing its pole changes resistance rather than a label.
+    bool applyCondition(IDirectInputEffect* target,float coefficient,float saturation=1.f) noexcept {
         if(!target)return true;
-        if(magnitude<=0.f){try{target->Stop();}catch(...){}return true;}
+        if(coefficient<=0.f||saturation<=0.f){try{target->Stop();}catch(...){}return true;}
         DICONDITION condition{};
         condition.lOffset=0;
-        condition.lPositiveCoefficient=scaled(magnitude);
-        condition.lNegativeCoefficient=scaled(magnitude);
-        condition.dwPositiveSaturation=DWORD(DI_FFNOMINALMAX);
-        condition.dwNegativeSaturation=DWORD(DI_FFNOMINALMAX);
+        condition.lPositiveCoefficient=scaled(coefficient);
+        condition.lNegativeCoefficient=scaled(coefficient);
+        condition.dwPositiveSaturation=DWORD(scaled(saturation));
+        condition.dwNegativeSaturation=DWORD(scaled(saturation));
         condition.lDeadBand=0;
         DIEFFECT parameters{};parameters.dwSize=sizeof(parameters);
         parameters.dwDuration=effectDurationMicroseconds;
@@ -294,15 +295,17 @@ struct Backend {
         return SUCCEEDED(rumbleEffect->SetParameters(&parameters,DIEP_DURATION|DIEP_TYPESPECIFICPARAMS|DIEP_START));
     }
     // The whole board in one call. Ownership, foreground and lease rules are
-    // setForce's; only the payload is richer. Power scales every effect, as
-    // the board's command 3 does.
+    // setForce's; only the payload is richer. Power scales each magnitude once,
+    // including the damper saturation, without changing its coefficient.
     bool setCabinet(const char* text,const Idas3WheelCabinetState& state) {
         const auto finite=[](float v){return std::isfinite(v);};
         if(!finite(state.power)||!finite(state.torque)||!finite(state.spring)||
-           !finite(state.damperStrength)||!finite(state.rumbleIntensity)||!finite(state.rumbleFrequencyHz)){
+           !finite(state.damperStrength)||!finite(state.damperParameter)||
+           !finite(state.rumbleIntensity)||!finite(state.rumbleFrequencyHz)){
             stopWithMessage("Invalid wheel cabinet state; expected finite values. Feedback stopped.");return false;}
         if(state.power<0.f||state.power>1.f||state.torque<-1.f||state.torque>1.f||
            state.spring<0.f||state.spring>1.f||state.damperStrength<0.f||state.damperStrength>1.f||
+           state.damperParameter<0.f||state.damperParameter>1.f||
            state.rumbleIntensity<0.f||state.rumbleIntensity>1.f){
             stopWithMessage("Wheel cabinet state out of range. Feedback stopped.");return false;}
         GUID guid{};
@@ -316,7 +319,8 @@ struct Backend {
         // Board disabled, or nothing to play: never acquire on an idle state.
         const float power=state.active?state.power:0.f;
         const bool silent=power<=0.f||(state.torque==0.f&&state.spring<=0.f&&
-            state.damperStrength<=0.f&&state.rumbleIntensity<=0.f);
+            (state.damperStrength<=0.f||state.damperParameter<=0.f)&&
+            (state.rumbleIntensity<=0.f||state.rumbleFrequencyHz<=0.f));
         if(!device&&silent){message("Idle cabinet state; wheel remains unacquired.");return true;}
         if(!device&&!open(guid,target))return false;
         auto result=device->Poll();
@@ -336,7 +340,7 @@ struct Backend {
         // Optional effects never fail the call; a wheel without them keeps the
         // torque it can play.
         applyCondition(springEffect,state.spring*power);
-        applyCondition(damperEffect,state.damperStrength*power);
+        applyCondition(damperEffect,state.damperParameter,state.damperStrength*power);
         applyRumble(state.rumbleIntensity*power,state.rumbleFrequencyHz);
         if(foregroundWindow()!=target){stopWithMessage("Unity game window lost foreground; wheel feedback stopped.");return false;}
         std::snprintf(status,sizeof(status),
@@ -456,7 +460,9 @@ Idas3WheelCabinetState cabinetFromBoard() noexcept {
     // An incoherent read means the writer was mid-update; the board is not torn
     // apart for the wheel, it is simply left alone this frame.
     if(!board.coherent){out.active=0u;return out;}
-    out.power=board.power;out.torque=board.torque;out.spring=board.spring;
+    // Snapshot magnitudes already include board power. The v1 request applies
+    // its gain once, so forwarding board.power here would square that gain.
+    out.power=1.f;out.torque=board.torque;out.spring=board.spring;
     out.damperStrength=board.damperStrength;out.damperParameter=board.damperParameter;
     out.rumbleIntensity=board.rumbleIntensity;out.rumbleFrequencyHz=board.rumbleFrequencyHz;
     out.active=board.active?1u:0u;

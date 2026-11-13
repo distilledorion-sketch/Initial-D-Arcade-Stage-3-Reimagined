@@ -42,6 +42,53 @@ int main(int argc,char** argv)try{
     Hud hud;hud.loadOriginal(root);
     using A=CourseMapTestAccess;
     unsigned cases=0;
+    // Compare rebuilt edges against an analytic straight road at several
+    // output sizes. Magnifying old texels can pass movement tests but cannot
+    // keep this subpixel edge and its original field/road alpha intact.
+    {
+        NativeImage source{512,512,std::vector<unsigned>(512*512,0x77ffffff)};
+        source.argb[0]=0xff000000;
+        const std::array<std::array<float,5>,2> path{{{.1f,.2f,0,0,0},{.9f,.8f,0,0,0}}};
+        const auto artwork=navigationArtwork(source,path,2.25f);
+        if(!artwork.navigationDistanceField||artwork.argb.size()>1024*1024)
+            throw std::runtime_error("Navigation artwork lost its scalable format or memory bound");
+        const std::array<std::array<float,5>,2> edgePath{{{.9f,-.5f,0,0,0},{1.1f,-.5f,0,0,0}}};
+        const auto clipped=navigationArtwork(source,edgePath,4.f);
+        for(unsigned x=0;x<800;++x)if(((clipped.argb[512*1024+x]>>16)&255)!=255)
+            throw std::runtime_error("Clamped navigation path wrapped across the map");
+        ++cases;
+        for(int size:{96,216,432,864}){
+            std::vector<unsigned> pixels(std::size_t(size)*size);
+            compositeImage(pixels,size,size,artwork,0,0,float(size),float(size));
+            unsigned edgePixels=0;
+            for(int y=size/4;y<size*3/4;++y)for(int x=size/4;x<size*3/4;++x){
+                const float distance=std::abs(.6f*(x+.5f-.1f*size)-.8f*(y+.5f-.2f*size));
+                const float radius=2.25f*size/1024.f;
+                const auto color=pixels[std::size_t(y)*size+x];const float coverage=1.f-float(color&255)/255.f;
+                if(distance>radius+1.5f&&(color!=0x77ffffff))throw std::runtime_error("Rebuilt artwork altered the map field colour or alpha");
+                if(distance<radius-1.5f&&color!=0xff000000)throw std::runtime_error("Rebuilt artwork altered the road colour or alpha");
+                if(coverage>.05f&&coverage<.95f){++edgePixels;if(std::abs(distance-radius)>1.5f)throw std::runtime_error("Navigation edge wandered off its authored path");}
+            }
+            if(edgePixels<unsigned(size/4))throw std::runtime_error("Magnified navigation has aliased edges");
+            ++cases;
+        }
+    }
+    // UV coordinates were exported as world +X/-Z. For a car travelling
+    // towards -Z (UV +V), world +X is on its screen-right. Test the actual
+    // textured quad, independently of the opponent's projection formula.
+    {
+        OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find("k_df");
+        std::array<std::uint32_t,96*96> image{};
+        const OriginalNavigation::Point p{.5f,.5f,0,1};
+        bank.paint(image,96,96,0,0,96,1,false,p);
+        for(const auto& batch:bank.window.batches)for(const auto& vertex:batch.vertices){
+            if(vertex.position.x>48&&vertex.u<=p.u)
+                throw std::runtime_error("Original navigation is mirrored: screen-right samples world-left");
+            if(vertex.position.y<48&&vertex.v<=p.v)
+                throw std::runtime_error("Original navigation points behind instead of ahead");
+            ++cases;
+        }
+    }
     for(const auto* circuit:{"k_ez","s_nm"})for(bool reverse:{false,true}){
         OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find(circuit);
         auto first=bank.sample(.17f,reverse),later=bank.sample(2.17f,reverse);
@@ -50,13 +97,64 @@ int main(int argc,char** argv)try{
             throw std::runtime_error("Circuit navigation pinned a later-lap opponent at the finish");
         ++cases;
     }
+    {
+        OriginalNavigation navigation;navigation.setRoot(root);
+        constexpr const char* ids[]{"k_ez","s_nm","h_hd","k_df","s_vh","s_uh","n_sy","k_tu"};
+        constexpr const char* codes[]{"ez","nm","hd","df","vh","uh","sy","tu"};
+        for(unsigned i=0;i<8;++i){
+            auto& bank=*navigation.find(ids[i]);const auto texture=bank.model.chunks.at(bank.day).batches.at(0).material[9];
+            const auto source=NativeTextureBank::load(root/"data/original_assets/navigation"/codes[i]/"textures.idastex");
+            const auto& old=source.at(texture);const auto& fresh=bank.textures.at(texture);
+            const auto dark=[](const auto& im){return std::count_if(im.argb.begin(),im.argb.end(),[](auto p){return ((p>>16)&255)<128;});};
+            const double ratio=double(dark(fresh))*old.width*old.height/(double(dark(old))*fresh.width*fresh.height);
+            if(ratio<.8||ratio>1.2)throw std::runtime_error(std::string("Rebuilt road weight differs from source: ")+codes[i]);
+            ++cases;
+        }
+    }
+    // Ground the map in the actual road records, in both race directions.
+    // These checks catch wrong-lap/direction mapping as well as a map that
+    // moves smoothly but is following a different part of the road.
+    for(const auto* id:{"k_ez","s_nm","h_hd","k_df","s_vh","s_uh","n_sy","k_tu"})for(bool reverse:{false,true}){
+        auto c=Course::load(root/"data/courses",id,id,reverse);
+        OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find(id);
+        if(bank.path.size()!=c.points.size())throw std::runtime_error("Navigation records do not match road records");
+        for(std::size_t i=1;i+1<c.points.size();++i){
+            const auto p=bank.sampleCourse(c,c.cumulative[i]);
+            const auto& record=bank.path[reverse?bank.path.size()-1-i:i];
+            if(std::abs(p.u-record[0])>1e-6f||std::abs(p.v-record[1]-2.f)>1e-6f)
+                throw std::runtime_error("Navigation does not follow the actual road segment");
+            const auto before=bank.sampleCourse(c,c.cumulative[i]-.001f);
+            const auto after=bank.sampleCourse(c,c.cumulative[i]+.001f);
+            if(std::hypot(after.du-before.du,after.dv-before.dv)>.003f)
+                throw std::runtime_error("Navigation rotation snaps at a road segment boundary");
+            cases+=2;
+        }
+        for(unsigned i=1;i<200;++i){
+            const float distance=c.length*float(i)/200;
+            const auto road=c.sample(distance),ahead=c.sample(std::min(distance+25.f,c.length));
+            const auto delta=ahead.center-road.center;
+            const float expectedRight=-road.tangent.z*delta.x+road.tangent.x*delta.z;
+            const auto p=bank.sampleCourse(c,distance),other=bank.sampleCourse(c,ahead.distance);
+            const auto offset=p.offset(other);
+            if(std::abs(expectedRight)>2&&offset[0]*expectedRight<=0)
+                throw std::runtime_error("Navigation turn/opponent lies on the opposite side to the actual road");
+            ++cases;
+        }
+        if(c.closed){
+            const auto first=bank.sampleCourse(c,0),last=bank.sampleCourse(c,c.length);
+            if(std::hypot(first.u-last.u,first.v-last.v)>1e-6f||std::hypot(first.du-last.du,first.dv-last.dv)>1e-6f)
+                throw std::runtime_error("Circuit navigation jumps at the lap seam");
+            ++cases;
+        }
+    }
     // Sample a real navigation texture at the exact junction of four texels.
     // Its filtered value must be their average, with the unfiltered path still
     // selecting one texel. This catches accidental changes to ordinary UI.
     {
         OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find("k_df");
         auto chunk=bank.model.chunks.at(bank.day);auto& batch=chunk.batches.at(0);
-        const auto& image=bank.textures.at(batch.material[9]);unsigned sx=0,sy=0;bool found=false;
+        const auto originalTextures=NativeTextureBank::load(root/"data/original_assets/navigation/df/textures.idastex");
+        const auto& image=originalTextures.at(batch.material[9]);unsigned sx=0,sy=0;bool found=false;
         for(unsigned y=0;y+1<image.height&&!found;++y)for(unsigned x=0;x+1<image.width;++x){
             if(image.argb[y*image.width+x]!=image.argb[y*image.width+x+1]){sx=x;sy=y;found=true;break;}
         }
@@ -69,8 +167,8 @@ int main(int argc,char** argv)try{
         for(auto& vertex:batch.vertices){vertex.u=float(sx+1)/image.width;vertex.v=float(sy+1)/image.height;}
         SpritePlacement placement;placement.invertY=true;placement.authoredHeight=0;placement.sourceTextureFiltering=true;
         std::array<unsigned,1> filtered{},nearest{};
-        compositeOriginalMenuChunk(filtered,1,1,bank.textures,chunk,placement);
-        placement.sourceTextureFiltering=false;compositeOriginalMenuChunk(nearest,1,1,bank.textures,chunk,placement);
+        compositeOriginalMenuChunk(filtered,1,1,originalTextures,chunk,placement);
+        placement.sourceTextureFiltering=false;compositeOriginalMenuChunk(nearest,1,1,originalTextures,chunk,placement);
         if(filtered[0]!=expected||nearest[0]!=samples[3]||filtered==nearest)throw std::runtime_error("Source navigation filtering changed texel colour or ignored the opt-in");
         ++cases;
     }
@@ -180,6 +278,21 @@ int main(int argc,char** argv)try{
         BITMAPINFOHEADER info{};info.biSize=sizeof(info);info.biWidth=w;info.biHeight=-h;info.biPlanes=1;info.biBitCount=32;
         std::ofstream f(path,std::ios::binary);f.write(reinterpret_cast<const char*>(&file),sizeof(file));f.write(reinterpret_cast<const char*>(&info),sizeof(info));f.write(reinterpret_cast<const char*>(pixels.data()),pixels.size()*4);
     };
+    if(argc==3){
+        std::filesystem::create_directories(argv[2]);
+        OriginalNavigation navigation;navigation.setRoot(root);auto& bank=*navigation.find("s_uh");
+        const auto c=Course::load(root/"data/courses","s_uh","s_uh",false);
+        const auto point=bank.sampleCourse(c,c.length*.17f);
+        std::vector<unsigned> preview(512*512,0xff708078u);
+        bank.paint(preview,512,512,0,0,512,1,false,point);
+        save(std::filesystem::path(argv[2])/"iroha-rebuilt.bmp",preview,512,512);
+        const auto texture=bank.model.chunks.at(bank.day).batches.at(0).material[9];
+        const auto original=NativeTextureBank::load(root/"data/original_assets/navigation/uh/textures.idastex");
+        bank.textures.replaceImage(texture,original.at(texture));
+        std::fill(preview.begin(),preview.end(),0xff708078u);
+        bank.paint(preview,512,512,0,0,512,1,false,point);
+        save(std::filesystem::path(argv[2])/"iroha-source.bmp",preview,512,512);
+    }
     for(const auto* id:{"k_ez","s_nm","h_hd","k_df","s_vh","s_uh","n_sy","k_tu"})for(bool reverse:{false,true}){
         auto c=Course::load(root/"data/courses",id,id,reverse);
         const auto p=c.sample(c.length*.17f);VehicleState car;car.position=p.center;car.yaw=std::atan2(p.tangent.x,p.tangent.z);

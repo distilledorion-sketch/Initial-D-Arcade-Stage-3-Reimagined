@@ -208,7 +208,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?7:tab==2?7:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
+    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?9:tab==2?7:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -349,6 +349,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             }
             if(row==5)v.wheelFeedbackStrength=Mathf.Clamp(Mathf.Round(v.wheelFeedbackStrength*100)+direction,0,100)/100f;
             if(row==6)v.wheelFeedbackInvert=!v.wheelFeedbackInvert;
+            if(row==7)v.controllerVibration=!v.controllerVibration;
+            if(row==8)v.controllerVibrationStrength=Mathf.Clamp(Mathf.Round(v.controllerVibrationStrength*100)+direction,0,100)/100f;
         }
         notice="";
     }
@@ -551,12 +553,14 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
             SliderRow(1,"DEADZONE",v.SteeringDeadzone,.3f,value=>v.SteeringDeadzone=value);
             SliderRow(2,"SMOOTHING",v.steeringSmoothing,1,value=>v.steeringSmoothing=value);
-            Text(new Rect(290,326,681,22),"WHEEL FORCE FEEDBACK",small);
+            Text(new Rect(290,310,681,22),"WHEEL FORCE FEEDBACK",small);
             ChoiceRow(3,"FORCE FEEDBACK",v.wheelForceFeedback?"ON":"OFF");
             ChoiceRow(4,"DEVICE",WheelDeviceName(v.wheelFeedbackDevice));
             SliderRow(5,"STRENGTH",v.wheelFeedbackStrength,1,value=>v.wheelFeedbackStrength=value);
             ChoiceRow(6,"INVERT FORCE",v.wheelFeedbackInvert?"ON":"OFF");
-            Text(new Rect(288,508,681,35),selection<=3?"Deadzone is saved separately for each response profile.":wheelFeedback?.StatusText??"Wheel feedback is unavailable.",wrapped);
+            ChoiceRow(7,"CONTROLLER VIBRATION",v.controllerVibration?"ON":"OFF");
+            SliderRow(8,"VIBRATION STRENGTH",v.controllerVibrationStrength,1,value=>v.controllerVibrationStrength=value);
+            Text(new Rect(288,532,681,18),selection>=8?"Vibration uses the active controller. Pausing or losing focus stops it.":selection<=3?"Deadzone is saved separately for each response profile.":wheelFeedback?.StatusText??"Wheel feedback is unavailable.",wrapped);
         }else if(tab==8){
             if(Button(new Rect(282,197,692,43),Updates?.ButtonLabel??"CHECK FOR UPDATES",selection==1,AttractOptions&&Updates!=null&&Updates.CanActivate)){selection=1;Updates.Activate();}
             Text(new Rect(288,273,681,70),!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable.",wrapped);
@@ -586,7 +590,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
     private bool CompactRows=>tab==1||tab==2||tab==4||hudSizesOpen;
-    private float RowY(int row)=>tab==2?194+row*41:tab==4?(row<3?208+row*38:354+(row-3)*38):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
+    private float RowY(int row)=>tab==2?194+row*41:tab==4?(row<3?208+row*32:336+(row-3)*32):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
     private void FovRow(int row,Idas3GameOptions.Values value){
         float y=RowY(row);
         if(selection==row+1)Frame(new Rect(278,y,714,35),Red);
@@ -600,18 +604,18 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
         float y=RowY(row);bool compact=CompactRows;
-        if(selection==row+1)Frame(new Rect(278,y,714,compact?35:49),Red);
-        Text(new Rect(290,y+(compact?7:13),294,31),name,label);
+        if(selection==row+1)Frame(new Rect(278,y,714,tab==4?31:compact?35:49),Red);
+        Text(new Rect(290,y+(tab==4?3:compact?7:13),294,tab==4?26:31),name,label);
         float next=GUI.HorizontalSlider(new Rect(595,y+(compact?13:18),279,20),value,0,maximum);
         if(!Mathf.Approximately(next,value)){selection=row+1;set(Mathf.Round(next*100)/100f);notice="";}
-        Text(new Rect(899,y+(compact?5:8),79,33),Mathf.RoundToInt(next*100)+"%",button);
+        Text(new Rect(899,y+(tab==4?3:compact?5:8),79,tab==4?26:33),Mathf.RoundToInt(next*100)+"%",button);
     }
     private void ChoiceRow(int row,string name,string value,bool translateValue=true){
         float y=RowY(row);bool compact=CompactRows;
-        if(selection==row+1)Frame(new Rect(278,y,714,tab==1?28:compact?35:49),Red);
-        Text(new Rect(290,y+(tab==1?2:compact?5:13),294,tab==1?26:31),name,label);
+        if(selection==row+1)Frame(new Rect(278,y,714,tab==1?28:tab==4?31:compact?35:49),Red);
+        Text(new Rect(290,y+(tab==1||tab==4?2:compact?5:13),294,tab==1||tab==4?26:31),name,label);
         if(Button(new Rect(595,y+(compact?2:7),34,tab==1?25:compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
-        Text(new Rect(636,y+(tab==1?2:compact?5:8),304,tab==1?26:33),value,button,translate:translateValue);
+        Text(new Rect(636,y+(tab==1||tab==4?2:compact?5:8),304,tab==1||tab==4?26:33),value,button,translate:translateValue);
         if(Button(new Rect(948,y+(compact?2:7),34,tab==1?25:compact?29:35),"›")){selection=row+1;Adjust(row,1);}
     }
     private void ControlsView(){

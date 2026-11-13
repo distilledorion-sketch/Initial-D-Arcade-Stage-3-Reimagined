@@ -7,11 +7,13 @@
 #include "imported_course.h"
 #include "native_multiplayer.h"
 #include "native_load_keepalive.h"
+#include "original_feedback_presentation.h"
 #include "multiplayer_battle_record.h"
 #include "ui.h"
 #include "audio.h"
 #include "race_music_selection.h"
 #include "time_attack_ghost.h"
+#include "time_attack_season.h"
 #include "frontend.h"
 #include "local_card_plays.h"
 #include "original_legend_menu.h"
@@ -20,6 +22,7 @@
 #include "akina_scene.h"
 #include "akina_background.h"
 #include "original_driving_session.h"
+#include "original_driving_clock.h"
 #include "online_race_link.h"
 #include "online_replay_recording.h"
 #include "original_host_input.h"
@@ -242,6 +245,7 @@ struct App {
     Vec3 previousImportedActor{};
     Vec3 playerBodyWorld{},previousPlayerBodyWorld{},rivalBodyWorld{},previousRivalBodyWorld{};
     original::OriginalDrivingSession originalSession;
+    idas3ffb::OriginalFeedbackPresentation originalFeedback;
 #include "online_race_app.inl"
 #include "online_result_screen_app.inl"
     original::OriginalRaceRules originalRace;
@@ -511,7 +515,7 @@ struct App {
     int loadedCourse=-1;
     Course course;VehicleConfig config;VehicleState vehicle{},previous{};
     mutable HudAnalogPresentation hudAnalogPresentation;
-    RaceClock race;Replay recording,best;TimeAttackGhost personalGhost;FixedClock clock;Renderer renderer;Hud hud;EngineAudio audio;HostInput input;
+    RaceClock race;Replay recording,best;TimeAttackGhost personalGhost;OriginalDrivingClock clock;Renderer renderer;Hud hud;EngineAudio audio;HostInput input;
     int courseIndex=3,profile=0;bool reverse=false,wet=false,night=false,automatic=true;
     bool menu=true,paused=false,active=true,debug=false,showControls=false,running=true,finishedSaved=false,validationMode=false;
     bool challengerNotice=false;
@@ -519,6 +523,7 @@ struct App {
     original::ControllerResponse controllerResponse=original::ControllerResponse::FlycastGamepad;
     float steeringDeadzone=-1.f;
     HostSteeringSmoothing steeringSmoothing;
+    HostSteeringSource steeringSource;
     bool steeringControllerConnected=false,hostDrivingControlsBlocked=false;
     bool resizePending=false,mouseStart=false;int pendingWidth=1280,pendingHeight=720;
     int menuDirection=0;double menuRepeatWait=0;
@@ -1142,7 +1147,7 @@ struct App {
         frontend.course=courseIndex=int(request.course);frontend.reverse=reverse=request.reverse!=0;
         frontend.wet=wet=request.wet!=0;frontend.night=night=request.night!=0;frontend.automatic=automatic=request.automatic!=0;
         loadingActive=preRaceDialogueActive=legendVisitActive=vsActive=buntaVisitActive=timeAttackVisitActive=false;
-        input={};steering=0;clock.reset();
+        input={};steering=0;steeringSource.reset();clock.reset();
         try{
             start(true);
             if(!originalHandling||presentedSession().rivalActive())throw std::logic_error("Multiplayer requires source local physics without AI");
@@ -1413,7 +1418,7 @@ struct App {
             trackStart=2;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;
             chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
             auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));
-            previous=vehicle;segment=0;progress=trackStart;steering=0;cameraReady=false;clock.reset();best=Replay{};bestTime=0;
+            previous=vehicle;segment=0;progress=trackStart;steering=0;steeringSource.reset();cameraReady=false;clock.reset();best=Replay{};bestTime=0;
             loadSelectedCar();idas3::serviceLoadKeepAlive();texturesPending=true;return;
         }
         if(courseIndex==8)wet=true;
@@ -1459,7 +1464,7 @@ struct App {
         }
         trace.mark("course.scenery");
         trackStart=2.f;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();
-        configureCar();auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));previous=vehicle;segment=spawn.segmentIndex;progress=trackStart;steering=0;cameraReady=false;clock.reset();
+        configureCar();auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));previous=vehicle;segment=spawn.segmentIndex;progress=trackStart;steering=0;steeringSource.reset();cameraReady=false;clock.reset();
         best=Replay{};bestTime=0;if(!multiplayer.active&&best.load(ghostPath().string())&&!best.frames.empty())bestTime=best.finishTicks6000?double(best.finishTicks6000)/6000:double(best.frames.back().tick)/60;
         trace.mark("course.vehicle-and-ghost");
         loadSelectedCar();idas3::serviceLoadKeepAlive();
@@ -1496,6 +1501,18 @@ struct App {
         sample.discontinuity=hudDriftPoseKnown&&length(position-hudDriftLastPosition)>8.f;
         if(!sample.paused){hudDriftLastPosition=position;hudDriftPoseKnown=true;}
         hudDrift.advance(physicsDt,sample);
+    }
+    bool feedbackDriving()const {
+        return originalHandling&&presentedSession().ready()&&!menu&&!paused&&active&&
+            !legendVisitActive&&!preRaceDialogueActive&&!loadingActive&&!extraModeVisitActive()&&
+            !replayPlaybackActive&&!vsActive&&race.phase==RacePhase::Running&&
+            !multiplayerDisconnected()&&!multiplayer.waiting&&!authorityStalled;
+    }
+    void advanceOriginalFeedback(bool advance){
+        if(!advance||!feedbackDriving()){originalFeedback.stop();return;}
+        const auto& session=presentedSession();
+        originalFeedback.advance(idas3ffb::feedbackInput(session.vehicle(),session.selection().physics.vehicleIndex,
+            session.selection().physics.conditionCode,std::min<unsigned>(frontend.battleProfile.byte(1187),8)),vehicle.tick);
     }
     void projectOriginalPose(bool advance){
         const auto& source=presentedSession().vehicle();const auto& d=source.drive;
@@ -1536,6 +1553,7 @@ struct App {
         for(std::size_t i=0;i<6;++i)vehicle.steeringBasis[i]=d.f(0x1CC+i*4);
         vehicle.wallContact=d.u(0x150)!=0;vehicle.wallImpactSpeed=presentedSession().roadContact().impact0C900E60;
         if(advance){vehicle.travel+=length(vehicle.position-oldPosition);++vehicle.tick;vehicle.simulatedSeconds+=physicsDt;}
+        advanceOriginalFeedback(advance);
         if(advance){
             advanceHudDrift();
             hud.advanceWaterCup(length(vehicle.velocity)*physicsDt,presentedSession().contactCompletion().cues0C900E5C);
@@ -1608,7 +1626,7 @@ struct App {
             // These PS2 courses only supply authored night scenery.
             if(importedCourseDefinition(importedCourse->id).nightOnly)night=frontend.night=true;
         }else importedCourse.reset();
-        steeringSmoothing.reset();
+        steeringSmoothing.reset();steeringSource.reset();
         buntaVisitActive=timeAttackVisitActive=timeAttackLectureDone=timeSummaryDone=false;
         timeSummaryTicks=0;timeAttackCourseRankingQualified=false;timeAttackPersonalRegistered=false;timeSummaryClock.reset();modeVisitClock.reset();timeAttackTrace.clear();
         timeAttackTelemetry.reset();timeAttackSnapshot={};timeAttackAnalysisInput={};timeAttackAnalysis={};timeAttackAnalysisPrepared=false;
@@ -1657,6 +1675,9 @@ struct App {
         courseLightPathIndex=0;
         if(originalHandling){
             original::OriginalDrivingSelection selection;
+            // Preserve the online surface policy in initial and legacy races;
+            // the shared version2 owner applies the same explicit override.
+            if(multiplayer.active)selection.roadModeOverride=0;
             selection.bodyContactEnabled=battle;
             selection.physics=original::makeOriginalFreshTimeAttackSelection(std::uint32_t(frontend.car),importedCourse?importedCourse->handlingCondition(reverse):std::uint32_t(courseIndex*2+int(reverse)),wet?original::OriginalWeather::Wet:original::OriginalWeather::Dry);
             //159720 reads tuning from the loaded driver profile. The chosen
@@ -1794,7 +1815,10 @@ struct App {
             rememberSaveCar(activeSaveSlot,unsigned(frontend.car));
     }
     void saveSettings(){if(multiplayer.active)return;flushProfiles();std::ofstream out(userdataRoot()/"settings.txt");out<<courseIndex<<' '<<profile<<' '<<reverse<<' '<<wet<<' '<<night<<' '<<automatic<<' '<<audio.enabled<<' '<<audio.musicTrack<<'\n';std::ofstream native(userdataRoot()/"native_selection.txt");native<<frontend.make<<' '<<frontend.car<<'\n';}
-    void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");migrateLocalTimeAttackHistory();useSaveSlot(-1);frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
+    void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");
+        if(!migrateTimeAttackSeason(userdataRoot()).complete)
+            throw std::runtime_error("Season 2 Time Attack records could not be prepared. Close other copies of the game and check that your save folder is writable, then retry.");
+        migrateLocalTimeAttackHistory();useSaveSlot(-1);frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
         selectedRaceMusic=loadRaceMusicSelection(userdataRoot(),audio.musicTrack);
     }
     void commands(double dt){
@@ -2174,7 +2198,7 @@ struct App {
             // loss or writes an unfinished result to the driver's card.
             loadingActive=preRaceDialogueActive=legendVisitActive=false;
             resultVisit={};pendingResultSetup.reset();battleProgressApplied=false;resultsReady=false;
-            battle=bunta=false;input={};steering=0;
+            battle=bunta=false;input={};steering=0;steeringSource.reset();
             audio.resetRaceEffects();audio.useDevelopmentEngine();
             if(originalSession.ready())originalSession.setEngineOutput({});rivalVisible=false;
         }
@@ -2205,12 +2229,13 @@ struct App {
     }
     void resetSteeringSmoothing(){
         steeringSmoothing.reset();
+        steeringSource.reset();
         // With the preference disabled, preserve the existing conditioner.
         if(steeringSmoothing.amount()>0.f)steering=0;
     }
     void setHostDrivingControlsBlocked(bool blocked){
         hostDrivingControlsBlocked=blocked;
-        if(blocked){steering=0;steeringSmoothing.reset();}
+        if(blocked){steering=0;steeringSmoothing.reset();steeringSource.reset();}
     }
     void updateSteeringSmoothingLifecycle(){
         if(!active||hostDrivingControlsBlocked||paused||menu||loadingActive||
@@ -2222,18 +2247,13 @@ struct App {
     DriverInput driver(bool advanceSmoothing=true){
         DriverInput d;d.automatic=automatic;
         if(hostDrivingControlsBlocked||(multiplayer.active&&!active)){
-            steering=0;steeringSmoothing.reset();return d;
+            steering=0;steeringSmoothing.reset();steeringSource.reset();return d;
         }
         const float keyboard=float(input.down['D']||input.down[VK_RIGHT])-float(input.down['A']||input.down[VK_LEFT]);
         const auto pad=input.connected?original::controllerHostControls(input.pad.Gamepad.sThumbLX,
             input.pad.Gamepad.sThumbLY,input.pad.Gamepad.bRightTrigger,input.pad.Gamepad.bLeftTrigger,
             controllerResponse,steeringDeadzone):original::OriginalHostControls{};
-        const float analog=pad.steering;
-        const bool useStick=std::abs(analog)>.01f;
-        float target=useStick?std::clamp(analog,-1.f,1.f):keyboard;
-        if(originalHandling&&input.connected&&(useStick||keyboard==0))steering=target;
-        else if(!useStick)steering=advanceHostKeyboardSteering(steering,target,physicsDt);
-        else steering+=std::clamp(target-steering,-12.f*physicsDt,12.f*physicsDt);
+        steering=steeringSource.advance(steering,keyboard,pad.steering,input.connected,originalHandling,physicsDt);
         // Called once per physics tick. The race-start input snapshot observes
         // the neutral filter without advancing a tick before driving begins.
         d.steer=steeringSmoothing.advance(steering,advanceSmoothing?physicsDt:0.f);
@@ -2244,7 +2264,8 @@ struct App {
     template<class F> void advanceHostClock(double elapsed,F&& step){
         if(multiplayerDisconnected()){clock.reset();return;}
         if(!multiplayer.active){clock.advance(elapsed,step);return;}
-        // Keep the original60Hz solver intact. Online background frames can
+        // Keep original per-frame physics and its measured video cadence.
+        // Online background frames can
         // represent up to250ms, rather than silently losing time at100ms.
         double remaining=std::clamp(elapsed,0.0,.25);
         while(remaining>0){const double slice=std::min(remaining,.1);clock.advance(slice,step);remaining-=slice;}
@@ -4286,10 +4307,13 @@ struct App {
             environment.appendSun(mesh,unsigned(courseIndex),night,wet,reverse,float(sunCoordinate.index)+sunCoordinate.fraction,
                 camera,target,renderer.cameraUp,renderer.verticalFieldOfView,renderer.nearClip,flareTextureBase);
         }
-        // Smooth only the meters. The minimap, gear and every numerical owner
-        // retain the current vehicle state, and the simulation is never edited.
-        auto hudCar=vehicle;const auto analog=presentedHudAnalog();hudCar.speed=analog.speed;hudCar.rpm=analog.rpm;
-        UiState state;state.menu=menu;state.paused=paused;state.wet=wet;state.night=night;state.automatic=automatic;state.debug=debug;state.gamepad=input.connected;state.carProfile=profile;state.course=&course;state.car=&hudCar;state.race=&race;state.rival=(battle||multiplayer.active)?&rivalVehicle:nullptr;state.bestTime=bestTime;state.progress=progress;state.fps=renderFps;state.message=message;
+        // Draw the map at the same presented position as the car, including
+        // frames between solver ticks. This only changes display copies;
+        // race progress, gear, timing and simulation state remain authoritative.
+        auto hudCar=drawCar;const auto analog=presentedHudAnalog();hudCar.speed=analog.speed;hudCar.rpm=analog.rpm;
+        auto hudRival=rivalVehicle;hudRival.position=lerp(previousRival.position,rivalVehicle.position,poseAlpha);
+        const float mapProgress=course.project(drawCar.position,segment,12).sample.distance;
+        UiState state;state.menu=menu;state.paused=paused;state.wet=wet;state.night=night;state.automatic=automatic;state.debug=debug;state.gamepad=input.connected;state.carProfile=profile;state.course=&course;state.car=&hudCar;state.race=&race;state.rival=(battle||multiplayer.active)?&hudRival:nullptr;state.bestTime=bestTime;state.progress=mapProgress;state.fps=renderFps;state.message=message;
         state.suppressPauseOverlay=managedPauseOverlay;state.multiplayer=multiplayer.active;
         state.hudIntroFrame=originalHandling&&!replayPlaybackActive?originalRaceOwnerFrame:240u;
         state.frontend=&frontend;state.originalHandling=originalHandling;state.originalWeatherScenery=!wet||sceneWet;state.snow=courseIndex==8;state.musicName=audio.musicName();hud.resize(renderer.width,renderer.height);
@@ -4350,7 +4374,7 @@ struct App {
             online.rivalPositionFraction=multiplayer.received?0.f:-1.f;
         }
         if(replayOpponent){
-            state.rival=&rivalVehicle;
+            state.rival=&hudRival;
             state.onlineBattleHud.opponentHeadlights=replayRivalLights;
             if(loadedRivalEnemy>=0){state.battle=true;state.battleEnemy=unsigned(loadedRivalEnemy);state.battleProfileMode=0;state.battleRivalCar=unsigned(loadedRivalCar);state.battleHudFrame=int(race.ticks);state.battleAdvantage=replayAdvantage;state.battleRivalPositionFraction=0;}
             else {auto& online=state.onlineBattleHud;online.active=true;online.playerName=multiplayer.localName;online.rivalName=multiplayer.remoteName;online.playerCar=unsigned(frontend.car);online.rivalCar=unsigned(loadedRivalCar);online.frame=int(race.ticks);online.advantage=replayAdvantage;online.rivalPositionFraction=0;}
@@ -4379,13 +4403,13 @@ struct App {
         if(!menu&&!validationHideDrivingEffects){
             if(sourceCarSmokeDisplayed()||(replayPlaybackActive&&courseIndex==7&&!night&&!wet&&!importedCourse)){
                 const float aspect=renderer.projectionAspect>0?renderer.projectionAspect:float(renderer.width)/float(std::max(renderer.height,1));
-                const auto append=[&](Vec3 eye,Vec3 look,Vec3 up,float fov,float ratio,unsigned mask,float height=480.f){
-                    if(sourceCarSmokeDisplayed())roadsideDust.appendSystem(displayedCarSmoke().system(),mesh,eye,look,up,fov,ratio,smokeTextureBase,mask,height);
-                    else roadsideDust.append(mesh,eye,look,up,fov,ratio,smokeTextureBase,mask,height);
-                };
-                append(camera,target,renderer.cameraUp,renderer.verticalFieldOfView,aspect,1);
-                if(rearView)append(rearView->eye,rearView->target,rearView->up,
-                    OriginalRearViewFrame::verticalFieldOfView,OriginalRearViewFrame::width/OriginalRearViewFrame::height,2,OriginalRearViewFrame::height);
+                // 0662AE..0662D2 registers one smoke view: the main camera.
+                // Reprojecting this density mesh into the small rear viewport
+                // created a dense pale cloud absent from the arcade mirror.
+                // Keep source emission/RNG and the main-view material intact.
+                if(sourceCarSmokeDisplayed())roadsideDust.appendSystem(displayedCarSmoke().system(),mesh,
+                    camera,target,renderer.cameraUp,renderer.verticalFieldOfView,aspect,smokeTextureBase,1);
+                else roadsideDust.append(mesh,camera,target,renderer.cameraUp,renderer.verticalFieldOfView,aspect,smokeTextureBase,1);
             }
             const bool playerLights=replayPlaybackActive?replayLights:originalHandling?playerProjectedHeadlight.enabled():night;
             headlightGlare.append(mesh,unsigned(frontend.car),bodyPosition,drawCar.yaw,drawPitch,drawRoll,

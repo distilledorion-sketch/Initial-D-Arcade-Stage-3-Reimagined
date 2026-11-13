@@ -1,4 +1,5 @@
 #include "online_race_simulation.h"
+#include "original_driving_float.h"
 #include "imported_course.h"
 #include "original_engine_playback.h"
 #include "original_host_input.h"
@@ -58,6 +59,7 @@ OnlineRaceSimulation::~OnlineRaceSimulation()=default;
 OnlineRaceSimulation::OnlineRaceSimulation(OnlineRaceSimulation&&)noexcept=default;
 OnlineRaceSimulation& OnlineRaceSimulation::operator=(OnlineRaceSimulation&&)noexcept=default;
 OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,const OnlineRaceSetup& setup):impl_(std::make_unique<Impl>()){
+    const OriginalDrivingFloatScope floatingPoint;
     if(setup.condition>=18||(setup.condition>=16&&!setup.wet))throw std::invalid_argument("Invalid online course/weather");
     auto& s=*impl_;s.setup=setup;
     const bool reverse=(setup.condition&1)!=0;
@@ -74,6 +76,8 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
         if(!setup.imported)s.smokeOrigins[slot]=originalCarEffectOrigins(OriginalCarParts::load(
             root/"data/original_models"/originalCarFolders.at(profile.u(16))/"assembly_parts.bin"));
         OriginalDrivingSelection selection;
+        // Online surface rules remain independent of saved Legend opponents.
+        selection.roadModeOverride=0;
         selection.physics=makeOriginalFreshTimeAttackSelection(profile.u(16),setup.imported?setup.imported->handlingCondition(reverse):setup.condition,setup.wet?OriginalWeather::Wet:OriginalWeather::Dry);
         applyOriginalProfilePhysicsSelection(selection.physics,profile);
         selection.physics.progressEnabled0C9015E4=setup.boost?1u:0u;
@@ -98,6 +102,7 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
     }
 }
 OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInputs,2>& incoming){
+    const OriginalDrivingFloatScope floatingPoint;
     auto& s=*impl_;OnlineRaceFrame out;out.frame=s.state.frame;
     if(s.state.frame<s.setup.showcaseFrames)out.start.countdownRemaining=s.state.start.remaining();
     else out.start=s.state.start.step();

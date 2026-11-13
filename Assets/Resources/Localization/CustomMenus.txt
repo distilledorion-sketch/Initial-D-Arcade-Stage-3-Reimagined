@@ -791,3 +791,6 @@ YOUR CAR AND SAVE WILL NOT CHANGE	車両やセーブデータは変更されま�
 SAVE FAILED - PLEASE RETRY	保存できません。もう一度お試しください	保存失败，请重试
 SAVE CHANGED - PLEASE RETRY	セーブが更新されました。やり直してください	存档已更改，请重试
 SAVED CAR IS NOT READY	この車両は点検できません	此车辆暂时无法检查
+CONTROLLER VIBRATION	コントローラーの振動	手柄振动
+VIBRATION STRENGTH	振動の強さ	振动强度
+Vibration uses the active controller. Pausing or losing focus stops it.	使用中のコントローラーが振動します。ポーズ中や非アクティブ時は停止します。	仅使用当前手柄振动。暂停或切出游戏时停止。

@@ -2,6 +2,10 @@
 
 #include "original_ffb.h"
 
+// LEGACY TELEMETRY ABI ONLY. This historical approximation is retained for
+// Idas3WheelUpdateCabinet v1/v2 callers. The active game uses the verified
+// OriginalProducer in original_feedback.h and sends completed output states.
+// Historical source interpretations below are superseded by the producer audit.
 // The cabinet's board takes commands, not forces. original_ffb.cpp is the board;
 // this is the half of the pair that decides what to send it, which in the arcade
 // lives in the SH-4 binary at 0C15A5E0 and reaches the wire through the encoder

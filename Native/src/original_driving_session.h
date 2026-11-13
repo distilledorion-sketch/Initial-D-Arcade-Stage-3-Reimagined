@@ -44,6 +44,12 @@ struct OriginalDrivingSelection {
     // Source-parity callers keep the original pair stage by default.
     // An explicit synchronized contact result always takes precedence.
     bool bodyContactEnabled=true;
+    // Optional host policy for road/surface exclusions only (original enemy
+    // IDs0..31). Absent preserves159720's selected profile, even in solo.
+    // Online explicitly uses0 so saved Legend history cannot grant oil
+    // immunity. Never change vehicleMode: initialization also uses that ID
+    // for the original steering-memory mask. Imported roads default to0.
+    std::optional<std::uint32_t> roadModeOverride;
 };
 struct OriginalDrivingStepEffects {
     OriginalVehicleStepResult vehicle;

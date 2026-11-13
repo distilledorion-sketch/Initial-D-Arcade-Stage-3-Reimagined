@@ -1,12 +1,23 @@
 # Changelog
 
-## 0.3.95-community-replays.54 - November 12, 2026
+## 0.3.95-community-replays.55 - November 13, 2026
 
 ### Changes since .53
 
+- Start fresh Season 2 Time Attack rankings. Close previous-season submissions and preserve old online scores as an administrative archive. Only version .55 can submit new times; old queued runs cannot be relabeled into the new season.
+- Reset every local Time Attack board, saved car's Time Attack records and personal-best ghost for Season 2. Preserve cars, tuning, battle/aura progress, settings, identity and ordinary replay recordings. Restoring an older save cannot restore its previous-season times.
+- Correct driving's real-time cadence to the original nominal 59.7927 updates per second, removing the roughly 0.35% speed-up from rounding it to 60. Preserve the original per-frame handling, race-time units, tuning and course geometry. Display FPS remains independent.
+- Make driving use the original comparison's floating-point mode consistently, including online simulation, instead of inheriting the calling thread's mode. This removes reproduced long-run numerical drift without changing grip, acceleration, tuning or steering curves. The reported large corner-speed advantage is still under investigation.
+- Keep keyboard steering's return to centre consistent when an idle controller is connected. Preserve immediate analog steering takeover and centring.
+- Restore the original solo oil-surface rule for cards retaining certain Legend opponents. Keep online and imported-course surface rules unchanged.
+- Rebuild the eight original courses' minimap road artwork from their navigation paths, with smooth edges at high resolutions. Preserve course shape, arcade tint/transparency, zoom, rotation and responsive position tracking.
+- Fix the pale smoke clouds appearing in the rear-view mirror on original tracks. Match the arcade's main-view-only smoke rendering while preserving normal tire smoke, dust and driving physics.
+- Add controller vibration for supported Unity gamepads and native Xbox controllers using the original game's road, gear-change and contact calculations. Enable or disable it and adjust strength under Options > Steering & Wheel; default strength is 50%. Output follows the selected controller and stops outside driving, on pause, loss of focus, disconnect or stale simulation.
+- Translate the original steering-force and damping calculations, including acceleration/deceleration, saved steering settings and road conditions. Run the feedback calculation with simulation steps, preserve brief vibration events between rendered frames, correct wheel damping parameters, and apply output strength as device gain.
 - Correct card uses to count each accepted card session, rather than each race. Continued races and online rematches share that use. A card's final use remains playable through Continue; renewal appears on the next card entry.
 - Restore functional card renewal: choose transmission and tuning package, then transfer the card with 50 uses remaining. Keeping the package preserves tuning; changing it follows the original reset rules while keeping engine level, points and records. Cancelling or failing to save preserves the existing card.
 - Correct the default minimap scale and colouring using the arcade navigation artwork.
+- Correct mirrored minimap turns and opponent positions, align the map to the displayed car position, and smooth road-based rotation without adding a following delay. Retain the arcade colours and wider view.
 - Keep the Hold Y music hint available after mode selection through the race-condition selections.
 - Restore rear-light trails in attract demonstrations and improve the Legend ending's camera, lighting and recorded effects, including smoke, rain, snow, exhaust flashes, tyre marks and road-contact leaves.
 - Correct stationary/replayed smoke and dust behaviour, including unwanted effects in the rear-view mirror.
@@ -18,9 +29,9 @@
 
 ### Install or update
 
-Both online drivers should update. Version .54 is required for new community Time Attack submissions. Existing leaderboard scores remain; online replay uploads/downloads remain disabled.
+Both online drivers should update. Version .55 is required for new Season 2 community Time Attack submissions. Complete a new Time Attack after updating. Previous-season times are excluded from active rankings; online replay uploads/downloads remain disabled.
 
-Existing installations: use the in-game updater. Changed-file patches support .20 through .53. Fresh installs: extract **Initial-D-Setup-0.3.95.54.zip** and run **Install Initial D.cmd**. For manual installation, extract the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Supply your own original game data. Saves, settings, ROMs, personal replays and custom music are preserved.
+Existing installations: use the in-game updater. Changed-file patches support .20 through .53. Fresh installs: extract **Initial-D-Setup-0.3.95.55.zip** and run **Install Initial D.cmd**. For manual installation, extract the Windows-x64 and matching Additional-Courses ZIPs into the same folder. Supply your own original game data. Cars, tuning, battle progress, settings, ROMs, ordinary personal replays and custom music are preserved; old Time Attack records and ghosts are reset.
 
 ### Verification limits
 

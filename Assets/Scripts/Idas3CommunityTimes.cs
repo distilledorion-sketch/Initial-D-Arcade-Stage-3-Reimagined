@@ -17,8 +17,12 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     public const string ServiceUrl="https://initial-d-leaderboard.initial-d-community-leaderboard.workers.dev";
     public const string Ruleset="d3-community-v1";
     public const string MinimumClientBuild="0.3.95-community-replays.1";
-    public const string RequiredSubmissionBuild="0.3.95-community-replays.54";
+    public const string RequiredSubmissionBuild="0.3.95-community-replays.55";
     public const int FirstReplaySeason=2;
+    // Public Season 2 uses database epoch 3; epoch 2 already held earlier runs.
+    public const int CurrentSeasonEpoch=3;
+    public const int LocalRecordSeason=2;
+    public const string CurrentSeasonMinimumBuild="0.3.95-community-replays.55";
     [Serializable] public sealed class Run {
         public string id,ruleset,build;
         public int condition,weather,car,ticks6000,manual,night,points,epoch,imported;
@@ -56,9 +60,11 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
         }
         try{
             Directory.CreateDirectory(folder);
+            MigrateSeasonCache(folder);
             if(File.Exists(Path.Combine(folder,"identity.json")))credential=Read<Identity>("identity.json",1024)?.token;
             if(string.IsNullOrEmpty(credential)||credential.Length!=64){byte[] bytes=new byte[32];using(var rng=RandomNumberGenerator.Create())rng.GetBytes(bytes);credential=BitConverter.ToString(bytes).Replace("-","").ToLowerInvariant();Write("identity.json",new Identity{token=credential});}
             if(File.Exists(Path.Combine(folder,"pending.json")))pending=Read<Pending>("pending.json",2*1024*1024)??new Pending();
+            if(pending.runs==null)pending=new Pending();
             pending.runs.RemoveAll(r=>!Uploadable(r));if(pending.runs.Count>MaximumPendingRuns)pending.runs.RemoveRange(MaximumPendingRuns,pending.runs.Count-MaximumPendingRuns);
             Write("pending.json",pending);CleanReplayFiles();
             if(File.Exists(Path.Combine(folder,"snapshot.json"))){try{snapshot=Read<Snapshot>("snapshot.json",2*1024*1024);if(!UsableCommunitySnapshot(snapshot))snapshot=null;}catch(Exception){snapshot=null;}}
@@ -93,11 +99,12 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
         if(!Uploadable(run))throw new InvalidDataException("Invalid Time Attack submission.");
         return JsonUtility.ToJson(run);
     }
-    public static bool SupportedBuild(string build){
+    public static bool SupportedBuild(string build)=>SupportedBuild(build,MinimumClientBuild);
+    private static bool SupportedBuild(string build,string minimum){
         const string pattern=@"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([a-z][a-z0-9-]*)\.(0|[1-9]\d*))?$";
         if(build==null||build.Length>64)return false;
         var a=System.Text.RegularExpressions.Regex.Match(build,pattern);
-        var b=System.Text.RegularExpressions.Regex.Match(MinimumClientBuild,pattern);
+        var b=System.Text.RegularExpressions.Regex.Match(minimum,pattern);
         if(!a.Success)return false;
         var av=new long[6];var bv=new long[6];
         foreach(int i in new[]{1,2,3,5}){
@@ -110,7 +117,17 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     // Historical posted results keep the compatibility floor above. Only newly
     // submitted runs use this exact release policy, including restored queues.
     public static bool SubmissionBuild(string build)=>string.Equals(build,RequiredSubmissionBuild,StringComparison.Ordinal);
-    public static bool Uploadable(Run r)=>Valid(r)&&r.imported==0&&r.ruleset==Ruleset&&r.epoch>=FirstReplaySeason&&SubmissionBuild(r.build)&&Guid.TryParseExact(r.id,"D",out _);
+    // This is a declared-client compatibility gate, not proof that a client is unmodified.
+    public static bool Uploadable(Run r)=>Valid(r)&&r.imported==0&&r.ruleset==Ruleset&&r.epoch==CurrentSeasonEpoch&&SubmissionBuild(r.build)&&Guid.TryParseExact(r.id,"D",out _);
+    internal static bool PrepareFreshFinish(Run run,string build){
+        // Only an unstamped native finish may acquire this season/build. Never
+        // relabel restored queues, snapshots or historical records as new runs.
+        if(!Valid(run)||run.imported!=0||!SubmissionBuild(build)||run.epoch!=0||
+           !string.IsNullOrEmpty(run.id)||!string.IsNullOrEmpty(run.ruleset)||!string.IsNullOrEmpty(run.build))return false;
+        run.id=Guid.NewGuid().ToString();run.ruleset=Ruleset;run.build=build;run.epoch=CurrentSeasonEpoch;
+        run.replayVersion=0;run.replayAvailable=false;
+        return true;
+    }
     public static bool Valid(Run r){
         if(r==null||r.condition<0||r.condition>=Idas3CourseCatalog.ConditionCount||r.weather<0||r.weather>1||r.car<0||r.car>34||r.ticks6000<60000||r.ticks6000>=10800000||r.nameGlyphs==null||r.nameGlyphs.Length!=5||r.splits==null||r.splits.Length!=4||r.imported<0||r.imported>1||r.manual<(r.imported==1?-1:0)||r.manual>1||r.night<(r.imported==1?-1:0)||r.night>1||r.points<(r.imported==1?-1:0)||r.points>999999)return false;
         foreach(int n in r.nameGlyphs)if(n<0||n>221)return false;
@@ -119,8 +136,8 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     }
     private static bool ValidSnapshot(Snapshot s){if(s==null||s.ruleset!=Ruleset||s.entries==null||s.entries.Length>MaximumSnapshotEntries)return false;foreach(var r in s.entries)if(!Valid(r))return false;return true;}
     internal static bool UsableCommunitySnapshot(Snapshot s){
-        if(!ValidSnapshot(s)||s.epoch<FirstReplaySeason)return false;
-        foreach(var r in s.entries)if(r.epoch!=s.epoch||r.imported!=0||!SupportedBuild(r.build))return false;
+        if(!ValidSnapshot(s)||s.epoch!=CurrentSeasonEpoch)return false;
+        foreach(var r in s.entries)if(r.epoch!=s.epoch||r.imported!=0||!SupportedBuild(r.build,CurrentSeasonMinimumBuild))return false;
         return true;
     }
     public static int[] Flatten(Snapshot s){
@@ -163,9 +180,9 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
                 if(length>0&&finishWrite==null){
                     bool acknowledge=true;
                     if(enabled){var run=JsonUtility.FromJson<Run>(Encoding.UTF8.GetString(finishBuffer,0,length));if(Valid(run)){
-                        run.id=Guid.NewGuid().ToString();run.ruleset=Ruleset;run.build=Application.version;run.epoch=snapshot?.epoch??FirstReplaySeason;
-                        if(!SubmissionBuild(run.build))status="Only game build "+RequiredSubmissionBuild+" can share Time Attack runs.";
-                        else {finishPayload=Encoding.UTF8.GetString(finishBuffer,0,length);finishWrite=QueueFinish(run);acknowledge=false;}
+                        if(!SubmissionBuild(Application.version))status="Only game build "+RequiredSubmissionBuild+" can share Time Attack runs.";
+                        else if(PrepareFreshFinish(run,Application.version)){finishPayload=Encoding.UTF8.GetString(finishBuffer,0,length);finishWrite=QueueFinish(run);acknowledge=false;}
+                        else status="This result belongs to an earlier run. Complete a new Time Attack to share it.";
                     }else status="This run could not be shared: checkpoint validation failed.";}
                     if(acknowledge)Idas3SharedAckFinish();
                 }
@@ -213,7 +230,7 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     internal IEnumerator ProcessSnapshot(long code,byte[] body){
         confirmedUntil=0;cacheDirty=true;
         if(code==200){
-            var work=PrepareSnapshot(body,folder,snapshot?.epoch??FirstReplaySeason,lifetime.Token);
+            var work=PrepareSnapshot(body,folder,CurrentSeasonEpoch,lifetime.Token);
             while(!work.IsCompleted)yield return null;
             if(lifetime.IsCancellationRequested||!options.Current.communityTimes)yield break;
             var next=work.GetAwaiter().GetResult();

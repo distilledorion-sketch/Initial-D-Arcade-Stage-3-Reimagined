@@ -7,6 +7,11 @@ import {MAX_REPLAY,validateReplay,replayCsv,decodeReplay,compressReplay} from '.
 import {readStoredReplay,storeObjectReplay,moveReplayToObjectStorage,replayKey} from './replay-storage.mjs';
 import {retainedSql,retentionEnabled,pruneStatement,qualifiesForBoard,cleanupReplayObjects} from './retention.mjs';
 const now=()=>Math.floor(Date.now()/1000);
+const scorePaths=new Set(['/api/v1/runs','/api/v2/runs','/api/v3/runs']);
+const seasonNumber=env=>Number(env.LEADERBOARD_SEASON)||null;
+const scoreClosed=()=>json({error:'Time Attack submissions are paused for the season update. Online play remains available.',code:'score_submissions_closed'},503,{'Retry-After':'60'});
+const seasonClosed=epoch=>json({error:'This run belongs to a closed season. Complete a new Time Attack in the current season.',code:'season_closed',epoch,permanent:true},409);
+const submissionPolicy=env=>env.DB.prepare("SELECT CAST(value AS INTEGER) AS epoch,(SELECT value FROM settings WHERE key='leaderboard_required_build') AS required_build,(SELECT value FROM settings WHERE key='leaderboard_submissions_closed') AS closed FROM settings WHERE key='epoch'").first();
 const headers={'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer','X-Frame-Options':'DENY'};
 function json(value,status=200,extra={}){return new Response(JSON.stringify(value),{status,headers:{...headers,'Content-Type':'application/json',...extra}});}
 async function rawBody(request,maximum=8192){
@@ -41,8 +46,14 @@ async function handle(request,env){
   return json({error:'Community service maintenance. Please try again later.',code:'service_maintenance'},503,{'Retry-After':'60'});
  }
  if(env.MAINTENANCE==='true'&&request.method!=='GET')return json({error:'Leaderboard maintenance. Your game will retry this upload.'},503,{'Retry-After':'60'});
+ // Narrow cutover switch: registration, EOS access checks, activity and all
+ // moderation routes remain available. Reject before consuming upload bytes.
+ if(env.SCORE_SUBMISSIONS_CLOSED==='true'&&request.method==='POST'&&scorePaths.has(path))return scoreClosed();
  if(request.method==='GET'&&(path==='/'||path==='/admin'))return new Response(html,{headers:{...headers,'Content-Type':'text/html; charset=utf-8','Content-Security-Policy':"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"}});
- if(request.method==='GET'&&path==='/health')return json({ok:!offline,service:'Initial D community times',ruleset:env.RULESET,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replayStorage:replaysDisabled(env)?'disabled':env.REPLAYS?'object':'database',replayUploads:!replaysDisabled(env),replayDownloads:!replaysDisabled(env),retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:offline||env.MAINTENANCE==='true',offline});
+ if(request.method==='GET'&&path==='/health'){
+  const policy=offline?null:await submissionPolicy(env);
+  return json({ok:!offline,service:'Initial D community times',ruleset:env.RULESET,epoch:policy?.epoch??null,season:seasonNumber(env),requiredBuild:policy?.required_build||env.REQUIRED_CLIENT_BUILD||REQUIRED_CLIENT_BUILD,scoreSubmissionsClosed:offline||env.MAINTENANCE==='true'||env.SCORE_SUBMISSIONS_CLOSED==='true'||policy?.closed==='true',replayStorage:replaysDisabled(env)?'disabled':env.REPLAYS?'object':'database',replayUploads:!replaysDisabled(env),replayDownloads:!replaysDisabled(env),retention:retentionEnabled(env)?'top_ten_overall_and_model':'all_submitted',maintenance:offline||env.MAINTENANCE==='true',offline});
+ }
  const ip=request.headers.get('CF-Connecting-IP')||'local';
  if(path==='/api/v1/online/player'&&request.method==='POST'){
   await limit(env.ONLINE_AUTH_LIMIT,'online-auth:'+ip);
@@ -111,7 +122,7 @@ async function handle(request,env){
   }
   if(path==='/api/admin/retention'&&request.method==='GET'){
    const keep=(await env.DB.prepare(retainedSql).bind(env.RULESET).all()).results.map(x=>x.id);
-   const total=await env.DB.prepare('SELECT COUNT(*) AS n FROM runs').first();
+   const total=await env.DB.prepare("SELECT COUNT(*) AS n FROM runs WHERE ruleset=? AND epoch=CAST((SELECT value FROM settings WHERE key='epoch') AS INTEGER)").bind(env.RULESET).first();
    return json({enabled:retentionEnabled(env),keep,total:total.n,remove:total.n-keep.length});
   }
   if(path==='/api/admin/retention'&&request.method==='POST'){
@@ -145,7 +156,7 @@ async function handle(request,env){
    const page=Math.min(1000,Math.max(0,parseInt(url.searchParams.get('page')||'0')||0));
    const result=await env.DB.prepare('SELECT r.*,d.blocked FROM runs r JOIN devices d ON d.id=r.device_id ORDER BY r.created_at DESC,r.id LIMIT 50 OFFSET ?').bind(page*50).all();
    const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
-   return json({epoch,runs:result.results.map(r=>({...publicRun(r),hidden:r.hidden,blocked:r.blocked,reason:r.reason})),page});
+   return json({epoch,season:seasonNumber(env),runs:result.results.map(r=>({...publicRun(r),archived:r.epoch!==epoch,hidden:r.hidden,blocked:r.blocked,reason:r.reason})),page});
   }
   if(path==='/api/admin/audit'&&request.method==='GET')return json({events:(await env.DB.prepare('SELECT * FROM audit ORDER BY id DESC LIMIT 100').all()).results});
   if(request.method==='POST'&&['/api/admin/run','/api/admin/player','/api/admin/reset'].includes(path)){
@@ -154,7 +165,11 @@ async function handle(request,env){
    if(path.endsWith('/reset')){if(x.confirm!=='RESET RANKINGS')return json({error:'Type RESET RANKINGS to confirm.'},400);query=env.DB.prepare("UPDATE settings SET value=CAST(value AS INTEGER)+1 WHERE key='epoch'");action='reset';target='all boards';}
    else{
     if(!/^[a-f0-9-]{36}$/.test(target)||![0,1].includes(x.value))return json({error:'Invalid moderation request.'},400);
-    if(path.endsWith('/run')){query=env.DB.prepare('UPDATE runs SET hidden=?,reason=? WHERE id=?').bind(x.value,x.reason,target);action=x.value?'hide run':'restore run';}
+    if(path.endsWith('/run')){
+     const archived=await env.DB.prepare("SELECT id FROM runs WHERE id=? AND epoch<>CAST((SELECT value FROM settings WHERE key='epoch') AS INTEGER)").bind(target).first();
+     if(archived)return json({error:'Closed-season scores are a read-only archive.',code:'season_archive_read_only'},409);
+     query=env.DB.prepare('UPDATE runs SET hidden=?,reason=? WHERE id=?').bind(x.value,x.reason,target);action=x.value?'hide run':'restore run';
+    }
     else{query=env.DB.prepare('UPDATE devices SET blocked=? WHERE id=?').bind(x.value,target);action=x.value?'block installation':'unblock installation';}
    }
    await env.DB.batch([query,env.DB.prepare('INSERT INTO audit(created_at,action,target,reason) VALUES (?,?,?,?)').bind(now(),action,target,x.reason.trim())]);
@@ -170,7 +185,7 @@ async function handle(request,env){
   const d=await env.DB.prepare('SELECT id,blocked FROM devices WHERE token_hash=?').bind(hash).first();
   return d.blocked?json({error:'This installation is blocked.'},403):json({player:d.id});
  }
- if((path==='/api/v1/runs'||path==='/api/v2/runs'||path==='/api/v3/runs')&&request.method==='POST'){
+ if(scorePaths.has(path)&&request.method==='POST'){
   await limit(env.PUBLIC_LIMIT,'upload:'+ip);
   if(path==='/api/v1/runs')return json({error:'Update the game to upload new Time Attack runs.'},426);
   if(path==='/api/v3/runs'&&!replaysDisabled(env))return json({error:'Time-only submissions are not enabled.'},426);
@@ -194,6 +209,13 @@ async function handle(request,env){
   // Permanent rejection lets updated clients discard ineligible old queued
   // races instead of retrying them forever and blocking new finishes.
   if(!supportedBuild(x.build,requiredBuild))return json({error:`Only game build ${requiredBuild} can submit times. Install that build and complete a new Time Attack.`,code:'client_build_required',requiredBuild,permanent:true},409);
+  const policy=await submissionPolicy(env);
+  if(policy.closed==='true')return scoreClosed();
+  if(policy.required_build&&!supportedBuild(x.build,policy.required_build))return json({error:`Only game build ${policy.required_build} can submit times. Complete a new Time Attack in that build.`,code:'client_build_required',requiredBuild:policy.required_build,permanent:true},409);
+  const epoch=policy.epoch;
+  // Check before duplicate acknowledgement: a previously accepted old run
+  // cannot be replayed or relabelled into the new season.
+  if(x.epoch!==epoch)return seasonClosed(epoch);
   if(!replaysDisabled(env)){
    const rawReplay=await decodeReplay(replay);validateReplay(rawReplay,x);replayHash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',rawReplay)),v=>v.toString(16).padStart(2,'0')).join('');
    if(new DataView(replay.buffer,replay.byteOffset,replay.byteLength).getUint32(0,true)!==0x32474449)replay=await compressReplay(rawReplay);
@@ -204,8 +226,6 @@ async function handle(request,env){
    if((replay&&existing.replay_sha256!==replayHash)||existing.ruleset!==x.ruleset||existing.imported!==x.imported||existing.ticks!==x.ticks6000||existing.condition!==x.condition||existing.weather!==x.weather||existing.car!==x.car||existing.glyphs!==JSON.stringify(x.nameGlyphs)||existing.splits!==JSON.stringify(x.splits)||existing.manual!==x.manual||existing.night!==x.night||existing.points!==x.points||existing.build!==x.build||existing.epoch!==x.epoch)return json({error:'Run ID already used with different data.'},409);
    return json({ok:true,duplicate:true,replay:!replaysDisabled(env)&&!!existing.replay_size});
   }
-  const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
-  if(x.epoch!==epoch)return json({error:'This run belongs to an earlier season.'},409);
   const createdAt=now();
   if(!await qualifiesForBoard(env,x,d.id,createdAt))return json({ok:true,retained:false,reason:'outside_top_ten'});
   const insert=env.DB.prepare('INSERT INTO runs(id,device_id,ruleset,epoch,condition,weather,car,ticks,glyphs,splits,manual,night,points,build,created_at,imported,replay_size,replay_sha256) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(x.id,d.id,env.RULESET,epoch,x.condition,x.weather,x.car,x.ticks6000,JSON.stringify(x.nameGlyphs),JSON.stringify(x.splits),x.manual,x.night,x.points,x.build,createdAt,x.imported,replay?.length||0,replayHash);
@@ -255,7 +275,7 @@ async function handle(request,env){
   if(!Number.isInteger(condition)||condition<0||condition>=COURSES.length*2||![0,1].includes(weather)||!Number.isInteger(car)||car< -1||car>34)return json({error:'Invalid board.'},400);
   const epoch=Number((await env.DB.prepare("SELECT value FROM settings WHERE key='epoch'").first()).value);
   const rows=(await env.DB.prepare(`WITH ranked AS (SELECT r.*,ROW_NUMBER() OVER(PARTITION BY r.device_id,r.car ORDER BY r.ticks,r.created_at,r.id) AS personal_rank FROM runs r JOIN devices d ON r.device_id=d.id WHERE r.ruleset=? AND r.epoch=? AND r.condition=? AND r.weather=? AND r.hidden=0 AND d.blocked=0 AND (?=-1 OR r.car=?)) SELECT * FROM ranked WHERE personal_rank=1 ORDER BY ticks,created_at,id LIMIT 10`).bind(env.RULESET,epoch,condition,weather,car,car).all()).results;
-  return json({entries:rows.map(r=>({...publicRun(r),...(replaysDisabled(env)?{replayAvailable:false}:{})})),epoch,generatedAt:now()});
+  return json({entries:rows.map(r=>({...publicRun(r),...(replaysDisabled(env)?{replayAvailable:false}:{})})),epoch,season:seasonNumber(env),generatedAt:now()});
  }
  if((path==='/api/v1/snapshot'||path==='/api/v2/snapshot')&&request.method==='GET'){
   await limit(env.PUBLIC_LIMIT,'read:'+ip);
@@ -264,12 +284,17 @@ async function handle(request,env){
   // Released clients reject the entire v1 snapshot if replayAvailable is false.
   // Preserve that legacy validation bit only here; downloads always return 410.
   // Website boards and updated clients use truthful availability (v2 snapshot).
-  return json({ruleset:env.RULESET,epoch,generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replaysEnabled:!replaysDisabled(env),entries:entries.map(r=>({...r,...(replaysDisabled(env)?{replayAvailable:path==='/api/v1/snapshot'}:{})}))});
+  return json({ruleset:env.RULESET,epoch,season:seasonNumber(env),generatedAt:now(),courses:COURSES,requiredBuild:env.REQUIRED_CLIENT_BUILD??REQUIRED_CLIENT_BUILD,replaysEnabled:!replaysDisabled(env),entries:entries.map(r=>({...r,...(replaysDisabled(env)?{replayAvailable:path==='/api/v1/snapshot'}:{})}))});
  }
  return json({error:'Not found.'},404);
 }
 export default {
- async fetch(request,env){try{return await handle(request,env);}catch(e){if(e instanceof Response)return e;return json({error:e instanceof SyntaxError?'Invalid request JSON.':e.message?.startsWith('Invalid')||e.message?.startsWith('Incomplete')||e.message==='Request too large.'?e.message:'Service temporarily unavailable.'},e instanceof SyntaxError||/^(Invalid|Incomplete|Request too large)/.test(e.message||'')?400:503);}},
+ async fetch(request,env){try{return await handle(request,env);}catch(e){if(e instanceof Response)return e;
+  const message=String(e.message||'');
+  if(message.includes('Leaderboard submissions closed'))return scoreClosed();
+  if(message.includes('Leaderboard season closed'))return seasonClosed();
+  if(message.includes('Leaderboard client build required'))return json({error:'This game build cannot submit to the current season. Update and complete a new Time Attack.',code:'client_build_required',permanent:true},409);
+  return json({error:e instanceof SyntaxError?'Invalid request JSON.':message.startsWith('Invalid')||message.startsWith('Incomplete')||message==='Request too large.'?message:'Service temporarily unavailable.'},e instanceof SyntaxError||/^(Invalid|Incomplete|Request too large)/.test(message)?400:503);}},
  async scheduled(event,env){
   if(env.SERVICE_OFFLINE==='true'||env.MAINTENANCE==='true')return;
   await env.DB.prepare('DELETE FROM admin_sessions WHERE expires_at<?').bind(now()).run();

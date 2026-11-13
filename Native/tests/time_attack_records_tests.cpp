@@ -25,11 +25,9 @@ void idZeroMigration(){
         require(read(file)==original,"Read-only imports must never rewrite save files");
         for(unsigned condition=0;condition<supportedConditionCount;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car){
             const auto e=records.personalBest(condition,wet,car);
-            require(e.ticks6000==(condition>=32?0:1000000+car),"Reset only Gunsai/Odawara, across directions/weather/all models");
-            if(condition<32&&format)require(e.manual&&e.night&&e.nameGlyphs[0]==1,"Preserve unaffected record metadata");
-            if(condition<32&&format==2)require(e.intermediate6000==std::array<std::uint32_t,3>{200000,400000,600000},"Preserve unrelated checkpoints");
+            require(e.ticks6000==0,"Season 2 resets every legacy direction/weather/model record");
         }
-        require(records.save(file),"Archive and migrate local times");auto archive=file;archive+=".before-odawara-revision-2.bak";
+        require(records.save(file),"Archive and migrate local times");auto archive=file;archive+=".before-time-attack-season-2.bak";
         require(read(archive)==original,"Legacy CSV backup must be byte-exact");
         for(unsigned condition=32;condition<36;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car)
             records.record({condition,wet,car,1400000+condition*1000+wet*100+car});
@@ -44,16 +42,16 @@ void idZeroMigration(){
         require(!loaded.load(file)&&loaded.best(34,0,0).model==1434000,"Future revision must fail without discarding current state");
     }
     const auto blocked=root/"blocked.csv";{std::ofstream out(blocked);out<<base<<"\n34,0,0,900000\n";}
-    auto archive=blocked;archive+=".before-odawara-revision-2.bak";std::filesystem::create_directory(archive);
+    auto archive=blocked;archive+=".before-time-attack-season-2.bak";std::filesystem::create_directory(archive);
     const auto original=read(blocked);TimeAttackRecords records;
     require(records.load(blocked)&&!records.save(blocked)&&read(blocked)==original,"Archive failure must leave original data intact");
     // Applying the older Gunsai migration must retain current Odawara records.
     const auto mixed=root/"already-migrated-odawara.csv";
-    const std::string mixedCsv=base+name+splits+",course_revision\n"
-        "32,0,0,900000,1,2,3,4,221,1,1,0,0,0,0\n"
-        "33,1,34,950000,1,2,3,4,221,1,1,0,0,0,0\n"
-        "34,0,0,1200000,1,2,3,4,221,1,1,200000,400000,600000,2\n"
-        "35,1,34,1300000,1,2,3,4,221,0,0,0,0,0,2\n";
+    const std::string mixedCsv=base+name+splits+",course_revision,record_season\n"
+        "32,0,0,900000,1,2,3,4,221,1,1,0,0,0,0,2\n"
+        "33,1,34,950000,1,2,3,4,221,1,1,0,0,0,0,2\n"
+        "34,0,0,1200000,1,2,3,4,221,1,1,200000,400000,600000,2,2\n"
+        "35,1,34,1300000,1,2,3,4,221,0,0,0,0,0,2,2\n";
     {std::ofstream out(mixed,std::ios::binary);out<<mixedCsv;}
     auto oldArchive=mixed;oldArchive+=".before-odawara-revision-1.bak";
     {std::ofstream out(oldArchive);out<<"Earlier Odawara backup";}
@@ -66,7 +64,7 @@ void idZeroMigration(){
     records.record({32,0,0,1500000});records.record({33,1,34,1600000});
     require(records.save(mixed)&&records.load(mixed)&&!records.needsMigration()&&records.best(32,0,0).model==1500000&&records.best(33,1,34).model==1600000,"New Gunsai times did not survive follow-up migration");
     require(records.best(34,0,0).model==1200000&&records.best(35,1,34).model==1300000,"New Gunsai saves lost valid Odawara records");
-    std::cout<<"PASS Gunsai/Odawara migration: all cars, both directions/weather, three legacy formats, Unicode paths, exact backups, restart, failure safety and Odawara-only upgrade\n";
+    std::cout<<"PASS legacy season migration plus independent course revisions: all cars/directions/weather, three formats, Unicode paths, backups, restart and failure safety\n";
 }
 void odawaraRevision2Reset(){
     require(localTimeAttackRevision(16)==1&&localTimeAttackRevision(17)==2,"Odawara reset must not advance Gunsai's revision");
@@ -75,9 +73,9 @@ void odawaraRevision2Reset(){
     for(unsigned slot=1;slot<=5;++slot)files.push_back(root/"saves"/("slot_"+std::to_string(slot))/"driver_profiles_v1"/"hakone_personal_v1.csv");
     for(const auto& file:files){
         std::filesystem::create_directories(file.parent_path());
-        {std::ofstream out(file);out<<"condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3,course_revision\n";
+        {std::ofstream out(file);out<<"condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3,course_revision,record_season\n";
             for(unsigned condition=0;condition<supportedConditionCount;++condition)for(unsigned wet=0;wet<2;++wet)for(unsigned car=0;car<35;++car)
-                out<<condition<<','<<wet<<','<<car<<','<<1000000+car<<",1,2,3,4,221,1,1,200000,400000,600000,"<<(condition>=32?1:0)<<'\n';
+                out<<condition<<','<<wet<<','<<car<<','<<1000000+car<<",1,2,3,4,221,1,1,200000,400000,600000,"<<(condition>=32?1:0)<<",2\n";
         }
         const auto original=read(file);auto priorArchive=file;priorArchive+=".before-idzero-revision-1.bak";
         {std::ofstream out(priorArchive);out<<"Keep the previous migration archive";}

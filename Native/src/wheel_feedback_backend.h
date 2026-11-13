@@ -24,17 +24,17 @@ static_assert(sizeof(Idas3WheelDevice)==180);
 IDAS3_WHEEL_EXPORT int IDAS3_WHEEL_CALL Idas3WheelRefreshDevices() noexcept;
 // Caller must set out->size=sizeof(Idas3WheelDevice). Returns 1 on success.
 IDAS3_WHEEL_EXPORT int IDAS3_WHEEL_CALL Idas3WheelGetDevice(int index,Idas3WheelDevice* out) noexcept;
-// One coherent view of the arcade board, mirroring idas3ffb::Snapshot. The
-// cabinet plays all of these at once; a wheel that lacks an effect simply does
-// not receive that part.
+// One coherent normalized effect request. Values are before the power gain;
+// callers with already-scaled magnitudes use power=1. A wheel that lacks an
+// effect simply does not receive that part. Layout remains version 1.
 struct Idas3WheelCabinetState {
     std::uint32_t size;              // caller sets sizeof(Idas3WheelCabinetState)
     std::uint32_t version;           // 1
-    float power;                     // [0,1] board drive power, scales everything
+    float power;                     // [0,1] gain, applied once to effect magnitudes
     float torque;                    // [-1,1] signed constant force
     float spring;                    // [0,1] centring magnitude
-    float damperStrength;            // [0,1] viscous damping
-    float damperParameter;           // [0,1] the board's transfer-function pole
+    float damperStrength;            // [0,1] damping saturation before power gain
+    float damperParameter;           // [0,1] damping coefficient; not gain-scaled
     float rumbleIntensity;           // [0,1] sine magnitude
     float rumbleFrequencyHz;         // sine rate; <=0 silences the rumble
     std::uint32_t active;            // 0 releases the wheel, as command 0 does

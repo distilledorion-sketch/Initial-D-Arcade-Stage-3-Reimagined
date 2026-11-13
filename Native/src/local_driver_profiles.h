@@ -9,7 +9,7 @@ class LocalDriverProfiles {
 public:
     enum class Origin { Fresh, Saved, Backup, Unreadable };
     enum class ConditionalSave { Saved, AlreadySaved, Conflict, Unreadable, Invalid, IoError };
-    struct Loaded {original::OriginalBattleProfile profile;Origin origin=Origin::Fresh;};
+    struct Loaded {original::OriginalBattleProfile profile;Origin origin=Origin::Fresh;bool needsTimeAttackSeasonMigration=false;};
     explicit LocalDriverProfiles(std::filesystem::path directory):directory_(std::move(directory)){}
     Loaded load(unsigned car)const;
     bool save(unsigned car,const original::OriginalBattleProfile& profile)const;

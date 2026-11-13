@@ -14,7 +14,7 @@ Shader "Idas3/Original UI"
    sampler2D _MainTex;
    float4 _MainTex_TexelSize, _Canvas, _Clip, _Tint;
    float _Opacity;
-   uint _Tsp, _Pcw, _Original, _SourceIsOne, _SourceTextureFiltering;
+   uint _Tsp, _Pcw, _Original, _SourceIsOne, _SourceTextureFiltering, _NavigationDistanceField;
    struct Input { float4 position:POSITION; float2 uv:TEXCOORD0; float4 color:COLOR; float4 offset:TEXCOORD1; };
    // MSAA pixel centers can lie outside a covered sprite edge. Keep UVs
    // inside the primitive so negative wrapping UVs cannot sample its last
@@ -34,12 +34,18 @@ Shader "Idas3/Original UI"
    float4 frag(Output i):SV_TARGET {
     clip(i.pixel-_Clip.xy); clip(_Clip.zw-i.pixel);
     float4 sample;
-    if(_SourceTextureFiltering && ((_Tsp>>13)&3u)) {
+    if(_NavigationDistanceField || (_SourceTextureFiltering && ((_Tsp>>13)&3u))) {
      float2 at=i.uv*_MainTex_TexelSize.zw-.5, weight=frac(at);
      float2 base=(floor(at)+.5)*_MainTex_TexelSize.xy;
      sample=lerp(lerp(sourceTexel(base),sourceTexel(base+float2(_MainTex_TexelSize.x,0)),weight.x),
                  lerp(sourceTexel(base+float2(0,_MainTex_TexelSize.y)),sourceTexel(base+_MainTex_TexelSize.xy),weight.x),weight.y);
     } else sample=sourceTexel(i.uv);
+    if(_NavigationDistanceField) {
+     // Reconstructed course paths retain sharp, antialiased edges as the
+     // map rotates or grows. Field and road keep their source transparency.
+     float coverage=saturate(.5+(.5-sample.r)/max(fwidth(sample.r),1.0/65535.0));
+     sample=float4((1-coverage).xxx,lerp(sample.g,sample.b,coverage));
+    }
     if(_Tsp&(1u<<19))sample.a=1;
     float4 vertex=i.color;if(_Original && !(_Tsp&(1u<<20)))vertex.a=1;
     float4 value=vertex;

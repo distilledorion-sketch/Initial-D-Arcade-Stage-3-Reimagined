@@ -129,6 +129,7 @@ namespace Idas3.Multiplayer
         internal static int Idas3MultiplayerResultRecord(int points,uint level)=>throw Unexpected();
 #endif
         internal static int Idas3MultiplayerRecoverReward(byte[] root,int selection,uint points,uint[] before,uint[] after,uint count)=>throw Unexpected();
+        internal static int Idas3MultiplayerRecoverRewardForSeason(byte[] root,int selection,uint points,uint[] before,uint[] after,uint count,uint recordSeason)=>throw Unexpected();
 #if IDAS3_RACE_PROGRESS_TEST
         internal static int Idas3MultiplayerDisconnect(){++Disconnects;return 1;}
         internal static int Idas3MultiplayerGetLocalSnapshot(ref Idas3CarSnapshot snapshot){snapshot.sequence=1;return 1;}

@@ -1,4 +1,5 @@
 #include "original_driving_session.h"
+#include "original_driving_float.h"
 #include "original_math.h"
 #include "original_session_initialization.h"
 #include "original_rival_setup.h"
@@ -112,10 +113,13 @@ bool OriginalDrivingSession::ready() const noexcept{return bool(impl_);}
 
 OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem::path& root,const OriginalDrivingSelection& selection,
         const std::array<float,3>& position,const std::array<float,3>& angles,const ImportedDrivingRoad* importedRoad){
+    const OriginalDrivingFloatScope floatingPoint;
     if(selection.physics.conditionCode>=18||selection.collisionVariant>1)
         throw std::invalid_argument("Original session requires condition0..17 and explicit collision selector0/1");
     if(selection.collisionVariant!=(selection.physics.conditionCode&1u))
         throw std::invalid_argument("Original standard course setup requires collision selector equal to condition low bit");
+    if(selection.roadModeOverride&&*selection.roadModeOverride>=32)
+        throw std::invalid_argument("Original road-mode override requires enemy ID0..31");
     for(std::size_t i=0;i<3;++i)if(!std::isfinite(position[i])||!std::isfinite(angles[i]))
         throw std::invalid_argument("Original reset pose must be finite");
     if(selection.rival){
@@ -170,11 +174,6 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
         next->parameters.road={effective.conditionCode,0,next->path.points,next->path.inclusiveLastIndex};
         next->parameters.accelerationScale=importedRoad->accelerationScale;
     }
-    // A solo/online car may retain its last Legend opponent in the save.
-    // Road oil exclusions belong to this race's opponent, not that history.
-    // Keep tuning/initialization selection intact; only clear the road gate
-    // when no rival setup exists (Bunta retains its explicit rival setup).
-    if(!selection.rival)next->parameters.road.mode0C9015E0=0;
     const auto geometry=next->data.carRecord(selection.physics.vehicleIndex);
     for(std::size_t i=0;i<11;++i)next->roadParameters.geometry0C2700F4[i]=std::bit_cast<float>(geometry[i]);
     const auto inputs=next->data.initialization(effective,position,angles);
@@ -211,6 +210,10 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
         next->path.points.assign(next->rivalPath.points.begin(),next->rivalPath.points.begin()+next->path.inclusiveLastIndex+1);
         next->parameters.road.path0C901728=next->path.points;
     }
+    // Original solo setup retains the profile's opponent gate. Separate host
+    // policies may override surfaces after setup without changing steering,
+    // tuning, or the rival initializer's shared selection.
+    if(selection.roadModeOverride)next->parameters.road.mode0C9015E0=*selection.roadModeOverride;
     publishOriginalActors(next->actor,next->secondaryActor,next->selection.physics.progressEnabled0C9015E4,next->published);
     initializeOriginalRecoveryBackup(next->vehicle.drive,next->recovery);
     next->completion.elapsedFrames0C900E84=std::bit_cast<std::uint32_t>(next->boot.elapsedFrames0C900E84);
@@ -230,6 +233,7 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
 
 OriginalDrivingStepEffects OriginalDrivingSession::tick(const OriginalVehicleInputs& incoming,
         const OriginalBodyCollisionResult* sharedContact,const OriginalContactEngineOutput& frameEngineOutput){
+    const OriginalDrivingFloatScope floatingPoint;
     auto& s=state();OriginalDrivingStepEffects out;out.frame0C92DE30=s.frame;
     const auto contactCue=[&](unsigned cue,std::uint32_t& seed){
         if(s.contactSoundActive&&s.contactSoundQueue.request(false,seed)){

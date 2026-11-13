@@ -309,6 +309,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     }
     private IEnumerator OptionsChecks(Idas3MultiplayerSession session=null){
         Idas3WheelFeedbackChecks.Run(root);
+        Idas3ControllerVibrationChecks.Run(root);
         string bindingsBefore=JsonUtility.ToJson(host.ControlBindings.Current);
         menu.SelectTab(0);menu.Activate();for(int i=0;i<3;++i)menu.Navigate(1);
         float engineBefore=options.Draft.engineVolume,tireBefore=options.Draft.tireVolume;
@@ -521,9 +522,17 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(options.Draft.wheelFeedbackStrength==strength,"Wheel strength row did not change by one percent");
         menu.Navigate(1);menu.NavigateHorizontal(1);bool invert=options.Draft.wheelFeedbackInvert;
         Check(invert&&!options.Current.wheelFeedbackInvert&&options.HasUnsavedChanges,"Wheel invert did not remain an unsaved draft");
+        menu.Navigate(1);menu.NavigateHorizontal(1);
+        Check(!options.Draft.controllerVibration&&options.Current.controllerVibration,"Vibration toggle did not remain a draft");
+        menu.Navigate(1);menu.NavigateHorizontal(-1);
+        Check(options.Draft.controllerVibrationStrength==.49f,"Vibration strength row did not change");
         yield return Frames(2);yield return Capture("wheel-configured-disabled");
+        int vibrationLanguage=Idas3MenuLocalization.Language;
+        for(int language=1;language<=2;++language){Idas3MenuLocalization.SetLanguage(language);yield return Frames(2);yield return Capture("vibration-language-"+language);}
+        Idas3MenuLocalization.SetLanguage(vibrationLanguage);
         menu.Navigate(1);menu.Navigate(1);menu.Activate();yield return Frames(3);
         Check(options.LastError==null&&!options.Current.wheelForceFeedback&&options.Current.wheelFeedbackStrength==strength&&options.Current.wheelFeedbackInvert==invert&&options.Current.wheelFeedbackDevice==device,"Wheel menu APPLY did not save its four rows");
+        Check(!options.Current.controllerVibration&&options.Current.controllerVibrationStrength==.49f,"Vibration options were not saved");
         var reloaded=new Idas3GameOptions(platform);reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
         Check(Idas3GameOptions.Equivalent(reloaded.Current,options.Current),"Wheel menu options did not survive reloading");
         Observe("wheel-options-applied-disabled");

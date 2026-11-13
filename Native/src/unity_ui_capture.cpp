@@ -49,12 +49,13 @@ unsigned texture(const NativeImage& image){
  if(auto it=s.texturePointers.find(pointer);it!=s.texturePointers.end()&&it->second.first==bytes)return it->second.second;
  std::uint64_t hash=1469598103934665603ull;
  hash=(hash^image.width)*1099511628211ull;hash=(hash^image.height)*1099511628211ull;
+ hash=(hash^unsigned(image.navigationDistanceField))*1099511628211ull;
  for(auto pixel:image.argb)hash=(hash^pixel)*1099511628211ull;
  const auto [begin,end]=s.textureContents.equal_range(hash);
  for(auto it=begin;it!=end;++it){const auto& saved=s.textures[it->second];
   // The hash only selects candidates. Exact comparison keeps collisions,
   // alpha changes and same-sized but different artwork visually distinct.
-  if(saved.width==image.width&&saved.height==image.height&&saved.argb==image.argb){
+  if(saved.width==image.width&&saved.height==image.height&&saved.navigationDistanceField==image.navigationDistanceField&&saved.argb==image.argb){
    s.texturePointers[pointer]={bytes,it->second};return it->second;
   }
  }
@@ -82,7 +83,7 @@ void unityUiForgetTexture(const NativeImage& image){state().texturePointers.eras
 bool unityUiTriangle(const std::uint32_t* target,int width,int height,const NativeImage& image,UnityUiVertex a,UnityUiVertex b,UnityUiVertex c,float opacity,unsigned tsp,bool original,unsigned pcw,bool sourceTextureFiltering){
  if(!unityUiEnabled())return false;
  auto& out=surface(target,width,height);const auto first=unsigned(out.vertices.size());out.vertices.insert(out.vertices.end(),{a,b,c});
- out.draws.push_back({first,3,texture(image),tsp,pcw,(original?1u:0u)|(sourceTextureFiltering?16u:0u)|(state().hudGroup<<8),opacity,0,0,0,float(width),float(height)});return true;
+ out.draws.push_back({first,3,texture(image),tsp,pcw,(original?1u:0u)|(sourceTextureFiltering?16u:0u)|(image.navigationDistanceField?32u:0u)|(state().hudGroup<<8),opacity,0,0,0,float(width),float(height)});return true;
 }
 unsigned unityUiHudGroup(){return state().hudGroup;}
 unsigned unityUiSetHudGroup(unsigned group){auto& value=state().hudGroup;const auto old=value;value=group;return old;}

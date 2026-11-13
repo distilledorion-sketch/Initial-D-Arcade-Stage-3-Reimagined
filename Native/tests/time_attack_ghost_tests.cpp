@@ -80,7 +80,7 @@ int main(){
         check(ghost.load(legacy)&&ghost.replay.finishTicks6000==100,"Archived ghost was modified");
         run.finishTicks6000=100;
     }
-    check(TimeAttackGhost::path(root,3,false,false)==root/"ghosts_v1"/"course_3_forward_dry.idghost","Unrelated ghost identity changed");
+    check(TimeAttackGhost::path(root,3,false,false)==root/"ghosts_v1"/"course_3_forward_dry_s2.idghost","Original course ghost does not use Season 2 identity");
     const auto resetRoot=root/"odawara-reset";
     std::filesystem::create_directories(resetRoot/"replays");
     const auto archivedReplay=resetRoot/"replays"/"driver_odawara_cw_day_dry_tat.idreplay";
@@ -96,7 +96,7 @@ int main(){
                 for(const char* suffix:{"",".tmp",".previous"}){auto copy=old;copy+=suffix;if(*suffix)std::filesystem::copy_file(old,copy);retired.push_back(copy);}
             }
             const auto fresh=TimeAttackGhost::path(profile,17,reverse,wet);run.finishTicks6000=200;
-            check(fresh.filename().string().find("_r2.idghost")!=std::string::npos&&TimeAttackGhost::saveBest(fresh,run,1)==TimeAttackGhost::Saved::Replaced,"New slower Odawara ghost uses revision 2");
+            check(fresh.filename().string().find("_r2_s2.idghost")!=std::string::npos&&TimeAttackGhost::saveBest(fresh,run,1)==TimeAttackGhost::Saved::Replaced,"New slower Odawara ghost uses revision 2 and Season 2");
             current.push_back(fresh);
             for(unsigned course:{3u,16u}){
                 const auto other=TimeAttackGhost::path(profile,course,reverse,wet);
@@ -112,7 +112,7 @@ int main(){
         const auto fresh=TimeAttackGhost::telemetryPath(resetRoot,key,17);{std::ofstream out(fresh);out<<"Current best telemetry";}current.push_back(fresh);
     }
     const auto gunsaiKey=std::string("original_race_v3_gunsai_fwd_dry_car0_mt");
-    check(TimeAttackGhost::telemetryPath(resetRoot,gunsaiKey,16)==resetRoot/(gunsaiKey+".csv"),"Gunsai best telemetry identity must not change");
+    check(TimeAttackGhost::telemetryPath(resetRoot,gunsaiKey,16)==resetRoot/(gunsaiKey+"_s2.csv"),"Gunsai best telemetry must use Season 2 identity");
     const auto gunsaiTelemetry=resetRoot/(gunsaiKey+".csv");{std::ofstream out(gunsaiTelemetry);out<<"Gunsai sentinel";}unrelated.push_back(gunsaiTelemetry);
     check(TimeAttackGhost::removeRetiredOdawaraGhosts(resetRoot),"Targeted retired Odawara ghost cleanup failed");
     check(std::all_of(retired.begin(),retired.end(),[](const auto& p){return !std::filesystem::exists(p);}),"Old Odawara ghosts or their temp/backup copies remain in a save or per-car variant");

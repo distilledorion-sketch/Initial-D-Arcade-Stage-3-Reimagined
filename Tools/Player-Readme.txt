@@ -1,3 +1,15 @@
+0.3.95-community-replays.55 - SEASON 2
+
+New Season 2 Time Attack rankings require this version and a newly completed run. Previous-season uploads are closed; old online scores are kept in the administrator archive. Updating clears old local Time Attack records and personal-best ghosts across every course and save slot. Cars, tuning, battle/aura progress, settings, online identity, personal replay recordings and custom music are preserved.
+
+This update includes the fixes since .53: original-rate driving timing and floating-point calculations, steering corrections, controller vibration and translated original wheel-feedback calculations, functional card renewal, clearer and correctly oriented minimaps, mirror-smoke fixes, attract light trails, music-selection hints, online/input recovery improvements and reduced rendering/leaderboard work during races. See CHANGELOG.md for details. Complete arcade handling parity and a universal 30% FPS gain are not claimed.
+
+Both online drivers should update. Use the in-game updater, or extract Initial-D-Setup-0.3.95.55.zip and run Install Initial D.cmd. Manual installation requires both matching Windows-x64 and Additional-Courses ZIPs. Supply your own original game data. Online replay uploads/downloads remain disabled.
+
+Focused automated and muted game checks cover the changes. Separate-network EOS races and the broader physical controller/wheel acceptance matrix remain unverified.
+
+PREVIOUS UPDATE (.51)
+
 0.3.95-community-replays.51
 
 Time Attack leaderboards now accept race times without uploading recordings. Existing posted times are preserved; all previously stored leaderboard replays have been removed.

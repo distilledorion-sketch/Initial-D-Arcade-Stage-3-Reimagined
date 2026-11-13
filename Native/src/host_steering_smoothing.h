@@ -9,6 +9,26 @@ inline float advanceHostKeyboardSteering(float current,float target,float dt){
     const float rate=target==0.f?10.f:current*target<0.f?12.f:6.f;
     return current+std::clamp(target-current,-rate*dt,rate*dt);
 }
+// Keep a keyboard release on the keyboard's existing return ramp even when
+// an unused controller is connected. A real stick still takes ownership
+// immediately, including its next neutral sample.
+class HostSteeringSource {
+    bool keyboardOwns_=false;
+public:
+    void reset(){keyboardOwns_=false;}
+    float advance(float current,float keyboard,float analog,bool connected,
+                  bool originalHandling,float dt){
+        const bool useStick=connected&&std::abs(analog)>.01f;
+        if(useStick)keyboardOwns_=false;
+        else if(keyboard!=0.f)keyboardOwns_=true;
+        const float target=useStick?std::clamp(analog,-1.f,1.f):keyboard;
+        if(originalHandling&&connected&&(useStick||(keyboard==0.f&&!keyboardOwns_)))current=target;
+        else if(!useStick)current=advanceHostKeyboardSteering(current,target,dt);
+        else current+=std::clamp(target-current,-12.f*dt,12.f*dt);
+        if(!useStick&&keyboard==0.f&&current==0.f)keyboardOwns_=false;
+        return current;
+    }
+};
 // Optional host preference after the existing input conditioning. This is not
 // part of the recovered car solver. The bypass returns its input unchanged.
 class HostSteeringSmoothing {

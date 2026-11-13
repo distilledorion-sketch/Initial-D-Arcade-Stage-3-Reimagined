@@ -50,6 +50,7 @@ static_assert(sizeof(Idas3UnityStatus)==80);
 static_assert(sizeof(Idas3RivalStatus)==56);
 static_assert(sizeof(Idas3Options)==40);
 static_assert(sizeof(Idas3WheelState)==40);
+static_assert(sizeof(Idas3FeedbackState)==40);
 static_assert(sizeof(Idas3HudTelemetry)==40);
 static_assert(sizeof(Idas3OrnamentTelemetry)==40);
 static_assert(sizeof(Idas3PresentationTiming)==24);
@@ -452,7 +453,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
             log<<"PASS "<<cases<<" Bunta races: Normal, Hard and Expert produce identical speed and movement at two challenge levels on two courses. Original AI pace retained.\n";
             return 1;
         }
-        if(scene>=530&&scene<=547)prepareStoppedMirrorUnityFixture(*r.app,unsigned(scene));
+        if(scene>=670&&scene<=687)prepareMovingMirrorUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=530&&scene<=547)prepareStoppedMirrorUnityFixture(*r.app,unsigned(scene));
         else if(scene>=510&&scene<=518)prepareEndingFlareUnityFixture(*r.app,unsigned(scene));
         else if(scene>=640&&scene<=642)prepareEndingLeafUnityFixture(*r.app,unsigned(scene));
         else if(scene>=650&&scene<=652)prepareEndingTireUnityFixture(*r.app,unsigned(scene));
@@ -1351,6 +1353,21 @@ int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* out){
         (uint32_t(std::min<int>(app.frontend.battleProfile.byte(1187),8))<<8);
     return 1;
 }
+int IDAS3_UNITY_CALL Idas3SceneGetFeedbackState(Idas3FeedbackState* out){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out)){unityError("Invalid original feedback state request");return 0;}
+    *out={sizeof(*out),1};auto& app=*r.app;
+    out->simulationTicks=app.vehicle.tick;
+    if(!app.feedbackDriving()){app.originalFeedback.stop();return 1;}
+    const auto& feedback=app.originalFeedback.latest();
+    if(!app.originalFeedback.active()||!feedback.valid)return 1;
+    out->flags=1;out->simulationTicks=app.originalFeedback.tick();
+    out->torqueCode=feedback.torqueCode;out->damperParameter=feedback.damperParameter;
+    out->rumbleAmplitude=feedback.rumbleAmplitude;
+    out->peakRumbleAmplitude=app.originalFeedback.consumePeak();
+    out->rumbleFrequencyHalfHz=out->peakRumbleAmplitude>0?63u:feedback.rumbleFrequencyHalfHz;
+    return 1;
+}
 int IDAS3_UNITY_CALL Idas3SceneGetHudTelemetry(Idas3HudTelemetry* out){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out))return 0;
@@ -1672,7 +1689,7 @@ int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uin
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer reward preparation error");return 0;}
 }
-int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count){
+int IDAS3_UNITY_CALL Idas3MultiplayerRecoverRewardForSeason(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count,uint32_t recordSeason){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!before||!after||count!=307)throw std::invalid_argument("Invalid reward recovery buffers");
@@ -1680,11 +1697,14 @@ int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selecti
         // A loaded scene owns its memory profiles. Startup recovery runs before
         // initialization; live settlement uses that scene's cached reward plan.
         if(r.app)throw std::logic_error("Reward recovery must precede scene initialization");
-        idas3::OnlineResultReward::Plan plan;plan.selection=selection;plan.points=points;
+        idas3::OnlineResultReward::Plan plan;plan.selection=selection;plan.points=points;plan.recordSeason=recordSeason;
         std::copy_n(before,count,plan.before.words.begin());std::copy_n(after,count,plan.after.words.begin());
         idas3::OnlineResultReward(root).apply(plan);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer reward recovery error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count){
+    return Idas3MultiplayerRecoverRewardForSeason(saves,selection,points,before,after,count,1);
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

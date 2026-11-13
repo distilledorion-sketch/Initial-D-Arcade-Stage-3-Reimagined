@@ -5,6 +5,43 @@ Game tests remain hidden and silent. The completed local game changes were
 installed in `D:\Current` on November 11, 2026, at the user's request. GitHub
 has not been updated. Earlier entries below retain their verification history.
 
+## Moving rear-view smoke — corrected, November 12
+
+The user's `2026-11-12 18-57-24.mp4` shows a pale cloud repeatedly covering
+the lower rear-view mirror during solo driving on Akina at night. Unlike the
+earlier parked-car report, this supplied a visible moving-frame reproduction.
+
+The host was submitting the source smoke density mesh twice, once per camera.
+The original race call at `0662AE..0662D2` registers **one** smoke view with
+`13E960`: the main camera at `ARace+76+52`, with no second view. The smoke-view
+reference test now executes this original call site and checks all four
+constructor arguments. The production correction removes only the extra
+mirror submission; smoke emission, lifetime, shared RNG, main-view projection
+and materials remain unchanged.
+
+Private Unity fixtures restore exact smoke inputs and poses from the user's
+recent local Akina replay at 33.75s and 158.4s, in bumper and chase views, and
+also exercise live Tsuchisaka dust. The original replay file is unchanged.
+The reference reproduces the same pale mirror cloud, contributing 19,579 and
+19,523 pixels in the two recorded scenes. The corrected build contributes
+zero smoke pixels to the mirror. Across all six before/after images, every
+pixel outside the mirror is identical; ordinary main-view smoke and dust
+remain visible. Removing/restoring particles reproduces all captures exactly
+without changing the physics digest. Tests ran muted on an unshown desktop.
+
+Source view/display/controller checks, original dust rendering, online smoke
+rollback and recorded smoke playback also pass. This is a rendering fix,
+not a claim of new two-PC network verification or complete cabinet parity.
+Evidence: `Verification/smoke-video-20261112/`, especially
+`before-unity-04/`, `after-unity-01/`, `before-after-pixels.json`, and the
+source/presentation/online/replay test logs. Earlier unsuccessful diagnostic
+setups remain preserved; their empty or moving captures are not passing proof.
+The native correction is installed in `D:\Current`, with its previous DLL and
+build metadata preserved in `Verification/smoke-video-20261112/current-backup/`.
+The installed player also passed all 109 stationary-mirror checks and exited
+cleanly. Saves, settings, recordings, ROM and custom-music fingerprints remained
+unchanged. GitHub publication remains on hold.
+
 ## Current installation updated — November 11
 
 A fresh native build and clean, non-development Unity player were built from
@@ -3839,3 +3876,36 @@ Validation lives in `Verification/arcade-renewal-20261112/`. Native all-package 
 This is a private diagnostic build. No release, server change, ordinary player save, project plugin replacement or D:\Current deployment is part of this task. Live two-PC online matchmaking was not tested.
 
 Final adjacent regression: the complete Unity Save/Change Car/Delete Save input path passed after separating card-acceptance bookkeeping from transmission-preview assertions. The final `verification-summary.json` records immutable evidence for each run and verifies the final private player hashes plus the unchanged D:\Current/project-plugin hashes. A further 2,973 boundary checks include fresh-card issuance and guest/legacy isolation. All diagnostic processes exited normally.
+
+
+## 2026-11-12: scalable minimap road artwork
+
+The original navigation banks enlarge small sections of 512-pixel route
+textures. Rebuild all eight road images from their authored navigation paths
+into 1024-pixel distance fields, generated once when the bank loads. Native
+previews and Unity reconstruct antialiased coverage at the final display size.
+The source materials retain the field tint, road/field transparency, UV view
+extent and orientation. Frame and player/opponent marker artwork is unchanged.
+No per-frame texture generation or gameplay/physics changes are involved.
+Original asset files remain intact on disk.
+
+Width measurements use the nearest connected road at half coverage; summing
+nearby hairpins made the first Irohazaka candidate too heavy. The final width
+also passes a source-versus-rebuilt road-area regression on all eight banks.
+Irohazaka's out-of-range U coordinates remain clamped rather than wrapping an
+individual path vertex and drawing a false cross-map chord.
+
+Evidence: `Verification/minimap-art-20261112/verification-summary.json`.
+Course-map, UI capture/reload and multiplayer-HUD regressions pass. Final Unity
+captures cover Akina, Irohazaka and reverse/night Akina through 3840x2160. Eight
+matched Akina screenshots have zero changed pixels outside the minimap.
+Initial diagnostic staging/overweight-artwork runs are retained but excluded
+from acceptance; `after3-*` identifies the accepted final native binary.
+
+Installed 11 code/player-data files into `D:\Current`, with reversible backups.
+Existing game assets were retained; all 25 navigation inputs match the complete
+candidate. The installed game passed its own muted, unshown-desktop check
+(68,928 assertions, clean exit). Saves, settings, personal music and ROM paths
+are preserved. Final native SHA-256:
+`4bd462a32ddaabbe0b9f9ba5a258784b21f53b798edd7aae7cc705e43ce13b81`.
+GitHub publication remains held.

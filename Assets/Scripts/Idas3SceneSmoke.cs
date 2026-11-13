@@ -1212,7 +1212,10 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
                     Check(driveTelemetry[1]>0&&driveTelemetry[0]>=fraction*driveTelemetry[1],"Map route did not reach the requested capture point");
                     File.WriteAllText(Path.Combine(root,"map-progress-"+Mathf.RoundToInt(fraction*100)+".txt"),
                         "Distance="+driveTelemetry[0]+"; length="+driveTelemetry[1]+"; fraction="+(driveTelemetry[0]/driveTelemetry[1]));
-                    foreach(var resolution in new[]{new Vector2Int(640,480),new Vector2Int(1280,720)}){
+                    var mapResolutions=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-hud-map-art-check")>=0
+                        ?new[]{new Vector2Int(1920,1080),new Vector2Int(3840,2160)}
+                        :new[]{new Vector2Int(640,480),new Vector2Int(1280,720)};
+                    foreach(var resolution in mapResolutions){
                         hires.Release();hires.width=resolution.x;hires.height=resolution.y;Check(hires.Create(),"Map capture resize failed");
                         foreach(int zoom in new[]{2,0}){
                             host.GameOptions.BeginEdit();var mapValues=host.GameOptions.Draft;

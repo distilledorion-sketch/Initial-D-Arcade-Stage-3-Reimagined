@@ -276,16 +276,16 @@ test('viewer download preserves metadata and every pose without installation ide
  assert.equal((await call('/api/admin/replay?id='+crypto.randomUUID()+'&format=package',null,auth)).status,404);
 });
 test('upload build policy accepts only the exact ROM-required release',()=>{
- assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.54');
+ assert.equal(REQUIRED_CLIENT_BUILD,'0.3.95-community-replays.55');
  assert.equal(supportedBuild(REQUIRED_CLIENT_BUILD),true);
- for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.55','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
+ for(const build of ['0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56','0.3.95-community-replays.440','0.3.96-community-replays.36','0.4.0','1.0.0','0.3.95','0.3.95-community-replays.044','0.3.95-Community-replays.44','0.3.95-community-replays.44-extra','0.3.95-community-replays.44 ','replay-smoke','',null,33])assert.equal(supportedBuild(build),false,String(build));
  for(const required of ['',null,'invalid','0.3.95-community-replays.*'])assert.equal(supportedBuild(required,required),false);
 });
 test('nonmatching builds are permanently rejected before replay work and without database writes',async()=>{
  await call('/api/v1/register',{token:device});
  env.MIN_CLIENT_BUILD='0.3.95-community-replays.1'; // A stale variable cannot restore the old minimum policy.
  const before=db.prepare('SELECT total_changes() n').get().n;
- for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.55','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
+ for(const build of ['0.3.90-performance.5','0.3.95-community-replays.1','0.3.95-community-replays.28','0.3.95-community-replays.29','0.3.95-community-replays.30','0.3.95-community-replays.31','0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56','0.3.96-community-replays.1','0.4.0','0.3.95-community-replays.044']){
   const response=await uploadReplay(run({build}));assert.equal(response.status,409);
   const error=await response.json();assert.equal(error.code,'client_build_required');assert.equal(error.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(error.permanent,true);assert.ok(error.error.includes(REQUIRED_CLIENT_BUILD));
  }
@@ -397,7 +397,7 @@ test('configured exact release rejects both sides of its version and cached poli
  const health=await(await call('/health')).json();assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
  const snapshot=await(await call('/api/v1/snapshot?ruleset=d3-community-v1')).json();assert.equal(snapshot.requiredBuild,REQUIRED_CLIENT_BUILD);assert.equal(snapshot.epoch,1);
  assert.equal(db.prepare('SELECT total_changes() n').get().n,before);
- for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.55'])assert.equal((await uploadReplay(run({build}))).status,409);
+ for(const build of ['0.3.95-community-replays.32','0.3.95-community-replays.35','0.3.95-community-replays.36','0.3.95-community-replays.37','0.3.95-community-replays.38','0.3.95-community-replays.39','0.3.95-community-replays.40','0.3.95-community-replays.41','0.3.95-community-replays.42','0.3.95-community-replays.43','0.3.95-community-replays.44','0.3.95-community-replays.45','0.3.95-community-replays.46','0.3.95-community-replays.47','0.3.95-community-replays.48','0.3.95-community-replays.49','0.3.95-community-replays.50','0.3.95-community-replays.51','0.3.95-community-replays.52','0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56'])assert.equal((await uploadReplay(run({build}))).status,409);
  assert.equal((await uploadReplay(run())).status,200);
 });
 
@@ -996,5 +996,183 @@ test('replay purge handles pagination and retries partial deletion without touch
 test('website and admin omit replay downloads and exports',()=>{
  const html=readFileSync(new URL('../src/index.html',import.meta.url),'utf8');
  assert.doesNotMatch(html,/<th>REPLAY<\/th>|Download replay|Download for 3D viewer|Export CSV|href=['"]\/api\/(v1|admin)\/replay/);
- assert.match(html,/Time Attack results continue to post normally/);
+ assert.match(html,/New Time Attack finishes post times only/);
+});
+
+const season2Sql=readFileSync(new URL('../migrations/0015_season_2_55.sql',import.meta.url),'utf8');
+function season2Cutover(){
+ db.exec('BEGIN');
+ try{db.exec(season2Sql);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
+ env.LEADERBOARD_SEASON='2';
+}
+const openSeason2=()=>db.exec("UPDATE settings SET value='false' WHERE key='leaderboard_submissions_closed'");
+async function season1Times(){
+ await call('/api/v1/register',{token:device});env.DISABLE_REPLAYS='true';disableReplayStorage();
+ db.exec("UPDATE settings SET value='2' WHERE key='epoch'");
+ const old=run({epoch:2});assert.equal((await submitTime(old)).status,200);return old;
+}
+
+test('score-only closure rejects all upload routes before reading bytes while registration, activity and moderation work',async()=>{
+ env.SCORE_SUBMISSIONS_CLOSED='true';
+ let reads=0;
+ for(const path of ['/api/v1/runs','/api/v2/runs','/api/v3/runs']){
+  const body=new ReadableStream({pull(){reads++;throw Error('Must not read a closed submission');}},{highWaterMark:0});
+  const response=await worker.fetch(new Request('https://example.test'+path,{method:'POST',body,duplex:'half'}),env);
+  assert.equal(response.status,503,path);assert.equal(response.headers.get('Retry-After'),'60');
+  assert.equal((await response.json()).code,'score_submissions_closed');
+ }
+ assert.equal(reads,0);
+ const registered=await call('/api/v1/register',{token:device});assert.equal(registered.status,200);
+ const {player}=await registered.json();
+ assert.equal((await call('/api/v2/activity',{online:2,queuing:0,racing:2,age:0,limited:false},auth())).status,200);
+ assert.equal((await(await call('/api/v2/activity')).json()).racing,2);
+ const a=await login();
+ assert.equal((await call('/api/admin/player',{id:player,value:1,reason:'Test block during score maintenance'},a)).status,200);
+ assert.equal((await call('/api/v1/register',{token:device})).status,403);
+ assert.equal((await call('/api/v1/board?condition=0&weather=0')).status,200);
+ const health=await(await call('/health')).json();
+ assert.equal(health.scoreSubmissionsClosed,true);assert.equal(health.maintenance,false);assert.equal(health.ok,true);
+});
+
+test('Season 2 migration preserves scores, identities, moderation, activity and cached old rows while advancing to unused epoch3',async()=>{
+ const old=await season1Times(),a=await login();
+ db.prepare('UPDATE runs SET hidden=1,reason=? WHERE id=?').run('Preserved prior review',old.id);
+ db.exec("INSERT INTO settings VALUES('online_activity_eos','preserved activity')");
+ const before=db.prepare('SELECT * FROM runs ORDER BY id').all();
+ const devices=db.prepare('SELECT * FROM devices ORDER BY id').all();
+ const sessions=db.prepare('SELECT * FROM admin_sessions').all();
+ season2Cutover();
+ assert.deepEqual(db.prepare('SELECT * FROM runs ORDER BY id').all(),before);
+ assert.deepEqual(db.prepare('SELECT * FROM devices ORDER BY id').all(),devices);
+ assert.deepEqual(db.prepare('SELECT * FROM admin_sessions').all(),sessions);
+ assert.equal(db.prepare("SELECT value FROM settings WHERE key='online_activity_eos'").get().value,'preserved activity');
+ const health=await(await call('/health')).json();
+ assert.equal(health.epoch,3);assert.equal(health.season,2);assert.equal(health.requiredBuild,REQUIRED_CLIENT_BUILD);
+ assert.equal(health.scoreSubmissionsClosed,true);assert.equal(health.maintenance,false);
+ assert.equal((await submitTime(run({epoch:3}))).status,503);
+ const history=await(await call('/api/admin/runs',null,a)).json();
+ assert.equal(history.runs[0].archived,true);assert.equal(history.runs[0].reason,'Preserved prior review');
+ assert.equal((await call('/api/admin/run',{id:old.id,value:0,reason:'Cannot restore archived score'},a)).status,409);
+ for(const path of ['/api/v1/board?condition=0&weather=0','/api/v1/snapshot?ruleset=d3-community-v1','/api/v2/snapshot?ruleset=d3-community-v1&imports=1']){
+  const board=await(await call(path)).json();assert.equal(board.epoch,3);assert.equal(board.season,2);assert.equal(board.entries.length,0);
+ }
+ openSeason2();assert.equal((await(await call('/health')).json()).scoreSubmissionsClosed,false);
+ assert.equal((await submitTime(run({epoch:3}))).status,200);
+ season2Cutover(); // A repeated migration must not close or clear an opened season.
+ assert.equal((await(await call('/health')).json()).scoreSubmissionsClosed,false);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs').get().n,2);
+ assert.equal(db.prepare("SELECT COUNT(*) n FROM audit WHERE action='start Season 2'").get().n,1);
+});
+
+test('Season 2 migration rejects reused current or stored epoch3 and rolls back every change',async()=>{
+ await season1Times();
+ for(const type of ['current','stored']){
+  db.exec("UPDATE settings SET value='2' WHERE key='epoch'");
+  db.exec('UPDATE runs SET epoch=2');
+  if(type==='current')db.exec("UPDATE settings SET value='3' WHERE key='epoch'");
+  else db.exec('UPDATE runs SET epoch=3');
+  const scores=db.prepare('SELECT * FROM runs').all(),settings=db.prepare('SELECT * FROM settings').all();
+  assert.throws(season2Cutover,/CHECK constraint failed/);
+  assert.deepEqual(db.prepare('SELECT * FROM runs').all(),scores);
+  assert.deepEqual(db.prepare('SELECT * FROM settings').all(),settings);
+  assert.equal(db.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE name='leaderboard_season_cutovers'").get().n,0);
+ }
+});
+
+test('Season 2 accepts only new epoch3 .55 times on both supported upload routes and rejects old duplicate queues',async()=>{
+ const old=await season1Times();season2Cutover();openSeason2();
+ for(const upload of [submitTime,x=>uploadReplay(x,new Uint8Array([1,2,3]))]){
+  for(const x of [old,{...old,id:crypto.randomUUID()},run({epoch:1}),run({epoch:4})]){
+   const response=await upload(x);assert.equal(response.status,409);
+   const rejection=await response.json();assert.equal(rejection.code,'season_closed');assert.equal(rejection.permanent,true);
+  }
+  for(const build of ['0.3.95-community-replays.53','0.3.95-community-replays.54','0.3.95-community-replays.56']){
+   const response=await upload(run({epoch:3,build}));assert.equal(response.status,409);
+   assert.equal((await response.json()).code,'client_build_required');
+  }
+  // Changing epoch on an existing old ID also cannot migrate its score.
+  assert.equal((await upload({...old,epoch:3})).status,409);
+  const fresh=run({epoch:3,car:1});assert.equal((await upload(fresh)).status,200);
+  assert.equal((await(await upload(fresh)).json()).duplicate,true);
+ }
+ assert.equal((await call('/api/v1/runs',run({epoch:3}),auth())).status,426);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs WHERE epoch=2').get().n,1);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs WHERE epoch=3').get().n,2);
+ const snapshot=await(await call('/api/v2/snapshot?ruleset=d3-community-v1')).json();
+ assert.equal(snapshot.season,2);assert.equal(snapshot.epoch,3);
+ assert.ok(snapshot.entries.every(x=>x.epoch===3&&x.build===REQUIRED_CLIENT_BUILD));
+});
+
+test('Season 2 database gate blocks stale Worker build allowances and direct backing-table inserts',async()=>{
+ const old=await season1Times();season2Cutover();openSeason2();
+ env.REQUIRED_CLIENT_BUILD='0.3.95-community-replays.54';
+ const stale=await submitTime(run({epoch:3,build:env.REQUIRED_CLIENT_BUILD}));
+ assert.equal(stale.status,409);assert.equal((await stale.json()).requiredBuild,REQUIRED_CLIENT_BUILD);
+ const clone=(table,epoch,build)=>db.prepare(`INSERT INTO ${table} (id,device_id,ruleset,epoch,condition,weather,car,ticks,glyphs,splits,manual,night,points,build,created_at,imported,replay_size,replay_sha256) SELECT ?,device_id,ruleset,?,condition,weather,car,ticks,glyphs,splits,manual,night,points,?,created_at,imported,replay_size,replay_sha256 FROM runs WHERE id=?`).run(crypto.randomUUID(),epoch,build,old.id);
+ for(const table of ['runs','runs_storage']){
+  assert.throws(()=>clone(table,2,REQUIRED_CLIENT_BUILD),/Leaderboard season closed/);
+  assert.throws(()=>clone(table,3,'0.3.95-community-replays.53'),/Leaderboard client build required/);
+ }
+ clone('runs_storage',3,REQUIRED_CLIENT_BUILD);
+ db.exec("UPDATE settings SET value='true' WHERE key='leaderboard_submissions_closed'");
+ assert.throws(()=>clone('runs_storage',3,REQUIRED_CLIENT_BUILD),/Leaderboard submissions closed/);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs WHERE epoch=3').get().n,1);
+});
+
+test('in-flight uploads cannot commit across cutover even after request-level epoch and build checks passed',async()=>{
+ await season1Times();
+ const batch=env.DB.batch;
+ env.DB.batch=async queries=>{season2Cutover();openSeason2();env.DB.batch=batch;return batch(queries);};
+ const response=await submitTime(run({epoch:2}));
+ assert.equal(response.status,409);assert.equal((await response.json()).code,'season_closed');
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs').get().n,1);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs WHERE epoch=3').get().n,0);
+});
+
+test('closing durable score gate between validation and insert is retryable without creating a score',async()=>{
+ await season1Times();season2Cutover();openSeason2();
+ const batch=env.DB.batch;
+ env.DB.batch=async queries=>{db.exec("UPDATE settings SET value='true' WHERE key='leaderboard_submissions_closed'");env.DB.batch=batch;return batch(queries);};
+ const x=run({epoch:3}),response=await submitTime(x);
+ assert.equal(response.status,503);assert.equal((await response.json()).code,'score_submissions_closed');
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs WHERE epoch=3').get().n,0);
+ openSeason2();assert.equal((await submitTime(x)).status,200);
+});
+
+test('current retention and stale old cleanup preserve closed-season score archive',async()=>{
+ const old=await season1Times();
+ db.prepare('UPDATE runs SET hidden=1,reason=? WHERE id=?').run('Archived review',old.id);
+ const before=db.prepare('SELECT * FROM runs WHERE id=?').get(old.id);
+ season2Cutover();openSeason2();
+ env.RETAIN_TOP_TEN='true';const x=run({epoch:3});assert.equal((await submitTime(x)).status,200);
+ await worker.scheduled({},env);
+ assert.deepEqual(db.prepare('SELECT * FROM runs WHERE id=?').get(old.id),before);
+ const a=await login(),preview=await(await call('/api/admin/retention',null,a)).json();
+ assert.equal(preview.total,1);assert.equal(preview.keep.length,1);assert.equal(preview.remove,0);
+ // Simulate the old unscoped retention query, including a hidden archive row.
+ db.prepare('DELETE FROM runs WHERE id<>?').run(x.id);
+ assert.deepEqual(db.prepare('SELECT * FROM runs WHERE id=?').get(old.id),before);
+ assert.throws(()=>db.prepare('UPDATE runs SET epoch=3 WHERE id=?').run(old.id),/read-only/);
+ assert.throws(()=>db.prepare('UPDATE runs_storage SET hidden=0 WHERE id=?').run(old.id),/read-only/);
+ db.prepare('DELETE FROM runs WHERE id=?').run(x.id);
+ assert.equal(db.prepare('SELECT COUNT(*) n FROM runs').get().n,1);
+ assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[]);
+});
+
+test('archive cleanup guard preserves old metadata independent of SQLite trigger execution order',async()=>{
+ await call('/api/v1/register',{token:device});db.exec("UPDATE settings SET value='2' WHERE key='epoch'");
+ const old=run({epoch:2});assert.equal((await uploadReplay(old)).status,200);
+ db.prepare('INSERT INTO replay_objects VALUES(?,?)').run(old.id,'private/archive-object');
+ const tables=['runs','replay_chunks','replay_objects','replay_object_deletions'];
+ const before=tables.map(table=>db.prepare('SELECT * FROM '+table).all());
+ season2Cutover();
+ db.exec('DELETE FROM runs');
+ assert.deepEqual(tables.map(table=>db.prepare('SELECT * FROM '+table).all()),before);
+});
+
+test('Season 2 website uses public season label rather than internal epoch and marks archived rows read-only',()=>{
+ const html=readFileSync(new URL('../src/index.html',import.meta.url),'utf8');
+ assert.match(html,/<h1>Season 2/);assert.match(html,/Season 1 is closed/);
+ assert.match(html,/data\.season\|\|2/);assert.doesNotMatch(html,/' · Season '\+data\.epoch/);
+ assert.match(html,/if\(r\.archived&&spec\.path==='run'\)continue/);
 });

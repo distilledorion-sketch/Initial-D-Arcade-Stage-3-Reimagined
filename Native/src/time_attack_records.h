@@ -38,5 +38,6 @@ private:
     std::vector<TimeAttackEntry> entries_;
     bool needsMigration_=false;
     bool odawaraRevision2Migration_=false;
+    bool seasonMigration_=false;
 };
 }

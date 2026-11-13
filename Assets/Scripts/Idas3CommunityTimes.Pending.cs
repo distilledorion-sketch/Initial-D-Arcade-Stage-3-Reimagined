@@ -7,6 +7,25 @@ using System.Threading.Tasks;
 
 public sealed partial class Idas3CommunityTimes
 {
+    [Serializable] internal sealed class SeasonCache {public int revision,epoch;}
+    internal static bool MigrateSeasonCache(string directory){
+        string marker=Path.Combine(directory,"season.json");
+        SeasonCache previous=null;
+        if(File.Exists(marker)&&new FileInfo(marker).Length<=4096){
+            // Malformed/legacy markers retry the reset. File access failures
+            // still fail closed rather than accepting an uncommitted migration.
+            string json=File.ReadAllText(marker);
+            try{previous=UnityEngine.JsonUtility.FromJson<SeasonCache>(json);}catch(ArgumentException){}
+        }
+        if(previous!=null&&previous.revision==LocalRecordSeason&&previous.epoch==CurrentSeasonEpoch)return false;
+        // Commit the marker last: an interrupted reset is safely retried. This
+        // owner touches only upload/cache files, never identity or personal replays.
+        WriteCache(directory,"pending.json",new Pending(),CancellationToken.None);
+        WriteCache(directory,"snapshot.json",new Snapshot{ruleset=Ruleset,epoch=CurrentSeasonEpoch,entries=Array.Empty<Run>()},CancellationToken.None);
+        CleanReplayFiles(directory);
+        WriteCache(directory,"season.json",new SeasonCache{revision=LocalRecordSeason,epoch=CurrentSeasonEpoch},CancellationToken.None);
+        return true;
+    }
     // One writer owns detached queue states. New finishes, upload replies and
     // sharing-off clears cannot race to replace the same pending.json file.
     sealed class PendingStore

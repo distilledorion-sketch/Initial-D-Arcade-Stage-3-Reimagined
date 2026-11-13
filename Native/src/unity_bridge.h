@@ -85,6 +85,15 @@ typedef struct Idas3WheelState {
     float speed,steering,headingError,wallLateral,impact;
     uint32_t flags; //1 active driving,2 wall contact,4 saved steering present; bits8..11 dial0..8; steering positive right
 } Idas3WheelState;
+// Versioned producer output, separate from the unchanged legacy WheelState.
+// One shared read per host frame for wheel + pad. Peak is consumed by this call.
+typedef struct Idas3FeedbackState {
+    uint32_t size,version; // 40 bytes, version1
+    uint64_t simulationTicks;
+    uint32_t flags; // 1 active driving and valid original producer output
+    int32_t torqueCode,damperParameter,rumbleAmplitude,peakRumbleAmplitude;
+    uint32_t rumbleFrequencyHalfHz;
+} Idas3FeedbackState;
 // Read-only signals for optional host HUD themes. Does not change simulation.
 typedef struct Idas3HudTelemetry {
     uint32_t size,version,flags; // flags: 1 race, 2 automatic, 4 night, 8 drift; v3 bits 8..9: drift level; v4 bits 16..18: maximum gear
@@ -241,6 +250,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty);
 IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetSteeringSmoothing();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* state);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetFeedbackState(Idas3FeedbackState* state);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetHudTelemetry(Idas3HudTelemetry* state);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetOrnamentTelemetry(Idas3OrnamentTelemetry* state);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetPresentationTiming(Idas3PresentationTiming* state);
@@ -278,6 +288,9 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner);
 // reward store. Recovery also works before scene initialization.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uint32_t* points,uint32_t* before,uint32_t* after,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count);
+// Season-aware recovery keeps current Time Attack records when completing an
+// interrupted previous-season battle result. The legacy export assumes season 1.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerRecoverRewardForSeason(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count,uint32_t recordSeason);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
 // Local original-menu presentation. These calls do not award or alter results.
 // Input flags: 1 blocked, 2 peer left, 4 peer ready, 8 record save failed.

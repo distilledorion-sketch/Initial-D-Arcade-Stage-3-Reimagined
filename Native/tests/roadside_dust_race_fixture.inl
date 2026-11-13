@@ -68,3 +68,62 @@ void prepareRoadsideDustUnityFixture(App& app,unsigned scene){
            <<",\"particles\":"<<system.particleCount()<<",\"speedKmh\":"<<app.vehicle.speedKmh()<<",\"digest\":\""<<app.carSmoke.digest()<<"\"}\n";
     }
 }
+
+// Moving smoke regression: restore recorded source smoke and poses in a
+// private fixture, plus live Tsuchisaka dirt. Repaints never run the solver.
+void prepareMovingMirrorUnityFixture(App& app,unsigned scene){
+    if(scene<670||scene>687)throw std::invalid_argument("Moving mirror fixture");
+    static std::optional<CarSmokeState> saved;
+    static unsigned prepared=~0u;
+    static std::uint64_t physics=0;
+    const unsigned key=(scene-670)/3,phase=(scene-670)%3;
+    if(phase==0){
+        if(app.multiplayer.active)throw std::logic_error("Mirror fixture requires an isolated race");
+        const bool dirt=key>=4;
+        prepareRoadsideDustRaceFixture(app,dirt?0u:2u,dirt?500u:~0u,dirt?.55f:0.f,dirt?7u:3u);
+        if(dirt)for(unsigned tick=0;tick<=61;++tick)app.simulate(roadsideDustDiagnosticInput(tick));
+        else{
+            const auto path=app.saveRoot.parent_path().parent_path()/"mirror-recorded.idr2";
+            const auto size=fs::file_size(path);
+            if(size<100||size>34000000)throw std::runtime_error("Bounded private IDR2 fixture required");
+            std::vector<std::uint8_t> raw(std::size_t(size),0);std::ifstream file(path,std::ios::binary);
+            if(!file.read(reinterpret_cast<char*>(raw.data()),std::streamsize(size)))throw std::runtime_error("Mirror recording read failed");
+            const auto word=[&](unsigned at){unsigned value;std::memcpy(&value,raw.data()+at,4);return value;};
+            // Recorded turns at 33.75s and 158.4s have particles actually
+            // inside the rear camera; low-intensity straight samples do not.
+            const unsigned frame=key<2?2025u:9504u;
+            if(word(0)!=0x32524449||word(16)!=100||word(20)!=168||word(24)!=4||word(8)<=frame||word(8)>108000||
+               std::uint64_t(100)+std::uint64_t(word(8))*168+std::uint64_t(word(92))*136!=size)
+                throw std::runtime_error("Mirror fixture requires the recorded revision4 race");
+            const unsigned at=100+frame*168;
+            ReplayDetail d;std::memcpy(&d,raw.data()+at+28,sizeof d);
+            std::memcpy(&app.vehicle.position,raw.data()+at+4,12);std::memcpy(&app.vehicle.yaw,raw.data()+at+16,4);
+            std::memcpy(&app.vehicle.speed,raw.data()+at+20,4);app.vehicle.gear=int(word(at+24));
+            app.vehicle.rpm=d.rpm;app.vehicle.throttle=d.throttle;app.vehicle.brake=d.brake;app.previous=app.vehicle;
+            app.previousPlayerBodyWorld=app.playerBodyWorld=d.bodyPosition;
+            app.previousPitch=app.bodyPitch=d.pitch;app.previousRoll=app.bodyRoll=d.roll;
+            app.wheelPose.steeringRadians=d.steering;app.wheelPose.suspensionY=d.suspension;app.wheelPose.rotationRadians=d.rotation;
+            app.previousWheelPose=app.wheelPose;
+            const auto projection=app.course.project(app.vehicle.position);app.segment=projection.segment;app.progress=projection.sample.distance;
+            app.originalCoordinate.index=int(projection.segment);app.originalCoordinate.fraction=0;
+            app.originalPath.project({app.vehicle.position.x,app.vehicle.position.y,app.vehicle.position.z},app.originalCoordinate,true);
+            app.courseLightPathIndex=app.originalCoordinate.index;
+            app.race.elapsed6000=d.elapsed;app.race.remaining6000=d.remaining;app.race.sectionTimes6000=d.sections;app.race.sector=int(d.sector);
+            const Vec3 angles{-d.pitch,wrapAngle(app.vehicle.yaw-pi),-d.roll};
+            app.originalCamera.reset();app.previousCameraFrame=app.originalCamera.update(app.vehicle.position,angles);
+            app.bumperCamera.reset();app.previousBumperFrame=app.bumperCamera.update(app.vehicle.position,angles);
+            app.previousRearCameraFrame=app.rearCameraFrame=app.originalCamera.rearView(app.vehicle.position,angles);
+            ReplayCarSmokePlayback timeline;timeline.load(std::span(raw).subspan(100+word(8)*168),app.carSmoke);
+            timeline.seek(word(at+160),app.carSmoke);
+        }
+        app.drivingView=key%2?OriginalDrivingView::Chase:OriginalDrivingView::Bumper;
+        if(!app.carSmoke.system().particleCount())throw std::runtime_error("Moving mirror fixture needs source smoke");
+        saved.reset();prepared=key;physics=app.originalSession.rollbackDigest();
+    }else{
+        if(prepared!=key)throw std::logic_error("Moving mirror comparison before fixture");
+        if(phase==1){saved=app.carSmoke;app.carSmoke.reset(app.wet?1:0);}
+        else{if(!saved)throw std::logic_error("Mirror smoke restore before removal");app.carSmoke=*saved;}
+    }
+    app.input={};
+    if(app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Mirror smoke comparison changed physics");
+}

@@ -5,7 +5,8 @@
 
 namespace idas3 {
 
-// Original guest simulation runs at 60 Hz. Presentation must never change this.
+// Original numerical frame units use1/60. Keep the lifted per-frame equations
+// intact; OriginalDrivingClock separately schedules their852x530/27MHz cadence.
 inline constexpr float physicsDt = 1.0f / 60.0f;
 inline constexpr float recoveredSteeringLimit = 0.523598790f;
 

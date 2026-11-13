@@ -52,6 +52,18 @@ test('public rankings never request or display the private player directory',asy
  assert.equal(ui.calls.some(call=>call.path.startsWith('/api/admin/')),false);
 });
 
+test('Season 2 UI shows its public label and keeps closed scores read-only without hiding installation moderation',async()=>{
+ const publicUi=app('/',path=>response(path.startsWith('/api/v1/board')?{entries:[],generatedAt:1730000000,epoch:3,season:2}:{available:false}));
+ await tick();assert.match(publicUi.$('status').textContent,/Season 2$/);
+ const record={id:'old-score',player:firstId,condition:0,weather:0,car:0,ticks6000:1200000,
+  nameGlyphs:[162,163,221,221,221],night:0,manual:1,points:100,epoch:2,archived:true};
+ const adminUi=app('/admin',path=>response(path.startsWith('/api/admin/runs')?{runs:[record],epoch:3,season:2}:
+  path.startsWith('/api/admin/online-players')?{players:[],page:0,hasMore:false}:{available:false}));
+ await tick();const row=adminUi.$('adminRows').children[0];
+ assert.match(row.children[2].textContent,/Closed season.*read-only archive/);
+ assert.deepEqual(row.children[3].children.map(button=>button.textContent),['Block installation']);
+});
+
 test('public and admin run tables show Japanese and symbol names as literal text',async()=>{
  const runs=[
   {nameGlyphs:[0,6,20,221,221],expected:'アキナ'},
