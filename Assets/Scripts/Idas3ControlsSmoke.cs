@@ -98,6 +98,45 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
         physicalKey=KeyCode.Escape;yield return Frames(3);physicalKey=KeyCode.None;yield return Frames(3);
         Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Physical Escape did not open native offline pause");
         menu.SelectTab(3);yield return Frames(3);yield return Capture("defaults");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0)
+        {
+            useHardwareProvider=true;InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
+            menu.BeginBindingCapture(Idas3ControlBindings.ActionId.Start,Idas3ControlBindings.Slot.Controller);
+            yield return Frames(3);Check(bindings.IsCapturing,"Start UI capture did not open");
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(3);
+            Check(!bindings.IsCapturing&&bindings.Draft.actions[(int)Idas3ControlBindings.ActionId.Start].pad==Idas3ControlBindings.PadInput.A,
+                "Start UI did not capture the discovered controller button");
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
+            menu.Navigate(1);menu.Navigate(1);menu.Activate();yield return Frames(3);
+            Check(bindings.Current.actions[(int)Idas3ControlBindings.ActionId.Start].pad==Idas3ControlBindings.PadInput.A,"UI Apply did not save Start");
+            var startReload=new Idas3ControlBindings();startReload.Initialize(Path.Combine(root,"userdata"));
+            startReload.SelectControllerProfile(controllerProfile,"Controls test");
+            Check(startReload.Current.actions[(int)Idas3ControlBindings.ActionId.Start].pad==Idas3ControlBindings.PadInput.A,"Reload lost captured Start");
+            menu.SetOpen(false);yield return Frames(5);
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(12);
+            Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Bound controller Start did not pause the real offline race");
+            ulong heldStartTicks=host.Status.simulationTicks;yield return Frames(8);
+            Check(menu.IsOpen&&host.Status.simulationTicks==heldStartTicks,"Held bound Start closed pause or advanced simulation");
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(12);
+            Check(!menu.IsOpen&&(host.Status.flags&2)==0,"Released and repressed bound Start did not resume");
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
+            menu.SetOpen(true);menu.SelectTab(3);yield return Frames(3);
+            for(int row=1;row<(int)Idas3ControlBindings.ActionId.Start+2;++row)menu.Navigate(1);
+            yield return Frames(3);yield return Capture("start-row");
+            menu.Activate();Check(menu.BindingChoiceVisible,"Start row is unreachable in player UI");
+            menu.NavigateHorizontal(1);menu.Activate();
+            Check(bindings.Draft.actions[(int)Idas3ControlBindings.ActionId.Start].pad==Idas3ControlBindings.PadInput.None,"UI Clear did not remove Start");
+            menu.Navigate(1);menu.Navigate(1);menu.Activate();yield return Frames(3);
+            startReload=new Idas3ControlBindings();startReload.Initialize(Path.Combine(root,"userdata"));startReload.SelectControllerProfile(controllerProfile,"Controls test");
+            Check(startReload.Current.actions[(int)Idas3ControlBindings.ActionId.Start].pad==Idas3ControlBindings.PadInput.None,"Cleared Start was not saved");
+            menu.SetOpen(false);yield return Frames(5);
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState().WithButton(GamepadButton.South));yield return Frames(8);
+            Check(!menu.IsOpen&&(host.Status.flags&2)==0,"Cleared Start still paused the race");
+            InputSystem.QueueStateEvent(syntheticPad,new GamepadState());yield return Frames(4);
+            useHardwareProvider=false;physicalPad=new Idas3ControlBindings.PadState{connected=true};yield return Frames(4);
+            menu.SetOpen(true);menu.SelectTab(3);yield return Frames(3);
+        }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-private-shifter-check")>=0){
             bool capture=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-input-check-no-captures")<0;
             for(int i=0;i<menu.OptionRows-1;++i)menu.Navigate(1);

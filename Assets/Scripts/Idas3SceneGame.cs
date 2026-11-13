@@ -51,7 +51,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     internal Idas3RaceMusicCatalog RaceMusic => raceMusic;
     internal Idas3RaceMusicMenu RaceMusicMenu => raceMusicMenu;
     private readonly Idas3MenuInputRouter menuInput = new Idas3MenuInputRouter();
-    private bool diagnosticMode, preservePauseOnClose;
+    private bool diagnosticMode, preservePauseOnClose, startFocusPending;
     private bool? diagnosticFocusOverride;
     private bool appliedBackgroundMute;
     internal Idas3GameOptions GameOptions => gameOptions;
@@ -443,16 +443,22 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 frame.thumbLX = physicalPad.thumbLX; frame.thumbLY = physicalPad.thumbLY;
                 frame.thumbRX = physicalPad.thumbRX; frame.thumbRY = physicalPad.thumbRY;
             }
-            if (!Focused) controlBindings.CancelCapture();
+            if (!Focused){controlBindings.BlockStartUntilRelease();controlBindings.CancelCapture();startFocusPending=true;}
             // An unfocused synthetic neutral sample is not a physical release.
             // Keep capture's release latch until focused hardware is neutral.
-            else controlBindings.Poll(physicalKey, physicalPad, Time.realtimeSinceStartupAsDouble,
-                diagnosticPad ? null : controllerDevices.Controls, diagnosticPad ? null : controllerDevices.RigSamples);
+            else{
+                controlBindings.Poll(physicalKey, physicalPad, Time.realtimeSinceStartupAsDouble,
+                    diagnosticPad ? null : controllerDevices.Controls, diagnosticPad ? null : controllerDevices.RigSamples);
+                if(startFocusPending){controlBindings.BlockStartUntilRelease();startFocusPending=false;}
+            }
             bool bindingInputBlocked = controlBindings.SuppressInput || controlBindings.IsCapturing;
+            controlBindings.StripStartSourceAliases(ref frame);
+            bool onlineMenuWasOpen=multiplayerMenu.IsOpen;
             multiplayerMenu.RaceHudActive = (Status.flags & 1u) == 0;
-            multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld,
+            multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld||controlBindings.StartHeld,
                 bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || menuInput.MusicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active,
                 MenuNavigationHeld(frame) || controlBindings.ViewChangeHeld);
+            if(onlineMenuWasOpen!=multiplayerMenu.IsOpen)controlBindings.BlockStartUntilRelease();
             if (multiplayerMenu.IsOpen && pauseMenu.IsOpen)
             {
                 // The offline race stays paused while visiting the F1 room.
@@ -479,13 +485,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (!Idas3AttractOptionsSmoke.PrepareFrame(ref frame)) return;
             // Start belongs to the original frontend until a host modal or race owns it.
             // Translating it to Escape on Title used to request application exit.
-            if (controlBindings.RawPauseHeld && ((Status.flags & 1u) == 0 || pauseMenu.IsOpen || multiplayerMenu.IsOpen || raceMusicMenu.IsOpen)) frame.SetKey(27);
+            if ((controlBindings.RawPauseHeld||controlBindings.StartHeld) && ((Status.flags & 1u) == 0 || pauseMenu.IsOpen || multiplayerMenu.IsOpen || raceMusicMenu.IsOpen)) frame.SetKey(27);
             multiplayerMenu.ProcessResultsInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
-                controlBindings.PauseHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
+                controlBindings.PauseHeld || controlBindings.StartHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
                 !Focused || bindingInputBlocked);
             bool disconnectedFinish = multiplayer.DisconnectedFinish;
             multiplayerMenu.ProcessDisconnectedInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
-                controlBindings.PauseHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
+                controlBindings.PauseHeld || controlBindings.StartHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
                 !Focused || bindingInputBlocked);
             if (disconnectedFinish && !multiplayer.DisconnectedFinish) menuInput.BlockMusicUntilRelease();
             bool musicInputBlocked = UpdateRaceMusic(ref frame, bindingInputBlocked || multiplayerMenu.CapturesTextInput);
@@ -735,6 +741,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private void MusicVisibilityChanged(bool open)
     {
+        controlBindings?.BlockStartUntilRelease();
         multiplayerMenu.InputCovered = open;
         menuInput.MusicVisibilityChanged();
     }
@@ -747,7 +754,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private bool MusicControlsHeld(Idas3Native.FrameInput raw) =>
         controlBindings.ViewChangeHeld || controlBindings.PauseHeld || controlBindings.OnlineHeld ||
         Held(raw, 13) || Held(raw, 8) || Held(raw, 27) || Held(raw,46) ||
-        (raw.padButtons & 0xf010u) != 0 || Input.GetMouseButton(0) || Input.GetKey(KeyCode.P);
+        (raw.padButtons & 0xf010u) != 0 || Input.GetMouseButton(0) ||
+        (!controlBindings.UsesStartKey(KeyCode.P)&&Input.GetKey(KeyCode.P));
     private bool UpdateRaceMusic(ref Idas3Native.FrameInput frame, bool bindingBlocked)
     {
         raceMusicMenu.WheelNavigation=controllerDevices.ActiveIsGeneric;
@@ -768,7 +776,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         var sample = new Idas3MenuInputRouter.MusicSample {
             Navigation = MenuInputSample(frame), Delete = Held(frame, 46),
             ViewHeld = controlBindings.ViewChangeHeld, AnyControlHeld = MusicControlsHeld(frame),
-            SearchEscapePressed = Input.GetKeyDown(KeyCode.Escape), PreviewPressed = Input.GetKeyDown(KeyCode.P)
+            SearchEscapePressed = Input.GetKeyDown(KeyCode.Escape), PreviewPressed = !controlBindings.UsesStartKey(KeyCode.P) && Input.GetKeyDown(KeyCode.P)
         };
         var command = menuInput.ProcessMusic(sample, new Idas3MenuInputRouter.MusicContext {
             Focused = Focused, Blocked = bindingBlocked, MenuOpen = raceMusicMenu.IsOpen,
@@ -806,7 +814,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         var command = menuInput.ProcessAttract(new Idas3MenuInputRouter.AttractSample {
             ViewHeld = controlBindings.ViewChangeHeld, AnyControlHeld = MusicControlsHeld(frame),
-            StartHeld = Held(frame, 13) || (frame.padButtons & 0x1000) != 0
+            StartHeld = controlBindings.StartHeld || Held(frame, 13) || (frame.padButtons & 0x1010) != 0
         }, new Idas3MenuInputRouter.AttractContext {
             Focused = Focused, Blocked = inputBlocked, Allowed = AttractOptionsAllowed, Gameplay = GameplayInputContext,
             Child = Status.attractChild, DeltaSeconds = Time.unscaledDeltaTime
@@ -818,6 +826,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
     private void PauseVisibilityChanged(bool open)
     {
+        controlBindings?.BlockStartUntilRelease();
         if(open){wheelFeedback?.Stop();controllerVibration?.Stop();}
         menuInput.VisibilityChanged(open, Time.frameCount);
         if (pauseMenu.AttractOptions)

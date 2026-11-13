@@ -27,7 +27,7 @@ public static class Idas3PrivateShifterChecks {
     public static void Run(){
         checks=0;string root=Path.GetFullPath("Verification/private-shifter-20261007/managed-"+Guid.NewGuid().ToString("N"));Directory.CreateDirectory(root);
         var mapper=new Idas3ControlBindings();mapper.Initialize(root);
-        Check(mapper.Current.actions.Length==16,"Direct gear actions missing");
+        Check(mapper.Current.actions.Length==17,"Direct gear actions missing");
         for(int gear=1;gear<=6;++gear)Check(mapper.TrySetDraftKey((Idas3ControlBindings.ActionId)(9+gear),Idas3ControlBindings.Slot.Primary,KeyCode.Keypad0+gear),"Bind gear key");
         Check(mapper.ApplyDraft(),"Save all six gear keys");
         mapper=new Idas3ControlBindings();mapper.Initialize(root);
@@ -38,9 +38,9 @@ public static class Idas3PrivateShifterChecks {
         string legacy=Path.Combine(root,"legacy");Directory.CreateDirectory(legacy);var old=Idas3ControlBindings.Defaults();old.version=3;Array.Resize(ref old.actions,10);old.actions[4].key1=KeyCode.R;
         old.controllerProfiles=new[]{new Idas3ControlBindings.ControllerProfile{key="shifter",label="Shifter",generic=true,actions=old.Clone().actions}};
         File.WriteAllText(Path.Combine(legacy,"controls.json"),JsonUtility.ToJson(old));var migrated=new Idas3ControlBindings();migrated.Initialize(legacy);
-        Check(migrated.LastError==null&&migrated.Current.version==4,"Version 3 controls did not migrate");
+        Check(migrated.LastError==null&&migrated.Current.version==5,"Version 3 controls did not migrate");
         for(int i=0;i<10;++i)Check(JsonUtility.ToJson(old.actions[i])==JsonUtility.ToJson(migrated.Current.actions[i]),"Migration changed existing controls");
-        migrated.SelectControllerProfile("shifter","Shifter",true);Check(migrated.Current.actions.Length==16&&migrated.ApplyDraft(),"Stored device profile did not migrate");
+        migrated.SelectControllerProfile("shifter","Shifter",true);Check(migrated.Current.actions.Length==17&&migrated.ApplyDraft(),"Stored device profile did not migrate");
         // Use the real multi-device polling path, including its reconnect guard.
         var gate=new Idas3ControllerControl{path="button6",label="Sixth gear",minimum=0,maximum=1,button=true,value=0};
         Check(migrated.TrySetDraftControl(Idas3ControlBindings.ActionId.Gear6,gate,1,0)&&migrated.ApplyDraft(),"Save H-shifter device gate");
@@ -56,11 +56,11 @@ public static class Idas3PrivateShifterChecks {
         try{
             var options=new Idas3GameOptions(new Platform());options.Initialize(Path.Combine(root,"options"));
             var menu=go.AddComponent<Idas3PauseMenu>();menu.Initialize(options);menu.InitializeBindings(mapper);menu.OpenAttractOptions();menu.SelectTab(3);
-            Check(menu.OptionRows==16,"Controls navigation excludes gear bindings");
+            Check(menu.OptionRows==17,"Controls navigation excludes gear bindings");
             for(int i=0;i<15;++i)menu.Navigate(1);menu.Activate();Check(menu.BindingChoiceVisible,"Controller cannot reach Gear 6");
             menu.Activate();Check(mapper.IsCapturing,"Gear 6 rebind action failed");mapper.CancelCapture();
         }finally{UnityEngine.Object.DestroyImmediate(go);}
-        Idas3WheelRigChecks.Run();Idas3HeadlightBindingChecks.Run();
+        Idas3WheelRigChecks.Run();Idas3HeadlightBindingChecks.Run();Idas3StartBindingChecks.Run();
         File.WriteAllText(Path.Combine(root,"PASS.txt"),"PASS "+checks+" private room exclusion and direct gear checks. Synthetic devices and discovery; no physical H-shifter or live online service.\n");Debug.Log("PASS "+checks+" private room and direct gear checks");
     }
 }

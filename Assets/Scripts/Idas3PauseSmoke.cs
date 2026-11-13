@@ -21,6 +21,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
     private int focusHeldKey;
     private uint focusHeldButtons;
     private bool FocusGapCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-focus-check")>=0;
+    private ushort boundStartButtons;
     private bool online,finished,driving;
     private double began;
     private readonly List<Observation> observations=new List<Observation>();
@@ -86,7 +87,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         if(active==null||active.finished)return false;
         // Controller pause now has one owner: the actual binding mapper. Do
         // not bypass it by adding a raw Start bit after action translation.
-        pad=new Idas3ControlBindings.PadState{connected=true,buttons=(ushort)(active.padPulse|
+        pad=new Idas3ControlBindings.PadState{connected=true,buttons=(ushort)(active.padPulse|active.boundStartButtons|
             (active.host.DiagnosticFocusOverride!=false?active.focusHeldButtons:0))};return true;
     }
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame){
@@ -552,6 +553,18 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         host.DiagnosticFocusOverride=true;padPulse=0x10;yield return Frames(5);
         Check(menu.IsOpen,"Online controller Start did not open options overlay");Check((host.Status.flags&2)==0,"Online Start paused native race");
         yield return Capture("online-start");yield return MeasureOnline(session,"online-start-overlay");
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0){
+            menu.SetOpen(false);yield return Frames(4);
+            var bindings=host.ControlBindings;bindings.BeginEdit();
+            Check(bindings.TrySetDraftPad(Idas3ControlBindings.ActionId.Start,Idas3ControlBindings.PadInput.B)&&bindings.ApplyDraft(),
+                "Could not bind online race Start to B");
+            yield return Frames(4);boundStartButtons=0x2000;yield return Frames(5);
+            Check(menu.IsOpen&&(host.Status.flags&2)==0,"Bound Start did not open online options without pausing the native race");
+            Check((host.DiagnosticSubmittedInput.padButtons&0x2000)==0,"Bound Start leaked its B alias into the online menu");
+            yield return MeasureOnline(session,"online-bound-start-overlay");
+            Check(menu.IsOpen,"Held bound Start closed the online options overlay");
+            boundStartButtons=0;yield return Frames(4);
+        }
         menu.SetOpen(false);host.DiagnosticFocusOverride=null;Observe("online-resumed",session);
     }
     private IEnumerator MeasureOnline(Idas3MultiplayerSession session,string name){

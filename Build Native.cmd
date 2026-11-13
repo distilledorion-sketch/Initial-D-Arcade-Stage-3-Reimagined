@@ -9,6 +9,7 @@ if not defined IDAS3_VS (
 )
 call "%IDAS3_VS%\VC\Auxiliary\Build\vcvarsall.bat" x64 >nul
 if errorlevel 1 exit /b %errorlevel%
+cd /d "%~dp0"
 cmake -S Native -B Native/build-unity-d -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=Release
 if errorlevel 1 exit /b %errorlevel%
 cmake --build Native/build-unity-d --target Idas3Unity
