@@ -15,7 +15,12 @@ namespace Idas3.Multiplayer
     {
         static readonly Queue<Action> callbacks = new Queue<Action>();
         static Task authentication;
-        static bool ticking, dispatching, stopped, renewing, sdkInitialized;
+        static bool ticking, dispatching, renewing, sdkInitialized;
+        static volatile bool stopped;
+        static int callbackFrame = int.MinValue, callbacksThisFrame;
+        static double callbackSeconds;
+        const int CallbacksPerFrame = 64;
+        const double CallbackSecondsPerFrame = .002;
         static string identityConfig;
         static ulong expiryNotify, loginNotify;
         static double nextRenew;
@@ -118,21 +123,50 @@ namespace Idas3.Multiplayer
 
         internal static void Defer(Action action)
         {
-            if (stopped) return;
-            if (callbacks.Count >= 4096) { Failure = "Online service event buffer is full. Please reconnect."; return; }
-            callbacks.Enqueue(action);
+            // Delayed cleanup can arrive from a Task continuation on a worker.
+            // Protect queue storage, but never hold this lock while invoking work.
+            lock (callbacks) {
+                if (stopped) return;
+                if (callbacks.Count >= 4096) { Failure = "Online service event buffer is full. Please reconnect."; return; }
+                callbacks.Enqueue(action);
+            }
         }
         internal static void Tick(bool dispatch)
         {
             if (Handle == null || stopped || ticking) return;
             ticking = true;
-            try { Handle.Tick(); } finally { ticking = false; }
+            bool measureSdk = Idas3StutterMeasurements.Enabled;
+            double sdkBegan = measureSdk ? Now : 0;
+            try { Handle.Tick(); }
+            finally {
+                if (measureSdk) Idas3StutterMeasurements.Sdk(Time.frameCount, Now - sdkBegan);
+                ticking = false;
+            }
             if (!dispatch || dispatching) return;
             dispatching = true;
             try {
-                int budget = 4096;
-                while (callbacks.Count != 0 && budget-- > 0) callbacks.Dequeue()();
-                if (authentication != null && authentication.Status == TaskStatus.RanToCompletion && !renewing && Now >= nextRenew) {
+                // The session and platform component both pump each frame. A
+                // shared frame budget prevents either pump (or a callback that
+                // queues more work) from draining a delayed network burst at once.
+                if (callbackFrame != Time.frameCount) {
+                    callbackFrame = Time.frameCount; callbacksThisFrame = 0; callbackSeconds = 0;
+                }
+                while (!stopped && callbacksThisFrame < CallbacksPerFrame && callbackSeconds < CallbackSecondsPerFrame) {
+                    Action callback;
+                    lock (callbacks) {
+                        if (callbacks.Count == 0) break;
+                        callback = callbacks.Dequeue();
+                    }
+                    ++callbacksThisFrame;
+                    double began = Now;
+                    try { callback(); }
+                    finally {
+                        double elapsed = Math.Max(0, Now - began);
+                        callbackSeconds += elapsed;
+                        Idas3StutterMeasurements.Callback(Time.frameCount, elapsed);
+                    }
+                }
+                if (!stopped && authentication != null && authentication.Status == TaskStatus.RanToCompletion && !renewing && Now >= nextRenew) {
                     renewing = true; _ = Renew();
                 }
             } finally { dispatching = false; }
@@ -163,7 +197,7 @@ namespace Idas3.Multiplayer
             }
             if (sdkInitialized) { PlatformInterface.Shutdown(); sdkInitialized = false; }
             Idas3EosNativeLibrary.Shutdown();
-            callbacks.Clear();
+            lock (callbacks) callbacks.Clear();
         }
 #if UNITY_EDITOR
         static void EditorPlayState(UnityEditor.PlayModeStateChange state)
@@ -173,6 +207,7 @@ namespace Idas3.Multiplayer
             if (state == UnityEditor.PlayModeStateChange.EnteredEditMode && stopped) {
                 authentication = null; User = null; identityConfig = null; expiryNotify = loginNotify = 0;
                 stopped = renewing = ticking = dispatching = false; Failure = null; nextRenew = 0;
+                callbackFrame = int.MinValue; callbacksThisFrame = 0; callbackSeconds = 0;
             }
         }
 #endif

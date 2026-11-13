@@ -61,15 +61,15 @@ internal static class RaceProgressDriver
             Check(data.Length==1111&&BitConverter.ToUInt64(data,23)==99&&BitConverter.ToInt32(data,31)==1064,
                 "Maximum history plus session framing fits one EOS payload and retains race identity");
             for(int i=0;i<9;i++)f.Frame(.05,true);
-            Check(f.RecoverySends==1,"Recovery retry is bounded instead of flooding the reliable queue");
-            f.Frame(.06,true);Check(f.RecoverySends==2,"Duplicate inputs and pings cannot postpone recovery");
+            Check(f.RecoverySends==2,"Recovery retry is bounded instead of flooding the reliable queue");
+            f.Frame(.26,true);Check(f.RecoverySends==3,"Duplicate inputs and pings cannot postpone recovery");
             Idas3MultiplayerNative.Sample.confirmed=32;Idas3MultiplayerNative.Sample.frame=96;
             f.Frame(.1);int recovered=f.RecoverySends;
             for(int i=0;i<400;i++){
                 ++Idas3MultiplayerNative.Sample.confirmed;++Idas3MultiplayerNative.Sample.frame;f.Frame(.05);
             }
-            Check(f.RecoverySends==recovered&&!f.Session.DisconnectedFinish&&f.Session.AuthorityRecoveries==1,
-                "Confirmed progress stops recovery and keeps a resumed race alive beyond the former deadline");
+            Check(f.RecoverySends-recovered>=60&&f.RecoverySends-recovered<=81&&!f.Session.DisconnectedFinish&&f.Session.AuthorityRecoveries==1,
+                "Confirmed progress keeps a resumed race alive with bounded reliable fallback beyond the former deadline");
         }
     }
     static void PermanentStall(bool baseline){
@@ -87,7 +87,7 @@ internal static class RaceProgressDriver
                 "Progress timeout performs one neutral native disconnect and one transport cleanup");
             Check(f.Session.ResultText.Contains("NO RESULT RECORDED")&&f.Session.ResultText.Contains("0 POINTS"),
                 "A stalled race cannot manufacture a winner or progression award");
-            Check(f.RecoverySends>0&&f.RecoverySends<=29&&Idas3MultiplayerNative.InputReceives>200,
+            Check(f.RecoverySends>0&&f.RecoverySends<=60&&Idas3MultiplayerNative.InputReceives>200,
                 "Recovery remains bounded while duplicate history continues arriving");
             for(int i=0;i<20;i++)f.Frame(.1);
             Check(f.Disconnected==1&&Idas3MultiplayerNative.Disconnects==1,"Repeated updates cannot repeat terminal race effects");
@@ -112,9 +112,40 @@ internal static class RaceProgressDriver
             Check(!f.Session.DisconnectedFinish,"Confirmed progress on the timeout boundary wins before expiry");
         }
     }
+    static void SustainedFallback(){
+        using(var f=new Fixture()){
+            f.Frame(1.01);Check(f.RecoverySends==1,"A sustained-channel fixture starts through normal reliable recovery");
+            int initial=f.RecoverySends;
+            for(int i=0;i<40;i++){
+                ++Idas3MultiplayerNative.Sample.confirmed;++Idas3MultiplayerNative.Sample.frame;f.Frame(.125);
+            }
+            int periodic=f.RecoverySends-initial;
+            Check(periodic>=18&&periodic<=21,"Recovered frames retain bounded reliable history instead of abandoning the working route: sends="+periodic);
+            int beforeRepeatedPump=f.RecoverySends;
+            for(int i=0;i<100;i++)f.Frame(0,true);
+            Check(f.RecoverySends==beforeRepeatedPump,"Repeated pumps in one frame cannot flood reliable fallback");
+            Set(f.Session,"<RaceReleased>k__BackingField",false);Set(f.Session,"state","Loading");f.Frame(.01);
+            Set(f.Session,"<RaceReleased>k__BackingField",true);Set(f.Session,"state","Racing");f.Frame(.01);
+            int afterReset=f.RecoverySends;
+            for(int i=0;i<100;i++){
+                ++Idas3MultiplayerNative.Sample.confirmed;++Idas3MultiplayerNative.Sample.frame;f.Frame(.05);
+            }
+            Check(f.RecoverySends==afterReset,"The next healthy race does not inherit reliable fallback");
+        }
+    }
+    static void HealthyRace(){
+        using(var f=new Fixture()){
+            for(int i=0;i<600;i++){
+                ++Idas3MultiplayerNative.Sample.confirmed;++Idas3MultiplayerNative.Sample.frame;f.Frame(.05);
+            }
+            Check(f.RecoverySends==0&&f.Session.AuthorityRecoveryPacketsSent==0&&!f.Session.DisconnectedFinish,
+                "A continuously advancing race retains its ordinary unreliable input stream");
+        }
+    }
     static int Main(string[] args){try{
         if(args.Contains("baseline")){PermanentStall(true);return 0;}
-        Recovery();PermanentStall(false);InactiveAndBoundary();
+        if(args.Contains("sustained")){SustainedFallback();return 0;}
+        Recovery();PermanentStall(false);InactiveAndBoundary();SustainedFallback();HealthyRace();
         Console.WriteLine("TOTAL "+checks);return 0;
     }catch(Exception e){Console.Error.WriteLine(e);return 1;}}
 }

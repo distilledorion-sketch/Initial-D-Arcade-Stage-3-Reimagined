@@ -34,24 +34,61 @@ void RaceClock::tick(float courseProgress) {
 }
 void Replay::beginCapture(bool details) {
     frames.clear();truncated=false;detailed=details;profile={};priorRecords={};finishTicks6000=0;
+    dustFrames.clear();smokeFrames.clear();dustCapture_=smokeCapture_=backfireCapture_=false;
     // Allocate at race loading, never copy an expanding recording mid-corner.
     // Capacity is reused on subsequent races; samples still use exact 60 Hz data.
     frames.reserve(maxFrames);
 }
-void Replay::record(std::uint64_t tick,Vec3 p,float yaw,float speed,int gear,const ReplayDetail* detail) {
+void Replay::beginBackfireCapture(){
+    if(!detailed||!frames.empty())throw std::logic_error("Backfire capture must begin with a detailed race");
+    backfireCapture_=true;
+}
+void Replay::beginDustCapture(){
+    if(!detailed||!frames.empty()||smokeCapture_)throw std::logic_error("Dust capture must begin with a detailed race");
+    dustFrames.clear();dustFrames.reserve(ReplayRoadsideDustFrame::maxFrames);dustCapture_=true;
+}
+void Replay::recordDust(const ReplayRoadsideDustFrame& input){
+    if(!dustCapture_||truncated)return;
+    if(dustFrames.size()>=ReplayRoadsideDustFrame::maxFrames||!input.valid()){truncated=true;return;}
+    dustFrames.push_back(input);
+}
+void Replay::beginSmokeCapture(){
+    if(!detailed||!frames.empty()||dustCapture_)throw std::logic_error("Smoke capture must begin with a detailed race");
+    smokeFrames.clear();smokeFrames.reserve(ReplayCarSmokeFrame::maxFrames);smokeCapture_=true;
+}
+void Replay::recordSmoke(const ReplayCarSmokeFrame& input){
+    if(!smokeCapture_||truncated)return;
+    if(smokeFrames.size()>=ReplayCarSmokeFrame::maxFrames||!input.valid()||
+        (!smokeFrames.empty()&&((input.scene^smokeFrames.front().scene)&ReplayCarSmokeFrame::fixedSceneMask))){truncated=true;return;}
+    smokeFrames.push_back(input);
+}
+void Replay::record(std::uint64_t tick,Vec3 p,float yaw,float speed,int gear,const ReplayDetail* detail,int backfire) {
     if(frames.size()>=maxFrames) { truncated=true;return; }
     if(!frames.empty() && tick<=frames.back().tick) return;
     frames.push_back({tick,p,yaw,speed,gear});
+    frames.back().dustStep=std::uint32_t(smokeCapture_?smokeFrames.size():dustFrames.size());
+    if(backfireCapture_){if(backfire< -1||backfire>1)truncated=true;else frames.back().backfire=backfire;}
     if(detail)frames.back().detail=*detail;
     else if(detailed)truncated=true; // Never publish partially detailed captures.
 }
 std::vector<std::uint8_t> Replay::sharedBytes(std::uint32_t finish) const {
     if(truncated||frames.empty()||!finish||frames.front().tick>1||frames.back().tick>108000)return {};
-    std::vector<std::uint8_t> out;out.reserve(detailed?96+160*frames.size():16+28*(frames.size()/3+2));
+    const bool smoke=detailed&&!smokeFrames.empty();
+    const bool dust=smoke||(detailed&&!dustFrames.empty());
+    if(smoke&&!dustFrames.empty())return {};
+    const bool flashes=detailed&&backfireCapture_;
+    const unsigned header=flashes?100:96,stride=flashes?168:dust?164:160;
+    const auto dustCount=dust?frames.back().dustStep:0u;
+    const unsigned effectBytes=smoke?ReplayCarSmokeFrame::bytes:ReplayRoadsideDustFrame::bytes;
+    if(dust&&(!dustCount||dustCount>(smoke?smokeFrames.size():dustFrames.size())||dustCount>ReplayRoadsideDustFrame::maxFrames))return {};
+    std::vector<std::uint8_t> out;out.reserve(detailed?header+stride*frames.size()+effectBytes*dustCount:16+28*(frames.size()/3+2));
     auto u32=[&](std::uint32_t n){for(unsigned b=0;b<4;++b)out.push_back(std::uint8_t(n>>(b*8)));};
     auto scalar=[&](float n){u32(std::bit_cast<std::uint32_t>(n));};
     u32(detailed?0x32524449:0x31524449);u32(finish);u32(0);u32(60);unsigned count=0;
-    if(detailed){u32(96);u32(160);u32(1);u32(12);for(auto v:profile)u32(v);for(auto v:priorRecords)u32(v);u32(0);}
+    // Revision4 adds a per-pose accepted flash state and an explicit world-
+    // effects stride. This also supports imported courses/opponent streams
+    // without inventing a smoke timeline or changing revisions1..3.
+    if(detailed){u32(header);u32(stride);u32(flashes?4:smoke?3:dust?2:1);u32(12);for(auto v:profile)u32(v);for(auto v:priorRecords)u32(v);u32(dustCount);if(flashes)u32(dust?effectBytes:0);}
     for(std::size_t i=0;i<frames.size();++i){
         if(!detailed&&i%3!=0&&i+1!=frames.size())continue;
         const auto& f=frames[i];
@@ -64,7 +101,19 @@ std::vector<std::uint8_t> Replay::sharedBytes(std::uint32_t finish) const {
             for(auto v:d.suspension)scalar(v);for(auto v:d.rotation)scalar(v);scalar(d.throttle);scalar(d.brake);
             u32(d.elapsed);u32(std::bit_cast<std::uint32_t>(d.remaining));for(auto v:d.sections)u32(v);u32(d.sector);u32(d.capacity);
             u32(std::bit_cast<std::uint32_t>(d.lightCounter));u32(d.lightMaximum);u32(d.lightPhase);u32(d.lightVisible);scalar(d.lightFraction);u32(d.lights);scalar(d.progress);u32(d.extension);
+            if(dust||flashes){
+                if(f.dustStep>dustCount||(i&&f.dustStep<frames[i-1].dustStep))return {};
+                u32(f.dustStep);
+            }
+            if(flashes){if(f.backfire< -1||f.backfire>1)return {};u32(unsigned(f.backfire+1));}
         }
+    }
+    for(unsigned i=0;i<dustCount;++i){
+        const auto& d=smoke?smokeFrames[i].owner:dustFrames[i];if(!d.valid())return {};
+        u32(d.flags);u32(d.surfaces);scalar(d.displacement);
+        for(float v:d.footprint)scalar(v);for(const auto& p:d.positions)for(float v:p)scalar(v);
+        if(smoke){const auto& s=smokeFrames[i];if(!s.valid()||((s.scene^smokeFrames.front().scene)&ReplayCarSmokeFrame::fixedSceneMask))return {};
+            u32(s.intensity);u32(s.scene);u32(s.randomBefore);}
     }
     for(unsigned b=0;b<4;++b)out[8+b]=std::uint8_t(count>>(b*8));
     return out;
@@ -120,7 +169,7 @@ std::array<bool,2> Replay::saveCopies(const std::string& first,const std::string
     return saved;
 }
 bool Replay::load(const std::string& filename) {
-    frames.clear();truncated=false;finishTicks6000=0;std::ifstream in(filename);if(!in) return false;
+    frames.clear();dustFrames.clear();smokeFrames.clear();dustCapture_=smokeCapture_=backfireCapture_=false;truncated=false;finishTicks6000=0;std::ifstream in(filename);if(!in) return false;
     std::string line;std::getline(in,line);
     const bool exactFinish=line=="tick,speed,yaw,pos_x,pos_y,pos_z,gear,finish_ticks6000";
     if(!exactFinish&&line!="tick,speed,yaw,pos_x,pos_y,pos_z,gear") return false;

@@ -153,16 +153,16 @@ struct ImportedCourse {
         std::vector<original::OriginalTimeAttackVisit::MapPage> pages;
         const auto route=routeCheckpoints(reverse);
         const int period=int(centerFor(reverse).size())-1;
-        // Tsubaki's course card uses world +Z down the page. Keep its full
-        // route, section routes and recorded events in that same orientation.
-        const float mapZ=id==15?1.f:-1.f,mapX=id>=16?mapZ:1.f;
+        // Match the existing course cards: Enna, the Special Stages and
+        // Tsubaki use +X/+Z; Sadamine and the IDZero cards use -X/-Z.
+        // One projection owns the road, section zooms and all recorded events.
+        const float mapZ=id>=11&&id<=15?1.f:-1.f,mapX=id==10||id>=16?-1.f:1.f;
         for(unsigned page=0;page<5;++page){
             const int routeFirst=page?route[page-1]:route[0],routeLast=page?route[page]:route[4];
             // One lap already shows a circuit's whole route.
             const int first=routeFirst,last=laps?std::min(routeLast,routeFirst+period):routeLast;
             float x0=INFINITY,x1=-INFINITY,z0=INFINITY,z1=-INFINITY;
-            // IDZero cards use the HUD minimap orientation. Preserve the
-            // established projection of the earlier imported courses.
+            // Fit each page without rotating or mirroring its course-card axes.
             for(int i=first;i<=last;++i){const auto p=routePoint(reverse,i);x0=std::min(x0,mapX*p[0]);x1=std::max(x1,mapX*p[0]);z0=std::min(z0,mapZ*p[2]);z1=std::max(z1,mapZ*p[2]);}
             const float scale=224.f/std::max({x1-x0,z1-z0,1.f}),mx=(x0+x1)*.5f,mz=(z0+z1)*.5f;
             const auto project=[&](const std::array<float,3>& p){return Point{315+(mapX*p[0]-mx)*scale,315+(mapZ*p[2]-mz)*scale};};

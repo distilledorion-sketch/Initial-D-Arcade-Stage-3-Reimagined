@@ -91,9 +91,9 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
                 throw new ArgumentException("The race music catalog contains an invalid or duplicate entry.",nameof(catalog));
         CancelDelete();entries=(Entry[])catalog.Clone();selectedId=ids.Contains(currentId)?currentId:entries[0].id;stageFilter=0;RebuildList(true);
     }
-    public void SetContext(bool showOpponentHint,float progress,string controlLabel)
+    public void SetContext(bool showSelectionHint,float progress,string controlLabel)
     {
-        showHint=showOpponentHint;holdProgress=float.IsNaN(progress)?0:Mathf.Clamp01(progress);
+        showHint=showSelectionHint;holdProgress=float.IsNaN(progress)?0:Mathf.Clamp01(progress);
         viewChangeLabel=string.IsNullOrWhiteSpace(controlLabel)?"VIEW CHANGE":controlLabel;
     }
     public void ReplaceCatalog(Entry[] catalog,int currentId){int filter=stageFilter;Initialize(catalog,currentId);stageFilter=filter;RebuildList(true);}

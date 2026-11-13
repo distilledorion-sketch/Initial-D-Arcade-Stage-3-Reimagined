@@ -118,6 +118,8 @@ int main(int argc,char** argv)try{
         OriginalTireAudioState tire;m.writeFloat(0xc8ff1c0,0);m.writeFloat(0xc8ff1c4,127);m.write8(0xc8ff1c8,0);
         m.write32(0xc31de5c,0);m.write32(0xc31de60,0);m.write32(0xc8ff1e4,0);m.write32(0xc8ff1e8,0);
         OriginalContactCompletionState completion;completion.randomSeed0C37C778=991+car*7+upgrade;m.write32(0xc37c778,completion.randomSeed0C37C778);
+        m.write32(0xc91fb30,queue+512);m.write32(0xc91fb34,queue+2048);
+        OriginalSoundCueQueue contactQueue;
         OriginalDriveState d;OriginalTransmissionState transmission;double energy=0;
         for(unsigned frame=0;frame<720;++frame){
             const unsigned phase=frame%120;OriginalEngineControlInput in;
@@ -126,6 +128,7 @@ int main(int argc,char** argv)try{
             if(frame%36<16)in.wheelSurface[frame/36%4]=6;
             for(unsigned i=0;i<4;++i)m.write8(actor+116+i,in.wheelSurface[i]);m.write8(0xc2f4de0,in.suppressShiftRelease);
             d.setf(0x1b8,in.throttle);transmission.gear00=in.gear;transmission.tach1c=in.rpm;
+            d.setu(0x148,phase<30?1u:0u); // Repeated gutter entry, after engine control.
             d.setf(0x238,phase<20?1.f:25.f);const float tireStrength=phase<90?.7f:0.f;const unsigned tireMask=(car+upgrade+frame/120)%3;
             for(unsigned i=0;i<d.words.size();++i)m.write32(drive+i*4,d.words[i]);
             RefCpu request(m);request.r[4]=0;request.r[5]=tireMask;request.setFloat(4,tireStrength);request.r[15]=stack+0xf000;request.pr=stop;
@@ -137,11 +140,19 @@ int main(int argc,char** argv)try{
             c.callHooks[0xc1433c0]=[&](auto& r){equal(r.r[4],queue+256,"skid stop owner");tireExpected.push_back({OriginalTireCommandType::Stop,0});};
             c.callHooks[0xc143400]=[&](auto& r){equal(r.r[4],queue+256,"skid volume owner");tireExpected.push_back({OriginalTireCommandType::Volume,std::bit_cast<int>(r.r[5])});};
             c.callHooks[0xc2223b8]=[](auto& r){r.fpul=r.r[4]/r.r[5];};
+            const auto contact=[&](unsigned cue,auto& seed){if(contactQueue.request(false,seed))actual.push_back(0x2a9u|(cue<<16));};
+            if(frame%17==0){
+                // Wheel/body requests arrive before the engine. Their accepted
+                // queue request must consume RNG before any turbo/misfire work.
+                c.r[4]=2;c.r[15]=stack+0xf000;c.pr=stop;
+                instructions+=c.run(0xc142460,stop,1000);contact(2,completion.randomSeed0C37C778);
+                c.r[9]=drive;c.r[14]=c.r[15]=stack+0xf000;
+            }
             instructions+=c.run(0xc157d6c,0xc157e6e,5000);
             finishOriginalContactFrame(d,transmission,completion,{frame,0},[&](const auto& effect,auto& seed){
                 in.rpm=effect.engineValue;in.gear=std::bit_cast<int>(effect.gear);in.throttle=effect.throttle;
                 native.step(in,seed,[&](unsigned bank,unsigned cue){actual.push_back(0xa9u|(bank<<8)|(cue<<16));});
-            });
+            },contact);
             //1415E0 runs tire control before decrementing the scene queues.
             c.r[15]=stack+0xf000;c.pr=stop;instructions+=c.run(0xc142120,stop,1000);
             const auto tireActual=stepOriginalTireAudio(tire,0,completion.randomSeed0C37C778);
@@ -152,9 +163,15 @@ int main(int argc,char** argv)try{
             if(actual!=expected)throw std::runtime_error("Integrated release/backfire sequence differs");
             compareState(native.state(),m);equal(completion.randomSeed0C37C778,m.read32(0xc37c778),"contact/engine/queue shared RNG");
             equal(completion.steeringMask0C900EBC,m.read32(0xc900ebc),"contact steering mask");equal(completion.elapsedFrames0C900E84,m.read32(0xc900e84),"contact frame");
+            equal(queue+512+completion.positionCursor*12,m.read32(0xc91fb30),"contact history cursor");
+            equal(queue+2048+completion.frameCursor*4,m.read32(0xc91fb34),"contact frame cursor");
             equal(unsigned(native.releaseQueue().cooldown),m.read32(queue+176),"release queue cooldown");
+            equal(unsigned(contactQueue.cooldown),m.read32(queue+48),"contact queue cooldown");
+            RefCpu contactTick(m);contactTick.r[4]=queue;contactTick.r[15]=stack+0xf000;contactTick.pr=stop;
+            instructions+=contactTick.run(0xc143680,stop,100);contactQueue.tick();
             RefCpu tick(m);tick.r[4]=queue+128;tick.r[15]=stack+0xf000;tick.pr=stop;instructions+=tick.run(0xc143680,stop,100);native.finishSoundFrame();
             equal(unsigned(native.releaseQueue().cooldown),m.read32(queue+176),"outer cooldown tick");
+            equal(unsigned(contactQueue.cooldown),m.read32(queue+48),"outer contact cooldown tick");
             for(unsigned i=0;i<735;++i){const auto sample=native.renderFrame();for(auto value:sample.dry)energy+=double(value)*value;
                 if(i==0)for(unsigned bus=0;bus<sample.effects.size();++bus)if(sample.effects[bus])effectBuses.insert(bus);
             }
@@ -163,8 +180,9 @@ int main(int argc,char** argv)try{
         if(energy<1000000)throw std::runtime_error("Selected original engine silent");
     }
     if(!heard.contains(0x000005a9)||!heard.contains(0x000702a9))throw std::runtime_error("Release/backfire source path not covered");
+    if(!heard.contains(0x000202a9)||!heard.contains(0x000402a9))throw std::runtime_error("Wheel/gutter queue did not overlap engine/tire source paths");
     if(effectBuses.empty())throw std::runtime_error("Engine/auxiliary PCM had no authored effect sends");
     for(auto bus:effectBuses)if(!sourceEffectBuses.contains(bus))throw std::runtime_error("Engine PCM used an effect input bus absent from original layers");
     for(unsigned cue=0;cue<3;++cue){const auto s=loadOriginalRaceSound(argv[1],5,cue);equal(s.command,0x5a9u|(cue<<16),"PACK25 command");if(s.clip.sampleRate!=22050||s.clip.frames()<16000)throw std::runtime_error("Release sample invalid");}
-    std::cout<<"PASS "<<profiles<<" original profile sound selections,72 source bank descriptors,"<<frames<<" integrated contact/engine/tire/queue frames,"<<cues<<" release/backfire/skid cues,"<<checks<<" comparisons,"<<instructions<<" original instructions. Hooks: final continuous/sequence outputs, tire stop/volume, integer quotient;142860/142800,1424A0/1424E0,142520/1596E0/142120,1435C0,143680 and shared RNG execute original bytes. PCM rendered for all live engine selections; cabinet DSP remains separate.\n";
+    std::cout<<"PASS "<<profiles<<" original profile sound selections,72 source bank descriptors,"<<frames<<" integrated contact/engine/tire/queue frames,"<<cues<<" wall/gutter/release/backfire/skid cues,"<<checks<<" comparisons,"<<instructions<<" original instructions. Hooks: final continuous/sequence outputs, tire stop/volume, integer quotient;142860/142800,142460/1424A0/1424E0,142520/1596E0/142120,1435C0,143680 and shared RNG execute original bytes. PCM rendered for all live engine selections; cabinet DSP remains separate.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

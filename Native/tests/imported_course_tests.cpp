@@ -4,6 +4,7 @@
 #include <iostream>
 using namespace idas3;using namespace idas3::original;
 void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}
+#include "tsubaki_fork_checks.inl"
 int main(int argc,char** argv)try{
     if(argc!=3)throw std::runtime_error("native_root imported_root");
     const auto course=ImportedCourse::load(argv[2]);int surfaces=0,ticks=0;
@@ -13,6 +14,7 @@ int main(int argc,char** argv)try{
         require(definition.accelerationScale==1.f && (definition.speedCondition.has_value()==(definition.id==17)),"Only Odawara should select a separate speed donor, with no acceleration multiplier");
     require(course.id==15?!course.lamps.empty():course.lamps.size()==(course.id==17?105:course.id==16?3:course.id==10?16:46),"Imported authored lamps were not loaded");
     if(course.id==15){
+        checkTsubakiFork(course.collision);
         // Independent surveyed points on the road-facing guardrail mesh, not
         // samples of the generated collision/path files. The old ribbon was
         // up to 2.31 m inside one rail and 1.51 m behind the opposite rail.

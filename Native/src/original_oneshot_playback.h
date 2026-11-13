@@ -17,7 +17,8 @@ int originalOneShotSteal(std::span<const std::uint8_t> priorities,unsigned incom
 // users of the original64 physical slots remains a caller integration boundary.
 class OriginalOneShotPlayback {
 public:
-    explicit OriginalOneShotPlayback(const std::filesystem::path& root);
+    // A private presentation voice can load one bank; zero retains all banks.
+    explicit OriginalOneShotPlayback(const std::filesystem::path& root,unsigned onlyBank=0);
     ~OriginalOneShotPlayback();
     OriginalOneShotPlayback(const OriginalOneShotPlayback&)=delete;
     OriginalOneShotPlayback& operator=(const OriginalOneShotPlayback&)=delete;

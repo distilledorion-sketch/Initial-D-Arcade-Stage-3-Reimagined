@@ -207,6 +207,11 @@ namespace Idas3.Multiplayer
             if(ScoredCheck)return false;
             if(key==manualKey&&manualKey!=KeyCode.None)return true;
             if(ContactMotionCheck)return ContactMotionKey(key);
+            if(raceProgressSlowDrive){
+                if(key==KeyCode.W)return session.LocalSnapshot.speed<4;
+                if(key==KeyCode.S)return session.LocalSnapshot.speed>5;
+                return false;
+            }
             // Private mirror fixture: let the host pull ahead on the opening
             // straight so its rear-view actually contains the other car.
             // Inputs still pass through normal bindings and shared simulation.
@@ -249,6 +254,7 @@ namespace Idas3.Multiplayer
                     frame.thumbLX=mapped.thumbLX;frame.thumbLY=mapped.thumbLY;frame.rightTrigger=mapped.rightTrigger;frame.leftTrigger=mapped.leftTrigger;}
             }
             if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}
+            if(active.preloadHeldKey!=0)frame.SetKey(active.preloadHeldKey);
             return true;
         }
         private static string Argument(string[] args,string key,string fallback)
@@ -272,7 +278,7 @@ namespace Idas3.Multiplayer
             lastDiagnosticFrame=diagnosticNow;previousFrameConnected=session.HandshakeComplete||session.IsRacing;
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-profile")>=0){QualitySettings.vSyncCount=0;Application.targetFrameRate=240;}
             if(host.Failure!=null){Finish(false,host.Failure);return;}
-            double timeout=ScoredCheck?900:returnCheck?360:240;
+            double timeout=ScoredCheck||OnlinePreloadCheck?900:returnCheck?360:240;
             if(Time.realtimeSinceStartupAsDouble-began>timeout){Finish(false,"Multiplayer diagnostic exceeded "+timeout+" seconds.");return;}
             if(session.IsRacing&&session.RaceReleased&&!returnCheckInProgress&&!ScoredCheck)ObserveRace();
         }
@@ -355,12 +361,18 @@ namespace Idas3.Multiplayer
         {
             yield return Frames(5);Check(host.Ready,"Native game did not initialize.");
             menu=FindFirstObjectByType<Idas3MultiplayerMenu>();Check(menu!=null,"Multiplayer menu component is missing.");
+            if(OnlinePreloadCheck)yield return PreloadOfflineCourses();
             if(onlineCheck){yield return OnlineRuntimeCheck();yield break;}
             if(P2pRaceCheck){
                 session.ConfigureP2pSmokeScope(P2pScope);session.OpenMenu();
                 yield return Until(()=>session.Available,45,"Epic online services did not initialize for the isolated race.");
                 Check(session.TransportIndex==0&&session.SupportsPrivateRooms,"Online P2P race did not select a private-room online transport.");
                 yield return CheckOnlineIdentity();
+            }else if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-lan-entry-check")>=0){
+                Check(!ChallengerCheck&&OnlinePreloadCheck&&port==27035&&peerRoot.Length>0,"Normal LAN entry requires its isolated paired preload diagnostic.");
+                session.SelectTransport(1);session.OpenMenu();
+                Check(session.TransportIndex==1&&session.TransportName=="Direct LAN"&&session.Available&&!session.HasOnlinePlayerDetails,
+                    "Ordinary LAN selection did not initialize its direct transport.");
             }else session.ConfigureLocalTest(port,role=="host"?"SMOKE HOST":"SMOKE JOIN");
             if(course>=11){host.GameOptions.BeginEdit();host.GameOptions.Draft.replayOnline=true;Check(host.GameOptions.ApplyDraft(),"Enable online replay recording");}
             Check(session.Available,"The diagnostic transport is unavailable.");
@@ -389,6 +401,12 @@ namespace Idas3.Multiplayer
                     role=role,code=roomCode,phase="room-open",port=P2pRaceCheck?0:port,course=course,utc=DateTime.UtcNow.ToString("O"),probeScope=P2pRaceCheck?P2pScope:""},true));
             }else{
                 Phase("joining");
+                if(OnlinePreloadCheck)yield return Until(()=>File.Exists(Path.Combine(peerRoot,"room.json")),30,"Preload host did not open its local room.");
+                if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-lan-entry-check")>=0){
+                    var notice=JsonUtility.FromJson<RoomNotice>(File.ReadAllText(Path.Combine(peerRoot,"room.json")));
+                    Check(notice!=null&&notice.role=="host"&&notice.port==27035&&!string.IsNullOrEmpty(notice.code),"Missing normal LAN host address.");
+                    address=notice.code;
+                }
                 if(P2pRaceCheck){
                     string noticePath=Path.Combine(peerRoot,"room.json");
                     yield return Until(()=>File.Exists(noticePath),60,"The private P2P host did not publish its room.");
@@ -408,17 +426,27 @@ namespace Idas3.Multiplayer
             if(ChallengerCheck){
                 var overlay=host.GetComponent<Idas3ChallengerOverlay>();
                 yield return Until(()=>overlay.Active,5,"Admitted peer did not announce challenger");
+                RecordChallengerState("announced");
                 Check(!overlay.SearchingVisible&&!session.CanReady&&!menu.IsOpen,"Found match left search badge/Ready/lobby visible");
-                var tick=host.Status.simulationTicks;yield return Frames(8);
-                Check(host.Status.simulationTicks==tick,"Offline race advanced under challenger banner");
+                var tick=host.Status.simulationTicks;
                 yield return new WaitForSecondsRealtime(.45f);
+                Check(host.Status.simulationTicks==tick,"Offline race advanced under challenger banner");
+                RecordChallengerState("before-capture");
                 yield return CaptureChallenger("challenge-received");
+                RecordChallengerState("after-capture");
                 if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-challenger-drop-check")>=0){
-                    if(role=="join")session.LeaveRoom();
+                    if(role=="join"){RecordChallengerState("leaving");session.LeaveRoom();}
                     yield return Until(()=>!session.HandshakeComplete&&!overlay.Active,10,"Disconnected challenger retained input/modal hold");
+                    RecordChallengerState("cancelled");
                     if(role=="host"){
-                        tick=host.Status.simulationTicks;yield return Frames(15);
-                        Check((host.Status.flags&1u)==0&&host.Status.simulationTicks>tick,"Cancelled challenger did not resume offline race");
+                        // Hidden players can render 15 frames in less than one
+                        // 60 Hz simulation tick. Observe native progress, not
+                        // a machine-dependent number of Unity frames.
+                        tick=host.Status.simulationTicks;
+                        yield return Until(()=>host.Status.simulationTicks>=tick+3,2,"Cancelled challenger did not resume offline race");
+                        RecordChallengerState("resumed-three-ticks");
+                        Check((host.Status.flags&1u)==0&&host.Status.racePhase==2&&!menu.IsOpen,
+                            "Cancelled challenger changed the running offline race owner");
                     }
                     Check(!overlay.SearchingVisible&&!session.ChallengerPending,"Disconnected challenger retained search badge");
                     Finish(true,null);yield break;
@@ -429,6 +457,7 @@ namespace Idas3.Multiplayer
                 File.WriteAllText(Path.Combine(root,"challenger-report.json"),JsonUtility.ToJson(new ChallengerReport{passed=true,announcements=overlay.Announcements,role=role},true));
             }
             yield return Until(()=>session.CanReady,15,"Connected room did not finish challenger presentation");
+            if(OnlinePreloadCheck)ObservePreloadResources("connected-lobby");
             if(ChallengerCheck&&role=="host")session.SetRaceOptions(course,false,course==8,course==4||course==8);
             roomCode=session.RoomCode;Phase("car-agreement");
             session.SetCar(role=="host"?0:8);
@@ -574,6 +603,8 @@ namespace Idas3.Multiplayer
             yield return Until(()=>raceObserved&&session.RemoteSnapshotsReceived>=10&&lastLocal.raceTicks-firstLocalTick>=90,25,"Race snapshots did not begin moving.");
             Check(!host.ControlBindings.SuppressInput,"Private neutral input did not clear the controller-change release latch.");
             Check((host.DiagnosticSubmittedInput.flags&2u)==0&&HasKey(host.DiagnosticSubmittedInput,87),"Mapped private throttle did not reach the native driving packet.");
+            if(OnlinePreloadCheck){yield return VerifyOnlineAfterPreload();Finish(true,null);yield break;}
+            if(LoadingCheck){yield return VerifyRaceLoading();Finish(true,null);yield break;}
             if(RaceProgressCheck){yield return VerifyRaceProgress();Finish(true,null);yield break;}
             if(ManualCheck)yield return VerifyManualShifts();
             if(HeadlightsCheck)yield return VerifyOpponentHeadlights();
@@ -675,14 +706,39 @@ namespace Idas3.Multiplayer
             public bool passed,neutralResult,unhideable,saveUnchanged,acknowledged,windowCardVisible;
             public int checks;public ulong bridgeTicks,sourceTicks,raceTicks;public double frozenSeconds;public string capture;
         }
-        private string SaveFingerprint()
+        private string SaveFingerprint(bool includeResultReceipts=true)
         {
             string directory=Path.Combine(root,"userdata");var files=Directory.GetFiles(directory,"*",SearchOption.AllDirectories);Array.Sort(files,StringComparer.Ordinal);
             var text=new System.Text.StringBuilder();using(var sha=System.Security.Cryptography.SHA256.Create())foreach(string file in files){
-                text.Append(file.Substring(directory.Length+1).Replace('\\','/')).Append('=');
+                string relative=file.Substring(directory.Length+1).Replace('\\','/');
+                if(!includeResultReceipts&&(relative=="online_result_v1.json"||relative=="online_result_v1.json.previous"))continue;
+                if(!includeResultReceipts&&relative.EndsWith(".profile.lock",StringComparison.Ordinal)){
+                    Check(new FileInfo(file).Length==0,"Profile coordination lock unexpectedly contains progress data.");continue;
+                }
+                text.Append(relative).Append('=');
                 using(var stream=File.OpenRead(file))text.Append(BitConverter.ToString(sha.ComputeHash(stream)).Replace("-",""));text.Append('\n');
             }
             return text.ToString();
+        }
+        private void CheckNeutralResultReceipt(ulong raceId)
+        {
+            // The timeout receipt is expected durable bookkeeping. Validate it
+            // separately while the fingerprint still protects every profile,
+            // setting and leaderboard record byte, including the card counter.
+            string path=Path.Combine(root,"userdata","online_result_v1.json");
+            Check(File.Exists(path)&&File.Exists(path+".previous")&&!File.Exists(path+".pending"),"Neutral result receipt did not finish its durable write.");
+            var journal=new Idas3ResultJournal(new Idas3MultiplayerRecords(Path.Combine(root,"userdata")));
+            var read=typeof(Idas3ResultJournal).GetMethod("Read",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic);
+            Check(read!=null,"Production journal reader is unavailable to the diagnostic.");
+            object current=read.Invoke(journal,new object[]{path}),previous=read.Invoke(journal,new object[]{path+".previous"});
+            Check(JsonUtility.ToJson(current)==JsonUtility.ToJson(previous),"Neutral result receipt copies disagree.");
+            var entry=(Idas3ResultJournal.Entry)current.GetType().GetField("entry").GetValue(current);
+            Check(entry.raceId==raceId.ToString(System.Globalization.CultureInfo.InvariantCulture)&&entry.car==session.LocalCar&&
+                entry.winner==-1&&!entry.won&&entry.complete&&entry.battlePoints==0&&entry.reward.points==0&&entry.record.Equals(entry.previous),
+                "Neutral receipt changed points/history or belongs to a different race.");
+            Check(entry.reward.before.Length==entry.reward.after.Length,"Neutral receipt profile sizes differ.");
+            for(int i=0;i<entry.reward.before.Length;++i)
+                Check(entry.reward.before[i]==entry.reward.after[i],"Neutral receipt changed a tuning/profile/card-use word.");
         }
         private Idas3CarSnapshot ReadNativePose()
         {
@@ -697,7 +753,7 @@ namespace Idas3.Multiplayer
         [Serializable] private class ReturnLobbyReport
         {
             public string schema="idas3-connected-lobby-return-v1",role,phase,scope="Two actual isolated LAN clients. First race reaches native source timeout using neutral input and diagnostic 0.25-second frame steps; no result/rule state is forced. Guest uses the normal Enter result action. Both preserve transport/nonces/picks/cars, reset readiness, then re-ready and start a second race at normal wall-clock delta.";
-            public bool passed,naturalFinish,connectedLobby,savesUnchanged,secondCountdown,secondDrive,musicSelectionPreserved;
+            public bool passed,naturalFinish,connectedLobby,savesUnchanged,secondCountdown,secondDrive,musicSelectionPreserved,neutralReceiptVerified;
             public int checks,selectedMusic;public string roomCode,saveFingerprint;public double acceleratedWaitSeconds;
             public ulong firstRaceId,secondRaceId,firstFinishTicks,secondLocalTicks,secondRemoteTicks;
             public long secondReceived,secondSent;public uint[] secondPhases;public int[] secondDigits;
@@ -776,7 +832,7 @@ namespace Idas3.Multiplayer
             try{
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"race-verified.json")),35,"Peer did not finish its first-race validation.");
                 object transport=SessionField<object>("transport");ulong localNonce=SessionField<ulong>("localNonce"),remoteNonce=SessionField<ulong>("remoteNonce");
-                report.firstRaceId=SessionField<ulong>("raceId");report.saveFingerprint=SaveFingerprint();
+                report.firstRaceId=SessionField<ulong>("raceId");report.saveFingerprint=SaveFingerprint(false);
                 host.RaceMusic.Refresh();report.selectedMusic=host.RaceMusic.State.selectedIndex;
                 if(finishMusicCheck)Check(report.selectedMusic==-1,"Private finish-music fixture must retain the game-default song choice.");
                 var localPick=session.LocalChoice;var remotePick=session.RemoteChoice;int localCar=session.LocalCar;
@@ -790,7 +846,8 @@ namespace Idas3.Multiplayer
                 report.naturalFinish=host.Status.racePhase==3&&(session.LocalSnapshot.Finished||session.LocalSnapshot.TimeUp);
                 report.firstFinishTicks=session.LocalSnapshot.raceTicks;
                 Check(report.naturalFinish&&!session.DisconnectedFinish&&session.HandshakeComplete,"Connected result was not a natural native finish.");
-                Check(SaveFingerprint()==report.saveFingerprint,"Natural multiplayer result modified private profile/settings/records.");
+                CheckNeutralResultReceipt(report.firstRaceId);report.neutralReceiptVerified=true;
+                Check(SaveFingerprint(false)==report.saveFingerprint,"Natural multiplayer result modified private profile/settings/records.");
                 yield return Until(()=>menu.ResultsVisible&&menu.IsOpen&&menu.CanAcknowledgeReturnToLobby,5,"Finished race did not expose the controller-accessible Return to Lobby action.");
                 yield return CaptureMenu("return-results");
                 File.WriteAllText(Path.Combine(root,"return-results-ready.json"),"{\"ready\":true}");
@@ -822,7 +879,7 @@ namespace Idas3.Multiplayer
                 foreach(var player in session.Players)Check(!player.Ready,"Return retained another player's Ready state.");
                 Check(session.LocalSnapshot.sequence==0&&session.RemoteSnapshot.sequence==0&&session.SnapshotsSent==0&&session.RemoteSnapshotsReceived==0,"Return retained a prior race snapshot stream.");
                 Check(!host.PauseMenu.IsOpen&&!host.RaceMusicMenu.IsOpen,"Return left another input overlay active.");
-                Check(SaveFingerprint()==report.saveFingerprint,"Returning to connected lobby modified private saves.");
+                Check(SaveFingerprint(false)==report.saveFingerprint,"Returning to connected lobby modified private saves.");
                 if(LobbyChatCheck)yield return VerifyLobbyChat(true);
                 yield return CaptureMenu("returned-connected-lobby");
                 File.WriteAllText(Path.Combine(root,"returned-lobby-verified.json"),"{\"ready\":true}");
@@ -870,7 +927,7 @@ namespace Idas3.Multiplayer
                 host.RaceMusic.Refresh();report.musicSelectionPreserved=host.RaceMusic.State.selectedIndex==report.selectedMusic;
                 Check(report.musicSelectionPreserved,"Result/return flow changed the saved race music choice.");
                 yield return CaptureWorld("returned-lobby-second-race");
-                report.savesUnchanged=SaveFingerprint()==report.saveFingerprint;Check(report.savesUnchanged,"Second multiplayer race changed private saves.");
+                report.savesUnchanged=SaveFingerprint(false)==report.saveFingerprint;Check(report.savesUnchanged,"Second multiplayer race changed private saves.");
                 File.WriteAllText(Path.Combine(root,"second-race-verified.json"),"{\"verified\":true}");
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"second-race-verified.json")),20,"Peer did not verify its second race.");
                 if(showcaseCheck)yield return Idas3MultiplayerPresentationSmoke.VerifyWinnerAndReturn(host,session,root,role);
@@ -878,6 +935,8 @@ namespace Idas3.Multiplayer
                     driving=false;
                     yield return Until(()=>session.CanReturnToLobby,180,"Second race did not reach its result.");
                     yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,30,"Second result omitted original points.");
+                    CheckNeutralResultReceipt(report.secondRaceId);
+                    Check(SaveFingerprint(false)==report.saveFingerprint,"Second timeout changed private progress outside its receipt.");
                     File.WriteAllText(Path.Combine(root,"second-points-ready.txt"),session.ResultText);
                     yield return Until(()=>File.Exists(Path.Combine(peerRoot,"second-points-ready.txt")),10,"Peer did not reach second points page.");
                     if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-waiting-no-check")>=0){
@@ -1107,6 +1166,20 @@ namespace Idas3.Multiplayer
             }
         }
         [Serializable] private class ChallengerReport {public bool passed;public int announcements;public string role;public string scope="Private two-process matchmaking discovery over real TCP. Original challenge banner, background search/offline controls, cancellation, one notification and safe course/lobby transition. Internet service discovery is not claimed.";}
+        [Serializable] private class ChallengerState {
+            public string milestone,utc,session;public double seconds;
+            public ulong ticks;public uint flags;public int stage,racePhase;
+            public bool active,pending,connected,menuOpen;
+        }
+        private void RecordChallengerState(string milestone){
+            var overlay=host.GetComponent<Idas3ChallengerOverlay>();
+            var s=host.Status;
+            File.AppendAllText(Path.Combine(root,"challenger-state.jsonl"),JsonUtility.ToJson(new ChallengerState{
+                milestone=milestone,utc=DateTime.UtcNow.ToString("O"),seconds=diagnosticClock.Elapsed.TotalSeconds,
+                ticks=s.simulationTicks,flags=s.flags,stage=s.frontendStage,racePhase=s.racePhase,
+                active=overlay.Active,pending=session.ChallengerPending,connected=session.HandshakeComplete,
+                session=session.StateName,menuOpen=menu.IsOpen})+"\n");
+        }
         private IEnumerator CaptureChallenger(string name,int width=0,int height=0)
         {
             var overlay=host.GetComponent<Idas3ChallengerOverlay>();
@@ -1136,6 +1209,34 @@ namespace Idas3.Multiplayer
             var cameras=new List<Camera>();
             foreach(var item in Resources.FindObjectsOfTypeAll<Camera>())if(item!=null&&item.enabled&&item.gameObject.activeInHierarchy&&item.targetTexture==target)cameras.Add(item);
             cameras.Sort((a,b)=>a.depth.CompareTo(b.depth));foreach(var item in cameras)item.Render();
+            if(overlay.Active){
+                // Hidden windows may not have rendered the pending capture.
+                // First render records the old scene; the next presentation
+                // pass shows the frozen picture/banner, as on a visible frame.
+                overlay.ApplyFrame();Canvas.ForceUpdateCanvases();foreach(var item in cameras)item.Render();
+                var frozen=overlay.GetComponentInChildren<Idas3ChallengerBackdrop>();
+                Check(frozen!=null&&frozen.Captured,"Challenge background captured the composed scene");
+                Check(frozen.material.shader.isSupported,"Packaged challenger background shader is supported");
+                var badge=Array.Find(overlay.GetComponentsInChildren<UnityEngine.UI.RawImage>(true),g=>g.name=="Accepting challengers");
+                Check(!badge.gameObject.activeInHierarchy,"Live search badge remained over the frozen picture");
+                var snapshot=(RenderTexture)frozen.mainTexture;var before=RenderTexture.active;RenderTexture.active=snapshot;
+                var captured=new Texture2D(snapshot.width,snapshot.height,TextureFormat.RGB24,false);
+                captured.ReadPixels(new Rect(0,0,snapshot.width,snapshot.height),0,0);captured.Apply();RenderTexture.active=before;
+                File.WriteAllBytes(Path.Combine(root,name+"-background.png"),captured.EncodeToPNG());
+                if(role=="host"){
+                    var corners=new Vector3[4];badge.rectTransform.GetWorldCorners(corners);
+                    var low=RectTransformUtility.WorldToScreenPoint(overlayCanvas.worldCamera,corners[0]);
+                    var high=RectTransformUtility.WorldToScreenPoint(overlayCanvas.worldCamera,corners[2]);
+                    int x0=Mathf.Clamp(Mathf.FloorToInt(low.x/target.width*snapshot.width),0,snapshot.width-1);
+                    int x1=Mathf.Clamp(Mathf.CeilToInt(high.x/target.width*snapshot.width),0,snapshot.width);
+                    int y0=Mathf.Clamp(Mathf.FloorToInt(low.y/target.height*snapshot.height),0,snapshot.height-1);
+                    int y1=Mathf.Clamp(Mathf.CeilToInt(high.y/target.height*snapshot.height),0,snapshot.height);
+                    var pixels=captured.GetPixels32();int green=0;
+                    for(int y=y0;y<y1;y++)for(int x=x0;x<x1;x++){var p=pixels[y*snapshot.width+x];if(p.g>200&&p.r<80&&p.b<80)green++;}
+                    Check(green>20,"Frozen picture lost the host's accepting-challengers lettering: "+green);
+                }
+                Destroy(captured);
+            }
             camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();overlay.ApplyFrame();
             var old=RenderTexture.active;RenderTexture.active=target;
             var image=new Texture2D(target.width,target.height,TextureFormat.RGB24,false);image.ReadPixels(new Rect(0,0,target.width,target.height),0,0);image.Apply();RenderTexture.active=old;

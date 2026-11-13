@@ -77,10 +77,15 @@ int main(int argc,char** argv)try{
     original::OriginalTimeAttackTelemetrySnapshot trace;
     for(unsigned i=0;i<=20;++i){course.center.push_back({float(i*i),0,float(i*40)});trace.drivingPath.push_back({course.center.back(),i,0xff00ff00});}
     for(bool reverse:{false,true}){
-        const auto pages=course.analysisMaps(trace,reverse);check(pages.size()==5,"SRA page count changed");
+        auto directed=trace;
+        if(reverse){std::reverse(directed.drivingPath.begin(),directed.drivingPath.end());
+            for(unsigned i=0;i<directed.drivingPath.size();++i)directed.drivingPath[i].progressIndex=i;}
+        const auto pages=course.analysisMaps(directed,reverse);check(pages.size()==5,"SRA page count changed");
         for(const auto& page:pages){
-            check(!page.road.empty()&&page.road.front().from[1]<page.road.back().to[1],"Tsubaki SRA remains vertically mirrored");
-            for(const auto& line:page.driving)check(line.from[1]<=line.to[1],"Tsubaki trace was not flipped with the road");
+            // Reverse traversal runs up the same +Z-down map; it does not
+            // reverse the map axes. The trace fixture must travel with it.
+            check(!page.road.empty()&&(reverse?page.road.front().from[1]>page.road.back().to[1]:page.road.front().from[1]<page.road.back().to[1]),"Tsubaki SRA remains vertically mirrored");
+            for(const auto& line:page.driving)check(reverse?line.from[1]>=line.to[1]:line.from[1]<=line.to[1],"Tsubaki trace was not flipped with the road");
         }
     }
     course.id=9;const auto other=course.analysisMaps(trace,false);

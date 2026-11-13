@@ -19,6 +19,12 @@
       "name": "v3sS07tune",
       "chunks": 73,
       "textures": 28
+    },
+    {
+      "bank": "direct:optcrs",
+      "name": "optcrs",
+      "chunks": 9,
+      "textures": 9
     }
   ],
   "tables": [

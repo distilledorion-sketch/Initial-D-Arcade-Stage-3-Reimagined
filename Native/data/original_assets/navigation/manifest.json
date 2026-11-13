@@ -1,0 +1,125 @@
+{
+  "schema": "idas3-navigation-v1",
+  "courses": [
+    {
+      "code": "ez",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_ez_pol.tbl": "93211179850cb5603902e5f00af335e61c14e0f8f05b3cd30aaf86ed11bf98fc",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_ez_pol.bin.nz": "fd098606a21a0e535a586e479ac8711d6b0f90424d21810ef6d3605bda6a31a6",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_ez_tex.tbl": "ded183fa18a4862ecbb157c049a81ab29f13f9394b7ba37aa89df6f65c7b9895",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_ez_tex.bin.nz": "e1f1491dc354b6a48f7ae9abcdabddedba7092a9aa6f755274743115e0571f93",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_ez_path.bin": "5da77da4781b79542abe8bb65b47d9aec690317b32721663f32de16eb071d479"
+      },
+      "outputs": {
+        "navigation.idasmesh": "41dd572ce3939c83017afefde063072d6c70f4b56a865c4e063172c3cc20e307",
+        "path.bin": "5da77da4781b79542abe8bb65b47d9aec690317b32721663f32de16eb071d479",
+        "textures.idastex": "d0fe2ff4044f3e6e43b82646c8dfd07d56d105a27fbc070c319cfe87bd9de0d6"
+      }
+    },
+    {
+      "code": "nm",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_nm_pol.tbl": "8c8b3f796a8e6bdf41d547bd4bb2da1b6f375ca5fc41e47d7b4afb7265f3075d",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_nm_pol.bin.nz": "0f43a3d9f1b9fed2a1e5fafa58e830506c5c5d7c7d47b400b8f9387707471af2",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_nm_tex.tbl": "fac383fe557a4481305d837c08cc18afc2c6bd04bec1af7ac701e7f22220d4c0",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_nm_tex.bin.nz": "7c4b1162219429d12b38a7709fe66df477e86095362c7bcef18bf1cd24dba4cd",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_nm_path.bin": "b66f7ff2c4f3aa1f93d59c888544ee8b5e550ca0a54d5d2a61d3a7cba9904250"
+      },
+      "outputs": {
+        "navigation.idasmesh": "5fcb4dc1c3015404a5d040caf400d48c7c4a88f8bc44afdf8bb921d2bab3594c",
+        "path.bin": "b66f7ff2c4f3aa1f93d59c888544ee8b5e550ca0a54d5d2a61d3a7cba9904250",
+        "textures.idastex": "8e69216e0d2f1f3e9cde47fed2e592489c9df4d7813039a44a0de189fc46c005"
+      }
+    },
+    {
+      "code": "hd",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_hd_pol.tbl": "93211179850cb5603902e5f00af335e61c14e0f8f05b3cd30aaf86ed11bf98fc",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_hd_pol.bin.nz": "bb553b317c12e57c16cd5152dc7fe551b03f119c63e13ec007d92dcc59c39a40",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_hd_tex.tbl": "ded183fa18a4862ecbb157c049a81ab29f13f9394b7ba37aa89df6f65c7b9895",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_hd_tex.bin.nz": "3661495369bbe11f4cdeaf44e7b2fc10f0d33979a6c5dc55c2c38551074d62a6",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_hd_path.bin": "29154e90a02ef221b8678ed198d383005da2708f2a08db228e7da796c2a6a778"
+      },
+      "outputs": {
+        "navigation.idasmesh": "657a65a8cbbd024e776c6ab311b8abddba8618254e7f880459c90ec048a8abf9",
+        "path.bin": "29154e90a02ef221b8678ed198d383005da2708f2a08db228e7da796c2a6a778",
+        "textures.idastex": "4906d5f2689bfbcf0c2a7c3444f9b40a504e0ccd1e0a37aae43e32e9bc5b925c"
+      }
+    },
+    {
+      "code": "df",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_df_pol.tbl": "93211179850cb5603902e5f00af335e61c14e0f8f05b3cd30aaf86ed11bf98fc",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_df_pol.bin.nz": "17e1f7275f40569319d5cadbdeb3f051d5034ed88858ad549986efc2c6d3c402",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_df_tex.tbl": "ded183fa18a4862ecbb157c049a81ab29f13f9394b7ba37aa89df6f65c7b9895",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_df_tex.bin.nz": "1f90e5d88b69c88f74af171ce8520633eb9312b567783212463c270ff3524fce",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_df_path.bin": "4782e91bad9889c6b62ceda193f8b96d9351b1fff6695c3ed2dc6bb7849d32ae"
+      },
+      "outputs": {
+        "navigation.idasmesh": "078d11fc5500ca2cb7b5f49bbbd4144adb72a2d0d3c2e85e9db0de26fe487a53",
+        "path.bin": "4782e91bad9889c6b62ceda193f8b96d9351b1fff6695c3ed2dc6bb7849d32ae",
+        "textures.idastex": "df20424dc7e706a6b0d806a15fb8eb6080f58f5e20a5b12df0b17527869cdba0"
+      }
+    },
+    {
+      "code": "vh",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_vh_pol.tbl": "fecd24d97a99b5fb4296e659f85c7158fdbc14d45ebe274b8a2fd708b46deb9f",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_vh_pol.bin.nz": "1136c6efa3fc906657d124322964bdd6bdf907395e9c93341d8716a000dad1d0",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_vh_tex.tbl": "fac383fe557a4481305d837c08cc18afc2c6bd04bec1af7ac701e7f22220d4c0",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_vh_tex.bin.nz": "505170b42229a02697e13316f62393c5f7ed91749d2710fbdf1bc6ac7a280b5e",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_vh_path.bin": "5a0b3af696ac497ebba1172b9ea3b4e90ceb4a6e2329e56807d2c4d39d264e20"
+      },
+      "outputs": {
+        "navigation.idasmesh": "b22c0e80adc8ebd07e5eba71b74734862735e40dfe2851530884e5cb396333af",
+        "path.bin": "5a0b3af696ac497ebba1172b9ea3b4e90ceb4a6e2329e56807d2c4d39d264e20",
+        "textures.idastex": "05e9c81a01295d14ed84d38c8f3d0953e83914968e85260a1ebdb0fe861eeeec"
+      }
+    },
+    {
+      "code": "uh",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_uh_pol.tbl": "8c8b3f796a8e6bdf41d547bd4bb2da1b6f375ca5fc41e47d7b4afb7265f3075d",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_uh_pol.bin.nz": "55c1b55355a8a0dc35b45f1808dc7be5c085e853f92b7acde3084a8352f6b6ee",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_uh_tex.tbl": "fac383fe557a4481305d837c08cc18afc2c6bd04bec1af7ac701e7f22220d4c0",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_uh_tex.bin.nz": "be233aaad7048937f3742a212f7c079e9a1fe26e8469aeea2e4e4687c89adbfc",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_uh_path.bin": "9a97407351eebc9c0bc8884a143151f2417ad5022b95327ae7955c1ad8791531"
+      },
+      "outputs": {
+        "navigation.idasmesh": "c70024387addbf94197bca5fe03824f911e656b80859dcc6402701c8d8f6bb80",
+        "path.bin": "9a97407351eebc9c0bc8884a143151f2417ad5022b95327ae7955c1ad8791531",
+        "textures.idastex": "cbd9f270f02946a7c25d77e81fdb1c127c56f7088d22aec11f953bc1033d3389"
+      }
+    },
+    {
+      "code": "sy",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_sy_pol.tbl": "028b32cb87038e68978b6ec790f55ce9a87a7c401a1dad0d208c5ce44085dfa4",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_sy_pol.bin.nz": "055c916eef2f6a6ad30008e792462ed15100d15dcf48e4cd281489b91efa8fad",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_sy_tex.tbl": "06584e003dc45b3c8f961d1d99841cbd90f55cee666b55cbcd6b6550f56e0d8d",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_sy_tex.bin.nz": "4aaa67e98e842addca9a0c65086a871cd62ba34a10f3504bb1ea3a9d239befc5",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_sy_path.bin": "f923cd5cc07e8abd34c6f1eddbf305ff40d28e7672fbdca97f1bd35b32de69eb"
+      },
+      "outputs": {
+        "navigation.idasmesh": "c366e331b1387f22b9cbdf82a909938eeaac1053acf93e373435e6bc12cff641",
+        "path.bin": "f923cd5cc07e8abd34c6f1eddbf305ff40d28e7672fbdca97f1bd35b32de69eb",
+        "textures.idastex": "1a12bcd4c0c12620f99f576dc4be2b4ac82230064cf8765c5310b2a8b72216fb"
+      }
+    },
+    {
+      "code": "tu",
+      "inputs": {
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_tu_pol.tbl": "6107872f7f1ae60339e2f98fac5c0e5196086e9fd9c5c8ead34dcff78b05eb5c",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_tu_pol.bin.nz": "b8a1cc7188885cef329ac41c17e32394e85db2b2f3b07848d0255af56f1a8764",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_tu_tex.tbl": "13c04548b78cba81ed73f4b84189a296c8ceb5723826e3bd47f26379bf0a6077",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\model\\navi\\navi_tu_tex.bin.nz": "06596f7c5ad4088a4203fcc77665b09535d12e868b495b363523daa873b8be37",
+        "D:\\Codex\\Initial D Arcade Stage 3 Recompiled - Crash Safe Test\\game files\\driveA\\HOSTFS\\path\\navi_tu_path.bin": "04d95e31ad4549017568b067cccdb2981617c74cee6e26eabe47639661a798b2"
+      },
+      "outputs": {
+        "navigation.idasmesh": "a90ecb95798f3fad04a68308bee6584f6a55118a3d5ea06cfeaff43ce95b9332",
+        "path.bin": "04d95e31ad4549017568b067cccdb2981617c74cee6e26eabe47639661a798b2",
+        "textures.idastex": "0467d80b5995cc9d503938749c25cff9627b405e54d0f6d2f0f190feb2213731"
+      }
+    }
+  ]
+}

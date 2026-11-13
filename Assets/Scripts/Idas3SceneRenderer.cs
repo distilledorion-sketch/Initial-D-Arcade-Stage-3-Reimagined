@@ -51,6 +51,11 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     public int UploadedVertexCount { get; private set; }
     public int GeometryUploadCount { get; private set; }
     public int MaterialUpdateCount { get; private set; }
+    internal int MeshResizeCount { get; private set; }
+    internal int MaterialConfigurationCount { get; private set; }
+    internal int QueueUpdateCount { get; private set; }
+    internal int DynamicRangeReuseCount { get; private set; }
+    internal int CompatibleRangeReuseCount { get; private set; }
     public int DepthCandidateCount => depthCandidates.Count;
     public int DepthDrawCount { get; private set; }
     public int DepthBufferRebuildCount { get; private set; }
@@ -153,6 +158,9 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     };
     private readonly Dictionary<ulong, RangeObject> geometryLookup = new Dictionary<ulong, RangeObject>();
     private readonly List<RangeObject> selectedRanges = new List<RangeObject>();
+    private readonly List<RangeObject> movingRangeCandidates = new List<RangeObject>();
+    private readonly Dictionary<RangeMaterialKey, RangeObject> compatibleRanges = new Dictionary<RangeMaterialKey, RangeObject>();
+    private bool rangeAllocationReuse;
     private int selectionStamp, freeRangeCursor;
     private bool rangeCacheOff;
     private bool geometryIdsOff, validateGeometryIds;
@@ -219,6 +227,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         public ulong geometryKey;
         public ulong geometryId;
         public RangeObject nextGeometry;
+        public RangeObject nextCompatible;
         public NativeArray<SceneVertex> vertexCache;
         public bool cachedBillboard;
         public SceneRange materialRange;
@@ -229,6 +238,14 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         public int layer = SceneLayer;
         public bool active = true;
         public Bounds bounds;
+    }
+
+    private readonly struct RangeMaterialKey : IEquatable<RangeMaterialKey> {
+        private readonly SceneRange range;
+        public RangeMaterialKey(SceneRange value) { range=value; }
+        public bool Equals(RangeMaterialKey other) => SameRange(range,other.range);
+        public override bool Equals(object other) => other is RangeMaterialKey key && Equals(key);
+        public override int GetHashCode() => unchecked(new DepthMaterialKey(range).GetHashCode()*31+(int)range.count);
     }
 
     // The depth pass writes only nearest covered depth, with no colour,
@@ -308,6 +325,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             throw new InvalidOperationException("Unity scene ABI mismatch.");
         main = camera != null ? camera : throw new ArgumentNullException(nameof(camera));
         string[] arguments = Environment.GetCommandLineArgs();
+        rangeAllocationReuse = Array.IndexOf(arguments, "-idas3-range-allocation-baseline") < 0;
         sceneLayoutBaseline = Array.IndexOf(arguments, "-idas3-scene-layout-baseline") >= 0;
         geometryIdsOff = Array.IndexOf(arguments, "-idas3-geometry-ids-off") >= 0;
         validateGeometryIds = Array.IndexOf(arguments, "-idas3-validate-geometry-ids") >= 0;
@@ -420,6 +438,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         if (!initialized) throw new InvalidOperationException("Initialize the Unity scene renderer first.");
         Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
         UploadedVertexCount = GeometryUploadCount = MaterialUpdateCount = 0;
+        MeshResizeCount = MaterialConfigurationCount = QueueUpdateCount = DynamicRangeReuseCount = CompatibleRangeReuseCount = 0;
         var frame = new SceneFrame { size = 256 };
         if (Idas3SceneGetFrame(ref frame) != 1 || frame.version != 1) throw new InvalidOperationException("Native scene frame is unavailable.");
         if (frame.frameGeneration == 0) return;
@@ -505,7 +524,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                     item.parentScope == range.lightScope && item.materialConfigured &&
                     item.materialTextureGeneration == textureGeneration && SameRange(item.materialRange, range)) {
                     if (item.materialQueue != queue) {
-                        item.material.renderQueue = queue; item.materialQueue = queue; ++MaterialUpdateCount;
+                        item.material.renderQueue = queue; item.materialQueue = queue; ++MaterialUpdateCount; ++QueueUpdateCount;
                     }
                     if (!SceneLayoutReused && item.depthCandidate) depthCandidates.Add(item);
                     continue;
@@ -517,6 +536,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 }
                 if (item.count != range.count)
                 {
+                    ++MeshResizeCount;
                     if (item.vertexCache.IsCreated) item.vertexCache.Dispose();
                     item.mesh.Clear(); item.mesh.SetVertexBufferParams((int)range.count, layout);
                     item.mesh.SetIndexBufferParams((int)range.count, IndexFormat.UInt32);
@@ -581,13 +601,13 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 // Lighting and diagnostic camera changes are shader globals.
                 if (diagnosticPerfBaseline || !item.materialConfigured ||
                     item.materialTextureGeneration != textureGeneration || !SameRange(item.materialRange, range)) {
-                    ConfigureMaterial(item.material, range, queue); ++MaterialUpdateCount;
+                    ConfigureMaterial(item.material, range, queue); ++MaterialUpdateCount; ++MaterialConfigurationCount;
                     item.materialRange = range; item.materialQueue = queue; item.materialTextureGeneration = textureGeneration;
                     item.materialConfigured = true; item.depthMaterialDirty = true;
                 }
                 else if (item.materialQueue != queue) {
                     item.material.renderQueue = queue; item.materialQueue = queue;
-                    ++MaterialUpdateCount;
+                    ++MaterialUpdateCount; ++QueueUpdateCount;
                 }
                 item.depthCandidate = !diagnosticAlphaDepthOff && (range.flags & 1) != 0 && IsCourseGeometry(range) && nativeList == 2 &&
                     ((range.tsp >> 29) & 7) == 4 && ((range.tsp >> 26) & 7) == 5;
@@ -829,6 +849,31 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             check(sequential, "Scenery depth group changed source triangle ordering.");
         }
     }
+    internal unsafe void VerifySceneBuffers(Action<bool, string> check)
+    {
+        check(!diagnosticPerfBaseline && !rangeCacheOff, "Source mesh verification requires range ownership.");
+        var frame=CurrentFrame;
+        var seen=new HashSet<RangeObject>();int rank=0;
+        foreach(uint list in SourceListOrder)for(int i=0;i<frame.rangeCount;++i) {
+            var range=((SceneRange*)frame.ranges.ToPointer())[i];
+            uint nativeList=(range.flags&1)!=0?(range.pcw>>24)&7:0;
+            if(nativeList!=list||range.count==0||range.viewMask==0)continue;
+            var item=selectedRanges[i];
+            check(item!=null && item.active && seen.Add(item), "Source ranges share or lost a renderer.");
+            check(item.count==range.count && item.parentScope==range.lightScope && SameRange(item.materialRange,range),
+                "Source renderer retained incompatible geometry or material state.");
+            check(item.material.renderQueue==1000+rank++, "Source draw order changed.");
+            using var readback=Mesh.AcquireReadOnlyMeshData(item.mesh);
+            var mesh=readback[0];var vertices=mesh.GetVertexData<SceneVertex>();var indices=mesh.GetIndexData<uint>();
+            check(vertices.Length==range.count && mesh.GetSubMesh(0).indexCount==range.count, "Source mesh size changed.");
+            check(UnsafeUtility.MemCmp(NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(vertices),
+                (SceneVertex*)frame.vertices.ToPointer()+range.first,(long)range.count*64)==0, "Source mesh contains stale moving vertices.");
+            bool sequential=true;for(int j=0;j<range.count;++j)sequential&=indices[j]==(uint)j;
+            check(sequential, "Source mesh changed triangle order.");
+        }
+        check(rank==ActiveMeshCount,"Source mesh verification missed active ranges.");
+    }
+
     // Match exact vertex bytes before claiming any free renderer: an inserted
     // roadside range must not evict every unchanged range later in the list.
     // Hash collisions are resolved with a full comparison, never treated as hits.
@@ -842,7 +887,11 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         if(diagnosticPerfBaseline || rangeCacheOff)return;
         ++selectionStamp;freeRangeCursor=0;
         while(selectedRanges.Count<frame.rangeCount)selectedRanges.Add(null);
-        bool lookupNeeded=false;
+        if(rangeAllocationReuse) {
+            while(movingRangeCandidates.Count<frame.rangeCount)movingRangeCandidates.Add(null);
+            for(int i=0;i<frame.rangeCount;++i)movingRangeCandidates[i]=null;
+        }
+        bool lookupNeeded=false;int visibleRanges=0,selectedCount=0;
         // Most frames keep the same ordering. Immutable identities avoid
         // touching vertex data; other candidates use cheap endpoint words
         // here and a complete byte comparison in the upload pass.
@@ -852,10 +901,16 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             uint list=(r.flags&1)!=0?(r.pcw>>24)&7:0;
             if(r.count==0||r.viewMask==0||(list!=0&&list!=4&&list!=2))continue;
             if((ulong)r.first+r.count>frame.vertexCount)throw new InvalidOperationException("Invalid cached range bounds");
+            ++visibleRanges;
             var data=(SceneVertex*)frame.vertices.ToPointer()+(int)r.first;
             bool match=false;
             if(previous!=null&&previous.selectedStamp!=selectionStamp&&previous.count==r.count&&previous.vertexCache.IsCreated&&previous.cachedBillboard==((r.flags&4)!=0)) {
                 ulong identity=geometryIdsOff?0:((ulong*)geometryIds.ToPointer())[i];
+                // Only retain the allocation, never the moving vertex contents.
+                // Exact geometry matches get first choice before these fallbacks.
+                if(rangeAllocationReuse && identity==0 && previous.geometryId==0 && previous.materialConfigured &&
+                    previous.materialTextureGeneration==textureGeneration && SameRange(previous.materialRange,r))
+                    movingRangeCandidates[i]=previous;
                 if(identity!=0&&identity==previous.geometryId)match=true;
                 else {
                 var cached=(SceneVertex*)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(previous.vertexCache);
@@ -863,10 +918,10 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 match=a[0]==b[0]&&a[1]==b[1]&&lastA[0]==lastB[0]&&lastA[1]==lastB[1];
                 }
             }
-            if(match){previous.selectedStamp=selectionStamp;selectedRanges[i]=previous;}
+            if(match){previous.selectedStamp=selectionStamp;selectedRanges[i]=previous;++selectedCount;}
             else if(IsCourseGeometry(r))lookupNeeded=true;
         }
-        if(!lookupNeeded)return; // Moving actors alone do not need a world lookup.
+        if(lookupNeeded) {
         geometryLookup.Clear();
         foreach(var item in objects) {
             if(!item.vertexCache.IsCreated||item.selectedStamp==selectionStamp)continue;
@@ -887,9 +942,40 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 if(candidate.selectedStamp!=selectionStamp && candidate.count==r.count && candidate.cachedBillboard==billboard &&
                    ((!geometryIdsOff && ((ulong*)geometryIds.ToPointer())[i]!=0 && ((ulong*)geometryIds.ToPointer())[i]==candidate.geometryId) ||
                     UnsafeUtility.MemCmp(data,NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(candidate.vertexCache),(long)r.count*64)==0)) {
-                    candidate.selectedStamp=selectionStamp;selectedRanges[i]=candidate;break;
+                    candidate.selectedStamp=selectionStamp;selectedRanges[i]=candidate;++selectedCount;break;
                 }
                 candidate=candidate.nextGeometry;
+            }
+        }
+        }
+        if(rangeAllocationReuse)for(int i=0;i<frame.rangeCount;++i) {
+            var candidate=movingRangeCandidates[i];
+            if(selectedRanges[i]!=null||candidate==null||candidate.selectedStamp==selectionStamp)continue;
+            candidate.selectedStamp=selectionStamp;selectedRanges[i]=candidate;++selectedCount;++DynamicRangeReuseCount;
+        }
+        // Pool construction costs more than recycling a handful of small
+        // ranges. Reserve it for shifts that would otherwise churn many buffers.
+        if(rangeAllocationReuse && lookupNeeded && visibleRanges-selectedCount>=8) {
+            // A visibility-window change shifts moving cars to other source
+            // indices. Reuse compatible allocations after every exact geometry
+            // match is reserved. Uploads still compare all vertex bytes, and
+            // the submission pass still assigns each exact source-order queue.
+            compatibleRanges.Clear();
+            foreach(var item in objects) {
+                if(item.selectedStamp==selectionStamp || !item.materialConfigured || !item.vertexCache.IsCreated ||
+                    item.materialTextureGeneration!=textureGeneration)continue;
+                var key=new RangeMaterialKey(item.materialRange);
+                compatibleRanges.TryGetValue(key,out item.nextCompatible);compatibleRanges[key]=item;
+            }
+            for(int i=0;i<frame.rangeCount;++i) {
+                if(selectedRanges[i]!=null)continue;
+                var range=((SceneRange*)frame.ranges.ToPointer())[i];
+                uint list=(range.flags&1)!=0?(range.pcw>>24)&7:0;
+                if(range.count==0||range.viewMask==0||(list!=0&&list!=4&&list!=2))continue;
+                var key=new RangeMaterialKey(range);
+                if(!compatibleRanges.TryGetValue(key,out var item)||item==null)continue;
+                compatibleRanges[key]=item.nextCompatible;
+                item.selectedStamp=selectionStamp;selectedRanges[i]=item;++CompatibleRangeReuseCount;
             }
         }
     }

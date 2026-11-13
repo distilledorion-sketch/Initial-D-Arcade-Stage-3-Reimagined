@@ -21,6 +21,7 @@
 #include "../tests/sadamine_boundary_app_tests.inl"
 #include "../tests/online_collision_app_tests.inl"
 #include "../tests/shared_times_app_tests.inl"
+#include "../tests/shared_cache_app_checks.inl"
 #include "../tests/player_replays_app_tests.inl"
 #include "../tests/time_attack_ghost_app_tests.inl"
 #include "shared_time_import.h"
@@ -28,6 +29,14 @@
 #include "../tests/performance_options_app_tests.inl"
 #include "../tests/rear_view_app_tests.inl"
 #include "../tests/mode_flow_unity_fixture.inl"
+#include "../tests/roadside_dust_race_fixture.inl"
+#include "../tests/ending_weather_unity_fixture.inl"
+#include "../tests/ending_backfire_unity_fixture.inl"
+#include "../tests/ending_flare_unity_fixture.inl"
+#include "../tests/ending_leaf_unity_fixture.inl"
+#include "../tests/ending_tire_unity_fixture.inl"
+#include "../tests/ending_glare_unity_fixture.inl"
+#include "../tests/stopped_mirror_unity_fixture.inl"
 #include "../tests/save_change_menu_fixture.inl"
 #include <mutex>
 #include <condition_variable>
@@ -41,6 +50,7 @@ static_assert(sizeof(Idas3UnityStatus)==80);
 static_assert(sizeof(Idas3RivalStatus)==56);
 static_assert(sizeof(Idas3Options)==40);
 static_assert(sizeof(Idas3WheelState)==40);
+static_assert(sizeof(Idas3FeedbackState)==40);
 static_assert(sizeof(Idas3HudTelemetry)==40);
 static_assert(sizeof(Idas3OrnamentTelemetry)==40);
 static_assert(sizeof(Idas3PresentationTiming)==24);
@@ -203,8 +213,18 @@ void assignInput(HostInput& dst,const Idas3UnityInput& src,bool focused){
 }
 void frame(UnityRuntime& r,const Idas3UnityInput& input){
     if(!r.app)throw std::logic_error("Unity game is not initialized");auto& app=*r.app;
-    const bool focused=(input.flags&1)!=0||app.challengerNotice;
-    const double dt=app.challengerNotice?0:input.deltaSeconds;
+    if(app.challengerNotice){
+        // The original interrupt displays the preceding captured frame. Do
+        // not re-enter its menu/result owner or accept commands at dt=0: those
+        // owners may have pending transitions independent of their clocks.
+        // Only the notification's audio clock advances until commit/cancel.
+        if(r.sceneMode)idas3::submitUnityAudioOutput(app.audio,input.deltaSeconds,
+            idas3::UnityAudioFrameState{0,0,0,0,false,false,app.audio.enabled});
+        else app.audio.update(0,0,0,0,false);
+        ++r.frames;return;
+    }
+    const bool focused=(input.flags&1)!=0;
+    const double dt=input.deltaSeconds;
     if(app.multiplayer.active)app.paused=false;
     else if(app.active&&!focused&&!app.menu&&!app.extraModeVisitActive()&&!app.legendVisitActive&&!app.preRaceDialogueActive&&!app.loadingActive&&app.race.phase!=RacePhase::Finished){app.paused=true;app.clock.reset();}
     app.active=focused;assignInput(app.input,input,focused);
@@ -239,7 +259,21 @@ void frame(UnityRuntime& r,const Idas3UnityInput& input){
                 target=std::min(target,std::sqrt(80.f/std::max(.001f,curvature)));
             }
             target=std::clamp(target,32.f,58.f);
-            const Vec3 aim=app.sampleRaceDistance(p.sample.distance+look).center-app.vehicle.position;
+            const auto aimSample=app.sampleRaceDistance(p.sample.distance+look);
+            Vec3 aimPoint=aimSample.center;
+            if(app.importedCourse&&app.importedCourse->id==15){
+                // The authored Tsubaki centre path grazes the fork island.
+                // This isolated coverage driver must steer around it, just as
+                // a player does. Choosing the driver's left branch exercises
+                // opposite physical branches in forward/reverse test runs.
+                const auto& source=app.importedCourse->source;
+                const float distance=app.reverse?app.course.length-aimSample.distance:aimSample.distance;
+                const float blend=std::clamp(std::min((distance-source.cumulative.at(2964)+45.f)/30.f,
+                    (source.cumulative.at(2980)+45.f-distance)/30.f),0.f,1.f);
+                aimPoint=aimPoint+(aimSample.left-aimPoint)*(.55f*blend);
+                if(blend>.2f)target=std::min(target,18.f);
+            }
+            const Vec3 aim=aimPoint-app.vehicle.position;
             const float angle=wrapAngle(std::atan2(aim.x,aim.z)-app.vehicle.yaw);
             const float demand=std::clamp(3.5f*std::atan2(2*app.config.wheelbase*std::sin(angle),look)/recoveredSteeringLimit,-1.f,1.f);
             r.diagnosticSteer+=std::clamp(demand-r.diagnosticSteer,-.07f,.07f);
@@ -331,19 +365,39 @@ int IDAS3_UNITY_CALL Idas3SharedReadPersonalImport(char* output,int capacity){
 }
 int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* values,int count,int enabled){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
-    if(!r.sceneMode||!r.app||count<0||count>2112||(count&&!values))return 0;
+    // Same retention as TimeAttackRecords and the service snapshot: top ten
+    // plus the other 34 model bests for every course/direction/weather.
+    if(!r.sceneMode||!r.app||count<0||count>int(supportedConditionCount*2u*(10u+35u-1u))||(count&&!values))return 0;
     try{
-        TimeAttackRecords next;
+        std::vector<TimeAttackEntry> rows;rows.reserve(std::size_t(count));
         for(int i=0;i<count;++i){const auto* p=values+i*14;TimeAttackEntry e;
             if(p[0]<0||p[1]<0||p[2]<0||p[3]<=0||p[9]<-1||p[9]>1||p[10]<-1||p[10]>1)return 0;
             e.condition=unsigned(p[0]);e.weather=unsigned(p[1]);e.car=unsigned(p[2]);e.ticks6000=unsigned(p[3]);
             for(int n=0;n<5;++n){if(p[4+n]<0||p[4+n]>221)return 0;e.nameGlyphs[n]=std::uint8_t(p[4+n]);}
             e.manual=p[9]==1;e.night=p[10]==1;e.metadataUnknown=p[9]<0||p[10]<0;
             for(int n=0;n<3;++n){if(p[11+n]<0)return 0;e.intermediate6000[n]=unsigned(p[11+n]);}
-            next.record(e);
+            rows.push_back(e);
         }
+        TimeAttackRecords next;next.recordBatch(rows);
         r.app->setSharedRecords(std::move(next),enabled!=0);return 1;
     }catch(...){return 0;}
+}
+// Readback is diagnostic-only; ordinary games cannot inspect or modify saves
+// through this entry point. Return the exact native rows for ABI verification.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSharedRecordsDiagnostic(int32_t* values,int capacity){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    std::error_code error;
+    if(!r.sceneMode||!r.app||r.app->saveRoot.filename()!="userdata"||
+       !fs::is_regular_file(r.app->saveRoot.parent_path()/"ISOLATED_SCENE_TEST.txt",error))return -1;
+    const auto& rows=r.app->sharedRecords.entries();
+    if(capacity<0||std::size_t(capacity)<rows.size()*14||(!rows.empty()&&!values))return -1;
+    for(const auto& e:rows){
+        *values++=int(e.condition);*values++=int(e.weather);*values++=int(e.car);*values++=int(e.ticks6000);
+        for(auto glyph:e.nameGlyphs)*values++=int(glyph);
+        *values++=e.metadataUnknown?-1:int(e.manual);*values++=e.metadataUnknown?-1:int(e.night);
+        for(auto split:e.intermediate6000)*values++=int(split);
+    }
+    return int(rows.size());
 }
 // Available only in an explicitly isolated diagnostic process; never changes
 // the ordinary driver directory or active multiplayer session.
@@ -369,6 +423,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
             publish(r,0);return result==0?1:0;
         }
         if(scene==-5)return runSharedTimeAppTests(*r.app)==0?1:0;
+        if(scene==-18)return runSharedCacheAppChecks(*r.app)==0?1:0;
         if(scene==-6)return runSharedImportAppTests(*r.app)==0?1:0;
         if(scene==-7)return runPerformanceOptionsAppTests(*r.app)==0?1:0;
         if(scene==-16)return runRearViewAppTests(*r.app)==0?1:0;
@@ -398,7 +453,16 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowFixture(int scene){
             log<<"PASS "<<cases<<" Bunta races: Normal, Hard and Expert produce identical speed and movement at two challenge levels on two courses. Original AI pace retained.\n";
             return 1;
         }
-        if(scene>=380&&scene<=391)prepareSadamineBoundaryFixture(*r.app,unsigned(scene));
+        if(scene>=670&&scene<=687)prepareMovingMirrorUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=530&&scene<=547)prepareStoppedMirrorUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=510&&scene<=518)prepareEndingFlareUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=640&&scene<=642)prepareEndingLeafUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=650&&scene<=652)prepareEndingTireUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=660&&scene<=662)prepareEndingGlareUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=490&&scene<=501)prepareEndingBackfireUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=470&&scene<=487)prepareEndingWeatherUnityFixture(*r.app,unsigned(scene));
+        else if((scene>=450&&scene<=461)||(scene>=550&&scene<=633))prepareRoadsideDustUnityFixture(*r.app,unsigned(scene));
+        else if(scene>=380&&scene<=391)prepareSadamineBoundaryFixture(*r.app,unsigned(scene));
         else if(scene>=350&&scene<=375)prepareSaveChangeMenuFixture(*r.app,unsigned(scene));
         else prepareModeFlowFixture(*r.app,unsigned(scene));
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);
@@ -474,6 +538,13 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 56:return int(a.saveSlots.at(unsigned(a.frontend.saveSelected)).car);
     case 57:{int count=0;for(unsigned i=0;i<a.wetWeather.count;++i)if(a.wetWeather.quads[i].waterTrail)++count;return count;}
     case 58:return a.frontend.savedData()?int(a.frontend.savedData()->state().page492):-1;
+    case 59:return 0; // Removed manual inspection action (diagnostic ABI retained).
+    case 60:return 0;
+    case 61:return a.frontend.inspectingCar();
+    case 62:return int(a.frontend.tuningCourseState().selected496);
+    case 63:return a.frontend.savedData()&&a.frontend.savedData()->inspectionCompletion();
+    case 64:return a.frontend.savedData()&&a.frontend.savedData()->inspectionOverlayVisible();
+    case 65:return 0;
     case 41:return unsigned(a.frontend.reverse)|(unsigned(a.frontend.wet)<<1)|(unsigned(a.frontend.night)<<2);
     case 40:return int(a.smokeTextureBase);
     case 38:return int(a.drivingEffects.markCount());
@@ -606,6 +677,45 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAppearance(const uint32_t* va
         a.replayDetailed=true;return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDustTimeline(const uint8_t* values,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.app||!r.app->replayPlaybackActive||count<0||(count&&!values))throw std::invalid_argument("Invalid replay dust timeline");
+        auto& a=*r.app;
+        if(count&&(!a.replayDetailed||a.courseIndex!=7||a.night||a.wet||a.importedCourse))throw std::invalid_argument("Dust timeline outside original dry-day Tsuchisaka");
+        a.replayDust.load({values,std::size_t(count)},a.roadsideDust);if(count)a.replaySmoke.clear();return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDustSeek(uint32_t step){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.app||!r.app->replayPlaybackActive)throw std::logic_error("No replay is open");
+        r.app->replayDust.seek(step,r.app->roadsideDust);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplaySmokeTimeline(const uint8_t* values,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.app||!r.app->replayPlaybackActive||count<0||count>ReplayCarSmokeFrame::bytes*ReplayCarSmokeFrame::maxFrames||(count&&!values)||count%ReplayCarSmokeFrame::bytes)
+            throw std::invalid_argument("Invalid replay smoke timeline");
+        auto& a=*r.app;
+        if(count&&(!a.replayDetailed||a.courseIndex<0||a.courseIndex>=9||a.importedCourse))
+            throw std::invalid_argument("Smoke timeline outside original replay");
+        for(int at=0;at<count;at+=ReplayCarSmokeFrame::bytes){
+            std::uint32_t scene;std::memcpy(&scene,values+at+128,4);
+            if((scene&15)!=unsigned(a.courseIndex)||((scene>>4)&1)!=unsigned(a.night)||((scene>>5)&1)!=unsigned(a.wet))
+                throw std::invalid_argument("Replay smoke scene does not match race");
+        }
+        a.replaySmoke.load({values,std::size_t(count)},a.carSmoke);if(count)a.replayDust.clear();return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplaySmokeSeek(uint32_t step){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.app||!r.app->replayPlaybackActive)throw std::logic_error("No replay is open");
+        r.app->replaySmoke.seek(step,r.app->carSmoke);return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDetailFrame(const uint8_t* values,int count){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
@@ -616,15 +726,24 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDetailFrame(const uint8_t* va
         r.app->replayFrameData=d;return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayBackfire(int playerFrame,int opponentFrame){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.app->replayPlaybackActive||playerFrame< -1||playerFrame>1||opponentFrame< -1||opponentFrame>1){
+        unityError("Invalid recorded backfire state");return 0;
+    }
+    r.app->replayBackfireFrames={playerFrame,opponentFrame};return 1;
+}
 int IDAS3_UNITY_CALL Idas3ReplayOpponentStart(int car,int enemy,const uint32_t* values,int count){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.app||!r.app->replayPlaybackActive||!values||count!=15||car<0||car>34||enemy< -1||enemy>99)throw std::invalid_argument("Invalid replay opponent");
         auto& a=*r.app;
+        a.replayRivalProfile=original::makeOriginalFreshBattleProfile();a.replayRivalProfile.setu(16,unsigned(car));
         if(enemy>=0)a.loadRivalCar(unsigned(car),unsigned(enemy));
         else{
             if(values[0]>1||values[1]>=original::carPaintCount||values[7]>5)throw std::invalid_argument("Invalid opponent appearance");
             auto profile=original::makeOriginalFreshBattleProfile();for(unsigned i=0;i<12;++i)profile.setu(replayProfileOffsets[i],values[i]);profile.setu(16,unsigned(car));
+            a.replayRivalProfile=profile;
             const auto folder=std::string(originalCarFolders.at(unsigned(car)));
             a.rivalModel=NativeModel::load(a.root/"data/original_models"/folder/(folder+".idasmesh"));
             a.rivalTextures=NativeTextureBank::load(a.root/"data/original_assets/cars"/folder/"textures/textures.idastex");
@@ -999,7 +1118,8 @@ int IDAS3_UNITY_CALL Idas3SceneGetRaceMusicState(Idas3RaceMusicState* state){
         if(!state||state->size!=sizeof(*state))throw std::invalid_argument("Race music state must be32bytes");
         const auto& app=*r.app;const bool eligible=app.raceMusicOpponentEligible();
         *state={sizeof(*state),1,eligible?1u:0u,unsigned(raceMusicCatalog.size()),
-            app.selectedRaceMusic,app.audio.musicTrack,eligible?app.frontend.battleProfile.u(24):~0u,0};
+            app.selectedRaceMusic,app.audio.musicTrack,eligible?app.frontend.battleProfile.u(24):~0u,
+            app.raceMusicSelectionVisible()?1u:0u};
         return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown race music state error");return 0;}
@@ -1233,6 +1353,21 @@ int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* out){
         (uint32_t(std::min<int>(app.frontend.battleProfile.byte(1187),8))<<8);
     return 1;
 }
+int IDAS3_UNITY_CALL Idas3SceneGetFeedbackState(Idas3FeedbackState* out){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out)){unityError("Invalid original feedback state request");return 0;}
+    *out={sizeof(*out),1};auto& app=*r.app;
+    out->simulationTicks=app.vehicle.tick;
+    if(!app.feedbackDriving()){app.originalFeedback.stop();return 1;}
+    const auto& feedback=app.originalFeedback.latest();
+    if(!app.originalFeedback.active()||!feedback.valid)return 1;
+    out->flags=1;out->simulationTicks=app.originalFeedback.tick();
+    out->torqueCode=feedback.torqueCode;out->damperParameter=feedback.damperParameter;
+    out->rumbleAmplitude=feedback.rumbleAmplitude;
+    out->peakRumbleAmplitude=app.originalFeedback.consumePeak();
+    out->rumbleFrequencyHalfHz=out->peakRumbleAmplitude>0?63u:feedback.rumbleFrequencyHalfHz;
+    return 1;
+}
 int IDAS3_UNITY_CALL Idas3SceneGetHudTelemetry(Idas3HudTelemetry* out){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app||!out||out->size!=sizeof(*out))return 0;
@@ -1339,10 +1474,15 @@ int IDAS3_UNITY_CALL Idas3SceneChallenger(int action){
     try{
         if(!r.sceneMode||!r.app||r.app->multiplayer.active)throw std::logic_error("Challenger requires an offline scene");
         auto& app=*r.app;
-        if(action==0){app.challengerNotice=false;return 1;}
-        if(action==1){app.challengerNotice=true;app.paused=false;app.clock.reset();app.audio.playChallengerCue();return 1;}
+        if(action==0){app.audio.endChallenger();app.challengerNotice=false;return 1;}
+        if(action==1){
+            if(app.challengerNotice)return 1;
+            app.paused=false;app.updateAudioScene();app.audio.beginChallenger();
+            app.challengerNotice=true;app.clock.reset();return 1;
+        }
         if(action!=2)throw std::invalid_argument("Unknown challenger action");
         app.challengerNotice=false;
+        app.audio.endChallenger();
         app.returnToCourseSelection(true);idas3::resetUnityAudioOutput();
         Idas3UiBeginFrame(app.renderer.width,app.renderer.height);
         if(!app.render(0))throw std::runtime_error(app.renderer.error);
@@ -1441,6 +1581,8 @@ int IDAS3_UNITY_CALL Idas3MultiplayerStartSaved(const Idas3MultiplayerConfig* co
         for(unsigned offset=44;offset<=60;offset+=4)if(opponent.u(offset)>220)throw std::invalid_argument("Invalid remote driver glyph");
         for(unsigned offset=156;offset<164;++offset)if(opponent.byte(offset)>6)throw std::invalid_argument("Invalid remote body part");
         if(opponent.byte(165)>3||opponent.byte(166)>3)throw std::invalid_argument("Invalid remote appearance flags");
+        const auto card=decodeOnlineCarSelection(selection);
+        r.app->acceptCardUse(card.slot,config->localCar,player);
         auto request=*config; // Lobby transmission choice is race-local; saved profile is unchanged.
         r.app->startMultiplayer(request,&player,&opponent);
         const auto rewardSlot=decodeOnlineCarSelection(selection).slot;
@@ -1547,7 +1689,7 @@ int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uin
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer reward preparation error");return 0;}
 }
-int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count){
+int IDAS3_UNITY_CALL Idas3MultiplayerRecoverRewardForSeason(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count,uint32_t recordSeason){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!before||!after||count!=307)throw std::invalid_argument("Invalid reward recovery buffers");
@@ -1555,11 +1697,14 @@ int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selecti
         // A loaded scene owns its memory profiles. Startup recovery runs before
         // initialization; live settlement uses that scene's cached reward plan.
         if(r.app)throw std::logic_error("Reward recovery must precede scene initialization");
-        idas3::OnlineResultReward::Plan plan;plan.selection=selection;plan.points=points;
+        idas3::OnlineResultReward::Plan plan;plan.selection=selection;plan.points=points;plan.recordSeason=recordSeason;
         std::copy_n(before,count,plan.before.words.begin());std::copy_n(after,count,plan.after.words.begin());
         idas3::OnlineResultReward(root).apply(plan);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown multiplayer reward recovery error");return 0;}
+}
+int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count){
+    return Idas3MultiplayerRecoverRewardForSeason(saves,selection,points,before,after,count,1);
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);

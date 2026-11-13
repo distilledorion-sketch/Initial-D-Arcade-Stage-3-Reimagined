@@ -8,6 +8,8 @@ namespace Idas3.Multiplayer
 {
     internal sealed class Idas3EosP2P : IDisposable
     {
+        const int IncomingMessages = 1024, IncomingBytes = 1024 * 1024, DeliveriesPerFrame = 64;
+        const double DeliverySecondsPerFrame = .002;
         sealed class Pending { internal byte[] Data; internal uint Id; internal int Fragment; }
         sealed class Received { internal byte[] Data; internal bool Ordered; }
         readonly Idas3EosTransport owner;
@@ -25,7 +27,9 @@ namespace Idas3.Multiplayer
         int outgoingBytes, incomingBytes, connectionRetries;
         int helloQueued, controlReceived, controlRejected, foreignPackets, mismatchKinds;
         uint nextReliable = 1, nextUnreliable = 1;
-        bool disposed, announced, helloReceived, ackReceived, pumping, established;
+        bool disposed, announced, helloReceived, ackReceived, pumping, established, dispatching;
+        int deliveryFrame = int.MinValue, deliveriesThisFrame;
+        double deliverySeconds;
         double started, nextHello, nextHeartbeat, lastReceive, sendBlockedSince, retryConnectionAt;
         Result? lastControlSendFailure;
         Result? lastControlSendResult;
@@ -207,6 +211,13 @@ namespace Idas3.Multiplayer
             ProductUserId sender = null;
             SocketId source = new SocketId();
             for (int i = 0; i < 4096; ++i) {
+                // Leave a bounded backlog in EOS until the game consumes our
+                // queue. Receiving it all first used to disconnect a valid
+                // reliable burst before delivering even its first message.
+                // Reserve room for one maximum-sized reassembled message.
+                // Channel zero must still reach the handshake/heartbeat/leave
+                // handler during a long load with a full game-message queue.
+                options.RequestedChannel = incoming.Count >= IncomingMessages || incomingBytes > IncomingBytes - Idas3EosPackets.MessageLimit ? (byte?)0 : null;
                 var result = p2p.ReceivePacket(ref options, ref sender, ref source, out byte channel, new ArraySegment<byte>(receive), out uint length);
                 if (result == Result.NotFound) break;
                 if (result != Result.Success) { failure = "Receiving an online packet failed (" + result + ")."; break; }
@@ -237,17 +248,33 @@ namespace Idas3.Multiplayer
         }
         internal void Poll()
         {
-            KeepAliveOnly();
-            if (disposed) return;
-            if (failure != null) { owner.RouteFailed(this, failure); return; }
-            if (Connected && !announced && owner.Admitted(this)) {
-                announced = true; Trace("handshake-complete routing=" + ConnectionType); owner.AnnounceAdmission(this);
-            }
-            while (!disposed && Connected && announced && incoming.Count != 0) { var data = incoming.First.Value.Data; incoming.RemoveFirst(); incomingBytes -= data.Length; owner.Deliver(this, data); }
+            if (disposed || dispatching) return;
+            dispatching = true;
+            try {
+                KeepAliveOnly();
+                if (disposed) return;
+                if (failure != null) { owner.RouteFailed(this, failure); return; }
+                if (Connected && !announced && owner.Admitted(this)) {
+                    announced = true; Trace("handshake-complete routing=" + ConnectionType); owner.AnnounceAdmission(this);
+                }
+                if (deliveryFrame != UnityEngine.Time.frameCount) {
+                    deliveryFrame = UnityEngine.Time.frameCount; deliveriesThisFrame = 0; deliverySeconds = 0;
+                }
+                // Native input validation and rollback run in these callbacks.
+                // Preserve FIFO but share one budget across pumps in a frame;
+                // KeepAliveOnly still services the connection during loading.
+                while (!disposed && Connected && announced && incoming.Count != 0 &&
+                       deliveriesThisFrame < DeliveriesPerFrame && deliverySeconds < DeliverySecondsPerFrame) {
+                    var data = incoming.First.Value.Data; incoming.RemoveFirst(); incomingBytes -= data.Length;
+                    ++deliveriesThisFrame; double began = Idas3EosPlatform.Now;
+                    try { owner.Deliver(this, data); }
+                    finally { deliverySeconds += Math.Max(0, Idas3EosPlatform.Now - began); }
+                }
+            } finally { dispatching = false; }
         }
         void BufferMessage(byte[] data, bool ordered)
         {
-            while (incoming.Count >= 1024 || incomingBytes + data.Length > 1024 * 1024) {
+            while (incoming.Count >= IncomingMessages || incomingBytes + data.Length > IncomingBytes) {
                 var stale = incoming.First;
                 while (stale != null && stale.Value.Ordered) stale = stale.Next;
                 if (stale == null) {

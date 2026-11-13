@@ -68,6 +68,7 @@ public:
     std::function<TimeAttackBest(unsigned,unsigned,unsigned)> timeAttackBest;
     std::function<TimeAttackEntry(unsigned,unsigned,unsigned)> importedPersonalBest;
     std::array<std::uint32_t,3> courseRecordTimes()const;
+    std::array<unsigned,2> courseRecordCars()const;
     int saveSelected=0;
     bool saveActionsEnabled=true,saveActionsOpen=false;
     int saveActionSelected=0;
@@ -108,6 +109,14 @@ public:
     // setup. The host persists the profile only after the owner completes.
     void selectSavedCarTransmission(bool returnToCar=false);
     void selectSavedData();
+    // Renewal selectors edit a draft. The host must save it before showing completion.
+    void selectInspectionCompletion();
+    void beginCarInspection();
+    void cancelCarInspection();
+    bool inspectingCar()const{return inspectionActive;}
+    bool takeInspectionCommit(){const bool result=inspectionCommitRequested;inspectionCommitRequested=false;return result;}
+    bool takeInspectionComplete(){const bool result=inspectionCompleteRequested;inspectionCompleteRequested=false;return result;}
+    bool takeInspectionCancel(){const bool result=inspectionCancelRequested;inspectionCancelRequested=false;return result;}
     void nextSavedDataPage(){if(stage==FrontendStage::SavedData&&savedData_)savedData_->nextPage();}
     const original::OriginalSavedData* savedData()const{return savedData_.get();}
     void setNameSteering(float steering);
@@ -211,6 +220,9 @@ private:
     bool hasTitleExtension=false;
     bool startRequested=false;
     bool savedCarTuningCourse=false;
+    bool inspectionActive=false;
+    bool inspectionCompleteRequested=false,inspectionCancelRequested=false;
+    bool inspectionCommitRequested=false,inspectionAwaitingSave=false;
     bool savedCarTransmission=false,savedTransmissionReturnToCar=false;
     original::OriginalModeMenu modeMenu;
     original::OriginalModeMenuState modeState;

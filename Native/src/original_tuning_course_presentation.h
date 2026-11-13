@@ -21,6 +21,8 @@ struct OriginalTuningCourseDraw {
 // each original60Hz controller update. All paint calls are read-only.
 class OriginalTuningCoursePresentation {
 public:
+    // optcrs is loaded directly by11E630, outside the numbered V3 bank table.
+    static constexpr unsigned inspectionOptionBank=0x100;
     static OriginalTuningCoursePresentation load(const std::filesystem::path& root);
     OriginalTuningCoursePresentation();
     ~OriginalTuningCoursePresentation();
@@ -37,6 +39,9 @@ public:
     std::uint64_t frames()const;
     std::vector<OriginalTuningCourseDraw> drawList(const original::OriginalTuningCourseMenu&,std::uint32_t countdown)const;
     void paintBackground(std::span<std::uint32_t> canvas,int width,int height)const;
+    // Shared renewal label child1BE520, also registered by Transmission's
+    // constructor1B75AC..1B7686. Paint does not advance the pulse clock.
+    void paintInspectionStatus(std::span<std::uint32_t> canvas,int width,int height,unsigned frame,unsigned countdown)const;
     // Draw background, native car/shadow, these ordered passes, then the
     // controller's original whole-screen fade. Never fade only the car.
     std::vector<OriginalTuningCourseOverlay> overlays(int width,int height,

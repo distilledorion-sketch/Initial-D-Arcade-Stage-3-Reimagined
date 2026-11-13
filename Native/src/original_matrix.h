@@ -17,6 +17,19 @@ struct OriginalMatrix {
     std::array<float,16> elements{};
 };
 OriginalMatrix originalIdentityMatrix();
+//1565A0/1564C0, with the upright camera branch selected by09D2C0.
+// Returns camera-to-world; its two basis normalizations use different source
+// arithmetic (ordered FMAC and FIPR respectively).
+OriginalMatrix originalLookAtCameraWorld(const std::array<float,3>& eye,
+    const std::array<float,3>& target);
+//1F66A0: rigid view inverse used by1D0880. This intentionally differs from
+// the general LU inverse below; the source transposes the camera basis and
+// computes translation with FIPR rounding.
+OriginalMatrix originalCameraWorldToView(const OriginalMatrix& cameraWorld);
+//1FC0A0/1FC620: scaled-pivot LU inversion, including the source's float
+// rounding and determinant. Singular input retains its partially factored
+// matrix, as in the original; callers must inspect the returned determinant.
+float invertOriginalMatrix(OriginalMatrix& matrix);
 void translateOriginalMatrix(OriginalMatrix& matrix,const std::array<float,3>& translation);
 void scaleOriginalMatrix(OriginalMatrix& matrix,const std::array<float,3>& scale);
 //1F67E0/1F68A0/1F6950 update only the two affected columns.

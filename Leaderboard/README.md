@@ -14,7 +14,98 @@ node --test test/*.test.mjs
 
 The tests use an in-memory database and never submit to the public service.
 
+## Season 2 (.55) cutover
+
+The public season is **Season 2** (`LEADERBOARD_SEASON: "2"`). Its internal
+submission namespace is **epoch 3**: epoch 2 was already used by an earlier
+reset and must not be reused. New runs require exactly
+`0.3.95-community-replays.55` and epoch 3. Old queued runs retain their original
+build and epoch and are permanently rejected; they are never relabelled.
+All courses start with empty public boards. Previous server scores remain in
+the authenticated administration archive, with their original metadata and
+moderation reasons. Installation identities, bans and the online directory
+are preserved. Replays remain disabled.
+
+Deployment order for the existing production database:
+
+1. Close score inserts first. The new Worker supports
+   `SCORE_SUBMISSIONS_CLOSED: "true"` on all three score-upload routes, leaving
+   registration, online identity checks, activity and moderation available.
+   A temporary database insert guard also blocks already-running old Workers;
+   keep the existing `season2_rollover_submission_pause` guard until step 5.
+2. Export/verify the database and record score, identity, ban and online-player
+   counts. Confirm both `settings.epoch` and `MAX(runs_storage.epoch)` are 2
+   or lower. Apply **only** `0015_season_2_55.sql` to the existing database,
+   after required earlier migrations (including 0014) have already been
+   applied. Do not rerun old destructive migrations or the admin reset button.
+   The new migration aborts if epoch 3 was already used. It advances to 3 and
+   leaves the durable `leaderboard_submissions_closed` setting `true`.
+3. Deploy this Worker with exact `REQUIRED_CLIENT_BUILD` `.55`,
+   `LEADERBOARD_SEASON: "2"`, `DISABLE_REPLAYS: "true"`, and
+   `SCORE_SUBMISSIONS_CLOSED: "true"`. Keep broad `MAINTENANCE` and
+   `SERVICE_OFFLINE` disabled. Verify `/health`: epoch 3, season 2,
+   required build `.55`, score submissions closed, ordinary maintenance false.
+   Verify public boards/snapshots empty, prior score rows unchanged in the
+   admin archive, and online admission/moderation still available.
+4. Publish and verify the `.55` game release with its new-run epoch stamping
+   and local season reset before reopening submissions.
+5. Open both score gates: set Worker `SCORE_SUBMISSIONS_CLOSED` to `false`,
+   then set database `leaderboard_submissions_closed` to `false` and remove
+   the temporary `season2_rollover_submission_pause` trigger in the final
+   database operation. The permanent `leaderboard_*_guard` triggers stay.
+   Verify `/health` reports submissions open; old builds and epochs fail,
+   and a new `.55`/epoch-3 time can commit without replay storage.
+
+The permanent database insert guards enforce closure, epoch and exact build
+at commit time, including requests that passed validation before cutover.
+Past rows cannot be updated or moved into the new epoch. Deletes of archived
+rows are ignored, including stale old retention jobs; current-season retention
+still operates normally. Reapplying migration 0015 preserves new scores and
+does not reclose an opened season. A future release must update **both** the
+Worker's exact-build setting and database `leaderboard_required_build`;
+changing only one intentionally leaves submissions closed to that mismatch.
+
+These checks isolate normal old queues; client-reported build/epoch fields
+are not cryptographic proof of a race's origin and are not an anti-cheat system.
+
+`wrangler.jsonc` is a public template. Local private deployment settings may
+be in ignored `deploy.private.json`, `.dev.vars` or `.wrangler/`; credentials
+and database exports must not be committed. Use the existing deployment's
+actual bindings and secrets, rather than the template's placeholder IDs.
+
+## Public snapshot read costs
+
+Apply the additive `0014_leaderboard_snapshot_cache.sql` migration before
+deploying the current Worker. Do not rerun older destructive/reset migrations.
+Public v1/v2 snapshots share persisted D1 ranking results, keyed by ruleset and
+historical-import selection. A normal refresh performs one indexed query
+against the cache, revision and season rows instead of recalculating rankings.
+Database triggers invalidate results in the same transaction as score changes,
+installation bans/unbans and season changes, including writes by older Workers
+or direct administrator SQL. Rebuilds read revision, season and rankings in
+one transaction; conditional publication prevents a concurrent write from
+making an old snapshot current. Simultaneous misses in one Worker isolate
+share a rebuild only when their revisions match.
+
+Public responses remain `no-store`; rate limits, maintenance and ruleset
+validation still run before cache access. Required-build and replay policy
+are applied on every response. Authentication, online bans and activity
+reports are not cached. Uploads, individual website boards and top-ten
+retention keep their existing behavior. This cache contains only derived
+public entries; deleting its contents merely forces a rebuild.
+
+Production verification and the initial read-cost measurements are documented
+in [the November 4 cost audit](../docs/leaderboard-cost-2026-11-04.md).
+
 ## Maintenance
+
+For score-only maintenance, use `SCORE_SUBMISSIONS_CLOSED: "true"`. This
+rejects `POST /api/v1/runs`, `/api/v2/runs` and `/api/v3/runs` with retryable
+503 before reading their bodies. The durable database setting
+`leaderboard_submissions_closed='true'` additionally rejects commits already
+in flight. Reopen both gates after maintenance. `/health` reports
+`scoreSubmissionsClosed` using both settings; this does not set the broad
+`maintenance` flag or stop online checks, activity, administration or cleanup.
 
 Set the Worker secret `MAINTENANCE` to `true` to pause writes and scheduled
 cleanup while keeping rankings readable. Set `SERVICE_OFFLINE` to `true` for
@@ -37,7 +128,7 @@ availability separately in the Epic Developer Portal.
    Enable R2, create a private Standard-storage bucket, and set the `REPLAYS`
    bucket name in that configuration. Do not enable public bucket access or
    automatic object expiration: replay visibility is checked by the Worker.
-4. Read the SQL migrations before applying them to that database. Migration 0005 intentionally clears prior runs/replays and starts season 2; never apply it to a database you intend to preserve without reviewing/backing up first.
+4. Read the SQL migrations before applying them to that database. The historical replay-season migration 0005 intentionally clears prior runs/replays and advances an internal epoch; never apply it to a database you intend to preserve without reviewing/backing up first. Migration 0015 opens the new Season 2 namespace but leaves score writes closed until publication is verified.
 5. Apply the migrations using Wrangler.
 6. Generate a private admin key. Set the lowercase hex SHA-256 digest of the key as the Worker secret `ADMIN_KEY_SHA256`; keep the key itself outside the repository.
 7. Deploy the Worker with `pnpm exec wrangler deploy` and use `/admin` for moderation.
@@ -56,7 +147,8 @@ Historical imports and personal battle records remain rejected.
 
 Updated clients post small JSON results to `POST /api/v3/runs` and read
 `GET /api/v2/snapshot`. They no longer capture, compress or cache replay files
-for leaderboard uploads. Old pending times can upload without their recordings.
+for leaderboard uploads. Eligible pending times can upload without recordings;
+the new Season 2 build and epoch gates still reject old-season queues.
 Personal replay archives and local ghosts are separate and unaffected.
 
 Released clients can continue posting to `/api/v2/runs`: only the envelope's
@@ -87,7 +179,8 @@ prefix are empty. The public site must have no replay controls, old replay URLs
 must return 410, and both snapshot versions must still return posted times.
 
 The sections below describe the earlier replay-backed deployment and historical
-migrations. Their replay-upload/download behavior is superseded by this policy.
+migrations. Their replay-upload/download behavior is superseded by this policy;
+the Season 2 section above also supersedes their old build and retention rules.
 
 ## Behavior
 
@@ -105,8 +198,9 @@ migrations. Their replay-upload/download behavior is superseded by this policy.
   acknowledgement with `retained: false` so clients do not retry forever.
   An entry and its replay are removed only when neither board retains it.
   Personal game saves and local replay files are not affected.
-- Top-ten pruning also removes older seasons and ineligible hidden/blocked
-  entries. Once pruned, a run cannot be restored by moderation or downloaded.
+- Top-ten pruning removes ineligible hidden/blocked entries in the current
+  season only. Closed-season scores remain a read-only administration archive.
+  Once a current-season run is pruned, it cannot be restored by moderation.
   Installation identities, bans and audit events are preserved.
 - IP addresses are used for rate limiting, not stored with submissions. Worker observability is disabled in the supplied configuration.
 - Client-reported telemetry and build versions are not authoritative anti-cheat verification.

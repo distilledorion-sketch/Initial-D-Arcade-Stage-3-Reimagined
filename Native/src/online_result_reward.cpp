@@ -17,7 +17,7 @@ std::filesystem::path OnlineResultReward::directory(int selection)const{
     return slots.profileDirectory(unsigned(selected.slot));
 }
 OnlineResultReward::Plan OnlineResultReward::prepare(int selection,
-        const original::OriginalBattleProfile& selected,bool won)const{
+        const original::OriginalBattleProfile& selected,bool won,bool awardPoints)const{
     const auto target=decodeOnlineCarSelection(selection);
     const LocalDriverProfiles profiles(directory(selection));
     if(target.car<0||selected.u(16)!=unsigned(target.car)||selected.u(72)>999999999)
@@ -27,18 +27,37 @@ OnlineResultReward::Plan OnlineResultReward::prepare(int selection,
         throw std::runtime_error("Online tuning profile could not be read; existing files were preserved");
     Plan plan;plan.selection=selection;plan.before=stored.profile;plan.after=selected;
     const auto balance=selected.u(72);
-    const auto earned=std::min(std::uint64_t(balance)+(won?2000u:1000u),std::uint64_t(999999999));
+    const auto earned=std::min(std::uint64_t(balance)+(awardPoints?(won?2000u:1000u):0u),std::uint64_t(999999999));
     plan.after.setu(72,std::uint32_t(earned));plan.points=std::uint32_t(earned-balance);
+    // Card entry owns the counter. Results (including rematches and timeouts)
+    // retain its persisted value rather than charging another use.
+    plan.after.setu(1140,plan.before.u(1140));
     return plan;
 }
 void OnlineResultReward::apply(const Plan& plan)const{
     const auto selected=decodeOnlineCarSelection(plan.selection);
     const LocalDriverProfiles profiles(directory(plan.selection));
     if(selected.car<0||plan.before.u(16)!=unsigned(selected.car)||plan.after.u(16)!=unsigned(selected.car)||
-       plan.points>2000||plan.after.u(72)>999999999||plan.after.u(72)<plan.points)
+       plan.points>2000||plan.after.u(72)>999999999||plan.after.u(72)<plan.points||
+       plan.recordSeason==0||plan.recordSeason>timeAttackSeason)
         throw std::invalid_argument("Invalid online reward plan");
+    auto before=plan.before,after=plan.after;
+    if(plan.recordSeason<timeAttackSeason){
+        // A pre-season crash receipt still owes its exact tuning reward. Its
+        // embedded TA data belongs to the old season, however. Preserve current
+        // TA fields (including new Season 2 records) in BOTH comparison images;
+        // every other word retains the original conflict/idempotency guard.
+        const auto current=profiles.load(unsigned(selected.car));
+        if(current.origin==LocalDriverProfiles::Origin::Unreadable)
+            throw std::runtime_error("Online tuning profile could not be recovered; existing files were preserved");
+        for(unsigned index=0;index<36;++index){
+            for(unsigned offset:{176+4*index,320+4*index,500+12*index,504+12*index,508+12*index}){
+                before.setu(offset,current.profile.u(offset));after.setu(offset,current.profile.u(offset));
+            }
+        }
+    }
     using Outcome=LocalDriverProfiles::ConditionalSave;
-    switch(profiles.saveExpected(unsigned(selected.car),plan.before,plan.after)){
+    switch(profiles.saveExpected(unsigned(selected.car),before,after)){
     case Outcome::Saved:case Outcome::AlreadySaved:return;
     case Outcome::Conflict:throw std::runtime_error("Online tuning profile changed after the result; existing progress was preserved");
     case Outcome::Unreadable:throw std::runtime_error("Online tuning profile could not be recovered; existing files were preserved");

@@ -1,5 +1,18 @@
 # The cabinet's force-feedback board, and what the game sends it
 
+> Historical reconstruction. The [November 13 producer audit](../../docs/original-feedback-producer-audit-2026-11-13.md)
+> supersedes this document's producer interpretation and unknown-field list.
+> Its readable translation is checked against actual original instructions.
+> In particular, steady-speed `+24C` is **0, not -1**; `+27C` is an angular
+> error signal rather than measured tire grip; positive rumble is resent every
+> call; and the current remake producer is an approximation, not an exact port.
+> The [backend audit](../../docs/flycast-feedback-audit-2026-11-13.md) also
+> distinguishes Flycast versions and documents the current damper mismatch.
+> The staged [production translation](../../docs/original-feedback-implementation-2026-11-13.md)
+> now uses `src/original_feedback.cpp` and native simulation snapshots. The
+> old `original_ffb_owner.cpp` path below remains only for legacy wheel ABI
+> callers; the game's managed output no longer calls it.
+
 Everything here was read out of `idas3_main_0C020000.bin` (mapped at `0x0C020000`)
 with `Native/tools/sh4_disasm.py`, which unlike capstone decodes the SH-4 FPU
 group and the `FPUL`/`FPSCR` transfers — without those the whole owner reads as

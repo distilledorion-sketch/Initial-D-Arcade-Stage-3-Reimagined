@@ -42,15 +42,10 @@ namespace Idas3.Multiplayer
             if (!force && now < retryAt) return false;
             try
             {
-                if (winner == -1)
-                {
-                    // Double timeout has neither tuning nor history to persist.
-                    ApplyNative();Record=previous;
-                }
-                else {
-                    var saved=journal.Settle(request,PrepareReward,_=>{DurableIntent=true;ApplyNative();});
-                    Record=saved.record;PointsEarned=saved.battlePoints;
-                }
+                // Journal the receipt even for a double timeout, without points
+                // or a win/loss. Card entry, not race results, owns remaining uses.
+                var saved=journal.Settle(request,PrepareReward,_=>{DurableIntent=true;ApplyNative();});
+                Record=saved.record;PointsEarned=saved.battlePoints;
                 Complete = true; Failure = null;
                 return true;
             }
@@ -65,8 +60,8 @@ namespace Idas3.Multiplayer
             var before=new uint[307];var after=new uint[307];
             if(Idas3MultiplayerNative.Idas3MultiplayerPrepareResult(winner,out int selection,out uint points,before,after,307)!=1)
                 throw new InvalidOperationException(Idas3Native.Error());
-            return selection<0?new Idas3ResultJournal.Reward():new Idas3ResultJournal.Reward{
-                selection=selection,points=points,before=before,after=after};
+            return selection<0?new Idas3ResultJournal.Reward{recordSeason=Idas3ResultJournal.CurrentRecordSeason}:new Idas3ResultJournal.Reward{
+                selection=selection,points=points,before=before,after=after,recordSeason=Idas3ResultJournal.CurrentRecordSeason};
         }
         void ApplyNative()
         {
@@ -81,7 +76,7 @@ namespace Idas3.Multiplayer
             return new Idas3ResultJournal(records).Recover(reward=>{
                 if(reward.selection<0)return;
                 var root=System.Text.Encoding.UTF8.GetBytes(records.SaveRoot+"\0");
-                if(Idas3MultiplayerNative.Idas3MultiplayerRecoverReward(root,reward.selection,reward.points,reward.before,reward.after,307)!=1)
+                if(Idas3MultiplayerNative.Idas3MultiplayerRecoverRewardForSeason(root,reward.selection,reward.points,reward.before,reward.after,307,reward.EffectiveRecordSeason)!=1)
                     throw new InvalidOperationException(Idas3Native.Error());
             });
         }

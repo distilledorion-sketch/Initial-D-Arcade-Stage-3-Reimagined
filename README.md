@@ -9,7 +9,7 @@ JOIN DISCORD: [https://discord.gg/mJCZ5AvBb](https://discord.gg/fUZySYrPss)
 
 ## Play
 
-1. Download `Initial-D-Setup-0.3.95.53.zip` from **Releases**.
+1. Download `Initial-D-Setup-0.3.95.55.zip` from **Releases**.
 2. Extract it and run `Install Initial D.cmd`. It downloads and verifies the game and additional courses into a new folder.
 3. Put your original **Initial D Arcade Stage 3 GDS-0033** dump in a `rom` folder beside `InitialDUnity.exe`.
 4. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
@@ -18,9 +18,9 @@ Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-tr
 
 The download includes the runtime assets but no original ROM. You do not need Unity to play. For a manual installation, extract both the `Windows-x64.zip` and the matching `Initial-D-Additional-Courses` ZIP into the same folder. Source-code ZIPs are the development project, not the playable build.
 
-**Current release:** `0.3.95-community-replays.53` · **Platform:** Windows x64 / Direct3D 11
+**Current release:** `0.3.95-community-replays.55` · **Platform:** Windows x64 / Direct3D 11
 
-**Latest update:** `.53` fixes stale menu guards blocking driving controls and retries stalled online race inputs over the reliable channel. If synchronization cannot recover within 15 seconds, the race ends without recording a result or awarding points. Both online drivers should update; `.53` is required for new community Time Attack submissions. Leaderboard replay uploads remain disabled. Separate-network EOS verification remains pending; see the changelog for testing limits.
+**Latest update:** `.55` starts fresh Season 2 Time Attack rankings and resets old local Time Attack records and ghosts. It includes the accumulated card-renewal, minimap, smoke, input, online recovery, original driving cadence, force-feedback and controller-vibration fixes. Both online drivers should update; only `.55` can submit new times. Cars, tuning and battle progress remain intact. See the changelog for the complete changes and verification limits.
 
 If an older updater reports **"An update path resolves through a link"**, close the game and extract both release ZIPs over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use one smaller changed-file patch that includes all required courses. Full Repair in `.44` or newer fetches both parts automatically; if an older updater falls back to its full download, the new game prompts for Full Repair to finish installing missing courses.
 
@@ -33,7 +33,7 @@ Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcad
 - Original course and car selections, plus Hakone, Sadamine, Enna Skyline, Momiji Line, Tsubaki Line, Gunsai, Odawara and the longer Special Stage layouts of Myogi and Usui.
 - Special Stage courses support Time Attack rankings, replays and online battles, with downhill/uphill and dry/wet options at night.
 - Day, night and weather conditions supported by each course.
-- Controller, keyboard and supported wheel input.
+- Controller, keyboard and supported wheel input. Controller vibration uses original road, engine/speed, contact and gear-change calculations, with an on/off switch and strength slider under Options > Steering & Wheel (default: on, 50%). Supported wheels also use the original steering-force and damping calculations.
 - Personal saves, progression, tuning and a Full Tune option.
 - Community Time Attack rankings with time-only submissions.
 - Local replay library, camera controls, online opponent POV and replay engine audio.
@@ -46,7 +46,7 @@ This project is a work in progress. Rendering fidelity, performance and multipla
 
 While connected, in-game rankings combine the selected save's personal bests with the current community leaderboard. Offline, only that save's personal records appear. Matching published personal times appear once.
 
-New leaderboard submissions require a supported build; replay recording is optional and is not required to post a time. Old personal times are preserved locally and are not uploaded retrospectively. Submitted times are not authoritative anti-cheat verification.
+Season 2 requires version `.55` and a new Time Attack completed after updating. Previous-season local records and ghosts are reset; older queued runs cannot be uploaded retrospectively. Cars, tuning, battle progress and ordinary replay recordings are preserved. Replay recording is optional and is not required to post a time. Submitted times and client build declarations are not authoritative anti-cheat verification.
 
 Personal Time Attack, Online Battle and Legend recordings stay on the player's PC. Community replay uploads and downloads are disabled. Options > Replays opens the local library and recording controls.
 

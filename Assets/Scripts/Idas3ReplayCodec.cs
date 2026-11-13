@@ -5,7 +5,9 @@ using System.IO.Compression;
 // Lossless wrapper around the exact little-endian replay float bits.
 public static class Idas3ReplayCodec
 {
-    public const int MaxRaw = 18000000, MaxStored = 18010000;
+    // Revision2 may include a bounded exact roadside-dust input timeline.
+    // 108000 revision4 poses + 109024 smoke inputs + 100-byte header.
+    public const int MaxRaw = 34000000, MaxStored = 34020000;
     public static byte[] Encode(byte[] raw)
     {
         if (raw == null || raw.Length < 96 || raw.Length > MaxRaw || BitConverter.ToUInt32(raw, 0) != 0x32524449) throw new InvalidDataException("A detailed recording is required.");

@@ -25,6 +25,8 @@ public sealed class Idas3GameOptions
         public float steeringDeadzoneGamepad=.1f,steeringDeadzonePrevious=.13f,steeringDeadzoneWheel;
         public float steeringSmoothing;
         public bool wheelForceFeedback,wheelFeedbackInvert;
+        public bool controllerVibration=true;
+        public float controllerVibrationStrength=.5f;
         public float wheelFeedbackStrength=.35f;
         public string wheelFeedbackDevice="";
         public bool showFps,muteWhenUnfocused;
@@ -343,6 +345,7 @@ public sealed class Idas3GameOptions
         value.steeringDeadzonePrevious=Deadzone(value.steeringDeadzonePrevious,.13f);
         value.steeringDeadzoneWheel=Deadzone(value.steeringDeadzoneWheel,0);
         value.steeringSmoothing=float.IsNaN(value.steeringSmoothing)||float.IsInfinity(value.steeringSmoothing)?0:Math.Max(0,Math.Min(1,value.steeringSmoothing));
+        value.controllerVibrationStrength=float.IsNaN(value.controllerVibrationStrength)||float.IsInfinity(value.controllerVibrationStrength)?.5f:Math.Max(0,Math.Min(1,value.controllerVibrationStrength));
         value.wheelFeedbackStrength=float.IsNaN(value.wheelFeedbackStrength)||float.IsInfinity(value.wheelFeedbackStrength)?.35f:Math.Max(0,Math.Min(1,value.wheelFeedbackStrength));
         if(value.wheelFeedbackDevice==null||value.wheelFeedbackDevice.Length>512||value.wheelFeedbackDevice.IndexOf('\0')>=0)value.wheelFeedbackDevice="";
         return value;
@@ -358,6 +361,7 @@ public sealed class Idas3GameOptions
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&
         a.steeringDeadzonePrevious==b.steeringDeadzonePrevious&&a.steeringDeadzoneWheel==b.steeringDeadzoneWheel&&
         a.steeringSmoothing==b.steeringSmoothing&&
+        a.controllerVibration==b.controllerVibration&&a.controllerVibrationStrength==b.controllerVibrationStrength&&
         a.wheelForceFeedback==b.wheelForceFeedback&&a.wheelFeedbackStrength==b.wheelFeedbackStrength&&
         a.wheelFeedbackInvert==b.wheelFeedbackInvert&&a.wheelFeedbackDevice==b.wheelFeedbackDevice&&
         a.showFps==b.showFps&&a.muteWhenUnfocused==b.muteWhenUnfocused&&a.communityTimes==b.communityTimes&&

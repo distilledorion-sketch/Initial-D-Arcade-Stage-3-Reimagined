@@ -65,6 +65,8 @@ void OriginalDemoPresentation::load(const std::filesystem::path& root,const orig
     projectedTextures_=NativeTextureBank::load(root/"data/original_assets/headlight_projection/textures/textures.idastex");
     projectedTextureBase_=base;glareTextureBase_=base+unsigned(projectedTextures_.size());
     glare_.load(root);
+    trailTextureBase_=glareTextureBase_+unsigned(glare_.textures.size());
+    trails_.load(root,data.frameCount());
     // Evaluate the existing native source queries once during background load.
     // Rendering a shot never seeks using a guessed nearest road or advances
     // collision caches at the host refresh rate.
@@ -136,6 +138,26 @@ void OriginalDemoPresentation::load(const std::filesystem::path& root,const orig
         for(unsigned frame=shot.frames[2];frame<=shot.frames[3];++frame){const auto& m=data.camera(frame).world;
             positions_[frame].cameraOffset=normalized(Vec3{m[8],0,m[10]})*pullback;}
     }
+    cursor={};
+    for(unsigned frame=0;frame<data.frameCount();++frame){
+        const auto& shot=data.shots()[cursor.shot];const auto& camera=data.camera(frame);
+        const auto& m=camera.world;const Vec3 eye=Vec3{m[12],m[13],m[14]}+cameraOffset(frame);
+        original::OriginalMatrix inverse=original::originalIdentityMatrix();
+        for(unsigned row=0;row<3;++row){
+            for(unsigned col=0;col<3;++col)inverse.elements[row+4*col]=m[col+4*row];
+            inverse.elements[row+12]=-dot(Vec3{m[row*4],m[row*4+1],m[row*4+2]},eye);
+        }
+        const auto view=original::originalSmokeView(inverse,std::uint16_t(camera.fovPhase));
+        trails_.beginFrame(frame==shot.frames[2]);
+        for(unsigned slot=0;slot<2;++slot){
+            //034840 stores ACar+964 before034C20 applies the separate body
+            // ride-height translation. The trail owner adds its own0.3Y lift;
+            // using the displayed body origin would count that height twice.
+            original::OriginalMatrix matrix{positions_[frame].lightMatrices[slot]};
+            trails_.prepare(frame,slot,shot.cars[slot],original::OriginalDemoData::headlightsOn(frame,slot),matrix,view,eye,collision);
+        }
+        data.step(cursor);
+    }
     meshFrame_=meshTimeline_=~0u;
 }
 bool OriginalDemoPresentation::upload(Renderer& renderer)const{
@@ -143,7 +165,7 @@ bool OriginalDemoPresentation::upload(Renderer& renderer)const{
     // Bases were assigned in source preset order; map iteration is different.
     for(unsigned enemy:{13u,29u,8u,12u,10u,30u}){const auto& car=cars_.at(enemy);
         if(!renderer.loadTextures(car.textures,true)||!renderer.loadTextures(car.plate.textures,true))return false;}
-    return renderer.loadTextures(projectedTextures_,true)&&renderer.loadTextures(glare_.textures,true);
+    return renderer.loadTextures(projectedTextures_,true)&&renderer.loadTextures(glare_.textures,true)&&renderer.loadTextures(trails_.textures,true);
 }
 void OriginalDemoPresentation::bindLighting(Renderer& renderer)const{
     // Do not draw the old broad analytic beam on top of source projection.
@@ -204,6 +226,8 @@ const Mesh& OriginalDemoPresentation::mesh(const original::OriginalDemoData& dat
             wrapAngle(actor.f(28)+pi),-actor.f(24),-actor.f(32),true,
             positions_[cursor.frame].headlights[slot].fraction,eye,target,up,glareTextureBase_,1);
     }
+    for(unsigned slot=0;slot<2;++slot)if(original::OriginalDemoData::headlightsOn(timeline,slot))
+        trails_.append(mesh_,cursor.frame,slot,camera,eye,trailTextureBase_);
     meshFrame_=cursor.frame;meshTimeline_=timeline;return mesh_;
 }
 }

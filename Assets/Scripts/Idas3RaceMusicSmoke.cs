@@ -17,6 +17,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     private string root;
     private KeyCode physicalKey;
     private short physicalThumbX;
+    private ushort physicalButtons;
     private uint padPulse,padHeld;
     private int pulse,checks;
     private bool finished,ownsPlayer;
@@ -48,7 +49,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         active.started=Time.realtimeSinceStartupAsDouble;active.StartCoroutine(active.Guard(active.Run()));
     }
     internal static bool PreparePhysicalInput(ref Func<KeyCode,bool> key,ref Idas3ControlBindings.PadState pad)
-    {if(active==null||active.finished)return false;key=active.KeyHeld;pad=new Idas3ControlBindings.PadState{connected=active.physicalThumbX!=0,thumbLX=active.physicalThumbX};return true;}
+    {if(active==null||active.finished)return false;key=active.KeyHeld;pad=new Idas3ControlBindings.PadState{connected=active.SetupHintCheck||active.physicalThumbX!=0,thumbLX=active.physicalThumbX,buttons=active.physicalButtons};return true;}
     private bool KeyHeld(KeyCode key)=>host.DiagnosticFocusOverride!=false&&physicalKey!=KeyCode.None&&key==physicalKey;
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame)
     {if(active==null)return true;if(active.finished)return !active.ownsPlayer;
@@ -74,6 +75,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     private IEnumerator Run()
     {
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
+        if(SetupHintCheck){yield return CheckSetupHint();Finish(true,null);yield break;}
         CheckRaceCatalog();Check(!host.RaceMusicMenu.HintVisible,"Music hint appeared outside opponent selection");yield return Pulse(116);
         yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1025u)==0,45,"Quick start did not reach running");
         Check(!host.RaceMusicMenu.HintVisible,"Music hint appeared during racing");
@@ -113,6 +115,57 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         yield return CheckCountdownAudio(116,"singleplayer");Finish(true,null);
     }
     private bool ReturnCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-return-check")>=0;
+    private bool SetupHintCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-setup-hint-check")>=0;
+    private IEnumerator HoldY(double seconds){physicalButtons=0x8000;yield return Delay(seconds);physicalButtons=0;yield return Frames(5);}
+    private IEnumerator CheckSetupPicker(string name,int stage,int song)
+    {
+        yield return Until(()=>host.Status.frontendStage==stage&&host.RaceMusic.State.opponentEligible!=0,8,"Selection not ready: "+name);
+        yield return Frames(3);Check(host.RaceMusicMenu.HintVisible,"Music hint missing: "+name);yield return Capture(name+"-hint");
+        yield return HoldY(.15);Check(!host.RaceMusicMenu.IsOpen,"Short Y press opened music: "+name);
+        int playing=host.RaceMusic.State.activeIndex;
+        yield return HoldY(.8);Check(host.RaceMusicMenu.IsOpen,"Holding Y did not open music: "+name);
+        Check(host.Status.frontendStage==stage,"Holding Y changed the underlying selection: "+name);
+        yield return MusicIdle();yield return Capture(name+"-picker");StageFilter(3);SelectTrack(song);yield return Frames(5);
+        Check(!host.RaceMusicMenu.IsOpen&&host.RaceMusic.State.selectedIndex==song,"Song did not commit: "+name);
+        Check(host.RaceMusic.State.activeIndex==playing,"Choosing music restarted current audio: "+name);
+        Check(host.Status.frontendStage==stage&&host.RaceMusicMenu.HintVisible,"Music close lost the setup prompt: "+name);
+    }
+    private IEnumerator ConfirmSetup(int before,int after,string name)
+    {
+        yield return Pulse(13,1);double deadline=Time.realtimeSinceStartupAsDouble+8;bool captured=false;
+        while(host.Status.frontendStage==before&&Time.realtimeSinceStartupAsDouble<deadline){
+            Check(host.RaceMusicMenu.HintVisible,"Music hint vanished during confirmation: "+name);
+            if(!captured&&host.RaceMusic.State.opponentEligible==0){captured=true;yield return Capture(name+"-confirmation");}
+            yield return null;
+        }
+        yield return Until(()=>host.Status.frontendStage==after,8,"Wrong next setup page: "+name);yield return Frames(3);
+        Check(host.RaceMusicMenu.HintVisible,"Music hint missing after confirmation: "+name);
+    }
+    private IEnumerator CheckSetupHint()
+    {
+        Check(!host.RaceMusicMenu.HintVisible,"Music hint appeared at attract");yield return Pulse(116);
+        yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1025u)==0,45,"Quick start did not reach running");
+        Check(!host.RaceMusicMenu.HintVisible,"Music hint appeared during racing");
+        Check(Idas3Native.Idas3SceneSetPaused(1)==1&&Idas3Native.Idas3SceneReturnToCourse()==1,"Could not return to setup");
+        yield return Delay(.6);Check(host.Status.frontendStage==6,"Expected course selection");
+        for(int i=0;i<3;++i){yield return Pulse(37);yield return Delay(.15);}Check(host.Status.course==0,"Expected Myogi");
+        yield return Pulse(27);yield return Delay(1.8);Check(host.Status.frontendStage==5&&!host.RaceMusicMenu.HintVisible,"Music hint must start after mode selection");
+        yield return Capture("mode-no-hint");yield return Pulse(13);yield return Delay(3.1);
+        yield return CheckSetupPicker("legend-course",6,2);yield return ConfirmSetup(6,10,"legend-course");
+        yield return CheckSetupPicker("legend-rival",10,3);
+        yield return Pulse(27);yield return Delay(.6);Check(host.Status.frontendStage==6&&host.RaceMusicMenu.HintVisible,"Back to course lost music hint");
+        yield return Pulse(27);yield return Delay(1.8);Check(host.Status.frontendStage==5&&!host.RaceMusicMenu.HintVisible,"Back to mode retained music hint");
+        yield return Pulse(39);yield return Delay(.2);yield return Pulse(13);yield return Delay(3.1);
+        string[] pages={"ta-course","ta-direction","ta-weather","ta-time"};
+        for(int stage=6;stage<=9;++stage){
+            yield return CheckSetupPicker(pages[stage-6],stage,stage-4);
+            if(stage<9)yield return ConfirmSetup(stage,stage+1,pages[stage-6]);
+        }
+        yield return Pulse(13);yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1025u)==0,45,"Configured race did not start");
+        yield return Frames(3);Check(!host.RaceMusicMenu.HintVisible&&host.RaceMusic.State.hintVisible==0,"Music hint leaked into race");
+        Check(host.RaceMusic.State.selectedIndex==5&&host.RaceMusic.State.activeIndex==5,"Final time-screen song was not used for the race");
+        yield return HoldY(.8);Check(!host.RaceMusicMenu.IsOpen,"Holding Y opened music during racing");yield return Capture("race-no-hint");
+    }
     private IEnumerator CheckFocusGap(){
         foreach(var key in new[]{KeyCode.Return,KeyCode.Escape}){
             host.DiagnosticFocusOverride=false;physicalKey=key;yield return Frames(4);
@@ -499,7 +552,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     private void WriteReport(string file,bool passed,string error,bool stopped)
     {
         var state=host.RaceMusic.State;File.WriteAllText(Path.Combine(root,file),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,checks=checks,error=error,captures=captures.ToArray(),selectedIndex=state.selectedIndex,activeIndex=state.activeIndex,
-            scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-no-capture")>=0?"Hidden private-save Unity/native player: production controller/key routing, tab order, song choices and countdown playback checked; screenshots and IMGUI appearance not validated.":ReturnCheck?"Private-save actual Unity/native player: first/second car showcase and running-race returns, held View Change routed through production bindings, picker eligibility/visibility/open and native selection checked; hidden test has no IMGUI screenshot validation.":"Private-save actual Unity/native player. Injected physical key reaches production bindings and held-View-Change router; captures are actual scene and OnGUI, with AA1 readback only."},true));
+            scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-no-capture")>=0?"Hidden private-save Unity/native player: production controller/key routing, tab order, song choices and countdown playback checked; screenshots and IMGUI appearance not validated.":SetupHintCheck?"Private-save Unity/native setup flow: synthetic controller Y uses production bindings; Legend course/rival and Time Attack course/direction/weather/time hint, picker, intermediate confirmation continuity, final song playback and mode/race exclusion. Actual OnGUI captures; no physical controller claim.":ReturnCheck?"Private-save actual Unity/native player: first/second car showcase and running-race returns, held View Change routed through production bindings, picker eligibility/visibility/open and native selection checked; hidden test has no IMGUI screenshot validation.":"Private-save actual Unity/native player. Injected physical key reaches production bindings and held-View-Change router; captures are actual scene and OnGUI, with AA1 readback only."},true));
     }
     private void Finish(bool passed,string error)
     {

@@ -9,13 +9,13 @@
 namespace idas3 {
 namespace {
 constexpr float f(unsigned word){return std::bit_cast<float>(word);}
-unsigned bankIndex(unsigned bank){if(bank==8)return 0;if(bank==15)return 1;if(bank==3)return 2;throw std::out_of_range("Tuning screen bank");}
+unsigned bankIndex(unsigned bank){if(bank==8)return 0;if(bank==15)return 1;if(bank==3)return 2;if(bank==OriginalTuningCoursePresentation::inspectionOptionBank)return 3;throw std::out_of_range("Tuning screen bank");}
 bool additive(unsigned tsp){return(tsp>>29==1&&((tsp>>26)&7)==1)||(tsp>>29==4&&((tsp>>26)&7)==6);}
 template<class T>void read(std::ifstream& file,T& value){file.read(reinterpret_cast<char*>(&value),sizeof(value));if(!file)throw std::runtime_error("Truncated tuning screen data");}
 }
 struct OriginalTuningCoursePresentation::Impl {
     struct Package {std::array<std::uint8_t,16> flags{};std::array<unsigned,3> parts{};};
-    std::array<NativeModel,3> models;std::array<NativeTextureBank,3> textures;
+    std::array<NativeModel,4> models;std::array<NativeTextureBank,4> textures;
     std::array<std::vector<Package>,35> packages;
     std::array<float,25> cursorX{};std::array<unsigned,42> partSelectors{};
     std::array<unsigned,31> faceSelectors{},nameSelectors{};
@@ -59,14 +59,14 @@ OriginalTuningCoursePresentation::OriginalTuningCoursePresentation(const Origina
 OriginalTuningCoursePresentation& OriginalTuningCoursePresentation::operator=(const OriginalTuningCoursePresentation& other){if(this!=&other)impl_=std::make_unique<Impl>(*other.impl_);return *this;}
 OriginalTuningCoursePresentation OriginalTuningCoursePresentation::load(const std::filesystem::path& root){
     OriginalTuningCoursePresentation out;auto& p=*out.impl_;const auto base=root/"data/original_assets";
-    const std::array<const char*,3> names{"v3sS00common","v3sS07tune","v3sK00rivalface"};
-    for(unsigned i=0;i<3;++i){const auto path=i?base/"tuning_course"/names[i]:base/"menus/v3"/names[i];p.models[i]=NativeModel::load(path/(std::string(names[i])+".idasmesh"));p.textures[i]=NativeTextureBank::load(path/"textures/textures.idastex");}
+    const std::array<const char*,4> names{"v3sS00common","v3sS07tune","v3sK00rivalface","optcrs"};
+    for(unsigned i=0;i<names.size();++i){const auto path=i?base/"tuning_course"/names[i]:base/"menus/v3"/names[i];p.models[i]=NativeModel::load(path/(std::string(names[i])+".idasmesh"));p.textures[i]=NativeTextureBank::load(path/"textures/textures.idastex");}
     std::ifstream tables(base/"tuning_course/tables.bin",std::ios::binary);read(tables,p.cursorX);read(tables,p.partSelectors);read(tables,p.faceSelectors);read(tables,p.nameSelectors);read(tables,p.themes);read(tables,p.sliderPositions);if(tables.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected tuning table data");
     std::ifstream packages(base/"tuning_course/packages.bin",std::ios::binary);for(auto& car:p.packages){unsigned count;read(packages,count);if((count!=1&&count<3)||count>5)throw std::runtime_error("Original tuning package count");car.resize(count);for(auto& row:car){read(packages,row.flags);read(packages,row.parts);for(auto part:row.parts)if(part!=~0u&&part>=42)throw std::runtime_error("Original tuning part selector");}}
     if(packages.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected tuning package data");
     std::ifstream pulse(base/"tuning_course/pulse.bin",std::ios::binary);read(pulse,p.pulse);if(pulse.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected tuning pulse data");
     std::ifstream wave(base/"tuning_course/cursor_scale.bin",std::ios::binary);read(wave,p.cursorWave);if(wave.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected cursor wave data");
-    if(p.models[1].chunks.size()!=73||p.models[2].chunks.size()!=62)throw std::runtime_error("Original tuning assets changed");return out;
+    if(p.models[1].chunks.size()!=73||p.models[2].chunks.size()!=62||p.models[3].chunks.size()!=9)throw std::runtime_error("Original tuning assets changed");return out;
 }
 void OriginalTuningCoursePresentation::reset(const original::OriginalTuningCourseMenu& state,const original::OriginalBattleProfile& profile){impl_->showroom.reset();impl_->ticks=0;impl_->drawFrame=0;impl_->kind=profile.byte(1192);impl_->count=state.count504;impl_->sliderX=.5f;impl_->sliderScale=1;}
 void OriginalTuningCoursePresentation::advance(const original::OriginalTuningCourseMenu& state,const original::OriginalBattleProfile& profile,float wheelPosition){
@@ -108,9 +108,30 @@ std::vector<OriginalTuningCourseDraw> OriginalTuningCoursePresentation::drawList
     if(empty)draw(15,51,f(0x408ccccd),f(0xc068f5c2));else{draw(15,67,f(0x408ccccd),f(0xc068f5c2));for(unsigned i=0;i<16;++i)if(i!=14&&package.flags[i])draw(15,52+(i==15?14:i),f(0x408ccccd),f(0xc068f5c2));}
     draw(8,52,p.cursorX[(state.count504-1)*5+state.selected496]*f(0x3c23d70a),f(0xbfa8f5c2),f(0xbdcccccd),1.5f,1);
     const auto seconds=std::min(countdown/60,99u);x=f(0x40a66666);if(seconds>=10){draw(8,seconds/10,x,f(0xbe23d70a),f(0x3a83126f));x+=f(0x3ef5c28f);}else x+=f(0x3e75c28f);draw(8,seconds%10,x,f(0xbe23d70a),f(0x3a83126f));
+    // Parent12BB16..12BB74 draws this independently of child1AF680.
+    // Current package keeps the installed parts; a changed package resets
+    // its basic/body tuning when the source selection owner commits.
+    if(p.kind==1)draw(inspectionOptionBank,state.selected496==state.previous500?0:1,0,f(0xbfa3d70a));
     return out;
 }
 void OriginalTuningCoursePresentation::paintBackground(std::span<unsigned> canvas,int width,int height)const{for(unsigned chunk:{54u,46u})impl_->paint(canvas,width,height,impl_->materialize({8,chunk}),8,false);}
+void OriginalTuningCoursePresentation::paintInspectionStatus(std::span<unsigned> canvas,int width,int height,unsigned frame,unsigned countdown)const{
+    const auto color=impl_->pulse.at(frame);
+    for(unsigned index:{21u,23u}){
+        auto chunk=impl_->models[0].chunks.at(index);
+        for(auto& batch:chunk.batches){
+            batch.ich[2]|=0x001000c0;batch.ich[4]|=0x001000c0;
+            batch.material[3]=color;batch.material[5]=color;
+        }
+        impl_->paint(canvas,width,height,chunk,8,true);
+    }
+    // Transmission registers the same1B9A60 timer child as name/tune choice.
+    const unsigned seconds=std::min(countdown/60,99u);float x=f(0x40a66666);
+    const auto digit=[&](unsigned n){impl_->paint(canvas,width,height,
+        impl_->materialize({8,n,x,f(0xbe23d70a),f(0x3a83126f)}),8,true);};
+    if(seconds>=10){digit(seconds/10);x+=f(0x3ef5c28f);}else x+=f(0x3e75c28f);
+    digit(seconds%10);
+}
 std::vector<OriginalTuningCourseOverlay> OriginalTuningCoursePresentation::overlays(int width,int height,const original::OriginalTuningCourseMenu& state,unsigned countdown)const{
     if(width<=0||height<=0)throw std::invalid_argument("Tuning canvas dimensions");
     struct Layer{unsigned bank;NativeModelChunk chunk;float depth;bool blend;};std::vector<Layer> layers;

@@ -1,4 +1,5 @@
 #include "original_driving_session.h"
+#include "original_driving_float.h"
 #include "original_race_start.h"
 #include "original_start_grid.h"
 #include "sh4_scalar_reference.h"
@@ -19,6 +20,7 @@ std::uint32_t word(const std::vector<std::uint8_t>& b,std::size_t o){
 }
 }
 int main(int argc,char** argv)try{
+    const OriginalDrivingFloatScope originalExecutionMode;
     if(argc!=4)throw std::invalid_argument("Usage: original_race_start_session_tests native_root canonical_image primary_fsca_header");
     const std::filesystem::path root=argv[1];RefMemory memory{std::filesystem::path(argv[2])};
     const auto data=OriginalPhysicsData::load(root/"data/original_physics/tables.bin");

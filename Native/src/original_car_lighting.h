@@ -1,5 +1,6 @@
 #pragma once
 #include "original_course_lighting.h"
+#include "original_matrix.h"
 
 namespace idas3::original {
 struct OriginalCarLighting {
@@ -43,4 +44,15 @@ OriginalCourseLight originalHappoCarPointLight();
 OriginalRaceLightingSets composeOriginalRaceLighting(const OriginalCourseLighting& courseBase,
     const OriginalCarLighting& player,const OriginalCarLighting& rival,
     const OriginalCarLightingSetup&);
+// Replay/ending E1E00 sets each car's ambient directly from course+12.
+// It does not run the race parent's wet inversion or opponent-gap darkening.
+OriginalCarLighting originalReplayCarLighting(const OriginalCarLightingSetup&,
+    const OriginalLightMatrix& visualWorld,float roadGain,bool headlights);
+// E4FC0/E33D4: night replays add a camera-relative spotlight to all three
+// scopes. The input is the current view matrix, before geometry transforms.
+OriginalCourseLight originalReplayCameraLight(const OriginalLightMatrix& view,
+    bool wet,const OriginalFscaTable&);
+OriginalRaceLightingSets composeOriginalReplayLighting(const OriginalCourseLighting&,
+    const OriginalCarLighting&,const OriginalCarLighting&,const OriginalCarLightingSetup&,
+    const OriginalCourseLight& cameraLight);
 } // namespace idas3::original

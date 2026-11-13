@@ -23,7 +23,7 @@ def main():
     proof = args.report_dir.resolve()
     proof.mkdir(parents=True, exist_ok=True)
     production = ROOT / "Assets/Scripts/Multiplayer/Idas3EosPlatform.cs"
-    sources = [production, Path(__file__).with_name("EosPlatformFakes.cs"), Path(__file__).with_name("EosPlatformDriver.cs")]
+    sources = [production, ROOT / "Assets/Scripts/Idas3StutterMeasurements.cs", Path(__file__).with_name("EosPlatformFakes.cs"), Path(__file__).with_name("EosPlatformDriver.cs")]
     compiler = find_compiler(args.compiler)
     exe = proof / "EosPlatformDriver.exe"
     compiled = subprocess.run([str(compiler), "/nologo", "/warnaserror+", "/target:exe", "/out:" + str(exe), *map(str, sources)], capture_output=True, text=True, encoding="utf-8")
@@ -31,7 +31,7 @@ def main():
     if compiled.returncode:
         raise RuntimeError(compiled.stdout + compiled.stderr)
     runs = {name: subprocess.run([str(exe), name], capture_output=True, text=True, encoding="utf-8", timeout=15)
-            for name in ("existing", "new", "load", "retry", "missing-token", "invalid-identity", "renew", "changed-identity", "shutdown")}
+            for name in ("existing", "new", "load", "retry", "missing-token", "invalid-identity", "renew", "changed-identity", "shutdown", "burst", "concurrent", "shutdown-dispatch", "trace")}
     (proof / "checks.log").write_text("\n".join(name + "\n" + run.stdout + run.stderr for name, run in runs.items()), encoding="utf-8")
     checks = [line.split("\t", 1)[1] for run in runs.values() for line in run.stdout.splitlines() if line.startswith("PASS\t")]
     report = {"passed": all(run.returncode == 0 for run in runs.values()), "count": len(checks), "checks": checks,

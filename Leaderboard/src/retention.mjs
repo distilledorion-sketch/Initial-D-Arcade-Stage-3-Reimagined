@@ -16,7 +16,8 @@ export const retainedSql=`WITH personal AS (
 export const retentionEnabled=env=>String(env.RETAIN_TOP_TEN)==='true';
 export function pruneStatement(env,limit=0){
  if(!Number.isInteger(limit)||limit<0)throw Error('Invalid retention batch size.');
- return env.DB.prepare(`DELETE FROM runs WHERE id IN (SELECT id FROM runs WHERE id NOT IN (${retainedSql})${limit?' LIMIT '+limit:''})`).bind(env.RULESET);
+ // Closed seasons are an administration archive, never retention candidates.
+ return env.DB.prepare(`DELETE FROM runs WHERE id IN (SELECT id FROM runs WHERE ruleset=? AND epoch=CAST((SELECT value FROM settings WHERE key='epoch') AS INTEGER) AND id NOT IN (${retainedSql})${limit?' LIMIT '+limit:''})`).bind(env.RULESET,env.RULESET);
 }
 
 export async function qualifiesForBoard(env,x,device,createdAt){

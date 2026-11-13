@@ -1,7 +1,9 @@
 #include "original_driving_session.h"
+#include "original_driving_float.h"
 #include "original_math.h"
 #include "original_session_initialization.h"
 #include "original_rival_setup.h"
+#include "original_engine_playback.h"
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
@@ -33,6 +35,8 @@ struct DrivingMutableState {
     OriginalTriangleSearchTrace trace;
     OriginalSurfaceScratch scratch;
     OriginalContactCompletionState completion;
+    OriginalSoundCueQueue contactSoundQueue;
+    std::uint32_t contactSoundActive=0;
     OriginalInitializationSideState initialization;
     OriginalSessionInitializationState boot;
     std::uint32_t frame=0;
@@ -49,6 +53,7 @@ struct OriginalDrivingSession::Impl : DrivingMutableState {
     OriginalRivalPath rivalPath;
     OriginalRoadContactServices services;
     OriginalContactEngineOutput engineOutput;
+    std::function<void(unsigned)> contactOutput;
     std::shared_ptr<const int> epoch=std::make_shared<const int>(0);
 };
 struct OriginalDrivingSession::Checkpoint::Data {
@@ -60,7 +65,7 @@ std::size_t OriginalDrivingSession::Checkpoint::memoryBytes() const {
     return sizeof(Data)+data_->state.road.impactRecords.capacity()*sizeof(OriginalImpactRecord)
         +data_->state.road.feedback142460.capacity()*sizeof(std::uint32_t);
 }
-bool OriginalDrivingSession::rollbackSafe() const {return impl_&&!impl_->engineOutput;}
+bool OriginalDrivingSession::rollbackSafe() const {return impl_&&!impl_->engineOutput&&!impl_->contactOutput;}
 OriginalDrivingSession::Checkpoint OriginalDrivingSession::checkpoint() const {
     if(!rollbackSafe())throw std::logic_error("Rollback requires a numerical session without external engine/audio callbacks");
     Checkpoint out;
@@ -87,6 +92,7 @@ std::uint64_t OriginalDrivingSession::rollbackDigest() const {
     add(s.road.surfaces0CAA9518);add(s.road.sweeps0CAA9618);add(s.road.normals0CAA94C8);
     add(s.road.flags0CAA94F8);add(s.road.impacts0CAA9508);add(s.road.impact0C900E5C);add(s.road.impact0C900E60);
     add(s.road.tick0C92DE30);add(s.trace);add(s.scratch);add(s.completion);
+    add(s.contactSoundQueue.cooldown);add(s.contactSoundActive);
     add(s.rivalActors);add(s.rivalRoad);add(s.rivalFrame);add(s.bodyContact);
     add(s.initialization);add(s.boot);add(s.frame);
     hash^=s.digitalByte;hash*=1099511628211ull;hash^=s.automaticBrake0C2F4DE0;hash*=1099511628211ull;
@@ -107,10 +113,13 @@ bool OriginalDrivingSession::ready() const noexcept{return bool(impl_);}
 
 OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem::path& root,const OriginalDrivingSelection& selection,
         const std::array<float,3>& position,const std::array<float,3>& angles,const ImportedDrivingRoad* importedRoad){
+    const OriginalDrivingFloatScope floatingPoint;
     if(selection.physics.conditionCode>=18||selection.collisionVariant>1)
         throw std::invalid_argument("Original session requires condition0..17 and explicit collision selector0/1");
     if(selection.collisionVariant!=(selection.physics.conditionCode&1u))
         throw std::invalid_argument("Original standard course setup requires collision selector equal to condition low bit");
+    if(selection.roadModeOverride&&*selection.roadModeOverride>=32)
+        throw std::invalid_argument("Original road-mode override requires enemy ID0..31");
     for(std::size_t i=0;i<3;++i)if(!std::isfinite(position[i])||!std::isfinite(angles[i]))
         throw std::invalid_argument("Original reset pose must be finite");
     if(selection.rival){
@@ -165,11 +174,6 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
         next->parameters.road={effective.conditionCode,0,next->path.points,next->path.inclusiveLastIndex};
         next->parameters.accelerationScale=importedRoad->accelerationScale;
     }
-    // A solo/online car may retain its last Legend opponent in the save.
-    // Road oil exclusions belong to this race's opponent, not that history.
-    // Keep tuning/initialization selection intact; only clear the road gate
-    // when no rival setup exists (Bunta retains its explicit rival setup).
-    if(!selection.rival)next->parameters.road.mode0C9015E0=0;
     const auto geometry=next->data.carRecord(selection.physics.vehicleIndex);
     for(std::size_t i=0;i<11;++i)next->roadParameters.geometry0C2700F4[i]=std::bit_cast<float>(geometry[i]);
     const auto inputs=next->data.initialization(effective,position,angles);
@@ -206,6 +210,10 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
         next->path.points.assign(next->rivalPath.points.begin(),next->rivalPath.points.begin()+next->path.inclusiveLastIndex+1);
         next->parameters.road.path0C901728=next->path.points;
     }
+    // Original solo setup retains the profile's opponent gate. Separate host
+    // policies may override surfaces after setup without changing steering,
+    // tuning, or the rival initializer's shared selection.
+    if(selection.roadModeOverride)next->parameters.road.mode0C9015E0=*selection.roadModeOverride;
     publishOriginalActors(next->actor,next->secondaryActor,next->selection.physics.progressEnabled0C9015E4,next->published);
     initializeOriginalRecoveryBackup(next->vehicle.drive,next->recovery);
     next->completion.elapsedFrames0C900E84=std::bit_cast<std::uint32_t>(next->boot.elapsedFrames0C900E84);
@@ -225,7 +233,14 @@ OriginalInitializationResult OriginalDrivingSession::reset(const std::filesystem
 
 OriginalDrivingStepEffects OriginalDrivingSession::tick(const OriginalVehicleInputs& incoming,
         const OriginalBodyCollisionResult* sharedContact,const OriginalContactEngineOutput& frameEngineOutput){
+    const OriginalDrivingFloatScope floatingPoint;
     auto& s=state();OriginalDrivingStepEffects out;out.frame0C92DE30=s.frame;
+    const auto contactCue=[&](unsigned cue,std::uint32_t& seed){
+        if(s.contactSoundActive&&s.contactSoundQueue.request(false,seed)){
+            out.acceptedContactCues.push_back(cue);
+            if(s.contactOutput)s.contactOutput(cue);
+        }
+    };
     auto inputs=incoming;
     inputs.elapsedFrames0C900E84=std::bit_cast<std::int32_t>(s.completion.elapsedFrames0C900E84);
     s.parameters.steeringMemory.mask0C900EBC=s.completion.steeringMask0C900EBC;
@@ -237,11 +252,15 @@ OriginalDrivingStepEffects OriginalDrivingSession::tick(const OriginalVehicleInp
     out.bodyCollision=sharedContact?*sharedContact:s.selection.bodyContactEnabled
         ?produceOriginalBodyContact(s.published,s.bodyContact,s.rivalData,s.fsca):OriginalBodyCollisionResult{};
     const auto bodyEffects=applyOriginalBodyCollisionResponse(s.vehicle.drive,out.bodyCollision,s.boot.state0C31FD44,s.completion.randomSeed0C37C778);
+    if(bodyEffects.cue)contactCue(bodyEffects.cue,s.completion.randomSeed0C37C778);
     out.vehicle=stepOriginalVehicle(s.vehicle,inputs,s.parameters,{originalSinF32,originalCosF32,originalFiprDot3});
     prepareOriginalContactFrame(s.vehicle.drive,s.actor,s.wheels);
     s.road.tick0C92DE30=s.frame;
     const auto oldImpactCount=s.road.impactRecords.size();
     updateOriginalRoadContact(s.vehicle.drive,s.actor,s.road,s.roadParameters,s.services);
+    // Road queries do not consume RNG. Preserve their request order before
+    // the engine update, which shares the same generator as this queue.
+    for(auto cue:s.road.feedback142460)contactCue(cue,s.completion.randomSeed0C37C778);
     const auto addedImpacts=std::uint32_t(s.road.impactRecords.size()-oldImpactCount);
     auto& stats=s.vehicle.tail.statistics0C91FB0C;
     stats[5]+=addedImpacts*12u;stats[6]+=addedImpacts*4u;stats[7]+=addedImpacts*4u;
@@ -249,7 +268,7 @@ OriginalDrivingStepEffects OriginalDrivingSession::tick(const OriginalVehicleInp
     s.completion.cues0C900E5C[0]=std::bit_cast<std::uint32_t>(s.road.impact0C900E5C);
     s.completion.cues0C900E5C[1]=std::bit_cast<std::uint32_t>(s.road.impact0C900E60);
     const auto oldPositionCursor=s.completion.positionCursor,oldFrameCursor=s.completion.frameCursor;
-    out.completion=finishOriginalContactFrame(s.vehicle.drive,s.vehicle.transmission,s.completion,{s.frame,s.digitalByte},frameEngineOutput?frameEngineOutput:s.engineOutput);
+    out.completion=finishOriginalContactFrame(s.vehicle.drive,s.vehicle.transmission,s.completion,{s.frame,s.digitalByte},frameEngineOutput?frameEngineOutput:s.engineOutput,contactCue);
     stats[9]+=(s.completion.positionCursor-oldPositionCursor)*12u;
     stats[10]+=(s.completion.frameCursor-oldFrameCursor)*4u;
     //159920 runs15B0A0(1,1) after player completion. Its four private
@@ -273,8 +292,20 @@ OriginalDrivingStepEffects OriginalDrivingSession::tick(const OriginalVehicleInp
     return out;
 }
 void OriginalDrivingSession::setPlatformFrame(std::uint32_t frame,std::uint8_t digital){auto& s=state();s.frame=frame;s.digitalByte=digital;}
-void OriginalDrivingSession::setEngineOutput(OriginalContactEngineOutput output){state().engineOutput=std::move(output);}
-void OriginalDrivingSession::finishSoundFrame(const std::function<void(std::uint32_t&)>& output){withSharedRandom(output);}
+void OriginalDrivingSession::setEngineOutput(OriginalContactEngineOutput output,std::function<void(unsigned)> contactOutput){
+    setContactSoundQueueActive(bool(output));auto& s=state();
+    s.contactOutput=output?std::move(contactOutput):std::function<void(unsigned)>{};s.engineOutput=std::move(output);
+}
+void OriginalDrivingSession::setContactSoundQueueActive(bool active){
+    auto& s=state();if(bool(s.contactSoundActive)==active)return;
+    s.contactSoundActive=active?1u:0u;s.contactSoundQueue={};
+}
+std::int32_t OriginalDrivingSession::contactSoundCooldown()const{return state().contactSoundQueue.cooldown;}
+void OriginalDrivingSession::finishSoundFrame(const std::function<void(std::uint32_t&)>& output){
+    withSharedRandom(output);auto& s=state();
+    // 1415E0 runs skid selection before ticking each loaded scene queue.
+    if(s.contactSoundActive)s.contactSoundQueue.tick();
+}
 void OriginalDrivingSession::withSharedRandom(const std::function<void(std::uint32_t&)>& action){auto& s=state();if(action)action(s.completion.randomSeed0C37C778);s.initialization.randomSeed0C37C778=s.completion.randomSeed0C37C778;}
 void OriginalDrivingSession::setProgressCorrection(float progress,std::uint32_t mode){
     if(!std::isfinite(progress))throw std::invalid_argument("Original frame progress must be finite");

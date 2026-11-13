@@ -44,11 +44,20 @@ struct OriginalDrivingSelection {
     // Source-parity callers keep the original pair stage by default.
     // An explicit synchronized contact result always takes precedence.
     bool bodyContactEnabled=true;
+    // Optional host policy for road/surface exclusions only (original enemy
+    // IDs0..31). Absent preserves159720's selected profile, even in solo.
+    // Online explicitly uses0 so saved Legend history cannot grant oil
+    // immunity. Never change vehicleMode: initialization also uses that ID
+    // for the original steering-memory mask. Imported roads default to0.
+    std::optional<std::uint32_t> roadModeOverride;
 };
 struct OriginalDrivingStepEffects {
     OriginalVehicleStepResult vehicle;
     OriginalContactCompletionEffects completion;
     std::vector<std::uint32_t> feedback142460;
+    // Authored PACK22 cues accepted by the active source scene queue, including
+    // completion cue4. Raw request diagnostics above remain unfiltered.
+    std::vector<std::uint32_t> acceptedContactCues;
     std::vector<OriginalImpactRecord> newImpactRecords;
     std::uint32_t invalidScalarDiagnostics=0;
     std::uint32_t frame0C92DE30=0;
@@ -104,7 +113,12 @@ public:
         const OriginalContactEngineOutput& frameEngineOutput={});
     //142860 runs inside contact completion, before its RNG/steering mask.
     // Bind after reset. The callback may consume this same driving seed.
-    void setEngineOutput(OriginalContactEngineOutput output);
+    void setEngineOutput(OriginalContactEngineOutput output,std::function<void(unsigned)> contactOutput={});
+    // The game binds this with its race audio owner. Numerical source tests can
+    // leave the platform service absent; rollback owners enable it explicitly.
+    // Player volume/mute must never change this simulation state.
+    void setContactSoundQueueActive(bool active);
+    std::int32_t contactSoundCooldown()const;
     // The outer scene invokes1415E0 after its race object update. This gives
     // tire selection the same shared seed, then preserves it for the next tick.
     void finishSoundFrame(const std::function<void(std::uint32_t&)>& output);

@@ -37,10 +37,25 @@ public static class Idas3WheelRigChecks
         mapper.SelectControllerProfile("wheel","wheel",true);gas.value=brake.value=1;shift.value=0;Poll(samples);
         gas.value=-1;Poll(samples);var menu=new Idas3Native.FrameInput();mapper.ApplyMenu(ref menu,true);Check((menu.key0&(1u<<13))!=0,"Separate pedal cannot confirm a menu");
         mapper.BeginCapture(Idas3ControlBindings.ActionId.Camera,Idas3ControlBindings.Slot.Controller,0);Poll(samples);shift.value=1;Poll(samples);Check(mapper.IsCapturing,"Capture selected an unrelated shifter");mapper.CancelCapture();
+        // A shifter emulating XInput saves ordinary PadInput bindings, not HID
+        // paths. It must keep working beside the wheel after restart.
+        mapper.SelectControllerProfile("xinput:slot:0","Xbox shifter",false);
+        Check(!mapper.IsWheelAccessory("xinput:slot:0"),"Default gamepad unexpectedly joined the wheel rig");
+        Check(mapper.TrySetDraftPad(Idas3ControlBindings.ActionId.Gear1,Idas3ControlBindings.PadInput.A)&&mapper.ApplyDraft(),"Save Xbox-style gear binding");
+        mapper=new Idas3ControlBindings();mapper.Initialize(root);mapper.SelectControllerProfile("wheel","wheel",true);
+        Check(mapper.IsWheelAccessory("xinput:slot:0"),"Xbox shifter role did not survive reload");
+        var xboxSample=new Idas3ControllerDevices.RigSample{key="xinput:0",profile="xinput:slot:0",pad=new Idas3ControlBindings.PadState{connected=true}};
+        var xboxRig=new[]{xboxSample};steer.value=0;Poll(xboxRig);steer.value=.5f;xboxSample.pad.buttons=0x1000;xboxSample.pad.rightTrigger=255;
+        packet=Poll(xboxRig);Check((packet.flags&0x700)==0x100&&packet.thumbLX>16000,"Xbox shifter lost its gear or wheel steering");
+        Check(packet.rightTrigger==0,"Shifter inherited gamepad throttle into wheel rig");
+        Poll(Array.Empty<Idas3ControllerDevices.RigSample>());packet=Poll(xboxRig);Check((packet.flags&0x700)==0,"Reconnected held Xbox gear bypassed release guard");
+        xboxSample.pad.buttons=0;Poll(xboxRig);xboxSample.pad.buttons=0x1000;packet=Poll(xboxRig);Check((packet.flags&0x700)==0x100,"Released Xbox gear did not recover");
         InputSystem.RegisterLayout("{\"name\":\"Idas3RigCheckJoystick\",\"extend\":\"Joystick\"}",name:"Idas3RigCheckJoystick",matches:new InputDeviceMatcher().WithInterface("Idas3RigCheck"));
         Joystick Add(string name)=>(Joystick)InputSystem.AddDevice(new InputDeviceDescription{interfaceName="Idas3RigCheck",manufacturer="Private rig check",product=name,serial=name});
         var wheelDevice=Add("wheel");var pedalDevice=Add("pedals");var shifterDevice=Add("shifter");
         uint NoPad(uint slot,out Idas3Native.PadState value){value=default;return 1167;}
+        double discoveryTime=0;ushort xboxButtons=0;
+        uint XboxShifter(uint slot,out Idas3Native.PadState value){value=default;value.gamepad.buttons=xboxButtons;return slot==0?0u:1167u;}
         try{using(var devices=new Idas3ControllerDevices(()=>0,NoPad,d=>d.description.interfaceName=="Idas3RigCheck")){
             devices.Initialize(Path.Combine(root,"discovery"));string wheelKey=null,pedalKey=null;
             foreach(var choice in devices.Choices){if(choice.label.StartsWith("wheel"))wheelKey=choice.key;if(choice.label.StartsWith("pedals"))pedalKey=choice.key;}
@@ -53,6 +68,16 @@ public static class Idas3WheelRigChecks
             devices.Select("keyboard");devices.Tick(true);Check(devices.RigSamples.Count==0&&!devices.TryRead(out _),"Keyboard only retained wheel rig input");
             devices.Select(wheelKey);devices.Tick(true);InputSystem.RemoveDevice(pedalDevice);devices.Tick(false);
             Check(devices.RigSamples.Count==1,"Disconnected auxiliary device left a live sample");
+        }
+        using(var devices=new Idas3ControllerDevices(()=>discoveryTime,XboxShifter,d=>d.description.interfaceName=="Idas3RigCheck")){
+            devices.IsWheelAccessory=mapper.IsWheelAccessory;devices.Initialize(Path.Combine(root,"xinput-discovery"));
+            string wheelKey=null;foreach(var choice in devices.Choices)if(choice.label.StartsWith("wheel"))wheelKey=choice.key;
+            Check(devices.Select(wheelKey)&&devices.Select("automatic"),"Choose automatic wheel rig");devices.Tick(true);
+            discoveryTime=2;xboxButtons=0x1000;devices.Tick(true);
+            Check(devices.ActiveName.StartsWith("wheel"),"Xbox shifter stole the wheel after the activity debounce expired");
+            bool found=false;foreach(var sample in devices.RigSamples)if(sample.profile=="xinput:slot:0")found=sample.pad.buttons==0x1000;
+            Check(found,"Discovery omitted the configured Xbox shifter's packet");
+            devices.Select("xinput:0");devices.Tick(true);Check(!devices.ActiveIsGeneric&&devices.RigSamples.Count==0,"Explicit gamepad selection retained the wheel rig");
         }}finally{
             if(wheelDevice.added)InputSystem.RemoveDevice(wheelDevice);if(pedalDevice.added)InputSystem.RemoveDevice(pedalDevice);if(shifterDevice.added)InputSystem.RemoveDevice(shifterDevice);
             InputSystem.RemoveLayout("Idas3RigCheckJoystick");

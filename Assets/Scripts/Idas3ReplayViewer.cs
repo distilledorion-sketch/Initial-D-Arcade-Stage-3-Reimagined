@@ -8,7 +8,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 [DefaultExecutionOrder(-110)]
-public sealed class Idas3ReplayViewer : MonoBehaviour
+public sealed partial class Idas3ReplayViewer : MonoBehaviour
 {
     public static bool Requested => Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-replay-viewer") >= 0;
     public static Idas3ReplayViewer Instance { get; private set; }
@@ -74,6 +74,11 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayHud(int elapsed6000, int finish6000, int[] splits, int count, int[] glyphs, int glyphCount);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayAppearance(uint[] values, int count);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayDetailFrame(byte[] values, int count);
+    [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayBackfire(int playerFrame,int opponentFrame);
+    [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayDustTimeline(byte[] values,int count);
+    [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayDustSeek(uint step);
+    [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplaySmokeTimeline(byte[] values,int count);
+    [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplaySmokeSeek(uint step);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayOpponentStart(int car,int enemy,uint[] values,int count);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3ReplayOpponentFrame(byte[] values,int count);
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)] static extern int Idas3SceneSetPreRaceNames([MarshalAs(UnmanagedType.LPUTF8Str)]string player,[MarshalAs(UnmanagedType.LPUTF8Str)]string opponent);
@@ -177,6 +182,9 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
                 if(Idas3SceneSetPreRaceNames(opponentPov?remote:local,opponentPov?local:remote)!=1)throw new InvalidOperationException(Idas3Native.Error());
             }
         }
+        // Effects belong to the recorded world, even when viewing the rival.
+        if(Idas3ReplayDustTimeline(replay.DustFrames,replay.DustFrames.Length)!=1)throw new InvalidOperationException(Idas3Native.Error());
+        if(Idas3ReplaySmokeTimeline(replay.SmokeFrames,replay.SmokeFrames.Length)!=1)throw new InvalidOperationException(Idas3Native.Error());
     }
     void SwitchPov()
     {
@@ -241,6 +249,8 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     void Present()
     {
         var p = Viewed.Sample(seconds);
+        uint dustStep=p.dustStep;
+        int otherBackfire=-1;
         float pitch = 0;
         var m = Viewed.Metadata;
         int elapsed = Math.Min(m.ticks6000, (int)Math.Round(seconds * 6000));
@@ -252,15 +262,20 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
         else if (Idas3ReplayHud(elapsed, m.ticks6000, m.splits, m.splits?.Length ?? 0, m.nameGlyphs, m.nameGlyphs?.Length ?? 0) != 1) throw new InvalidOperationException(Idas3Native.Error());
         if(replay.Opponent!=null){
             var other=(opponentPov?replay:replay.Opponent).Sample(seconds);FillFrame(other,opponentFrameBytes);
+            otherBackfire=(int)other.backfire-1;
+            if(opponentPov)dustStep=other.dustStep;
             // Opponent streams store the original local signed battle gap.
             float advantage=Idas3ReplayData.Scalar(replay.Opponent.Sample(seconds).state[31]);
             BitConverter.GetBytes(opponentPov?-advantage:advantage).CopyTo(opponentFrameBytes,152);
             if(Idas3ReplayOpponentFrame(opponentFrameBytes,160)!=1)throw new InvalidOperationException(Idas3Native.Error());
         }
+        if(Idas3ReplayBackfire((int)p.backfire-1,otherBackfire)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if(cameraMode==4){
             var target=freePosition+Quaternion.Euler(freePitch,freeYaw,0)*Vector3.forward;
             if(Idas3ReplayFreeCamera(freePosition.x,freePosition.y,freePosition.z,target.x,target.y,target.z)!=1)throw new InvalidOperationException(Idas3Native.Error());
         }
+        if(replay.DustFrames.Length>0&&Idas3ReplayDustSeek(dustStep)!=1)throw new InvalidOperationException(Idas3Native.Error());
+        if(replay.SmokeFrames.Length>0&&Idas3ReplaySmokeSeek(dustStep)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if (Idas3ReplayPose(p.tick, p.position.x, p.position.y, p.position.z, p.yaw, p.speed, p.gear, pitch, cameraMode, orbit, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
         Status = Idas3Native.ReadStatus();scene.HudOptions=audioOptions;scene.ShowGameHud=gameHudVisible; scene.ApplyFrame(); ui.ApplyFrame();
     }
@@ -444,6 +459,18 @@ public sealed class Idas3ReplayViewer : MonoBehaviour
     }
     void Proof()
     {
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-backfire-check")>=0){
+            if(!replayBackfireCheckStarted){replayBackfireCheckStarted=true;CheckReplayBackfire();}
+            return;
+        }
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-dust-check")>=0){
+            if(!replayDustCheckStarted){replayDustCheckStarted=true;CheckReplayDust();}
+            return;
+        }
+        if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-replay-ui-check") >= 0) {
+            if (!replayUiCheckStarted) { replayUiCheckStarted = true; CheckReplayUi(); }
+            return;
+        }
         proofFrame++;
         bool courseSweep=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-course-sweep")>=0;
         bool railSweep=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-replay-rail-sweep")>=0;

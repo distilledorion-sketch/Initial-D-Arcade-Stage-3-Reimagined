@@ -24,6 +24,8 @@ NATIVE_TESTS = (
     "original_collision_reference", "native_multiplayer", "native_asset_storage",
     "unity_shared_renderer", "unity_ui_memory", "unity_ui_capture", "unity_ui_reload", "hud_composition_perf", "course_mesh_cache",
     "local_driver_profiles", "local_driver_profile_recovery", "online_result_reward", "time_attack_ghost",
+    "time_attack_records", "time_attack_season", "original_driving_clock", "original_driving_float",
+    "original_feedback", "original_feedback_presentation", "wheel_feedback_backend",
 )
 INPUT_TREES = ("Assets", "Packages", "ProjectSettings", "Native/data", "RuntimeAssets", "ThirdParty")
 

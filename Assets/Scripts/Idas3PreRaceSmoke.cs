@@ -43,8 +43,8 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
         public float speed,rpm;
     }
     [Serializable] private class Report {
-        public string schema="idas3-pre-race-showcase-smoke-v2",error;
-        public string scope="Fresh private CHRIS profile, actual Legend menu/dialogue route, held throttle during two showcase shots and VS, original countdown then driving. AA1 captures use the unchanged native camera and all enabled Unity cameras in depth order. Numerical checks establish owner/solver/geometry/name invariants; image composition requires visual review.";
+        public string schema="idas3-pre-race-showcase-smoke-v3",error;
+        public string scope="Fresh private CHRIS profile, actual Legend menu/dialogue route, held throttle during two showcase shots and VS, original countdown then driving. AA1 captures use the unchanged native camera and all enabled Unity cameras in depth order. Numerical checks establish held race/countdown clocks, neutral live-engine control through the 241-frame opening and countdown handoff, geometry and name invariants; image composition requires visual review.";
         public bool passed,shutdownComplete;
         public int checks;
         public double seconds;
@@ -117,7 +117,7 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
     private void CheckVisiblePresentation(PreRaceStatus s){
         Check(s.reserved==(s.phase-1)*120+s.presentationFrame,"VS animation must advance continuously from the first car shot");
         var audio=Audio();Check((audio.flags&16)==0,"Visible showcase cars still have hidden-vehicle audio mute");
-        Check((audio.flags&3)==3&&audio.streamFrame==0,"Visible showcase must have source idle while the race song stays held");
+        Check((audio.flags&3)==3&&audio.streamFrame==0,"Visible showcase must have engine audio enabled while the race song stays held");
     }
     private string Name(int side){var bytes=new byte[512];int length=Idas3SceneCopyPreRaceName(side,bytes,bytes.Length);Check(length>=0&&length<bytes.Length&&bytes[length]==0,"Live name copy");return Encoding.UTF8.GetString(bytes,0,length);}
     private IEnumerator Frames(int n){for(int i=0;i<n;++i)yield return null;}
@@ -139,7 +139,7 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
             if(s.phase!=onlinePrior){Check(s.phase==(onlinePrior==2?4:onlinePrior+1),"Online showcase phase order without an extra VS hold");onlinePrior=s.phase;phases.Add(s.phase);Observe("online-phase-"+s.phase,s);}
             if(s.phase<=3){
                 CheckVisiblePresentation(s);
-                Check(s.simulationTicks==onlineHeldTicks&&s.ownerTicks==onlineHeldOwner&&s.countdownRemaining==240,"Online source solver/countdown advanced during presentation");
+                Check(s.simulationTicks==onlineHeldTicks&&s.ownerTicks==onlineHeldOwner&&s.countdownRemaining==240,"Online race clock/countdown advanced during presentation");
                 Check(s.playerRanges>0&&s.rivalRanges>0&&s.cameraView==0,"Online showcase omitted a car or changed bumper preference");
                 string local=onlineRole=="host"?"SMOKE HOST":"SMOKE JOIN",remote=onlineRole=="host"?"SMOKE JOIN":"SMOKE HOST";
                 int localRow=onlineRole=="host"?0:1;
@@ -161,7 +161,7 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
         }catch(Exception error){onlineComplete=true;onlinePassed=false;onlineError=error.ToString();WriteOnlineReport();}
     }
     private void WriteOnlineReport(){var report=new Report{passed=onlinePassed,error=onlineError,checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,observations=observations.ToArray(),phases=phases.ToArray(),countdownDigits=digits.ToArray(),
-        scope="Passive observation of actual two-player Unity LAN start. No input override, pause, captures, target changes, or clock freezes. Shared showcase rows are fixed grid order: row0 upper-left is the host car, row1 lower-right is the guest car on both clients. Player/opponent fields retain local/remote identity and explicit row annotations identify placement. Both showcase cars are submitted with bumper saved; source solver held through shot0/shot1/VS;3/2/1 and GO observed. Real frame sampling may cover several source ticks; exact step180 is independently verified by the native single-step fixture."};File.WriteAllText(Path.Combine(root,"pre-race-report.json"),JsonUtility.ToJson(report,true));}
+        scope="Passive observation of actual two-player Unity LAN start. No input override, pause, captures, target changes, or clock freezes. Shared showcase rows are fixed grid order: row0 upper-left is the host car, row1 lower-right is the guest car on both clients. Player/opponent fields retain local/remote identity and explicit row annotations identify placement. Both showcase cars are submitted with bumper saved; race/countdown clocks held through shot0/shot1/VS while neutral driving advances;3/2/1 and GO observed. Real frame sampling may cover several source ticks; exact step180 is independently verified by the native single-step fixture."};File.WriteAllText(Path.Combine(root,"pre-race-report.json"),JsonUtility.ToJson(report,true));}
     private IEnumerator Run(){
         yield return Frames(5);Check(host.Ready,"Native initialization");host.DiagnosticFocusOverride=true;
         target=new RenderTexture(1280,720,24,RenderTextureFormat.ARGB32){name="Pre-race verification",antiAliasing=1};Check(target.Create(),"Capture target creation");host.GetComponent<Camera>().targetTexture=target;
@@ -199,15 +199,17 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
             yield return null;
         }
         Check(Read().phase==1,"First showcase shot did not begin");
-        var first=Read();ulong frozenTicks=first.simulationTicks,frozenOwner=first.ownerTicks;float speed=host.Status.speedMetresPerSecond,rpm=host.Status.rpm;
+        var first=Read();ulong frozenTicks=first.simulationTicks,frozenOwner=first.ownerTicks;float firstRpm=host.Status.rpm,peakShowcaseRpm=firstRpm;
         var cameraEyes=new List<Vector3>();var cameraTravel=new float[2];uint prior=0;int priorDigit=-1;var captured=new HashSet<string>();
         for(int i=0;i<2400;++i){
             var s=Read();Check(s.phase>=1&&s.phase<=5,"Unexpected race presentation phase");
             if(s.phase!=prior){Check(s.phase==(prior==2?4:prior+1),"Showcase/countdown phase order without an extra VS hold");prior=s.phase;phases.Add(s.phase);Observe("phase-"+s.phase,s);}
             if(s.phase<=3){
                 CheckVisiblePresentation(s);
-                Check(s.simulationTicks==frozenTicks&&s.ownerTicks==frozenOwner,"Source solver/countdown advanced during showcase/VS");
-                Check(host.Status.speedMetresPerSecond==speed&&host.Status.rpm==rpm,"Player driving state changed during showcase/VS");
+                Check(s.simulationTicks==frozenTicks&&s.ownerTicks==frozenOwner,"Race clock/countdown advanced during showcase/VS");
+                Check(Idas3ArcadeHud.Read(out var hud)&&hud.gear==0,"Showcase engaged a driving gear before countdown");
+                Check(Audio().drivingControlFrames==s.reserved,"Live engine controller did not advance with the neutral showcase");
+                peakShowcaseRpm=Math.Max(peakShowcaseRpm,host.Status.rpm);
                 Check(s.cameraView==0,"Showcase changed the saved bumper view");Check(s.playerRanges>0&&s.rivalRanges>0,"Showcase omitted a car with bumper view saved");
                 Check(s.countdownRemaining==240,"Source countdown began before the VS screen ended");
                 Check(Name(0).Normalize(NormalizationForm.FormKC)=="CHRIS","VS player name did not come from the loaded profile");
@@ -221,6 +223,7 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
             }else if(s.phase==4){
                 Check(s.simulationTicks-frozenTicks==s.ownerTicks-frozenOwner,"Countdown solver and source owner diverged");
                 ulong introAge=s.ownerTicks-frozenOwner;
+                Check(Audio().drivingControlFrames==241u+introAge,"Countdown reset or skipped the live showcase engine controller");
                 if((introAge==0||introAge==4||introAge==8||introAge==12||introAge==16||introAge==24||introAge==40||introAge==41)&&captured.Add("hud-entrance-"+introAge)){
                     Observe("hud-entrance-"+introAge,s);yield return Capture("hud-entrance-"+introAge.ToString("000"));
                 }
@@ -231,6 +234,8 @@ public sealed class Idas3PreRaceSmoke : MonoBehaviour
             }else{
                 Check(s.ownerTicks-frozenOwner==180&&s.simulationTicks-frozenTicks==180,"GO must follow exactly 180 original countdown steps");
                 Check(digits.Count==3&&digits[0]==3&&digits[1]==2&&digits[2]==1,"Missing source countdown digits");
+                Check(peakShowcaseRpm>firstRpm+500f,"Held throttle did not rev the engine during the showcase");
+                Check(Audio().drivingControlFrames==421u,"GO did not retain all 241 showcase and 180 countdown engine frames");
                 Check(captured.Contains("versus"),"VS animation did not reach its readable settled frame152");
                 Check(captured.Contains("showcase-shot-0-vs-text"),"Missing first-shot VS text capture");
                 Check(s.cameraView==0&&s.playerRanges==0,"Countdown did not restore saved bumper camera");

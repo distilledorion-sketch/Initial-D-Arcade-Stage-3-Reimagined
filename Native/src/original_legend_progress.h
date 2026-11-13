@@ -31,6 +31,12 @@ OriginalLegendPoints awardOriginalLegendPoints(OriginalBattleProfile& profile,
 // source limits are surprisingly{4,4,4,4,4,4,0,0,0}; preserve them exactly.
 // This is a separate lifecycle operation, not part of1343A0's counter update.
 void refreshOriginalLegendCourseProgress(OriginalBattleProfile& profile);
+// 1AABE4..1AAD50, after decoding an accepted card. Rebuilds its course
+// selection defaults/unlocks, and starts the next story cycle only when all
+// nine courses are clear and the final Bunta encounter has a result. The
+// completion counter saturates at seven. Car, tuning, points and other modes
+// are untouched. Call on accepting a saved driver, never on preview/readback.
+bool refreshOriginalLegendCardProgress(OriginalBattleProfile& profile);
 //18A940 and its three pure profile components, then05D026..05D084. This
 // common post-result rank update also applies to the other original modes.
 std::uint32_t calculateOriginalDriverRank(const OriginalBattleProfile& profile);

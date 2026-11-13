@@ -1,4 +1,5 @@
 #include "online_race_simulation.h"
+#include "original_driving_float.h"
 #include "imported_course.h"
 #include "original_engine_playback.h"
 #include "original_host_input.h"
@@ -6,6 +7,8 @@
 #include "original_start_grid.h"
 #include "original_tuning.h"
 #include "original_battle_metrics.h"
+#include "car_catalog.h"
+#include "replay_car_smoke_playback.h"
 #include <algorithm>
 #include <bit>
 #include <stdexcept>
@@ -21,6 +24,7 @@ struct RaceMutable {
     OriginalRaceStart start;
     std::array<OriginalPathCoordinate,2> coordinates;
     std::array<SoundState,2> sound;
+    std::array<CarSmokeState,2> smoke;
     OriginalBodyContactState contact;
     std::uint64_t frame=0,contactFrames=0;
     int winner=-3;
@@ -36,6 +40,7 @@ struct OnlineRaceSimulation::Impl {
     OriginalFscaTable fsca;
     OriginalEngineTables engineTables;
     std::array<OriginalEngineConfiguration,2> engines;
+    std::array<std::array<std::array<float,3>,4>,2> smokeOrigins;
     RaceMutable state;
     OnlineRaceFrame lastFrame;
     std::shared_ptr<const int> epoch=std::make_shared<const int>(0);
@@ -47,12 +52,14 @@ struct OnlineRaceSimulation::Checkpoint::Data {
     std::shared_ptr<const int> epoch;
 };
 std::size_t OnlineRaceSimulation::Checkpoint::memoryBytes()const {
-    return data_?sizeof(Data)+data_->cars[0].memoryBytes()+data_->cars[1].memoryBytes():0;
+    return data_?sizeof(Data)+data_->cars[0].memoryBytes()+data_->cars[1].memoryBytes()+
+        data_->state.smoke[0].dynamicBytes()+data_->state.smoke[1].dynamicBytes():0;
 }
 OnlineRaceSimulation::~OnlineRaceSimulation()=default;
 OnlineRaceSimulation::OnlineRaceSimulation(OnlineRaceSimulation&&)noexcept=default;
 OnlineRaceSimulation& OnlineRaceSimulation::operator=(OnlineRaceSimulation&&)noexcept=default;
 OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,const OnlineRaceSetup& setup):impl_(std::make_unique<Impl>()){
+    const OriginalDrivingFloatScope floatingPoint;
     if(setup.condition>=18||(setup.condition>=16&&!setup.wet))throw std::invalid_argument("Invalid online course/weather");
     auto& s=*impl_;s.setup=setup;
     const bool reverse=(setup.condition&1)!=0;
@@ -65,7 +72,12 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
     s.state.start.reset(2);
     for(unsigned slot=0;slot<2;++slot){
         auto& car=s.cars[slot];const auto& profile=setup.profiles[slot];
+        s.state.smoke[slot].reset(setup.wet?1u:0u);
+        if(!setup.imported)s.smokeOrigins[slot]=originalCarEffectOrigins(OriginalCarParts::load(
+            root/"data/original_models"/originalCarFolders.at(profile.u(16))/"assembly_parts.bin"));
         OriginalDrivingSelection selection;
+        // Online surface rules remain independent of saved Legend opponents.
+        selection.roadModeOverride=0;
         selection.physics=makeOriginalFreshTimeAttackSelection(profile.u(16),setup.imported?setup.imported->handlingCondition(reverse):setup.condition,setup.wet?OriginalWeather::Wet:OriginalWeather::Dry);
         applyOriginalProfilePhysicsSelection(selection.physics,profile);
         selection.physics.progressEnabled0C9015E4=setup.boost?1u:0u;
@@ -84,10 +96,16 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
         s.engines[slot]=configureProfileEngineSound(profile);
         resetOriginalEngineControl(s.state.sound[slot].engine);
         resetOriginalTireAudio(s.state.sound[slot].tire);
+        // The numerical owner keeps contact-queue/RNG state inside its car
+        // checkpoints; accepted sounds are played only after confirmation.
+        car.setContactSoundQueueActive(true);
     }
 }
 OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInputs,2>& incoming){
-    auto& s=*impl_;OnlineRaceFrame out;out.frame=s.state.frame;out.start=s.state.start.step();
+    const OriginalDrivingFloatScope floatingPoint;
+    auto& s=*impl_;OnlineRaceFrame out;out.frame=s.state.frame;
+    if(s.state.frame<s.setup.showcaseFrames)out.start.countdownRemaining=s.state.start.remaining();
+    else out.start=s.state.start.step();
     // Sample both cars before either solver advances. Replays use the same
     // original distance correction: trailing gap capped at 100 metres.
     const float gap=s.metrics.advantage(s.rules[0].state().progress,s.rules[1].state().progress);
@@ -135,10 +153,45 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
         });
         const auto& angular=out.driving[slot].vehicle.feedback;
         requestOriginalTireAudio(sound.tire,0,angular.feedbackSpeed,0,angular.feedbackArgument,angular.feedbackStrength);
-        car.finishSoundFrame([&](auto& seed){out.tires[slot]=stepOriginalTireAudio(sound.tire,0,seed);});
-        sound.queue.tick();
         out.states[slot]=rules.state();
+        auto& pose=out.replayPoses[slot];const auto& drive=car.vehicle().drive;const auto& actor=car.actor();
+        pose.tick=out.frame;pose.position={drive.f(0),drive.f(4),drive.f(8)};
+        pose.yaw=wrapAngle(drive.f(0x10)+pi);pose.speed=drive.f(0x238);pose.gear=int(car.vehicle().transmission.gear00);
+        auto& detail=pose.detail;detail.rpm=car.vehicle().transmission.tach1c;
+        detail.pitch=-drive.f(0x0c);detail.roll=-drive.f(0x14);detail.steering=actor.f(0x3c);
+        for(unsigned i=0;i<4;++i){detail.suspension[i]=actor.f(0x40+i*4);detail.rotation[i]=actor.f(0x60+i*4);}
+        detail.throttle=drive.f(0x1b8);detail.brake=drive.f(0x1c4);
+        detail.elapsed=rules.displayedElapsed();detail.remaining=std::bit_cast<std::int32_t>(out.states[slot].remaining.value);
+        detail.sections=out.states[slot].times.sectionTimes;detail.sector=out.states[slot].times.sectionCount;
+        detail.capacity=1;for(auto index:rules.rules().sectionIndices)if(index>=0)++detail.capacity;
+        detail.capacity=std::min(detail.capacity,4u);
+        detail.progress=float(out.states[slot].progress.index)+out.states[slot].progress.fraction;
         if(out.driving[slot].invalidScalarDiagnostics)throw std::runtime_error("Online pair contact produced invalid physics");
+    }
+    if(!s.setup.imported){
+        const std::array<OriginalCarSmokeInput,2> cars{
+            makeCarSmokeInput(s.cars[0].publishedActors().player0C8FF388,s.smokeOrigins[0],s.fsca),
+            makeCarSmokeInput(s.cars[1].publishedActors().player0C8FF388,s.smokeOrigins[1],s.fsca)};
+        for(unsigned view=0;view<2;++view){
+            const auto& profile=s.setup.profiles[view];
+            const OriginalCarSmokeScene scene{s.setup.condition/2,unsigned(s.setup.night),unsigned(s.setup.wet),
+                profile.u(4),0,(profile.u(1180)&128u)!=0};
+            const std::array<OriginalCarSmokeInput,2> viewed{cars[view],cars[1-view]};
+            s.cars[view].withSharedRandom([&](auto& seed){
+                out.smokeInputs[view]=captureReplayCarSmoke(scene,viewed,seed);
+                s.state.smoke[view].advanceShared(scene,viewed,seed);
+            });
+        }
+        out.smokeAvailable=true;
+    }
+    // The source outer dispatcher completes the race's smoke owner before
+    //1415E0 chooses tire sound using the same random state. Both current poses
+    // must exist before either view advances its effects; rendering never owns
+    // this step. Each player's stream and smoke state are rollback checkpoints.
+    for(unsigned slot=0;slot<2;++slot){
+        auto& sound=s.state.sound[slot];
+        s.cars[slot].finishSoundFrame([&](auto& seed){out.tires[slot]=stepOriginalTireAudio(sound.tire,0,seed);});
+        sound.queue.tick();
     }
     // Evaluate both crossings in the same source tick before settling a photo
     // finish. Freeze race clocks/progress after this tick; the trailing car is
@@ -160,6 +213,7 @@ std::uint64_t OnlineRaceSimulation::digest()const {
     const auto& s=*impl_;std::uint64_t hash=14695981039346656037ull;
     auto add=[&](std::uint64_t value){for(unsigned i=0;i<8;++i){hash^=(value>>(8*i))&255;hash*=1099511628211ull;}};
     auto f=[&](float value){add(std::bit_cast<std::uint32_t>(value));};
+    add(s.setup.showcaseFrames);
     for(unsigned slot=0;slot<2;++slot){
         add(s.cars[slot].rollbackDigest());const auto& r=s.rules[slot].state();
         add(unsigned(r.phase));add(r.elapsed.value);add(r.elapsed.status);add(r.remaining.value);add(r.remaining.status);
@@ -172,6 +226,9 @@ std::uint64_t OnlineRaceSimulation::digest()const {
         add(e.decayFrames);add(e.heldVolume);add(e.recoveryFrames);add(e.decayLatched);add(e.roadFrames);add(e.backfireFrames);add(e.previousRoadFrames);add(e.backfirePattern);
         for(auto v:e.lastVolume)add(v);for(auto v:e.lastPitch)add(v);add(a.queue.cooldown);
         f(a.tire.strength);f(a.tire.volume);add(a.tire.kind);add(a.tire.surface);add(a.tire.phase);add(a.tire.frames);add(a.tire.requested);
+        // Emitter/particle lifetime determines future shared RNG consumption.
+        // A matching car seed alone cannot certify the next frame anymore.
+        add(s.state.smoke[slot].digest());
         add(s.state.coordinates[slot].index);f(s.state.coordinates[slot].fraction);
     }
     for(const auto& shape:s.state.contact.shapes0C401B04)for(auto word:shape.words)add(word);
@@ -185,4 +242,5 @@ const OriginalRaceRules& OnlineRaceSimulation::rules(unsigned slot)const{return 
 const OnlineRaceSetup& OnlineRaceSimulation::setup()const{return impl_->setup;}
 const OnlineRaceFrame& OnlineRaceSimulation::lastFrame()const{return impl_->lastFrame;}
 const OriginalRaceStart& OnlineRaceSimulation::start()const{return impl_->state.start;}
+const CarSmokeState& OnlineRaceSimulation::smoke(unsigned view)const{return impl_->state.smoke.at(view);}
 }

@@ -8,6 +8,14 @@ namespace Idas3.Multiplayer
     public sealed partial class Idas3MultiplayerSmoke
     {
         private bool RaceProgressCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-race-progress-check")>=0;
+        private bool SustainedFallbackCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-sustained-fallback-check")>=0;
+        private bool raceProgressSlowDrive;
+        [Serializable] private class RaceFallbackReport {
+            public bool passed;
+            public ulong confirmedBefore,confirmedAfter;
+            public int recoveriesBefore,recoveriesAfter,stalledFrames,reliablePackets;
+            public double seconds;
+        }
         [Serializable] private class RaceProgressReport
         {
             public string scope="Real muted local TCP players and shared native physics. Input packets alone are deliberately withheld; pings and room traffic continue. Not live EOS or Internet traversal.";
@@ -25,6 +33,11 @@ namespace Idas3.Multiplayer
             bool expire=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-race-progress-timeout")>=0;
             var report=new RaceProgressReport{role=role,mode=expire?"unrecoverable":"reliable-recovery",before=session.AuthorityStatus.confirmed};
             double started=Time.realtimeSinceStartupAsDouble;
+            // Extended recovery runs must remain near the opening straight.
+            // Use ordinary mapped throttle/brake, never change native speed or
+            // position. A long unguided full-throttle run can hit a road edge
+            // and invalidate the separate post-recovery movement assertion.
+            raceProgressSlowDrive=SustainedFallbackCheck;
             Phase("race-input-outage");
             session.SetDiagnosticRaceInputOutage(true,true);
             File.WriteAllText(Path.Combine(root,"outage-armed.txt"),"Race inputs withheld, pings retained.");
@@ -49,6 +62,25 @@ namespace Idas3.Multiplayer
                 yield return Until(()=>session.AuthorityStatus.confirmed>report.atStall+64&&session.AuthorityStatus.verified>report.atStall,12,
                     "Reliable input retransmission did not resume verified native progress.");
                 Check(session.AuthorityRecoveryPacketsSent>0&&session.AuthorityRecoveries>0,"Recovery did not exercise the reliable retry.");
+                if(SustainedFallbackCheck){
+                    Phase("race-input-sustained-fallback");
+                    // Keep the failed unreliable route failed. One confirmed
+                    // burst must not return the cars to a repeated stall loop.
+                    yield return new WaitForSecondsRealtime(1);
+                    var sustained=new RaceFallbackReport{confirmedBefore=session.AuthorityStatus.confirmed,recoveriesBefore=session.AuthorityRecoveries};
+                    int packets=session.AuthorityRecoveryPacketsSent;double began=Time.realtimeSinceStartupAsDouble;
+                    while(Time.realtimeSinceStartupAsDouble-began<6){
+                        if(session.AuthorityStatus.stalled!=0)++sustained.stalledFrames;
+                        yield return null;
+                    }
+                    sustained.seconds=Time.realtimeSinceStartupAsDouble-began;
+                    sustained.confirmedAfter=session.AuthorityStatus.confirmed;sustained.recoveriesAfter=session.AuthorityRecoveries;
+                    sustained.reliablePackets=session.AuthorityRecoveryPacketsSent-packets;
+                    sustained.passed=!session.DisconnectedFinish&&sustained.stalledFrames==0&&
+                        sustained.recoveriesAfter==sustained.recoveriesBefore&&sustained.confirmedAfter>=sustained.confirmedBefore+240;
+                    File.WriteAllText(Path.Combine(root,"race-fallback.json"),JsonUtility.ToJson(sustained,true));
+                    Check(sustained.passed,"A recovered race repeatedly froze while its unreliable input stream remained unavailable.");
+                }
                 session.SetDiagnosticRaceInputOutage(false,false);
                 var start=session.LocalSnapshot;ulong confirmed=session.AuthorityStatus.confirmed;
                 Phase("race-input-resumed");

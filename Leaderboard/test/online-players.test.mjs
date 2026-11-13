@@ -25,7 +25,7 @@ let keyFetches=0;
 globalThis.fetch=async(url,options)=>{assert.equal(url,CONNECT_JWKS_URL);assert.equal(options.redirect,'manual');keyFetches++;return keyResponse();};
 after(()=>{globalThis.fetch=originalFetch;db?.close();});
 let source=readFileSync(new URL('../src/worker.mjs',import.meta.url),'utf8').replace("import html from './index.html';","const html='test';");
-for(const file of ['core','replay','replay-storage','retention','online-players','times-only'])source=source.replace(`'./${file}.mjs'`,JSON.stringify(new URL(`../src/${file}.mjs`,import.meta.url).href));
+for(const file of ['core','replay','replay-storage','retention','online-players','times-only','snapshot-cache'])source=source.replace(`'./${file}.mjs'`,JSON.stringify(new URL(`../src/${file}.mjs`,import.meta.url).href));
 const worker=(await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'))).default;
 let db,env;
 const adminKey='a'.repeat(64);
@@ -47,6 +47,19 @@ async function login(){
 }
 async function post(data,extra={}){return call('/api/v1/online/player',{build,...data},{Authorization:'Bearer '+await token(claims(extra))});}
 async function rejectsStatus(action,status){await assert.rejects(action,error=>error instanceof Response&&error.status===status);}
+
+test('score maintenance leaves signed online admission, directory and ban enforcement active',async()=>{
+ env.SCORE_SUBMISSIONS_CLOSED='true';
+ db.exec("INSERT INTO settings VALUES('leaderboard_submissions_closed','true')");
+ assert.equal((await post({username:'Online rollover'})).status,200);
+ const a=await login();
+ const directory=await call('/api/admin/online-players?q=Online',undefined,a);
+ assert.equal(directory.status,200);
+ const ban=await call('/api/admin/online-player',{playerId:self,blocked:true,reason:'Test moderation during season rollover'},a);
+ assert.equal(ban.status,200);
+ const check=await post({username:'Online rollover'});assert.equal(check.status,200);
+ assert.equal((await check.json()).blocked,true);
+});
 
 test('Connect signature and scoped claims authenticate only the signed subject',async()=>{
  const verify=createConnectVerifier(async url=>{assert.equal(url,CONNECT_JWKS_URL);return keyResponse();});

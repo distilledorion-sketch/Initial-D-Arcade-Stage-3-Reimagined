@@ -4,6 +4,7 @@
 #include "race.h"
 #include "original_hud.h"
 #include "original_water_cup.h"
+#include "original_navigation.h"
 #include "original_results.h"
 #include "original_battle_hud.h"
 #include "original_battle_names.h"
@@ -125,7 +126,8 @@ private:
     // up, the player sits fixed inside the frame, and the opponent appears
     // only while inside that window.
     void map(const Course& course,float x,float y,float w,float h,
-        const VehicleState& player,const VehicleState* rival,int cardNavigation=0);
+        const VehicleState& player,const VehicleState* rival,int cardNavigation=0,
+        bool night=false,float progress=-1,float rivalProgress=-1);
     // The whole authored route, for the course-selection panel.
     void routePreview(const Course& course,float x,float y,float w,float h);
     // The map field is see-through in the cabinet artwork, so it writes its
@@ -141,6 +143,7 @@ private:
     int mapSize_=0,mapZoom_=2,mapDisplay_=0;
     OriginalWaterCup waterCup_;
     OriginalWaterCupArtwork waterCupArtwork_;
+    OriginalNavigation navigation_;
     int mapX0_=0,mapY0_=0,mapX1_=0,mapY1_=0;
 };
 }

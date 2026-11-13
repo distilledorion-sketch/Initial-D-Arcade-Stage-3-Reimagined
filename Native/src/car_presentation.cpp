@@ -5,6 +5,7 @@
 #include "car_lamp_catalog.h"
 #include "original_rival_appearance_catalog.h"
 #include "original_number_plate.h"
+#include "original_roadside_dust_owner.h"
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -73,6 +74,11 @@ void CarPresentation::advanceOriginalFrame(bool lightsOn){
     if(!profileMaterials_){headlights_.advance(lightsOn);return;}
     profileInput_.lights=lightsOn;profileInput_.headlights=headlights_;
     original::advanceOriginalCarHeadlights(profileInput_);headlights_=profileInput_.headlights;
+}
+OriginalHeadlightState CarPresentation::nextHeadlightState(bool lightsOn)const{
+    if(!profileMaterials_){auto state=headlights_;state.advance(lightsOn);return state;}
+    auto input=profileInput_;input.lights=lightsOn;input.headlights=headlights_;
+    original::advanceOriginalCarHeadlights(input);return input.headlights;
 }
 CarPresentation CarPresentation::loadAppearance(const std::filesystem::path& root,const std::filesystem::path& base,unsigned carId,std::size_t chunks){
     CarPresentation out;
@@ -180,6 +186,9 @@ void CarPresentation::applyMaterials(NativeModel& model)const{
     }
     for(const auto& p:materials_){auto& b=model.chunks[p.chunk].batches[p.batch];
         std::copy_n(p.after.begin(),16,b.material.begin());std::copy_n(p.after.begin()+16,8,b.ich.begin());}
+}
+std::array<std::array<float,3>,4> CarPresentation::originalEffectOrigins()const{
+    return original::originalCarEffectOrigins(profileParts_);
 }
 std::array<Vec3,4> CarPresentation::wheelOrigins()const{
     std::array<Vec3,4> out;

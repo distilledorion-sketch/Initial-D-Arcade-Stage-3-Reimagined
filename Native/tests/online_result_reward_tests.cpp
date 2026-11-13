@@ -26,6 +26,7 @@ int main(int argc,char** argv)try{
     const auto win=rewards.prepare(5,selected,true);
     require(win.before.words==original.words&&win.after.words[150]==selected.words[150],"disk and in-memory profile snapshots were conflated");
     require(win.points==2000&&win.after.u(72)==2400,"winner award incorrect");
+    require(win.after.u(1140)==original.u(1140),"Finished online race must retain the accepted card's uses");
     require(primary==bytes(legacy.path(0))&&stamp==fs::last_write_time(legacy.path(0)),"preparation changed saved progress");
     rewards.apply(win);require(legacy.load(0).profile.words==win.after.words,"selected garage profile not preserved exactly");
     const auto awarded=bytes(legacy.path(0));const auto awardedStamp=fs::last_write_time(legacy.path(0));
@@ -55,7 +56,17 @@ int main(int argc,char** argv)try{
     auto capped=rewards.prepare(13,nearlyFull,true);rewards.apply(capped);
     require(capped.points==499&&legacy.load(8).profile.u(72)==999999999,"balance cap or reported earned points incorrect");
     auto noChange=rewards.prepare(13,capped.after,false);const auto fullBytes=bytes(legacy.path(8));
-    rewards.apply(noChange);require(noChange.points==0&&bytes(legacy.path(8))==fullBytes,"capped repeat changed points");
+    rewards.apply(noChange);require(noChange.points==0&&legacy.load(8).profile.u(72)==999999999&&
+        legacy.load(8).profile.u(1140)==capped.after.u(1140),"Rematch results must not consume a play");
+    const auto consumed=bytes(legacy.path(8));rewards.apply(noChange);
+    require(bytes(legacy.path(8))==consumed,"Retry consumed another card play");
+    auto last=profile(11,1234);last.setu(1140,1);require(legacy.save(11,last),"last play fixture");
+    const auto timeout=rewards.prepare(16,last,false,false);rewards.apply(timeout);rewards.apply(timeout);
+    require(timeout.points==0&&legacy.load(11).profile.u(72)==1234&&legacy.load(11).profile.u(1140)==1,
+        "Double timeout must retain the card count without awarding points");
+    auto zero=timeout.after;zero.setu(1140,0);require(legacy.save(11,zero),"zero fixture");
+    auto atZero=rewards.prepare(16,zero,false,false);rewards.apply(atZero);
+    require(legacy.load(11).profile.u(1140)==0,"Card plays must not underflow");
     auto overflow=profile(9,0xffffffff);rejects([&]{rewards.prepare(14,overflow,true);},"invalid balance overflow accepted");
 
     const auto fresh=profile(10,0);const auto first=rewards.prepare(15,fresh,false);rewards.apply(first);rewards.apply(first);

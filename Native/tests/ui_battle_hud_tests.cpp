@@ -62,6 +62,22 @@ int main(int argc,char** argv)try{
     Course mapCourse;mapCourse.name="Akina";mapCourse.length=1000;mapCourse.points={{0,0,0},{0,0,1000}};
     mapCourse.left={{-5,0,0},{-5,0,1000}};mapCourse.right={{5,0,0},{5,0,1000}};mapCourse.cumulative={0,1000};
     online.course=&mapCourse;VehicleState rival=car;rival.position={0,0,25};online.rival=&rival;
+    {
+        auto stock=Course::load(std::filesystem::path(argv[1])/"data/courses","k_df");
+        auto localCar=car,otherCar=car;const float distance=stock.length*.17f;
+        localCar.position=stock.sample(distance).center;otherCar.position=stock.sample(distance+25.f).center;
+        auto state=online;state.course=&stock;state.car=&localCar;state.rival=&otherCar;state.progress=distance;
+        const auto crop=[&]{
+            const auto p=hud.paint(state);std::vector<std::uint32_t> result;
+            for(int y=555;y<699;++y)for(int x=18;x<162;++x)result.push_back(p[std::size_t(y)*w+x]);
+            return result;
+        };
+        state.onlineBattleHud.rivalPositionFraction=0;const auto atZero=crop();
+        state.onlineBattleHud.rivalPositionFraction=.75f;
+        require(crop()==atZero,"Online gap validity moved the opponent map marker");
+        otherCar.position=stock.sample(distance+70.f).center;
+        require(crop()!=atZero,"Displayed opponent position did not move its map marker");
+    }
     // Exercise the actual compositor and capture boundary: selecting the cup
     // replaces the map in editable group5; Off submits neither one. Painting
     // repeatedly must not advance the60Hz water animation.

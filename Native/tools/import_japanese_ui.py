@@ -75,6 +75,9 @@ def ranges(*items):
 
 
 MAPPINGS = {
+    # Inspection parent: the Japanese bank starts with a separate notice;
+    # its current/change banners are1/2 rather than the English0/1.
+    'optcrs': {0:1, 1:2},
     # Reviewed card/Saved Data banks: Japan keeps additional legacy panels.
     'v3sS10conf': {i:i for i in (*range(1,23),24,25,26)},
     'cardcheck': {**ranges((0,5,0),(6,46,8),(48,54,52),(55,60,73),(66,86,87),(88,89,125),(92,132,130),(134,136,172))},
@@ -211,7 +214,7 @@ def import_ui(english, japanese, output, banks=None):
         manifest['banks'] = [bank for bank in manifest['banks'] if bank['asset'] not in selected]
     manifest['banks'] = sorted(manifest['banks'] + audit, key=lambda bank: bank['asset'])
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
-    manifest_path.write_text(json.dumps(manifest, indent=2)+'\n', encoding='utf-8')
+    manifest_path.write_text(json.dumps(manifest, indent=2)+'\n', encoding='utf-8', newline='\n')
     print(f'{len(audit)} UI banks; {sum(len(x["mapping"]) for x in audit)} mapped elements')
 
 

@@ -88,6 +88,9 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
     tuningData.reset();tuningPresentation.reset();tuningCourseMenu={};tuningCourseSelected=0;tuningCourseConfirmPending=false;
     nameCommittedForVisit=driverSetupCompleted=savedCarTuningCourse=false;
     savedCarTransmission=savedTransmissionReturnToCar=false;
+    inspectionActive=false;
+    inspectionAwaitingSave=inspectionCommitRequested=false;
+    inspectionCompleteRequested=inspectionCancelRequested=false;
     banks.clear(); previousKey.clear(); previousMotionKey.clear(); pixels.clear(); staticPixels.clear();
     displayPixels.clear();previousModePaintKey.clear();displayedCanvas=nullptr;
     canvasRevision=displayedRevision=0;displayedWidth=displayedHeight=0;
@@ -125,7 +128,7 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
             std::map<std::string,Bank> result;
             for(const char* name:{"v3sS00common","v3sS04maker","v3sS00emblem",
                     "v3sS05cars","v3sS00minicar","v3sS06mission","v3sK00common",
-                    "v3sK01course","v3sB01course","v3sT02route","v3sT03weather","v3sT04time",
+                    "v3sK01course","v3sB01course","v3sT00common","v3sT02route","v3sT03weather","v3sT04time",
                     "v3sK00rivalface","v3sK02rival"}){
                 const auto folder=directory/name;
                 result.emplace(name,Bank{NativeModel::load(folder/(std::string(name)+".idasmesh")),
@@ -221,6 +224,10 @@ void Frontend::change(int delta) {
 }
 bool Frontend::back() {
     synchronizeStage();
+    if(inspectionActive){
+        if(!confirmationInProgress())inspectionCancelRequested=true;
+        return true;
+    }
     if(carConfirmationFrame>=0)return true;
     if(stage==FrontendStage::Title) return false;
     if(stage==FrontendStage::SavedData){savedData_->cancel();return true;}
@@ -268,6 +275,29 @@ void Frontend::selectSavedCarTuningCourse(){
 void Frontend::selectSavedData(){
     if(!savedData_){savedData_=std::make_unique<original::OriginalSavedData>();savedData_->load(projectRoot);}
     stage=FrontendStage::SavedData;synchronizeStage();savedData_->begin(battleProfile);
+}
+void Frontend::selectInspectionCompletion(){
+    inspectionAwaitingSave=inspectionCommitRequested=inspectionCompleteRequested=inspectionCancelRequested=false;
+    if(!savedData_){savedData_=std::make_unique<original::OriginalSavedData>();savedData_->load(projectRoot);}
+    stage=FrontendStage::SavedData;synchronizeStage();savedData_->beginInspectionCompletion(battleProfile);
+    previousKey.clear();
+}
+void Frontend::beginCarInspection(){
+    saveActionsOpen=false;
+    savedCarTransmission=savedTransmissionReturnToCar=savedCarTuningCourse=false;
+    changingSavedCar=false;savedDriverSelected=true;
+    inspectionActive=true;
+    inspectionAwaitingSave=inspectionCommitRequested=inspectionCompleteRequested=inspectionCancelRequested=false;
+    battleProfile.setByte(1192,1);
+    battleProfile.setu(1180,battleProfile.u(1180)|2u);
+    battleProfile.setu(1176,2479);
+    stage=FrontendStage::Transmission;stageInitialized=false;synchronizeStage();previousKey.clear();
+}
+void Frontend::cancelCarInspection(){
+    inspectionActive=inspectionCompleteRequested=inspectionCancelRequested=false;
+    inspectionAwaitingSave=inspectionCommitRequested=false;
+    stage=FrontendStage::SaveSelect;saveActionsOpen=true;saveActionSelected=0;
+    savedDriverSelected=changingSavedCar=false;stageInitialized=false;synchronizeStage();previousKey.clear();
 }
 void Frontend::selectSavedCarTransmission(bool returnToCar){
     if(stage==FrontendStage::Transmission&&(savedCarTransmission||confirmationInProgress()))return;
@@ -368,7 +398,7 @@ bool Frontend::clickSaveMenu(float x,float y){
         else if(x>=459&&x<582){saveActionSelected=1;previousKey.clear();confirm();}
     }
     if(saveActionsOpen&&x>=326&&x<582&&y>=399&&y<425){
-        saveActionSelected=2;previousKey.clear();confirm();
+        if(x<449){saveActionSelected=2;previousKey.clear();confirm();}
     }
     return true;
 }
@@ -540,12 +570,20 @@ void Frontend::advance(double seconds,bool modeCovered) {
     frameRemainder-=double(frames);
     advanceMenuBackdrop(seconds);
     const auto updateOwner=[&]() -> bool {
+        if(inspectionAwaitingSave)return false;
         ++carFrame;
         if(stage==FrontendStage::SavedData){
             const auto events=savedData_->advance(battleProfile);
             menuCueIds.insert(menuCueIds.end(),events.soundGroups.begin(),events.soundGroups.end());
-            driverProfileCommit|=events.profileWritten;
-            if(events.parentRequested){selectSavedCarTransmission();return true;}
+            if(!savedData_->inspectionCompletion())driverProfileCommit|=events.profileWritten;
+            if(events.parentRequested){
+                if(savedData_->inspectionCompletion()){
+                    inspectionCompleteRequested=inspectionActive;inspectionActive=false;
+                    stage=FrontendStage::Mode;synchronizeStage();
+                }
+                else selectSavedCarTransmission();
+                return true;
+            }
             return false;
         }
         if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::BuntaChallenge)
@@ -631,6 +669,9 @@ void Frontend::advance(double seconds,bool modeCovered) {
             if(events.parentRequested){
                 battleProfile.setu(1176,transmissionTransition.sharedCountdown1176);
                 const auto command=transmissionTransition.parentEvent64;
+                if(inspectionActive&&!(command&1u)){
+                    inspectionCommitRequested=inspectionAwaitingSave=true;return true;
+                }
                 if(savedCarTransmission){
                     battleProfile.setu(68,transmissionTransition.profileTransmission68);
                     driverProfileCommit=true;stage=FrontendStage::Mode;
@@ -653,6 +694,7 @@ void Frontend::advance(double seconds,bool modeCovered) {
             if(events.profileCommitted)driverProfileCommit=true;
             if(events.parentRequested){
                 const auto command=tuningCourseMenu.parentEvent64;
+                if(inspectionActive){inspectionCommitRequested=inspectionAwaitingSave=true;return true;}
                 if(savedCarTuningCourse){savedCarTuningCourse=false;stage=FrontendStage::Mode;}
                 else if(command&1u)stage=FrontendStage::Name;
                 else if(command==0x08020004u)stage=FrontendStage::Mode;
@@ -830,12 +872,18 @@ std::array<std::uint32_t,3> Frontend::courseRecordTimes()const {
     return {saved.course?std::min(saved.course,baseline):baseline,
             saved.model?std::min(saved.model,baseline):baseline,personal.ticks6000};
 }
+std::array<unsigned,2> Frontend::courseRecordCars()const {
+    if(!timeAttackBest)return {35,35};
+    const auto saved=timeAttackBest(unsigned(course*2)+unsigned(reverse),unsigned(wet||course==8),unsigned(car));
+    return {saved.course?saved.courseCar:35,saved.model?unsigned(car):35};
+}
 void Frontend::drawCourseRecords(int width,int height) {
     // Original d3h_TA_BestTimeDisp (199B20/199960/199880): authored
     // backing/labels and 10px digits, 8px punctuation at 66,360/380/400.
     draw("v3sT02route",0,width,height);
     draw("v3sT02route",15,width,height);
     const auto times=courseRecordTimes();
+    const auto cars=courseRecordCars();
     for(unsigned row=0;row<times.size();++row){
         const auto ms=std::uint64_t(times[row])*1000/6000;
         const std::array<unsigned,8> digits={unsigned(ms/60000%10),10,unsigned(ms/10000%6),
@@ -846,6 +894,8 @@ void Frontend::drawCourseRecords(int width,int height) {
             draw("v3sT02route",chunk,width,height,x,360.f+20.f*row);
             x+=digit>=10?8.f:10.f;
         }
+        if(row<cars.size()&&cars[row]<35)
+            draw("v3sT00common",carNameChunk(int(cars[row]))-1,width,height,148,360.f+20.f*row);
     }
 }
 std::uint32_t Frontend::choiceFadeArgb()const {
@@ -1075,7 +1125,7 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
     if(stage==FrontendStage::Car)synchronizeCarousel();
     if(stage==FrontendStage::Course)synchronizeCourseCarousel();
     if(stage==FrontendStage::SavedData){
-        const std::vector<int> key{int(stage),int(savedData_->state().frame448)};
+        const std::vector<int> key{int(stage),int(savedData_->animationFrame())};
         if(key==previousKey)return pixels;previousKey=key;++canvasRevision;
         pixels.assign(width*height,0xff000000u);unityUiClear(pixels.data(),width,height,0xff000000u);
         savedData_->paint(pixels,width,height,battleProfile);return pixels;
@@ -1090,7 +1140,8 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
         const int language=customMenuLanguage();
         const auto& font=language&&localizedMenuFonts[language-1].ready()?localizedMenuFonts[language-1]:menuFont;
         const std::vector<int> key{int(stage),language,saveSelected,int(saveFileCarLive),int(saveActionsOpen),saveActionSelected,
-            int(saveDeleteOpen),saveDeleteSelected,int(saveDeleteFailed),int(saveFiles.at(std::size_t(saveSelected)).level)};
+            int(saveDeleteOpen),saveDeleteSelected,int(saveDeleteFailed),
+            int(saveFiles.at(std::size_t(saveSelected)).level)};
         if(key==previousKey)return pixels;previousKey=key;++canvasRevision;
         constexpr std::uint32_t ink=0xff0b0c0fu,panel=0xff16181du,raised=0xff22242au;
         constexpr std::uint32_t edge=0xff41444cu,red=0xffde2331u,white=0xfff4f4f6u,muted=0xffa4a6afu;
@@ -1163,9 +1214,12 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
                     const std::string_view label=action==0?tr("CONTINUE"):tr("CHANGE CAR");
                     text(label,x+(123-font.width(label,13))*.5f,373,13,white);
                 }
-                const bool selected=saveActionSelected==2;
-                fill(326,399,256,26,selected?red:raised);frame(326,399,256,26,selected?white:edge);
-                text(tr("DELETE SAVE"),454-font.width(tr("DELETE SAVE"),12)*.5f,406,12,white);
+                {
+                    const int x=326;const bool selected=saveActionSelected==2;
+                    fill(x,399,123,26,selected?red:raised);frame(x,399,123,26,selected?white:edge);
+                    const auto label=tr("DELETE SAVE");
+                    text(label,x+(123-font.width(label,12))*.5f,406,12,white);
+                }
             }
         }else{
             frame(433,196,42,42,edge);fill(443,216,22,2,muted);fill(453,206,2,22,muted);
@@ -1250,13 +1304,17 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
     }
     const bool courseRecords=gameMode==original::OriginalGameMode::TimeAttack &&
         (stage==FrontendStage::Course||stage==FrontendStage::Route||stage==FrontendStage::Weather||stage==FrontendStage::Time);
-    if(courseRecords)for(auto time:courseRecordTimes())key.push_back(std::bit_cast<std::int32_t>(time));
+    if(courseRecords){
+        for(auto time:courseRecordTimes())key.push_back(std::bit_cast<std::int32_t>(time));
+        for(auto recordCar:courseRecordCars())key.push_back(int(recordCar));
+    }
     std::vector<int> motionKey;
     if(stage==FrontendStage::Car)motionKey={carouselSlot,displayedScroll,int(std::bit_cast<std::uint32_t>(carConfirmationPhase)),carConfirmationPhase<.01f?0:int(carFrame&6u),int(selectedColor())};
     if(stage==FrontendStage::Make)motionKey={int(std::bit_cast<std::uint32_t>(makerConfirmationPhase)),makerConfirmationPhase<.01f?0:int(carFrame&6u)};
     if(stage==FrontendStage::Course)motionKey={courseSlot,displayedCourseScroll,carConfirmationFrame,carConfirmationFrame<0?0:int(carFrame&6u)};
     if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::BuntaChallenge)motionKey.push_back(int(buntaBadgeFrame));
     if(choiceStage(stage))motionKey={stage==FrontendStage::Transmission?int(std::bit_cast<std::uint32_t>(transmissionConfirmationPhase)):carConfirmationFrame<0?0:1,carConfirmationFrame<0?0:int(carFrame&6u)};
+    if(stage==FrontendStage::Transmission&&inspectionActive)motionKey.push_back(int(carFrame));
     if(key==previousKey && motionKey==previousMotionKey) return pixels;
     ++canvasRevision;
     if(key!=previousKey) {

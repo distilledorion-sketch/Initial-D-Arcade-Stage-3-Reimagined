@@ -1,5 +1,6 @@
 #include "time_attack_records.h"
 #include "imported_course_catalog.h"
+#include "time_attack_season.h"
 #include <algorithm>
 #include <fstream>
 #include <sstream>
@@ -11,14 +12,21 @@ constexpr const char* legacyHeader="condition,weather,car,finish_ticks6000";
 constexpr const char* namedHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night";
 constexpr const char* splitHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3";
 const std::string revisionHeader=std::string(splitHeader)+",course_revision";
+const std::string seasonHeader=revisionHeader+",record_season";
 bool valid(const TimeAttackEntry& e){return e.condition<supportedConditionCount&&e.weather<2&&e.car<35&&e.ticks6000>0&&e.ticks6000<10800000
     && (e.intermediate6000==std::array<std::uint32_t,3>{} || (e.intermediate6000[0]>0&&e.intermediate6000[0]<e.intermediate6000[1]&&e.intermediate6000[1]<e.intermediate6000[2]&&e.intermediate6000[2]<e.ticks6000))
     &&std::all_of(e.nameGlyphs.begin(),e.nameGlyphs.end(),[](auto c){return c<=221;});}
+void retainRanked(std::vector<TimeAttackEntry>& entries){
+    std::stable_sort(entries.begin(),entries.end(),[](const auto& a,const auto& b){return a.ticks6000<b.ticks6000;});
+    std::array<unsigned,supportedConditionCount*2> count{};std::array<std::array<bool,35>,supportedConditionCount*2> models{};
+    std::erase_if(entries,[&](const auto& e){const auto key=e.condition*2+e.weather;
+        const bool keep=count[key]<10||!models[key][e.car];++count[key];models[key][e.car]=true;return !keep;});
+}
 }
 TimeAttackBest TimeAttackRecords::best(unsigned condition,unsigned weather,unsigned car)const{
     TimeAttackBest out;
     for(const auto& e:entries_)if(e.condition==condition&&e.weather==weather){
-        if(!out.course||e.ticks6000<out.course)out.course=e.ticks6000;
+        if(!out.course||e.ticks6000<out.course){out.course=e.ticks6000;out.courseCar=e.car;}
         if(e.car==car&&(!out.model||e.ticks6000<out.model))out.model=e.ticks6000;
     }
     // Personal records belong to the selected original driver profile.
@@ -32,16 +40,24 @@ TimeAttackEntry TimeAttackRecords::personalBest(unsigned condition,unsigned weat
 void TimeAttackRecords::record(TimeAttackEntry entry){
     if(!valid(entry))throw std::invalid_argument("Invalid native Time Attack record");
     entries_.push_back(entry);
-    std::stable_sort(entries_.begin(),entries_.end(),[](auto a,auto b){return a.ticks6000<b.ticks6000;});
-    std::array<unsigned,supportedConditionCount*2> count{};std::array<std::array<bool,35>,supportedConditionCount*2> models{};
-    std::erase_if(entries_,[&](auto e){const auto key=e.condition*2+e.weather;
-        const bool keep=count[key]<10||!models[key][e.car];++count[key];models[key][e.car]=true;return !keep;});
+    retainRanked(entries_);
+}
+void TimeAttackRecords::recordBatch(std::span<const TimeAttackEntry> entries){
+    if(entries.empty())return;
+    if(!std::all_of(entries.begin(),entries.end(),valid))throw std::invalid_argument("Invalid native Time Attack record batch");
+    // Rank once for an entire snapshot. Previously every appended row sorted
+    // and scanned all earlier rows while the Unity render mutex was held.
+    auto next=entries_;
+    next.insert(next.end(),entries.begin(),entries.end());
+    retainRanked(next);
+    entries_.swap(next);
 }
 bool TimeAttackRecords::load(const std::filesystem::path& file){
     std::ifstream in(file);if(!in)return false;
-    std::string line;std::getline(in,line);const bool versioned=line==revisionHeader,splits=line==splitHeader||versioned,named=line==namedHeader||splits;
+    std::string line;std::getline(in,line);const bool seasoned=line==seasonHeader,versioned=line==revisionHeader||seasoned,splits=line==splitHeader||versioned,named=line==namedHeader||splits;
     if(!named&&line!=legacyHeader)return false;
-    TimeAttackRecords loaded;std::size_t rows=0;
+    TimeAttackRecords loaded;std::size_t rows=0;std::vector<TimeAttackEntry> accepted;
+    loaded.needsMigration_=loaded.seasonMigration_=!seasoned;
     while(std::getline(in,line)){
         // Each course direction/weather retains top ten plus other model bests.
         if(++rows>supportedConditionCount*2u*44u)return false;
@@ -54,20 +70,22 @@ bool TimeAttackRecords::load(const std::filesystem::path& file){
         }
         if(splits)for(auto& split:e.intermediate6000)if(!(row>>split))return false;
         unsigned revision=0;if(versioned&&!(row>>revision))return false;
+        unsigned season=1;if(seasoned&&!(row>>season))return false;
         if(row>>extra||!valid(e))return false;
         const auto current=localTimeAttackRevision(e.condition/2);
         // Do not rewrite data created by a newer game with unknown semantics.
-        if(revision>current)return false;
+        if(revision>current||season==0||season>timeAttackSeason)return false;
+        if(season<timeAttackSeason){loaded.needsMigration_=loaded.seasonMigration_=true;continue;}
         if(revision<current){loaded.needsMigration_=true;if(e.condition/2==17)loaded.odawaraRevision2Migration_=true;continue;}
-        loaded.record(e);
+        accepted.push_back(e);
     }
-    if(!in.eof())return false;entries_=std::move(loaded.entries_);needsMigration_=loaded.needsMigration_;odawaraRevision2Migration_=loaded.odawaraRevision2Migration_;return true;
+    if(!in.eof())return false;loaded.recordBatch(accepted);entries_=std::move(loaded.entries_);needsMigration_=loaded.needsMigration_;odawaraRevision2Migration_=loaded.odawaraRevision2Migration_;seasonMigration_=loaded.seasonMigration_;return true;
 }
 bool TimeAttackRecords::save(const std::filesystem::path& file)const{
     if(needsMigration_){
         // Keep each reset's original file separately. In particular, an older
         // revision-1 backup must not suppress the requested Odawara reset copy.
-        auto archive=file;archive+=odawaraRevision2Migration_?".before-odawara-revision-2.bak":".before-idzero-revision-1.bak";
+        auto archive=file;archive+=seasonMigration_?".before-time-attack-season-"+std::to_string(timeAttackSeason)+".bak":odawaraRevision2Migration_?".before-odawara-revision-2.bak":".before-idzero-revision-1.bak";
         std::error_code error;
         // Keep the original CSV for recovery; never overwrite an earlier archive.
         if(!std::filesystem::is_regular_file(archive,error)){
@@ -82,12 +100,12 @@ bool TimeAttackRecords::save(const std::filesystem::path& file)const{
     }
     auto temporary=file,backup=file;temporary+=".tmp";backup+=".previous";
     std::ofstream out(temporary);if(!out)return false;
-    out<<revisionHeader<<'\n';
+    out<<seasonHeader<<'\n';
     for(const auto& e:entries_){
         out<<e.condition<<','<<e.weather<<','<<e.car<<','<<e.ticks6000;
         for(auto code:e.nameGlyphs)out<<','<<unsigned(code);
         out<<','<<unsigned(e.manual)<<','<<unsigned(e.night);
-        for(auto split:e.intermediate6000)out<<','<<split;out<<','<<localTimeAttackRevision(e.condition/2)<<'\n';
+        for(auto split:e.intermediate6000)out<<','<<split;out<<','<<localTimeAttackRevision(e.condition/2)<<','<<timeAttackSeason<<'\n';
     }
     out.close();if(!out)return false;
     std::error_code error;std::filesystem::rename(temporary,file,error);if(!error)return true;

@@ -85,6 +85,36 @@ void refreshOriginalLegendCourseProgress(OriginalBattleProfile& p){
         p.setu(80+course*4,cleared);
     }
 }
+bool refreshOriginalLegendCardProgress(OriginalBattleProfile& p){
+    constexpr std::array<unsigned,9> first{0,3,6,9,18,14,21,24,17};
+    constexpr std::array<unsigned,9> count{3,3,3,5,3,3,3,4,1};
+    unsigned clearedRivals=0,clearedCourses=0;
+    for(unsigned course=0;course<9;++course){
+        unsigned leading=0;
+        for(unsigned choice=0;choice<count[course];++choice){
+            if(!(p.byte(116+originalLegendRivalId(course,choice))>>4))break;
+            ++leading;++clearedRivals;
+        }
+        // The source computes these before clearing the rival bytes below.
+        p.setu(80+course*4,leading);
+        bool clear=true;
+        const unsigned fullCount=course==7?6:count[course];
+        for(unsigned i=0;i<fullCount;++i)if(!(p.byte(116+first[course]+i)>>4))clear=false;
+        clearedCourses+=clear;
+    }
+    const bool rollover=clearedCourses==9&&p.byte(116+30)!=0;
+    if(rollover){
+        for(unsigned enemy=0;enemy<31;++enemy)p.setByte(116+enemy,0);
+        if(std::bit_cast<std::int32_t>(p.u(148))<=6)p.setu(148,p.u(148)+1);
+    }
+    if(std::bit_cast<std::int32_t>(p.u(148))>0)p.setu(1180,p.u(1180)|0x0800c000u);
+    else {
+        if(clearedRivals==28){p.setu(1180,p.u(1180)|0x08000000u);p.setu(108,6);}
+        if(p.byte(116+28)>>4){p.setu(1180,p.u(1180)|0x4000u);p.setu(108,5);}
+        if(p.byte(116+29)>>4){p.setu(1180,p.u(1180)|0x8000u);p.setu(92,5);}
+    }
+    return rollover;
+}
 std::uint32_t calculateOriginalDriverRank(const OriginalBattleProfile& p){
     const auto signedValue=[](std::uint32_t x){return std::bit_cast<std::int32_t>(x);};
     constexpr std::array<unsigned,9> first{0,3,6,9,18,14,21,24,17};

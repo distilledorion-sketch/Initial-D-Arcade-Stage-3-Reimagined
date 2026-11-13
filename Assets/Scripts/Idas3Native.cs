@@ -96,6 +96,17 @@ internal static class Idas3Native
         public uint flags;
     }
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneGetWheelState(ref WheelState state);
+    // Completed original feedback decisions. Reading consumes only the peak
+    // accumulated since the previous read, so fetch once for wheel and pad.
+    [StructLayout(LayoutKind.Sequential, Pack=8)]
+    internal struct FeedbackState {
+        public uint size,version;
+        public ulong simulationTicks;
+        public uint flags;
+        public int torqueCode,damperParameter,rumbleAmplitude,peakRumbleAmplitude;
+        public uint rumbleFrequencyHalfHz;
+    }
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneGetFeedbackState(ref FeedbackState state);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetPaused(int paused);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneRestart();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneReturnToCourse();

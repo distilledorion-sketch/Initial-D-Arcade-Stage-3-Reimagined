@@ -2862,6 +2862,24 @@
       "japanese_sha256": "47e4c172cfae1829d4ae97964951a4965c3a801e3ca2b7f17cc13028a710e6f2"
     },
     {
+      "asset": "tuning_course/optcrs/optcrs.idasmesh",
+      "chunks": 9,
+      "base_textures": 9,
+      "textures": 11,
+      "mapping": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ]
+      ],
+      "english_sha256": "b15699edd81ae6ed25648dffa9696a499973948d261c0b63cf3fbd8c62531109",
+      "japanese_sha256": "2ce49501eb943523f69170f36b11aec2416fe8e979ee61459840fa642e12db3e"
+    },
+    {
       "asset": "tuning_course/v3sK00rivalface/v3sK00rivalface.idasmesh",
       "chunks": 62,
       "base_textures": 35,

@@ -29,6 +29,7 @@ void compare(RefMemory& m,const OriginalCardCheckState& s,const OriginalBattlePr
         {1452,s.selectedValue1452},{1456,s.editPhase1456},{1460,s.row1460}})eq(m.read32(owner+offset),value,"owner+"+std::to_string(offset));
     for(unsigned j=0;j<5;++j){eq(m.read32(owner+1524+4*j),s.committed1524[j],"committed option");eq(m.read32(owner+1544+4*j),s.draft1544[j],"draft option");}
     for(unsigned j=0;j<p.words.size();++j)eq(m.read32(profile+4*j),p.words[j],"profile+"+std::to_string(4*j));
+    eq(m.read8(owner+524),s.canConfirm524,"confirmation gate");
 }
 OriginalCardCheckEvents tick(RefMemory& m,OriginalCardCheckState& s,OriginalBattleProfile& p,const OriginalCardCheckInput& in){
     seed(m,s,p,in);RefCpu c(m);c.r[4]=owner;c.r[15]=stack;c.pr=stop;unsigned callbacks=0;std::vector<unsigned> sounds;
@@ -45,6 +46,65 @@ OriginalCardCheckEvents tick(RefMemory& m,OriginalCardCheckState& s,OriginalBatt
     const auto out=tickOriginalCardCheck(s,p,in);compare(m,s,p);eq(unsigned(sounds.size()),unsigned(out.soundGroups.size()),"sound count");
     for(unsigned i=0;i<sounds.size();++i)eq(sounds[i],out.soundGroups[i],"sound group");
     eq(callbacks,1,"base callback count");++cases;return out;
+}
+OriginalCardCheckEvents tickRenew(RefMemory& m,OriginalRenewCardCheckState& s,
+    OriginalBattleProfile& p,bool confirm,bool nextPage,bool writerReady){
+    seed(m,s.card,p,{confirm,false,nextPage});
+    m.write32(owner+532,s.writePhase532);m.write32(owner+536,s.writeFrame536);
+    RefCpu c(m);c.r[4]=owner;c.r[15]=stack;c.pr=stop;
+    unsigned callbacks=0,writerPolls=0;std::vector<unsigned> sounds;
+    // Only external input, physical card-writer status, service switch,
+    // sound output and page rendering are bounded. Execute both the derived
+    // renewal owner and its common transition from the original image.
+    c.callHooks[0x0c0d4300]=[&](auto& cpu){cpu.r[0]=confirm;};
+    c.callHooks[0x0c0b1c20]=[&](auto& cpu){++writerPolls;cpu.r[0]=writerReady?1:0;};
+    c.callHooks[0x0c0aefa0]=[](auto& cpu){cpu.r[0]=0;};
+    c.callHooks[0x0c141f80]=[&](auto& cpu){eq(cpu.r[5],1,"renewal sound command");sounds.push_back(cpu.r[4]);};
+    c.callHooks[callback]=[&](auto&){++callbacks;};
+    const bool shouldPoll=s.writePhase532==0&&p.byte(1192)==1;
+    instructions+=c.run(0x0c10ecc0,stop,10000);
+    const auto out=tickOriginalRenewCardCheck(s,p,confirm,nextPage,writerReady);
+    compare(m,s.card,p);
+    eq(m.read32(owner+532),s.writePhase532,"write phase");
+    eq(m.read32(owner+536),s.writeFrame536,"write clock");
+    eq(writerPolls,shouldPoll?1:0,"physical writer polls");
+    eq(callbacks,1,"renewal page callback");
+    eq(unsigned(sounds.size()),unsigned(out.soundGroups.size()),"renewal sound count");
+    for(unsigned i=0;i<sounds.size();++i)eq(sounds[i],out.soundGroups[i],"renewal sound group");
+    ++cases;return out;
+}
+void verifyRenewal(RefMemory& memory){
+    for(unsigned kind:{0u,1u,2u})for(unsigned writePhase:{0u,1u,2u,8u})
+    for(unsigned writeFrame:{0u,59u,60u,149u,150u,0x7fffffffu,0xffffffffu})
+    for(unsigned phase=0;phase<4;++phase)for(unsigned mask=0;mask<8;++mask)
+    for(unsigned countdown:{0u,1u,17u})for(unsigned enabled:{0u,1u}){
+        OriginalRenewCardCheckState s;s.writePhase532=writePhase;s.writeFrame536=writeFrame;
+        s.card.phase452=phase;s.card.fade464=phase==0?1:phase==2?15:0;
+        s.card.overlay460=phase!=1;s.card.canConfirm524=std::uint8_t(enabled);
+        auto p=makeOriginalFreshBattleProfile();p.setByte(1192,std::uint8_t(kind));p.setu(1176,countdown);
+        scenario="renewal kind="+std::to_string(kind)+" write="+std::to_string(writePhase)+" clock="+std::to_string(writeFrame)+" phase="+std::to_string(phase)+" mask="+std::to_string(mask);
+        tickRenew(memory,s,p,bool(mask&1),bool(mask&2),bool(mask&4));
+    }
+    OriginalRenewCardCheckState s;s.card.fade464=15;s.card.overlay460=1;
+    auto p=makeOriginalFreshBattleProfile();p.setByte(1192,1);p.setu(1176,2479);
+    scenario="connected inspection completion";
+    for(unsigned i=0;i<30;++i)tickRenew(memory,s,p,true,false,false);
+    eq(s.writePhase532,0,"wait for card writer");eq(s.card.phase452,1,"confirm held before durable write");
+    tickRenew(memory,s,p,true,false,true);
+    eq(s.writePhase532,1,"writer acknowledged");eq(s.card.canConfirm524,0,"completion starts unskippable");
+    for(unsigned i=0;i<60;++i)tickRenew(memory,s,p,true,false,true);
+    eq(s.card.phase452,1,"first sixty completion ticks cannot skip");
+    tickRenew(memory,s,p,true,false,true);eq(s.card.phase452,2,"confirm available on tick sixty-one");
+    for(unsigned i=0;i<16;++i)tickRenew(memory,s,p,false,false,true);
+    eq(s.card.parentEvent64,8,"inspection exits after original fade");
+    // No input: original completion overlay disappears after 150 ticks, but
+    // the short Saved Data review stays until confirmation or countdown.
+    s={};s.card.fade464=15;s.card.overlay460=1;p.setu(1176,2479);
+    tickRenew(memory,s,p,false,false,true);
+    for(unsigned i=0;i<150;++i)tickRenew(memory,s,p,false,false,true);
+    eq(s.writePhase532,1,"overlay present at 150");
+    tickRenew(memory,s,p,false,false,true);eq(s.writePhase532,2,"overlay clears at 151");
+    eq(s.card.phase452,1,"review remains after overlay");
 }
 }
 int main(int argc,char** argv)try{
@@ -78,6 +138,7 @@ int main(int argc,char** argv)try{
     tick(memory,s,p,{true,false,false,0,1});
     for(unsigned i=0;i<16;++i)tick(memory,s,p,{});
     eq(s.parentEvent64,8,"confirmed exit after source fade");
-    std::cout<<"PASS original card-check input/transition: "<<cases<<" cases, "<<comparisons<<" comparisons, "<<instructions<<" source instructions. Rendering and analog interpolation excluded.\n";
+    verifyRenewal(memory);
+    std::cout<<"PASS original card-check and inspection-completion input/transition: "<<cases<<" cases, "<<comparisons<<" comparisons, "<<instructions<<" source instructions. Rendering, cabinet service abort and analog interpolation excluded.\n";
     return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

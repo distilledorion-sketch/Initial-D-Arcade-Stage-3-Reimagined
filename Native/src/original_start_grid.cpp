@@ -1,4 +1,5 @@
 #include "original_start_grid.h"
+#include "original_driving_float.h"
 #include "original_math.h"
 #include <bit>
 #include <cmath>
@@ -13,6 +14,7 @@ std::array<float,3> floats(const Words3& words){
 }
 }
 OriginalStartGridPose originalStartPose(std::uint32_t condition,std::uint32_t slot){
+    const OriginalDrivingFloatScope floatingPoint;
     if(condition>=18||slot>1)throw std::invalid_argument("Original start requires condition0..17 and slot0/1");
     OriginalStartGridPose out;
     out.gridSlot=slot;

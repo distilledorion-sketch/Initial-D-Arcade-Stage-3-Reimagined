@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 // Explicit private visual fixtures plus App-level source finish/timeout tests.
-public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
+public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
     private static bool MenuHighlightCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-highlight-check")>=0;
     private static bool MenuPresentationCheck => MenuHighlightCheck || Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-presentation-check")>=0;
     private bool headlightsCheck;
@@ -38,6 +38,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         File.WriteAllText(Path.Combine(pendingRoot,"ISOLATED_MODE_FLOW_TEST.txt"),"Private mode-flow fixtures. No ordinary saves loaded.\n");
         File.WriteAllText(Path.Combine(saves,"settings.txt"),"0 0 0 0 0 1 1 0\n");
         File.WriteAllText(Path.Combine(saves,"native_selection.txt"),"6 0\n");
+        ConfigureInspectionLanguage(args,saves);
         Screen.SetResolution(1280,720,FullScreenMode.Windowed);AudioListener.volume=0;return true;
     }
     public static void Attach(Idas3SceneGame game){
@@ -200,6 +201,66 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         }
         Check(allCars.Count==35,"Change Car allows all 35 cars");
     }
+    private static uint LegendProfileWord(byte[] bytes,int offset){return BitConverter.ToUInt32(bytes,24+offset);}
+    private static void LegendProfileWord(byte[] bytes,int offset,uint value){for(int i=0;i<4;++i)bytes[24+offset+i]=(byte)(value>>(8*i));}
+    private static void SealLegendProfile(byte[] bytes){
+        uint hash=2166136261;unchecked{for(int i=0;i<bytes.Length;++i)if(i<20||i>=24){hash^=bytes[i];hash*=16777619;}}
+        for(int i=0;i<4;++i)bytes[20+i]=(byte)(hash>>(8*i));
+    }
+    private static bool SameBytes(byte[] a,byte[] b){if(a.Length!=b.Length)return false;for(int i=0;i<a.Length;++i)if(a[i]!=b[i])return false;return true;}
+    private IEnumerator LegendCycle(){
+        yield return Until(()=>host.Ready,600,"Scene initialized");yield return Fixture(350);
+        string saves=Path.Combine(root,"userdata","saves"),profile=Path.Combine(saves,"slot_1","driver_profiles_v1","car_00.profile");
+        Check(File.Exists(profile),"Completed-story fixture has an existing tuned driver");
+        byte[] completed=File.ReadAllBytes(profile);Check(completed.Length==24+1228,"Completed-story profile size");
+        for(int enemy=0;enemy<31;++enemy)completed[24+116+enemy]=0x20;
+        completed[24+147]=0x5a; // Canary next to the rival-result bytes.
+        LegendProfileWord(completed,148,2);LegendProfileWord(completed,1180,LegendProfileWord(completed,1180)|0x0800c000u);
+        SealLegendProfile(completed);File.WriteAllBytes(profile,completed);
+        File.WriteAllBytes(Path.Combine(root,"legend-completed-before.profile"),completed);
+        var others=new Dictionary<string,byte[]>();
+        foreach(string file in Directory.GetFiles(saves,"*",SearchOption.AllDirectories)){
+            string name=Path.GetFileName(file);
+            if(file==profile||file==profile+".bak"||name=="save.txt"||name=="save.txt.bak")continue;
+            others.Add(file,File.ReadAllBytes(file));
+        }
+        // Only the private fixture bytes are prepared above. All acceptance,
+        // cancellation, mode/course choices and race loading use ordinary input.
+        for(int visit=0;visit<2;++visit){
+            yield return SaveClick(150,130);yield return SaveClick(380,380);
+            yield return SaveStage(13,"Completed story opens Saved Data through Continue");
+            byte[] saved=File.ReadAllBytes(profile);
+            Check(LegendProfileWord(saved,148)==3,"Continue awards exactly one completed story cycle, including a second visit");
+            Check(LegendProfileWord(saved,1180)==LegendProfileWord(completed,1180),"Continue retains unlocked rivals and fitted-car flags");
+            for(int enemy=0;enemy<31;++enemy)Check(saved[24+116+enemy]==0,"Continue clears rival results "+enemy);
+            for(int offset=0;offset<1228;++offset){
+                if((offset>=80&&offset<147)||(offset>=148&&offset<152)||(offset>=1180&&offset<1184))continue;
+                Check(saved[24+offset]==completed[24+offset],"Continue preserves car/tuning/points/rank byte "+offset);
+            }
+            foreach(var pair in others)Check(File.Exists(pair.Key)&&SameBytes(File.ReadAllBytes(pair.Key),pair.Value),"Continue preserves other cars, setup markers and save profiles");
+            yield return Capture("legend-cycle-saved-data-"+visit);
+            yield return SavedDataToTransmission();yield return SaveTransmissionToMode(false,"Completed-story driver reaches mode selection");
+            if(visit==0){yield return SaveBackToFiles();yield return Pad(0x2000);yield return SaveStage(1,"Close save actions before the second Continue");}
+        }
+        // The source mode-menu initializer selects Legend (index zero) on
+        // entry, regardless of Frontend's default member value.
+        yield return Capture("legend-cycle-select-mode");yield return Pad(0x1000);
+        yield return SaveStage(6,"Select Legend course");
+        for(int i=0;i<12&&Idas3SceneModeFlowValue(30)!=0;++i)yield return Pad(4);
+        Check(Idas3SceneModeFlowValue(30)==0,"Select Myogi after resetting the story");yield return Pad(0x1000);
+        yield return SaveStage(10,"Legend opens its rival selection");
+        yield return Until(()=> (host.GetComponent<Idas3SceneRenderer>().CurrentFrame.screenFadeArgb>>24)==0,60,"Rival selection completes its entry fade");
+        yield return Capture("legend-cycle-rivals");yield return Pad(0x1000);
+        yield return Until(()=> (host.Status.flags&512u)!=0,600,"Legend rival dialogue begins");
+        for(int i=0;i<1200&&(host.Status.flags&512u)!=0;++i){padPulse=0x10;yield return null;}
+        Check((host.Status.flags&512u)==0,"Held Start closes rival dialogue");
+        yield return Until(()=>StartStatus().phase==1,1200,"Reset story reaches the actual race showcase");
+        Check((Idas3SceneModeFlowValue(31)&1)==0,"Reset story starts a dry race");
+        Check(StartStatus().playerRanges>0&&StartStatus().rivalRanges>0,"Both cars load into the reset story's race");
+        yield return Capture("legend-cycle-dry-race");
+        File.WriteAllBytes(Path.Combine(root,"legend-completed-after.profile"),File.ReadAllBytes(profile));
+        Finish(true,null);
+    }
     private IEnumerator SaveChange(){
         yield return Until(()=>host.Ready,600,"Scene initialized");yield return Fixture(350);yield return Fixture(370);
         Check(Idas3SceneModeFlowValue(5)==1&&Idas3SceneModeFlowValue(42)==0,"Occupied saves open in the file list");
@@ -213,20 +274,20 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Capture("save-change-car");yield return Pad(0x2000);
         Check(Idas3SceneModeFlowValue(42)==0&&Idas3SceneModeFlowValue(5)==1,"Back closes the action panel first");
         yield return SaveClick(150,130);yield return SaveClick(380,380);
-        yield return SavedDataToTransmission(true);
+        yield return SavedDataToTransmission(true);yield return Fixture(370);
         Check(Idas3SceneModeFlowValue(43)==0&&Idas3SceneModeFlowValue(48)==1,"Continue keeps the current saved car and driver");
         Check(Idas3SceneModeFlowValue(51)==0,"Continue restores the saved manual transmission");
         yield return Capture("continue-choose-manual");
         yield return Pad(8);yield return Capture("continue-choose-automatic");yield return Fixture(371);
         yield return Pad(0x2000);yield return SaveStage(1,"Cancelling Continue transmission returns to save actions");
-        yield return Fixture(371);yield return SaveClick(380,380);yield return SavedDataToTransmission();
+        yield return Fixture(371);yield return SaveClick(380,380);yield return SavedDataToTransmission();yield return Fixture(370);
         Check(Idas3SceneModeFlowValue(51)==0,"Cancelled Automatic preview does not replace the saved Manual default");
         yield return SaveTransmissionToMode(true,"Continue confirms Automatic and reaches mode selection");yield return Fixture(372);
         yield return Pad(0x2000);yield return SaveStage(4,"Mode Back reopens Continue transmission");
         Check(Idas3SceneModeFlowValue(51)==1,"Reopened transmission defaults to the confirmed Automatic setting");
         yield return Fixture(370);yield return Pad(8);yield return Fixture(371);
         yield return Pad(0x2000);yield return SaveStage(1,"Cancel a Manual preview without replacing Automatic");yield return Fixture(371);
-        yield return SaveClick(380,380);yield return SavedDataToTransmission();
+        yield return SaveClick(380,380);yield return SavedDataToTransmission();yield return Fixture(370);
         Check(Idas3SceneModeFlowValue(51)==1,"Cancelled Manual preview does not replace saved Automatic");
         yield return Capture("continue-saved-automatic");yield return SaveTransmissionToMode(false,"Continue can change back to Manual");yield return Fixture(373);
         yield return SaveBackToFiles();yield return Fixture(374);
@@ -377,6 +438,12 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-leaf-check")>=0){yield return EndingLeaves();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-tire-check")>=0){yield return EndingTires();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-glare-check")>=0){yield return EndingGlare();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-flare-check")>=0){yield return EndingFlare();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-backfire-check")>=0){yield return EndingBackfire();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-weather-check")>=0){yield return EndingWeather();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);frozen=true;
             Check(Marshal.SizeOf<Idas3Native.GhostState>()==48,"Ghost ABI layout");
@@ -526,6 +593,12 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-per-car-full-tune-check")>=0){yield return PerCarFullTune();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-level-check")>=0){yield return SaveLastUsedLevel();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-legend-cycle-check")>=0){yield return LegendCycle();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0){yield return RoadsideDustSequence();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-moving-mirror-check")>=0){yield return MovingMirror();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0){yield return StoppedMirror();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0){yield return RoadsideDust();yield break;}
+        if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-car-inspection-check")>=0){yield return CarInspection();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-save-change-check")>=0){yield return SaveChange();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-pause-course-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
@@ -1214,7 +1287,7 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         var previous=camera.targetTexture;var target=new RenderTexture(width>0?width:Screen.width,height>0?height:Screen.height,24,RenderTextureFormat.ARGB32){antiAliasing=1};
         Check(target.Create(),"Capture target");camera.targetTexture=target;
         if(width>0){frozen=false;yield return Frames(2);frozen=true;Check(scene.CurrentFrame.width==width&&scene.CurrentFrame.height==height,"Native HUD capture resolution");}
-        scene.ApplyFrame();ui.ApplyFrame();
+        scene.ApplyFrame();ui.ApplyFrame();endingCaptureFilter?.Invoke();
         var cameras=new List<Camera>();foreach(var item in Resources.FindObjectsOfTypeAll<Camera>())if(item!=null&&item.enabled&&item.gameObject.activeInHierarchy&&item.targetTexture==target)cameras.Add(item);
           cameras.Sort((a,b)=>a.depth.CompareTo(b.depth));foreach(var item in cameras)item.Render();
           Idas3PauseMenu captureMenu=null;
@@ -1252,7 +1325,8 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         string file=name+".png";File.WriteAllBytes(Path.Combine(root,file),image.EncodeToPNG());captures.Add(file);
         if(captureMenu!=null)captureMenu.CancelDiagnosticCapture();
         camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();Destroy(image);target.Release();Destroy(target);
-        frozen=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-check")>=0;yield return null;
+        frozen=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-glare-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-tire-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-leaf-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-flare-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-backfire-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-weather-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-check")>=0||
+            Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-moving-mirror-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0;yield return null;
     }
     private IEnumerator Guard(IEnumerator routine){
         var stack=new Stack<IEnumerator>();stack.Push(routine);
@@ -1266,7 +1340,18 @@ public sealed class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-check")>=0?
+            checks=checks,error=error,captures=captures.ToArray(),scope=(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0)?
+            "Actual source driving from a Tsuchisaka shoulder in both directions across a full five-tick emission interval and two later times, with night/rain controls. Full Unity camera/material stack; source brown-emitter admission and paired particle removal/restoration. Isolated muted player; no full-lap, tunnel, Internet peer or full-cabinet parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0?
+            "Six isolated stationary original-course scenes through the actual Unity main/mirror/HUD stack, including braking from driving. Paired smoke/dust removal and restoration. No ordinary save, online peer or claim to reproduce the reported field issue.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-glare-check")>=0?
+            "Genuine night Akagi ending poses viewed from an arranged frontal inspection camera. Optical headlights removed/restored without changing the recording or live physics; native texture bindings, main-view geometry and paired Unity pixels. Private, muted and hidden; not a claim of original ending camera parity.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-tire-check")>=0?
+            "Real recorded Usui rear-wheel slip through the original ending tyre-mark owner, with arranged early highlight. Paired Unity geometry/pixel removal/restoration, unchanged RNG/physics. Muted isolated player; no installed-build change or full cabinet-parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-leaf-check")>=0?
+            "Recorded Usui Legend contacts and poses with an arranged early highlight. Original ending leaf geometry through Unity cameras/materials, visible pixel contribution, exact removal/restoration and preserved RNG/physics. Isolated muted player; no ordinary saves, online peers or full cabinet-parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-flare-check")>=0?
+            "Recorded moving Myogi Legend poses with an arranged early highlight. Daytime flare through native geometry and Unity materials/camera, paired removal/restoration, night/rain exclusion. Silent isolated player, no ordinary saves or full cabinet-parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-backfire-check")>=0?
+            "Source-driven tuned Evo III Legend poses with arranged early highlights. Three exhaust mounts in the ending camera, plus a diagnostic rival-centered view of a real recorded rival trigger. Native backfire states/geometry/lighting through Unity, paired disable/restore pixels and isolated flame-only pixels. Muted hidden private player; no ordinary save, live peer or full cabinet-parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-weather-check")>=0?
+            "Source-driven Akagi night poses with an arranged early highlight trigger. Dry/wet ending at two recorded frames, actual native rain geometry and Unity camera/material capture, exact rain disable/restore pixel comparison. Isolated muted player, no ordinary save or online service. Not a completed final Legend race or full cabinet comparison.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0?
+            "Actual source driving from an arranged Tsuchisaka shoulder pose in both directions, then native geometry through Unity cameras/materials. Paired dust/baseline/restored pixel captures, brown tint, exact repaint restoration, and excluded night/rain. Private muted player; no full-lap, online-peer, replay or native-hardware visual-parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-car-inspection-check")>=0?
+            "Card acceptance consumes one use; zero at next entry offers original transmission/package renewal selectors. Keeping choices preserves progress; durable renewal resets to 50 before the summary. Cancellation, writer failure, retry and subsequent entry checked in isolated saves with muted background captures. No live online service.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-legend-cycle-check")>=0?
+            "Completed private story loaded through actual Continue twice, one persisted cycle increment, 31 cleared rival results, preserved car/tuning/points/rank and other profiles, then ordinary Legend/course/rival/dialogue input reaches a dry Myogi race with both cars. No ordinary saves changed.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ghost-check")>=0?
             "Personal-best ghost capture/finish/persistence, save/course/direction/weather separation, car/transmission changes, imported-course loading, optional replay recording independence, pause/frame independence, runtime blue mesh rendering and Gameplay controller toggle/apply/reload/cancel. Isolated native gate finish and scripted driving; no ordinary saves or online submissions.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-tsubaki-check")>=0?
             "Tsubaki Line course selection and paused native camera fixtures at three route positions in both directions across all four day/night/dry/wet variants. Checks actual loaded course identity, pause labels, variant selection and orderly shutdown. Isolated saves; this visual check does not establish a full driven lap or live online service compatibility.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-sadamine-boundary-check")>=0?
             "Sadamine roadside reproduction using actual source driving, both steering directions and three contact durations in bumper/chase cameras. Roadside face coverage checked on the loaded course, with 25 camera-pan and 25 subpixel-motion frames at the reported start area. Native fixtures verify wall contacts and unchanged driving state after rendering. Isolated saves; not a full-route collision audit.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-sadamine-stability-check")>=0?

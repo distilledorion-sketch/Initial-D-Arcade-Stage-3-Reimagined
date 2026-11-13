@@ -8,7 +8,7 @@ using Idas3.Multiplayer;
 internal static class EosPlatformDriver {
     static int checks;
     static void Check(bool condition,string reason){if(!condition)throw new Exception(reason);++checks;Console.WriteLine("PASS\t"+reason);}
-    static void Pump()=>Idas3EosPlatform.Tick(true);
+    static void Pump(){++UnityEngine.Time.frameCount;Idas3EosPlatform.Tick(true);}
     static PlatformInterface Platform=>PlatformInterface.Instance;
     static Epic.OnlineServices.Connect.ConnectInterface Connect=>Platform.Connect;
     static Task Begin()=>Idas3EosPlatform.InitializeAsync(new Idas3EosOnlineConfig());
@@ -70,8 +70,73 @@ internal static class EosPlatformDriver {
         Check(Idas3EosTransport.Shutdowns==1&&Idas3EosTransport.HandleWasLive,"Live routes are asked to close before the native platform is released");
         UnityEngine.Application.Quit();Idas3EosPlatform.Tick(true);Check(Platform.Releases==1&&PlatformInterface.Shutdowns==1,"Repeated shutdown and later frame pumps are harmless");
     }
+    static void CallbackBurst(){
+        SignIn();int delivered=0;
+        for(int i=0;i<16;++i){int expected=i;Idas3EosPlatform.Defer(()=>{
+            if(delivered!=expected)throw new Exception("Deferred work lost FIFO ordering");
+            ++delivered;System.Threading.Thread.Sleep(8);
+        });}
+        var timer=System.Diagnostics.Stopwatch.StartNew();Pump();timer.Stop();
+        Console.WriteLine("MEASURE\tFirst burst dispatch: "+timer.Elapsed.TotalMilliseconds.ToString("F2")+" ms; callbacks="+delivered);
+        Check(delivered==1,"A burst yields after its first expensive callback instead of freezing one frame");
+        for(int i=0;i<5;++i)Idas3EosPlatform.Tick(true);
+        Check(delivered==1,"Multiple online pumps in the same Unity frame share the callback budget");
+        for(int i=0;i<20&&delivered<16;++i)Pump();
+        Check(delivered==16,"Budgeted callbacks eventually complete in FIFO order without being dropped");
+        int chained=0;Action again=null;again=()=>{++chained;if(chained<256)Idas3EosPlatform.Defer(again);};
+        Idas3EosPlatform.Defer(again);Pump();
+        Check(chained>0&&chained<=64,"Self-enqueuing work cannot exhaust an entire frame");
+        for(int i=0;i<300&&chained<256;++i)Pump();
+        Check(chained==256,"Chained callbacks resume on later frames");
+    }
+    static void ConcurrentCallbacks(){
+        SignIn();const int producers=4,each=500;var seen=new int[producers,each];var order=new int[producers];
+        var jobs=new Task[producers];
+        for(int p=0;p<producers;++p){int producer=p;jobs[p]=Task.Run(()=>{
+            for(int j=0;j<each;++j){int sequence=j;Idas3EosPlatform.Defer(()=>{
+                if(order[producer]++!=sequence)throw new Exception("A producer's callbacks changed order");
+                ++seen[producer,sequence];
+            });}
+        });}
+        var timeout=System.Diagnostics.Stopwatch.StartNew();
+        while(!Task.WaitAll(jobs,0)){Pump();if(timeout.Elapsed.TotalSeconds>5)throw new Exception("Callback producers stalled");}
+        for(int i=0;i<500;++i)Pump();
+        for(int p=0;p<producers;++p)for(int j=0;j<each;++j)if(seen[p,j]!=1)throw new Exception("Concurrent callbacks lost or duplicated work");
+        Check(true,"Background producers and the main-thread drain preserve all 2000 callbacks exactly once");
+    }
+    static void ShutdownDuringDispatch(){
+        SignIn();Connect.Expire();Idas3EosPlatform.Defer(UnityEngine.Application.Quit);Pump();
+        Check(Idas3EosPlatform.IsStopping&&Idas3EosPlatform.Handle==null&&Connect.Logins==1&&Idas3EosPlatform.Failure==null,
+            "Shutdown during callback dispatch cannot renew through a released SDK handle");
+        Task.Run(()=>Idas3EosPlatform.Defer(()=>{throw new Exception("Late cleanup callback ran after shutdown");})).GetAwaiter().GetResult();
+        Pump();Check(Platform.Releases==1,"Background cleanup after shutdown does not resurrect the platform");
+    }
+    static void TraceTiming(){
+        SignIn();Idas3StutterMeasurements.Reset();
+        Pump();Check(Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount).SdkTicks==0,"Ordinary play does not collect EOS trace counters");
+        Idas3StutterMeasurements.Enabled=true;
+        Platform.NativeEvents.Enqueue(()=>System.Threading.Thread.Sleep(8));
+        Idas3EosPlatform.Defer(()=>System.Threading.Thread.Sleep(12));
+        Pump();var measured=Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount);
+        Check(measured.SdkTicks==1&&measured.SdkMilliseconds>=6,"Trace captures SDK Tick work outside the session update");
+        Check(measured.Callbacks==1&&measured.CallbackMilliseconds>=10,"Trace distinguishes deferred application callback time from SDK Tick time");
+        Idas3EosPlatform.Tick(true);var repeated=Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount);
+        Check(repeated.SdkTicks==2&&repeated.Callbacks==1&&repeated.SdkMilliseconds>=measured.SdkMilliseconds,"Both pumps accumulate in the same Unity frame without double-counting callbacks");
+        ++UnityEngine.Time.frameCount;var blank=Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount);
+        Check(blank.SdkTicks==0&&blank.Callbacks==0&&blank.SdkMilliseconds==0&&blank.CallbackMilliseconds==0,"Frames with no EOS work do not inherit a previous spike");
+        Platform.NativeEvents.Enqueue(()=>{System.Threading.Thread.Sleep(8);throw new InvalidOperationException("Synthetic SDK exception");});
+        try{Idas3EosPlatform.Tick(true);throw new Exception("Expected SDK exception");}catch(InvalidOperationException){}
+        var failed=Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount);
+        Check(failed.SdkTicks==1&&failed.SdkMilliseconds>=6&&failed.Callbacks==0,"An SDK exception retains its elapsed time and does not fabricate callbacks");
+        Pump();Idas3EosPlatform.Defer(()=>{System.Threading.Thread.Sleep(8);throw new InvalidOperationException("Synthetic callback exception");});
+        try{Pump();throw new Exception("Expected callback exception");}catch(InvalidOperationException){}
+        Check(Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount).CallbackMilliseconds>=6,"Throwing callbacks retain their measured duration");
+        Idas3StutterMeasurements.Enabled=false;Idas3StutterMeasurements.Reset();Pump();
+        Check(Idas3StutterMeasurements.Read(UnityEngine.Time.frameCount).SdkTicks==0,"Stopping a trace disables counters without disabling online services");
+    }
     static int Main(string[] args){try{
-        switch(args[0]){case "existing":ExistingIdentity();break;case "new":NewIdentity();break;case "load":NativeLoad();break;case "retry":FailureRetry();break;case "missing-token":InvalidUser();break;case "invalid-identity":InvalidIdentity();break;case "renew":Renewal();break;case "changed-identity":ChangedIdentity();break;case "shutdown":BoundedAndShutdown();break;default:throw new Exception("Unknown test case");}
+        if(args[0]=="trace"){TraceTiming();Console.WriteLine("TOTAL\t"+checks);return 0;}
+        switch(args[0]){case "existing":ExistingIdentity();break;case "new":NewIdentity();break;case "load":NativeLoad();break;case "retry":FailureRetry();break;case "missing-token":InvalidUser();break;case "invalid-identity":InvalidIdentity();break;case "renew":Renewal();break;case "changed-identity":ChangedIdentity();break;case "shutdown":BoundedAndShutdown();break;case "burst":CallbackBurst();break;case "concurrent":ConcurrentCallbacks();break;case "shutdown-dispatch":ShutdownDuringDispatch();break;default:throw new Exception("Unknown test case");}
         Console.WriteLine("TOTAL\t"+checks);return 0;
     }catch(Exception error){Console.Error.WriteLine(error);return 1;}}
 }

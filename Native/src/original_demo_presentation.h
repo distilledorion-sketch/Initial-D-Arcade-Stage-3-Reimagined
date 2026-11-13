@@ -5,6 +5,7 @@
 #include "original_number_plate.h"
 #include "original_headlight_presentation.h"
 #include "headlight_glare.h"
+#include "original_demo_lamp_trails.h"
 #include "original_car_lighting.h"
 #include "renderer.h"
 #include <map>
@@ -22,6 +23,8 @@ public:
     void bindLighting(Renderer&)const;
     std::size_t sceneIndex(unsigned frame)const{return positions_.at(frame).pathIndex;}
     Vec3 cameraOffset(unsigned frame)const{return positions_.at(frame).cameraOffset;}
+    const OriginalDemoLampTrails::Frame& lampTrails(unsigned frame)const{return trails_.frame(frame);}
+    unsigned lampTrailTextureBase()const{return trailTextureBase_;}
 private:
     struct Car {
         NativeModel model;NativeTextureBank textures;
@@ -42,6 +45,8 @@ private:
     NativeModel projectedModel_;
     NativeTextureBank projectedTextures_;
     HeadlightGlare glare_;
+    OriginalDemoLampTrails trails_;
+    unsigned trailTextureBase_=0;
     unsigned projectedTextureBase_=0,glareTextureBase_=0;
     original::OriginalCourseLighting courseLights_;
     original::OriginalRaceLightingSets lighting_;

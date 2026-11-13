@@ -27,11 +27,13 @@ struct OriginalContactCompletionEffects {
     bool requestCue4=false;
 };
 using OriginalContactEngineOutput=std::function<void(const OriginalContactCompletionEffects&,std::uint32_t&)>;
+using OriginalContactCueOutput=std::function<void(unsigned,std::uint32_t&)>;
 // [157D6C,157E6E): original contact timer/cues/history, frame counter, RNG,
 // steering mask and optional159A20 snapshot. Call after158200 and157A80.
 // Platform audio/cue calls are explicit effects, not replacements for forces.
 OriginalContactCompletionEffects finishOriginalContactFrame(OriginalDriveState& drive,
     const idas3::OriginalTransmissionState& transmission,
     OriginalContactCompletionState& state,const OriginalContactCompletionInputs& inputs,
-    const OriginalContactEngineOutput& engineOutput={});
+    const OriginalContactEngineOutput& engineOutput={},
+    const OriginalContactCueOutput& contactOutput={});
 }

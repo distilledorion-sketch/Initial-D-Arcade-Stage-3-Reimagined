@@ -12,11 +12,17 @@ class OriginalSavedData {
 public:
     void load(const std::filesystem::path& root);
     void begin(OriginalBattleProfile&);
+    // Cosmetic inspection playback. This short source page cannot edit
+    // options, renew tuning or write any part of the saved profile.
+    void beginInspectionCompletion(const OriginalBattleProfile&);
+    bool inspectionCompletion()const{return inspectionCompletion_;}
+    bool inspectionOverlayVisible()const{return inspectionCompletion_&&renewal_.writePhase532==1;}
+    unsigned animationFrame()const{return animationFrame_;}
     void change(int delta);
-    void moveRow(int direction){if(ready())input_.rowDirection=direction>0?1:-1;}
+    void moveRow(int direction){if(ready()&&!inspectionCompletion_)input_.rowDirection=direction>0?1:-1;}
     void confirm(){if(ready())input_.confirm=true;}
-    void cancel(){if(ready())input_.cancel=true;}
-    void nextPage(){if(ready())input_.nextPage=true;}
+    void cancel(){if(ready()&&!inspectionCompletion_)input_.cancel=true;}
+    void nextPage(){if(ready()&&!inspectionCompletion_)input_.nextPage=true;}
     OriginalCardCheckEvents advance(OriginalBattleProfile&);
     void paint(std::span<std::uint32_t>,int,int,const OriginalBattleProfile&)const;
     void paintBackground(std::span<std::uint32_t>,int,int)const;
@@ -32,6 +38,8 @@ private:
     OriginalTuningData tuning_;
     OriginalCardCheckState state_;
     OriginalCardCheckInput input_;
+    OriginalRenewCardCheckState renewal_;
+    bool inspectionCompletion_=false;
     unsigned background_=0,countdown_=2479,animationFrame_=0;
     bool japanese_=false;
 };

@@ -2,11 +2,71 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.Layouts;
+using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.InputSystem.Utilities;
+using UnityEngine.InputSystem.XInput;
 
 // Explicit editor/player diagnostic with isolated preferences and simulated
 // device samples. No real controllers are disabled or sent input/output.
 public static class Idas3ControllerReconnectChecks
 {
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct WindowsPadState : IInputStateTypeInfo
+    {
+        public ushort buttons;
+        public byte leftTrigger,rightTrigger;
+        public short leftX,leftY,rightX,rightY;
+        public FourCC format => new FourCC('X','I','N','P');
+    }
+    private static void CheckAlternateBackends(string root,Action<bool,string> check)
+    {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        // Actual Unity XInput layout, with a private device and simulated native
+        // slots. No event is sent to any physical controller or Steam process.
+        var pad=(Gamepad)InputSystem.AddDevice(new InputDeviceDescription {
+            interfaceName="XInput",manufacturer="Private backend check",
+            product="Alternate Xbox backend",serial="isolated-backend",
+            capabilities="{\"type\":0,\"subType\":1,\"flags\":0}" });
+        try {
+            check(pad is XInputControllerWindows,"Fixture must use the Windows XInput layout");
+            double time=0;bool rawConnected=true;var raw=new Idas3Native.PadState();
+            uint Read(uint slot,out Idas3Native.PadState value){value=raw;return slot==0&&rawConnected?0u:1167u;}
+            using(var devices=new Idas3ControllerDevices(()=>time,Read,d=>ReferenceEquals(d,pad))){
+                devices.Initialize(Path.Combine(root,"alternate-backends"));
+                check(devices.ActiveProfileKey=="xinput:slot:0","Prefer the precise native sample at startup");
+                string key=null;
+                foreach(var choice in devices.Choices)if(choice.connected&&choice.label.Contains("Alternate Xbox backend"))key=choice.key;
+                check(key!=null,"An idle native port hid a usable Unity XInput controller");
+                time=1;devices.Tick(true);
+                InputState.Change(pad,new WindowsPadState{rightTrigger=255,leftX=16000,buttons=0x1000});devices.Tick(true);
+                check(devices.ActiveName.Contains("Alternate Xbox backend")&&devices.TryRead(out var p)&&p.rightTrigger==255&&p.thumbLX==16000&&(p.buttons&0x1000)!=0,
+                    "Fresh Unity Xbox input cannot take over an idle native port");
+                InputState.Change(pad,new WindowsPadState());devices.Tick(true);
+                if(key!=null){
+                    check(devices.Select(key),"Unity Xbox cannot be explicitly selected");
+                    rawConnected=false;time+=1;devices.Tick(false);
+                    check(devices.SelectedKey==key&&devices.TryRead(out _),"Native unplug disconnected the selected Unity backend");
+                    rawConnected=true;time+=1;devices.Tick(false);
+                    check(devices.SelectedKey==key&&devices.TryRead(out _)&&devices.ActiveName.Contains("Alternate Xbox backend"),
+                        "Native reconnect hid the explicitly selected Unity backend");
+                }
+                devices.Select("xinput:0");devices.Select("automatic");int changes=0;
+                devices.ActiveDeviceChanged+=()=>++changes;
+                for(int frame=0;frame<120;++frame){
+                    time+=1.0/60;raw.gamepad.rightTrigger=255;raw.gamepad.thumbLX=16000;
+                    InputState.Change(pad,new WindowsPadState{rightTrigger=254,leftX=(short)(frame%2==0?17000:19000)});devices.Tick(true);
+                    check(devices.ActiveProfileKey=="xinput:slot:0"&&devices.TryRead(out var held)&&held.rightTrigger==255,
+                        "Delayed Unity copy interrupted the held native source at "+frame);
+                }
+                check(changes==0,"Duplicate backend rearmed the input release guard");
+                devices.Select("keyboard");devices.Tick(true);
+                check(!devices.TryRead(out _),"Alternate backend overrode Keyboard only");
+            }
+        } finally { InputSystem.RemoveDevice(pad); }
+#endif
+    }
     [Serializable] private sealed class Report { public bool passed;public int checks;public string[] failures; }
     public static void Run()
     {
@@ -17,6 +77,7 @@ public static class Idas3ControllerReconnectChecks
         Directory.CreateDirectory(root);
         int checks=0;var failures=new List<string>();
         void Check(bool value,string reason){++checks;if(!value)failures.Add(reason);}
+        CheckAlternateBackends(root,Check);
         double now=0;var slots=new Idas3Native.PadState[4];var connected=new bool[4];
         uint Read(uint slot,out Idas3Native.PadState value){value=slots[slot];return connected[slot]?0u:1167u;}
         connected[0]=true;

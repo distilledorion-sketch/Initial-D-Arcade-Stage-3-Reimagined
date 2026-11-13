@@ -67,6 +67,22 @@ int main(int argc,char** argv)try{
         seed(p);refreshOriginalLegendCourseProgress(p);RefCpu cpu(memory);cpu.r[14]=stack+0xf000;cpu.r[15]=cpu.r[14];cpu.r[1]=0;
         instructions+=cpu.run(0x0C0F1AD8,0x0C0F1B34,20000);compare(p);++cases;
     }
+    // Execute the entire post-decode card-progress block, including all
+    // original rival/course callees, with no hooks. Canary every profile word
+    // to catch accidental changes to tuning, balance, rank or other modes.
+    for(unsigned pattern=0;pattern<1100;++pattern){
+        OriginalBattleProfile p;
+        for(unsigned i=0;i<p.words.size();++i)p.words[i]=0x819245a3u^(i*0x1872321u)^pattern;
+        p.setu(148,pattern%10);
+        for(unsigned e=0;e<31;++e)p.setByte(116+e,std::uint8_t(0x10+((pattern+e)%15)*16+(e&15)));
+        if(pattern<496)p.setByte(116+pattern%31,std::uint8_t(pattern/31));
+        else if(pattern<1008)for(unsigned e=0;e<31;++e)if(!(pattern&(1u<<(e%9))))p.setByte(116+e,std::uint8_t(e&15));
+        const bool expectedReset=[&]{for(unsigned e=0;e<30;++e)if(!(p.byte(116+e)>>4))return false;return p.byte(146)!=0;}();
+        seed(p);RefCpu cpu(memory);cpu.r[14]=stack+0xe000;cpu.r[15]=cpu.r[14];
+        memory.write32(cpu.r[14]+80,profile+80);
+        instructions+=cpu.run(0x0c1aabe4,0x0c1aad50,50000);
+        equal(refreshOriginalLegendCardProgress(p),expectedReset);compare(p);++cases;
+    }
     const std::array<unsigned,12> ranks{0,1,2,3,9,10,15,16,30,31,0x7fffffffu,0xffffffffu};
     for(unsigned pattern=0;pattern<2048;++pattern){
         auto p=makeOriginalFreshBattleProfile();for(unsigned enemy=0;enemy<31;++enemy)p.setByte(116+enemy,std::uint8_t(((pattern>>(enemy%10))&1)?0x10:pattern&1));

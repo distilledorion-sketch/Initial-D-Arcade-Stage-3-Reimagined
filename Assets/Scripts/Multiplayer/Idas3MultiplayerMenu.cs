@@ -508,8 +508,8 @@ namespace Idas3.Multiplayer
             if(ActionButton(new Rect(x,y+96,232,40),"HOST PRIVATE BATTLE",session.SupportsPrivateRooms&&session.Available&&idle))session.HostRoom(true);
             if(ActionButton(new Rect(x,y+144,232,40),online?"JOIN WITH CODE":"JOIN WITH ADDRESS",idle)){joinEntry=true;controllerFocus.Reset();}
             if(ActionButton(new Rect(x,y+192,232,40),"BACK TO GAME"))SetOpen(false);
-            if(ActionButton(new Rect(x,438,112,33),"ONLINE",idle,online))session.SelectTransport(0);
-            if(ActionButton(new Rect(x+120,438,112,33),"LAN DIRECT",idle,!online))session.SelectTransport(1);
+            if(ActionButton(new Rect(x,438,112,33),"ONLINE",session.CanSelectTransport(0),online))session.SelectTransport(0);
+            if(ActionButton(new Rect(x+120,438,112,33),"LAN DIRECT",session.CanSelectTransport(1),!online))session.SelectTransport(1);
             if(online){
                 Section(new Rect(280,190,594,286),"OPEN ROOMS");
                 if(ActionButton(new Rect(736,201,120,28),session.Available?"REFRESH":"RETRY ONLINE",idle))session.RefreshRooms();

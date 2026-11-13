@@ -85,6 +85,15 @@ typedef struct Idas3WheelState {
     float speed,steering,headingError,wallLateral,impact;
     uint32_t flags; //1 active driving,2 wall contact,4 saved steering present; bits8..11 dial0..8; steering positive right
 } Idas3WheelState;
+// Versioned producer output, separate from the unchanged legacy WheelState.
+// One shared read per host frame for wheel + pad. Peak is consumed by this call.
+typedef struct Idas3FeedbackState {
+    uint32_t size,version; // 40 bytes, version1
+    uint64_t simulationTicks;
+    uint32_t flags; // 1 active driving and valid original producer output
+    int32_t torqueCode,damperParameter,rumbleAmplitude,peakRumbleAmplitude;
+    uint32_t rumbleFrequencyHalfHz;
+} Idas3FeedbackState;
 // Read-only signals for optional host HUD themes. Does not change simulation.
 typedef struct Idas3HudTelemetry {
     uint32_t size,version,flags; // flags: 1 race, 2 automatic, 4 night, 8 drift; v3 bits 8..9: drift level; v4 bits 16..18: maximum gear
@@ -123,12 +132,13 @@ typedef struct Idas3PreRaceStatus {
     float eyeX,eyeY,eyeZ,targetX,targetY,targetZ,verticalFov;
     uint32_t condition;
 } Idas3PreRaceStatus;
-// A local next-race choice. -1 uses Speedy Speed Boy (index1).
-// eligible is only the native opponent-selection context, not managed lobbies.
+// A local next-race choice. -1 chooses an automatic Stage 3 race song.
+// eligible covers idle course/conditions/rival selection, not managed lobbies.
+// hintVisible also covers intermediate confirmations, ending at race loading.
 typedef struct Idas3RaceMusicState {
     uint32_t size,version,eligible,count;
     int32_t selectedIndex,activeIndex;
-    uint32_t opponentId,reserved;
+    uint32_t opponentId,hintVisible; // Uses the formerly reserved word; ABI size unchanged.
 } Idas3RaceMusicState;
 // Read-only mixer timeline; separate from the stable driving/music-choice ABI.
 typedef struct Idas3RaceAudioStatus {
@@ -168,6 +178,11 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weath
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayHud(int elapsed6000,int finish6000,const int* splits,int count,const int* glyphs,int glyphCount);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAppearance(const uint32_t* values,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDetailFrame(const uint8_t* values,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayBackfire(int playerFrame,int opponentFrame);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDustTimeline(const uint8_t* values,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayDustSeek(uint32_t step);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplaySmokeTimeline(const uint8_t* values,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplaySmokeSeek(uint32_t step);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAudio(double deltaSeconds,int playing,int reset,float master,float engine,float effects);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayPose(double tick,float x,float y,float z,float yaw,float speed,int gear,float pitch,int cameraMode,float orbit,int width,int height);
 // Scene-mode/main-thread only. Never advances input, dialogue, or audio.
@@ -196,7 +211,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCopyRaceMusicText(int index,in
 // Returns source stage1/2/3; -1 for an invalid catalog index.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetRaceMusicStage(int index);
 // Queues and persists only; never changes playing music. context0 requires
-// native opponent selection; context1 is a managed idle multiplayer lobby.
+// native course/conditions/rival selection; context1 is an idle multiplayer lobby.
 // The managed owner validates lobby state. Native active multiplayer/loading/
 // VS/dialogue states reject either context. Applied at the next race start.
 // Index0 (Gamble Rumble) is retained as metadata but cannot be selected.
@@ -235,6 +250,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMapZoom(int zoom);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetAiDifficulty(int difficulty);
 IDAS3_UNITY_EXPORT float IDAS3_UNITY_CALL Idas3SceneGetSteeringSmoothing();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetWheelState(Idas3WheelState* state);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetFeedbackState(Idas3FeedbackState* state);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetHudTelemetry(Idas3HudTelemetry* state);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetOrnamentTelemetry(Idas3OrnamentTelemetry* state);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetPresentationTiming(Idas3PresentationTiming* state);
@@ -272,6 +288,9 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerSetResult(int winner);
 // reward store. Recovery also works before scene initialization.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPrepareResult(int winner,int* selection,uint32_t* points,uint32_t* before,uint32_t* after,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerRecoverReward(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count);
+// Season-aware recovery keeps current Time Attack records when completing an
+// interrupted previous-season battle result. The legacy export assumes season 1.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerRecoverRewardForSeason(const char* saves,int selection,uint32_t points,const uint32_t* before,const uint32_t* after,uint32_t count,uint32_t recordSeason);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
 // Local original-menu presentation. These calls do not award or alter results.
 // Input flags: 1 blocked, 2 peer left, 4 peer ready, 8 record save failed.

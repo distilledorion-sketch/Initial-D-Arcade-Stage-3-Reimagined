@@ -1,7 +1,10 @@
 #include "time_attack_ghost.h"
 #include "imported_course_catalog.h"
+#include "time_attack_season.h"
 #include <bit>
+#include <charconv>
 #include <fstream>
+#include <regex>
 #if defined(_WIN32)
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -59,10 +62,52 @@ bool removeRetiredCopies(const std::filesystem::path& path){
 std::filesystem::path TimeAttackGhost::path(const std::filesystem::path& profiles,unsigned course,bool reverse,bool wet){
     const auto revision=localTimeAttackRevision(course);
     return profiles/"ghosts_v1"/("course_"+std::to_string(course)+(reverse?"_reverse":"_forward")+(wet?"_wet":"_dry")+
-        (revision?"_r"+std::to_string(revision):"")+".idghost");
+        (revision?"_r"+std::to_string(revision):"")+"_s"+std::to_string(timeAttackSeason)+".idghost");
 }
 std::filesystem::path TimeAttackGhost::telemetryPath(const std::filesystem::path& saves,const std::string& runKey,unsigned course){
-    return saves/(runKey+(course==17?"_r"+std::to_string(localTimeAttackRevision(course)):"")+".csv");
+    return saves/(runKey+(course==17?"_r"+std::to_string(localTimeAttackRevision(course)):"")+"_s"+std::to_string(timeAttackSeason)+".csv");
+}
+bool TimeAttackGhost::removePreviousSeasonGhosts(const std::filesystem::path& saves){
+    if(saves.empty())return false;
+    const int root=plainEntry(saves,true);if(root==0)return true;if(root<0)return false;
+    const std::regex personal(R"(^course_([0-9]+)_(forward|reverse)_(dry|wet)(_r([0-9]+))?(_s([0-9]+))?\.idghost(\.tmp|\.previous)?$)");
+    const std::regex telemetry(R"(^(original_race_v3_|development_v01_)([a-z0-9_]+)_(fwd|rev)_(dry|wet)_car([0-9]+)_(at|mt)(_r([0-9]+))?(_s([0-9]+))?\.csv(\.tmp|\.previous)?$)");
+    const auto number=[](const std::ssub_match& part,unsigned fallback){
+        if(!part.matched)return fallback;const auto text=part.str();unsigned result=~0u;
+        const auto parsed=std::from_chars(text.data(),text.data()+text.size(),result);
+        return parsed.ec==std::errc{}&&parsed.ptr==text.data()+text.size()?result:~0u;
+    };
+    const auto sceneCourse=[](const std::string& scene){
+        constexpr std::array<const char*,9> originals{"k_ez","s_nm","h_hd","k_df","s_vh","s_uh","n_sy","k_tu","k_df3"};
+        for(unsigned course=0;course<originals.size();++course)if(scene==originals[course])return course;
+        for(const auto& course:importedCourseDefinitions)if(scene==course.slug)return course.id;
+        return supportedCourseCount;
+    };
+    bool success=true;
+    const auto clean=[&](const std::filesystem::path& directory,bool personalFiles){
+        std::error_code error;std::filesystem::directory_iterator cursor(directory,error),end;
+        if(error){success=false;return;}
+        for(;cursor!=end;cursor.increment(error)){
+            if(error){success=false;return;}
+            const auto filename=cursor->path().filename().string();std::smatch match;
+            if(!std::regex_match(filename,match,personalFiles?personal:telemetry))continue;
+            const unsigned course=personalFiles?number(match[1],~0u):sceneCourse(match[2].str());
+            const unsigned revision=number(match[personalFiles?5:8],0);
+            const unsigned season=number(match[personalFiles?7:10],1);
+            if(course>=supportedCourseCount||revision>localTimeAttackRevision(course)||season==0||season>=timeAttackSeason)continue;
+            if(!personalFiles&&number(match[5],~0u)>=35)continue;
+            if(!removeRetiredFile(cursor->path()))success=false;
+        }
+        if(error)success=false;
+    };
+    for(int slot=-1;slot<5;++slot){
+        const auto relative=slot<0?std::filesystem::path("driver_profiles_v1")/"ghosts_v1":
+            std::filesystem::path("saves")/("slot_"+std::to_string(slot+1))/"driver_profiles_v1"/"ghosts_v1";
+        const int directory=plainSubdirectory(saves,relative);
+        if(directory<0){success=false;continue;}if(directory==1)clean(saves/relative,true);
+    }
+    clean(saves,false);
+    return success;
 }
 bool TimeAttackGhost::removeRetiredOdawaraGhosts(const std::filesystem::path& saves){
     if(saves.empty())return false;

@@ -105,7 +105,37 @@ internal static class MenuInputRouterDriver
         FocusGapChecks();
         ClosingControlChecks();
         OnlineOwnershipChecks();
+        OnlineClosingPauseChecks();
         OnlineRaceTransitionChecks();
+    }
+
+    private static void OnlineClosingPauseChecks()
+    {
+        foreach (bool controllerStart in new[] { false, true })
+        {
+            var router = new Router();
+            var driving = new Router.Context { Focused = true, CanOpenPause = true };
+            var held = new Router.Sample { Escape = true, Buttons = controllerStart ? 0x10u : 0u, Horizontal = 1 };
+            var context = new Router.OnlineContext { Open = true, Frame = 10 };
+            Check(router.ProcessOnline(new Router.OnlineSample { Cancel = true }, context) == Router.OnlineAction.Back,
+                "closing online consumes cancel, controller=" + controllerStart);
+            router.OnlineClosed();
+            context.Open = false;
+            for (int frame = 10; frame < 15; ++frame)
+            {
+                context.Frame = frame;
+                router.ProcessOnline(new Router.OnlineSample { Cancel = true }, context);
+                driving.OnlineBlocksInput = router.BlocksOnlineGameInput(false, true, frame, 11);
+                var command = router.Process(held, driving);
+                Check(command.Kind != Router.Action.OpenPause && router.SuppressClosingControls,
+                    "online closing Escape/Start remains masked after transition frame " + frame + ", controller=" + controllerStart);
+                if (frame > 11) Check(!router.BlocksGameInput(false, false, frame), "held steering can resume after online closes");
+            }
+            router.ProcessOnline(default, context);
+            router.Process(new Router.Sample { Horizontal = 1 }, driving);
+            Check(!router.SuppressClosingControls, "release rearms pause while steering remains held");
+            Check(router.Process(held, driving).Kind == Router.Action.OpenPause, "fresh Escape/Start still opens pause after closing online");
+        }
     }
 
     private static void OnlineRaceTransitionChecks()
