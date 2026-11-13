@@ -46,30 +46,36 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
             nextPoll=Time.realtimeSinceStartupAsDouble+.1;
             var json=ReadPart(0,8192);if(json.Length==0)return;
             var metadata=JsonUtility.FromJson<Idas3ReplayData.Details>(Encoding.UTF8.GetString(json));
-            savingJson=json;saveJob=SaveAsync(Folder,metadata,ReadPart(1,Idas3ReplayCodec.MaxRaw),ReadPart(2,Idas3ReplayCodec.MaxRaw));
+            savingJson=json;saveJob=SaveAsync(Folder,metadata,ReadPart(1,Idas3ReplayCodec.MaxRaw),ReadPart(2,Idas3ReplayCodec.MaxRaw),ReadPart(3,Idas3ReplayCodec.MaxRaw));
             menu.ReplayStatus="Saving replay…";
         }
         catch(Exception e){retryAt=Time.realtimeSinceStartupAsDouble+10;menu.ReplayStatus="Could not save replay. Check free disk space. Recording remains pending.";Debug.LogWarning("Local replay save: "+e.GetType().Name);}
     }
-    public static string Save(string folder,Idas3ReplayData.Details metadata,byte[] player,byte[] opponent)
+    public static string Save(string folder,Idas3ReplayData.Details metadata,byte[] player,byte[] opponent,byte[] telemetry=null)
     {
         metadata.build=Application.version;metadata.id=Guid.NewGuid().ToString("D");
-        return SavePrepared(folder,metadata,player,opponent);
+        return SavePrepared(folder,metadata,player,opponent,telemetry);
     }
-    public static Task<string> SaveAsync(string folder,Idas3ReplayData.Details metadata,byte[] player,byte[] opponent)
+    public static Task<string> SaveAsync(string folder,Idas3ReplayData.Details metadata,byte[] player,byte[] opponent,byte[] telemetry=null)
     {
         metadata.build=Application.version;metadata.id=Guid.NewGuid().ToString("D");
-        return Task.Run(()=>SavePrepared(folder,metadata,player,opponent));
+        return Task.Run(()=>SavePrepared(folder,metadata,player,opponent,telemetry));
     }
     void OnApplicationQuit(){
         // Finish the one owned recording before process exit, without native
         // or scene access on the worker. Failures leave native data unacknowledged.
         if(saveJob!=null)try{saveJob.GetAwaiter().GetResult();}catch(Exception){}
     }
-    static string SavePrepared(string folder,Idas3ReplayData.Details metadata,byte[] player,byte[] opponent)
+    static string SavePrepared(string folder,Idas3ReplayData.Details metadata,byte[] player,byte[] opponent,byte[] telemetry)
     {
         byte[] a=Idas3ReplayCodec.Encode(player),b=opponent.Length==0?Array.Empty<byte>():Idas3ReplayCodec.Encode(opponent);
-        metadata.opponentBytes=b.Length;var packet=Package(metadata,a,b);Idas3ReplayData.Parse(packet);
+        metadata.opponentBytes=b.Length;metadata.telemetryBytes=0;byte[] packet=null;
+        if(telemetry!=null&&telemetry.Length>0){
+            // Analysis data is optional: an unusable stream never costs the replay.
+            try{var t=Idas3ReplayCodec.Encode(telemetry,Idas3ReplayCodec.Telemetry);metadata.telemetryBytes=t.Length;packet=Package(metadata,a,b,t);Idas3ReplayData.Parse(packet);}
+            catch(InvalidDataException){metadata.telemetryBytes=0;packet=null;}
+        }
+        if(packet==null){packet=Package(metadata,a,b);Idas3ReplayData.Parse(packet);}
         Directory.CreateDirectory(folder);
         string stem=FileStem(metadata),temporary=Path.Combine(folder,metadata.id+".tmp");
         File.WriteAllBytes(temporary,packet);
@@ -101,11 +107,11 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
         }
         string result=token.ToString().Trim('_');return result.Length==0?fallback:result;
     }
-    public static byte[] Package(Idas3ReplayData.Details metadata,byte[] player,byte[] opponent)
+    public static byte[] Package(Idas3ReplayData.Details metadata,byte[] player,byte[] opponent,byte[] telemetry=null)
     {
         var json=Encoding.UTF8.GetBytes(JsonUtility.ToJson(metadata));if(json.Length>8192)throw new InvalidDataException("Replay metadata too large.");
         using var output=new MemoryStream();using var writer=new BinaryWriter(output);
-        writer.Write(json.Length);writer.Write(json);writer.Write(player);writer.Write(opponent);return output.ToArray();
+        writer.Write(json.Length);writer.Write(json);writer.Write(player);writer.Write(opponent);if(telemetry!=null)writer.Write(telemetry);return output.ToArray();
     }
     public static string[] Files(string folder) => Directory.Exists(folder)?new DirectoryInfo(folder).GetFiles("*.idreplay").OrderByDescending(f=>f.LastWriteTimeUtc).Select(f=>f.FullName).ToArray():Array.Empty<string>();
     public void OpenViewer()

@@ -48,6 +48,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
     Vector3 freePosition;
     float freeYaw,freePitch,freeSpeed=12;
     readonly Idas3MenuPointer menuPointer=new Idas3MenuPointer();
+    readonly Idas3ReplayTelemetryView telemetry=new Idas3ReplayTelemetryView();
     bool PointerOwnsControls()
     {
         var key=Keyboard.current;var pad=Gamepad.current;
@@ -171,6 +172,9 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         SilenceAudio();audioSeconds=double.NaN;
         unchecked{++hudTimingRevision;}
         var chosen=Viewed;var m=chosen.Metadata;
+        // Only authority battles record the opponent's own section clock.
+        var reference=replay.Opponent!=null&&replay.Metadata.opponentTelemetry==1?(opponentPov?replay:replay.Opponent):null;
+        telemetry.Rebuild(new Idas3ReplayAnalysis(chosen,reference),replay.Duration);
         if(Idas3ReplayStart(m.condition,m.weather,m.night,m.car,m.manual)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if(chosen.Detailed&&Idas3ReplayAppearance(chosen.Appearance,chosen.Appearance.Length)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if(replay.Opponent!=null){
@@ -343,6 +347,10 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
             if (keyboard?.cKey.wasPressedThisFrame == true || pad?.buttonNorth.wasPressedThisFrame == true) CycleCamera();
             if (keyboard?.leftArrowKey.wasPressedThisFrame == true || pad?.dpad.left.wasPressedThisFrame == true) Seek(seconds - 5);
             if (keyboard?.rightArrowKey.wasPressedThisFrame == true || pad?.dpad.right.wasPressedThisFrame == true) Seek(seconds + 5);
+            if (keyboard?.tKey.wasPressedThisFrame == true || pad?.dpad.up.wasPressedThisFrame == true) telemetry.PanelVisible = !telemetry.PanelVisible;
+            bool freeCamera=cameraMode==4;
+            if (keyboard?.leftBracketKey.wasPressedThisFrame == true || (!freeCamera && pad?.leftShoulder.wasPressedThisFrame == true)) JumpToEvent(false);
+            if (keyboard?.rightBracketKey.wasPressedThisFrame == true || (!freeCamera && pad?.rightShoulder.wasPressedThisFrame == true)) JumpToEvent(true);
             if (keyboard?.homeKey.wasPressedThisFrame == true) Seek(0);
             if (keyboard?.endKey.wasPressedThisFrame == true) { Seek(replay.Duration); playing = false; }
             if(cameraMode!=4){
@@ -372,7 +380,20 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         audioWasPlaying=audible;audioSeconds=seconds;
     }
     void TogglePlay() { if (!playing && seconds >= replay.Duration) Seek(0); playing = !playing;if(!playing)SilenceAudio(); }
+    // Shift, wall-hit and section markers; pauses so the moment can be studied.
+    void JumpToEvent(bool forward)
+    {
+        var analysis=telemetry.Analysis;if(analysis==null)return;
+        int index=forward?analysis.NextEvent(seconds):analysis.PreviousEvent(seconds);
+        if(index<0)return;
+        Seek(analysis.Events[index].seconds);playing=false;SilenceAudio();
+    }
     static string Clock(double value) => string.Format("{0}:{1:00.000}", (int)value / 60, value % 60);
+    string Steering(Idas3ReplayData.Details m)
+    {
+        string setup = telemetry.Analysis?.SteeringSetup ?? Idas3ReplayAnalysis.DescribeSteering(m);
+        return setup.Length == 0 ? "" : "  ·  " + setup;
+    }
     void OnGUI()
     {
         if (!startupInitialized || !Idas3RomGate.Verified) return;
@@ -383,8 +404,14 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1));
         float width = Screen.width / scale, height = Screen.height / scale;
         if(browsing){LibraryView(width,height);return;}
-        if (replay != null && !controlsVisible) return;
         float panelWidth = Mathf.Min(630, width - 24), panelX = (width - panelWidth) / 2;
+        // The driving reference stays available with the playback overlay hidden.
+        if(replay!=null&&telemetry.PanelVisible){
+            float telemetryX=width-Idas3ReplayTelemetryView.PanelWidth-12;
+            float telemetryY=!controlsVisible||telemetryX>panelX+panelWidth+8?12:104;
+            telemetry.DrawPanel(new Rect(telemetryX,telemetryY,Idas3ReplayTelemetryView.PanelWidth,Idas3ReplayTelemetryView.PanelHeight),seconds);
+        }
+        if (replay != null && !controlsVisible) return;
         GUILayout.BeginArea(new Rect(panelX, 12, panelWidth, replay == null ? 135 : 80), GUI.skin.box);
         GUILayout.BeginHorizontal(); Idas3MenuGui.Label("REPLAY VIEWER", GUILayout.Width(125));
         GUI.enabled = picker == null;
@@ -395,7 +422,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         if (Idas3MenuGui.Button("Replay library", GUILayout.Width(90))) Browse();
         GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button("Close viewer", GUILayout.Width(120))) Application.Quit(); GUILayout.EndHorizontal();
         GUI.enabled = true;
-        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); }
+        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + Steering(m) + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); }
         if (message != null) Idas3MenuGui.Label(message);
         GUILayout.EndArea();
         if (replay == null) return;
@@ -414,6 +441,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         // A repaint returns the same float even while the playback clock keeps
         // double precision. Only user movement is a seek, not float rounding.
         if(slider!=(float)seconds)Seek(slider);
+        telemetry.DrawMarkers(GUILayoutUtility.GetLastRect());
         GUILayout.BeginHorizontal();
         foreach (float speed in new[] { .25f, .5f, 1f, 2f, 4f }) { GUI.color = rate == speed ? Color.yellow : Color.white; if (Idas3MenuGui.Button(speed + "×", GUILayout.Width(45))) rate = speed; } GUI.color = Color.white;
         Idas3MenuGui.Label(cameraMode==3&&!CanSwitchPov?"Space/A: pause   C/Y: camera   Q/E: orbit":"Space/A: pause   C/Y: camera");
@@ -421,6 +449,9 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
         if(Idas3MenuGui.Button(Idas3MenuLocalization.Format("Game HUD: {0} (G / L3)",Idas3MenuLocalization.T(gameHudVisible?"ON":"OFF"))))gameHudVisible=!gameHudVisible;
+        if(Idas3MenuGui.Button(Idas3MenuLocalization.Format("Telemetry: {0} (T)",Idas3MenuLocalization.T(telemetry.PanelVisible?"ON":"OFF"))))telemetry.PanelVisible=!telemetry.PanelVisible;
+        if(Idas3MenuGui.RawButton("◀ [",GUILayout.Width(40)))JumpToEvent(false);
+        if(Idas3MenuGui.RawButton("] ▶",GUILayout.Width(40)))JumpToEvent(true);
         if(Idas3MenuGui.Button("Hide replay overlay (H / Select)"))controlsVisible=false;
         GUILayout.EndHorizontal();
         if(cameraMode==4){
@@ -430,7 +461,9 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
             Idas3MenuGui.Label("WASD / left stick: move · Q/E / LB/RB: height · RMB / right stick: look");
             Idas3MenuGui.Label("Shift: faster · Ctrl: slower · H / Select: restore overlay · G / L3: game HUD");
         }
-        Idas3MenuGui.Label(CanSwitchPov?"Tab / X: switch driver   ·   Esc / B: library   ·   Personal recording stays local":replay.Detailed ? "60 Hz capture · recorded RPM, speed, body, wheels, clocks and car appearance" : "LEGACY: RPM, body rotation, wheel animation and tuning were not recorded");
+        Idas3MenuGui.Label(CanSwitchPov?"Tab / X: switch driver   ·   Esc / B: library   ·   Personal recording stays local":
+            Viewed.Telemetry!=null?"60 Hz capture · recorded steering, penalty, slip, wall contact and rotation":
+            replay.Detailed ? "60 Hz capture · recorded RPM, speed, body, wheels, clocks and car appearance" : "LEGACY: RPM, body rotation, wheel animation and tuning were not recorded");
         GUILayout.EndArea();
         GUI.enabled = true;
     }
@@ -515,5 +548,5 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         Application.Quit(passed?0:1);
     }
     void OnDisable(){SilenceAudio();}
-    void OnDestroy() { if(audioOutput!=null)audioOutput.StopOutput();if (initialized) Idas3SceneShutdown();initialized=false; if (Instance == this) Instance = null; }
+    void OnDestroy() { telemetry.Dispose();if(audioOutput!=null)audioOutput.StopOutput();if (initialized) Idas3SceneShutdown();initialized=false; if (Instance == this) Instance = null; }
 }

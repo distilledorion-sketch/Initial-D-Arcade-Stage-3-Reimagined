@@ -62,7 +62,7 @@ void Replay::recordSmoke(const ReplayCarSmokeFrame& input){
         (!smokeFrames.empty()&&((input.scene^smokeFrames.front().scene)&ReplayCarSmokeFrame::fixedSceneMask))){truncated=true;return;}
     smokeFrames.push_back(input);
 }
-void Replay::record(std::uint64_t tick,Vec3 p,float yaw,float speed,int gear,const ReplayDetail* detail,int backfire) {
+void Replay::record(std::uint64_t tick,Vec3 p,float yaw,float speed,int gear,const ReplayDetail* detail,int backfire,const ReplayTelemetry* telemetry) {
     if(frames.size()>=maxFrames) { truncated=true;return; }
     if(!frames.empty() && tick<=frames.back().tick) return;
     frames.push_back({tick,p,yaw,speed,gear});
@@ -70,6 +70,7 @@ void Replay::record(std::uint64_t tick,Vec3 p,float yaw,float speed,int gear,con
     if(backfireCapture_){if(backfire< -1||backfire>1)truncated=true;else frames.back().backfire=backfire;}
     if(detail)frames.back().detail=*detail;
     else if(detailed)truncated=true; // Never publish partially detailed captures.
+    if(telemetry)frames.back().telemetry=*telemetry;
 }
 std::vector<std::uint8_t> Replay::sharedBytes(std::uint32_t finish) const {
     if(truncated||frames.empty()||!finish||frames.front().tick>1||frames.back().tick>108000)return {};
@@ -116,6 +117,20 @@ std::vector<std::uint8_t> Replay::sharedBytes(std::uint32_t finish) const {
             u32(s.intensity);u32(s.scene);u32(s.randomBefore);}
     }
     for(unsigned b=0;b<4;++b)out[8+b]=std::uint8_t(count>>(b*8));
+    return out;
+}
+std::vector<std::uint8_t> Replay::telemetryBytes() const {
+    if(!detailed||truncated||frames.empty()||frames.size()>108001)return {};
+    std::vector<std::uint8_t> out;out.reserve(16+32*frames.size());
+    auto u32=[&](std::uint32_t n){for(unsigned b=0;b<4;++b)out.push_back(std::uint8_t(n>>(b*8)));};
+    auto scalar=[&](float n){u32(std::bit_cast<std::uint32_t>(n));};
+    u32(0x31544449);u32(4);u32(32);u32(std::uint32_t(frames.size()));
+    for(std::size_t i=0;i<frames.size();++i){
+        if(i&&frames[i].tick!=frames[i-1].tick+1)return {};
+        const auto& t=frames[i].telemetry;
+        for(float v:{t.slip,t.yawRate,t.speedLoss,t.penalty,t.wallImpact,t.pendingRotation,t.applyingRotation}){if(!std::isfinite(v))return {};scalar(v);}
+        u32(t.flags);
+    }
     return out;
 }
 bool Replay::save(const std::string& filename) const {

@@ -8,25 +8,30 @@ public static class Idas3ReplayCodec
     // Revision2 may include a bounded exact roadside-dust input timeline.
     // 108000 revision4 poses + 109024 smoke inputs + 100-byte header.
     public const int MaxRaw = 34000000, MaxStored = 34020000;
-    public static byte[] Encode(byte[] raw)
+    // IDR2 is the detailed pose stream; IDT1 is the local analysis stream.
+    public const uint Detailed = 0x32524449, Telemetry = 0x31544449;
+    static int Minimum(uint magic) => magic == Telemetry ? 16 : 96;
+    public static byte[] Encode(byte[] raw) => Encode(raw, Detailed);
+    public static byte[] Encode(byte[] raw, uint magic)
     {
-        if (raw == null || raw.Length < 96 || raw.Length > MaxRaw || BitConverter.ToUInt32(raw, 0) != 0x32524449) throw new InvalidDataException("A detailed recording is required.");
+        if (raw == null || raw.Length < Minimum(magic) || raw.Length > MaxRaw || BitConverter.ToUInt32(raw, 0) != magic) throw new InvalidDataException(magic == Detailed ? "A detailed recording is required." : "Invalid replay telemetry.");
         using var output = new MemoryStream();
         output.Write(BitConverter.GetBytes(0x32474449u), 0, 4); output.Write(BitConverter.GetBytes(raw.Length), 0, 4);
         using (var gzip = new GZipStream(output, CompressionLevel.Optimal, true)) gzip.Write(raw, 0, raw.Length);
         return output.ToArray();
     }
-    public static byte[] Decode(byte[] stored)
+    public static byte[] Decode(byte[] stored) => Decode(stored, Detailed);
+    public static byte[] Decode(byte[] stored, uint magic)
     {
         if (stored == null || stored.Length < 16 || stored.Length > MaxStored) throw new InvalidDataException("Invalid replay size.");
         if (BitConverter.ToUInt32(stored, 0) != 0x32474449) return stored;
         int length = BitConverter.ToInt32(stored, 4);
-        if (length < 96 || length > MaxRaw) throw new InvalidDataException("Invalid expanded replay size.");
+        if (length < Minimum(magic) || length > MaxRaw) throw new InvalidDataException("Invalid expanded replay size.");
         using var input = new MemoryStream(stored, 8, stored.Length - 8, false);
         using var gzip = new GZipStream(input, CompressionMode.Decompress);
         var raw = new byte[length]; int at = 0;
         while (at < length) { int n = gzip.Read(raw, at, length - at); if (n == 0) throw new InvalidDataException("Truncated compressed replay."); at += n; }
-        if (gzip.ReadByte() != -1 || BitConverter.ToUInt32(raw, 0) != 0x32524449) throw new InvalidDataException("Invalid compressed replay.");
+        if (gzip.ReadByte() != -1 || BitConverter.ToUInt32(raw, 0) != magic) throw new InvalidDataException("Invalid compressed replay.");
         return raw;
     }
 }

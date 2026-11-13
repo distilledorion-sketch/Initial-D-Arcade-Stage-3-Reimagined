@@ -59,6 +59,7 @@ public static class Idas3ReplayDetailTests
             var captured = Idas3ReplayData.Load(Path.Combine(evidence, "course-" + course + ".idreplay"));
             Check(captured.Detailed && captured.Frames[^1].state[17] == captured.Metadata.ticks6000, "Original finish gate clock settlement retained: " + course);
         }
+        Idas3ReplayAnalysisTests.Run();
         File.WriteAllText(Path.Combine(evidence, "parser-tests.json"), JsonUtility.ToJson(new Report { passed = true, checks = checks, rawBytes = raw.Length, compressedBytes = compressed.Length }, true));
         Debug.Log("Detailed replay and codec tests passed: " + checks);
     }

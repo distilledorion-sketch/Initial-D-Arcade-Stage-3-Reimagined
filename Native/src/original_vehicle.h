@@ -12,6 +12,9 @@ struct OriginalVehicleState {
     idas3::OriginalTransmissionState transmission;
     idas3::OriginalTransmissionGlobals transmissionGlobals;
     idas3::OriginalControls controls;
+    // Not original memory: the loss subtracted from +238 this frame, kept for
+    // replay telemetry because 0CAA9880 is cleared before the frame ends.
+    float appliedSpeedLoss=0;
 };
 
 // Selected original table cells and live global tuning, assembled by the

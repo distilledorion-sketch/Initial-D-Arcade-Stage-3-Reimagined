@@ -137,7 +137,8 @@ void receiveAuthority(std::span<const std::uint8_t> packet){
 }
 void simulateAuthority(const DriverInput& d,bool showcase=false){
     auto inputState=authorityInput;
-    const auto input=original::adaptOriginalHostInput(inputState,{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear},automatic,false,0);
+    const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear};
+    const auto input=original::adaptOriginalHostInput(inputState,controls,automatic,false,0);
     if(!archivePublished&&authorityReplay.active()){
         std::array<OnlineReplayRecording::Lamps,2> lamps;
         const auto local=multiplayer.config.localSlot;
@@ -152,6 +153,8 @@ void simulateAuthority(const DriverInput& d,bool showcase=false){
         authorityReplay.sampleLamps(authorityLink->timeline().frame(),lamps);
     }
     if(!authorityLink->step(input)){authorityStalled=true;return;}
+    // The authority owns gear enablement; requested-gear downshifts count once racing.
+    noteReplayShift(input,controls,true);
     authorityStalled=false;authorityInput=inputState;
     const auto remote=1-multiplayer.config.localSlot;
     advanceOnlineVisualCorrection(authorityVisualOffset[remote],authorityRemoteCorrectionVelocity,physicsDt);

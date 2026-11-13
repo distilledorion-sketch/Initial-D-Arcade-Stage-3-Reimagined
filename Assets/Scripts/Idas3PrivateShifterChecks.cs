@@ -60,7 +60,7 @@ public static class Idas3PrivateShifterChecks {
             for(int i=0;i<15;++i)menu.Navigate(1);menu.Activate();Check(menu.BindingChoiceVisible,"Controller cannot reach Gear 6");
             menu.Activate();Check(mapper.IsCapturing,"Gear 6 rebind action failed");mapper.CancelCapture();
         }finally{UnityEngine.Object.DestroyImmediate(go);}
-        Idas3WheelRigChecks.Run();Idas3HeadlightBindingChecks.Run();Idas3StartBindingChecks.Run();
+        Idas3WheelRigChecks.Run();Idas3HeadlightBindingChecks.Run();Idas3StartBindingChecks.Run();Idas3SteeringSourceChecks.Run();
         File.WriteAllText(Path.Combine(root,"PASS.txt"),"PASS "+checks+" private room exclusion and direct gear checks. Synthetic devices and discovery; no physical H-shifter or live online service.\n");Debug.Log("PASS "+checks+" private room and direct gear checks");
     }
 }

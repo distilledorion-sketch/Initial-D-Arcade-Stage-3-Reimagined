@@ -655,6 +655,32 @@ Shift: faster · Ctrl: slower · H / Select: restore overlay · G / L3: game HUD
 Tab / X: switch driver   ·   Esc / B: library   ·   Personal recording stays local	Tab / X：ドライバー切替 · Esc / B：一覧 · 個人の録画は端末に保存	Tab / X：切换车手 · Esc / B：列表 · 个人回放仅存本地
 60 Hz capture · recorded RPM, speed, body, wheels, clocks and car appearance	60Hz録画 · 回転数、速度、車体、タイヤ、タイム、外観を記録	60Hz录制 · 记录转速、速度、车身、车轮、时间和车辆外观
 LEGACY: RPM, body rotation, wheel animation and tuning were not recorded	旧形式：回転数、車体回転、タイヤの動き、改造は未記録	旧格式：未记录转速、车身旋转、车轮动画和改装
+Steering	ステアリング	转向
+Penalty	ペナルティ	惩罚
+Drift	ドリフト角	漂移角
+Yaw	ヨー	横摆
+Pitch	ピッチ	俯仰
+Roll	ロール	侧倾
+Heading	方位	航向
+TELEMETRY	テレメトリー	遥测
+older recording	旧録画	旧录制
+legacy recording	旧形式の録画	旧格式录制
+THR	アクセル	油门
+BRK	ブレーキ	刹车
+Steering {0}  ·  input {1}%	ステアリング {0}  ·  入力 {1}%	转向 {0}  ·  输入 {1}%
+Last shift {0}{1}  ({2} s ago)	直前のシフト {0}{1}（{2}秒前）	上次换挡 {0}{1}（{2}秒前）
+No shifts yet	シフトなし	尚未换挡
+same frame	同フレーム	同一帧
+Pending rotation	保留中の回転	待施加旋转
+Applying rotation	適用中の回転	施加中旋转
+Speed loss	速度ロス	速度损失
+Heading error	向きの誤差	航向误差
+WALL	壁	撞墙
+Wall contact	壁接触	撞墙接触
+Sections	区間	分段
+not recorded	未記録	未记录
+Telemetry: {0} (T)	テレメトリー：{0}（T）	遥测：{0}（T）
+60 Hz capture · recorded steering, penalty, slip, wall contact and rotation	60Hz録画 · ステアリング、ペナルティ、スリップ、壁接触、回転を記録	60Hz录制 · 记录转向、惩罚、打滑、撞墙和旋转
 CHECK FOR UPDATES	更新を確認	检查更新
 CHECKING FOR UPDATES	更新を確認中	正在检查更新
 UPDATE AVAILABLE	更新があります	有可用更新

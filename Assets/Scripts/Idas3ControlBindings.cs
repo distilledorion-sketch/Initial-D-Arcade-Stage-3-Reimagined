@@ -551,7 +551,7 @@ public sealed partial class Idas3ControlBindings
     }
     internal void ApplyDriving(ref Idas3Native.FrameInput frame)
     {
-        frame.flags &= ~0x700u; // Direct gear occupies bits 8..10 of the native input.
+        frame.flags &= ~0x3F00u; // Direct gear occupies bits 8..10, replay steering source 11..13.
         // Remove all old action aliases before placing the mapped actions.
         // Unrelated native shortcuts and menu keys retain their existing bits.
         foreach (int key in DrivingKeys) ClearKey(ref frame, key);
@@ -575,6 +575,7 @@ public sealed partial class Idas3ControlBindings
             if(gear!=0){gear=0;break;}gear=i-(int)ActionId.Gear1+1;
         }
         frame.flags |= (uint)gear<<8;
+        frame.flags |= (uint)SteeringSource()<<11;
         if (!pad.connected&&controls.Count==0) return;
         frame.padConnected = 1;
         frame.rightTrigger = Math.Max(Pedal(current.actions[0]),(uint)Math.Round(rigAmounts[0]*255)); frame.leftTrigger = Math.Max(Pedal(current.actions[1]),(uint)Math.Round(rigAmounts[1]*255));
@@ -583,6 +584,25 @@ public sealed partial class Idas3ControlBindings
         if (DigitalOther(current.actions[4])||rigAmounts[4]>=.5f) frame.padButtons |= 0x2000;
         if (DigitalOther(current.actions[5])||rigAmounts[5]>=.5f) frame.padButtons |= 0x4000;
         if (DigitalOther(current.actions[6])||rigAmounts[6]>=.5f) frame.padButtons |= 0x8000;
+    }
+    // Replay label only; it never changes the steering value sent to native.
+    public enum SteeringSourceId { None, Keyboard, Dpad, Analog, Wheel }
+    internal SteeringSourceId SteeringSource()
+    {
+        var best=SteeringSourceId.None;float amount=0;
+        for(int i=(int)ActionId.SteerLeft;i<=(int)ActionId.SteerRight;++i)
+        {
+            var binding=current.actions[i];float value;SteeringSourceId source;
+            if(rigAmounts[i]>amount){amount=rigAmounts[i];best=SteeringSourceId.Wheel;}
+            if(!string.IsNullOrEmpty(binding.controlPath)){value=CustomAmount(binding);source=genericProfile?SteeringSourceId.Wheel:binding.controlButton?SteeringSourceId.Dpad:SteeringSourceId.Analog;}
+            else{value=Magnitude(binding.pad)/32768f;source=ButtonMask(binding.pad)!=0?SteeringSourceId.Dpad:SteeringSourceId.Analog;}
+            if(value>amount){amount=value;best=source;}
+        }
+        // Native steers from the keyboard unless the stick clears its dead
+        // zone, so slight stick drift must not relabel a keyboard tick.
+        bool keys=keyboardActions[(int)ActionId.SteerLeft]||keyboardActions[(int)ActionId.SteerRight];
+        if(keys&&amount<=.15f)return SteeringSourceId.Keyboard;
+        return amount<.02f?SteeringSourceId.None:best;
     }
     private int SteeringOrthogonal()
     {
