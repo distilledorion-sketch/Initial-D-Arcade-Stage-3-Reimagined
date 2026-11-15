@@ -369,12 +369,16 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         }
         var bounded=fresh.Current.Clone();bounded.steeringDeadzoneGamepad=-1;bounded.steeringDeadzonePrevious=1;bounded.steeringDeadzoneWheel=.2f;
         bounded=Idas3GameOptions.Normalize(bounded);Check(bounded.steeringDeadzoneGamepad==0&&bounded.steeringDeadzonePrevious==.3f&&bounded.steeringDeadzoneWheel==.2f,"Steering deadzone bounds altered another profile");
+        Check(legacy.Current.steeringSensitivity==3&&fresh.Defaults().steeringSensitivity==3&&!fresh.Defaults().UsesAlternativeButtonSteering,"Old JSON or defaults changed alternative button steering");
+        foreach(int invalid in new[]{0,6,-1,int.MaxValue}){var preset=fresh.Current.Clone();preset.steeringSensitivity=invalid;Check(Idas3GameOptions.Normalize(preset).steeringSensitivity==3,"Invalid alternative steering sensitivity was kept");}
+        for(int level=1;level<=5;++level){var preset=fresh.Current.Clone();preset.controllerResponse=3;preset.steeringSensitivity=level;preset=Idas3GameOptions.Normalize(preset);Check(preset.controllerResponse==3&&preset.steeringSensitivity==level&&preset.DigitalSteeringPreset==level&&preset.NativeControllerResponse==0,"Alternative button steering did not map to its native preset");}
+        foreach(int response in new[]{0,1,2}){var other=fresh.Current.Clone();other.controllerResponse=response;other.steeringSensitivity=5;Check(other.DigitalSteeringPreset==0&&other.NativeControllerResponse==response,"Sensitivity applied outside alternative button steering");}
         foreach(Action<Idas3GameOptions.Values> change in new Action<Idas3GameOptions.Values>[]{
-            v=>v.steeringDeadzoneGamepad=.2f,v=>v.steeringDeadzonePrevious=.2f,v=>v.steeringDeadzoneWheel=.2f,
+            v=>v.steeringDeadzoneGamepad=.2f,v=>v.steeringSensitivity=5,v=>v.steeringDeadzonePrevious=.2f,v=>v.steeringDeadzoneWheel=.2f,
             v=>v.wheelForceFeedback=true,v=>v.wheelFeedbackStrength=.2f,v=>v.wheelFeedbackInvert=true,v=>v.wheelFeedbackDevice="another-device"}){
             var changed=fresh.Current.Clone();change(changed);Check(!Idas3GameOptions.Equivalent(fresh.Current,changed),"New steering or wheel option is absent from equality");
         }
-        foreach(int invalid in new[]{-1,3,int.MinValue,int.MaxValue}){
+        foreach(int invalid in new[]{-1,4,int.MinValue,int.MaxValue}){
             var invalidOptions=fresh.Current.Clone();invalidOptions.controllerResponse=invalid;
             Check(Idas3GameOptions.Normalize(invalidOptions).controllerResponse==0,"Invalid saved controller response did not normalize to default");
         }

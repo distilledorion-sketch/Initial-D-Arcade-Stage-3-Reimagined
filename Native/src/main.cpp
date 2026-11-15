@@ -432,11 +432,19 @@ struct App {
     // Per-race steering source tick counts (HostInput::steeringSource order)
     // and the steering settings in force at the first recorded frame.
     std::array<std::uint32_t,5> replaySteeringTicks{};
-    struct ReplaySteeringSettings{int response=0;float deadzone=0,smoothing=0;
+    struct ReplaySteeringSettings{int response=0;float deadzone=0,smoothing=0;int digitalPreset=0;
         bool operator==(const ReplaySteeringSettings&) const=default;};
     ReplaySteeringSettings replaySteeringSettings;bool replaySteeringSettingsChanged=false;
+    // A PSP digital preset replaces the response profile, deadzone and
+    // smoothing preferences; record the conditioning actually in force.
+    bool pspSteering() const{return digitalSteeringPreset!=DigitalSteeringPreset::Default;}
+    original::ControllerResponse effectiveControllerResponse() const{
+        return pspSteering()?original::ControllerResponse::FlycastGamepad:controllerResponse;
+    }
+    float effectiveSteeringDeadzoneSetting() const{return pspSteering()?-1.f:steeringDeadzone;}
     ReplaySteeringSettings currentSteeringSettings() const{
-        return {int(controllerResponse),original::effectiveSteeringDeadzone(controllerResponse,steeringDeadzone),steeringSmoothing.amount()};
+        return {int(effectiveControllerResponse()),original::effectiveSteeringDeadzone(effectiveControllerResponse(),effectiveSteeringDeadzoneSetting()),
+            pspSteering()?0.f:steeringSmoothing.amount(),int(digitalSteeringPreset)};
     }
     void setSharedRecords(TimeAttackRecords next,bool enabled){
         sharedRecords=std::move(next);sharedRecordsEnabled=enabled;combinedRecordsDirty=true;
@@ -539,6 +547,7 @@ struct App {
     float steeringDeadzone=-1.f;
     HostSteeringSmoothing steeringSmoothing;
     HostSteeringSource steeringSource;
+    DigitalSteeringPreset digitalSteeringPreset=DigitalSteeringPreset::Default;
     bool steeringControllerConnected=false,hostDrivingControlsBlocked=false;
     bool resizePending=false,mouseStart=false;int pendingWidth=1280,pendingHeight=720;
     int menuDirection=0;double menuRepeatWait=0;
@@ -2267,11 +2276,15 @@ struct App {
         const float keyboard=float(input.down['D']||input.down[VK_RIGHT])-float(input.down['A']||input.down[VK_LEFT]);
         const auto pad=input.connected?original::controllerHostControls(input.pad.Gamepad.sThumbLX,
             input.pad.Gamepad.sThumbLY,input.pad.Gamepad.bRightTrigger,input.pad.Gamepad.bLeftTrigger,
-            controllerResponse,steeringDeadzone):original::OriginalHostControls{};
-        steering=steeringSource.advance(steering,keyboard,pad.steering,input.connected,originalHandling,physicsDt);
+            effectiveControllerResponse(),effectiveSteeringDeadzoneSetting()):original::OriginalHostControls{};
+        // PSP presets gate their fast counter-steer on the previous tick's
+        // normalized heading error; the legacy solver reports radians.
+        const float slip=originalHandling?vehicle.slip:std::min(std::abs(vehicle.slip)/1.5707964f,1.f);
+        steering=steeringSource.advance(steering,keyboard,pad.steering,input.connected,originalHandling,physicsDt,
+            digitalSteeringPreset,input.steeringSource==2,slip);
         // Called once per physics tick. The race-start input snapshot observes
         // the neutral filter without advancing a tick before driving begins.
-        d.steer=steeringSmoothing.advance(steering,advanceSmoothing?physicsDt:0.f);
+        d.steer=pspSteering()?steering:steeringSmoothing.advance(steering,advanceSmoothing?physicsDt:0.f);
         d.throttle=std::max(float(input.down['W']||input.down[VK_UP]),pad.throttle);
         d.brake=std::max(float(input.down['S']||input.down[VK_DOWN]||input.down[VK_SPACE]),pad.brake);
         d.shiftUp=input.down['E']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_B);d.shiftDown=input.down['Q']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_X);d.requestedGear=input.requestedGear;return d;
@@ -2878,14 +2891,14 @@ struct App {
         // previous solo runs and of currently predicted host inputs.
         if(authorityRace){
             replaySteeringTicks=authorityReplay.steeringTicks();const auto& settings=authorityReplay.steeringSettings();
-            replaySteeringSettings={settings.response,settings.deadzone,settings.smoothing};
+            replaySteeringSettings={settings.response,settings.deadzone,settings.smoothing,int(digitalSteeringPreset)};
             replaySteeringSettingsChanged=authorityReplay.steeringSettingsChanged();
         }
         if(replaySteeringTicks[0]+replaySteeringTicks[1]+replaySteeringTicks[2]+replaySteeringTicks[3]+replaySteeringTicks[4]==recording.frames.size()){
             meta<<",\"steeringTicks\":[";for(unsigned i=0;i<5;++i){if(i)meta<<',';meta<<replaySteeringTicks[i];}meta<<"]";
         }
         meta<<",\"steeringResponse\":"<<replaySteeringSettings.response<<",\"steeringDeadzone\":"<<replaySteeringSettings.deadzone<<
-            ",\"steeringSmoothing\":"<<replaySteeringSettings.smoothing<<",\"steeringSettingsChanged\":"<<unsigned(replaySteeringSettingsChanged);
+            ",\"steeringSmoothing\":"<<replaySteeringSettings.smoothing<<",\"digitalSteeringPreset\":"<<replaySteeringSettings.digitalPreset<<",\"steeringSettingsChanged\":"<<unsigned(replaySteeringSettingsChanged);
         meta<<'}';
         localReplayJson=meta.str();localReplayPlayer=std::move(bytes);localReplayRival=std::move(other);localReplayTelemetry=recording.telemetryBytes();
     }

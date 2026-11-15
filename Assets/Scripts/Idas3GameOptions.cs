@@ -24,6 +24,7 @@ public sealed class Idas3GameOptions
         public int arcadeTextLanguage; // 0 = English, 1 = original Japanese artwork; restart required.
         public float steeringDeadzoneGamepad=.1f,steeringDeadzonePrevious=.13f,steeringDeadzoneWheel;
         public float steeringSmoothing;
+        public int steeringSensitivity=3; // Alternative button steering (response 3): PSP sensitivity 1 (smoothest) .. 5 (fastest).
         public bool wheelForceFeedback,wheelFeedbackInvert;
         public bool controllerVibration=true;
         public float controllerVibrationStrength=.5f;
@@ -96,6 +97,13 @@ public sealed class Idas3GameOptions
             get=>controllerResponse==1?steeringDeadzonePrevious:controllerResponse==2?steeringDeadzoneWheel:steeringDeadzoneGamepad;
             set{if(controllerResponse==1)steeringDeadzonePrevious=value;else if(controllerResponse==2)steeringDeadzoneWheel=value;else steeringDeadzoneGamepad=value;}
         }
+        // Response 3 is alternative button steering, the PSP Street Stage keyboard/
+        // D-pad ramp. Native keeps its own three responses and gets the gamepad
+        // default plus a digital preset (0 = host ramp, 1..5 = PSP sensitivity).
+        public const int AlternativeButtonSteering=3;
+        public bool UsesAlternativeButtonSteering=>controllerResponse==AlternativeButtonSteering;
+        public int NativeControllerResponse=>UsesAlternativeButtonSteering?0:controllerResponse;
+        public int DigitalSteeringPreset=>UsesAlternativeButtonSteering?steeringSensitivity:0;
         public Values Clone(){var copy=(Values)MemberwiseClone();copy.hudPositions=hudPositions==null?new Vector2[HudLayoutGroupCount]:(Vector2[])hudPositions.Clone();copy.hudSizePercent=hudSizePercent==null?new int[HudLayoutGroupCount]:(int[])hudSizePercent.Clone();return copy;}
     }
     public struct ResolutionChoice
@@ -338,12 +346,13 @@ public sealed class Idas3GameOptions
         value.trackLighting=Math.Max(0,Math.Min(1,value.trackLighting));
         if(value.customMenuLanguage<0||value.customMenuLanguage>2)value.customMenuLanguage=0;
         if(value.arcadeTextLanguage!=1)value.arcadeTextLanguage=0;
-        if(value.controllerResponse<0||value.controllerResponse>2)value.controllerResponse=0;
+        if(value.controllerResponse<0||value.controllerResponse>Values.AlternativeButtonSteering)value.controllerResponse=0;
         if(value.steeringSettingsVersion<1){value.steeringDeadzoneGamepad=.1f;value.steeringDeadzonePrevious=.13f;value.steeringDeadzoneWheel=0;}
         value.steeringSettingsVersion=1;
         value.steeringDeadzoneGamepad=Deadzone(value.steeringDeadzoneGamepad,.1f);
         value.steeringDeadzonePrevious=Deadzone(value.steeringDeadzonePrevious,.13f);
         value.steeringDeadzoneWheel=Deadzone(value.steeringDeadzoneWheel,0);
+        if(value.steeringSensitivity<1||value.steeringSensitivity>5)value.steeringSensitivity=3;
         value.steeringSmoothing=float.IsNaN(value.steeringSmoothing)||float.IsInfinity(value.steeringSmoothing)?0:Math.Max(0,Math.Min(1,value.steeringSmoothing));
         value.controllerVibrationStrength=float.IsNaN(value.controllerVibrationStrength)||float.IsInfinity(value.controllerVibrationStrength)?.5f:Math.Max(0,Math.Min(1,value.controllerVibrationStrength));
         value.wheelFeedbackStrength=float.IsNaN(value.wheelFeedbackStrength)||float.IsInfinity(value.wheelFeedbackStrength)?.35f:Math.Max(0,Math.Min(1,value.wheelFeedbackStrength));
@@ -360,7 +369,7 @@ public sealed class Idas3GameOptions
         a.aiDifficulty==b.aiDifficulty&&a.arcadeTextLanguage==b.arcadeTextLanguage&&a.customMenuLanguage==b.customMenuLanguage&&a.defaultCamera==b.defaultCamera&&a.cameraFovPercent==b.cameraFovPercent&&a.controllerResponse==b.controllerResponse&&a.timeAttackGhost==b.timeAttackGhost&&
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&
         a.steeringDeadzonePrevious==b.steeringDeadzonePrevious&&a.steeringDeadzoneWheel==b.steeringDeadzoneWheel&&
-        a.steeringSmoothing==b.steeringSmoothing&&
+        a.steeringSmoothing==b.steeringSmoothing&&a.steeringSensitivity==b.steeringSensitivity&&
         a.controllerVibration==b.controllerVibration&&a.controllerVibrationStrength==b.controllerVibrationStrength&&
         a.wheelForceFeedback==b.wheelForceFeedback&&a.wheelFeedbackStrength==b.wheelFeedbackStrength&&
         a.wheelFeedbackInvert==b.wheelFeedbackInvert&&a.wheelFeedbackDevice==b.wheelFeedbackDevice&&

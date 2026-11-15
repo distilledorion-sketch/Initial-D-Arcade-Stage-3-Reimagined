@@ -20,7 +20,8 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     public Idas3Updates Updates {get;set;}
     private static readonly string[] DisplayModes={"WINDOWED","BORDERLESS","FULLSCREEN"};
     private static readonly string[] CameraModes={"BUMPER","CHASE","NATURAL"};
-    private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS RESPONSE","FLYCAST WHEEL"};
+    private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS RESPONSE","FLYCAST WHEEL","ALTERNATIVE BUTTON STEERING"};
+    private static readonly string[] SensitivityLevels={"1 (SMOOTHEST)","2","3","4","5 (FASTEST)"};
     private static readonly int[] FrameCaps={0,30,60,90,120,144,165,240,360},AaValues={0,2,4,8};
     private Idas3GameOptions options;
     private Idas3ControlBindings bindings;
@@ -129,6 +130,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(!IsOpen)SetOpen(true);
         if(bindings!=null&&bindings.IsCapturing)return;
         if(!showOptions){options.BeginEdit();bindings?.BeginEdit();}showOptions=true;tab=Wrap(index,Tabs.Length);selection=1;wheelEditing=false;hudSizesOpen=false;notice="";
+        SkipHiddenRows(1);
         if(tab==3&&controllerDevices!=null)bindingColumn=controllerDevices.Controls.Count>0?3:0;
         if(tab==4)wheelFeedback?.RefreshDevices();
     }
@@ -142,6 +144,21 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         wheelEditing=false;
         if(showOptions&&selection==0){ChangeCategory(delta);return;}
         selection=showOptions?1+Wrap(selection-1+Math.Sign(delta),Rows+3):Wrap(selection+Math.Sign(delta),online?4:5);
+        if(showOptions)SkipHiddenRows(delta);
+    }
+    // PSP digital steering replaces the response profile, deadzone and
+    // smoothing, so those rows are neither shown nor reachable.
+    // Alternative button steering replaces every other steering and wheel
+    // setting, so only the profile and its SENSITIVITY are shown or reachable.
+    // SENSITIVITY exists only for that profile.
+    private const int SensitivityRow=3;
+    private bool SteeringTabShown=>showOptions&&tab==4&&!hudSizesOpen&&options!=null;
+    private bool AlternativeSteeringShown=>SteeringTabShown&&options.Draft.UsesAlternativeButtonSteering;
+    private bool RowHidden(int row)=>SteeringTabShown&&row>=0&&row<Rows&&
+        (options.Draft.UsesAlternativeButtonSteering?row!=0&&row!=SensitivityRow:row==SensitivityRow);
+    private void SkipHiddenRows(int delta){
+        int step=delta<0?-1:1;
+        for(int i=0;i<Rows+3&&selection>=1&&RowHidden(selection-1);++i)selection=1+Wrap(selection-1+step,Rows+3);
     }
     public void NavigateHorizontal(int delta){
         if(EditingLayout){HudEditor.NavigateHorizontal(delta,wheelNavigation);return;}
@@ -164,7 +181,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(options.DisplayConfirmationPending){if(modalSelection==1)KeepDisplay();else options.RevertDisplay();return;}
         if(pending!=Command.None){if(modalSelection==1){queued=pending;pending=Command.None;}else pending=Command.None;return;}
         if(!showOptions){MainAction(selection);return;}
-        if(selection==0){selection=1;return;}
+        if(selection==0){selection=1;SkipHiddenRows(1);return;}
         if(tab==2&&selection==5){if(FullTuneAvailable)queued=Command.FullTune;return;}
         if(tab==8&&selection==1){if(AttractOptions)Updates?.Activate();return;}
         if(tab==5&&selection==2){Application.OpenURL(Idas3CommunityTimes.ServiceUrl);return;}
@@ -208,7 +225,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?9:tab==2?7:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
+    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?10:tab==2?7:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -287,6 +304,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private void KeepDisplay(){if(options.ConfirmDisplay())notice="OPTIONS SAVED";else notice=options.LastError??"Display change reverted.";}
     private void Adjust(int row,int direction){
         var v=options.Draft;
+        if(RowHidden(row))return;
         if(tab==6){
             if(row==1)v.replayTimeAttack=!v.replayTimeAttack;
             if(row==2)v.replayOnline=!v.replayOnline;
@@ -340,17 +358,18 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==0)v.controllerResponse=Wrap(v.controllerResponse+direction,ControllerResponses.Length);
             if(row==1)v.SteeringDeadzone=Mathf.Clamp(Mathf.Round(v.SteeringDeadzone*100)+direction,0,30)/100f;
             if(row==2)v.steeringSmoothing=Mathf.Clamp(Mathf.Round(v.steeringSmoothing*100)+direction,0,100)/100f;
-            if(row==3)v.wheelForceFeedback=!v.wheelForceFeedback;
-            if(row==4&&wheelFeedback!=null){
+            if(row==SensitivityRow)v.steeringSensitivity=1+Wrap(v.steeringSensitivity-1+direction,SensitivityLevels.Length);
+            if(row==4)v.wheelForceFeedback=!v.wheelForceFeedback;
+            if(row==5&&wheelFeedback!=null){
                 var choices=wheelFeedback.Choices;if(choices.Count>0){
                     int at=0;for(int i=0;i<choices.Count;++i)if(choices[i].id==v.wheelFeedbackDevice){at=i;break;}
                     v.wheelFeedbackDevice=choices[Wrap(at+direction,choices.Count)].id;
                 }
             }
-            if(row==5)v.wheelFeedbackStrength=Mathf.Clamp(Mathf.Round(v.wheelFeedbackStrength*100)+direction,0,100)/100f;
-            if(row==6)v.wheelFeedbackInvert=!v.wheelFeedbackInvert;
-            if(row==7)v.controllerVibration=!v.controllerVibration;
-            if(row==8)v.controllerVibrationStrength=Mathf.Clamp(Mathf.Round(v.controllerVibrationStrength*100)+direction,0,100)/100f;
+            if(row==6)v.wheelFeedbackStrength=Mathf.Clamp(Mathf.Round(v.wheelFeedbackStrength*100)+direction,0,100)/100f;
+            if(row==7)v.wheelFeedbackInvert=!v.wheelFeedbackInvert;
+            if(row==8)v.controllerVibration=!v.controllerVibration;
+            if(row==9)v.controllerVibrationStrength=Mathf.Clamp(Mathf.Round(v.controllerVibrationStrength*100)+direction,0,100)/100f;
         }
         notice="";
     }
@@ -550,17 +569,23 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         }else if(tab==3)ControlsView();
         else if(tab==4){
             Text(new Rect(290,182,681,22),"STEERING RESPONSE",small);
-            ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
-            SliderRow(1,"DEADZONE",v.SteeringDeadzone,.3f,value=>v.SteeringDeadzone=value);
-            SliderRow(2,"SMOOTHING",v.steeringSmoothing,1,value=>v.steeringSmoothing=value);
-            Text(new Rect(290,310,681,22),"WHEEL FORCE FEEDBACK",small);
-            ChoiceRow(3,"FORCE FEEDBACK",v.wheelForceFeedback?"ON":"OFF");
-            ChoiceRow(4,"DEVICE",WheelDeviceName(v.wheelFeedbackDevice));
-            SliderRow(5,"STRENGTH",v.wheelFeedbackStrength,1,value=>v.wheelFeedbackStrength=value);
-            ChoiceRow(6,"INVERT FORCE",v.wheelFeedbackInvert?"ON":"OFF");
-            ChoiceRow(7,"CONTROLLER VIBRATION",v.controllerVibration?"ON":"OFF");
-            SliderRow(8,"VIBRATION STRENGTH",v.controllerVibrationStrength,1,value=>v.controllerVibrationStrength=value);
-            Text(new Rect(288,532,681,18),selection>=8?"Vibration uses the active controller. Pausing or losing focus stops it.":selection<=3?"Deadzone is saved separately for each response profile.":wheelFeedback?.StatusText??"Wheel feedback is unavailable.",wrapped);
+            if(AlternativeSteeringShown){
+                ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
+                ChoiceRow(SensitivityRow,"SENSITIVITY",SensitivityLevels[v.steeringSensitivity-1]);
+                Text(new Rect(288,526,681,18),selection==SensitivityRow+1?"Keyboard and D-pad only. Follows Initial D Street Stage's steering sensitivity.":"Alternative button steering replaces all other steering and wheel settings.",wrapped);
+            }else{
+                ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
+                SliderRow(1,"DEADZONE",v.SteeringDeadzone,.3f,value=>v.SteeringDeadzone=value);
+                SliderRow(2,"SMOOTHING",v.steeringSmoothing,1,value=>v.steeringSmoothing=value);
+                Text(new Rect(290,293,681,22),"WHEEL FORCE FEEDBACK",small);
+                ChoiceRow(4,"FORCE FEEDBACK",v.wheelForceFeedback?"ON":"OFF");
+                ChoiceRow(5,"DEVICE",WheelDeviceName(v.wheelFeedbackDevice));
+                SliderRow(6,"STRENGTH",v.wheelFeedbackStrength,1,value=>v.wheelFeedbackStrength=value);
+                ChoiceRow(7,"INVERT FORCE",v.wheelFeedbackInvert?"ON":"OFF");
+                ChoiceRow(8,"CONTROLLER VIBRATION",v.controllerVibration?"ON":"OFF");
+                SliderRow(9,"VIBRATION STRENGTH",v.controllerVibrationStrength,1,value=>v.controllerVibrationStrength=value);
+                Text(new Rect(288,526,681,18),selection>=9?"Vibration uses the active controller. Pausing or losing focus stops it.":selection<=3?"Deadzone is saved separately for each response profile.":wheelFeedback?.StatusText??"Wheel feedback is unavailable.",wrapped);
+            }
         }else if(tab==8){
             if(Button(new Rect(282,197,692,43),Updates?.ButtonLabel??"CHECK FOR UPDATES",selection==1,AttractOptions&&Updates!=null&&Updates.CanActivate)){selection=1;Updates.Activate();}
             Text(new Rect(288,273,681,70),!AttractOptions?"Return to the title screen to check for updates.":Updates?.Message??"Update checking is unavailable.",wrapped);
@@ -590,7 +615,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
     private bool CompactRows=>tab==1||tab==2||tab==4||hudSizesOpen;
-    private float RowY(int row)=>tab==2?194+row*41:tab==4?(row<3?208+row*32:336+(row-3)*32):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
+    private float RowY(int row)=>tab==2?194+row*41:tab==4?(AlternativeSteeringShown?206+(row==SensitivityRow?29:0):row<3?206+row*29:317+(row-4)*29):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
     private void FovRow(int row,Idas3GameOptions.Values value){
         float y=RowY(row);
         if(selection==row+1)Frame(new Rect(278,y,714,35),Red);
@@ -604,7 +629,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void SliderRow(int row,string name,float value,float maximum,Action<float> set){
         float y=RowY(row);bool compact=CompactRows;
-        if(selection==row+1)Frame(new Rect(278,y,714,tab==4?31:compact?35:49),Red);
+        if(selection==row+1)Frame(new Rect(278,y,714,tab==4?28:compact?35:49),Red);
         Text(new Rect(290,y+(tab==4?3:compact?7:13),294,tab==4?26:31),name,label);
         float next=GUI.HorizontalSlider(new Rect(595,y+(compact?13:18),279,20),value,0,maximum);
         if(!Mathf.Approximately(next,value)){selection=row+1;set(Mathf.Round(next*100)/100f);notice="";}
@@ -612,11 +637,11 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     }
     private void ChoiceRow(int row,string name,string value,bool translateValue=true){
         float y=RowY(row);bool compact=CompactRows;
-        if(selection==row+1)Frame(new Rect(278,y,714,tab==1?28:tab==4?31:compact?35:49),Red);
+        if(selection==row+1)Frame(new Rect(278,y,714,tab==1||tab==4?28:compact?35:49),Red);
         Text(new Rect(290,y+(tab==1||tab==4?2:compact?5:13),294,tab==1||tab==4?26:31),name,label);
-        if(Button(new Rect(595,y+(compact?2:7),34,tab==1?25:compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
+        if(Button(new Rect(595,y+(compact?2:7),34,tab==1||tab==4?25:compact?29:35),"‹")){selection=row+1;Adjust(row,-1);}
         Text(new Rect(636,y+(tab==1||tab==4?2:compact?5:8),304,tab==1||tab==4?26:33),value,button,translate:translateValue);
-        if(Button(new Rect(948,y+(compact?2:7),34,tab==1?25:compact?29:35),"›")){selection=row+1;Adjust(row,1);}
+        if(Button(new Rect(948,y+(compact?2:7),34,tab==1||tab==4?25:compact?29:35),"›")){selection=row+1;Adjust(row,1);}
     }
     private void ControlsView(){
         if(bindings==null){Text(new Rect(288,206,690,45),"Control bindings are unavailable.",wrapped);return;}

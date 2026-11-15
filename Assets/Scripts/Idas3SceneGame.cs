@@ -620,12 +620,14 @@ public sealed class Idas3SceneGame : MonoBehaviour
             throw new InvalidOperationException("Could not apply audio/camera options. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetTireVolume(values.tireVolume) != 1)
             throw new InvalidOperationException("Could not apply tire-squeal volume. " + Idas3Native.Error());
-        if (Idas3Native.Idas3SceneSetControllerResponse(values.controllerResponse) != 1)
+        if (Idas3Native.Idas3SceneSetControllerResponse(values.NativeControllerResponse) != 1)
             throw new InvalidOperationException("Could not apply controller response. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetSteeringDeadzone(values.SteeringDeadzone) != 1)
             throw new InvalidOperationException("Could not apply steering deadzone. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetSteeringSmoothing(values.steeringSmoothing) != 1)
             throw new InvalidOperationException("Could not apply steering smoothing. " + Idas3Native.Error());
+        if (Idas3Native.Idas3SceneSetDigitalSteeringPreset(values.DigitalSteeringPreset) != 1)
+            throw new InvalidOperationException("Could not apply digital steering preset. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetPerformance(values.rainDetail) != 1)
             throw new InvalidOperationException("Could not apply performance options. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetSunGlare(values.sunGlare?1:0) != 1)
@@ -665,8 +667,11 @@ public sealed class Idas3SceneGame : MonoBehaviour
             catch(BadImageFormatException){feedbackExportUnavailable=true;allowed=false;}
         }
         double now=Time.realtimeSinceStartupAsDouble;
-        wheelFeedback.Update(gameOptions.Current,controllerDevices.WheelIdentity,state,allowed,now);
-        controllerVibration.Update(gameOptions.Current,target,state,allowed,now);
+        // Alternative button steering turns wheel force feedback and vibration off;
+        // both treat missing settings as disabled and stop their output.
+        var feedbackSettings=gameOptions.Current.UsesAlternativeButtonSteering?null:gameOptions.Current;
+        wheelFeedback.Update(feedbackSettings,controllerDevices.WheelIdentity,state,allowed,now);
+        controllerVibration.Update(feedbackSettings,target,state,allowed,now);
     }
     private void OnApplicationFocus(bool focused){if(!focused){wheelFeedback?.Stop();controllerVibration?.Stop();}}
     private void OnApplicationPause(bool paused){if(paused){wheelFeedback?.Stop();controllerVibration?.Stop();}}

@@ -370,6 +370,12 @@ DEVICE	デバイス	设备
 STRENGTH	強さ	强度
 INVERT FORCE	フォースを反転	反转力反馈
 Deadzone is saved separately for each response profile.	デッドゾーンは各プロファイルに個別保存されます。	每种响应预设分别保存死区设置。
+ALTERNATIVE BUTTON STEERING	代替ボタンステア	替代按键转向
+SENSITIVITY	感度	灵敏度
+1 (SMOOTHEST)	1（最もなめらか）	1（最平滑）
+5 (FASTEST)	5（最も速い）	5（最快）
+Keyboard and D-pad only. Follows Initial D Street Stage's steering sensitivity.	キーボードと十字キーのみ。頭文字D ストリートステージのステアリング感度に準拠します。	仅限键盘和方向键。遵循头文字D Street Stage 的转向灵敏度。
+Alternative button steering replaces all other steering and wheel settings.	代替ボタンステアは他のステアリング・ハンドル設定をすべて置き換えます。	替代按键转向将取代所有其他转向和方向盘设置。
 Wheel feedback is unavailable.	フォースフィードバックを利用できません。	方向盘力反馈不可用。
 AUTOMATIC	自動	自动
 DISCONNECTED DEVICE	未接続のデバイス	设备未连接

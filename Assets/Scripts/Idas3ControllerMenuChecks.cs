@@ -216,6 +216,8 @@ public static class Idas3ControllerMenuChecks
             menu.Navigate(1);menu.Activate();expected.wheelForceFeedback=true;
             menu.Navigate(1);menu.Navigate(1);menu.NavigateHorizontal(1);expected.wheelFeedbackStrength=.36f;
             menu.Navigate(1);menu.Activate();expected.wheelFeedbackInvert=true;
+            select(Idas3PauseMenu.Category.Steering,0);menu.NavigateHorizontal(1);menu.NavigateHorizontal(1);expected.controllerResponse=3;
+            menu.Navigate(1);menu.NavigateHorizontal(1);expected.steeringSensitivity=4;
             select(Idas3PauseMenu.Category.Online,2);menu.Activate();expected.discordPresence=!expected.discordPresence;
             select(Idas3PauseMenu.Category.Online,3);menu.Activate();expected.hideLightsOffAdvantage=false;
             select(Idas3PauseMenu.Category.Hud,3);menu.Activate();expected.minimapDisplay=1;

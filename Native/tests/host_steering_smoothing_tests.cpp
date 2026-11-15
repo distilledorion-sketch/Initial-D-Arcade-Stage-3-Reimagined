@@ -118,6 +118,93 @@ int main()try{
     }
     HostSteeringSmoothing tiny;tiny.setAmount(std::numeric_limits<float>::denorm_min());
     require(tiny.advance(1.f,tick)==1.f,"Tiny positive setting must remain finite and approach bypass");
-    std::cout<<"PASS "<<checks<<" host steering smoothing checks: exact zero bypass, step/reversal bounds, elapsed-time invariance, neutral/reset, unchanged settings, blocked controls and invalid values.\n";
+
+    // PSP Street Stage digital steering (0x11C0C4). Golden words come from an
+    // independent float32 model of the routine: 12 frames held, then 6 released.
+    using idas3::DigitalSteeringPreset;using idas3::PspDigitalSteering;
+    constexpr std::int32_t golden[5][18]{
+        {1115,2264,3443,4647,5814,6944,8039,9100,10128,11124,12088,13022,10851,9042,7535,6279,5232,4360},
+        {1275,2584,3921,5280,6591,7855,9074,10249,11382,12475,13529,14545,12120,10100,8416,7013,5844,4870},
+        {1487,3006,4549,6109,7604,9037,10410,11726,12987,14195,15353,16463,13719,11432,9526,7938,6615,5512},
+        {1878,3778,5689,7600,9410,11125,12750,14289,15747,17128,18437,19677,16397,13664,11386,9488,7906,6588},
+        {2550,5086,7590,10047,12329,14448,16416,18243,19939,21514,22977,24335,20279,16899,14082,11735,9779,8149}};
+    constexpr int fullLockFrames[5]{22,19,17,13,10};
+    for(int level=0;level<5;++level){
+        PspDigitalSteering psp;
+        for(int frame=0;frame<18;++frame){
+            psp.frame(frame<12?1:0,level,0.f);
+            require(psp.value==golden[level][frame],"PSP sensitivity trace differs from the recovered routine");
+        }
+        PspDigitalSteering mirrored;
+        for(int frame=0;frame<18;++frame)mirrored.frame(frame<12?-1:0,level,0.f);
+        require(mirrored.value==-golden[level][17],"PSP left steering is not symmetric");
+        PspDigitalSteering lock;int frames=0;
+        while(lock.steering()<1.f){lock.frame(1,level,0.f);++frames;}
+        require(frames==fullLockFrames[level],"PSP full-lock time changed");
+        for(int frame=0;frame<60;++frame)lock.frame(1,level,0.f);
+        require(lock.value==0x7FFF,"PSP steering must clamp to 0x7FFF");
+        for(int frame=0;frame<60;++frame)lock.frame(0,level,0.f);
+        require(lock.value==0&&lock.steering()==0.f,"PSP release must settle at centre");
+    }
+    require(PspDigitalSteering{1115}.steering()==.05f,"PSP word must read as the (byte-128)/80 ADC sample");
+    require(PspDigitalSteering{20480}.steering()==1.f&&PspDigitalSteering{-20480}.steering()==-1.f,"PSP full lock is byte 128±80");
+    // Counter-steer uses the fixed fast divisor only while the car slides.
+    constexpr std::int32_t gripReverse[6]{27119,24239,21479,18834,16299,13869};
+    constexpr std::int32_t slideReverse[6]{24114,18604,13553,8923,4679,789};
+    for(float slip:{0.f,.5f}){
+        PspDigitalSteering psp;for(int frame=0;frame<30;++frame)psp.frame(1,2,slip);
+        for(int frame=0;frame<6;++frame){
+            psp.frame(-1,2,slip);
+            require(psp.value==(slip>0.f?slideReverse:gripReverse)[frame],"PSP counter-steer trace differs");
+        }
+    }
+    { PspDigitalSteering psp;for(int frame=0;frame<30;++frame)psp.frame(1,2,.2f);psp.frame(-1,2,.2f);
+      require(psp.value==gripReverse[0],"Slip equal to 0.2 must not use the fast counter-steer"); }
+    // The PSP rule runs per 30 Hz race frame regardless of host tick length:
+    // 0.75 s with the key held for the first half is 15 held + 8 released frames.
+    for(float hz:{60.f,120.f,144.f,240.f}){
+        PspDigitalSteering fixed,fine;
+        for(int frame=0;frame<23;++frame)fixed.frame(frame<15?1:0,4,0.f);
+        for(int t=0;t<int(hz*.75f);++t)fine.advance(float(t)<hz*.5f?1:0,4,0.f,1.f/hz);
+        require(fine.value==fixed.value,"PSP preset depends on the host tick rate");
+    }
+    { PspDigitalSteering psp;
+      require(psp.advance(1,0,0.f,tick)==PspDigitalSteering{golden[0][0]}.steering(),"PSP preset must respond on the first tick");
+      require(psp.advance(1,0,0.f,tick)==PspDigitalSteering{golden[0][0]}.steering(),"PSP preset stepped faster than 30 Hz");
+      require(psp.advance(1,0,0.f,tick)==PspDigitalSteering{golden[0][1]}.steering(),"PSP preset stepped slower than 30 Hz"); }
+    { PspDigitalSteering psp;psp.advance(1,0,0.f,0.f);psp.advance(1,0,0.f,std::numeric_limits<float>::quiet_NaN());
+      require(psp.value==0,"Zero or invalid dt advanced the PSP preset"); }
+    // Source integration: Default is unchanged, D-pad ramps, analog sticks bypass the preset.
+    for(bool original:{false,true}){
+        idas3::HostSteeringSource legacy,explicitDefault;float a=0,b=0;
+        for(unsigned frame=0;frame<60;++frame){
+            const float key=frame<12?1.f:frame<30?-1.f:0.f;
+            a=legacy.advance(a,key,0,true,original,tick);
+            b=explicitDefault.advance(b,key,0,true,original,tick,DigitalSteeringPreset::Default,false,.5f);
+            require(bits(a,b),"Default preset changed the existing keyboard ramp");
+        }
+        for(int level=1;level<=5;++level){
+            const auto preset=DigitalSteeringPreset(level);
+            idas3::HostSteeringSource keys,dpad,stick,stickDefault;float k=0,d=0,s=0,sd=0;
+            // Two 60 Hz physics ticks per PSP frame.
+            for(int t=0;t<36;++t){
+                const float held=t<24?1.f:0.f;
+                k=keys.advance(k,held,0,false,original,tick,preset);
+                d=dpad.advance(d,0,held,true,original,tick,preset,true);
+                const float expected=PspDigitalSteering{golden[level-1][t/2]}.steering();
+                require(bits(k,expected),"Keyboard did not follow the PSP preset");
+                require(bits(d,expected),"D-pad did not follow the PSP preset");
+                const float analog=.4f*held;
+                s=stick.advance(s,0,analog,true,original,tick,preset,false);
+                sd=stickDefault.advance(sd,0,analog,true,original,tick);
+                require(bits(s,sd),"Analog stick steering changed with a digital preset");
+            }
+        }
+    }
+    { idas3::HostSteeringSource handover;float value=0;
+      for(int frame=0;frame<30;++frame)value=handover.advance(value,0,.6f,true,true,tick,DigitalSteeringPreset::Psp3);
+      value=handover.advance(value,1,0,true,true,tick,DigitalSteeringPreset::Psp3);
+      require(value>.6f&&value<.75f,"Switching from stick to keys must continue from the current angle"); }
+    std::cout<<"PASS "<<checks<<" host steering smoothing checks: exact zero bypass, step/reversal bounds, elapsed-time invariance, neutral/reset, unchanged settings, blocked controls, invalid values and PSP sensitivity 1-5 presets.\n";
     return 0;
 }catch(const std::exception& error){std::cerr<<"FAIL "<<error.what()<<'\n';return 1;}
