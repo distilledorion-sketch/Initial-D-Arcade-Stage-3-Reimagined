@@ -19,6 +19,8 @@ public sealed class Idas3ReplayData
         public int[] steeringTicks;
         public int steeringResponse=-1,steeringSettingsChanged;
         public float steeringDeadzone=-1,steeringSmoothing=-1;
+        // 1 when the analog ticks came from the mouse steering profile.
+        public int mouseSteering;
         public SteeringInput PrimarySteering
         {
             get
@@ -100,7 +102,7 @@ public sealed class Idas3ReplayData
         // JsonUtility writes an absent array as [], so empty means not recorded.
         if(metadata.steeringTicks!=null&&metadata.steeringTicks.Length==0)metadata.steeringTicks=null;
         if(metadata.steeringTicks!=null&&(metadata.steeringTicks.Length!=5||Array.Exists(metadata.steeringTicks,t=>t<0)))throw new InvalidDataException("Invalid replay steering input.");
-        if(metadata.steeringResponse< -1||metadata.steeringResponse>2||metadata.steeringSettingsChanged<0||metadata.steeringSettingsChanged>1||
+        if(metadata.steeringResponse< -1||metadata.steeringResponse>2||metadata.steeringSettingsChanged<0||metadata.steeringSettingsChanged>1||metadata.mouseSteering<0||metadata.mouseSteering>1||
             !Finite(metadata.steeringDeadzone)||(metadata.steeringDeadzone!=-1&&(metadata.steeringDeadzone<0||metadata.steeringDeadzone>.3f))||
             !Finite(metadata.steeringSmoothing)||(metadata.steeringSmoothing!=-1&&(metadata.steeringSmoothing<0||metadata.steeringSmoothing>1)))
             throw new InvalidDataException("Invalid replay steering settings.");

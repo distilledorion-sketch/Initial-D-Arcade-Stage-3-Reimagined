@@ -25,6 +25,10 @@ public sealed class Idas3GameOptions
         public float steeringDeadzoneGamepad=.1f,steeringDeadzonePrevious=.13f,steeringDeadzoneWheel;
         public float steeringSmoothing;
         public int steeringSensitivity=3; // Alternative button steering (response 3): PSP sensitivity 1 (smoothest) .. 5 (fastest).
+        public float mouseSteeringSensitivity=.5f; // Mouse steering (response 4): 0 (slowest) .. 1 (fastest).
+        public bool mouseSteeringAid=true;
+        public int mouseSteeringAidRange=540; // Steering aid rotation lock to lock, degrees: 180..1080 in 30-degree steps.
+        public const int MouseSteeringAidRangeMin=180,MouseSteeringAidRangeMax=1080,MouseSteeringAidRangeStep=30;
         public bool wheelForceFeedback,wheelFeedbackInvert;
         public bool controllerVibration=true;
         public float controllerVibrationStrength=.5f;
@@ -45,7 +49,7 @@ public sealed class Idas3GameOptions
         public int hudOrnamentId; // Stable source ornament ID; 0 = off.
         public bool hudShiftLights=true,hudPedalIndicators=true;
         public int hudNameplateStyle; // 0 = off, 1 = driver plate.
-        public const int HudLayoutGroupCount=11;
+        public const int HudLayoutGroupCount=12; // Group 11 is the mouse steering aid.
         public Vector2[] hudPositions=new Vector2[HudLayoutGroupCount]; // Normalized offsets from each original anchor.
         public int[] hudSizePercent=new int[HudLayoutGroupCount]; // Zero retains the legacy size preset.
         public static int HudPositionGroup(int group)=>group==6||group==7?3:group;
@@ -59,6 +63,7 @@ public sealed class Idas3GameOptions
         public int hudTimerSize=2,hudSpeedometerSize=2,hudRecordsSize=2,hudLegendSize=2;
         public int hudTimeExtensionSize=2;
         public int hudOrnamentSize=2;
+        public int hudSteeringAidSize=2;
         public int hudOnlineSize=2,hudMirrorSize=2,hudMessagesSize=2,hudChallengersSize=2;
         public int HudSizePercent(int group) {
             if(group<=0||group>=HudLayoutGroupCount)return 100;
@@ -66,7 +71,7 @@ public sealed class Idas3GameOptions
                 return Math.Max(group==5?100:50,Math.Min(150,hudSizePercent[group]));
             if(group==5)return 100+25*Math.Max(0,Math.Min(2,minimapSize));
             int size=group==1?hudTimerSize:group==2?hudSpeedometerSize:group==3?hudRecordsSize:
-                group==4?hudMirrorSize:group==6?hudLegendSize:group==7?hudOnlineSize:group==8?hudChallengersSize:group==9?hudTimeExtensionSize:group==10?hudOrnamentSize:hudMessagesSize;
+                group==4?hudMirrorSize:group==6?hudLegendSize:group==7?hudOnlineSize:group==8?hudChallengersSize:group==9?hudTimeExtensionSize:group==10?hudOrnamentSize:group==11?hudSteeringAidSize:hudMessagesSize;
             return 50+25*Math.Max(0,Math.Min(4,size));
         }
         public void SetHudSizePercent(int group,int percent) {
@@ -82,7 +87,7 @@ public sealed class Idas3GameOptions
                 case 1:hudTimerSize=2;break;case 2:hudSpeedometerSize=2;break;case 3:hudRecordsSize=2;break;
                 case 4:hudMirrorSize=2;break;case 5:minimapSize=0;break;case 6:hudLegendSize=2;break;
                 case 7:hudOnlineSize=2;break;case 8:hudChallengersSize=2;break;case 9:hudTimeExtensionSize=2;break;
-                case 10:hudOrnamentSize=2;break;
+                case 10:hudOrnamentSize=2;break;case 11:hudSteeringAidSize=2;break;
             }
         }
         public float HudGroupScale(int group) {
@@ -102,7 +107,16 @@ public sealed class Idas3GameOptions
         // default plus a digital preset (0 = host ramp, 1..5 = PSP sensitivity).
         public const int AlternativeButtonSteering=3;
         public bool UsesAlternativeButtonSteering=>controllerResponse==AlternativeButtonSteering;
-        public int NativeControllerResponse=>UsesAlternativeButtonSteering?0:controllerResponse;
+        // Response 4 is mouse steering: managed code turns mouse delta X into a
+        // virtual wheel and sends it as a linear axis (Flycast wheel, no
+        // deadzone or smoothing).
+        public const int MouseSteering=4;
+        public bool UsesMouseSteering=>controllerResponse==MouseSteering;
+        // Both replace the deadzone, smoothing, force feedback and vibration settings.
+        public bool ReplacesOtherSteeringSettings=>UsesAlternativeButtonSteering||UsesMouseSteering;
+        public int NativeControllerResponse=>UsesAlternativeButtonSteering?0:UsesMouseSteering?2:controllerResponse;
+        public float NativeSteeringDeadzone=>UsesMouseSteering?0:SteeringDeadzone;
+        public float NativeSteeringSmoothing=>UsesMouseSteering?0:steeringSmoothing;
         public int DigitalSteeringPreset=>UsesAlternativeButtonSteering?steeringSensitivity:0;
         public Values Clone(){var copy=(Values)MemberwiseClone();copy.hudPositions=hudPositions==null?new Vector2[HudLayoutGroupCount]:(Vector2[])hudPositions.Clone();copy.hudSizePercent=hudSizePercent==null?new int[HudLayoutGroupCount]:(int[])hudSizePercent.Clone();return copy;}
     }
@@ -267,7 +281,7 @@ public sealed class Idas3GameOptions
         to.hudRecordsSize=from.hudRecordsSize;to.hudLegendSize=from.hudLegendSize;
         to.hudOnlineSize=from.hudOnlineSize;to.hudMirrorSize=from.hudMirrorSize;
         to.hudMessagesSize=from.hudMessagesSize;to.hudChallengersSize=from.hudChallengersSize;
-        to.hudTimeExtensionSize=from.hudTimeExtensionSize;to.hudOrnamentSize=from.hudOrnamentSize;
+        to.hudTimeExtensionSize=from.hudTimeExtensionSize;to.hudOrnamentSize=from.hudOrnamentSize;to.hudSteeringAidSize=from.hudSteeringAidSize;
         to.minimapDisplay=from.minimapDisplay;to.minimapSize=from.minimapSize;to.minimapZoom=from.minimapZoom;
     }
     public bool ConfirmDisplay(){
@@ -330,6 +344,7 @@ public sealed class Idas3GameOptions
         value.hudSizePercent=sizes;
         value.hudTimeExtensionSize=Math.Max(0,Math.Min(4,value.hudTimeExtensionSize));
         value.hudOrnamentSize=Math.Max(0,Math.Min(4,value.hudOrnamentSize));
+        value.hudSteeringAidSize=Math.Max(0,Math.Min(4,value.hudSteeringAidSize));
         value.hudTimerSize=Math.Max(0,Math.Min(4,value.hudTimerSize));
         value.hudSpeedometerSize=Math.Max(0,Math.Min(4,value.hudSpeedometerSize));
         value.hudRecordsSize=Math.Max(0,Math.Min(4,value.hudRecordsSize));
@@ -346,13 +361,15 @@ public sealed class Idas3GameOptions
         value.trackLighting=Math.Max(0,Math.Min(1,value.trackLighting));
         if(value.customMenuLanguage<0||value.customMenuLanguage>2)value.customMenuLanguage=0;
         if(value.arcadeTextLanguage!=1)value.arcadeTextLanguage=0;
-        if(value.controllerResponse<0||value.controllerResponse>Values.AlternativeButtonSteering)value.controllerResponse=0;
+        if(value.controllerResponse<0||value.controllerResponse>Values.MouseSteering)value.controllerResponse=0;
         if(value.steeringSettingsVersion<1){value.steeringDeadzoneGamepad=.1f;value.steeringDeadzonePrevious=.13f;value.steeringDeadzoneWheel=0;}
         value.steeringSettingsVersion=1;
         value.steeringDeadzoneGamepad=Deadzone(value.steeringDeadzoneGamepad,.1f);
         value.steeringDeadzonePrevious=Deadzone(value.steeringDeadzonePrevious,.13f);
         value.steeringDeadzoneWheel=Deadzone(value.steeringDeadzoneWheel,0);
         if(value.steeringSensitivity<1||value.steeringSensitivity>5)value.steeringSensitivity=3;
+        if(value.mouseSteeringAidRange<Values.MouseSteeringAidRangeMin||value.mouseSteeringAidRange>Values.MouseSteeringAidRangeMax||value.mouseSteeringAidRange%Values.MouseSteeringAidRangeStep!=0)value.mouseSteeringAidRange=540;
+        value.mouseSteeringSensitivity=float.IsNaN(value.mouseSteeringSensitivity)||float.IsInfinity(value.mouseSteeringSensitivity)||value.mouseSteeringSensitivity<0||value.mouseSteeringSensitivity>1?.5f:value.mouseSteeringSensitivity;
         value.steeringSmoothing=float.IsNaN(value.steeringSmoothing)||float.IsInfinity(value.steeringSmoothing)?0:Math.Max(0,Math.Min(1,value.steeringSmoothing));
         value.controllerVibrationStrength=float.IsNaN(value.controllerVibrationStrength)||float.IsInfinity(value.controllerVibrationStrength)?.5f:Math.Max(0,Math.Min(1,value.controllerVibrationStrength));
         value.wheelFeedbackStrength=float.IsNaN(value.wheelFeedbackStrength)||float.IsInfinity(value.wheelFeedbackStrength)?.35f:Math.Max(0,Math.Min(1,value.wheelFeedbackStrength));
@@ -370,12 +387,13 @@ public sealed class Idas3GameOptions
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&
         a.steeringDeadzonePrevious==b.steeringDeadzonePrevious&&a.steeringDeadzoneWheel==b.steeringDeadzoneWheel&&
         a.steeringSmoothing==b.steeringSmoothing&&a.steeringSensitivity==b.steeringSensitivity&&
+        a.mouseSteeringSensitivity==b.mouseSteeringSensitivity&&a.mouseSteeringAid==b.mouseSteeringAid&&a.mouseSteeringAidRange==b.mouseSteeringAidRange&&
         a.controllerVibration==b.controllerVibration&&a.controllerVibrationStrength==b.controllerVibrationStrength&&
         a.wheelForceFeedback==b.wheelForceFeedback&&a.wheelFeedbackStrength==b.wheelFeedbackStrength&&
         a.wheelFeedbackInvert==b.wheelFeedbackInvert&&a.wheelFeedbackDevice==b.wheelFeedbackDevice&&
         a.showFps==b.showFps&&a.muteWhenUnfocused==b.muteWhenUnfocused&&a.communityTimes==b.communityTimes&&
         a.discordPresence==b.discordPresence&&a.hideLightsOffAdvantage==b.hideLightsOffAdvantage&&a.replayTimeAttack==b.replayTimeAttack&&a.replayOnline==b.replayOnline&&a.replayLegend==b.replayLegend&&
         a.hudMeterStyle==b.hudMeterStyle&&a.hudMeterLayout==b.hudMeterLayout&&a.hudOrnamentId==b.hudOrnamentId&&a.hudShiftLights==b.hudShiftLights&&a.hudPedalIndicators==b.hudPedalIndicators&&a.hudNameplateStyle==b.hudNameplateStyle&&
-        SameHudPositions(a,b)&&SameHudSizes(a,b)&&a.hudOrnamentSize==b.hudOrnamentSize&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
+        SameHudPositions(a,b)&&SameHudSizes(a,b)&&a.hudOrnamentSize==b.hudOrnamentSize&&a.hudSteeringAidSize==b.hudSteeringAidSize&&a.hudTimeExtensionSize==b.hudTimeExtensionSize&&a.hudTimerSize==b.hudTimerSize&&a.hudSpeedometerSize==b.hudSpeedometerSize&&a.hudRecordsSize==b.hudRecordsSize&&a.hudLegendSize==b.hudLegendSize&&a.hudOnlineSize==b.hudOnlineSize&&a.hudMirrorSize==b.hudMirrorSize&&a.hudMessagesSize==b.hudMessagesSize&&a.hudChallengersSize==b.hudChallengersSize&&
         a.minimapDisplay==b.minimapDisplay&&a.minimapSize==b.minimapSize&&a.minimapZoom==b.minimapZoom&&a.rainDetail==b.rainDetail&&a.importedSceneryDetail==b.importedSceneryDetail&&a.trackLighting==b.trackLighting&&a.sunGlare==b.sunGlare;
 }

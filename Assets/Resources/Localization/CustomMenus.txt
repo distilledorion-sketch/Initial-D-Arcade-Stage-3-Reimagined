@@ -15,7 +15,7 @@ REBIND {0}	割り当て：{0}	重新绑定：{0}
 Release buttons and leave axes at rest, then move an axis, pull a pedal, or press a controller button.	ボタンを離して軸を静止させてから、軸・ペダル・ボタンのどれかを操作してください。	松开按钮并让轴回到静止位置，然后移动轴、踩下踏板或按下手柄按钮。
 Release buttons and leave axes at rest, then press a key.	ボタンを離して軸を静止させてから、キーを押してください。	松开按钮并让轴回到静止位置，然后按下键盘按键。
 Press a button or move one axis/pedal. Escape cancels.	ボタン、軸、ペダルのどれか1つを操作してください。Escで取り消し。	按下按钮或移动一个轴或踏板。Esc取消。
-Press a key. Escape cancels.	キーを押してください。Escで取り消し。	请按下按键。Esc取消。
+Press a key or click. Escape cancels.	キーを押すかクリックしてください。Escで取り消し。	请按下按键或点击鼠标。Esc取消。
 Release the control, then choose another. Escape cancels.	操作を離して、別の入力を選んでください。Escで取り消し。	松开当前输入，然后选择其他按键。Esc取消。
 Binding changed. Apply to save.	割り当てを変更しました。適用で保存します。	绑定已更改。应用后保存。
 Binding changed.	割り当てを変更しました。	绑定已更改。
@@ -376,6 +376,12 @@ SENSITIVITY	感度	灵敏度
 5 (FASTEST)	5（最も速い）	5（最快）
 Keyboard and D-pad only. Follows Initial D Street Stage's steering sensitivity.	キーボードと十字キーのみ。頭文字D ストリートステージのステアリング感度に準拠します。	仅限键盘和方向键。遵循头文字D Street Stage 的转向灵敏度。
 Alternative button steering replaces all other steering and wheel settings.	代替ボタンステアは他のステアリング・ハンドル設定をすべて置き換えます。	替代按键转向将取代所有其他转向和方向盘设置。
+MOUSE STEERING	マウスステア	鼠标转向
+STEERING AID	ステアリング補助表示	转向辅助显示
+AID ROTATION RANGE	補助表示の回転範囲	辅助显示旋转范围
+How far the steering aid turns from lock to lock. Steering itself is unchanged.	補助表示がロックからロックまで回る角度です。ステアリング自体は変わりません。	辅助显示从左满舵到右满舵的旋转角度。不影响实际转向。
+Move the mouse left/right to steer. The cursor is captured while driving.	マウスを左右に動かしてステアします。走行中はカーソルが固定されます。	左右移动鼠标进行转向。驾驶时光标会被锁定。
+Shows a wheel that turns with the mouse. Move and size it in EDIT HUD LAYOUT.	マウスに合わせて回るハンドルを表示します。位置とサイズはHUDレイアウト編集で変更できます。	显示随鼠标转动的方向盘。可在编辑HUD布局中调整位置和大小。
 Wheel feedback is unavailable.	フォースフィードバックを利用できません。	方向盘力反馈不可用。
 AUTOMATIC	自動	自动
 DISCONNECTED DEVICE	未接続のデバイス	设备未连接
@@ -435,6 +441,7 @@ REAR-VIEW MIRROR	バックミラー	后视镜
 TIME EXTENDED	タイム延長	时间延长
 ACCEPTING CHALLENGERS	乱入受付	接受挑战
 ORNAMENT / KEYCHAIN	アクセサリー・キーホルダー	挂饰与钥匙扣
+MOUSE STEERING AID	マウスステア補助表示	鼠标转向辅助显示
 CUSTOMIZE HUD	HUDカスタマイズ	自定义HUD
 SETTINGS  /  HUD  /  CUSTOMIZE	設定 / HUD / カスタマイズ	设置 / HUD / 自定义
 LIVE PREVIEW	ライブプレビュー	实时预览
@@ -465,6 +472,7 @@ Reset layout	配置をリセット	重置布局
 Save & return	保存して戻る	保存并返回
 SIZE	サイズ	大小
 Choose an ornament in Customize HUD to position it.	HUDカスタマイズでアクセサリーを選ぶと配置できます。	请先在HUD自定义中选择挂饰，再调整位置。
+Shown while driving with MOUSE STEERING and its STEERING AID on.	マウスステアでステアリング補助表示がオンのとき、走行中に表示されます。	在使用鼠标转向且开启转向辅助显示时于驾驶中显示。
 SOUND ROOM	サウンドルーム	音乐室
 RACE MUSIC	レース音楽	比赛音乐
 LIBRARY	ライブラリ	曲库

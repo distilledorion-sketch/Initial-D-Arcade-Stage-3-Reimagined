@@ -42,8 +42,10 @@ public sealed class Idas3ReplayAnalysis
     public static string DescribeSteering(Idas3ReplayData.Details m)
     {
         var input = m.PrimarySteering; var parts = new List<string>();
-        if (input != Idas3ReplayData.SteeringInput.Unknown) parts.Add(SteeringName(input));
-        bool analog = input == Idas3ReplayData.SteeringInput.Unknown || m.steeringTicks[3] > 0 || m.steeringTicks[4] > 0;
+        // Mouse steering is recorded as analog ticks with a linear, zero-deadzone response.
+        bool mouse = m.mouseSteering == 1;
+        if (input != Idas3ReplayData.SteeringInput.Unknown) parts.Add(mouse && input == Idas3ReplayData.SteeringInput.Analog ? "Mouse" : SteeringName(input));
+        bool analog = !mouse && (input == Idas3ReplayData.SteeringInput.Unknown || m.steeringTicks[3] > 0 || m.steeringTicks[4] > 0);
         if (analog && m.steeringResponse >= 0) parts.Add(Idas3ReplayData.SteeringResponses[m.steeringResponse]);
         if (analog && m.steeringDeadzone >= 0) parts.Add("DZ " + (m.steeringDeadzone * 100).ToString("0") + "%");
         if (m.steeringSmoothing >= 0) parts.Add("smooth " + m.steeringSmoothing.ToString("0.00"));

@@ -13,8 +13,8 @@ public sealed class Idas3HudEditor : MonoBehaviour
     [StructLayout(LayoutKind.Sequential)] struct CarTexture { public uint width,height; public ulong pixels; public IntPtr data; }
     [DllImport("Idas3Unity",EntryPoint="Idas3SceneHudPreviewWithMap",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudPreview(int mode,int width,int height,int mapSize,int mapZoom,int mapDisplay,float seconds,int messages);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneHudCar(ref CarFrame frame);
-    static readonly int[] Groups={1,2,3,6,7,4,5,8,9,10};
-    static readonly string[] Names={"Time / sections","Meter / gear","Time Attack records","Legend opponent","Online opponent","Rear-view mirror","Minimap","Accepting challengers","Time Extended","Keychain"};
+    static readonly int[] Groups={1,2,3,6,7,4,5,8,9,10,Idas3MouseSteeringAid.HudGroup};
+    static readonly string[] Names={"Time / sections","Meter / gear","Time Attack records","Legend opponent","Online opponent","Rear-view mirror","Minimap","Accepting challengers","Time Extended","Keychain","Mouse steering aid"};
     const int Layer=28;
     Idas3GameOptions options; Idas3PauseMenu menu;
     Idas3GameOptions.Values working;
@@ -135,7 +135,9 @@ public sealed class Idas3HudEditor : MonoBehaviour
         var center=new Vector2(w-80*fit*Mathf.Max(upper,lower,scale),(194*fit*upper+h-161*fit*lower)*.5f);
         center+=Vector2.Scale(working.HudOffset(8),new Vector2(w,h));return new Rect(center-size*.5f,size);
     }
-    internal bool Bounds(int group,out Rect bounds){if(group==8){bounds=BadgeRect();return true;}return ui.HudBounds(group,out bounds);}
+    internal bool Bounds(int group,out Rect bounds){if(group==8){bounds=BadgeRect();return true;}
+        if(group==Idas3MouseSteeringAid.HudGroup){bounds=Idas3MouseSteeringAid.ScreenRect(working,Screen.width,Screen.height);return true;}
+        return ui.HudBounds(group,out bounds);}
     internal void MoveSelected(Vector2 delta)
     {
         int group=Groups[selected];if(!Bounds(group,out var bounds))return;
@@ -212,6 +214,8 @@ public sealed class Idas3HudEditor : MonoBehaviour
         }
         if(e.type==EventType.MouseUp)dragging=false;
         if(badge)GUI.DrawTextureWithTexCoords(BadgeRect(),badge,new Rect(0,1,1,-1));
+        // The mouse steering aid sweeps slowly so its full-lock extent is visible.
+        if(e.type==EventType.Repaint)Idas3MouseSteeringAid.Draw(Idas3MouseSteeringAid.ScreenRect(working,Screen.width,Screen.height),Mathf.Sin(Time.unscaledTime*.8f),working.mouseSteeringAidRange);
         GUI.color=Color.white;Fill(toolbar,new Color32(16,18,23,255));GUI.Box(toolbar,"");
         var previousMatrix=GUI.matrix;GUI.matrix=Matrix4x4.TRS(new Vector3(toolbar.x,toolbar.y,0),Quaternion.identity,Vector3.one*toolbarScale);
         try{DrawToolbar();}finally{GUI.matrix=previousMatrix;}
@@ -234,7 +238,8 @@ public sealed class Idas3HudEditor : MonoBehaviour
         GUILayout.FlexibleSpace();if(ToolButton("Cancel",6,100)){Close(false);GUILayout.EndHorizontal();GUILayout.EndArea();return;}
         if(ToolButton(IsNested?"Done":"Save & return",7,150)){Close(true);GUILayout.EndHorizontal();GUILayout.EndArea();return;}
         GUILayout.EndHorizontal();
-        string help=Groups[selected]==10&&working.hudOrnamentId==0?"Choose an ornament in Customize HUD to position it.":adjusting?"← → / ↑ ↓  ADJUST    ENTER / A  DONE    ESC / B  BACK":
+        string help=Groups[selected]==10&&working.hudOrnamentId==0?"Choose an ornament in Customize HUD to position it.":
+            Groups[selected]==Idas3MouseSteeringAid.HudGroup&&!adjusting?"Shown while driving with MOUSE STEERING and its STEERING AID on.":adjusting?"← → / ↑ ↓  ADJUST    ENTER / A  DONE    ESC / B  BACK":
             "Drag to move • Slider / wheel / + / − for size • ↑ ↓ SELECT   ← → CHANGE   ENTER / A EDIT   ESC / B CANCEL";
         Idas3MenuGui.Label(string.IsNullOrEmpty(error)?help:error,label);GUILayout.EndArea();
     }

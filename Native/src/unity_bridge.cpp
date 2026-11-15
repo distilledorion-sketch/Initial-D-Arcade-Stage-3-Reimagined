@@ -1343,6 +1343,13 @@ int IDAS3_UNITY_CALL Idas3SceneSetDigitalSteeringPreset(int preset){
     if(r.app->digitalSteeringPreset!=next){r.app->steering=0;r.app->steeringSource.reset();r.app->steeringSmoothing.reset();}
     r.app->digitalSteeringPreset=next;return 1;
 }
+int IDAS3_UNITY_CALL Idas3SceneSetMouseSteering(int enabled){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app){unityError("Steering options require initialized Unity scene mode");return 0;}
+    if(enabled!=0&&enabled!=1){unityError("Mouse steering must be 0 or 1");return 0;}
+    if(r.app->mouseSteering!=(enabled!=0)){r.app->steering=0;r.app->steeringSource.reset();r.app->steeringSmoothing.reset();}
+    r.app->mouseSteering=enabled!=0;return 1;
+}
 int IDAS3_UNITY_CALL Idas3SceneGetDigitalSteeringPreset(){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     return r.sceneMode&&r.app?int(r.app->digitalSteeringPreset):-1;

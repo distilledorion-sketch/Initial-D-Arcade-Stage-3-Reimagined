@@ -432,7 +432,7 @@ struct App {
     // Per-race steering source tick counts (HostInput::steeringSource order)
     // and the steering settings in force at the first recorded frame.
     std::array<std::uint32_t,5> replaySteeringTicks{};
-    struct ReplaySteeringSettings{int response=0;float deadzone=0,smoothing=0;int digitalPreset=0;
+    struct ReplaySteeringSettings{int response=0;float deadzone=0,smoothing=0;int digitalPreset=0;bool mouse=false;
         bool operator==(const ReplaySteeringSettings&) const=default;};
     ReplaySteeringSettings replaySteeringSettings;bool replaySteeringSettingsChanged=false;
     // A PSP digital preset replaces the response profile, deadzone and
@@ -444,7 +444,7 @@ struct App {
     float effectiveSteeringDeadzoneSetting() const{return pspSteering()?-1.f:steeringDeadzone;}
     ReplaySteeringSettings currentSteeringSettings() const{
         return {int(effectiveControllerResponse()),original::effectiveSteeringDeadzone(effectiveControllerResponse(),effectiveSteeringDeadzoneSetting()),
-            pspSteering()?0.f:steeringSmoothing.amount(),int(digitalSteeringPreset)};
+            pspSteering()?0.f:steeringSmoothing.amount(),int(digitalSteeringPreset),mouseSteering};
     }
     void setSharedRecords(TimeAttackRecords next,bool enabled){
         sharedRecords=std::move(next);sharedRecordsEnabled=enabled;combinedRecordsDirty=true;
@@ -548,6 +548,9 @@ struct App {
     HostSteeringSmoothing steeringSmoothing;
     HostSteeringSource steeringSource;
     DigitalSteeringPreset digitalSteeringPreset=DigitalSteeringPreset::Default;
+    // Unity's mouse steering profile: its virtual wheel arrives as a linear
+    // analog axis. Recorded so replays can tell it from a real wheel.
+    bool mouseSteering=false;
     bool steeringControllerConnected=false,hostDrivingControlsBlocked=false;
     bool resizePending=false,mouseStart=false;int pendingWidth=1280,pendingHeight=720;
     int menuDirection=0;double menuRepeatWait=0;
@@ -2891,14 +2894,15 @@ struct App {
         // previous solo runs and of currently predicted host inputs.
         if(authorityRace){
             replaySteeringTicks=authorityReplay.steeringTicks();const auto& settings=authorityReplay.steeringSettings();
-            replaySteeringSettings={settings.response,settings.deadzone,settings.smoothing,int(digitalSteeringPreset)};
+            replaySteeringSettings={settings.response,settings.deadzone,settings.smoothing,int(digitalSteeringPreset),mouseSteering};
             replaySteeringSettingsChanged=authorityReplay.steeringSettingsChanged();
         }
         if(replaySteeringTicks[0]+replaySteeringTicks[1]+replaySteeringTicks[2]+replaySteeringTicks[3]+replaySteeringTicks[4]==recording.frames.size()){
             meta<<",\"steeringTicks\":[";for(unsigned i=0;i<5;++i){if(i)meta<<',';meta<<replaySteeringTicks[i];}meta<<"]";
         }
         meta<<",\"steeringResponse\":"<<replaySteeringSettings.response<<",\"steeringDeadzone\":"<<replaySteeringSettings.deadzone<<
-            ",\"steeringSmoothing\":"<<replaySteeringSettings.smoothing<<",\"digitalSteeringPreset\":"<<replaySteeringSettings.digitalPreset<<",\"steeringSettingsChanged\":"<<unsigned(replaySteeringSettingsChanged);
+            ",\"steeringSmoothing\":"<<replaySteeringSettings.smoothing<<",\"digitalSteeringPreset\":"<<replaySteeringSettings.digitalPreset<<
+            ",\"mouseSteering\":"<<unsigned(replaySteeringSettings.mouse)<<",\"steeringSettingsChanged\":"<<unsigned(replaySteeringSettingsChanged);
         meta<<'}';
         localReplayJson=meta.str();localReplayPlayer=std::move(bytes);localReplayRival=std::move(other);localReplayTelemetry=recording.telemetryBytes();
     }

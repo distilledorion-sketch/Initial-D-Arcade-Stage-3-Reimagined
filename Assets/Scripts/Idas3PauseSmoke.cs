@@ -373,12 +373,23 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         foreach(int invalid in new[]{0,6,-1,int.MaxValue}){var preset=fresh.Current.Clone();preset.steeringSensitivity=invalid;Check(Idas3GameOptions.Normalize(preset).steeringSensitivity==3,"Invalid alternative steering sensitivity was kept");}
         for(int level=1;level<=5;++level){var preset=fresh.Current.Clone();preset.controllerResponse=3;preset.steeringSensitivity=level;preset=Idas3GameOptions.Normalize(preset);Check(preset.controllerResponse==3&&preset.steeringSensitivity==level&&preset.DigitalSteeringPreset==level&&preset.NativeControllerResponse==0,"Alternative button steering did not map to its native preset");}
         foreach(int response in new[]{0,1,2}){var other=fresh.Current.Clone();other.controllerResponse=response;other.steeringSensitivity=5;Check(other.DigitalSteeringPreset==0&&other.NativeControllerResponse==response,"Sensitivity applied outside alternative button steering");}
+        Check(legacy.Current.mouseSteeringSensitivity==.5f&&legacy.Current.mouseSteeringAid&&legacy.Current.mouseSteeringAidRange==540&&!fresh.Defaults().UsesMouseSteering&&fresh.Defaults().HudSizePercent(Idas3MouseSteeringAid.HudGroup)==100,"Old JSON or defaults changed mouse steering");
+        Check(legacy.Current.HudOffset(Idas3MouseSteeringAid.HudGroup)==Vector2.zero&&legacy.Current.hudPositions.Length==Idas3GameOptions.Values.HudLayoutGroupCount,"Old HUD layout did not gain the steering aid group");
+        foreach(int invalid in new[]{0,150,1110,545,int.MinValue}){var mouse=fresh.Current.Clone();mouse.mouseSteeringAidRange=invalid;Check(Idas3GameOptions.Normalize(mouse).mouseSteeringAidRange==540,"Invalid steering aid range was kept");}
+        foreach(int valid in new[]{180,900,1080}){var mouse=fresh.Current.Clone();mouse.mouseSteeringAidRange=valid;Check(Idas3GameOptions.Normalize(mouse).mouseSteeringAidRange==valid,"Valid steering aid range was changed");}
+        foreach(float invalid in new[]{-.01f,1.01f,float.NaN,float.PositiveInfinity}){var mouse=fresh.Current.Clone();mouse.mouseSteeringSensitivity=invalid;Check(Idas3GameOptions.Normalize(mouse).mouseSteeringSensitivity==.5f,"Invalid mouse steering sensitivity was kept");}
+        {
+            var mouse=fresh.Current.Clone();mouse.controllerResponse=4;mouse.steeringDeadzoneGamepad=.2f;mouse.steeringSmoothing=.5f;mouse.steeringSensitivity=5;mouse=Idas3GameOptions.Normalize(mouse);
+            Check(mouse.controllerResponse==4&&mouse.UsesMouseSteering&&mouse.ReplacesOtherSteeringSettings&&mouse.NativeControllerResponse==2&&mouse.NativeSteeringDeadzone==0&&mouse.NativeSteeringSmoothing==0&&mouse.DigitalSteeringPreset==0,"Mouse steering did not map to a linear native axis");
+            mouse.controllerResponse=0;Check(mouse.NativeSteeringDeadzone==.2f&&mouse.NativeSteeringSmoothing==.5f&&!mouse.ReplacesOtherSteeringSettings,"Native deadzone or smoothing changed outside mouse steering");
+        }
         foreach(Action<Idas3GameOptions.Values> change in new Action<Idas3GameOptions.Values>[]{
-            v=>v.steeringDeadzoneGamepad=.2f,v=>v.steeringSensitivity=5,v=>v.steeringDeadzonePrevious=.2f,v=>v.steeringDeadzoneWheel=.2f,
+            v=>v.steeringDeadzoneGamepad=.2f,v=>v.steeringSensitivity=5,v=>v.mouseSteeringSensitivity=.2f,v=>v.mouseSteeringAid=false,v=>v.mouseSteeringAidRange=900,v=>v.hudSteeringAidSize=4,
+            v=>v.SetHudOffset(Idas3MouseSteeringAid.HudGroup,new Vector2(.1f,0)),v=>v.SetHudSizePercent(Idas3MouseSteeringAid.HudGroup,120),v=>v.steeringDeadzonePrevious=.2f,v=>v.steeringDeadzoneWheel=.2f,
             v=>v.wheelForceFeedback=true,v=>v.wheelFeedbackStrength=.2f,v=>v.wheelFeedbackInvert=true,v=>v.wheelFeedbackDevice="another-device"}){
             var changed=fresh.Current.Clone();change(changed);Check(!Idas3GameOptions.Equivalent(fresh.Current,changed),"New steering or wheel option is absent from equality");
         }
-        foreach(int invalid in new[]{-1,4,int.MinValue,int.MaxValue}){
+        foreach(int invalid in new[]{-1,5,int.MinValue,int.MaxValue}){
             var invalidOptions=fresh.Current.Clone();invalidOptions.controllerResponse=invalid;
             Check(Idas3GameOptions.Normalize(invalidOptions).controllerResponse==0,"Invalid saved controller response did not normalize to default");
         }

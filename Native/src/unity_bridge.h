@@ -243,6 +243,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSteeringSmoothing(float val
 // sensitivity 1 (smoothest)..5 (fastest). Out-of-range values are rejected; uninitialized getter=-1.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetDigitalSteeringPreset(int preset);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneGetDigitalSteeringPreset();
+// 1 while Unity's mouse steering profile is selected (recorded in replays).
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetMouseSteering(int enabled);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetPerformance(int rainDetail);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSunGlare(int enabled);
 // Replay-only world camera, applied by ReplayPose cameraMode4 before culling.

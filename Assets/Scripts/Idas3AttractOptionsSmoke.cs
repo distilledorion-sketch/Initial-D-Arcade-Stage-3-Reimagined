@@ -496,7 +496,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         var editor=menu.HudEditor;
         Check(editor!=null&&editor.IsOpen&&menu.CustomizingHud,"Edit Layout opens inside the customization transaction");
         // Exercise the actual preview geometry, not just the saved percentages.
-        int[] resizeGroups={1,2,3,6,7,4,5,8,9,10};
+        int[] resizeGroups={1,2,3,6,7,4,5,8,9,10,Idas3MouseSteeringAid.HudGroup};
         var initialLayout=editor.Draft.Clone();
         for(int index=0;index<resizeGroups.Length;++index){
             int group=resizeGroups[index];editor.SelectGroup(index);editor.SetSelectedSizePercent(112);editor.Refresh();
@@ -930,7 +930,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
             menu.NavigateHorizontal(1);Check(options.Draft.HudSizePercent(5)==101&&options.HasUnsavedChanges,"101% selection not dirty");
             menu.Activate();Check(options.Draft.HudSizePercent(5)==102,"Confirm did not advance by one percent");
             menu.Navigate(1);menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==1,"Right should zoom out to wider");menu.NavigateHorizontal(1);Check(options.Draft.minimapZoom==0,"Zoom out did not select 50%");
-            var sizeGroups=new[]{1,2,3,6,7,4,9,8,10};
+            var sizeGroups=new[]{1,2,3,6,7,4,9,8,10,Idas3MouseSteeringAid.HudGroup};
             menu.SelectCategory(Idas3PauseMenu.Category.Hud);menu.Navigate(1);menu.Navigate(1);menu.Activate();
             Check(menu.HudSizesVisible,"HUD Sizes submenu unavailable");
             for(int row=0;row<sizeGroups.Length;++row){

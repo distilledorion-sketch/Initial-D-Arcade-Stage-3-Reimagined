@@ -38,6 +38,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private Idas3WheelFeedback wheelFeedback;
     private Idas3ControllerVibration controllerVibration;
     private bool feedbackExportUnavailable;
+    private readonly Idas3MouseSteering mouseSteering = new Idas3MouseSteering();
+    private Idas3MouseSteeringAid mouseSteeringAid;
+    private bool mouseDrivingFrame;
+    private int mouseRacePhase;
+    // True while the mouse owns steering this frame (drives the steering aid).
+    internal bool MouseSteeringActive { get; private set; }
+    internal float MouseSteeringPosition => mouseSteering.Position;
     internal Idas3ControllerDevices ControllerDevices => controllerDevices;
     internal Idas3ControlBindings ControlBindings => controlBindings;
     internal Idas3Native.FrameInput DiagnosticSubmittedInput { get; private set; }
@@ -275,6 +282,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             multiplayer.ReturnedToMode += ShowReturnedLobby;
             challenger=gameObject.AddComponent<Idas3ChallengerOverlay>();
             challenger.Initialize(this,multiplayer);
+            mouseSteeringAid=gameObject.AddComponent<Idas3MouseSteeringAid>();
+            mouseSteeringAid.Initialize(this);
             Idas3MultiplayerSmoke.Attach(this, multiplayer);
             Idas3PauseSmoke.Attach(this, gameOptions, pauseMenu);
             Idas3PreRaceSmoke.Attach(this);
@@ -423,7 +432,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
                     if (keys[i] != KeyCode.F1 && Input.GetKey(keys[i])) frame.SetKey(virtualKeys[i]);
                 // Managed menus hit-test the pointer themselves. Translating
                 // their click to Enter activates the controller selection first.
-                Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0),
+                // A left click bound to a driving action is held as driving input
+                // until released; it must not also confirm the next screen.
+                bool leftClickDriving = controlBindings.LatchLeftClick(Input.GetMouseButton(0), mouseDrivingFrame);
+                Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0)&&!leftClickDriving,
                     !networkRoom&&!pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&
                     !saveMenuOwnsPointer&&!menuInput.SavePointerReleaseBlocked);
                 controllerDevices.TryRead(out physicalPad);
@@ -471,7 +483,10 @@ public sealed class Idas3SceneGame : MonoBehaviour
             // driving packet is translated; original steering conditioning
             // and simulation code receive the same analog ranges as before.
             bool drivingBindings = (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 0 && Status.racePhase < 3;
-            if (drivingBindings && !pauseMenu.IsOpen && !multiplayerMenu.BlocksGameInput)
+            bool driving = drivingBindings && !pauseMenu.IsOpen && !multiplayerMenu.BlocksGameInput;
+            mouseDrivingFrame = driving;
+            UpdateMouseSteering(driving);
+            if (driving)
                 controlBindings.ApplyDriving(ref frame);
             else controlBindings.ApplyMenu(ref frame,controllerDevices.ActiveIsGeneric,true);
             if (!Idas3SceneSmoke.PrepareFrame(ref frame)) return;
@@ -622,12 +637,14 @@ public sealed class Idas3SceneGame : MonoBehaviour
             throw new InvalidOperationException("Could not apply tire-squeal volume. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetControllerResponse(values.NativeControllerResponse) != 1)
             throw new InvalidOperationException("Could not apply controller response. " + Idas3Native.Error());
-        if (Idas3Native.Idas3SceneSetSteeringDeadzone(values.SteeringDeadzone) != 1)
+        if (Idas3Native.Idas3SceneSetSteeringDeadzone(values.NativeSteeringDeadzone) != 1)
             throw new InvalidOperationException("Could not apply steering deadzone. " + Idas3Native.Error());
-        if (Idas3Native.Idas3SceneSetSteeringSmoothing(values.steeringSmoothing) != 1)
+        if (Idas3Native.Idas3SceneSetSteeringSmoothing(values.NativeSteeringSmoothing) != 1)
             throw new InvalidOperationException("Could not apply steering smoothing. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetDigitalSteeringPreset(values.DigitalSteeringPreset) != 1)
             throw new InvalidOperationException("Could not apply digital steering preset. " + Idas3Native.Error());
+        if (Idas3Native.Idas3SceneSetMouseSteering(values.UsesMouseSteering ? 1 : 0) != 1)
+            throw new InvalidOperationException("Could not apply mouse steering. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetPerformance(values.rainDetail) != 1)
             throw new InvalidOperationException("Could not apply performance options. " + Idas3Native.Error());
         if (Idas3Native.Idas3SceneSetSunGlare(values.sunGlare?1:0) != 1)
@@ -667,9 +684,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             catch(BadImageFormatException){feedbackExportUnavailable=true;allowed=false;}
         }
         double now=Time.realtimeSinceStartupAsDouble;
-        // Alternative button steering turns wheel force feedback and vibration off;
-        // both treat missing settings as disabled and stop their output.
-        var feedbackSettings=gameOptions.Current.UsesAlternativeButtonSteering?null:gameOptions.Current;
+        // Alternative button and mouse steering turn wheel force feedback and
+        // vibration off; both treat missing settings as disabled and stop their output.
+        var feedbackSettings=gameOptions.Current.ReplacesOtherSteeringSettings?null:gameOptions.Current;
         wheelFeedback.Update(feedbackSettings,controllerDevices.WheelIdentity,state,allowed,now);
         controllerVibration.Update(feedbackSettings,target,state,allowed,now);
     }
@@ -677,6 +694,26 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void OnApplicationPause(bool paused){if(paused){wheelFeedback?.Stop();controllerVibration?.Stop();}}
     private void OnDisable(){wheelFeedback?.Stop();controllerVibration?.Stop();}
     private static bool NoKeyHeld(KeyCode key) => false;
+    // Mouse steering profile: delta X moves a virtual wheel while driving. It
+    // recentres whenever the mouse cannot steer, a race restarts, or keys or a
+    // bound axis take over, and the cursor is captured only while it steers.
+    private void UpdateMouseSteering(bool driving)
+    {
+        var values = gameOptions.Current;
+        bool active = values.UsesMouseSteering && driving && Focused && !controlBindings.SuppressInput &&
+            !raceMusicMenu.BlocksGameInput && !challenger.Active;
+        bool other = active && controlBindings.OtherSteeringHeld;
+        if (!active || other || Status.racePhase < mouseRacePhase) mouseSteering.Reset();
+        mouseRacePhase = Status.racePhase;
+        // Locking the cursor can warp it; ignore the delta of the capture frame.
+        bool capturing = active && Cursor.lockState != CursorLockMode.Locked;
+        if (active && !other && !capturing && !diagnosticMode && UnityEngine.InputSystem.Mouse.current != null)
+            mouseSteering.Advance(UnityEngine.InputSystem.Mouse.current.delta.ReadValue().x, values.mouseSteeringSensitivity);
+        MouseSteeringActive = active;
+        controlBindings.MouseSteering = active && !other ? mouseSteering.Position : float.NaN;
+        if (active) { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
+        else if (Cursor.lockState == CursorLockMode.Locked) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
+    }
 
     private void ControllerDeviceChanged()
     {

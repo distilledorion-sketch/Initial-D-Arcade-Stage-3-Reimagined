@@ -13,14 +13,14 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private static readonly Color PromptYellow=new Color32(255,221,44,255);
     public enum Category {Audio,Graphics,Gameplay,Controls,Steering,Online,Replays,Hud,Updates}
     private static readonly string[] Tabs={"AUDIO","DISPLAY & GRAPHICS","GAMEPLAY","CONTROLS","STEERING & WHEEL","ONLINE","REPLAYS","HUD & MAP","UPDATES"};
-    private static readonly int[] HudSizeGroups={1,2,3,6,7,4,9,8,10};
-    private static readonly string[] HudSizeNames={"TIME / SECTION TIMES","SPEEDOMETER / GEAR","TIME ATTACK RECORDS","LEGEND OPPONENT PANEL","ONLINE OPPONENT PANEL","REAR-VIEW MIRROR","TIME EXTENDED","ACCEPTING CHALLENGERS","ORNAMENT / KEYCHAIN"};
+    private static readonly int[] HudSizeGroups={1,2,3,6,7,4,9,8,10,Idas3MouseSteeringAid.HudGroup};
+    private static readonly string[] HudSizeNames={"TIME / SECTION TIMES","SPEEDOMETER / GEAR","TIME ATTACK RECORDS","LEGEND OPPONENT PANEL","ONLINE OPPONENT PANEL","REAR-VIEW MIRROR","TIME EXTENDED","ACCEPTING CHALLENGERS","ORNAMENT / KEYCHAIN","MOUSE STEERING AID"};
     public string ReplayStatus {get;set;}="Finished recordings are saved on this computer.";
     public string CommunityStatus {get;set;}="Community times ready.";
     public Idas3Updates Updates {get;set;}
     private static readonly string[] DisplayModes={"WINDOWED","BORDERLESS","FULLSCREEN"};
     private static readonly string[] CameraModes={"BUMPER","CHASE","NATURAL"};
-    private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS RESPONSE","FLYCAST WHEEL","ALTERNATIVE BUTTON STEERING"};
+    private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS RESPONSE","FLYCAST WHEEL","ALTERNATIVE BUTTON STEERING","MOUSE STEERING"};
     private static readonly string[] SensitivityLevels={"1 (SMOOTHEST)","2","3","4","5 (FASTEST)"};
     private static readonly int[] FrameCaps={0,30,60,90,120,144,165,240,360},AaValues={0,2,4,8};
     private Idas3GameOptions options;
@@ -150,12 +150,14 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     // smoothing, so those rows are neither shown nor reachable.
     // Alternative button steering replaces every other steering and wheel
     // setting, so only the profile and its SENSITIVITY are shown or reachable.
-    // SENSITIVITY exists only for that profile.
-    private const int SensitivityRow=3;
+    // Mouse steering does the same with its own SENSITIVITY, STEERING AID and
+    // AID RANGE. Those rows exist only for these profiles.
+    private const int SensitivityRow=3,SteeringAidRow=10,SteeringAidRangeRow=11;
     private bool SteeringTabShown=>showOptions&&tab==4&&!hudSizesOpen&&options!=null;
-    private bool AlternativeSteeringShown=>SteeringTabShown&&options.Draft.UsesAlternativeButtonSteering;
+    private bool AlternativeSteeringShown=>SteeringTabShown&&options.Draft.ReplacesOtherSteeringSettings;
     private bool RowHidden(int row)=>SteeringTabShown&&row>=0&&row<Rows&&
-        (options.Draft.UsesAlternativeButtonSteering?row!=0&&row!=SensitivityRow:row==SensitivityRow);
+        (options.Draft.UsesMouseSteering?row!=0&&row!=SensitivityRow&&row!=SteeringAidRow&&row!=SteeringAidRangeRow:
+        options.Draft.UsesAlternativeButtonSteering?row!=0&&row!=SensitivityRow:row==SensitivityRow||row>=SteeringAidRow);
     private void SkipHiddenRows(int delta){
         int step=delta<0?-1:1;
         for(int i=0;i<Rows+3&&selection>=1&&RowHidden(selection-1);++i)selection=1+Wrap(selection-1+step,Rows+3);
@@ -225,7 +227,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     private bool Modal=>bindingChoice||pending!=Command.None||options.DisplayConfirmationPending||(bindings!=null&&bindings.IsCapturing);
     private int BindingFirstSelection=>controllerDevices!=null?2:1;
     private bool DeviceRowSelected=>controllerDevices!=null&&selection==1;
-    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?10:tab==2?7:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
+    private int Rows=>hudSizesOpen?HudSizeGroups.Length:tab==8?1:tab==7?6:tab==6?4:tab==5?4:tab==0?6:tab==4?12:tab==2?7:tab==1?11:bindings!=null?Idas3ControlBindings.ActionCount+BindingFirstSelection-1:0;
     private static int Wrap(int value,int count)=>(value%count+count)%count;
     private void Update(){
         double now=Time.realtimeSinceStartupAsDouble;options?.Tick(now);
@@ -358,7 +360,11 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             if(row==0)v.controllerResponse=Wrap(v.controllerResponse+direction,ControllerResponses.Length);
             if(row==1)v.SteeringDeadzone=Mathf.Clamp(Mathf.Round(v.SteeringDeadzone*100)+direction,0,30)/100f;
             if(row==2)v.steeringSmoothing=Mathf.Clamp(Mathf.Round(v.steeringSmoothing*100)+direction,0,100)/100f;
-            if(row==SensitivityRow)v.steeringSensitivity=1+Wrap(v.steeringSensitivity-1+direction,SensitivityLevels.Length);
+            if(row==SensitivityRow&&v.UsesMouseSteering)v.mouseSteeringSensitivity=Mathf.Clamp(Mathf.Round(v.mouseSteeringSensitivity*100)+direction,0,100)/100f;
+            else if(row==SensitivityRow)v.steeringSensitivity=1+Wrap(v.steeringSensitivity-1+direction,SensitivityLevels.Length);
+            if(row==SteeringAidRow)v.mouseSteeringAid=!v.mouseSteeringAid;
+            if(row==SteeringAidRangeRow)v.mouseSteeringAidRange=Mathf.Clamp(v.mouseSteeringAidRange+Math.Sign(direction)*Idas3GameOptions.Values.MouseSteeringAidRangeStep,
+                Idas3GameOptions.Values.MouseSteeringAidRangeMin,Idas3GameOptions.Values.MouseSteeringAidRangeMax);
             if(row==4)v.wheelForceFeedback=!v.wheelForceFeedback;
             if(row==5&&wheelFeedback!=null){
                 var choices=wheelFeedback.Choices;if(choices.Count>0){
@@ -569,7 +575,15 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         }else if(tab==3)ControlsView();
         else if(tab==4){
             Text(new Rect(290,182,681,22),"STEERING RESPONSE",small);
-            if(AlternativeSteeringShown){
+            if(AlternativeSteeringShown&&v.UsesMouseSteering){
+                ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
+                SliderRow(SensitivityRow,"SENSITIVITY",v.mouseSteeringSensitivity,1,value=>v.mouseSteeringSensitivity=value);
+                ChoiceRow(SteeringAidRow,"STEERING AID",v.mouseSteeringAid?"ON":"OFF");
+                ChoiceRow(SteeringAidRangeRow,"AID ROTATION RANGE",v.mouseSteeringAidRange+"°",false);
+                Text(new Rect(288,526,681,18),selection==SteeringAidRow+1?"Shows a wheel that turns with the mouse. Move and size it in EDIT HUD LAYOUT.":
+                    selection==SteeringAidRangeRow+1?"How far the steering aid turns from lock to lock. Steering itself is unchanged.":
+                    "Move the mouse left/right to steer. The cursor is captured while driving.",wrapped);
+            }else if(AlternativeSteeringShown){
                 ChoiceRow(0,"RESPONSE PROFILE",ControllerResponses[v.controllerResponse]);
                 ChoiceRow(SensitivityRow,"SENSITIVITY",SensitivityLevels[v.steeringSensitivity-1]);
                 Text(new Rect(288,526,681,18),selection==SensitivityRow+1?"Keyboard and D-pad only. Follows Initial D Street Stage's steering sensitivity.":"Alternative button steering replaces all other steering and wheel settings.",wrapped);
@@ -615,7 +629,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         return string.IsNullOrEmpty(id)?"AUTOMATIC":"DISCONNECTED DEVICE";
     }
     private bool CompactRows=>tab==1||tab==2||tab==4||hudSizesOpen;
-    private float RowY(int row)=>tab==2?194+row*41:tab==4?(AlternativeSteeringShown?206+(row==SensitivityRow?29:0):row<3?206+row*29:317+(row-4)*29):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
+    private float RowY(int row)=>tab==2?194+row*41:tab==4?(AlternativeSteeringShown?206+(row==SensitivityRow?29:row==SteeringAidRow?58:row==SteeringAidRangeRow?87:0):row<3?206+row*29:317+(row-4)*29):tab==1?194+row*29:CompactRows?194+row*36:194+row*59;
     private void FovRow(int row,Idas3GameOptions.Values value){
         float y=RowY(row);
         if(selection==row+1)Frame(new Rect(278,y,714,35),Red);
