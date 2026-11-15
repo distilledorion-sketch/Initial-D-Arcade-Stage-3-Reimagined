@@ -216,6 +216,14 @@ public static class Idas3ControllerMenuChecks
             menu.Navigate(1);menu.Activate();expected.wheelForceFeedback=true;
             menu.Navigate(1);menu.Navigate(1);menu.NavigateHorizontal(1);expected.wheelFeedbackStrength=.36f;
             menu.Navigate(1);menu.Activate();expected.wheelFeedbackInvert=true;
+            select(Idas3PauseMenu.Category.Steering,0);menu.NavigateHorizontal(1);menu.NavigateHorizontal(1);expected.controllerResponse=3;
+            menu.Navigate(1);menu.NavigateHorizontal(1);expected.steeringSensitivity=4;
+            select(Idas3PauseMenu.Category.Steering,0);menu.NavigateHorizontal(1);expected.controllerResponse=4;
+            menu.Navigate(1);menu.NavigateHorizontal(1);expected.mouseSteeringSensitivity=.51f;
+            menu.Navigate(1);menu.Activate();expected.mouseSteeringAid=false;
+            menu.Navigate(1);menu.NavigateHorizontal(1);expected.mouseSteeringAidRange=570;
+            menu.NavigateHorizontal(-1);menu.NavigateHorizontal(-1);expected.mouseSteeringAidRange=510;
+            Check(options.Draft.mouseSteeringSensitivity==.51f&&!options.Draft.mouseSteeringAid&&options.Draft.steeringDeadzonePrevious==.14f,"Mouse steering navigation reached a hidden row");
             select(Idas3PauseMenu.Category.Online,2);menu.Activate();expected.discordPresence=!expected.discordPresence;
             select(Idas3PauseMenu.Category.Online,3);menu.Activate();expected.hideLightsOffAdvantage=false;
             select(Idas3PauseMenu.Category.Hud,3);menu.Activate();expected.minimapDisplay=1;
@@ -224,6 +232,7 @@ public static class Idas3ControllerMenuChecks
             select(Idas3PauseMenu.Category.Hud,2);menu.Activate();
             Check(menu.HudSizesVisible&&menu.SelectedTab==(int)Idas3PauseMenu.Category.Hud,"HUD Sizes must open under HUD options");
             for(int row=0;row<8;++row)menu.Navigate(1);menu.NavigateHorizontal(1);expected.SetHudSizePercent(10,101);
+            menu.Navigate(1);menu.NavigateHorizontal(1);expected.SetHudSizePercent(Idas3MouseSteeringAid.HudGroup,101);
             Check(options.HasUnsavedChanges&&Idas3GameOptions.Equivalent(options.Draft,expected),"Relocated controls edited the wrong settings: "+JsonUtility.ToJson(options.Draft)+" expected "+JsonUtility.ToJson(expected));
             Check(!options.Current.showFps&&!options.Current.muteWhenUnfocused,"Category changes applied before Apply");
             menu.Navigate(1);menu.Navigate(1);menu.Activate();

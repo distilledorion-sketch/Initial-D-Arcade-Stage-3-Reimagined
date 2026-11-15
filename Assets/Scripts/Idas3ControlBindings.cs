@@ -417,7 +417,7 @@ public sealed partial class Idas3ControlBindings
                 // Pedals commonly rest at +1 or -1. Only buttons/keys must be
                 // released; axes arm at their measured rest instead of zero.
                 bool arm=controls.Count>0? !ButtonsOrKeysHeld():!anyHeld;
-                if (arm) { captureArmed = true;SnapshotRest(); CapturePrompt = captureSlot == Slot.Controller ? captureAction==ActionId.Start?"Press a controller button. Escape cancels.":"Press a button or move one axis/pedal. Escape cancels." : "Press a key. Escape cancels."; }
+                if (arm) { captureArmed = true;SnapshotRest(); CapturePrompt = captureSlot == Slot.Controller ? captureAction==ActionId.Start?"Press a controller button. Escape cancels.":"Press a button or move one axis/pedal. Escape cancels." : "Press a key or click. Escape cancels."; }
                 return;
             }
             bool attempted = false, accepted = false;
@@ -430,7 +430,7 @@ public sealed partial class Idas3ControlBindings
             else
             {
                 foreach (var key in PollKeys)
-                    if ((int)key < (int)KeyCode.Mouse0 && Held(key))
+                    if (((int)key < (int)KeyCode.Mouse0 || MouseButton(key)) && Held(key))
                     { attempted = true; accepted = TrySetDraftKey(captureAction, captureSlot, key); break; }
             }
             if (attempted)
@@ -525,7 +525,8 @@ public sealed partial class Idas3ControlBindings
         }
         if(StartHeld){frame.padConnected=1;frame.padButtons|=0x10;}
         if(SuppressInput&&!preserveHeldEdges)return;
-        bool MenuAction(ActionId action)=>keyboardActions[(int)action]||rigAmounts[(int)action]>=.5f||
+        // Clicks belong to the pointer in menus; a mouse-bound pedal is not Enter.
+        bool MenuAction(ActionId action)=>KeyHeldExceptMouse(current.actions[(int)action])||rigAmounts[(int)action]>=.5f||
             (preserveHeldEdges&&SuppressInput?DigitalRaw(current.actions[(int)action])&&!StartAlias(current.actions[(int)action]):DigitalOther(current.actions[(int)action]));
         // The host neutralizes blocked packets after retaining menu edges.
         // Populate held actions even during capture so cancelling cannot turn
@@ -578,14 +579,39 @@ public sealed partial class Idas3ControlBindings
         }
         frame.flags |= (uint)gear<<8;
         frame.flags |= (uint)SteeringSource()<<11;
-        if (!pad.connected&&controls.Count==0) return;
+        bool mouse = MouseSteeringActive;
+        if (!pad.connected&&controls.Count==0)
+        {
+            if (mouse) { frame.padConnected = 1; frame.thumbLX = Idas3MouseSteering.Axis(MouseSteering); }
+            return;
+        }
         frame.padConnected = 1;
         frame.rightTrigger = Math.Max(Pedal(current.actions[0]),(uint)Math.Round(rigAmounts[0]*255)); frame.leftTrigger = Math.Max(Pedal(current.actions[1]),(uint)Math.Round(rigAmounts[1]*255));
-        frame.thumbLX = Math.Max(-32768, Math.Min(32767, Math.Max(Axis(current.actions[3], false),(int)Math.Round(rigAmounts[3]*32767)) - Math.Max(Axis(current.actions[2], true),(int)Math.Round(rigAmounts[2]*32768))));
+        frame.thumbLX = BoundSteeringAxis();
         frame.thumbLY = SteeringOrthogonal();
+        // The host recentres the virtual wheel whenever a bound axis steers,
+        // so the mouse only fills an otherwise centred steering axis.
+        if (mouse && frame.thumbLX == 0) { frame.thumbLX = Idas3MouseSteering.Axis(MouseSteering); frame.thumbLY = 0; }
         if (DigitalOther(current.actions[4])||rigAmounts[4]>=.5f) frame.padButtons |= 0x2000;
         if (DigitalOther(current.actions[5])||rigAmounts[5]>=.5f) frame.padButtons |= 0x4000;
         if (DigitalOther(current.actions[6])||rigAmounts[6]>=.5f) frame.padButtons |= 0x8000;
+    }
+    private int BoundSteeringAxis() =>
+        Math.Max(-32768, Math.Min(32767, Math.Max(Axis(current.actions[3], false),(int)Math.Round(rigAmounts[3]*32767)) - Math.Max(Axis(current.actions[2], true),(int)Math.Round(rigAmounts[2]*32768))));
+    // Mouse steering profile: the host's virtual wheel position, or NaN when
+    // the profile is off or the mouse does not own steering this frame.
+    internal float MouseSteering = float.NaN;
+    private bool MouseSteeringActive => !float.IsNaN(MouseSteering);
+    // Keys or a bound axis/wheel steering past its noise floor take over from the mouse.
+    internal bool OtherSteeringHeld
+    {
+        get
+        {
+            if (current == null || SuppressInput) return false;
+            if (keyboardActions[(int)ActionId.SteerLeft] || keyboardActions[(int)ActionId.SteerRight]) return true;
+            if (!pad.connected && controls.Count == 0) return false;
+            return Math.Abs(BoundSteeringAxis()) > 32768 * .15f;
+        }
     }
     // Replay label only; it never changes the steering value sent to native.
     public enum SteeringSourceId { None, Keyboard, Dpad, Analog, Wheel }
@@ -604,6 +630,9 @@ public sealed partial class Idas3ControlBindings
         // zone, so slight stick drift must not relabel a keyboard tick.
         bool keys=keyboardActions[(int)ActionId.SteerLeft]||keyboardActions[(int)ActionId.SteerRight];
         if(keys&&amount<=.15f)return SteeringSourceId.Keyboard;
+        // Mouse steering reaches native as a linear axis. Replays label it analog
+        // (older readers reject other values) and mark the profile in metadata.
+        if(amount<.02f&&MouseSteeringActive&&Math.Abs(MouseSteering)>=.02f)return SteeringSourceId.Analog;
         return amount<.02f?SteeringSourceId.None:best;
     }
     private int SteeringOrthogonal()
@@ -681,6 +710,23 @@ public sealed partial class Idas3ControlBindings
     }
     private bool ActionHeld(ActionId action) => keyboardActions[(int)action] || DigitalOther(current.actions[(int)action]) || rigAmounts[(int)action]>=.5f;
     private bool Held(KeyCode key) => key != KeyCode.None && (int)key >= 0 && (int)key < heldKeys.Length && heldKeys[(int)key];
+    // Left and right click bind like keys; other mouse buttons stay unbindable.
+    public static bool MouseButton(KeyCode key) => key == KeyCode.Mouse0 || key == KeyCode.Mouse1;
+    private bool KeyHeldExceptMouse(Binding binding) =>
+        (!MouseButton(binding.key1) && Held(binding.key1)) || (!MouseButton(binding.key2) && Held(binding.key2)) || (!MouseButton(binding.key3) && Held(binding.key3));
+    internal bool LeftClickBound
+    {
+        get { if(current==null)return false;foreach(var binding in current.actions)if(binding.key1==KeyCode.Mouse0||binding.key2==KeyCode.Mouse0||binding.key3==KeyCode.Mouse0)return true;return false; }
+    }
+    // A left click bound to a driving action is a driving input, not a menu
+    // confirmation. Once held during driving it stays one until released, so
+    // a throttle held across the finish cannot confirm the result screen.
+    private bool leftClickLatched;
+    internal bool LatchLeftClick(bool held, bool driving)
+    {
+        leftClickLatched = held && (leftClickLatched || (driving && LeftClickBound));
+        return leftClickLatched;
+    }
     private bool AnyInputHeld()
     {
         foreach (var key in PollKeys) if (Held(key)) return true;
@@ -838,8 +884,10 @@ public sealed partial class Idas3ControlBindings
             foreach (var key in new[] { binding.key1, binding.key2, binding.key3 })
             {
                 if (key == KeyCode.None) continue;
-                if (!ValidKeys.Contains(key) || (int)key >= (int)KeyCode.Mouse0)
+                if (!ValidKeys.Contains(key) || ((int)key >= (int)KeyCode.Mouse0 && !MouseButton(key)))
                 { error = "Choose a keyboard key for " + ActionName(action) + "."; return false; }
+                if (MouseButton(key) && (action == ActionId.Pause || action == ActionId.Online || action == ActionId.Start))
+                { error = "Mouse buttons can't open menus."; return false; }
                 if ((key == KeyCode.Escape && action != ActionId.Pause) || (key == KeyCode.F1 && action != ActionId.Online) ||
                     key == KeyCode.Return || key == KeyCode.KeypadEnter || key == KeyCode.F2 || key == KeyCode.F3 || key == KeyCode.F5 || key == KeyCode.F11)
                 { error = KeyName(key) + " is reserved for menu or game commands."; return false; }
@@ -917,7 +965,8 @@ public sealed partial class Idas3ControlBindings
             case KeyCode.LeftArrow: return "Left"; case KeyCode.RightArrow: return "Right"; case KeyCode.LeftShift: return "Left Shift";
             case KeyCode.RightShift: return "Right Shift"; case KeyCode.LeftControl: return "Left Ctrl"; case KeyCode.RightControl: return "Right Ctrl";
             case KeyCode.LeftAlt: return "Left Alt"; case KeyCode.RightAlt: return "Right Alt"; case KeyCode.Return: return "Enter";
-            case KeyCode.KeypadEnter: return "Keypad Enter"; default: return key.ToString();
+            case KeyCode.KeypadEnter: return "Keypad Enter"; case KeyCode.Mouse0: return "Left Click"; case KeyCode.Mouse1: return "Right Click";
+            default: return key.ToString();
         }
     }
     public static string PadName(PadInput input)
