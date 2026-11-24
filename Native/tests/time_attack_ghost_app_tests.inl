@@ -21,12 +21,12 @@ int runTimeAttackGhostAppTests(App& a){
     for(std::int32_t i=0;i<=goal+8&&a.race.phase==RacePhase::Running;i+=2){const auto gate=a.originalRace.gate(i);a.vehicle.position={gate.center[0],gate.center[1],gate.center[2]};a.simulate({});}
     a.validationMode=true;
     check(a.race.phase==RacePhase::Finished&&!a.race.timeUp,"Native finish unavailable");
-    TimeAttackGhost saved;check(saved.load(a.personalGhostPath()),"Actual TA finish did not save ghost");
-    const auto finish=saved.replay.finishTicks6000;
-    check(finish==a.race.elapsed6000&&saved.car==0,"Ghost did not store exact finish");
+    const auto finish=a.race.elapsed6000;
     a.sharedFinishJson.clear();a.start();
     check(a.personalGhost.replay.finishTicks6000==finish,"Retry failed to load same best run");
-    a.race.ticks=60;a.race.phase=RacePhase::Running;a.clock.accumulator=FixedClock::step*.25;
+    TimeAttackGhost saved;check(saved.load(a.personalGhostPath()),"Actual TA finish did not save ghost");
+    check(saved.replay.finishTicks6000==finish&&saved.car==0,"Ghost did not store exact finish");
+    a.race.ticks=60;a.race.phase=RacePhase::Running;a.clock.accumulator=OriginalDrivingClock::step*.25;
     check(std::abs(a.personalGhostTick()-59.25)<.00001,"Ghost not synchronized to presentation alpha");
     a.paused=true;check(a.personalGhostTick()==60,"Paused ghost advanced");a.paused=false;
     a.multiplayer.active=true;check(!a.personalGhostContext(),"Online race showed personal ghost");a.multiplayer.active=false;

@@ -16,7 +16,7 @@ struct ImportedCourse {
     unsigned handlingCondition(bool reverse)const{return importedCourseDefinition(id).handlingCondition+unsigned(reverse);}
     static unsigned courseId(const std::filesystem::path& root){
         std::ifstream f(root/"course.id");unsigned value=9;
-        if(f&&(!(f>>value)||!isImportedCourseId(int(value))))throw std::runtime_error("Invalid imported course identity");
+        if(f&&(!(f>>value)||(value<9||value>=supportedCourseCount)))throw std::runtime_error("Invalid imported course identity");
         return value;
     }
     unsigned id=9;
@@ -44,7 +44,7 @@ struct ImportedCourse {
     const std::vector<original::OriginalRacePoint>& rightFor(bool reverse)const{return reverse&&reverseRoute?reverseRoute->right:right;}
     // The presentation course in race direction, under the course's own id.
     Course course(bool reverse)const{
-        auto result=Course::load(root,reverse&&reverseRoute?slug+"_reverse":slug,name,reverse);result.id=slug;return result;
+        auto result=Course::load(root,reverse&&reverseRoute?slug+"_reverse":slug,name,reverse);result.id=isUserCourseId(id)?"mod-"+std::to_string(id):slug;return result;
     }
     // Source point of a route index, which exceeds the period after a lap.
     const original::OriginalRacePoint& routePoint(bool reverse,int index)const{
@@ -77,8 +77,9 @@ struct ImportedCourse {
         for(unsigned i=0;i<4;++i)result[i]=int(std::ceil(result[i]*timerScale[unsigned(reverse)][i]));
         return result;
     }
-    static ImportedCourse load(const std::filesystem::path& root){
-        ImportedCourse c;c.root=root;c.id=courseId(root);const auto& definition=importedCourseDefinition(c.id);
+    static ImportedCourse load(const std::filesystem::path& root){return load(root,courseId(root));}
+    static ImportedCourse load(const std::filesystem::path& root,unsigned id){
+        ImportedCourse c;c.root=root;c.id=id;const auto& definition=importedCourseDefinition(c.id);
         c.slug=definition.slug;c.name=definition.name;c.source=Course::load(root,c.slug,c.name);
         const auto fill=[](const Course& source,std::vector<original::OriginalRacePoint>& center,
             std::vector<original::OriginalRacePoint>& left,std::vector<original::OriginalRacePoint>& right){
@@ -136,7 +137,7 @@ struct ImportedCourse {
             c.lamps.push_back({p[0],p[1],p[2]});
         }
         if(lights.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Trailing imported lamp data");
-        c.collision=original::OriginalCollisionData::load(root/(c.slug+".rcl"));c.collision.importedSweepFromPrevious=c.id<16;
+        c.collision=original::OriginalCollisionData::load(root/(c.slug+".rcl"));c.collision.importedSweepFromPrevious=c.id<16||isUserCourseId(c.id);
         // Gunsai's source blocks a different strip per direction (R64top
         // forward, R80btm backward), so its converter writes both files.
         // Odawara's source has a collision mesh per direction.

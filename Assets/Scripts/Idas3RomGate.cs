@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.IO;
 using System.Threading;
@@ -39,7 +44,7 @@ public sealed class Idas3RomGate : MonoBehaviour
         // Deliberately applies to editor play, diagnostic flags, replay viewing,
         // legacy host and -idas3-skip-update-once as well as ordinary startup.
         Verified = false;
-        Idas3MenuLocalization.SetLanguage(Idas3MenuLocalization.LoadLanguage(Path.Combine(Application.persistentDataPath,"userdata-unity-scene")));
+        Idas3MenuLocalization.SetLanguage(Idas3MenuLocalization.LoadLanguage(Path.Combine(PlayerStorage.persistentDataPath,"userdata-unity-scene")));
         var go = new GameObject("GDS-0033 startup check");
         DontDestroyOnLoad(go);
         Instance = go.AddComponent<Idas3RomGate>();

@@ -30,8 +30,10 @@ public:
     void load(const std::filesystem::path& root){scene_.load(root);root_=root;}
     bool loaded()const{return scene_.loaded();}
     void begin(OriginalBattleProfile&,const Setup&);
+    void begin(OriginalBattleProfile&,const Setup&,std::uint32_t& sharedRandom);
     bool active()const{return active_;}
     void advance(OriginalBattleProfile&,const Input&);
+    void advance(OriginalBattleProfile&,const Input&,std::uint32_t& sharedRandom);
     bool finished()const{return state_.finished;}
     // True while a choice prompt is on screen and the player's input matters.
     bool choiceVisible()const{return overlayVisible_;}
@@ -52,6 +54,8 @@ public:
     // Events the caller still owns: music, cues and the course-clear movie.
     std::vector<OriginalLegendReturnEvent> takeEvents(){return std::move(pending_);}
 private:
+    void beginImpl(OriginalBattleProfile&,const Setup&,std::uint32_t* sharedRandom);
+    void advanceImpl(OriginalBattleProfile&,const Input&,std::uint32_t* sharedRandom);
     OriginalRivalDialogScene scene_;
     std::filesystem::path root_;
     NativeModel conquerModel_;
@@ -65,7 +69,7 @@ private:
     bool active_=false,dialogVisible_=false,overlayVisible_=false,movieRunning_=false;
     std::uint32_t movieFade_=0;
     OriginalLegendChoiceKind overlay_{};
-    void apply(OriginalBattleProfile&,const OriginalLegendReturnFrame&);
+    void apply(OriginalBattleProfile&,const OriginalLegendReturnFrame&,std::uint32_t* sharedRandom);
     std::string playerName(const OriginalBattleProfile&)const;
 };
 }

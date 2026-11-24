@@ -47,7 +47,7 @@ void prepareEndingWeatherUnityFixture(App& app,unsigned scene){
         app.endingReplay=clip;app.beginEnding();
         for(unsigned tick=0;tick<sample;++tick)app.advanceEnding(1./60);
         if(!app.endingActive||app.endingRain.active()!=(wet&&!snow)||app.endingSnow.active()!=snow)throw std::runtime_error("Ending weather admission");
-        physics=app.originalSession.rollbackDigest();seed=app.endingRandom;
+        physics=app.originalSession.rollbackDigest();seed=app.originalSession.sharedRandomSeed();
         saved.reset();savedSnow.reset();prepared=scenario;
     }else{
         if(prepared!=scenario)throw std::logic_error("Ending comparison before preparation");
@@ -56,7 +56,7 @@ void prepareEndingWeatherUnityFixture(App& app,unsigned scene){
     }
     app.input={};
     if(!app.renderEnding(0))throw std::runtime_error(app.renderer.error);
-    if(app.originalSession.rollbackDigest()!=physics||app.endingRandom!=seed)
+    if(app.originalSession.rollbackDigest()!=physics||app.originalSession.sharedRandomSeed()!=seed)
         throw std::runtime_error("Ending diagnostic render advanced physics or RNG");
     Mesh weather;const auto counts=app.endingRain.append(weather,app.endingRainTextureBase,*app.courseLightFsca);
     const unsigned flakes=app.endingSnow.append(weather,app.endingSnowTextureBase);

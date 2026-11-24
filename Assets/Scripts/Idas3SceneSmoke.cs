@@ -577,31 +577,42 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         Check((host.GetComponent<Camera>().transform.position-a).sqrMagnitude>0.01f,"Attract camera is static.");
         yield return Key(116);
         Check((host.Status.flags&1)==0&&(host.Status.flags&16)!=0,"Quick start did not use original handling.");
-        held=87;yield return Frames(360);held=0;
-        Check(host.Status.simulationTicks>=360&&host.Status.speedMetresPerSecond>1,"Original simulation failed to accelerate.");
+        for(int frame=0;host.Status.racePhase!=2&&frame<1800;++frame)yield return null;
+        Check(host.Status.racePhase==2,"Quick start did not release the car after the showcase and countdown.");
+        ulong startTicks=host.Status.simulationTicks;
+        held=87;
+        for(int frame=0;host.Status.simulationTicks-startTicks<360&&frame<720;++frame)yield return null;
+        held=0;
+        Check(host.Status.racePhase==2&&host.Status.simulationTicks>=startTicks+360&&host.Status.speedMetresPerSecond>1,
+            "Original simulation failed to accelerate during 360 driving ticks (speed "+host.Status.speedMetresPerSecond+").");
         yield return Capture("race-bumper",true);
         Check(FindObjectsByType<Camera>(FindObjectsSortMode.None).Length>=2,"Unity rear-view camera missing.");
         var bumper=host.GetComponent<Camera>().transform.position;
         yield return Key(67);yield return Frames(20);yield return Capture("race-chase",true);
         Check((host.GetComponent<Camera>().transform.position-bumper).sqrMagnitude>0.01f,"Camera switch did not move Unity camera.");
-        yield return Key(27);Check((host.Status.flags&2)!=0,"Pause failed.");
+        var pause=host.GetComponent<Idas3PauseMenu>();pause.SetOpen(true);yield return Frames(4);
+        Check((host.Status.flags&2)!=0,"Pause failed.");
         ulong ticks=host.Status.simulationTicks;yield return Frames(8);Check(host.Status.simulationTicks==ticks,"Paused solver advanced.");
         yield return Capture("race-paused",true);
-        yield return Key(8);yield return Frames(30);
-        Check((host.Status.flags&1)!=0&&host.Status.frontendStage==5,"Course return failed.");
+        Check(Idas3Native.Idas3SceneReturnToCourse()==1,"Paused return to course selection failed.");
+        pause.SetOpen(false);yield return Frames(30);
+        Check((host.Status.flags&1)!=0&&host.Status.frontendStage==6,"Course return failed.");
         yield return Capture("course-menu",false);
         yield return Key(27);yield return Frames(100);
-        Check(host.Status.frontendStage==4,"Mode return failed.");
+        Check(host.Status.frontendStage==5,"Mode return failed.");
         yield return Capture("mode-menu",false);
         yield return Key(13);yield return Frames(180);
-        Check(host.Status.frontendStage==5,"Legend course selection failed.");
+        Check(host.Status.frontendStage==6,"Legend course selection failed.");
         yield return Key(13);yield return Frames(45);
-        Check(host.Status.frontendStage==9,"Legend rival selection failed.");
+        Check(host.Status.frontendStage==10,"Legend rival selection failed.");
         yield return Capture("rival-menu",false);
-        yield return Key(13);yield return Frames(180);
-        Check((host.Status.flags&1)==0,"Legend did not start.");
-        yield return Key(67);held=87;yield return Frames(180);held=0;
+        yield return Key(13);yield return Frames(240);
+        for(int page=0;(host.Status.flags&1)!=0&&page<80;++page){yield return PadStart();yield return Frames(30);}
+        for(int frame=0;host.Status.racePhase!=2&&frame<1800;++frame)yield return null;
+        Check((host.Status.flags&1)==0&&host.Status.racePhase==2,"Legend did not start.");
+        held=87;yield return Frames(180);held=0;
         var scene=host.GetComponent<Idas3SceneRenderer>();
+        for(int view=0;!scene.MirrorCamera.enabled&&view<4;++view){yield return Key(67);yield return Frames(4);}
         Check(scene.MirrorCamera.enabled&&scene.CurrentFrame.viewCount==2,"Legend bumper rear view is missing.");
         yield return Capture("legend-bumper-mirror",true);
         yield return Key(67);yield return Frames(10);yield return Capture("legend-chase",true);
@@ -1118,26 +1129,36 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
             yield return Key(13);yield return Frames(180);
             Check(host.Status.frontendStage==6,"Performance setup did not select Legend Course6.");
         }
-        // Legend and Time Attack have different course lists. Read the actual
-        // selected course rather than assuming a Time Attack carousel index.
-        // Passing Snow may also change retained wet/night selections below.
-        for(int i=0;Idas3SceneModeFlowValue(30)!=perfCourse&&i<Idas3CourseCatalog.Count;++i){
-            yield return Key(39);yield return Frames(6);
-        }
-        Check(Idas3SceneModeFlowValue(30)==perfCourse,"Performance course carousel did not select the requested course.");
-        for(int choice=0;(host.Status.flags&1)!=0&&choice<6;++choice){
-            int stage=host.Status.frontendStage;
-            if(perfLegend&&stage==10){
-                int rival=DiagnosticInt(Environment.GetCommandLineArgs(),"-idas3-perf-rival-choice",perfWet?2:0,0,5);
-                for(int step=0;step<rival;++step){yield return Key(39);yield return Frames(8);}
+        if(perfCourse>=9){
+            // Optional tracks now live in the Mods picker. Start the same race
+            // owner directly so the camera benchmark also covers these tracks.
+            Check(!perfLegend&&Idas3Native.Idas3SceneStartImportedCourseConditions(
+                Idas3CourseCatalog.PackPath(Idas3CourseCatalog.Packs[perfCourse-9]),perfReverse?1:0,
+                perfNight||Idas3CourseCatalog.RequiresNight(perfCourse)?1:0,perfWet?1:0)==1,
+                "Imported performance race failed to start");
+            yield return Frames(1);
+        }else{
+            // Legend and Time Attack have different course lists. Read the actual
+            // selected course rather than assuming a Time Attack carousel index.
+            // Passing Snow may also change retained wet/night selections below.
+            for(int i=0;Idas3SceneModeFlowValue(30)!=perfCourse&&i<Idas3CourseCatalog.Count;++i){
+                yield return Key(39);yield return Frames(6);
             }
-            Check(stage>=6&&stage<=10,"Performance setup reached an unexpected selection owner.");
-            int conditions=Idas3SceneModeFlowValue(31);
-            if(!perfLegend&&stage==7&&perfReverse){yield return Key(39);yield return Frames(6);}
-            if(!perfLegend&&((stage==8&&perfWet!=((conditions&1)!=0))||(stage==9&&perfNight!=((conditions&2)!=0)))){yield return Key(39);yield return Frames(6);}
-            yield return Key(13);yield return Frames(stage==10?240:60);
-            if(perfLegend&&stage==10){
-                for(int skip=0;(host.Status.flags&1)!=0&&skip<80;++skip){yield return PadStart();yield return Frames(30);}
+            Check(Idas3SceneModeFlowValue(30)==perfCourse,"Performance course carousel did not select the requested course.");
+            for(int choice=0;(host.Status.flags&1)!=0&&choice<6;++choice){
+                int stage=host.Status.frontendStage;
+                if(perfLegend&&stage==10){
+                    int rival=DiagnosticInt(Environment.GetCommandLineArgs(),"-idas3-perf-rival-choice",perfWet?2:0,0,5);
+                    for(int step=0;step<rival;++step){yield return Key(39);yield return Frames(8);}
+                }
+                Check(stage>=6&&stage<=10,"Performance setup reached an unexpected selection owner.");
+                int conditions=Idas3SceneModeFlowValue(31);
+                if(!perfLegend&&stage==7&&perfReverse){yield return Key(39);yield return Frames(6);}
+                if(!perfLegend&&((stage==8&&perfWet!=((conditions&1)!=0))||(stage==9&&perfNight!=((conditions&2)!=0)))){yield return Key(39);yield return Frames(6);}
+                yield return Key(13);yield return Frames(stage==10?240:60);
+                if(perfLegend&&stage==10){
+                    for(int skip=0;(host.Status.flags&1)!=0&&skip<80;++skip){yield return PadStart();yield return Frames(30);}
+                }
             }
         }
         int wait=0;

@@ -64,10 +64,17 @@ public:
         std::uint32_t elapsedTicks6000);
     void record(std::span<const OriginalImpactRecord> impacts);
     void record(std::span<const OriginalImpactRecord> impacts,std::uint32_t originalProgressIndex);
+    // Source-owned append stamps are already the PREVIOUS190D00 value.
+    void recordDitches(const OriginalContactCompletionState&);
+    // Imported-course adapter retains its current-progress policy.
     void recordDitches(const OriginalContactCompletionState&,std::uint32_t originalProgressIndex);
     OriginalTimeAttackTelemetrySnapshot snapshot(unsigned course,const OriginalDriveState&,
         const OriginalTailState&,const OriginalContactCompletionState&,
         std::uint32_t startIntervalTicks6000=0,bool convertMaps=true) const;
+    //Stock solo HLecture entry: consume the last actual15ECE0 publication.
+    //Legacy goal/imported snapshot semantics remain separate.
+    OriginalTimeAttackTelemetrySnapshot snapshotForLecture(unsigned course,const OriginalDriveState&,
+        const OriginalTailState&,const OriginalContactCompletionState&) const;
 private:
     std::vector<OriginalTimeAttackDrivingPoint> drivingPath_;
     std::vector<OriginalImpactRecord> walls_;

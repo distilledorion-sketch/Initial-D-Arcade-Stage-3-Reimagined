@@ -17,7 +17,7 @@ internal static class MenuInputRouterDriver
     {
         var router = new Router();
         var driving = new Router.Context { Focused = true, CanOpenPause = true };
-        var cardDriving = driving; cardDriving.CardForcedQuit = true;
+        var cardDriving = driving; cardDriving.CardForcedQuit = true; cardDriving.SourceCabinetStartReserved = false;
         var quitChord = new Router.Sample { Escape = true, ViewChange = true, Buttons = 0x8010 };
         Check(router.Process(quitChord, cardDriving).Kind == Router.Action.None && !router.BlocksGameInput(false, false, 0),
             "enabled card forced-quit chord reaches native offline race");
@@ -355,6 +355,16 @@ internal static class MenuInputRouterDriver
     private static void MusicChecks()
     {
         var router = new Router();
+        var battle = new Router.MusicContext { Focused = true, LobbyAllowed = true, BattleMusicAllowed = true, DeltaSeconds = .1f };
+        var heldView = new Router.MusicSample { ViewHeld = true, AnyControlHeld = true };
+        router.ProcessMusic(heldView, battle);
+        Check(router.ProcessMusic(default, battle).Kind == Router.MusicAction.BattleViewTap, "A short View tap keeps the cabinet shortcut");
+        Router.MusicCommand heldCommand = default;
+        for(int i=0;i<7;++i)heldCommand=router.ProcessMusic(heldView,battle);
+        Check(heldCommand.Kind==Router.MusicAction.OpenLobby, "Holding View opens the personal music list in battle entry");
+        router.MusicVisibilityChanged();
+        Check(router.ProcessMusic(default,battle).Kind==Router.MusicAction.None, "Dismissing the music list does not also cycle the cabinet shortcut");
+        router = new Router();
         // A race owns native input during the pre-race opponent presentation,
         // where the legitimate music-picker hold must still be available.
         var selection = new Router.MusicContext { Focused = true, OpponentAllowed = true, Gameplay = true, DeltaSeconds = .1f };

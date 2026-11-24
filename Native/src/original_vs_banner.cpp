@@ -164,7 +164,8 @@ void OriginalVsBanner::load(const std::filesystem::path& root) {
     }
     nameFont_=NativeTextureBank::load(root/nameDirectory/"textures/textures.idastex");
     recordFont_=NativeTextureBank::load(root/recordFontPath);
-    importedTitles_=NativeTextureBank::load(root/"data/original_assets/hud/imported_start_names/titles.idastex");
+    importedTitlePath_=root/"data/original_assets/hud/imported_start_names/titles.idastex";
+    importedTitles_={};
     if(recordFont_.size()!=recordAlphabet::fontCharacters.size())
         throw std::runtime_error("Original battle-record alphabet bank has the wrong glyph count");
     std::ifstream names(root/nameDirectory/"start_names.bin",std::ios::binary);
@@ -184,6 +185,8 @@ void OriginalVsBanner::load(const std::filesystem::path& root) {
 }
 
 void OriginalVsBanner::begin(const OriginalVsBannerSetup& setup) {
+    if(!setup.customCourseName.empty() && importedTitles_.size()==0)
+        importedTitles_=NativeTextureBank::load(importedTitlePath_);
     if (setup.course >= std::size(courseChunk))
         throw std::invalid_argument("Original start banner course is outside the authored set");
     if (setup.direction >= std::size(directionChunk))
@@ -277,7 +280,7 @@ std::vector<std::uint16_t> OriginalVsBanner::encodeSource(std::span<const std::u
     return out;
 }
 
-std::vector<std::uint16_t> OriginalVsBanner::encodeUtf8(const std::string& source) const {
+std::vector<std::uint16_t> OriginalVsBanner::encodeUtf8(const std::string& source,bool* substituted) const {
     std::vector<std::uint16_t> out;
     auto lookup=[&](std::uint32_t code){
         if((code>='a'&&code<='z')||(code>=0xff41&&code<=0xff5a))code-=32;
@@ -308,10 +311,28 @@ std::vector<std::uint16_t> OriginalVsBanner::encodeUtf8(const std::string& sourc
            (code>=0xd800&&code<=0xdfff)||code>0x10ffff)code=0xfffd;
         if(code<32||code==127)continue;
         auto index=lookup(code);
-        if(index>=nameIndices_.size()||(nameIndices_[index]==0xffff&&code!=32&&code!=0x3000))index=question;
+        if(index>=nameIndices_.size()||(nameIndices_[index]==0xffff&&code!=32&&code!=0x3000)){
+            if(substituted)*substituted=true;
+            index=question;
+        }
         if(index<nameIndices_.size())out.push_back(std::uint16_t(index));
     }
     return out;
+}
+
+std::vector<unsigned> OriginalVsBanner::cardNameGlyphs(const std::string& utf8)const{
+    if(!loaded_)return {};
+    bool substituted=false;
+    const auto keys=encodeUtf8(utf8,&substituted);
+    if(substituted)return {};
+    std::vector<unsigned> glyphs;
+    for(auto key:keys){
+        const std::array<std::uint8_t,2> bytes{std::uint8_t(key/96+160),std::uint8_t(key%96+160)};
+        const auto it=std::find(profileGlyphs_.begin(),profileGlyphs_.end(),bytes);
+        if(it==profileGlyphs_.end())return {};
+        glyphs.push_back(unsigned(it-profileGlyphs_.begin()));
+    }
+    return glyphs;
 }
 
 std::string OriginalVsBanner::decodeName(const std::vector<std::uint16_t>& name) const {
@@ -419,7 +440,9 @@ OriginalVsMetadataPlacement OriginalVsBanner::sourceTitleInkPlacement() const {
 OriginalVsMetadataPlacement OriginalVsBanner::importedTitlePlacement() const {
     if(setup_.customCourseName.empty())return {};
     auto out=sourceTitleInkPlacement();out.chunk=-1;
-    const auto& image=importedTitles_.at(unsigned(std::find_if(importedCourseDefinitions.begin(),importedCourseDefinitions.end(),[&](const auto& course){return course.name==setup_.customCourseName;})-importedCourseDefinitions.begin()));
+    const auto index=unsigned(std::find_if(importedCourseDefinitions.begin(),importedCourseDefinitions.end(),[&](const auto& course){return course.name==setup_.customCourseName;})-importedCourseDefinitions.begin());
+    if(index==importedCourseDefinitions.size()){out.width=180;return out;}
+    const auto& image=importedTitles_.at(index);
     out.width=out.height*float(image.width)/float(image.height);
     return out;
 }
@@ -540,8 +563,9 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
     const unsigned first=setup_.showBattleRecords&&setup_.showVersus?0:2,end=setup_.customCourseName.empty()?2:3;
     for(unsigned side=first;side<end;++side){
         const auto bounds=side==2?OriginalVsBattleRecordPlacement{20,8,180,32,1}:battleRecordPlacement(side);if(bounds.opacity<=0||bounds.width<=0)continue;
-        if(side==2&&setup_.compactHeader&&(!setup_.customCourseName.empty())){
-            const auto& title=importedTitles_.at(unsigned(std::find_if(importedCourseDefinitions.begin(),importedCourseDefinitions.end(),[&](const auto& course){return course.name==setup_.customCourseName;})-importedCourseDefinitions.begin()));
+        const auto index=unsigned(std::find_if(importedCourseDefinitions.begin(),importedCourseDefinitions.end(),[&](const auto& course){return course.name==setup_.customCourseName;})-importedCourseDefinitions.begin());
+        if(side==2&&setup_.compactHeader&&index<importedCourseDefinitions.size()){
+            const auto& title=importedTitles_.at(index);
             const auto layout=importedTitlePlacement();
             compositeImage(target,width,height,title,(float(width)-640.f*fit)*.5f+layout.left*fit,
                 (float(height)-480.f*fit)*.5f+layout.top*fit,layout.width*fit,layout.height*fit);
@@ -577,7 +601,8 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
             number(unsigned(tenths%10),battleRecordLayout_.tenthsRight+extraBattles+extraWins,18.f);
             continue;
         }
-        const auto& text=side==2?setup_.customCourseName:displayBattleRecords_[side];
+        auto text=side==2?setup_.customCourseName:displayBattleRecords_[side];
+        for(char& c:text)if(std::find(recordAlphabet::fontCharacters.begin(),recordAlphabet::fontCharacters.end(),c)==recordAlphabet::fontCharacters.end())c='?';
         const float scale=bounds.width/(recordTextWidth(text)+4.f);
         SpritePlacement p;p.scale=fit*scale;
         p.offsetX=(float(width)-640.f*fit)*.5f+bounds.left*fit;

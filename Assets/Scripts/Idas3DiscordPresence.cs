@@ -125,7 +125,7 @@ public sealed class Idas3DiscordPresence : MonoBehaviour
     static string Conditions(int night,int wet)=>(night!=0?"Night":"Day")+" / "+(wet!=0?"Wet":"Dry");
     static string Course(int condition)
     {
-        int course=condition/2;if(condition<0||course>=Idas3ReplayData.Courses.Length)return "Choosing a course";
+        int course=condition/2;if(condition<0||(course>=Idas3ReplayData.Courses.Length&&!Idas3UserTracks.IsUser(course)))return "Choosing a course";
         string direction;
         switch(Idas3CourseCatalog.DirectionToken(course,(condition&1)!=0)){
             case "ccw":direction="Counterclockwise";break;
@@ -136,7 +136,7 @@ public sealed class Idas3DiscordPresence : MonoBehaviour
             case "uh":direction="Uphill";break;
             default:direction="Downhill";break;
         }
-        return Idas3ReplayData.Courses[course]+" "+direction;
+        return Idas3CourseCatalog.DisplayName(course)+" "+direction;
     }
     void Disconnect()
     {

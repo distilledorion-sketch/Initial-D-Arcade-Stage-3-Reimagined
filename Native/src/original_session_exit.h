@@ -1,5 +1,6 @@
 #pragma once
 #include "native_assets.h"
+#include "original_menu_backdrop.h"
 #include "original_time_attack_background.h"
 #include <algorithm>
 #include <stdexcept>
@@ -23,6 +24,7 @@ public:
             const auto select=root/"data/original_assets/name_entry/select";
             background_=NativeModel::load(select/"select.idasmesh");
             backgroundTextures_=NativeTextureBank::load(select/"textures/textures.idastex");
+            logoBackdrop_=buildMenuLogoBackdrop(backgroundTextures_,background_.chunks.at(45));
             if(gameOver_.chunks.size()!=11||card_.chunks.size()!=4)throw std::runtime_error("Incomplete session-end artwork");
         }
         frame=backgroundFrame_=displayedBackgroundFrame_=0;stage=hasCard?Stage::SavingCard:Stage::GameOver;
@@ -52,8 +54,7 @@ public:
             // AEjectCard04783C selects tile45.0483DC calls the same112E60
             // owner as HLecture, before the eject-card panel. These are full
             // original screens, not a card panel floating on an empty backdrop.
-            for(const auto& tile:originalTimeAttackBackgroundDraws(displayedBackgroundFrame_))
-                draw(background_,backgroundTextures_,tile.chunk,tile.position.x,tile.position.y);
+            paintMenuLogoBackdrop(pixels,width,height,logoBackdrop_,displayedBackgroundFrame_);
             draw(card_,cardTextures_,1);draw(card_,cardTextures_,2);
             if(stage==Stage::RetrieveCard){draw(card_,cardTextures_,0);draw(card_,cardTextures_,3);}
         }else if(stage==Stage::GameOver){
@@ -70,6 +71,7 @@ public:
     }
 private:
     NativeModel gameOver_,card_,background_;
+    NativeImage logoBackdrop_;
     NativeTextureBank gameOverTextures_,cardTextures_,backgroundTextures_;
     unsigned backgroundFrame_=0,displayedBackgroundFrame_=0;
 };

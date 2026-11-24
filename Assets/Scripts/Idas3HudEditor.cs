@@ -42,7 +42,7 @@ public sealed class Idas3HudEditor : MonoBehaviour
             camera.fieldOfView=55;camera.nearClipPlane=.01f;camera.farClipPlane=100;
             camera.transform.position=new Vector3(0,1.6f,-6.5f);camera.transform.LookAt(new Vector3(0,1.65f,0));
             ui=preview.AddComponent<Idas3UnityUi>();ui.Initialize(camera);ui.HudOptionsOverride=working;ui.ArcadePreview=true;ui.ArcadePreviewThirdPerson=thirdPerson;
-            badge=Resources.Load<Texture2D>("Challenger/interrupt_4");
+            badge=Idas3ChallengerBanner.LoadTexture(4);
             BuildCar();car.SetActive(thirdPerson);
             IsOpen=true;Cursor.visible=true;Cursor.lockState=CursorLockMode.None;
             Refresh();

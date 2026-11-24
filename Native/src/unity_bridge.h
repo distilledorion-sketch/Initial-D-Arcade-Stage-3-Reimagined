@@ -33,11 +33,13 @@ IDAS3_UNITY_EXPORT const uint64_t* IDAS3_UNITY_CALL Idas3SceneGetGeometryIds(uin
 // -1 when no imported race is loaded. Does not advance simulation or replays.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneImportedSourceNode();
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedReadPersonalImport(char* output,int capacity);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3UseInstallationRankings(int local);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3CopyInstallationRankings(int32_t* rows,int capacity);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* values,int count,int enabled);
 #pragma pack(push,8)
 typedef struct Idas3UnityInput {
     uint32_t size;                 //sizeof(Idas3UnityInput),88 bytes
-    uint32_t flags;                //bit0 focused, bit1 controls blocked; bits8..10 requested gear (0 none,1..6)
+    uint32_t flags;                //bit0 focus, bit1 blocked; gear8..10, steering source11..13, cabinet Start-held14
     double deltaSeconds;           //unscaled Unity frame delta
     uint32_t keys[8];              //held Windows virtual-key bits,0..255
     uint32_t padButtons;           //XInput button bits
@@ -46,6 +48,12 @@ typedef struct Idas3UnityInput {
     uint32_t padConnected;
     int32_t width,height;           //positive resize request,0 retain
 } Idas3UnityInput;
+// Additive scene-input extension. The existing 88-byte input and exports keep
+// their byte-trigger contract for older managed/native clients.
+typedef struct Idas3UnityPedals {
+    uint32_t size,version,validMask; //16 bytes,version1; bit0 throttle,bit1 brake
+    uint16_t throttleAdc,brakeAdc;   //JVS0..0xff7f; absent fields must be zero
+} Idas3UnityPedals;
 typedef struct Idas3UnityStatus {
     uint32_t size;                 //sizeof(Idas3UnityStatus),80 bytes
     uint32_t state;                //0 stopped,1 ready,2 failed
@@ -55,7 +63,7 @@ typedef struct Idas3UnityStatus {
     int32_t width,height;
     int32_t frontendStage,attractChild;
     int32_t course,car,racePhase;
-    uint32_t flags;                //1 menu,2 paused,4 focused,8 running,16 original handling;32 Legend,64 choice;128 multiplayer,256 waiting,512 rival intro,1024 loading,2048 disconnect,4096 mode visit,8192 can retire Legend
+    uint32_t flags;                //1 menu,2 paused,4 focused,8 running,16 original handling;32 Legend,64 choice;128 multiplayer,256 waiting,512 rival intro,1024 loading,2048 disconnect,4096 mode visit,8192 can retire Legend;0x10000000 original finish still accepts driving bindings
     float speedMetresPerSecond,rpm;
     uint32_t lastEventId,reserved;
 } Idas3UnityStatus;
@@ -159,15 +167,17 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetCustomMenuLanguage(int lang
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneInitialize(
     const char* assetRootUtf8,const char* saveRootUtf8,int width,int height);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStep(const Idas3UnityInput* input);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStepWithPedals(const Idas3UnityInput* input,const Idas3UnityPedals* pedals);
 // Save menu hit testing in top-left window pixels. click=0 queries ownership;
 // click=1 routes a press and click=2 a moved pointer through the centered
-// 640x480 canvas. Hover only changes the delete confirmation selection. The host must
-// gate presses on focus/modal input and suppress mouse-to-confirm translation.
-// Returns 1 while the save menu owns pointer input, including background clicks.
+// 640x480 canvas. The host gates presses on focus/modal input and suppresses
+// mouse-to-confirm translation while a native menu owns the pointer.
+// Returns 0 for no owner, 1 for Save Select, 2 for the course strip and 3 for the Mods picker.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int height,int click);
 // Read-only menu projection of the same per-model battle levels used for aura.
 // Exactly 35 values: 1..99 for a valid record, 0 when unavailable.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneReplaySession(int open);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneShutdown(void);
 // Register/clear on the Unity main thread. The callback must not call native
 // game APIs, dispatch gameplay events or throw across the unmanaged boundary.
@@ -260,6 +270,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneCopyHudDriverName(char* destin
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetPaused(int paused);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneRestart(void);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneShowImportedCourseMenu(const char* root);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneAbandonInvalidTrack(int id);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneRegisterUserCourse(const char* root,int id,const char* slug,const char* name,int route);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneRegisterImportedCourse(const char* root);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStartImportedCourse(const char* root,int reverse);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStartImportedCourseConditions(const char* root,int reverse,int night,int wet);
@@ -269,11 +281,13 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneFullTune(void);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneRetire(void);
 // Match found:1 original notification cue,2 safe interruption to course select.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneChallenger(int action);
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneBattleEntry(const int* values,int count,const char* driver,const char* model,const char* caption,const char* music);
 // Scene-mode/main-thread only. Start loads a private stock two-car race and
 // holds all local simulation. SetGo(1) releases the car showcase/VS sequence,
 // followed by the original180-tick countdown. No collisions/AI/progress saves.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerStart(const Idas3MultiplayerConfig* config);
 // Read-only saved-car selection; returns 1 saved, 2 stock, 0 unavailable, -1 error.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerStockPaintCount(int car);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerReadCar(int selection,uint32_t* words,uint32_t count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerCurrentCar(void);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerCurrentGear(void);
@@ -295,6 +309,8 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerPointsEarned(void);
 // Local original-menu presentation. These calls do not award or alter results.
 // Input flags: 1 blocked, 2 peer left, 4 peer ready, 8 record save failed.
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultScreen(int field);
+// flags:1 modal/focus block,2 peer left,4 peer ready,8 save failed,
+//16 save pending (only holds the linked finish-to-EOS handoff).
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultInput(int confirm,int cancel,int direction,unsigned flags);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultRecord(int points,unsigned level);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3MultiplayerResultHit(float x,float y);

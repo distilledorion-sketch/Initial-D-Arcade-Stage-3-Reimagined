@@ -9,16 +9,39 @@ public sealed class Idas3ChallengerBanner : MonoBehaviour
     [Serializable] public sealed class Geometry {public Part[] parts;}
     Idas3ChallengerGraphic[] graphics;
     RenderTexture repeatedBackground;
+#if IDAS3_PORTABLE_PLAYER
+    static readonly Texture2D[] discTextures = new Texture2D[5];
+    static string DiscFile(string filename) => System.IO.Path.Combine(Application.streamingAssetsPath,
+        "IDAS3", "data", "unity", "Challenger", filename);
+#endif
+    internal static Texture2D LoadTexture(int index)
+    {
+#if IDAS3_PORTABLE_PLAYER
+        if (discTextures[index]) return discTextures[index];
+        var pixels = System.IO.File.ReadAllBytes(DiscFile("interrupt_" + index + ".png"));
+        var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        if (!texture.LoadImage(pixels)) { Destroy(texture); throw new InvalidOperationException("Invalid challenger texture"); }
+        texture.wrapMode = TextureWrapMode.Clamp;
+        return discTextures[index] = texture;
+#else
+        return Resources.Load<Texture2D>("Challenger/interrupt_" + index);
+#endif
+    }
     public void Initialize()
     {
+#if IDAS3_PORTABLE_PLAYER
+        string json = System.IO.File.ReadAllText(DiscFile("geometry.json"));
+#else
         var source=Resources.Load<TextAsset>("Challenger/geometry");
         if(source==null)throw new InvalidOperationException("Missing original challenger geometry");
-        var geometry=JsonUtility.FromJson<Geometry>(source.text);
+        string json = source.text;
+#endif
+        var geometry=JsonUtility.FromJson<Geometry>(json);
         if(geometry?.parts==null||geometry.parts.Length!=4)throw new InvalidOperationException("Invalid challenger geometry");
         graphics=new Idas3ChallengerGraphic[4];
         for(int i=0;i<graphics.Length;i++){
             var part=geometry.parts[i];
-            Texture texture=Resources.Load<Texture2D>("Challenger/interrupt_"+part.texture);
+            Texture texture=LoadTexture(part.texture);
             if(texture==null)throw new InvalidOperationException("Missing challenger texture "+part.texture);
             if(part.texture==0){
                 // Source U runs from 0 to 2; mirror the half-plate so its

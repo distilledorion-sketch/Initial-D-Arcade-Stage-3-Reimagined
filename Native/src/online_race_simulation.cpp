@@ -17,6 +17,7 @@
 namespace idas3::original {
 namespace {
 struct SoundState {
+    bool stopped=false; //31DE55, owned by the shared finish child
     OriginalEngineControlState engine;
     OriginalSoundCueQueue queue;
     OriginalTireAudioState tire;
@@ -105,12 +106,18 @@ OnlineRaceSimulation::OnlineRaceSimulation(const std::filesystem::path& root,con
 OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInputs,2>& incoming){
     const OriginalDrivingFloatScope floatingPoint;
     auto& s=*impl_;OnlineRaceFrame out;out.frame=s.state.frame;
+    //05C040 marks the race child complete;05C280/1427E0 enter on the
+    //next outer update, before either solver. The agreed prior result owns
+    //this boundary, never a client's render/menu/audio state.
+    if(s.state.winner!=-3)for(unsigned slot=0;slot<2;++slot){auto& sound=s.state.sound[slot];
+        if(!sound.stopped){
+            for(unsigned handle=0;handle<4;++handle)
+                out.engine[slot].push_back({OriginalEngineCommandTarget::Continuous,handle,0xa6,0});
+            sound.stopped=true;
+        }
+    }
     if(s.state.frame<s.setup.showcaseFrames)out.start.countdownRemaining=s.state.start.remaining();
     else out.start=s.state.start.step();
-    // Sample both cars before either solver advances. Replays use the same
-    // original distance correction: trailing gap capped at 100 metres.
-    const float gap=s.metrics.advantage(s.rules[0].state().progress,s.rules[1].state().progress);
-    for(unsigned slot=0;slot<2;++slot)s.cars[slot].setProgressCorrection(s.setup.boost?(slot==0?gap:-gap):0.f,0);
     OriginalPublishedActors poses;
     poses.player0C8FF388=s.cars[0].publishedActors().player0C8FF388;
     poses.secondary0C8FF430=s.cars[1].publishedActors().player0C8FF388;
@@ -123,8 +130,12 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
         contacts=produceOriginalBodyPairContact(poses,s.state.contact,s.geometry,s.fsca);
         if(contacts[0].active)++s.state.contactFrames;
     }
+    // Original 05C040 projects this frame's pose and updates rules before
+    // 062DE0 computes the gap supplied to 159920. Complete both players'
+    // coordinates before either solver, so neither sees last-frame progress
+    // or a mixture of current and previous opponent coordinates.
     for(unsigned slot=0;slot<2;++slot){
-        auto& car=s.cars[slot];auto& rules=s.rules[slot];auto& sound=s.state.sound[slot];
+        auto& car=s.cars[slot];auto& rules=s.rules[slot];
         if(out.start.go){car.enableRaceStart(2);rules.start();}
         if(out.start.runRules&&s.state.winner==-3){const auto& actor=car.actor();
             const OriginalRacePoint position{actor.f(0),actor.f(4),actor.f(8)};
@@ -132,17 +143,23 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
             out.rules[slot]=rules.tick(s.state.coordinates[slot],position,car.stoppedForRace());
             car.setRaceAutomaticBrake(rules.state().automaticBrake);
         }
+    }
+    const float gap=s.metrics.advantage(s.rules[0].state().progress,s.rules[1].state().progress);
+    for(unsigned slot=0;slot<2;++slot)s.cars[slot].setProgressCorrection(s.setup.boost?(slot==0?gap:-gap):0.f,0);
+    for(unsigned slot=0;slot<2;++slot){
+        auto& car=s.cars[slot];auto& rules=s.rules[slot];auto& sound=s.state.sound[slot];
         auto controls=incoming[slot];controls.automaticMode=s.setup.automatic[slot];controls.gearEnabled=out.start.gearEnabled;
-        if(s.state.winner!=-3||rules.state().phase==OriginalRacePhase::Finished||rules.state().phase==OriginalRacePhase::TimeUp){
+        if(s.state.winner!=-3){
+            //The agreed finish owner applies the source automatic-brake bit
+            //on the next update. Retain accepted pedal/shift input and gear
+            //engagement; the solver owns throttle suppression/deceleration.
+            //A crossing's final racing solver still uses the rules' brake.
             car.setRaceAutomaticBrake(true);
-            // Preserve each driver's steering while the finish owner brakes.
-            controls.analog.throttle=std::uint16_t(64u<<8);controls.analog.brake=std::uint16_t(171u<<8);
-            controls.calibration.throttleWord=controls.calibration.brakeWord=32;controls.suppressRawThrottle0C2F4BC8=1;
-            controls.pressedByte=0;controls.gearEnabled=false;
         }
         const auto priorGear=car.vehicle().transmission.gear00;
         car.setPlatformFrame(std::uint32_t(s.state.frame));
         out.driving[slot]=car.tick(controls,&contacts[slot],[&](const OriginalContactCompletionEffects& effect,std::uint32_t& seed){
+            if(sound.stopped)return;
             OriginalEngineControlInput input;
             input.rpm=effect.engineValue;input.throttle=effect.throttle;input.gear=std::bit_cast<std::int32_t>(effect.gear);
             input.suppressShiftRelease=car.raceAutomaticBrakeByte()!=0;
@@ -154,7 +171,7 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
             for(const auto& command:commands)if(command.target==OriginalEngineCommandTarget::Continuous)out.engine[slot].push_back(command);
         });
         const auto& angular=out.driving[slot].vehicle.feedback;
-        requestOriginalTireAudio(sound.tire,0,angular.feedbackSpeed,0,angular.feedbackArgument,angular.feedbackStrength);
+        requestOriginalTireAudio(sound.tire,sound.stopped?1:0,angular.feedbackSpeed,0,angular.feedbackArgument,angular.feedbackStrength);
         out.states[slot]=rules.state();
         auto& pose=out.replayPoses[slot];const auto& drive=car.vehicle().drive;const auto& actor=car.actor();
         pose.tick=out.frame;pose.position={drive.f(0),drive.f(4),drive.f(8)};
@@ -200,7 +217,7 @@ OnlineRaceFrame OnlineRaceSimulation::step(const std::array<OriginalVehicleInput
     // this step. Each player's stream and smoke state are rollback checkpoints.
     for(unsigned slot=0;slot<2;++slot){
         auto& sound=s.state.sound[slot];
-        s.cars[slot].finishSoundFrame([&](auto& seed){out.tires[slot]=stepOriginalTireAudio(sound.tire,0,seed);});
+        s.cars[slot].finishSoundFrame([&](auto& seed){out.tires[slot]=stepOriginalTireAudio(sound.tire,sound.stopped?1:0,seed);});
         sound.queue.tick();
     }
     // Evaluate both crossings in the same source tick before settling a photo
@@ -231,7 +248,7 @@ std::uint64_t OnlineRaceSimulation::digest()const {
         for(float v:r.previousPosition)f(v);
         add(r.previousSampleTime);add(r.lapCounter);add(r.sectionCounter);add(r.extensionCounter);add(r.automaticBrake);add(r.timeUpFlag);
         for(auto v:r.times.lapTimes)add(v);for(auto v:r.times.sectionTimes)add(v);add(r.times.lapCount);add(r.times.sectionCount);add(r.times.finishTime);
-        const auto& a=s.state.sound[slot];const auto& e=a.engine;
+        const auto& a=s.state.sound[slot];const auto& e=a.engine;add(a.stopped);
         f(e.previousThrottle);f(e.shiftOffset);f(e.previousRpm);add(e.fallingRpmFrames);add(e.shiftFrames);add(e.previousGear);add(e.auxiliaryLevel);
         add(e.decayFrames);add(e.heldVolume);add(e.recoveryFrames);add(e.decayLatched);add(e.roadFrames);add(e.backfireFrames);add(e.previousRoadFrames);add(e.backfirePattern);
         for(auto v:e.lastVolume)add(v);for(auto v:e.lastPitch)add(v);add(a.queue.cooldown);

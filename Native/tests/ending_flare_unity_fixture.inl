@@ -34,13 +34,13 @@ void prepareEndingFlareUnityFixture(App& app,unsigned scene){
         app.endingReplay=clip;app.beginEnding();
         for(sample=1;sample<=600;++sample){app.advanceEnding(1./60);if(sample>=180&&(scenario!=0||app.endingFlare.visible()))break;}
         if(sample>600||app.endingFlare.visible()!=(scenario==0))throw std::runtime_error("Flare source admission fixture");
-        prepared=scenario;seed=app.endingRandom;physics=app.originalSession.rollbackDigest();saved=app.endingFlare;
+        prepared=scenario;seed=app.originalSession.sharedRandomSeed();physics=app.originalSession.rollbackDigest();saved=app.endingFlare;
     }else{
         if(prepared!=scenario)throw std::logic_error("Flare comparison before preparation");
         if(phase==1)app.endingFlare.reset();else app.endingFlare=saved;
     }
     app.input={};if(!app.renderEnding(0))throw std::runtime_error(app.renderer.error);
-    if(app.endingRandom!=seed||app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Flare repaint changed RNG/physics");
+    if(app.originalSession.sharedRandomSeed()!=seed||app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Flare repaint changed RNG/physics");
     Mesh flare;const auto pieces=app.endingFlare.append(flare,app.endingFlareTextureBase);
     std::ofstream out(app.saveRoot.parent_path()/("ending-flare-"+std::to_string(scenario)+"-"+std::to_string(phase)+".json"));
     out<<"{\"sample\":"<<sample<<",\"pieces\":"<<pieces<<",\"textureBase\":"<<app.endingFlareTextureBase

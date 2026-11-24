@@ -20,7 +20,7 @@ int runRearViewAppTests(App& app){
         else app.start();
         app.vsActive=app.loadingActive=app.preRaceDialogueActive=false;
         app.originalRaceOwnerFrame=240;
-        for(auto view:{OriginalDrivingView::Bumper,OriginalDrivingView::Chase,OriginalDrivingView::Natural}){
+        for(auto view:{OriginalDrivingView::Bumper,OriginalDrivingView::Chase}){
             app.drivingView=view;
             for(auto phase:{RacePhase::Countdown,RacePhase::Running}){
                 app.race.phase=phase;

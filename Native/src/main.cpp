@@ -23,6 +23,7 @@
 #include "akina_background.h"
 #include "original_driving_session.h"
 #include "original_driving_clock.h"
+#include "native_platform_clock.h"
 #include "online_race_link.h"
 #include "online_replay_recording.h"
 #include "original_host_input.h"
@@ -30,8 +31,8 @@
 #include "original_start_camera.h"
 #include "original_start_grid.h"
 #include "original_race_start.h"
+#include "original_offline_finish_presentation.h"
 #include "chase_camera.h"
-#include "natural_chase_camera.h"
 #include "original_chase_camera.h"
 #include "car_shadow.h"
 #include "driving_effects.h"
@@ -84,6 +85,8 @@
 #include "local_driver_setup.h"
 #include "local_save_slots.h"
 #include "original_loading_screen.h"
+#include "original_loading_selection.h"
+#include "original_race_overlay_resources.h"
 #include "original_vs_banner.h"
 #include "original_aura.h"
 #include "car_catalog.h"
@@ -121,6 +124,7 @@
 #include <tuple>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <map>
 #include "unity_ui_capture.h"
 #include <array>
@@ -135,16 +139,24 @@ const std::array<const char*,9> courseIds={"k_ez","s_nm","h_hd","k_df","s_vh","s
 const std::array<const char*,9> courseNames={"Myogi","Usui","Akagi","Akina","Happogahara","Irohazaka","Shomaru","Tsuchisaka","Akina Snow"};
 struct HostInput {
     std::uint8_t requestedGear=0;
+    bool cabinetStartHeld=false,standaloneStartReleaseBlocked=false; // Start is not Pause/accelerator.
+    void sampleStandaloneCabinetStart(bool focused,bool held){
+        if(!focused)standaloneStartReleaseBlocked=true;
+        else if(!held)standaloneStartReleaseBlocked=false;
+        cabinetStartHeld=focused&&!standaloneStartReleaseBlocked&&held;
+    }
     // Replay label from the Unity mapper: 0 none, 1 keyboard, 2 D-pad,
     // 3 analog stick, 4 wheel. Standalone polling leaves it unknown (0).
     std::uint8_t steeringSource=0;
     std::array<bool,256> down{},pressed{};
     XINPUT_STATE pad{};WORD oldButtons=0,pressedButtons=0;bool connected=false;
+    int originalThrottleAnalog=-1,originalBrakeAnalog=-1;
 #if !defined(IDAS3_PORTABLE_SCENE)
     void poll(bool active){
+        originalThrottleAnalog=originalBrakeAnalog=-1;
         for(int i=0;i<256;i++){bool next=active&&(GetAsyncKeyState(i)&0x8000)!=0;pressed[i]=next&&!down[i];down[i]=next;}
         XINPUT_STATE next{};connected=active&&XInputGetState(0,&next)==ERROR_SUCCESS;
-        pad=connected?next:XINPUT_STATE{};pressedButtons=pad.Gamepad.wButtons&~oldButtons;oldButtons=pad.Gamepad.wButtons;
+        pad=connected?next:XINPUT_STATE{};sampleStandaloneCabinetStart(active,down[VK_RETURN]||(pad.Gamepad.wButtons&XINPUT_GAMEPAD_START));pressedButtons=pad.Gamepad.wButtons&~oldButtons;oldButtons=pad.Gamepad.wButtons;
     }
 #endif
     bool key(int code)const{return pressed[code];}
@@ -153,7 +165,8 @@ struct HostInput {
 struct App {
     std::filesystem::path importedCourseRoot,sadamineCourseRoot,ennaCourseRoot,tsubakiCourseRoot,gunsaiCourseRoot,odawaraCourseRoot;
     std::array<std::filesystem::path,3> specialStageCourseRoots;
-    std::filesystem::path& importedRoot(int id){return id==17?odawaraCourseRoot:id==16?gunsaiCourseRoot:id==15?tsubakiCourseRoot:id>=12?specialStageCourseRoots.at(unsigned(id-12)):id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
+    std::map<int,std::filesystem::path> userCourseRoots;
+    std::filesystem::path& importedRoot(int id){if(isUserCourseId(unsigned(id)))return userCourseRoots[id];return id==17?odawaraCourseRoot:id==16?gunsaiCourseRoot:id==15?tsubakiCourseRoot:id>=12?specialStageCourseRoots.at(unsigned(id-12)):id==Frontend::ennaCourse?ennaCourseRoot:id==Frontend::sadamineCourse?sadamineCourseRoot:importedCourseRoot;}
     std::optional<ImportedCourse> importedCourse;
     struct MultiplayerState {
         std::string localName="PLAYER",remoteName="OPPONENT";
@@ -248,11 +261,14 @@ struct App {
     Vec3 previousImportedActor{};
     Vec3 playerBodyWorld{},previousPlayerBodyWorld{},rivalBodyWorld{},previousRivalBodyWorld{};
     original::OriginalDrivingSession originalSession;
+    NativePlatformClock platformClock;
+    bool platformClockWriteWarning=false;
     idas3ffb::OriginalFeedbackPresentation originalFeedback;
 #include "online_race_app.inl"
 #include "online_result_screen_app.inl"
     original::OriginalRaceRules originalRace;
     original::OriginalRaceStart originalRaceStart;
+    bool originalRaceCountdownInitPending=false;
     std::uint32_t originalRaceOwnerFrame=0;
     OriginalRaceFeedback raceFeedback;
     OriginalRearViewFrame rearCameraFrame{},previousRearCameraFrame{};
@@ -309,6 +325,10 @@ struct App {
     std::vector<std::uint32_t> loadingPixels;
     double loadingSeconds=0;
     std::uint32_t loadingSequence=0;
+    // Per-race prepared resource state. These values never act as a reusable
+    // loading token; only the explicit start argument avoids a duplicate entry.
+    std::optional<std::uint32_t> originalLoadingArtwork;
+    std::optional<original::OriginalRaceOverlayResources> originalRaceOverlayResources;
     bool loadingActive=false,loadingStarted=false;
     static constexpr double loadingMinimumSeconds=3.0;
     static constexpr double loadingFadeSeconds=.5,loadingBlackSeconds=2.0;
@@ -345,7 +365,7 @@ struct App {
     unsigned endingProjectedHeadlightTextureBase=0;
     original::OriginalReplayCarSmokeSystem endingSmoke;
     RoadsideDustPresentation endingSmokePresentation;
-    unsigned endingSmokeTextureBase=0,endingRandom=1;
+    unsigned endingSmokeTextureBase=0;
     OriginalRainPresentation endingRain;
     unsigned endingRainTextureBase=0;
     OriginalSnowPresentation endingSnow;
@@ -393,6 +413,17 @@ struct App {
     // record panel after two seconds. Battle/time-up outcomes retain their
     // separate announcement and outgoing transition.
     unsigned finishBannerTicks=0,finishFadeTicks=0;bool finishBannerDone=false,finishAudioSkipped=false;
+    // Host retire is an extension. Source race+64C is challengerflag, not
+    // retirement (05C0D8 and debug literal0C2436BC). Preserve its existing
+    // delayed engine-stop policy separately from the ordinary source owner.
+    bool hostRetireWaitForStop=false;
+    original::OriginalOfflineFinishPresentation offlineFinish;
+    original::OriginalCabinetStartEdge cabinetStartEdge;
+    original::OriginalCabinetButtonCounters cabinetButtons;
+    //Explicit exported-host operator boundary: normal code0. No menu setting
+    //or original device-config snapshot is inferred from the Saved Data option.
+    static constexpr std::uint32_t cabinetConfigWord12=0;
+    unsigned offlineFinishParentStep=0; //0 race,1 close,2 result Init,3 handed off
     static constexpr unsigned finishBannerSwap=120,finishBannerOutcome=180;
     // The start button the dialogue advertises: held, it skips the scripted pages.
     bool legendSkipHeld=false;
@@ -441,23 +472,80 @@ struct App {
     void setSharedRecords(TimeAttackRecords next,bool enabled){
         sharedRecords=std::move(next);sharedRecordsEnabled=enabled;combinedRecordsDirty=true;
     }
+    bool installationOnly=false;
+    std::optional<TimeAttackRecords> installationBoard;
+    static void appendCardTimes(std::vector<TimeAttackEntry>& personal,const original::OriginalBattleProfile& p,unsigned car){
+        for(unsigned condition=0;condition<18;++condition)for(unsigned weather=0;weather<2;++weather){
+            if(condition>=16&&!weather)continue;
+            const auto saved=original::originalPersonalTimeAttackRecord(p,original::originalRecordPartition(condition,weather!=0));
+            if(!saved.ticks6000||saved.ticks6000>=10800000||saved.night>1)continue;
+            TimeAttackEntry e{condition,weather,car,saved.ticks6000};e.night=saved.night!=0;e.metadataUnknown=true;
+            for(unsigned n=0;n<5;++n){const auto glyph=p.u(44+n*4);e.nameGlyphs[n]=glyph<=221?std::uint8_t(glyph):221;}
+            personal.push_back(e);
+        }
+    }
+    const TimeAttackRecords& localInstallationRecords(){
+        if(installationBoard)return *installationBoard;
+        // Cabinet history contains actual finishes from every slot. A restored card
+        // can also have a best that predates (or survived the loss of) that CSV.
+        std::vector<TimeAttackEntry> saved;
+        for(int slot=-1;slot<int(LocalSaveSlots::count);++slot){
+            const auto directory=slot<0?userdataRoot()/"driver_profiles_v1":saveSlots.profileDirectory(unsigned(slot));
+            if(!fs::is_directory(directory))continue;
+            LocalDriverProfiles cards(directory);
+            for(unsigned car=0;car<35;++car){
+                const auto card=cards.load(car);
+                if(card.origin==LocalDriverProfiles::Origin::Saved||card.origin==LocalDriverProfiles::Origin::Backup)
+                    appendCardTimes(saved,card.profile,car);
+            }
+            TimeAttackRecords imported;
+            if(imported.load(directory/"hakone_personal_v1.csv"))
+                for(const auto& row:imported.entries())if(row.condition>=18)saved.push_back(row);
+        }
+        const auto key=[](const TimeAttackEntry& e){return std::make_tuple(e.condition,e.weather,e.car,e.ticks6000,e.nameGlyphs);};
+        std::set<decltype(key(TimeAttackEntry{}))> seen;
+        for(const auto& e:records.entries())seen.insert(key(e));
+        std::erase_if(saved,[&](const auto& e){return !seen.insert(key(e)).second;});
+        auto board=records;board.recordBatch(saved);installationBoard=std::move(board);
+        return *installationBoard;
+    }
+    void useInstallationRankings(bool local){
+        if(local==installationOnly)return;
+        if(local){
+            const auto& board=localInstallationRecords();
+            frontend.localRanking=original::OriginalRankingRecords::fromTimes(board.entries());
+            setSharedRecords({},false);
+            if(!menu&&!battle&&!multiplayer.active&&!replayPlaybackActive&&results.suppliedRecordTargets&&!resultsReady){
+                const auto best=board.best(results.condition,unsigned(wet),results.carId);
+                results.bestTimes6000[0]=best.course;results.bestTimes6000[1]=best.model;
+                recording.priorRecords=results.bestTimes6000;
+                if(importedCourse)importedCoursePreviousBest=board.personalBest(results.condition,unsigned(wet),best.courseCar);
+            }
+        }else frontend.localRanking.reset();
+        installationOnly=local;
+        if(local&&timeAttackVisitActive)timeAttackVisit.replaceRankingRecords(boardForCurrentVisit());
+    }
+    std::vector<TimeAttackEntry> boardForCurrentVisit()const{
+        auto rows=displayedTimeAttackRecords().entries();
+        if(!race.timeUp){
+            TimeAttackEntry e{results.condition,unsigned(wet),results.carId,race.elapsed6000};
+            for(unsigned i=0;i<5;++i)e.nameGlyphs[i]=i<battleProfile.u(76)?std::uint8_t(battleProfile.u(44+i*4)):221;
+            e.manual=!automatic;e.night=night;
+            if(std::none_of(rows.begin(),rows.end(),[&](const auto& row){return row.condition==e.condition&&row.weather==e.weather&&row.car==e.car&&row.ticks6000==e.ticks6000&&row.nameGlyphs==e.nameGlyphs;}))rows.push_back(e);
+        }
+        return rows;
+    }
     const TimeAttackRecords& displayedTimeAttackRecords()const{
+        if(installationOnly)return installationBoard.value();
         if(personalRecordsDirty){
             std::vector<TimeAttackEntry> personal;
             personal.reserve(importedPersonalRecords.entries().size()+36u*std::count_if(
                 personalRecordProfiles.begin(),personalRecordProfiles.end(),[](const auto& p){return p.has_value();}));
-            // Only this save's cards are authoritative offline. The old cabinet
-            // CSV has no save ownership and must never seed these displays.
+            // The selected card supplies personal times when sharing is enabled,
+            // including the fallback while a live snapshot is unavailable.
             for(unsigned car=0;car<personalRecordProfiles.size();++car)if(personalRecordProfiles[car]){
                 const auto& p=*personalRecordProfiles[car];
-                for(unsigned condition=0;condition<18;++condition)for(unsigned weather=0;weather<2;++weather){
-                    if(condition>=16&&!weather)continue;
-                    const auto saved=original::originalPersonalTimeAttackRecord(p,original::originalRecordPartition(condition,weather!=0));
-                    if(!saved.ticks6000||saved.ticks6000>=10800000||saved.night>1)continue;
-                    TimeAttackEntry e{condition,weather,car,saved.ticks6000};e.night=saved.night!=0;e.metadataUnknown=true;
-                    for(unsigned n=0;n<5;++n){const auto glyph=p.u(44+n*4);e.nameGlyphs[n]=glyph<=221?std::uint8_t(glyph):221;}
-                    personal.push_back(e);
-                }
+                appendCardTimes(personal,p,car);
             }
             for(const auto& e:importedPersonalRecords.entries())if(e.condition>=18)personal.push_back(e);
             TimeAttackRecords next;next.recordBatch(personal);personalDisplayRecords=std::move(next);
@@ -531,9 +619,16 @@ struct App {
     Course course;VehicleConfig config;VehicleState vehicle{},previous{};
     mutable HudAnalogPresentation hudAnalogPresentation;
     RaceClock race;Replay recording,best;TimeAttackGhost personalGhost;OriginalDrivingClock clock;Renderer renderer;Hud hud;EngineAudio audio;HostInput input;
+    struct FinishSaveResult {
+        const char* error=nullptr;
+        std::shared_ptr<Replay> bestRun;
+        double seconds=0;
+    };
+    std::future<FinishSaveResult> finishWrite;
     int courseIndex=3,profile=0;bool reverse=false,wet=false,night=false,automatic=true;
     bool menu=true,paused=false,active=true,debug=false,showControls=false,running=true,finishedSaved=false,validationMode=false;
     bool challengerNotice=false;
+    bool offerChallengers=false;
     bool managedPauseOverlay=false;
     original::ControllerResponse controllerResponse=original::ControllerResponse::FlycastGamepad;
     float steeringDeadzone=-1.f;
@@ -546,7 +641,8 @@ struct App {
     std::size_t segment=0;double bestTime=0;std::string message;float messageSeconds=0;
     Vec3 camera{};bool cameraReady=false;
     ChaseCamera chaseCamera;
-    NaturalChaseCamera naturalCamera;
+    float chaseBlend=0,previousChaseBlend=0; // Fallback camera for the host driving model.
+    float playerBodyRadius=0;
     OriginalChaseCamera originalCamera;
     OriginalChaseFrame previousCameraFrame;
     OriginalChaseCamera bumperCamera;
@@ -554,9 +650,32 @@ struct App {
     OriginalDrivingView drivingView=OriginalDrivingView::Bumper;
     int cameraFovPercent=100;
     void setDrivingView(OriginalDrivingView view){
-        if(drivingView!=view){naturalCamera.reset();drivingView=view;}
+        if(drivingView==view)return;
+        drivingView=view;
+        if(originalHandling){
+            auto& selected=view==OriginalDrivingView::Chase?originalCamera:bumperCamera;
+            selected.settleProfile();
+            (view==OriginalDrivingView::Chase?previousCameraFrame:previousBumperFrame)=selected.frame();
+        }
+        previousChaseBlend=chaseBlend=view==OriginalDrivingView::Chase?1.f:0.f;
     }
-    void cycleDrivingView(){setDrivingView(OriginalDrivingView((unsigned(drivingView)+1u)%3u));}
+    void cycleDrivingView(){
+        const bool toChase=drivingView==OriginalDrivingView::Bumper;
+        if(originalHandling){
+            auto& next=toChase?originalCamera:bumperCamera;
+            next.transitionFrom(toChase?bumperCamera:originalCamera);
+            (toChase?previousCameraFrame:previousBumperFrame)=toChase?previousBumperFrame:previousCameraFrame;
+        }
+        drivingView=toChase?OriginalDrivingView::Chase:OriginalDrivingView::Bumper;
+    }
+    void advanceDrivingView(bool initialized){
+        const float target=drivingView==OriginalDrivingView::Chase?1.f:0.f;
+        previousChaseBlend=chaseBlend;
+        if(!initialized){previousChaseBlend=chaseBlend=target;return;}
+        // Advance with the chase camera's 60 Hz position response (09C960).
+        chaseBlend+=(target-chaseBlend)*(2.f/31.f);
+        if(std::abs(target-chaseBlend)<.001f)chaseBlend=target;
+    }
     OriginalShowroom showroom;FixedClock menuClock;FrontendStage showroomStage=FrontendStage::Title;
     std::array<std::vector<std::uint32_t>,6> nameLayers;
     std::uint32_t namePaintFrame=~0u;int namePaintWidth=0,namePaintHeight=0;
@@ -618,6 +737,39 @@ struct App {
         return !menu&&!loadingActive&&!battle&&!multiplayer.active&&!replayPlaybackActive&&!extraModeVisitActive()&&
             !legendVisitActive&&!preRaceDialogueActive&&frontend.gameMode==original::OriginalGameMode::TimeAttack;
     }
+    void applyFinishSave(FinishSaveResult result){
+        if(result.bestRun){best=std::move(*result.bestRun);bestTime=result.seconds;}
+        if(result.error)status(result.error);
+        else if(result.bestRun)status("Best run saved with replay telemetry");
+    }
+    void finishPendingRaceSave(bool wait){
+        if(!finishWrite.valid())return;
+        if(!wait&&finishWrite.wait_for(std::chrono::seconds(0))!=std::future_status::ready)return;
+        try{applyFinishSave(finishWrite.get());}
+        catch(const std::exception& e){std::cerr<<"Race save: "<<e.what()<<'\n';status("Could not save completed race");}
+    }
+    void queueRaceSave(bool writeGhost,bool newBest){
+        finishPendingRaceSave(true);
+        // Keep the finish clock/placements immediately available to the results
+        // screen. Only immutable snapshots and resolved paths reach the writer.
+        auto save=[run=std::make_shared<Replay>(recording),board=resultsReady?std::optional{records}:std::nullopt,
+            root=userdataRoot(),ghost=writeGhost?personalGhostPath():fs::path{},
+            bestFile=newBest?ghostPath().string():std::string{},car=unsigned(frontend.car),seconds=race.seconds()]{
+            FinishSaveResult result;
+            if(!ghost.empty()&&TimeAttackGhost::saveBest(ghost,*run,car)==TimeAttackGhost::Saved::Failed)
+                result.error="Could not save personal-best ghost";
+            if(board&&!board->save(root/"time_attack_records_v1.csv"))result.error="Could not save Time Attack records";
+            const auto saved=run->saveCopies((root/"last_run.csv").string(),bestFile);
+            if(!saved[0])result.error="Could not save complete run telemetry";
+            if(!bestFile.empty()){
+                if(saved[1]){result.bestRun=run;result.seconds=seconds;}
+                else result.error="Could not save best-run replay";
+            }
+            return result;
+        };
+        try{finishWrite=std::async(std::launch::async,save);}
+        catch(const std::system_error&){applyFinishSave(save());}
+    }
     double personalGhostTick()const{
         return std::max(0.,double(race.ticks)-(paused||race.phase!=RacePhase::Running?0.:1.-clock.alpha()));
     }
@@ -642,6 +794,16 @@ struct App {
         carPresentation.applyMaterials(originalModel);
         numberPlate=OriginalNumberPlate::load(root,unsigned(frontend.car),original::originalCarPresentationColor(unsigned(frontend.car),color));
         numberPlate.setPlayerProfile(appearanceProfile);
+        // Cache the selected body kit and plate envelope once per appearance.
+        // A sphere around the body origin covers yaw, banking and pitch.
+        Mesh body;
+        body.originalCar(originalModel,carPresentation.pose({},false,false),{},0);
+        body.originalCar(numberPlate.model,carPresentation.profilePlateAssembly(),{},0);
+        float radiusSquared=0;
+        for(const auto& range:body.ranges)if(!range.billboard)
+            for(unsigned i=range.first;i<range.first+range.count;++i)
+                radiusSquared=std::max(radiusSquared,dot(body.vertices[i].position,body.vertices[i].position));
+        playerBodyRadius=std::sqrt(radiusSquared);
         if(differentCar){originalTextures=NativeTextureBank::load(root/"data/original_assets/cars"/folder/"textures/textures.idastex");texturesPending=true;menuTexturesLoaded=false;}
         loadedCar=frontend.car;loadedColor=int(color);loadedAppearanceWord=appearance.word;loadedProfileCondition=appearanceProfile.u(32);loadedDriverName=name;
     }
@@ -659,6 +821,7 @@ struct App {
             status("Could not archive old Gunsai/Odawara records; original file retained");
     }
     void migrateLocalTimeAttackHistory(){
+        finishPendingRaceSave(true);
         // Migrate the cabinet file and every save up front, including slots the
         // player does not select this session. Loading restored older CSVs later
         // still filters their retired revisions before any ranking can use them.
@@ -945,6 +1108,7 @@ struct App {
     void deleteSaveFile(int slot){
         if(frontend.stage!=FrontendStage::SaveSelect||fullTuneSelecting||slot<0||
            slot>=int(LocalSaveSlots::count)||slot!=frontend.saveSelected)return;
+        finishPendingRaceSave(true);
         const bool erased=saveSlots.erase(unsigned(slot));
         frontend.finishSaveDeletion(erased);
         if(!erased)return;
@@ -1421,6 +1585,7 @@ struct App {
         texturesPending=true;
     }
     void load(bool prepareScenery=true){
+        finishPendingRaceSave(true);
         NativeLoadProfile trace("app.load");
         prepareScenery=prepareScenery||NativeLoadProfile::legacySceneryLifecycle();
         idas3::serviceLoadKeepAlive();
@@ -1431,7 +1596,7 @@ struct App {
             course=importedCourse->course(reverse);
             hasOriginalScenery=catalogScenery=false;sceneWet=wet;courseObjects.reset();courseBillboards.reset();courseCrows.reset();
             trackStart=2;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;
-            chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
+            chaseCamera.reset();originalCamera.reset();bumperCamera.reset();configureCar();
             auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));
             previous=vehicle;segment=0;progress=trackStart;steering=0;steeringSource.reset();cameraReady=false;clock.reset();best=Replay{};bestTime=0;
             loadSelectedCar();idas3::serviceLoadKeepAlive();texturesPending=true;return;
@@ -1478,7 +1643,7 @@ struct App {
         courseAnimation.reset(unsigned(courseIndex),night,wantWetScene);
         }
         trace.mark("course.scenery");
-        trackStart=2.f;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;chaseCamera.reset();naturalCamera.reset();originalCamera.reset();bumperCamera.reset();
+        trackStart=2.f;trackFinish=course.length;bodyPitch=bodyRoll=previousPitch=previousRoll=0;chaseCamera.reset();originalCamera.reset();bumperCamera.reset();
         configureCar();auto spawn=course.sample(trackStart);reset(vehicle,config,spawn.center,std::atan2(spawn.tangent.x,spawn.tangent.z));previous=vehicle;segment=spawn.segmentIndex;progress=trackStart;steering=0;steeringSource.reset();cameraReady=false;clock.reset();
         best=Replay{};bestTime=0;if(!multiplayer.active&&best.load(ghostPath().string())&&!best.frames.empty())bestTime=best.finishTicks6000?double(best.finishTicks6000)/6000:double(best.frames.back().tick)/60;
         trace.mark("course.vehicle-and-ghost");
@@ -1529,6 +1694,18 @@ struct App {
         originalFeedback.advance(idas3ffb::feedbackInput(session.vehicle(),session.selection().physics.vehicleIndex,
             session.selection().physics.conditionCode,std::min<unsigned>(frontend.battleProfile.byte(1187),8)),vehicle.tick);
     }
+    bool originalActorLightFeedbackActive()const{
+        // Imported handling also reports supportsOriginalHandling(). Its
+        // presentation is an extension, not this recovered ACar owner.
+        return originalHandling&&!importedCourse&&courseIndex>=0&&courseIndex<9&&
+            !multiplayer.active&&!authorityRace&&!authorityLink&&!replayPlaybackActive&&originalSession.ready();
+    }
+    void feedbackOriginalActorHeadlights(bool rival){
+        if(!originalActorLightFeedbackActive())return;
+        if(rival&&!originalSession.rivalInitialized())return;
+        originalSession.feedbackActorHeadlights(rival,
+            rival?rivalProjectedHeadlight.enabled():playerProjectedHeadlight.enabled());
+    }
     void projectOriginalPose(bool advance){
         const auto& source=presentedSession().vehicle();const auto& d=source.drive;
         const auto oldPosition=vehicle.position;
@@ -1573,6 +1750,9 @@ struct App {
             advanceHudDrift();
             hud.advanceWaterCup(length(vehicle.velocity)*physicsDt,presentedSession().contactCompletion().cues0C900E5C);
         }else{resetHudDrift();hud.resetWaterCup();}
+        //06338C: player ACar feedback follows pose/publication. It does not
+        //overwrite the already-published actor used by this frame's readers.
+        feedbackOriginalActorHeadlights(false);
     }
     int presenceCourseCondition()const{
         return menu?frontend.course*2+int(frontend.reverse):int(importedCourse?importedCourse->id:courseIndex)*2+int(reverse);
@@ -1592,6 +1772,7 @@ struct App {
         }
         // The recovered bumper transform has no temporal angle filter, so
         // seeking can evaluate the recorded pose directly.
+        bumperCamera.settleProfile();
         return bumperCamera.update(actor,{-bodyPitch,wrapAngle(drawCar.yaw-pi),-bodyRoll});
     }
     void advanceOriginalCamera(){
@@ -1624,19 +1805,37 @@ struct App {
         if(menu||loadingActive||legendVisitActive||preRaceDialogueActive||extraModeVisitActive()||multiplayerDisconnected())return 0;
         return 1u|((replayPlaybackActive||paused||!active||race.phase!=RacePhase::Running||multiplayer.waiting||authorityStalled)?2u:0u);
     }
-    void start(bool networkStart=false){
+    std::optional<std::uint32_t> prepareOriginalRaceLoading(bool networkStart=false){
+        originalLoadingArtwork.reset();
+        const bool timeAttack=frontend.gameMode==original::OriginalGameMode::TimeAttack;
+        // start() imports only Time Attack destinations. A prior imported
+        // scene must not suppress the new Legend/Bunta source owner.
+        if(networkStart||multiplayer.active||replayPlaybackActive||
+           (timeAttack&&Frontend::isImportedCourse(frontend.course)))return {};
+        const auto selectedCourse=timeAttack?std::uint32_t(courseIndex):frontend.battleProfile.u(4);
+        if(selectedCourse>=9)return {};
+        // Both Legend08D284 and HBunta184D64 register CourseLoad(Visit).
+        const auto owner=timeAttack?original::OriginalLoadingOwner::TimeAttack:
+            original::OriginalLoadingOwner::Visit;
+        originalSession.withSharedRandom([&](std::uint32_t& seed){
+            originalLoadingArtwork=original::selectOriginalLoadingArtwork(owner,
+                frontend.battleProfile.u(0),frontend.battleProfile.u(24),seed);
+        });
+        return originalLoadingArtwork;
+    }
+    void start(bool networkStart=false,bool loadingPrepared=false){
         if(inspectionVisit){status("Finish or cancel Car Inspection before starting a race");return;}
         sessionExit.stage=original::OriginalSessionExit::Stage::Inactive;
         replayCameraBody.reset();
         if(endingActive){endingActive=false;audio.applyLegendStreamCommand({original::OriginalLegendReturnCommand::StreamStop});}
         hudAnalogPresentation.reset();
         resetHudDrift();
-        naturalCamera.reset();
+        previousChaseBlend=chaseBlend=drivingView==OriginalDrivingView::Chase?1.f:0.f;
         fullTuneActive=fullTuneSelecting=false;fullTuneOffers.clear();
         if(multiplayer.active&&!networkStart)throw std::logic_error("Online races cannot restart locally");
         if(Frontend::isImportedCourse(frontend.course)&&frontend.gameMode==original::OriginalGameMode::TimeAttack){
             if(importedRoot(frontend.course).empty())throw std::logic_error("Hakone course pack is not registered");
-            if(!importedCourse||importedCourse->id!=unsigned(frontend.course))importedCourse=ImportedCourse::load(importedRoot(frontend.course));
+            if(!importedCourse||importedCourse->id!=unsigned(frontend.course))importedCourse=ImportedCourse::load(importedRoot(frontend.course),frontend.course);
             courseIndex=3;
             // These PS2 courses only supply authored night scenery.
             if(importedCourseDefinition(importedCourse->id).nightOnly)night=frontend.night=true;
@@ -1651,6 +1850,8 @@ struct App {
         loadSelectedProfile();
         if(!networkStart&&!ensureSelectedCardAccepted())return;
         battleProgressApplied=false;battleResult=original::OriginalLegendResult::NotLegend;battlePoints={};buntaPoints={};timeAttackPoints={};settledBattleAdvantage=0;battleResults={};battleResultsClock.reset();
+        hostRetireWaitForStop=false;offlineFinish={};offlineFinishParentStep=0;
+        cabinetStartEdge.previous=input.cabinetStartHeld;
         resultVisit={};pendingResultSetup.reset();resultAnimationFrame={};resultConfirmPending=false;resultSelectionAxis=.5f;
         finishBannerTicks=finishFadeTicks=0;finishBannerDone=finishAudioSkipped=false;
         tuningTexturesLoaded=false;
@@ -1672,6 +1873,12 @@ struct App {
             const auto selected=original::originalBattleSelection(battleProfile);
             courseIndex=int(selected.course);reverse=selected.direction!=0;wet=selected.weather!=0;night=selected.night!=0;
         }
+        // Loading choice belongs to the accepted race request, before
+        // course/player construction, even when no loading artwork is drawn.
+        // renderLoading passes the one-call preparation fact; direct starts
+        // (including Legend CourseLoad and diagnostics) enter it here once.
+        if(!loadingPrepared)prepareOriginalRaceLoading(networkStart);
+        originalRaceOverlayResources.reset();
         // Dialogue music owns the same resource slot as selection music.
         // Release it before PACK23 is registered for the race.
         audio.endResultMusic();
@@ -1731,22 +1938,51 @@ struct App {
             // Driving rules use the same immutable path after startup.
             originalPath=importedCourse?importedCourse->racePath(reverse):original::OriginalRacePath::load(root,condition);
             const auto spawn=importedCourse?(multiplayer.active?importedCourse->onlineSpawn(reverse,multiplayer.config.localSlot):importedCourse->spawn(reverse)):original::originalStartPose(selection.physics.conditionCode,multiplayer.active?multiplayer.config.localSlot:original::originalSoloStartGridSlot(numericMode));
-            // Original course loading creates the flock before player setup.
-            // Reconstruct its preceding nineteen RNG calls by value, ending
-            // at the existing driving entry seed. No driving state is changed.
-            if(courseCrows)courseCrows->resetBeforeDrivingSeed(presentedSession().ready()?presentedSession().contactCompletion().randomSeed0C37C778:1u);
+            //061B00 calls062480 (synchronous course construction) before
+            //0625E0/159720 (player setup). Myogi dry/day consumes19 shared
+            //draws in041D20/042440 before the player's21C draw.
+            if(courseCrows){
+                if(multiplayer.active){
+                    //The online simulation owns separate agreed RNG states.
+                    //Its visual flock cannot consume an unnegotiated draw.
+                    courseCrows->resetBeforeDrivingSeed(presentedSession().ready()?presentedSession().contactCompletion().randomSeed0C37C778:1u);
+                }else originalSession.withSharedRandom([&](auto& seed){courseCrows->reset(seed);});
+            }
             auto importedRoad=importedCourse?std::optional(importedCourse->drivingRoad(reverse)):std::nullopt;
             const auto resetEffects=originalSession.reset(root,selection,spawn.position,spawn.angles,importedRoad?&*importedRoad:nullptr);
+            // Preserve the App/session's inherited global latch, including
+            // across races. Warmup062100 has no recorder190D00 call.
+            originalSession.useRecordingProgress(numericMode==2&&!multiplayer.active&&!importedCourse&&
+                !replayPlaybackActive&&!authorityRace&&!authorityLink);
             if(multiplayer.active)initializeMultiplayerRemote(condition);
-            originalRaceStart.reset(numericMode);originalRaceOwnerFrame=0;
+            originalRaceStart.reset(numericMode);originalRaceOwnerFrame=0;originalRaceCountdownInitPending=false;
             if(resetEffects.resetPlatformDigitalInput)originalInput={};
             const auto held=driver(false);
-            const original::OriginalHostControls frozenControls{held.steer,held.throttle,held.brake,held.shiftDown,held.shiftUp};
-            const auto frozenInputs=original::adaptOriginalHostInput(originalInput,frozenControls,frontend.automatic,false,0);
+            const original::OriginalHostControls frozenControls{held.steer,held.throttle,held.brake,held.shiftDown,held.shiftUp,0,held.originalSteeringAnalog,held.originalThrottleAnalog,held.originalBrakeAnalog};
+            auto frozenInputs=original::adaptOriginalHostInput(originalInput,frozenControls,frontend.automatic,false,0);
+            //ARace construction05DBC0 sets the raw-throttle gate before
+            //061B00's60 warmups. Keep accepted ADCs intact;15CF76 applies it.
+            if(!importedCourse&&!multiplayer.active&&!authorityRace&&!authorityLink&&!replayPlaybackActive)
+                frozenInputs.suppressRawThrottle0C2F4BC8=1;
             originalSession.setProgressCorrection(0.f,0);
+            // The newly constructed source ACar has byte81 cleared before
+            //061C08's first pose. A preceding race's lamp state cannot leak.
+            if(originalActorLightFeedbackActive()){
+                playerProjectedHeadlight.reset();rivalProjectedHeadlight.reset();
+            }
             projectOriginalPose(false);projectRivalPose(false);
             initializeRaceCarLighting(condition);
             initializeProjectedHeadlights();
+            if(!networkStart&&!multiplayer.active&&!replayPlaybackActive&&!importedCourse){
+                // 061B00 constructs the HUD after player/effects, before its
+                // sixty solver+pose warmups. 16B640 selects semantic resources
+                // here; its non-VS Interrupt02 branch performs a real rand
+                // even though the authored banner number is fixed at02.
+                originalSession.withSharedRandom([&](std::uint32_t& seed){
+                    originalRaceOverlayResources=original::prepareOriginalRaceOverlayResources(
+                        battleProfile.u(0),seed);
+                });
+            }
             original::warmupOriginalRaceSession(originalSession,frozenInputs,originalSession.platformFrame(),0,
                 [this](const auto&){
                     projectOriginalPose(false);projectRivalPose(true);
@@ -1784,14 +2020,21 @@ struct App {
         if(!originalHandling)audio.useDevelopmentEngine();
         texturesPending=true;
         menu=false;paused=false;wetWeather.reset();drivingEffects.reset();roadsideDust.reset();carSmoke.reset(wet?1u:0u);environment.reset();for(auto& car:effectRoadQueries)for(auto& q:car)original::clearOriginalCollisionQuery(q);audio.resetRaceEffects();race.start(originalHandling?float(originalRace.rules().goalIndex):trackFinish-trackStart);
+        if(originalOfflineFinishContext()){
+            auto flags=battleProfile.u(1180);
+            original::resetOriginalCabinetButtons(cabinetButtons,flags);
+            battleProfile.setu(1180,flags);
+        }else cabinetButtons={};
         race.originalTiming=originalHandling;if(originalHandling){race.remaining6000=std::bit_cast<std::int32_t>(originalRace.state().remaining.value);
             race.sectionCapacity=1;for(auto index:originalRace.rules().sectionIndices)if(index>=0)++race.sectionCapacity;race.sectionCapacity=std::min(race.sectionCapacity,4u);}
         raceFeedback.reset(race.remaining6000);
         recording.beginCapture(originalHandling);clearEndingPresentation();
         finishedSaved=false;skids.clear();resultsReady=false;results={};
         personalGhost=TimeAttackGhost{};
-        if(!battle&&!multiplayer.active&&!replayPlaybackActive&&frontend.gameMode==original::OriginalGameMode::TimeAttack)
+        if(!battle&&!multiplayer.active&&!replayPlaybackActive&&frontend.gameMode==original::OriginalGameMode::TimeAttack){
+            finishPendingRaceSave(true);
             personalGhost.load(personalGhostPath());
+        }
         archiveMode=multiplayer.active?1:battle?2:0;
         archiveThisRace=!replayPlaybackActive&&((archiveMode==0&&(replayRecordingFlags&9))||(archiveMode==1&&(replayRecordingFlags&2))||(archiveMode==2&&!bunta&&(replayRecordingFlags&4)));
         archivePublished=false;
@@ -1829,15 +2072,43 @@ struct App {
         if(!multiplayer.active&&!validationMode&&!replayPlaybackActive&&activeSaveSlot>=0)
             rememberSaveCar(activeSaveSlot,unsigned(frontend.car));
     }
+    void activatePlatformClock(std::uint64_t milliseconds){
+        const bool first=!platformClock.active();
+        const auto seed=platformClock.activate(userdataRoot(),milliseconds);
+        if(first)originalSession.withSharedRandom([&](auto& value){value=seed;});
+    }
+    void injectPlatformClock(std::uint32_t retained,std::uint64_t milliseconds){
+        const bool first=!platformClock.active();
+        const auto seed=platformClock.activateInjected(retained,milliseconds);
+        if(first)originalSession.withSharedRandom([&](auto& value){value=seed;});
+    }
     void saveSettings(){if(multiplayer.active)return;flushProfiles();std::ofstream out(userdataRoot()/"settings.txt");out<<courseIndex<<' '<<profile<<' '<<reverse<<' '<<wet<<' '<<night<<' '<<automatic<<' '<<audio.enabled<<' '<<audio.musicTrack<<'\n';std::ofstream native(userdataRoot()/"native_selection.txt");native<<frontend.make<<' '<<frontend.car<<'\n';}
     void settings(){fs::create_directories(userdataRoot());saveSlots=LocalSaveSlots(userdataRoot()/"saves");
+        //AMiddleSeq seeds once before menu consumers. Standalone numerical
+        //diagnostics retain their explicit seed unless they inject a clock.
+        if(!validationMode)activatePlatformClock(NativePlatformClock::hostMilliseconds());
         if(!migrateTimeAttackSeason(userdataRoot()).complete)
             throw std::runtime_error("Season 2 Time Attack records could not be prepared. Close other copies of the game and check that your save folder is writable, then retry.");
         migrateLocalTimeAttackHistory();useSaveSlot(-1);frontend.timeAttackBest=[this](unsigned condition,unsigned weather,unsigned car){return displayedTimeAttackRecords().best(condition,weather,car);};frontend.importedPersonalBest=[this](unsigned condition,unsigned weather,unsigned car){return importedPersonalRecords.personalBest(condition,weather,car);};std::ifstream in(userdataRoot()/"settings.txt");int ci,p,r,w,n,a,s,music;if(in>>ci>>p>>r>>w>>n>>a>>s){courseIndex=std::clamp(ci,0,8);profile=std::clamp(p,0,2);reverse=r==1;wet=w==1||courseIndex==8;night=n==1||courseIndex==8;automatic=a==1;audio.enabled=s==1;if(in>>music)audio.musicTrack=clampMusicTrack(music);}
         selectedRaceMusic=loadRaceMusicSelection(userdataRoot(),audio.musicTrack);
     }
     void commands(double dt){
-        updateSteeringSmoothingLifecycle();
+        const auto hostMilliseconds=std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()).count();
+        commands(dt,std::uint64_t(hostMilliseconds));
+    }
+    void commands(double dt,std::uint64_t hostMilliseconds){
+        //Platform maintenance precedes scene dispatch, including menus/pause.
+        //It never advances or reseeds an online simulation's agreed RNG.
+        if(!platformClock.advanceTo(hostMilliseconds)&&!platformClockWriteWarning){
+            platformClockWriteWarning=true;
+            std::clog<<"Platform clock persistence unavailable; continuing with the in-memory clock. Car saves are unaffected.\n";
+        }
+        sampleHostSteering(hostMilliseconds);
+        // Host overlays/focus/pause are extensions. Discard their interrupted
+        // cabinet holds without synthesizing a delayed View action on resume.
+        // This does not advance the source counter owner or clear its marker.
+        if(originalOfflineCabinetContext()&&(!active||paused||hostDrivingControlsBlocked))cabinetButtons={};
         if(multiplayerDisconnected())return;
         // A peer race has no local pause state, even if a stale host flag or
         // unfocused window tries to leave one behind. Options remain local.
@@ -1854,13 +2125,15 @@ struct App {
         if(multiplayer.active){
             // Network host owns leave/restart/room input; native commands may
             // not launch a single-player race or a post-result owner here.
-            if(input.key('C')||input.button(XINPUT_GAMEPAD_Y))cycleDrivingView();
+            // GO's0683C0 owns view changes; Finish05C4A0 draws the active
+            // camera but never invokes that toggle owner.
+            if(race.phase!=RacePhase::Finished&&(input.key('C')||input.button(XINPUT_GAMEPAD_Y)))cycleDrivingView();
             if(input.key(VK_F2))audio.enabled=!audio.enabled;
             return;
         }
         if(input.key(VK_F1)){if(menu)showControls=!showControls;else debug=!debug;}
         if(input.key(VK_F2)){audio.enabled=!audio.enabled;status(audio.enabled?"Audio enabled":"Audio muted");}
-        if(!menu&&!paused&&!replayPlaybackActive&&!bunta&&battleProfile.byte(1189)==1&&
+        if(!originalOfflineCabinetContext()&&!menu&&!paused&&!replayPlaybackActive&&!bunta&&battleProfile.byte(1189)==1&&
             (input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START))&&
             (input.down['C']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_Y))&&retireCardRace())return;
         if(menu){
@@ -1912,17 +2185,23 @@ struct App {
             if(fullTuneActive&&resultVisit.tuning.kind==original::OriginalTuningChildKind::optionalPart&&
                 !tuneLeft&&!tuneRight&&std::abs(tuneStick)<=.13f)
                 resultSelectionAxis=resultVisit.child.choice?1.f:0.f;
-            if(input.key('C')||input.button(XINPUT_GAMEPAD_Y))cycleDrivingView();
+            if(!originalOfflineCabinetContext()&&!(originalOfflineFinishContext()&&race.phase==RacePhase::Finished)&&(input.key('C')||input.button(XINPUT_GAMEPAD_Y)))cycleDrivingView();
             if(input.key('R')&&!fullTuneActive)start();
             if(fullTuneActive&&resultVisit.tuning.kind==original::OriginalTuningChildKind::optionalPart&&resultVisit.child.phase==0&&
                 (input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_B))){finishFullTune();return;}
-            if((input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_START))&&race.phase==RacePhase::Finished&&!resultVisit.initialized&&pendingResultSetup){
+            if(originalOfflineFinishContext()&&race.phase==RacePhase::Finished&&offlineFinishParentStep<3&&
+                (input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_START))){
+                //Source05C7C8 reads accepted cabinet Start bit7 after120. A
+                //host Pause/Escape or render-frame edge cannot bypass it.
+                resultConfirmPending=false;
+            }
+            else if((input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_START))&&race.phase==RacePhase::Finished&&!resultVisit.initialized&&pendingResultSetup){
                 // Start is the explicit opt-out from the entire finish audio
                 // hold, including a record banner that has already appeared.
                 finishAudioSkipped=true;finishBannerDone=true;resultConfirmPending=false;
             }
             else if((input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_START))&&race.phase==RacePhase::Finished)resultConfirmPending=true;
-            else if(input.key(VK_ESCAPE)||input.button(XINPUT_GAMEPAD_START)){paused=!paused;clock.reset();}
+            else if(input.key(VK_ESCAPE)||(input.button(XINPUT_GAMEPAD_START)&&!sourceCabinetStartReserved())){paused=!paused;clock.reset();}
             if(paused&&input.key(VK_BACK))returnToCourseSelection();
             else if(race.phase==RacePhase::Finished&&!paused&&(input.key(VK_RETURN)||input.button(XINPUT_GAMEPAD_A))){
                 if(resultVisit.initialized)resultConfirmPending=true;
@@ -1944,12 +2223,7 @@ struct App {
         setup.resultStatus=battleResults.resultStatus;
         setup.playerCar=unsigned(frontend.car);
         setup.weather=wet?1u:0u;
-        // 0F8B00 draws the spectator variant from the shared game RNG (1F9E60).
-        if(presentedSession().ready())originalSession.withSharedRandom([&](std::uint32_t& seed){
-            seed=seed*0x41c64e6du+12345u;
-            setup.cheer=(((seed>>16)&0x7fffu)%1000u)%7u;
-        });
-        legendVisit.begin(battleProfile,setup);
+        originalSession.withSharedRandom([&](std::uint32_t& seed){legendVisit.begin(battleProfile,setup,seed);});
         frontend.battleProfile=battleProfile;
         legendVisitActive=true;legendVisitClock.reset();
         legendConfirmPending=legendPreviousPending=legendNextPending=false;legendSkipHeld=false;
@@ -1983,7 +2257,7 @@ struct App {
         for(auto& light:endingProjectedHeadlights)light.reset();
         for(auto& body:endingHeadlightBodies)body.reset();
         endingProjectedHeadlightTextureBase=0;
-        endingSmoke.reset();endingSmokeTextureBase=0;endingRandom=1;
+        endingSmoke.reset();endingSmokeTextureBase=0;
         endingRain.reset();endingRainTextureBase=0;
         endingSnow.reset();endingSnowTextureBase=0;
         endingLampTrails.reset();endingLampTrailTextureBase=0;
@@ -1995,7 +2269,6 @@ struct App {
     void beginEnding(){
         ending.begin(root);endingClock.reset();endingActive=true;paused=false;menu=false;
         endingReplay.seal();endingTexturesLoaded=false;
-        endingRandom=originalSession.ready()?originalSession.contactCompletion().randomSeed0C37C778:1u;
         endingSmoke.reset(wet?1u:0u);
         endingLeaves.reset();endingLeafTextureBase=0;
         if(endingReplay.ready()&&courseLightFsca&&!importedCourse)endingLeaves.begin(root);
@@ -2005,7 +2278,7 @@ struct App {
         if(endingReplay.ready())endingHeadlightGlare.begin(root,night);
         if(endingReplay.ready()){
             const auto& first=endingReplay.playbackFrame(0);
-            endingCamera.reset(first.eye,first.target,endingRandom);
+            endingCamera.reset(first.eye,first.target,originalSession.sharedRandomSeed());
         }
         endingCars={carPresentation,rivalPresentation};
         endingBackfire.reset();endingBackfireTextureBase=0;
@@ -2043,21 +2316,22 @@ struct App {
         endingClock.advance(dt,[&]{
             if(!endingActive)return;
             audio.tickLegendStream();
-            if(ending.timeline.phase<=6&&endingReplay.ready()){
+            if(ending.timeline.phase<=6&&endingReplay.ready())originalSession.withSharedRandom([&](auto& sharedRandom){
                 const auto& frame=endingReplay.playbackFrame(ending.timeline.totalFrame);
-                endingCamera.advanceShared(frame.eye,frame.target,endingRandom);
+                endingCamera.advanceShared(frame.eye,frame.target,sharedRandom);
                 updateEndingLighting(frame);
-                advanceEndingSmoke(frame);
+                advanceEndingSmoke(frame,sharedRandom);
                 endingTireMarks.advance(frame,{endingCars[0].originalEffectOrigins(),endingCars[1].originalEffectOrigins()});
                 // E4320 runs between replay smoke update and the weather/
                 // backfire effect list. Its constructors share this RNG.
-                if(endingLeaves.active())endingLeaves.advance(frame,endingCars[0].originalEffectOrigins(),*courseLightFsca,endingRandom);
+                if(endingLeaves.active())endingLeaves.advance(frame,endingCars[0].originalEffectOrigins(),*courseLightFsca,sharedRandom);
                 if(endingRain.active())endingRain.advance(endingCamera.worldToView(),OriginalEndingCamera::fieldOfViewPhase(),
-                    endingRainCars(frame),presentedSession().collision(),endingRandom);
-                if(endingSnow.active())endingSnow.advance(endingCamera.worldToView(),endingRandom);
+                    endingRainCars(frame),presentedSession().collision(),sharedRandom);
+                if(endingSnow.active())endingSnow.advance(endingCamera.worldToView(),sharedRandom);
                 //17DFE0 list order: weather, backfire, daytime flare, lamps.
-                //Consume presentation RNG only here, never on a repaint.
-                endingBackfire.advance(frame,endingRandom);
+                //Original ending draws still consume37C778. Only this
+                //accepted update advances it; a repaint never does.
+                endingBackfire.advance(frame,sharedRandom);
                 if(endingBackfire.fields().primarySoundRequest)audio.playRaceCue(2,7);
                 if(endingFlare.active())endingFlare.advance(frame.pathIndex,endingCamera,*courseLightFsca);
                 // E36A4 compares the camera-list indices, not replay cursors.
@@ -2067,7 +2341,7 @@ struct App {
                     rivalVisible,endingCamera,presentedSession().collision());
                 advanceEndingHeadlights(frame);
                 endingCourseAnimation.advance();
-            }
+            });
             ending.timeline.step(endingSkipPending);endingSkipPending=false;
             using C=original::OriginalLegendReturnCommand;
             if(ending.timeline.playStream){
@@ -2162,6 +2436,7 @@ struct App {
             (race.phase!=RacePhase::Running&&race.phase!=RacePhase::Countdown)||!originalRace.retire())return false;
         paused=false;vsActive=false;vsSeconds=0;vsPhase=vsFrame=vsShot=0;clock.reset();
         race.phase=RacePhase::Finished;race.timeUp=true;race.remaining6000=0;
+        hostRetireWaitForStop=true;
         race.elapsed6000=originalRace.displayedElapsed();
         originalSession.setRaceAutomaticBrake(true);
         finishBannerTicks=finishFadeTicks=0;finishBannerDone=finishAudioSkipped=false;resultConfirmPending=false;
@@ -2252,38 +2527,144 @@ struct App {
         hostDrivingControlsBlocked=blocked;
         if(blocked){steering=0;steeringSmoothing.reset();steeringSource.reset();}
     }
-    void updateSteeringSmoothingLifecycle(){
-        if(!active||hostDrivingControlsBlocked||paused||menu||loadingActive||
+    bool hostSteeringSuspended()const{
+        return !active||hostDrivingControlsBlocked||paused||menu||loadingActive||
             extraModeVisitActive()||legendVisitActive||preRaceDialogueActive||
-            (multiplayer.active&&multiplayer.waiting)||(steeringControllerConnected&&!input.connected))
+            (multiplayer.active&&multiplayer.waiting);
+    }
+    void updateSteeringSmoothingLifecycle(){
+        if(hostSteeringSuspended()||(steeringControllerConnected&&!input.connected))
             resetSteeringSmoothing();
         steeringControllerConnected=input.connected;
     }
+    std::int16_t hostPairedSteeringAxis(){
+        const auto& p=input.pad.Gamepad;
+        const bool arcadePad=originalHandling&&controllerResponse==original::ControllerResponse::FlycastGamepad&&
+            (steeringDeadzone==-1.f||steeringDeadzone==.1f)&&steeringSmoothing.amount()==0.f;
+        return steeringSource.pairedAtHorizontalChange(p.sThumbLX,p.sThumbLY,arcadePad);
+    }
+    void sampleHostSteering(std::uint64_t milliseconds){
+        updateSteeringSmoothingLifecycle();
+        if(hostSteeringSuspended())return;
+        if(input.connected)hostPairedSteeringAxis();
+        // Both host loops call commands once per input/render sample, even
+        // with no solver tick. Match Flycast's ramp-before-new-events order;
+        // catch-up ticks and stalled online attempts only read this result.
+        steeringSource.sampleKeyboard(milliseconds,
+            input.down['A']||input.down[VK_LEFT],input.down['D']||input.down[VK_RIGHT]);
+    }
     DriverInput driver(bool advanceSmoothing=true){
         DriverInput d;d.automatic=automatic;
-        if(hostDrivingControlsBlocked||(multiplayer.active&&!active)){
+        if(hostDrivingControlsBlocked||(multiplayer.active&&(!active||!onlineFinishAcceptsDriving()))){
             steering=0;steeringSmoothing.reset();steeringSource.reset();return d;
         }
         const float keyboard=float(input.down['D']||input.down[VK_RIGHT])-float(input.down['A']||input.down[VK_LEFT]);
         const auto pad=input.connected?original::controllerHostControls(input.pad.Gamepad.sThumbLX,
-            input.pad.Gamepad.sThumbLY,input.pad.Gamepad.bRightTrigger,input.pad.Gamepad.bLeftTrigger,
+            hostPairedSteeringAxis(),input.pad.Gamepad.bRightTrigger,input.pad.Gamepad.bLeftTrigger,
             controllerResponse,steeringDeadzone):original::OriginalHostControls{};
         steering=steeringSource.advance(steering,keyboard,pad.steering,input.connected,originalHandling,physicsDt);
         // Called once per physics tick. The race-start input snapshot observes
         // the neutral filter without advancing a tick before driving begins.
         d.steer=steeringSmoothing.advance(steering,advanceSmoothing?physicsDt:0.f);
+        if(originalHandling&&steeringSmoothing.amount()==0.f)
+            d.originalSteeringAnalog=steeringSource.keyboardAnalog();
         d.throttle=std::max(float(input.down['W']||input.down[VK_UP]),pad.throttle);
         d.brake=std::max(float(input.down['S']||input.down[VK_DOWN]||input.down[VK_SPACE]),pad.brake);
+        if(originalHandling&&controllerResponse!=original::ControllerResponse::Previous&&input.connected){
+            if(!input.down['W']&&!input.down[VK_UP])d.originalThrottleAnalog=input.originalThrottleAnalog;
+            if(!input.down['S']&&!input.down[VK_DOWN]&&!input.down[VK_SPACE])d.originalBrakeAnalog=input.originalBrakeAnalog;
+            if(d.originalThrottleAnalog>=0)d.throttle=original::originalHostPedalAmount(std::uint16_t(d.originalThrottleAnalog));
+            if(d.originalBrakeAnalog>=0)d.brake=original::originalHostPedalAmount(std::uint16_t(d.originalBrakeAnalog));
+        }
         d.shiftUp=input.down['E']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_B);d.shiftDown=input.down['Q']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_X);d.requestedGear=input.requestedGear;return d;
+    }
+    bool originalShowcaseUsesDrivingClock()const{
+        return vsActive&&originalHandling&&!importedCourse&&courseIndex>=0&&courseIndex<9&&
+            !multiplayer.active&&!authorityRace&&!authorityLink&&!replayPlaybackActive;
+    }
+    bool originalOfflineFinishContext()const{
+        return originalHandling&&originalSession.ready()&&!importedCourse&&courseIndex>=0&&courseIndex<9&&
+            !multiplayer.active&&!authorityRace&&!authorityLink&&!replayPlaybackActive&&!fullTuneActive&&
+            !hostRetireWaitForStop;
+    }
+    bool originalOfflineCabinetContext()const{
+        return originalOfflineFinishContext()&&!menu&&!loadingActive&&!extraModeVisitActive()&&
+            !legendVisitActive&&!preRaceDialogueActive&&!resultVisit.initialized&&offlineFinishParentStep==0;
+    }
+    bool sourceCabinetStartReserved()const{
+        return originalOfflineCabinetContext()&&battleProfile.byte(1189)!=0&&
+            (vsActive||race.phase==RacePhase::Countdown||race.phase==RacePhase::Running);
+    }
+    void advanceOriginalCabinetButtons(){
+        if(!originalOfflineCabinetContext())return;
+        const bool enabled=active&&!hostDrivingControlsBlocked;
+        const bool view=enabled&&(input.down['C']||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_Y));
+        original::advanceOriginalCabinetButtons(cabinetButtons,std::uint8_t(
+            (enabled&&input.cabinetStartHeld?0x80u:0u)|(view?0x10u:0u)));
+    }
+    void applyOriginalCabinetViewChange(){
+        //0683C0 runs after067D00. Consumed4 therefore cannot also toggle view.
+        if(active&&!hostDrivingControlsBlocked&&!paused&&
+            (cabinetButtons.view==3u||(cabinetButtons.view==0u&&cabinetButtons.releasedView-1u<=1u)))cycleDrivingView();
+    }
+    bool originalOfflineFinishOwnsDriving()const{
+        return originalOfflineFinishContext()&&race.phase==RacePhase::Finished&&
+            !offlineFinish.done()&&!resultVisit.initialized&&!extraModeVisitActive();
+    }
+    bool advanceOriginalOfflinePostRace(){
+        if(!originalOfflineFinishContext()||!offlineFinish.done())return false;
+        if(!active||hostDrivingControlsBlocked||paused||menu||loadingActive||extraModeVisitActive()||legendVisitActive||preRaceDialogueActive)return true;
+        cabinetStartEdge.accept(input.cabinetStartHeld);
+        if(offlineFinishParentStep==1){
+            //TA07D140 / shared Legend-Bunta090EE0 complete Close in one
+            //offline dispatch, without car, camera, or statistic publication.
+            offlineFinishParentStep=2;return true;
+        }
+        if(offlineFinishParentStep==2){
+            //Next source dispatch owns result Init. Do not defer this to
+            //render or let remaining callbacks in this host batch run cars.
+            offlineFinishParentStep=3;timeSummaryDone=true;resultConfirmPending=false;
+            if(!battle&&!timeAttackLectureDone){beginTimeAttackVisit(true);}
+            else if(pendingResultSetup){beginResultVisit(*pendingResultSetup);pendingResultSetup.reset();}
+        }
+        return true;
+    }
+    bool hostDrivingClockMayAdvance()const{
+        if(originalOfflineFinishContext()&&race.phase==RacePhase::Finished&&
+            (offlineFinishParentStep>=3||hostDrivingControlsBlocked||!active))return false;
+        return !menu&&!paused&&!loadingActive&&!extraModeVisitActive()&&!legendVisitActive&&
+            !preRaceDialogueActive&&(!vsActive||originalShowcaseUsesDrivingClock())&&
+            !(multiplayer.active&&multiplayer.waiting);
     }
     template<class F> void advanceHostClock(double elapsed,F&& step){
         if(multiplayerDisconnected()){clock.reset();return;}
-        if(!multiplayer.active){clock.advance(elapsed,step);return;}
+        if(!multiplayer.active){
+            // StandBy, PreInit/countdown and GO share the original outer
+            // driving owner. Keep its source cadence and fractional time
+            // through the child handoff; render only reads this showcase.
+            clock.advance(elapsed,[&]{
+                //A single host batch may end ARace, dispatch Close, and enter
+                //results. Recheck each callback; no render is required.
+                if(!hostDrivingClockMayAdvance())return;
+                if(advanceOriginalOfflinePostRace())return;
+                if(originalShowcaseUsesDrivingClock())advanceStartPresentationStep(true);
+                else step();
+            });
+            return;
+        }
         // Keep original per-frame physics and its measured video cadence.
         // Online background frames can
         // represent up to250ms, rather than silently losing time at100ms.
+        const auto onlineStep=[&]{
+            advanceOnlineFinishSourceTick();onlineFinishTickActive=true;
+            // Finish draws the active camera before the parent runs physics.
+            // Exit05D180 never draws it, including its final unblanking call.
+            if(onlineFinishTickViews)advanceOriginalCamera();
+            try{step();}catch(...){onlineFinishTickActive=false;throw;}
+            onlineFinishTickActive=false;
+        };
         double remaining=std::clamp(elapsed,0.0,.25);
-        while(remaining>0){const double slice=std::min(remaining,.1);clock.advance(slice,step);remaining-=slice;}
+        while(remaining>0){const double slice=std::min(remaining,.1);clock.advance(slice,onlineStep);remaining-=slice;}
     }
     original::OriginalMatrix actorVisualMatrix(const std::array<std::uint32_t,42>& actor)const{
         const auto value=[&](unsigned offset){return std::bit_cast<float>(actor.at(offset/4));};
@@ -2409,6 +2790,15 @@ struct App {
             //dwell interval. This initial publication contributes one tick.
             const bool initialRivalLights=multiplayer.active?(multiplayer.remote.flags&Idas3MpHeadlights)!=0:night||(battleProfile.u(0)==0&&battleProfile.u(24)==29);
             if(!multiplayer.active&&battleProfile.u(0)==0&&battleProfile.u(24)==29)rivalLightState.frames1732=1;
+            if(originalActorLightFeedbackActive()){
+                // Initial0638C0 handles enemy29 before061C24's night LightON.
+                // Its035220 tail observes that pre-night request; LightON
+                // itself changes byte81 but never immediately edits actor50.
+                const bool beforeNight=battleProfile.u(0)==0&&battleProfile.u(24)==29;
+                rivalProjectedHeadlight.request(beforeNight,presentedSession().collision(),rivalBody.query(),
+                    {std::bit_cast<float>(p[0]),std::bit_cast<float>(p[1]),std::bit_cast<float>(p[2])});
+                feedbackOriginalActorHeadlights(true);
+            }
             rivalProjectedHeadlight.request(initialRivalLights,presentedSession().collision(),rivalBody.query(),
                 {std::bit_cast<float>(p[0]),std::bit_cast<float>(p[1]),std::bit_cast<float>(p[2])});}
         composeRaceCarLights();
@@ -2438,6 +2828,9 @@ struct App {
                     presentedSession().collision(),rivalBody.query(),
                     {std::bit_cast<float>(p[0]),std::bit_cast<float>(p[1]),std::bit_cast<float>(p[2])});
             }
+            //063B08 runs after the rival request. Linked mode exits before
+            //this feedback; the explicit offline guard preserves that scope.
+            feedbackOriginalActorHeadlights(true);
         }
         composeRaceCarLights();
     }
@@ -2546,9 +2939,46 @@ struct App {
         //The current GO/rules projection occurs later in simulate().
         courseLightPathIndex=originalCoordinate.index;
     }
+    void recordTimeAttackDrivingFrame(const original::OriginalDrivingStepEffects& effects,const DriverInput& d,
+        bool recordPath,bool captureResult=false){
+        if(!originalHandling||!originalSession.ready()||battle||multiplayer.active||authorityRace||authorityLink||replayPlaybackActive)return;
+        if(!importedCourse&&!originalSession.usesRecordingProgress())return;
+        if(importedCourse&&!recordPath)return;
+        const auto& timing=originalRace.state();
+        const auto recordIndex=importedCourse?timeAttackTelemetry.recordImportedProgress(timing.progress.index,originalRace.displayedElapsed()):
+            timeAttackTelemetry.recordProgress(unsigned(courseIndex),unsigned(reverse),timing.progress.index,
+                original::originalTimeAttackRecordingLength(unsigned(courseIndex),unsigned(reverse)),originalRace.displayedElapsed());
+        if(importedCourse){
+            timeAttackTelemetry.record(effects.newImpactRecords,recordIndex);
+            timeAttackTelemetry.recordDitches(presentedSession().contactCompletion(),recordIndex);
+        }else{
+            //05FFB0 solver appends using the retained global;06007C then
+            //updates190D00 even during mode2 countdown/Finish. Only the
+            //next solver sees this value. Do not restamp old contacts.
+            timeAttackTelemetry.record(effects.newImpactRecords);
+            timeAttackTelemetry.recordDitches(presentedSession().contactCompletion());
+            originalSession.setRecordingProgress(recordIndex);
+        }
+        // The existing path renderer samples the current rules progress;
+        // contact stamps have their own, earlier source boundary.
+        if(recordPath)timeAttackTelemetry.recordDrivingPoint({vehicle.position.x,vehicle.position.y,vehicle.position.z},recordIndex,d.throttle,d.brake);
+        if(captureResult){
+            const auto& sourceVehicle=presentedSession().vehicle();
+            timeAttackSnapshot=timeAttackTelemetry.snapshot(unsigned(courseIndex),sourceVehicle.drive,sourceVehicle.tail,
+                presentedSession().contactCompletion(),0,!importedCourse);
+        }
+    }
     void simulate(const DriverInput& d){
+        finishPendingRaceSave(false);
         // Full Tune owns the result children without a race or physics actor.
         if(fullTuneActive)return;
+        const bool sourceOffline=originalOfflineFinishContext();
+        if(sourceOffline&&race.phase==RacePhase::Finished){
+            if(advanceOriginalOfflinePostRace())return;
+            if(!active||hostDrivingControlsBlocked||paused||menu||loadingActive||extraModeVisitActive()||legendVisitActive||preRaceDialogueActive)return;
+        }
+        advanceOriginalCabinetButtons();
+        const bool cabinetStartPressed=sourceOffline?cabinetStartEdge.accept(input.cabinetStartHeld):false;
         if(race.phase==RacePhase::Finished)publishLocalReplay();
         if(multiplayer.active&&(multiplayer.waiting||multiplayer.disconnected))return;
         // The original primary draw continues animating while its course is
@@ -2556,7 +2986,18 @@ struct App {
         if(race.phase==RacePhase::Countdown||race.phase==RacePhase::Running||race.phase==RacePhase::Finished)courseAnimation.advance();
         // The race-end announcement runs on every update once the race is
         // over, ahead of the guard that returns while only racing.
-        if(race.phase==RacePhase::Finished&&!finishBannerDone){
+        if(sourceOffline&&race.phase==RacePhase::Finished){
+            if(!offlineFinish.active())offlineFinish.begin(battle?0u:2u,!race.timeUp,
+                battle&&battleResult==original::OriginalLegendResult::Loss,results.recordFlags,(battleProfile.u(1180)&3u)!=0);
+            const bool views=offlineFinish.drawsViews();
+            const bool stopStream=offlineFinish.advance(cabinetStartPressed);
+            finishBannerTicks=offlineFinish.counter;finishFadeTicks=0;
+            //Finish's common024100 view dispatch precedes062DE0. Exit
+            //does not dispatch these views, including its final solver tick.
+            if(views)advanceOriginalCamera();
+            if(stopStream)audio.stopOriginalFinishStream();
+        }
+        if(!sourceOffline&&race.phase==RacePhase::Finished&&!finishBannerDone){
             ++finishBannerTicks;
             // The outcome stays up for its own minimum and then for as long
             // as the win, loss or time-up stream keeps playing. A silent device
@@ -2592,20 +3033,48 @@ struct App {
             return;
         }
         if(race.phase==RacePhase::Finished&&originalHandling){
+            // 05C040 marks the race child complete on finish/time-up. Its
+            // successor05C280 starts on the NEXT outer update, before the
+            // solver, and061A80/1427E0 stop engine/tire RNG consumers. A
+            // source challengerflag(+64C) defers this to actorbit14. Native
+            //host retirement retains that policy as an explicit extension;
+            //it is not proof of the original forced-quit route.
+            if(!multiplayer.active&&(!hostRetireWaitForStop||originalSession.stoppedForRace()))
+                audio.stopOriginalDriving();
             originalSession.setRaceAutomaticBrake(true);
-            const original::OriginalHostControls braking{d.steer,0,1,false,false};
-            auto inputs=original::adaptOriginalHostInput(originalInput,braking,d.automatic,false,0);
-            inputs.suppressRawThrottle0C2F4BC8=1;noteReplayShift(inputs,braking,false);
+            //05C280 adds actorbit13 for automatic braking. It does not clear
+            //the GO gear-enable bit or replace the cabinet's pedal/shift ADCs.
+            //The original numerical owner performs its own throttle cut.
+            const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog};
+            const bool gearEnabled=(originalSession.actor().u(0x50)&0x8000u)!=0;
+            auto inputs=original::adaptOriginalHostInput(originalInput,controls,d.automatic,gearEnabled,0);
+            noteReplayShift(inputs,controls,gearEnabled);
             const auto effects=originalSession.tick(inputs);
             if(effects.invalidScalarDiagnostics)throw std::runtime_error("Post-race braking produced invalid physics");
-            projectOriginalPose(true);advanceOriginalCamera();projectRivalPose(true);advanceProjectedHeadlights();advanceRoadsideDust();
+            recordTimeAttackDrivingFrame(effects,d,false);
+            projectOriginalPose(true);
+            if(!sourceOffline&&(!multiplayer.active||onlineResult.page<0))advanceOriginalCamera();
+            projectRivalPose(true);advanceProjectedHeadlights();advanceRoadsideDust();
             originalSession.finishSoundFrame([&](auto& seed){audio.finishSoundFrame(seed);});
+            if(sourceOffline&&offlineFinish.done()){
+                //The source outer still publishes this final solver/contact/
+                //recorder update before wrapper End unblanks and closes it.
+                finishBannerDone=true;offlineFinishParentStep=1;
+            }
             return;
         }
         if(race.phase!=RacePhase::Running&&race.phase!=RacePhase::Countdown)return;
         original::OriginalRaceEvents event;
         if(originalHandling){
-            const auto startFrame=originalRaceStart.step();++originalRaceOwnerFrame;
+            original::OriginalRaceStartFrame startFrame;
+            if(std::exchange(originalRaceCountdownInitPending,false)){
+                // The actual StandBy -> PreInit handoff creates the240-count
+                // auxiliary child AFTER this update's auxiliary pass. Its
+                // first decrement belongs to the next update; the solver
+                // still runs once with neutral gear on this creation update.
+                startFrame.countdownRemaining=originalRaceStart.remaining();
+            }else startFrame=originalRaceStart.step();
+            ++originalRaceOwnerFrame;
             projectedLightPriorAdvantage=battle?battleMetrics.advantage(originalRace.state().progress,originalRace.state().rivalProgress):0.f;
             race.originalStartDigit=startFrame.countdownDigit;race.originalStartElapsed=240-startFrame.countdownRemaining;
             race.countdown=int(startFrame.countdownRemaining>60?startFrame.countdownRemaining-60:0);
@@ -2617,16 +3086,24 @@ struct App {
             if(startFrame.runRules){
                 const original::OriginalRacePoint position{vehicle.position.x,vehicle.position.y,vehicle.position.z};
                 originalPath.project(position,originalCoordinate);
-                if(battle){originalPath.project({rivalVehicle.position.x,rivalVehicle.position.y,rivalVehicle.position.z},rivalCoordinate);event=originalRace.tickBattle(originalCoordinate,position,rivalCoordinate,originalSession.stoppedForRace());}
-                else event=originalRace.tick(originalCoordinate,position,originalSession.stoppedForRace());
+                auto flags=battleProfile.u(1180);
+                original::OriginalRaceCabinetControls cabinet{cabinetButtons,flags,cabinetConfigWord12,battleProfile.byte(1189)};
+                const auto* cabinetOwner=originalOfflineCabinetContext()?&cabinet:nullptr;
+                if(battle){originalPath.project({rivalVehicle.position.x,rivalVehicle.position.y,rivalVehicle.position.z},rivalCoordinate);event=originalRace.tickBattle(originalCoordinate,position,rivalCoordinate,originalSession.stoppedForRace(),cabinetOwner);}
+                else event=originalRace.tick(originalCoordinate,position,originalSession.stoppedForRace(),cabinetOwner);
+                if(cabinetOwner)battleProfile.setu(1180,flags);
                 originalSession.setRaceAutomaticBrake(originalRace.state().automaticBrake);
             }
-            original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear};
-            const bool justFinished=event.finished||event.timeUp;
-            if(justFinished){controls={d.steer,0,1,false,false};originalSession.setRaceAutomaticBrake(true);}
-            auto inputs=original::adaptOriginalHostInput(originalInput,controls,d.automatic,startFrame.gearEnabled&&!justFinished,0);
-            if(justFinished)inputs.suppressRawThrottle0C2F4BC8=1;
-            noteReplayShift(inputs,controls,startFrame.gearEnabled&&!justFinished);
+            //PreInit05BE6C also calls0683C0, including its creation Main.
+            //GO calls it after timer/chord consumption; neither phase polls
+            //View on host-render frames or through the command fallback.
+            if(originalOfflineCabinetContext())applyOriginalCabinetViewChange();
+            original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog};
+            //A finish crossing completes05C040 but still runs this solver
+            //with its accepted controls. The next child applies automatic
+            //braking on the following update; timeout rules own their brake.
+            auto inputs=original::adaptOriginalHostInput(originalInput,controls,d.automatic,startFrame.gearEnabled,0);
+            noteReplayShift(inputs,controls,startFrame.gearEnabled);
             //062DE0 feeds06A420's accumulated path-distance difference to
             // the local battle solver; solo modes receive exact +0. Local
             // race initialization leaves the linked-race override at0.
@@ -2636,18 +3113,7 @@ struct App {
             // updates and before062DE0 advances the driving solver.
             if(startFrame.runRules)captureEndingFrame();
             const auto effects=originalSession.tick(inputs);
-            if(!battle&&!multiplayer.active&&startFrame.runRules){
-                const auto recordIndex=importedCourse?timeAttackTelemetry.recordImportedProgress(timing.progress.index,originalRace.displayedElapsed()):timeAttackTelemetry.recordProgress(unsigned(courseIndex),unsigned(reverse),timing.progress.index,
-                    original::originalTimeAttackRecordingLength(unsigned(courseIndex),unsigned(reverse)),originalRace.displayedElapsed());
-                timeAttackTelemetry.recordDrivingPoint({vehicle.position.x,vehicle.position.y,vehicle.position.z},recordIndex,d.throttle,d.brake);
-                timeAttackTelemetry.record(effects.newImpactRecords,recordIndex);
-                timeAttackTelemetry.recordDitches(presentedSession().contactCompletion(),recordIndex);
-                if(event.finished||event.timeUp){
-                    const auto& sourceVehicle=presentedSession().vehicle();
-                    timeAttackSnapshot=timeAttackTelemetry.snapshot(unsigned(courseIndex),sourceVehicle.drive,sourceVehicle.tail,
-                        presentedSession().contactCompletion(),0,!importedCourse);
-                }
-            }
+            recordTimeAttackDrivingFrame(effects,d,startFrame.runRules,event.finished||event.timeUp);
             audio.requestOriginalTire(effects.vehicle.feedback);
             if(effects.invalidScalarDiagnostics)throw std::runtime_error("Original contact reported invalid numerical state");
             projectOriginalPose(true);
@@ -2669,7 +3135,7 @@ struct App {
         }
         auto next=projectRacePosition(vehicle.position);segment=next.segment;progress=next.sample.distance;
         if(!originalHandling)vehicle.position.y=next.sample.center.y;
-        if(!originalHandling)advanceHudDrift();
+        if(!originalHandling){advanceHudDrift();advanceDrivingView(true);}
         if(originalHandling){
             const auto& originalState=originalRace.state();
             ++race.ticks;race.elapsed6000=originalRace.displayedElapsed();race.remaining6000=std::bit_cast<std::int32_t>(originalState.remaining.value);
@@ -2721,7 +3187,7 @@ struct App {
         if(race.phase==RacePhase::Finished&&!finishedSaved&&!validationMode){
             NativeLoadProfile trace("app.saveFinishedRace");
             finishedSaved=true;
-            if(resultsReady&&!battle&&!multiplayer.active&&!race.timeUp&&race.originalTiming){
+            if(resultsReady&&communityLeaderboardCourse(results.condition/2)&&!installationOnly&&!battle&&!multiplayer.active&&!race.timeUp&&race.originalTiming){
                 // Only a newly completed production Time Attack can produce
                 // an upload. Historical CSV rows and saves are never scraped.
                 std::ostringstream out;out<<"{\"condition\":"<<results.condition<<",\"weather\":"<<unsigned(wet)<<",\"car\":"<<results.carId<<",\"ticks6000\":"<<race.elapsed6000<<",\"nameGlyphs\":[";
@@ -2736,18 +3202,11 @@ struct App {
             }
             trace.mark("finish.timePayload");
             if(race.originalTiming&&!race.timeUp)recording.finishTicks6000=race.elapsed6000;
-            if(resultsReady&&personalGhostContext()&&!race.timeUp&&race.originalTiming&&
-               TimeAttackGhost::saveBest(personalGhostPath(),recording,unsigned(frontend.car))==TimeAttackGhost::Saved::Failed)
-                status("Could not save personal-best ghost");
-            trace.mark("finish.personalGhost");
-            if(resultsReady){TimeAttackEntry entry{results.condition,unsigned(wet),results.carId,race.elapsed6000};for(unsigned i=0;i<5;++i)entry.nameGlyphs[i]=std::uint8_t(battleProfile.u(44+4*i));entry.manual=!automatic;entry.night=night;if(importedCourse)std::copy_n(race.sectionTimes6000.begin(),3,entry.intermediate6000.begin());records.record(entry);if(!records.save(userdataRoot()/"time_attack_records_v1.csv"))status("Could not save Time Attack records");}
+            if(resultsReady){TimeAttackEntry entry{results.condition,unsigned(wet),results.carId,race.elapsed6000};for(unsigned i=0;i<5;++i)entry.nameGlyphs[i]=std::uint8_t(battleProfile.u(44+4*i));entry.manual=!automatic;entry.night=night;if(importedCourse)std::copy_n(race.sectionTimes6000.begin(),3,entry.intermediate6000.begin());records.record(entry);if(installationBoard){installationBoard->record(entry);if(installationOnly)frontend.localRanking=original::OriginalRankingRecords::fromTimes(installationBoard->entries());}}
             trace.mark("finish.records");
             const bool newBest=!battle&&!race.timeUp&&(bestTime<=0||race.seconds()<bestTime)&&!recording.truncated;
-            const auto saved=recording.saveCopies((userdataRoot()/"last_run.csv").string(),newBest?ghostPath().string():std::string());
-            if(!saved[0])status("Could not save complete run telemetry");
-            trace.mark("finish.telemetryCopies");
-            if(newBest){if(saved[1]){best=recording;bestTime=race.seconds();status("Best run saved with replay telemetry");}else status("Could not save best-run replay");}
-            trace.mark("finish.bestRunState");
+            queueRaceSave(resultsReady&&personalGhostContext()&&!race.timeUp&&race.originalTiming,newBest);
+            trace.mark("finish.queueFiles");
         }
     }
     void noteReplayShift(const original::OriginalVehicleInputs& in,const original::OriginalHostControls& controls,bool gearEnabled){
@@ -2757,7 +3216,7 @@ struct App {
         if(!in.automaticMode&&gearEnabled&&in.requestedGear>=1&&int(in.requestedGear)<vehicle.gear)replayShiftEdges|=0x10u;
         replayShiftHeld=std::uint8_t((controls.shiftDown?1u:0u)|(controls.shiftUp?2u:0u));
     }
-    void advanceEndingSmoke(const EndingReplayFrame& frame){
+    void advanceEndingSmoke(const EndingReplayFrame& frame,std::uint32_t& sharedRandom){
         std::array<original::OriginalCarSmokeInput,2> cars;
         const unsigned count=rivalVisible?2u:1u;
         for(unsigned i=0;i<count;++i){
@@ -2768,8 +3227,8 @@ struct App {
         }
         // Original course scene selector, distinct from the route/direction.
         endingSmoke.advance(unsigned(courseIndex)*2u+unsigned(night),unsigned(wet),count,cars,[&]{
-            endingRandom=endingRandom*0x41c64e6du+12345u;
-            return float((endingRandom>>16)&32767u)/32768.f;
+            sharedRandom=sharedRandom*0x41c64e6du+12345u;
+            return float((sharedRandom>>16)&32767u)/32768.f;
         });
     }
     std::array<OriginalRainPresentation::Car,2> endingRainCars(const EndingReplayFrame& frame)const{
@@ -3152,7 +3611,7 @@ struct App {
         const bool drawn=renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuBackgroundWithMargins(loadingPixels,dt));
         if(!drawn)return false;
         // The load happens after the first frame is on screen.
-        if(!loadingStarted){loadingStarted=true;start();}
+        if(!loadingStarted){loadingStarted=true;start(false,true);}
         return true;
     }
     const std::uint32_t* menuBackgroundWithMargins(const std::vector<std::uint32_t>& background,double dt=0){
@@ -3169,7 +3628,69 @@ struct App {
         frontend.paintMenuMargins(menuBackdropPixels,renderer.width,renderer.height);
         return menuBackdropPixels.data();
     }
+    int battlePreviewStage=-1,battlePreviewCar=-1,battlePreviewPaint=-1;
+    original::OriginalBattleProfile battlePreviewProfile;
+    CarPresentation battlePreviewPresentation;
+    NativeModel battlePreviewModel;
+    OriginalNumberPlate battlePreviewPlate;
+    unsigned battlePreviewTextureCount=0;
+    OriginalShowroom battleShowroom;
+    FixedClock battleShowroomClock;
+    bool renderBattleCar(double dt){
+        const auto& b=frontend.battleEntry;
+        using Page=Frontend::BattlePage;
+        const bool waiting=b.page==Page::Waiting;
+        if(battlePreviewStage!=int(b.page)||battlePreviewCar!=b.car||battlePreviewPaint!=int(b.paint)||
+           (waiting&&b.cardProfile.words!=battlePreviewProfile.words)){
+            if(battlePreviewStage!=int(b.page)){battleShowroom.reset();battleShowroomClock.reset();}
+            auto profile=waiting?b.cardProfile:original::makeOriginalFreshBattleProfile();
+            profile.setu(16,unsigned(b.car));profile.setu(64,b.paint);
+            battlePreviewProfile=profile;
+            const auto folder=std::string(originalCarFolders.at(b.car));
+            battlePreviewModel=NativeModel::load(root/"data/original_models"/folder/(folder+".idasmesh"));
+            const auto textures=NativeTextureBank::load(root/"data/original_assets/cars"/folder/"textures/textures.idastex");
+            battlePreviewPlate=OriginalNumberPlate::load(root,unsigned(b.car),original::originalCarPresentationColor(unsigned(b.car),b.paint));
+            battlePreviewPlate.setPlayerProfile(profile);
+            const auto appearance=original::originalPlayerAppearanceConfig(profile,b.page==Page::Model?1u:0u);
+            loadDriverEntryEnvironment();
+            battlePreviewPresentation=CarPresentation::loadConfiguredAppearance(root,profile,appearance,2,unsigned(textures.size()+battlePreviewPlate.textures.size()));
+            battlePreviewPresentation.applyMaterials(battlePreviewModel);
+            if(!renderer.loadTextures(textures)||!renderer.loadTextures(battlePreviewPlate.textures,true)||!renderer.loadTextures(tuningCoursePreviewEnvironment,true))return false;
+            battlePreviewTextureCount=unsigned(textures.size());battlePreviewStage=int(b.page);battlePreviewCar=b.car;battlePreviewPaint=b.paint;
+        }
+        battleShowroomClock.advance(dt,[&]{battleShowroom.advanceTicks();});
+        auto pose=b.page==Page::Gearbox?battleShowroom.transmissionFrame(unsigned(b.car)):battleShowroom.frame(unsigned(b.car));
+        Mesh mesh;
+        if(!showroomDetailsLoaded){
+            showroomShadow=NativeModel::load(root/"data/original_models/showroom/selcrs.idasmesh");
+            showroomFsca=original::OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");
+            showroomDetailsLoaded=true;
+        }
+        mesh.originalCar(showroomShadow,OriginalShowroomShadow::assembly(unsigned(b.car),pose.carYaw,showroomFsca),{},0);
+        mesh.originalCar(battlePreviewModel,battlePreviewPresentation.pose({},false,false),pose.carPosition,pose.carYaw,0,0,0,{},true);
+        mesh.originalCar(battlePreviewPlate.model,battlePreviewPresentation.profilePlateAssembly(),pose.carPosition,pose.carYaw,0,0,battlePreviewTextureCount,{},true);
+        renderer.clearColor={1,1,1,1};renderer.verticalFieldOfView=pose.verticalFieldOfView;renderer.cameraUp={0,1,0};
+        renderer.nearClip=1;renderer.farClip=5000;renderer.fitOriginalViewport=true;
+        return renderer.draw(mesh,pose.eye,pose.target,false,false,frontend.paintBattleEntry(renderer.width,renderer.height).data(),!waiting,&showroomLighting);
+    }
     bool renderMenu(double dt){
+        offerChallengers=false;
+        if(frontend.battleEntry.page!=Frontend::BattlePage::Closed){
+            renderer.sceneViewport={};renderer.projectionAspect=0;renderer.screenFadeArgb=frontend.battleEntry.fade<<24;
+            renderer.fitOriginalViewport=false;renderer.overrideClearColor=true;renderer.clearColor={0,0,0,1};
+            renderer.courseFog=nullptr;renderer.courseLighting=nullptr;renderer.playerLighting=nullptr;renderer.rivalLighting=nullptr;
+            renderer.vehicleLights=renderer.opponentLights=false;renderer.courseLampPositions.clear();
+            const auto page=frontend.battleEntry.page;
+            if(page==Frontend::BattlePage::Model||page==Frontend::BattlePage::Gearbox||page==Frontend::BattlePage::Waiting)return renderBattleCar(dt);
+            const Mesh empty;
+            if(frontend.battleEntry.page==Frontend::BattlePage::Loading&&loadingScreen.loaded()){
+                loadingPixels.resize(std::size_t(renderer.width)*renderer.height);
+                unityUiClear(loadingPixels.data(),renderer.width,renderer.height,0xff000000u);
+                loadingScreen.paint(loadingPixels,renderer.width,renderer.height);
+                return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,loadingPixels.data());
+            }
+            return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,frontend.paintBattleEntry(renderer.width,renderer.height).data());
+        }
         if(!demoPreparationStarted){
             demoPreparationStarted=true;
             // Load source scene/cars and evaluate recorded path/body queries
@@ -3196,6 +3717,8 @@ struct App {
         // Other owners still finish their accepted transitions.
         const bool coveredMode=hostDrivingControlsBlocked&&frontend.stage==FrontendStage::Mode;
         frontend.advance(dt,coveredMode);
+        const bool confirmedReturningCar=!inspectionVisit&&!fullTuneSelecting&&
+            previousStage==FrontendStage::Transmission&&frontend.stage==FrontendStage::Mode;
         advanceCarInspection();
         if(frontend.takeSaveCarPreviewReset()){
             loadedProfileCar=-1;
@@ -3262,8 +3785,14 @@ struct App {
         if((profileCommitted||setupCompleted)&&!validationMode&&!inspectionVisit){
             const auto car=unsigned(frontend.car);pendingProfiles.at(car)=frontend.battleProfile;
             pendingSetupCompletion[car]=pendingSetupCompletion[car]||setupCompleted;flushProfiles();
-            if(setupCompleted&&activeSaveSlot>=0)saveSlots.adopt(unsigned(activeSaveSlot),frontend.battleProfile);
+            if(setupCompleted&&activeSaveSlot>=0){
+                const bool cardSaved=saveSlots.adopt(unsigned(activeSaveSlot),frontend.battleProfile);
+                offerChallengers=cardSaved&&!pendingSetupCompletion[car]&&!fullTuneSelecting;
+            }
         }
+        // A returning driver can still have a per-car tuning package to choose.
+        if(confirmedReturningCar&&(frontend.stage==FrontendStage::Mode||frontend.stage==FrontendStage::TuningCourse))
+            offerChallengers=true;
         // The ordinary file/car/color/transmission/name/package owners have
         // completed. Enter upgrades here before Choose a Mode accepts input.
         if(fullTuneSelecting&&frontend.stage==FrontendStage::Title)fullTuneSelecting=false;
@@ -3398,7 +3927,7 @@ struct App {
             in.confirm=legendConfirmPending;in.previous=legendPreviousPending;in.next=legendNextPending;
             in.skip=legendSkipHeld;
             legendConfirmPending=legendPreviousPending=legendNextPending=false;
-            legendVisit.advance(battleProfile,in);
+            originalSession.withSharedRandom([&](std::uint32_t& seed){legendVisit.advance(battleProfile,in,seed);});
             for(const auto& event:legendVisit.takeEvents()){
                 audio.applyLegendStreamCommand(event);
                 using C=original::OriginalLegendReturnCommand;
@@ -3619,27 +4148,37 @@ struct App {
         vsSeconds=0;vsPhase=1;vsFrame=vsShot=0;vsActive=true;
         clock.reset();
     }
+    bool advanceStartPresentationStep(bool drivingClockOwner){
+        if(originalShowcaseUsesDrivingClock()){
+            advanceOriginalCabinetButtons();cabinetStartEdge.accept(input.cabinetStartHeld);
+        }
+        if(!advanceShowcaseControls(driver()))return false;
+        const auto sourceFrame=vsBanner.sourceTick();
+        if(original::originalAuraStartCue(sourceFrame,multiplayer.active&&!multiplayer.disconnected,
+                multiplayer.records[0].level,multiplayer.records[1].level))
+            audio.playRaceCue(4,5);
+        vsBanner.tick();
+        if(sourceFrame>=240u){
+            //05FE6E processes auxiliaries before child dispatch. PreInit
+            //creates its240-count child after that pass on the next update.
+            originalRaceCountdownInitPending=originalShowcaseUsesDrivingClock();
+            vsActive=false;vsPhase=0;vsSeconds=0;
+            if(!drivingClockOwner)clock.reset();
+            return true;
+        }
+        if(sourceFrame==120u){vsPhase=2;vsFrame=0;vsShot=1;startShowcaseCamera.selectShot(1);}
+        ++vsFrame;
+        startShowcaseCamera.advance();
+        return true;
+    }
     void advanceStartPresentation(double dt){
-        if(!vsActive||paused||dt<=0)return;
-        // ARaceStandBy::update (0C05B760): switch shots with the counter at
-        // 120, complete when it exceeds239, then increment. Names animate
-        // during both shots; there is no separate post-shot name hold.
+        // The original offline path advances once per source driving tick.
+        // Imported/online presentation keeps its established60Hz contract.
+        if(!vsActive||paused||dt<=0||originalShowcaseUsesDrivingClock())return;
         vsSeconds+=std::min(dt,.25);
         while(vsActive&&vsSeconds+1e-9>=1.0/60.0){
             vsSeconds-=1.0/60.0;
-            if(!advanceShowcaseControls(driver())){vsSeconds=0;break;}
-            const auto sourceFrame=vsBanner.sourceTick();
-            if(original::originalAuraStartCue(sourceFrame,multiplayer.active&&!multiplayer.disconnected,
-                    multiplayer.records[0].level,multiplayer.records[1].level))
-                audio.playRaceCue(4,5);
-            vsBanner.tick();
-            if(sourceFrame>=240u){
-                vsActive=false;vsPhase=0;vsSeconds=0;clock.reset();
-                break;
-            }
-            if(sourceFrame==120u){vsPhase=2;vsFrame=0;vsShot=1;startShowcaseCamera.selectShot(1);}
-            ++vsFrame;
-            startShowcaseCamera.advance();
+            if(!advanceStartPresentationStep(false)){vsSeconds=0;break;}
         }
     }
     bool advanceShowcaseControls(const DriverInput& d){
@@ -3654,10 +4193,16 @@ struct App {
         }else if(!multiplayer.active){
             // The original race owner runs its solver during StandBy too.
             // Keep that same session (and audio instrument) through countdown.
-            const auto inputs=original::adaptOriginalHostInput(originalInput,
-                {d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear},d.automatic,false,0);
+            auto inputs=original::adaptOriginalHostInput(originalInput,
+                {d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog},d.automatic,false,0);
+            //StandBy05B8A8 clears the constructor gate at OLD counter20,
+            //before this outer solver. The source clock owns that counter;
+            //render-only frames cannot shorten the first20 suppressed ticks.
+            if(originalShowcaseUsesDrivingClock())
+                inputs.suppressRawThrottle0C2F4BC8=vsBanner.sourceTick()<20?1u:0u;
             const auto effects=originalSession.tick(inputs);
             if(effects.invalidScalarDiagnostics)throw std::runtime_error("Showcase produced invalid physics");
+            recordTimeAttackDrivingFrame(effects,d,false);
             projectOriginalPose(false);projectRivalPose(true);
             audio.requestOriginalTire(effects.vehicle.feedback);
             originalSession.finishSoundFrame([&](auto& seed){audio.finishSoundFrame(seed);});
@@ -3670,7 +4215,7 @@ struct App {
         // Compatibility path for the retired pose-only protocol. It has no
         // shared input timeline and must not mutate a remote car's authority.
         const auto& parameters=presentedSession().parameters();
-        const auto inputState=original::adaptOriginalHostInput(showcaseInput,{d.steer,d.throttle,d.brake},d.automatic,false,0);
+        const auto inputState=original::adaptOriginalHostInput(showcaseInput,{d.steer,d.throttle,d.brake,false,false,0,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog},d.automatic,false,0);
         const auto controls=conditionOriginalInputs(inputState.analog,inputState.calibration,{},parameters.inputConstants,0);
         // Original actor+3C uses this wheel angle. Keep tire rotation and the
         // actual race actor unchanged while the showcase holds both cars.
@@ -3706,7 +4251,7 @@ struct App {
             else if(event.command==C::Cue)audio.playOriginalMenuCue(event.a);
         }
     }
-    bool paintModeVisit(std::uint32_t fade,double dt){
+    bool paintModeVisit(std::uint32_t fade,double dt,bool fullBackdrop=false){
         renderer.nearClip=1.f;renderer.farClip=5000;renderer.fitOriginalViewport=false;
         renderer.overrideClearColor=true;renderer.clearColor={0,0,0,1};
         renderer.vehicleLights=false;renderer.opponentLights=false;renderer.courseLampPositions.clear();
@@ -3715,7 +4260,8 @@ struct App {
         renderer.screenFadeArgb=fade;renderer.verticalFieldOfView=1.f;
         renderer.projectionAspect=0;renderer.cameraUp={0,1,0};hud.resize(renderer.width,renderer.height);
         const Mesh empty;
-        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,menuBackgroundWithMargins(modeVisitPixels,dt),false,nullptr);
+        const auto* pixels=fullBackdrop?modeVisitPixels.data():menuBackgroundWithMargins(modeVisitPixels,dt);
+        return renderer.draw(empty,{0,0,0},{0,0,-1},false,false,pixels,false,nullptr);
     }
     bool beginBuntaVisit(bool beforeRace){
         if(multiplayer.active||frontend.gameMode!=original::OriginalGameMode::BuntaChallenge)return false;
@@ -3728,7 +4274,7 @@ struct App {
             for(const auto& command:frontend.takeSelectionMusicCommands())audio.selection(command);
             battleProfile=frontend.battleProfile;
         }else audio.endResultMusic();
-        buntaVisit.begin(battleProfile,{beforeRace,beforeRace?0u:battleResults.resultStatus,unsigned(frontend.car)});
+        originalSession.withSharedRandom([&](std::uint32_t& seed){buntaVisit.begin(battleProfile,{beforeRace,beforeRace?0u:battleResults.resultStatus,unsigned(frontend.car)},seed);});
         frontend.battleProfile=battleProfile;
         // Source win Init clamps the temporary level16 sentinel to15. Persist
         // after that Init so a completed course cannot reload at level16.
@@ -3740,7 +4286,7 @@ struct App {
     bool renderBuntaVisit(double dt){
         const bool skip=input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START)!=0;
         modeVisitClock.advance(dt,[&]{
-            buntaVisit.advance(battleProfile,{skip});
+            originalSession.withSharedRandom([&](std::uint32_t& seed){buntaVisit.advance(battleProfile,{skip},seed);});
             applyModeVisitEvents(buntaVisit.takeEvents());audio.tickResultMusic();
         });
         frontend.battleProfile=battleProfile;
@@ -3762,10 +4308,7 @@ struct App {
         setup.recordFlags=results.recordFlags;setup.courseRankingQualified=timeAttackCourseRankingQualified;setup.oldBestTimes6000=results.bestTimes6000;
         for(unsigned i=0;i<5;++i)setup.nameGlyphs[i]=i<battleProfile.u(76)?std::uint8_t(battleProfile.u(44+4*i)):221;
         setup.manual=!automatic;setup.night=night;setup.suppressLecture=(battleProfile.u(1180)&0x20000u)!=0;
-        setup.localRecords=displayedTimeAttackRecords().entries();
-        // The current completed run appears in its result table while its
-        // background upload is pending; it is not inserted into the cache.
-        if(!race.timeUp){TimeAttackEntry e{results.condition,unsigned(wet),results.carId,race.elapsed6000};e.nameGlyphs=setup.nameGlyphs;e.manual=!automatic;e.night=night;if(std::none_of(setup.localRecords.begin(),setup.localRecords.end(),[&](const auto& row){return row.condition==e.condition&&row.weather==e.weather&&row.car==e.car&&row.ticks6000==e.ticks6000&&row.nameGlyphs==e.nameGlyphs;}))setup.localRecords.push_back(e);}
+        setup.localRecords=boardForCurrentVisit();
         setup.trace=timeAttackTrace;
         setup.sourceAnalysisAvailable=timeAttackAnalysisPrepared;setup.analysis=timeAttackAnalysis;setup.telemetry=timeAttackSnapshot;
         setup.analysisInput=timeAttackAnalysisInput;
@@ -3775,6 +4318,15 @@ struct App {
     void prepareTimeAttackAnalysis(){
         if(timeAttackAnalysisPrepared||battle||multiplayer.active||(battleProfile.u(1180)&0x20000u))return;
         if(!timeAttackSnapshot.valid)return;
+        if(originalHandling&&!importedCourse&&originalSession.ready()&&originalSession.usesRecordingProgress()
+                &&!authorityRace&&!authorityLink&&!replayPlaybackActive&&race.phase==RacePhase::Finished){
+            //07AB60 enters HLecture only after the race/close children.18B948
+            //rewinds its histories, then18B1C2/18B1F0 consume the final live
+            //published statistics, not a copy from the goal-crossing frame.
+            const auto& sourceVehicle=originalSession.vehicle();
+            timeAttackSnapshot=timeAttackTelemetry.snapshotForLecture(unsigned(courseIndex),sourceVehicle.drive,
+                sourceVehicle.tail,originalSession.contactCompletion());
+        }
         auto prior=original::originalPersonalTimeAttackRecord(battleProfile,
             original::originalRecordPartition(unsigned(courseIndex)*2u+unsigned(reverse),wet));
         if(importedCourse){prior.ticks6000=importedPreviousBest.ticks6000;prior.intermediate6000=importedPreviousBest.intermediate6000;
@@ -3888,7 +4440,7 @@ struct App {
             return renderer.draw(timeAttackRankingPreview->mesh(),timeAttackRankingPreview->eye,timeAttackRankingPreview->target,
                 false,false,modeVisitPixels.data(),false,&timeAttackRankingPreview->lighting);
         }
-        return paintModeVisit(timeAttackVisit.fadeArgb(),dt);
+        return paintModeVisit(timeAttackVisit.fadeArgb(),dt,timeAttackVisit.stage()==original::OriginalTimeAttackVisit::Stage::Lecture);
     }
     void beginSessionExit(){
         saveResultProfile();
@@ -3910,7 +4462,7 @@ struct App {
         modeVisitPixels.assign(std::size_t(renderer.width)*renderer.height,0xff000000u);
         unityUiClear(modeVisitPixels.data(),renderer.width,renderer.height,0xff000000u);
         sessionExit.paint(modeVisitPixels,renderer.width,renderer.height);
-        return paintModeVisit(0,dt);
+        return paintModeVisit(0,dt,sessionExit.stage!=original::OriginalSessionExit::Stage::GameOver);
     }
     bool beginPreRaceDialogue(){
         preRaceDialogueActive=false;
@@ -3933,14 +4485,8 @@ struct App {
         // start() takes the battle's own weather, not the menu toggles.
         setup.weather=selected.weather!=0?1u:0u;
         setup.playerCar=unsigned(frontend.car);
-        // 0F8B00 draws the spectator variant from the shared game RNG, as the
-        // Legend path does.
-        if(presentedSession().ready())originalSession.withSharedRandom([&](std::uint32_t& seed){
-            seed=seed*0x41c64e6du+12345u;
-            setup.cheer=(((seed>>16)&0x7fffu)%1000u)%7u;
-        });
         setup.playerName=original::originalRivalDialogPlayerName(profile);
-        preRaceDialogue.begin(profile,setup);
+        originalSession.withSharedRandom([&](std::uint32_t& seed){preRaceDialogue.beginWithSharedRandom(profile,setup,seed);});
         // End the menu manager before the rival theme takes its bank slot.
         // The original next-rival owner requests the same enemy + 3 cue.
         frontend.endSelectionMusic();
@@ -3950,29 +4496,24 @@ struct App {
         preRaceDialogueClock.reset();
         return true;
     }
-    bool renderPreRaceDialogue(double dt){
-        // The scene advertises "PRESS THE START BUTTON TO SKIP" and nothing
-        // else, so the pages turn themselves once each one has finished; a
-        // per-page button would strand the player on the first one.
-        // Held Start must survive render frames with no source-clock step and
-        // continue through each authored page, like the post-race owner.
-        const bool skip=input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START)!=0;
+    void advancePreRaceDialogue(double dt,bool skip){
         if(!paused)preRaceDialogueClock.advance(dt,[&]{
-            preRaceDialogue.step(frontend.battleProfile);
+            // 051EE0 applies held Start before child Main/Draw, closes this
+            // intro on Ready, and hands off as soon as child flag8 is set.
+            // A later catch-up tick must not draw the retired child again.
+            if(preRaceDialogue.closed())return;
             if(skip)original::skipOriginalRivalDialog(preRaceDialogue.state());
+            originalSession.withSharedRandom([&](std::uint32_t& seed){preRaceDialogue.stepWithSharedRandom(frontend.battleProfile,seed);});
             if(preRaceDialogue.ready()){
-                // The Legend owner advances while the next kind is authored and
-                // closes when it is not; the same rule ends this one.
-                if(original::originalRivalDialogKindAvailable(preRaceDialogue.state().kind+1))
-                    original::advanceOriginalRivalDialogPage(preRaceDialogue.state(),
-                        preRaceDialogue.data(),frontend.battleProfile,1);
-                else{
-                    original::closeOriginalRivalDialog(preRaceDialogue.state());
-                    audio.fadeOriginalMusicCue();
-                }
+                original::closeOriginalRivalDialog(preRaceDialogue.state());
+                audio.fadeOriginalMusicCue();
             }
             audio.tickResultMusic();
         });
+    }
+    bool renderPreRaceDialogue(double dt){
+        const bool skip=input.down[VK_ESCAPE]||(input.pad.Gamepad.wButtons&XINPUT_GAMEPAD_START)!=0;
+        advancePreRaceDialogue(dt,skip);
         if(preRaceDialogue.closed()){preRaceDialogueActive=false;return enterRaceAfterPrompt();}
         preRaceDialoguePixels.assign(std::size_t(renderer.width)*renderer.height,0xff000000u);
         unityUiClear(preRaceDialoguePixels.data(),renderer.width,renderer.height,0xff000000u);
@@ -3990,12 +4531,22 @@ struct App {
     }
     // What a start request does once anything that precedes the race is done.
     bool enterRaceAfterPrompt(){
+        // Reject expired cards, failed writes and inspection before preparing
+        // a new resource owner. Cancellation/retry must not consume a choice.
+        if(inspectionVisit){status("Finish or cancel Car Inspection before starting a race");return renderMenu(0);}
+        loadSelectedProfile();
+        if(!ensureSelectedCardAccepted())return renderMenu(0);
+        const auto sourceArtwork=prepareOriginalRaceLoading();
         if(loadingScreen.loaded()&&!validationMode){
             loadingActive=true;loadingStarted=false;loadingSeconds=0;
-            loadingScreen.begin(loadingSequence++);
+            if(sourceArtwork){
+                // A partial optional artwork pool keeps a deterministic visual
+                // fallback, without remapping the source choice or RNG state.
+                if(!loadingScreen.beginArtwork(*sourceArtwork))loadingScreen.begin(0);
+            }else loadingScreen.begin(loadingSequence++);
             return renderLoading(0);
         }
-        start();
+        start(false,true);
         return menu?renderMenu(0):render(0);
     }
     bool render(double dt,bool drawRearView=true){
@@ -4020,7 +4571,8 @@ struct App {
         const bool showMultiplayerAura=multiplayer.active&&!multiplayer.disconnected&&vsActive;
         // Common result Init follows the final driving/sound update. Its
         // candidate selection consumes the same shared RNG at this boundary.
-        if(pendingResultSetup&&finishBannerDone&&!paused){
+        if(pendingResultSetup&&finishBannerDone&&!paused&&
+            (!originalOfflineFinishContext()||(offlineFinishParentStep>=3&&timeAttackLectureDone))){
             if(!battle&&!timeAttackLectureDone){
                 // Keep the record's reading time and let the finish stream
                 // complete before analysis replaces it with result music.
@@ -4050,7 +4602,10 @@ struct App {
         renderer.sceneViewport={};
         renderer.screenFadeArgb=resultVisit.initialized?resultAnimationFrame.fadeAlpha<<24:
             race.phase==RacePhase::Finished&&!finishBannerDone?(std::min(finishFadeTicks,15u)*255u/15u)<<24:0;
-        if(multiplayer.active&&onlineResult.page==0)renderer.screenFadeArgb=(onlineResult.finishFade*255u/15u)<<24;
+        if(multiplayer.active&&onlineResult.page==0)
+            renderer.screenFadeArgb=onlineResult.finish.blank?0xff000000u:0u;
+        if(originalOfflineFinishContext()&&offlineFinish.active()&&offlineFinishParentStep<3)
+            renderer.screenFadeArgb=offlineFinish.blank?0xff000000u:0u;
         if(resultVisit.initialized){
             if(!tuningPreview)throw std::logic_error("Result owner has no car preview");
             if(!tuningTexturesLoaded||loadedTuningTextureRevision!=tuningPreview->textureRevision()){
@@ -4132,44 +4687,26 @@ struct App {
             else{camera=center-heading*7.f+Vec3{0,2.f,0};target=center+heading*9.f;}
             if(replayCameraMode!=1){renderer.cameraUp={0,1,0};renderer.verticalFieldOfView=.95f;}
             renderer.projectionAspect=0;renderer.nearClip=.15f;
-        }else if(drivingView==OriginalDrivingView::Natural){
-            // Read road presentation only: these local queries never change
-            // the source actor, collision state, timing or original cameras.
-            float roadPitch=0;
-            if(originalHandling&&playerBody.surfaceFound()){
-                const auto& road=playerBody.query();
-                if(road.f(4)>.2f)roadPitch=std::atan2(-dot(Vec3{road.f(0),0,road.f(8)},forward(drawCar.yaw)),road.f(4));
-            }else if(course.points.size()>1){
-                const auto road=projectRacePosition(drawCar.position).sample;
-                roadPitch=std::atan(road.grade*dot(normalized(Vec3{road.tangent.x,0,road.tangent.z}),forward(drawCar.yaw)));
-            }
-            const auto& view=naturalCamera.update(drawCar.position,drawCar.yaw,roadPitch,drawCar.speedKmh(),
-                paused||race.phase==RacePhase::Finished?0:dt);
-            camera=view.eye;target=view.target;renderer.cameraUp=view.up;
-            renderer.verticalFieldOfView=view.verticalFieldOfView;renderer.projectionAspect=0;renderer.nearClip=.15f;
-            if(originalHandling&&presentedSession().ready()){
-                auto query=playerBody.query();original::OriginalTriangleSearchTrace trace;original::OriginalSurfaceScratch scratch;
-                query.setf(32,camera.x);query.setf(36,drawCar.position.y);query.setf(40,camera.z);
-                if(original::queryOriginalCollisionSurface(presentedSession().collision(),query,trace,scratch)&&
-                    query.f(4)>.2f&&std::abs(query.f(16)-drawCar.position.y)<8.f)
-                    camera.y=std::max(camera.y,query.f(16)+.5f);
-            }
         }else if(originalHandling&&originalCamera.ready()){
-            const bool bumper=drivingView==OriginalDrivingView::Bumper;
-            const auto& frame=bumper?bumperCamera.frame():originalCamera.frame();
-            const auto& prior=bumper?previousBumperFrame:previousCameraFrame;
-            const float cameraAlpha=paused||race.phase==RacePhase::Finished?1.f:alpha;
-            camera=lerp(prior.eye,frame.eye,cameraAlpha);
-            target=lerp(prior.target,frame.target,cameraAlpha);
-            renderer.cameraUp=normalized(lerp(prior.up,frame.up,cameraAlpha));
-            renderer.verticalFieldOfView=frame.verticalFieldOfView;
+            const float a=paused||race.phase==RacePhase::Finished?1.f:alpha;
+            const bool chase=drivingView==OriginalDrivingView::Chase;
+            const auto& prior=chase?previousCameraFrame:previousBumperFrame;
+            const auto& current=chase?originalCamera.frame():bumperCamera.frame();
+            camera=lerp(prior.eye,current.eye,a);
+            target=lerp(prior.target,current.target,a);
+            renderer.cameraUp=normalized(lerp(prior.up,current.up,a));
+            renderer.verticalFieldOfView=prior.verticalFieldOfView+(current.verticalFieldOfView-prior.verticalFieldOfView)*a;
             // Preserve the original vertical FOV and follow transform while
             // matching the window aspect, so wider views reveal more road
             // instead of stretching cars and course geometry horizontally.
             renderer.projectionAspect=0;
         }else{
-            if(drivingView==OriginalDrivingView::Bumper){camera=drawCar.position+Vec3{0,.98f,0}+forward(drawCar.yaw);target=camera+forward(drawCar.yaw);renderer.verticalFieldOfView=OriginalChaseCamera::sourceBumperFieldOfView;}
-            else{const auto view=chaseCamera.update(drawCar.position,drawCar.yaw,paused?0:dt);camera=view.eye;target=view.target;renderer.verticalFieldOfView=ChaseCamera::verticalFieldOfView;}
+            const Vec3 heading=forward(drawCar.yaw),bumperEye=drawCar.position+Vec3{0,.98f,0}+heading;
+            const auto chase=chaseCamera.update(drawCar.position,drawCar.yaw,paused?0:dt);
+            const float blend=previousChaseBlend+(chaseBlend-previousChaseBlend)*alpha;
+            camera=lerp(bumperEye,chase.eye,blend);target=lerp(bumperEye+heading,chase.target,blend);
+            renderer.verticalFieldOfView=OriginalChaseCamera::sourceBumperFieldOfView+
+                (ChaseCamera::verticalFieldOfView-OriginalChaseCamera::sourceBumperFieldOfView)*blend;
             renderer.cameraUp={0,1,0};renderer.projectionAspect=0;
         }
         if(vsActive){
@@ -4247,7 +4784,11 @@ struct App {
         const auto bodyAngles=interpolateCarBodyAngles({previousPitch,previousRoll},{bodyPitch,bodyRoll},poseAlpha);
         const float drawPitch=bodyAngles.pitch,drawRoll=bodyAngles.roll;
         const Vec3 bodyPosition=originalHandling?lerp(previousPlayerBodyWorld,playerBodyWorld,poseAlpha):drawCar.position+Vec3{0,originalCarRideHeight(unsigned(frontend.car)),0};
-        if(menu||vsActive||drivingView!=OriginalDrivingView::Bumper){
+        // Test the rendered eye and body at the same instant. A fixed blend
+        // threshold lets the near plane cut into the cabin on longer cars.
+        const bool drawPlayerBody=menu||vsActive||(replayPlaybackActive?replayCameraMode!=1:
+            dot(bodyPosition-camera,normalized(target-camera))>=renderer.nearClip+playerBodyRadius);
+        if(drawPlayerBody){
         const auto playerRangeBegin=mesh.ranges.size();
         mesh.originalCar(originalModel,carAssembly,bodyPosition,drawCar.yaw,
             drawPitch,drawRoll,carTextureBase,carPresentation.illuminatedChunks(),true);
@@ -4301,7 +4842,7 @@ struct App {
         environment.advance(dt,originalHandling&&!importedCourse&&!menu&&courseIndex!=8,
             (paused&&!multiplayer.active)||multiplayer.waiting||authorityStalled,effectCars,leafSurfaces);
         if(!validationHideDrivingEffects)environment.appendLeaves(mesh,leafTextureBase);
-        if(originalHandling&&!menu&&!validationHideDrivingEffects)
+        if(drawPlayerBody&&originalHandling&&!menu&&!validationHideDrivingEffects)
             backfire.append(mesh,replayPlaybackActive?replayBackfireFrames[0]:audio.backfireFrame(),original::originalPlayerAppearanceConfig(frontend.battleProfile),
                 bodyPosition,drawCar.yaw,drawPitch,drawRoll,backfireTextureBase);
         // Snow/rain and tire spray are scene geometry, depth-tested against cars/scenery
@@ -4383,12 +4924,30 @@ struct App {
                 displayRecords.differences6000[1]=std::int32_t(race.sectionTimes6000[race.sector-1])-std::int32_t(prior.intermediate6000[race.sector-1]);
             }
         }
+        state.originalFinishOwner=originalOfflineFinishContext()&&race.phase==RacePhase::Finished&&offlineFinishParentStep<3;
+        if(state.originalFinishOwner){
+            state.originalFinishRecord=offlineFinish.visibleHudCode==7;
+            displayRecords.recordFlags=state.originalFinishRecord?
+                OriginalResultsState::newRecord|offlineFinish.visibleRecord:0;
+        }
         state.results=(resultsReady||displayRecords.livePanel)?&displayRecords:nullptr;
-        if(multiplayerDisconnected())state.finishBanner=OriginalHudState::FinishBanner::finish;
-        else if(multiplayer.active&&onlineResult.page==0)
-            state.finishBanner=onlineResult.frame<finishBannerSwap||multiplayer.finishWinner==2?OriginalHudState::FinishBanner::finish
-                :multiplayer.finishWinner<0?OriginalHudState::FinishBanner::timeUp
-                :multiplayer.finishWinner==int(multiplayer.config.localSlot)?OriginalHudState::FinishBanner::win:OriginalHudState::FinishBanner::lose;
+        if(state.originalFinishOwner){
+            const unsigned code=offlineFinish.visibleHudCode;
+            if(code==3)state.finishBanner=OriginalHudState::FinishBanner::finish;
+            else if(code==4)state.finishBanner=OriginalHudState::FinishBanner::win;
+            else if(code==5)state.finishBanner=OriginalHudState::FinishBanner::lose;
+            else if(code==6)state.finishBanner=OriginalHudState::FinishBanner::timeUp;
+        }
+        else if(multiplayerDisconnected())state.finishBanner=OriginalHudState::FinishBanner::finish;
+        else if(multiplayer.active&&onlineResult.page==0){
+            // Draw/double-timeout are EOS result policies. Retain their
+            // explicit notices; ordinary linked outcomes use source+630.
+            const unsigned code=multiplayer.finishWinner==2?3u:multiplayer.finishWinner<0?6u:onlineResult.finish.visibleHudCode;
+            if(code==3)state.finishBanner=OriginalHudState::FinishBanner::finish;
+            else if(code==4)state.finishBanner=OriginalHudState::FinishBanner::win;
+            else if(code==5)state.finishBanner=OriginalHudState::FinishBanner::lose;
+            else if(code==6)state.finishBanner=OriginalHudState::FinishBanner::timeUp;
+        }
         else if(!multiplayer.active&&race.phase==RacePhase::Finished&&!finishBannerDone)
             state.finishBanner=finishBannerTicks<finishBannerSwap?OriginalHudState::FinishBanner::finish
                 :race.timeUp?OriginalHudState::FinishBanner::timeUp
@@ -4460,7 +5019,7 @@ struct App {
                 else roadsideDust.append(mesh,camera,target,renderer.cameraUp,renderer.verticalFieldOfView,aspect,smokeTextureBase,1);
             }
             const bool playerLights=replayPlaybackActive?replayLights:originalHandling?playerProjectedHeadlight.enabled():night;
-            headlightGlare.append(mesh,unsigned(frontend.car),bodyPosition,drawCar.yaw,drawPitch,drawRoll,
+            if(drawPlayerBody)headlightGlare.append(mesh,unsigned(frontend.car),bodyPosition,drawCar.yaw,drawPitch,drawRoll,
                 playerLights,carPresentation.headlightState().fraction,camera,target,renderer.cameraUp,headlightGlareTextureBase,1);
             if(rivalVisible){
                 const auto body=lerp(previousRivalBodyWorld,rivalBodyWorld,poseAlpha);
@@ -4500,12 +5059,13 @@ LRESULT CALLBACK windowProc(HWND h,UINT msg,WPARAM w,LPARAM l){
     if(msg==WM_GETMINMAXINFO){auto* info=reinterpret_cast<MINMAXINFO*>(l);info->ptMinTrackSize={960,580};return 0;}
     if((msg==WM_LBUTTONDOWN||msg==WM_MOUSEMOVE)&&current->menu){
         const int width=std::max(1,current->renderer.width),height=std::max(1,current->renderer.height);
-        if(current->frontend.stage==FrontendStage::SaveSelect){
+        if(current->frontend.stage==FrontendStage::SaveSelect||current->frontend.coursePointerActive()){
             const float fit=std::min(width/640.f,height/480.f);
             const int drawWidth=int(640*fit),drawHeight=int(480*fit);
             const float x=(GET_X_LPARAM(l)-(width-drawWidth)/2)*640.f/std::max(1,drawWidth);
             const float y=(GET_Y_LPARAM(l)-(height-drawHeight)/2)*480.f/std::max(1,drawHeight);
-            if(msg==WM_LBUTTONDOWN)current->frontend.clickSaveMenu(x,y);
+            if(current->frontend.coursePointerActive())current->frontend.coursePointer(x,y,msg==WM_LBUTTONDOWN);
+            else if(msg==WM_LBUTTONDOWN)current->frontend.clickSaveMenu(x,y);
             else current->frontend.hoverSaveMenu(x,y);
         }else if(msg==WM_LBUTTONDOWN){
             const float x=GET_X_LPARAM(l)*1280.f/width,y=GET_Y_LPARAM(l)*720.f/height;
@@ -4940,13 +5500,7 @@ int runPreRaceDialogueSmoke(App& app){
                 " for "+one.name+" instead of "+std::to_string(one.expectedKind));
         unsigned ticks=0,lit=0;
         while(!app.preRaceDialogue.closed()&&ticks<60u*60u){
-            app.preRaceDialogue.step(app.frontend.battleProfile);
-            if(app.preRaceDialogue.ready()){
-                if(original::originalRivalDialogKindAvailable(app.preRaceDialogue.state().kind+1))
-                    original::advanceOriginalRivalDialogPage(app.preRaceDialogue.state(),
-                        app.preRaceDialogue.data(),app.frontend.battleProfile,1);
-                else original::closeOriginalRivalDialog(app.preRaceDialogue.state());
-            }
+            app.advancePreRaceDialogue(FixedClock::step,false);
             if(ticks==120u){
                 std::vector<std::uint32_t> canvas(std::size_t(640)*480,0xff000000u);
                 unityUiClear(canvas.data(),640,480,0xff000000u);
@@ -6137,7 +6691,7 @@ int WINAPI wWinMain(HINSTANCE instance,HINSTANCE,PWSTR,int show){
             app.input.poll(app.active);app.commands(dt);
             if((!app.active||IsIconic(app.window))&&!app.multiplayer.active){app.clock.reset();app.updateAudioScene(true);app.audio.update(0,0,0,0,false);Sleep(20);continue;}
             if(app.resizePending){app.resizePending=false;if(!app.renderer.resize(app.pendingWidth,app.pendingHeight))throw std::runtime_error(app.renderer.error);}
-            if(!app.menu&&!app.paused&&!app.loadingActive&&!app.extraModeVisitActive()&&!app.preRaceDialogueActive&&!app.legendVisitActive&&!app.vsActive&&!(app.multiplayer.active&&app.multiplayer.waiting))app.advanceHostClock(dt,[&]{app.simulate(app.driver());});else app.clock.reset();
+            if(app.hostDrivingClockMayAdvance())app.advanceHostClock(dt,[&]{app.simulate(app.driver());});else app.clock.reset();
             if(app.messageSeconds>0){app.messageSeconds-=float(dt);if(app.messageSeconds<=0)app.message.clear();}
             if(dt>0)app.renderFps+=(float(1/dt)-app.renderFps)*.025f;
             if(!app.render(dt))throw std::runtime_error(app.renderer.error);

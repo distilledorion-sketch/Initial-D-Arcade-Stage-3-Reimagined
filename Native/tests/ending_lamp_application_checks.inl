@@ -1,6 +1,6 @@
 {
     prepareEndingWeatherUnityFixture(*app,470);
-    const auto clip=app->endingReplay;const auto physics=app->originalSession.rollbackDigest();
+    const auto clip=app->endingReplay;const auto physics=app->originalSession.rollbackDigest(false);
     const auto profile=app->battleProfile.words;
     const std::array<unsigned,2> models{unsigned(app->frontend.car),unsigned(app->loadedRivalCar)};
     const auto state=[](const OriginalEndingLampTrails& trails){
@@ -17,7 +17,10 @@
     std::vector<unsigned> expected;unsigned random=0,peak=0,peakTick=0,peakVertices=0;
     std::array<unsigned,2> visibleSamples{},ribbonSamples{};
     OriginalDemoLampTrails cached;cached.load(app->root,600);
+    const auto fpsSeed=app->originalSession.sharedRandomSeed();
     for(unsigned fps:{30u,60u,144u,240u}){
+        // Repeat the same captured RNG boundary only for this FPS comparison.
+        app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
         app->endingReplay=clip;app->beginEnding();
         check(app->endingLampTrails.active(),"Night ending omitted lamp owner");
         for(unsigned render=0;render<fps*10;++render){
@@ -47,10 +50,11 @@
             }
         }
         check(app->endingLampTrails.updates()==600,"Ending lamp source cadence");
-        if(fps==30){expected=state(app->endingLampTrails);random=app->endingRandom;}
-        else check(state(app->endingLampTrails)==expected&&app->endingRandom==random,"Ending lamps depend on host FPS");
+        if(fps==30){expected=state(app->endingLampTrails);random=app->originalSession.sharedRandomSeed();}
+        else check(state(app->endingLampTrails)==expected&&app->originalSession.sharedRandomSeed()==random,"Ending lamps depend on host FPS");
     }
     check(visibleSamples[0]>0&&visibleSamples[1]>0&&peak>0,"Recorded ending produced no rear lamps/trails");
+    app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
     app->endingReplay=clip;app->beginEnding();
     for(unsigned tick=0;tick<peakTick;++tick)app->advanceEnding(1./60);
     check(app->renderEnding(0),"Render ending lamp trails");
@@ -61,13 +65,13 @@
     for(const auto& v:mesh.vertices)for(float f:{v.position.x,v.position.y,v.position.z,v.u,v.v,v.color.a})
         check(std::isfinite(f),"Nonfinite ending lamp geometry");
     check(app->renderer.saveBitmap((out/"ending-lamps.bmp").wstring()),"Capture ending lamps");
-    const auto saved=app->endingLampTrails;const auto savedState=state(saved);const auto seed=app->endingRandom;
+    const auto saved=app->endingLampTrails;const auto savedState=state(saved);const auto seed=app->originalSession.sharedRandomSeed();
     app->endingLampTrails.reset();check(app->renderEnding(0),"Render ending without lamp trails");
     check(app->renderer.saveBitmap((out/"ending-lamps-disabled.bmp").wstring()),"Capture missing lamps control");
     app->endingLampTrails=saved;check(app->renderEnding(0),"Restore ending lamps");
     check(app->renderer.saveBitmap((out/"ending-lamps-restored.bmp").wstring()),"Capture restored lamps");
     app->paused=true;app->advanceEnding(5);app->renderEnding(0);app->paused=false;
-    check(state(app->endingLampTrails)==savedState&&app->endingRandom==seed,"Lamp repaint/pause advanced history or RNG");
+    check(state(app->endingLampTrails)==savedState&&app->originalSession.sharedRandomSeed()==seed,"Lamp repaint/pause advanced history or RNG");
     auto frame=clip.playbackFrame(peakTick-1);
     for(unsigned slot=0;slot<2;++slot){auto hidden=frame;hidden.cars[slot].lights=false;
         auto probe=saved;probe.advance(hidden,models,true,app->endingCamera,app->originalSession.collision());
@@ -84,7 +88,7 @@
     OriginalEndingLampTrails day;day.begin(app->root,0,1);day.advance(frame,models,true,app->endingCamera,app->originalSession.collision());
     Mesh daylight;check(day.active()&&day.append(daylight,0)==0&&daylight.vertices.empty(),"Wet daytime ending incorrectly enabled rear lamps");
     day.begin(app->root,0,0);check(!day.active(),"Dry daytime created an ending lamp owner");
-    check(app->originalSession.rollbackDigest()==physics&&app->battleProfile.words==profile,"Ending lamps changed race or save data");
+    check(app->originalSession.rollbackDigest(false)==physics&&app->battleProfile.words==profile,"Ending lamps changed race or save data");
     std::cout<<"Ending lamps600 ticks: visible "<<visibleSamples[0]<<'/'<<visibleSamples[1]<<" ribbons "<<ribbonSamples[0]<<'/'<<ribbonSamples[1]
         <<" peak="<<peak<<" at="<<peakTick<<" vertices="<<mesh.vertices.size()<<'\n';
     app->start();check(!app->endingLampTrails.active()&&!app->endingLampTrails.updates(),"Restart retained ending lamps");

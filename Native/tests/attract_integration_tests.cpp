@@ -27,7 +27,15 @@ int main(int argc,char**argv)try{
             const auto talk=f.paint(640,480);f.advance(1./60.);consume();const auto stable=f.paint(640,480);
             require(stable!=talk,"Recovered gasstand background not moving");require(f.paint(640,480)==stable,"Painting advances timing");
             const auto wide=f.paint(1280,720);require((wide[360*1280+20]&0xffffff)!=0,"Widescreen backdrop missing");
-            for(int y=0;y<720;++y)for(int x=0;x<960;++x)require(wide[y*1280+x+160]==stable[(y*480/720)*640+x*640/960],"Widescreen stretches original central composition");
+            // The foreground is rasterized at the output resolution. Compare
+            // it to the original sprite geometry at that resolution, including
+            // pixel-centre sampling, instead of enlarging a finished bitmap.
+            original::OriginalGasstandAttract source;source.load(argv[1]);source.reset(f.attractScript());
+            for(unsigned i=0;i<f.attractFrame();++i)source.step();
+            std::vector<std::uint32_t> expected(1280*720,0xff000000u);
+            source.paintReference(expected,1280,720);f.paintAttractPrompts(expected,1280,720);
+            for(int y=0;y<720;++y)for(int x=160;x<1120;++x)
+                require(wide[y*1280+x]==expected[y*1280+x],"Widescreen gasstand differs from original central sprite geometry");
             gasChecked=true;
         }
         if(f.attractChild()==12&&f.attractFrame()==150){require(f.rankingState().events.drawCar,"Ranking never creates top car");rankingChecked=true;}

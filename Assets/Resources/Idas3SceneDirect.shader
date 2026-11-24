@@ -42,6 +42,7 @@ Shader "IDAS3/Original Scene Direct Material"
    #pragma multi_compile_instancing
    #pragma multi_compile_local _ IDAS_NATIVE_SOURCE_COURSE IDAS_NATIVE_SOURCE_NOCLIP
    #pragma multi_compile_local _ IDAS_IMPORTED_VERTEX_FACES
+   #pragma multi_compile_local _ IDAS_IMPORTED_OPAQUE_PLAIN
    #include "Idas3SceneCommon.cginc"
    ENDHLSL
   }

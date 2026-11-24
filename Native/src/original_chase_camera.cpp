@@ -17,11 +17,32 @@ float shortArcPrevious(float previous,float target){
 }
 }
 OriginalChaseCamera OriginalChaseCamera::load(const std::filesystem::path& root,OriginalDrivingView view){OriginalChaseCamera out;out.view_=view;out.trig_=original::OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");return out;}
+void OriginalChaseCamera::transitionFrom(const OriginalChaseCamera& outgoing){
+    if(!outgoing.ready_){reset();return;}
+    // 0A9DA0 saves the outgoing camera. 09DB20 transfers its unquantized
+    // offset, angles, response and lens to the newly selected profile.
+    localOffset_=outgoing.localOffset_;angles_=outgoing.angles_;
+    response_=outgoing.response_;rawFov_=outgoing.rawFov_;
+    lastActor_=outgoing.lastActor_;lastActorAngles_=outgoing.lastActorAngles_;
+    previousAnchor_=outgoing.previousAnchor_;frame_=outgoing.frame_;
+    ready_=switching_=true;
+}
+void OriginalChaseCamera::settleProfile(){
+    if(!switching_)return;
+    reset();update(lastActor_,lastActorAngles_);
+}
 const OriginalChaseFrame& OriginalChaseCamera::update(Vec3 actor,Vec3 targetAngles){
     for(const float value:{actor.x,actor.y,actor.z,targetAngles.x,targetAngles.y,targetAngles.z})if(!std::isfinite(value))throw std::runtime_error("Non-finite original camera input");
     const Vec3 anchor{actor.x,actor.y-word(0x3ca3d70au),actor.z};
     const bool bumper=view_==OriginalDrivingView::Bumper;
-    const float response=bumper?1.f:30.f;
+    lastActor_=actor;lastActorAngles_=targetAngles;
+    const float profileResponse=bumper?1.f:30.f;
+    const float profileFov=bumper?sourceBumperFieldOfView:sourceVerticalFieldOfView;
+    // 09D11C..09D180 changes the response first, then filters the lens,
+    // offset and angles using that frame's response in both directions.
+    response_=switching_?(2.f*profileResponse+9.f*response_)/11.f:profileResponse;
+    rawFov_=switching_?filtered(profileFov,rawFov_,response_):profileFov;
+    const float response=response_;
     const Vec3 local=bumper?Vec3{0.f,1.f,-1.f}:Vec3{0.f,word(0x3fd9999au),word(0x40933333u)};
     if(!ready_){angles_=targetAngles;previousAnchor_=anchor;localOffset_=local;ready_=true;}
     localOffset_={filtered(local.x,localOffset_.x,response),filtered(local.y,localOffset_.y,response),filtered(local.z,localOffset_.z,response)};
@@ -36,7 +57,7 @@ const OriginalChaseFrame& OriginalChaseCamera::update(Vec3 actor,Vec3 targetAngl
     frame_.cameraWorld=m;const auto& v=m.elements;
     frame_.eye={v[12],v[13],v[14]};frame_.target={v[12]-v[8],v[13]-v[9],v[14]-v[10]};frame_.up={v[4],v[5],v[6]};
     //09D100 rounds the original full angle to integer phase for1D09E0.
-    float phase=(bumper?sourceBumperFieldOfView:sourceVerticalFieldOfView)*65536.f;phase/=word(0x40c90fdbu);phase+=.5f;
+    float phase=rawFov_*65536.f;phase/=word(0x40c90fdbu);phase+=.5f;
     frame_.verticalFieldOfView=float(std::uint16_t(std::int32_t(phase)))*word(0x40c90fdbu)/65536.f;
     return frame_;
 }

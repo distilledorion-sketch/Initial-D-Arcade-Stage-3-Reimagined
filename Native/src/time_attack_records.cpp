@@ -13,12 +13,12 @@ constexpr const char* namedHeader="condition,weather,car,finish_ticks6000,name0,
 constexpr const char* splitHeader="condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night,split1,split2,split3";
 const std::string revisionHeader=std::string(splitHeader)+",course_revision";
 const std::string seasonHeader=revisionHeader+",record_season";
-bool valid(const TimeAttackEntry& e){return e.condition<supportedConditionCount&&e.weather<2&&e.car<35&&e.ticks6000>0&&e.ticks6000<10800000
+bool valid(const TimeAttackEntry& e){return validLocalCondition(e.condition)&&e.weather<2&&e.car<35&&e.ticks6000>0&&e.ticks6000<10800000
     && (e.intermediate6000==std::array<std::uint32_t,3>{} || (e.intermediate6000[0]>0&&e.intermediate6000[0]<e.intermediate6000[1]&&e.intermediate6000[1]<e.intermediate6000[2]&&e.intermediate6000[2]<e.ticks6000))
     &&std::all_of(e.nameGlyphs.begin(),e.nameGlyphs.end(),[](auto c){return c<=221;});}
 void retainRanked(std::vector<TimeAttackEntry>& entries){
     std::stable_sort(entries.begin(),entries.end(),[](const auto& a,const auto& b){return a.ticks6000<b.ticks6000;});
-    std::array<unsigned,supportedConditionCount*2> count{};std::array<std::array<bool,35>,supportedConditionCount*2> models{};
+    std::map<unsigned,unsigned> count;std::map<unsigned,std::array<bool,35>> models;
     std::erase_if(entries,[&](const auto& e){const auto key=e.condition*2+e.weather;
         const bool keep=count[key]<10||!models[key][e.car];++count[key];models[key][e.car]=true;return !keep;});
 }
@@ -56,11 +56,10 @@ bool TimeAttackRecords::load(const std::filesystem::path& file){
     std::ifstream in(file);if(!in)return false;
     std::string line;std::getline(in,line);const bool seasoned=line==seasonHeader,versioned=line==revisionHeader||seasoned,splits=line==splitHeader||versioned,named=line==namedHeader||splits;
     if(!named&&line!=legacyHeader)return false;
-    TimeAttackRecords loaded;std::size_t rows=0;std::vector<TimeAttackEntry> accepted;
+    TimeAttackRecords loaded;std::map<unsigned,unsigned> rows;std::vector<TimeAttackEntry> accepted;
     loaded.needsMigration_=loaded.seasonMigration_=!seasoned;
     while(std::getline(in,line)){
         // Each course direction/weather retains top ten plus other model bests.
-        if(++rows>supportedConditionCount*2u*44u)return false;
         std::replace(line.begin(),line.end(),',',' ');std::istringstream row(line);TimeAttackEntry e;std::string extra;
         if(!(row>>e.condition>>e.weather>>e.car>>e.ticks6000))return false;
         if(named){
@@ -71,7 +70,7 @@ bool TimeAttackRecords::load(const std::filesystem::path& file){
         if(splits)for(auto& split:e.intermediate6000)if(!(row>>split))return false;
         unsigned revision=0;if(versioned&&!(row>>revision))return false;
         unsigned season=1;if(seasoned&&!(row>>season))return false;
-        if(row>>extra||!valid(e))return false;
+        if(row>>extra||!valid(e)||++rows[e.condition*2+e.weather]>44)return false;
         const auto current=localTimeAttackRevision(e.condition/2);
         // Do not rewrite data created by a newer game with unknown semantics.
         if(revision>current||season==0||season>timeAttackSeason)return false;

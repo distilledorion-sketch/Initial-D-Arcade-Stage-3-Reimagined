@@ -12,6 +12,7 @@ from extract_original_models import parse_model
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--hostfs',type=Path,required=True)
 parser.add_argument('--check',action='store_true')
+parser.add_argument('--out', type=Path, default=ROOT/'Assets/Resources/Challenger')
 args=parser.parse_args()
 directory=args.hostfs/'model/interrupt'
 _,chunks,_,_=parse_model(directory)
@@ -24,7 +25,8 @@ assert [p['texture'] for p in parts]==[0,1,2,3]
 result=dict(source='HOSTFS/model/interrupt/interrupt02_pol',
     sourceSha256={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (directory/'interrupt02_pol.tbl',directory/'interrupt02_pol.bin.nz')},
     parts=parts)
-output=ROOT/'Assets/Resources/Challenger/geometry.json'
+args.out.mkdir(parents=True, exist_ok=True)
+output=args.out/'geometry.json'
 text=json.dumps(result,indent=2)+'\n'
 if args.check:
     assert output.read_text()==text,'Challenger geometry differs from original source'

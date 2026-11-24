@@ -1,6 +1,6 @@
 internal sealed partial class Idas3MenuInputRouter
 {
-    internal enum MusicAction { None, BlurSearch, Preview, Back, Activate, Delete, Navigate, OpenLobby, OpenOpponent }
+    internal enum MusicAction { None, BlurSearch, Preview, Back, Activate, Delete, Navigate, OpenLobby, OpenOpponent, BattleViewTap }
     internal struct MusicSample
     {
         internal Sample Navigation;
@@ -9,7 +9,7 @@ internal sealed partial class Idas3MenuInputRouter
     internal struct MusicContext
     {
         internal bool Focused, Blocked, MenuOpen, BlocksGameInput, SearchFocused, PointerActive, NavigationHeld;
-        internal bool LobbyAllowed, OpponentAllowed, Gameplay;
+        internal bool LobbyAllowed, OpponentAllowed, BattleMusicAllowed, Gameplay;
         internal float DeltaSeconds;
         internal double Now;
     }
@@ -119,7 +119,11 @@ internal sealed partial class Idas3MenuInputRouter
             if (musicHoldSeconds >= .65f) command.Kind = context.LobbyAllowed ? MusicAction.OpenLobby : MusicAction.OpenOpponent;
             command.BlocksGameInput = true;
         }
-        else musicHoldSeconds = 0;
+        else {
+            if(context.BattleMusicAllowed&&context.LobbyAllowed&&previous.ViewHeld&&musicHoldSeconds>0)
+                command.Kind=MusicAction.BattleViewTap;
+            musicHoldSeconds=0;
+        }
         command.ShowHoldProgress = true;
         return command;
     }

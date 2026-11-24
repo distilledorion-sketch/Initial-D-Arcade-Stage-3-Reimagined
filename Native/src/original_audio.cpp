@@ -4,6 +4,12 @@
 #include <cmath>
 #include <fstream>
 #include <numbers>
+#include <cstring>
+#include <memory>
+#define MINIMP3_IMPLEMENTATION
+#define MINIMP3_ONLY_MP3
+#define MINIMP3_NO_STDIO
+#include "../vendor/minimp3/minimp3_ex.h"
 #include <stdexcept>
 
 namespace idas3 {
@@ -197,11 +203,62 @@ OriginalAudioClip decodeOriginalSpsd(std::span<const std::uint8_t> data){
     }
     return out;
 }
-OriginalAudioClip loadOriginalSpsd(const std::filesystem::path& path){
+// The packer writes one ID3v2.3 PRIV frame before the gapless Xing/LAME stream.
+// Keep legacy loopEnd == 0 for SPSD, including its interpolation at the boundary.
+static OriginalAudioClip decodeRaceMp3(std::span<const std::uint8_t> data){
+    constexpr char owner[]="idas3.loop.v1";
+    constexpr unsigned payload=sizeof(owner)+24, tagSize=10+payload, audioOffset=10+tagSize;
+    constexpr std::uint8_t prefix[]={'I','D','3',3,0,0,0,0,0,tagSize,'P','R','I','V',0,0,0,payload,0,0};
+    if(data.size()<=audioOffset || std::memcmp(data.data(),prefix,sizeof(prefix)) ||
+       std::memcmp(data.data()+20,owner,sizeof(owner)))
+        throw std::runtime_error("Invalid race MP3 loop tag");
+    const auto field=[&](unsigned index){
+        const auto p=data.subspan(20+sizeof(owner)+index*4,4);
+        return std::uint32_t(p[0])<<24 | std::uint32_t(p[1])<<16 | std::uint32_t(p[2])<<8 | p[3];
+    };
+    OriginalAudioClip clip;
+    clip.sampleRate=field(0);clip.channels=field(1);
+    const auto frames=field(2), loop=field(3);
+    clip.looping=loop!=0;clip.loopStart=field(4);clip.loopEnd=field(5);
+    if(!frames || frames>32u*1024*1024 || clip.channels<1 || clip.channels>2 ||
+       clip.sampleRate<8000 || clip.sampleRate>48000 || loop>1 || clip.loopEnd>frames ||
+       (loop && clip.loopStart>=(clip.loopEnd?clip.loopEnd:frames)))
+        throw std::runtime_error("Invalid race MP3 sample bounds");
+    mp3dec_ex_t decoder{};
+    std::unique_ptr<mp3dec_ex_t,decltype(&mp3dec_ex_close)> cleanup(&decoder,mp3dec_ex_close);
+    const auto audio=data.subspan(audioOffset);
+    if(mp3dec_ex_open_buf(&decoder,audio.data(),audio.size(),0) || !decoder.vbr_tag_found ||
+       decoder.info.channels!=int(clip.channels) || decoder.info.hz<8000 || decoder.info.hz>48000)
+        throw std::runtime_error("Invalid gapless race MP3 stream");
+    // Some arcade streams run at 29500 or 44099 Hz. Translate the source
+    // timeline once, rounding each absolute boundary to the nearest MP3 frame.
+    const auto encodedFrame=[&](std::size_t frame){
+        return std::size_t((std::uint64_t(frame)*decoder.info.hz+clip.sampleRate/2)/clip.sampleRate);
+    };
+    const auto samples=encodedFrame(frames)*clip.channels;
+    clip.loopStart=encodedFrame(clip.loopStart);
+    clip.loopEnd=encodedFrame(clip.loopEnd);
+    clip.sampleRate=decoder.info.hz;
+    // LAME rounds very short final blocks up. Consume only the source extent.
+    if(!samples || decoder.samples<samples || decoder.samples-samples>=1152*clip.channels ||
+       (loop && clip.loopStart>=(clip.loopEnd?clip.loopEnd:samples/clip.channels)))
+        throw std::runtime_error("Race MP3 duration differs from its source");
+    clip.samples.resize(samples);
+    if(mp3dec_ex_read(&decoder,clip.samples.data(),samples)!=samples || decoder.last_error)
+        throw std::runtime_error("Incomplete race MP3 audio");
+    return clip;
+}
+OriginalAudioClip loadOriginalSpsd(const std::filesystem::path& requested){
+    auto path=requested;
+    if(path.parent_path().parent_path().filename()=="streams" && path.extension()!=".mp3"){
+        auto compressed=path;
+        compressed.replace_extension(".mp3");
+        if(std::filesystem::is_regular_file(compressed))path=compressed;
+    }
     std::ifstream input(path,std::ios::binary|std::ios::ate);if(!input)throw std::runtime_error("Missing original audio stream: "+path.string());
     const auto length=input.tellg();if(length<38||length>64*1024*1024+64)throw std::runtime_error("Invalid original audio file length");
     std::vector<std::uint8_t> bytes(static_cast<std::size_t>(length));input.seekg(0);
     if(!input.read(reinterpret_cast<char*>(bytes.data()),length))throw std::runtime_error("Truncated original audio file");
-    return decodeOriginalSpsd(bytes);
+    return path.extension()==".mp3"?decodeRaceMp3(bytes):decodeOriginalSpsd(bytes);
 }
 }

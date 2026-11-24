@@ -155,19 +155,41 @@ static void verifyOld(const Record& r){noLinks(r.dest);require(fs::exists(r.dest
 static uint64_t creation(HANDLE h){FILETIME a{},b{},c{},d{};require(GetProcessTimes(h,&a,&b,&c,&d)!=0,"Cannot identify the game process.");return (static_cast<uint64_t>(a.dwHighDateTime)<<32)|a.dwLowDateTime;}
 static void noOtherGame(const fs::path& game,DWORD parent,bool strict=false){
     // Recovery must also work if the interrupted copy left no executable.
-    auto expected=fs::exists(game)?canonicalExistingPath(game):canonicalExistingPath(game.parent_path())/game.filename();
+    const auto directory=canonicalExistingPath(game.parent_path());
     Handle snapshot(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS,0));require(snapshot.h!=INVALID_HANDLE_VALUE,"Cannot check running games.");PROCESSENTRY32W entry{};entry.dwSize=sizeof entry;
-    if(Process32FirstW(snapshot.h,&entry))do{if(entry.th32ProcessID==parent||_wcsicmp(entry.szExeFile,L"InitialDUnity.exe"))continue;
+    if(Process32FirstW(snapshot.h,&entry))do{if(entry.th32ProcessID==parent)continue;
+        if(_wcsicmp(entry.szExeFile,L"InitialDUnity.exe") && _wcsicmp(entry.szExeFile,L"Initial D Arcade Stage 3 Reimagined.exe"))continue;
         Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,entry.th32ProcessID));if(!process.h){require(!strict||GetLastError()==ERROR_INVALID_PARAMETER,"Cannot check a running game. Close it before recovery.");continue;}
         wchar_t path[32768];DWORD length=32768;
-        if(QueryFullProcessImageNameW(process.h,0,path,&length))require(lower(canonicalExistingPath(path).wstring())!=lower(expected.wstring()),"Another copy of this game is running.");
+        if(QueryFullProcessImageNameW(process.h,0,path,&length))require(lower(canonicalExistingPath(path).wstring())!=lower((directory/entry.szExeFile).wstring()),"Another copy of this game is running.");
         else require(!strict,"Cannot identify a running game. Close it before recovery.");
     }while(Process32NextW(snapshot.h,&entry));
+}
+// Windows refuses CopyFileW over a hidden destination. The old public name
+// stays available to released updaters and shortcuts as a hidden entry.
+static bool copyInstalledFile(const fs::path& source,const fs::path& dest){
+    const DWORD attrs=GetFileAttributesW(dest.c_str());
+    const bool hiddenLauncher=attrs!=INVALID_FILE_ATTRIBUTES && (attrs&FILE_ATTRIBUTE_HIDDEN) &&
+        !_wcsicmp(dest.filename().c_str(),L"InitialDUnity.exe");
+    if(hiddenLauncher && !SetFileAttributesW(dest.c_str(),attrs & ~FILE_ATTRIBUTE_HIDDEN))return false;
+    const bool copied=CopyFileW(source.c_str(),dest.c_str(),FALSE)!=0;
+    if(hiddenLauncher){
+        const DWORD current=GetFileAttributesW(dest.c_str());
+        if(current==INVALID_FILE_ATTRIBUTES || !SetFileAttributesW(dest.c_str(),current|FILE_ATTRIBUTE_HIDDEN))return false;
+    }
+    return copied;
 }
 static void restart(const fs::path& root){
     auto exe=root/L"InitialDUnity.exe";std::wstring command=L"\""+exe.wstring()+L"\" -idas3-skip-update-once";
     STARTUPINFOW start{};start.cb=sizeof start;PROCESS_INFORMATION p{};
     require(CreateProcessW(exe.c_str(),command.data(),nullptr,nullptr,FALSE,0,nullptr,root.c_str(),&start,&p)!=0,"Update installed, but restarting the game failed. Launch it normally.");CloseHandle(p.hThread);CloseHandle(p.hProcess);
+}
+// Portable installs own their temporary downloads. No install-plan record may target UserData.
+static void validateSessionLocation(const fs::path& root,const fs::path& session){
+    auto game=lower(root.wstring()),work=lower(session.wstring());
+    auto cache=lower((root/L"UserData"/L"Temp"/L"InitialDUpdates").wstring());
+    if(lower(session.parent_path().wstring())==cache && std::regex_match(session.filename().wstring(),std::wregex(L"[0-9a-fA-F]{32}")))return;
+    require(work!=game && work.rfind(game+L"\\",0)!=0 && game.rfind(work+L"\\",0)!=0,"Installer and game folders must not overlap.");
 }
 static void removeTree(const fs::path& session,const wchar_t* name){auto p=inside(session,name);noLinks(p);if(!fs::exists(p))return;for(const auto& entry:fs::recursive_directory_iterator(p))noLinks(entry.path());fs::remove_all(p);}
 static void cleanupPayloads(const fs::path& session){
@@ -205,7 +227,7 @@ static int recover(const fs::path& requestedPlan,bool test){
         require(bool(input)&&std::string(magic,8)=="IDUPD002","Invalid install plan.");
         auto root=canonicalExistingPath(fullPath(readString(input)));
         require(fs::is_directory(root),"Game directory missing.");
-        require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&lower(root.wstring()).rfind(lower(session.wstring()+L"\\"),0)!=0&&lower(root.wstring())!=lower(session.wstring()),"Installer and game folders must not overlap.");
+        validateSessionLocation(root,session);
         auto pid=read<uint32_t>(input);auto stamp=read<uint64_t>(input);
         auto records=readRecords(input,root,session);
         if(test)require(fs::is_regular_file(root.parent_path()/L"ISOLATED_UPDATE_TEST.txt"),"Tests require an isolated fixture.");
@@ -251,7 +273,7 @@ static int recover(const fs::path& requestedPlan,bool test){
                 require(hash(record.backup)==record.old,"Recovery backup changed. Remaining backups were preserved.");
                 if(!fs::exists(record.dest)||hash(record.dest)!=record.old){
                     fs::create_directories(record.dest.parent_path());
-                    require(CopyFileW(record.backup.c_str(),record.dest.c_str(),FALSE)!=0,"Cannot restore a game file. Close programs using the game and retry recovery.");
+                    require(copyInstalledFile(record.backup,record.dest),"Cannot restore a game file. Close programs using the game and retry recovery.");
                     require(hash(record.dest)==record.old,"Restored file failed verification. Recovery can be retried.");
                 }
             }else{fs::remove(record.dest);require(!fs::exists(record.dest),"Cannot remove a new update file.");}
@@ -273,14 +295,14 @@ static int recover(const fs::path& requestedPlan,bool test){
     }
 }
 int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
-    int argc=0;auto argv=CommandLineToArgvW(GetCommandLineW(),&argc);fs::path session,root;std::vector<Record> records;std::vector<size_t> applied;bool ready=false,committed=false,test=false,owned=false;
+    int argc=0;auto argv=CommandLineToArgvW(GetCommandLineW(),&argc);fs::path session,root;std::vector<Record> records;std::vector<size_t> applied;bool ready=false,committed=false,test=false,standalone=false,owned=false;
     if(argv&&((argc==3)||(argc==4&&std::wstring(argv[3])==L"--test"))&&std::wstring(argv[2])==L"--recover"){
         int code=recover(argv[1],argc==4);LocalFree(argv);return code;
     }
     // These handles must outlive the try block, including rollback and dialogs.
     Handle sessionLease(INVALID_HANDLE_VALUE),sessionLock(INVALID_HANDLE_VALUE),lockFile(INVALID_HANDLE_VALUE);
     try{
-        require(argv&&(argc==2||argc==3),"Invalid installer arguments.");test=argc==3&&std::wstring(argv[2])==L"--test";require(argc!=3||test,"Invalid test option.");
+        require(argv&&(argc==2||argc==3),"Invalid installer arguments.");test=argc==3&&std::wstring(argv[2])==L"--test";standalone=argc==3&&std::wstring(argv[2])==L"--standalone";require(argc!=3||test||standalone,"Invalid installer option.");
         auto plan=fullPath(argv[1]);session=plan.parent_path();require(plan.filename()==L"install.plan","Invalid install plan filename.");noLinks(session);noLinks(plan);require(fs::file_size(plan)<=64*1024*1024,"Install plan too large.");
         plan=canonicalExistingPath(plan);session=plan.parent_path();
         auto lease=inside(session,L".cleanup-lock");noLinks(lease);
@@ -292,11 +314,11 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
         for(auto name:{L"ready",L"result.json",L"result.json.tmp",L"error.txt"}){auto marker=inside(session,name);noLinks(marker);require(!fs::exists(marker),"This update session has already been used.");}
         std::ifstream input(plan,std::ios::binary);char magic[8];input.read(magic,8);require(std::string(magic,8)=="IDUPD002","Invalid install plan.");
         root=canonicalExistingPath(fullPath(readString(input)));auto game=root/L"InitialDUnity.exe";require(fs::is_regular_file(game),"Game executable missing.");
-        require(lower(session.wstring()).rfind(lower(root.wstring()+L"\\"),0)!=0&&lower(root.wstring()).rfind(lower(session.wstring()+L"\\"),0)!=0&&lower(root.wstring())!=lower(session.wstring()),"Installer and game folders must not overlap.");
+        validateSessionLocation(root,session);
         // Only validated temporary locations may be marked safe or reclaimed.
         owned=true;
         auto pid=read<uint32_t>(input);auto stamp=read<uint64_t>(input);
-        if(test)require(fs::is_regular_file(root.parent_path()/L"ISOLATED_UPDATE_TEST.txt"),"Tests require an isolated fixture.");else require(pid>0,"Game process missing.");
+        if(test)require(fs::is_regular_file(root.parent_path()/L"ISOLATED_UPDATE_TEST.txt"),"Tests require an isolated fixture.");else if(standalone)require(pid==0&&stamp==0,"Close the game before running setup.");else require(pid>0,"Game process missing.");
         Handle parent(pid?OpenProcess(SYNCHRONIZE|PROCESS_QUERY_LIMITED_INFORMATION,FALSE,pid):nullptr);
         if(pid){require(parent.h!=nullptr,"Game process unavailable.");require(creation(parent.h)==stamp,"Game process identity changed.");}
         auto lock=root/L".update-lock";noLinks(lock);lockFile.h=CreateFileW(lock.c_str(),GENERIC_READ|GENERIC_WRITE,0,nullptr,OPEN_ALWAYS,FILE_FLAG_DELETE_ON_CLOSE,nullptr);require(lockFile.h!=INVALID_HANDLE_VALUE,"Another update is running.");
@@ -310,22 +332,22 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,PWSTR,int){
         if(parent.h)require(WaitForSingleObject(parent.h,5*60*1000)==WAIT_OBJECT_0,"The game did not close; no files were replaced.");
         if(!test)noOtherGame(game,0);
         for(const auto& r:records)verifyOld(r);
-        for(size_t i=0;i<records.size();++i){auto& r=records[i];if(!r.changed)continue;noLinks(r.dest);noLinks(r.stage);require(hash(r.stage)==r.next,"Staged file changed.");fs::create_directories(r.dest.parent_path());applied.push_back(i);require(CopyFileW(r.stage.c_str(),r.dest.c_str(),FALSE)!=0,"Cannot replace a game file.");require(hash(r.dest)==r.next,"Installed file failed verification.");}
+        for(size_t i=0;i<records.size();++i){auto& r=records[i];if(!r.changed)continue;noLinks(r.dest);noLinks(r.stage);require(hash(r.stage)==r.next,"Staged file changed.");fs::create_directories(r.dest.parent_path());applied.push_back(i);require(copyInstalledFile(r.stage,r.dest),"Cannot replace a game file.");require(hash(r.dest)==r.next,"Installed file failed verification.");}
         committed=true;result(session,true,applied.size(),false);
         // Restart may fail or immediately launch another cleanup pass. Reclaim
         // payloads first, with the lease held until this helper actually exits.
         cleanupPayloads(session);
-        if(!test)restart(root);
+        if(!test&&!standalone)restart(root);
         LocalFree(argv);return 0;
     }catch(const std::exception& e){
         bool rollbackNeeded=false;
-        std::string error=e.what();if(!committed)for(auto it=applied.rbegin();it!=applied.rend();++it){auto& r=records[*it];try{noLinks(r.dest);if(r.existed){noLinks(r.backup);require(hash(r.backup)==r.old,"Invalid rollback backup.");if(!fs::exists(r.dest)||hash(r.dest)!=r.old)require(CopyFileW(r.backup.c_str(),r.dest.c_str(),FALSE)!=0,"Cannot restore game file.");require(hash(r.dest)==r.old,"Rollback hash mismatch.");}else{fs::remove(r.dest);require(!fs::exists(r.dest),"Cannot remove new game file during rollback.");}}catch(const std::exception& restore){rollbackNeeded=true;error+=" Rollback needs attention: ";error+=restore.what();}}
+        std::string error=e.what();if(!committed)for(auto it=applied.rbegin();it!=applied.rend();++it){auto& r=records[*it];try{noLinks(r.dest);if(r.existed){noLinks(r.backup);require(hash(r.backup)==r.old,"Invalid rollback backup.");if(!fs::exists(r.dest)||hash(r.dest)!=r.old)require(copyInstalledFile(r.backup,r.dest),"Cannot restore game file.");require(hash(r.dest)==r.old,"Rollback hash mismatch.");}else{fs::remove(r.dest);require(!fs::exists(r.dest),"Cannot remove new game file during rollback.");}}catch(const std::exception& restore){rollbackNeeded=true;error+=" Rollback needs attention: ";error+=restore.what();}}
         if(owned){
             try{result(session,committed,applied.size(),rollbackNeeded);}catch(...){}
             try{write(session/L"error.txt",error);}catch(...){}
             if(!rollbackNeeded)cleanupPayloads(session);
         }
-        if(ready&&!test){MessageBoxA(nullptr,error.c_str(),"Initial D update",MB_OK|MB_ICONERROR);if(!committed&&!rollbackNeeded)try{restart(root);}catch(...){}}
+        if(ready&&!test&&!standalone){MessageBoxA(nullptr,error.c_str(),"Initial D update",MB_OK|MB_ICONERROR);if(!committed&&!rollbackNeeded)try{restart(root);}catch(...){}}
         auto message=error+"\r\n";DWORD written=0;
         WriteFile(GetStdHandle(STD_ERROR_HANDLE),message.data(),static_cast<DWORD>(message.size()),&written,nullptr);
         if(argv)LocalFree(argv);return 1;

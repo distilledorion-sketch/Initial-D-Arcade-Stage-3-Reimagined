@@ -20,14 +20,17 @@ int runModeFlowAppTests(App& app){
     for(unsigned divisor:{1u,2u,4u}){
         app.startShowcaseCamera.reset({0.f,0.f,0.f},0.f,0,false,introTrig);
         app.vsBanner.begin({});app.vsActive=true;app.vsSeconds=0;
-        app.vsPhase=1;app.vsFrame=app.vsShot=0;
+        app.vsPhase=1;app.vsFrame=app.vsShot=0;app.clock.reset();
         for(unsigned tick=1;tick<=241;++tick){
             if(tick==80||tick==170){
                 const auto frame=app.vsFrame;app.paused=true;app.advanceStartPresentation(.25);
                 require(app.vsFrame==frame&&app.vsBanner.sourceTick()==tick-1,"Paused intro clock is held");
                 app.paused=false;
             }
-            for(unsigned part=0;part<divisor;++part)app.advanceStartPresentation(1.0/(60.0*divisor));
+            for(unsigned part=0;part<divisor;++part){
+                if(app.originalShowcaseUsesDrivingClock())app.advanceHostClock(OriginalDrivingClock::step/divisor,[]{});
+                else app.advanceStartPresentation(1.0/(60.0*divisor));
+            }
             require(app.vsActive==(tick<241),"Intro completes on source counter240 without added name hold");
             require(app.vsBanner.sourceTick()==tick,"Intro animation and owner share source clock");
             if(tick<241){
@@ -65,20 +68,26 @@ int runModeFlowAppTests(App& app){
         const auto finishTime=app.race.elapsed6000;const auto oldSpeed=app.vehicle.speed;
         const auto oldPosition=app.vehicle.position;
         DriverInput held;held.throttle=1;held.steer=1;held.shiftUp=true;
-        for(unsigned frame=0;frame<120;++frame){
+        original::OriginalHostInputState pedalState;
+        const auto accepted=original::adaptOriginalHostInput(pedalState,{held.steer,held.throttle,held.brake},held.automatic,true,0).analog;
+        for(unsigned frame=0;frame<180;++frame){
             held.steer=frame<60?1.f:-1.f;
             app.simulate(held);
             const auto& controls=app.originalSession.vehicle().controls;
             require(controls.steeringHighByte==(frame<60?208u:48u)&&std::abs(controls.steering)>.5f,"Finished car still receives left and right steering");
-            require(controls.throttle==0.f,"Held accelerator never reaches finished solver");
+            require(controls.throttleHighByte==(accepted.throttle>>8)&&controls.brakeHighByte==(accepted.brake>>8),"Finish preserves held accelerator and released brake at the cabinet input");
+            require(app.originalSession.raceAutomaticBrakeByte()==1,"Finish child must apply the original automatic brake");
             require(app.finishFadeTicks==0,"Finish road view never fades before record handoff");
-            const bool record=(app.results.recordFlags&OriginalResultsState::newRecord)!=0;
-            require(app.finishBannerDone==(!timeout&&frame==119&&(record||app.audio.raceMusicFinished())),"TA record handoff retains two-second timing; no-record waits for finish audio");
+            require(!app.finishBannerDone&&app.offlineFinish.drawsViews(),"Finish holds the road until Start or the original automatic exit");
+            if(frame>=2){
+                const bool record=(app.results.recordFlags&0x70000000u)!=0;
+                const unsigned code=timeout?6u:frame>=122&&record?7u:3u;
+                require(app.offlineFinish.visibleHudCode==code,"TA finish, record and time-up banners follow the original update order");
+            }
         }
         report<<"Post-finish held throttle: speed "<<oldSpeed<<" -> "<<app.vehicle.speed<<", travel "<<length(app.vehicle.position-oldPosition)<<", throttle "<<app.vehicle.throttle<<'\n';
         require(app.race.elapsed6000==finishTime,"Post-finish braking preserves finish timestamp");
-        require(app.originalSession.raceAutomaticBrakeByte()!=0&&app.vehicle.throttle<=.001f,"Held throttle is suppressed after finish");
-        require(std::abs(app.vehicle.speed)<=std::abs(oldSpeed)+.1f,"Finished car cannot accelerate");
+        require(app.originalSession.stoppedForRace()&&std::abs(app.vehicle.speed)<.1f,"Original automatic braking stops the finished car with the pedal held");
         if(std::abs(oldSpeed)>2.f)require(length(app.vehicle.position-oldPosition)>.01f,"Finished moving car must brake rather than freeze");
         require(app.pendingResultSetup.has_value()&&!app.resultVisit.initialized,"TA pending points survives Finished early return");
         require(app.battleProfile.words==words&&app.battleResults.points==points,"TA Finished frames do not award twice");

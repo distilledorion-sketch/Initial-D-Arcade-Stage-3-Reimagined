@@ -21,7 +21,7 @@ V3_BANKS = ['adv_newtitle', 'adv_title', 'v3sA00etc', 'v3sS04maker', 'v3sS05cars
             'v3sS06mission', 'v3sS07tune', 'v3sS11mode', 'v3sT01course',
             'v3sT02route', 'v3sT03weather', 'v3sT04time', 'adv2d',
             'v3sS00common', 'v3sS00emblem', 'v3sS00minicar', 'v3sT00common', 'v3sB01course',
-            'v3sK00common', 'v3sK01course', 'v3sK02rival']
+            'v3sK00common', 'v3sK00rivalface', 'v3sK01course', 'v3sK02rival', 'v3sV00wait', 'v3sV10boost', 'v3sV10loadwait', 'v3sS01card', 'selvswait', 'select01', 'v3sV01challenge', 'selreceive']
 ORIGINAL_IMAGE_SHA256 = 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 
 

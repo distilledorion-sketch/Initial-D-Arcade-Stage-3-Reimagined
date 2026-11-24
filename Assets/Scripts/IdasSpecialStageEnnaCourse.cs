@@ -23,6 +23,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
     static extern int Idas3SceneImportedSourceNode();
     readonly List<(ScenerySection section,GameObject model)> scenerySections=new List<(ScenerySection,GameObject)>();
     int sceneryNode=-1;
+    int visibilityFirst,visibilityLast=-1;
     sealed class Part { public Mesh mesh; public int material; }
     readonly List<Mesh> meshes=new List<Mesh>();
     readonly List<Texture2D> textures=new List<Texture2D>();
@@ -57,7 +58,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         if(active&&(!loaded||LoadedCourseId!=CourseId(Flags))){
             try{ClearScenery();Load(CourseId(Flags));}catch(Exception e){Debug.LogException(e);enabled=false;Application.Quit(1);return;}
         }
-        if(active!=visible){foreach(Transform child in transform)child.gameObject.SetActive(active);visible=active;}
+        if(active!=visible){foreach(Transform child in transform)child.gameObject.SetActive(active);visible=active;visibilityLast=-1;}
         if(!active){
             // Preserve menus/results, but do not retain an entire hidden track
             // while the original or Stage 8/Zero scenery owns another race.
@@ -91,9 +92,15 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         // Apply them to the shared course objects so the mirror agrees with
         // the main camera, including replay seeks and opponent viewpoints.
         sceneryNode=node;
+        if(node>=visibilityFirst&&node<=visibilityLast)return;
+        visibilityFirst=0;visibilityLast=int.MaxValue;
         foreach(var entry in scenerySections){
-            bool show=node>=entry.section.firstNode&&node<=entry.section.lastNode;
+            int first=entry.section.firstNode,last=entry.section.lastNode;
+            bool show=node>=first&&node<=last;
             if(entry.model.activeSelf!=show)entry.model.SetActive(show);
+            if(node<first)visibilityLast=Math.Min(visibilityLast,first-1);
+            else if(node>last)visibilityFirst=Math.Max(visibilityFirst,last+1);
+            else{visibilityFirst=Math.Max(visibilityFirst,first);visibilityLast=Math.Min(visibilityLast,last);}
         }
     }
     static Vector3 Vec(BinaryReader r){var v=new Vector3(r.ReadSingle(),r.ReadSingle(),r.ReadSingle());Require(float.IsFinite(v.x)&&float.IsFinite(v.y)&&float.IsFinite(v.z),"Non-finite Enna geometry");return v;}
@@ -108,7 +115,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
     static bool IsPairedTexture(Manifest manifest,string name)=>IsPairedGateTexture(name)||
         (manifest.oneSidedTextures!=null&&Array.IndexOf(manifest.oneSidedTextures,name)>=0);
     void Load(int courseId){
-        LoadPack(courseId,Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[courseId-9]));
+        LoadPack(courseId,Idas3CourseCatalog.PackPath(Idas3CourseCatalog.Packs[courseId-9]));
     }
     void LoadPack(int courseId,string root){
         var manifest=JsonUtility.FromJson<Manifest>(File.ReadAllText(Path.Combine(root,"manifest.json")));
@@ -280,7 +287,7 @@ public sealed class IdasSpecialStageEnnaCourse : MonoBehaviour
         }
         foreach(var mesh in meshes)Destroy(mesh);foreach(var material in materials)Destroy(material);foreach(var texture in textures)Destroy(texture);
         meshes.Clear();materials.Clear();textures.Clear();Array.Clear(gates,0,2);Array.Clear(skies,0,2);
-        scenerySections.Clear();sceneryNode=-1;weatherLighting=null;
+        scenerySections.Clear();sceneryNode=-1;visibilityLast=-1;weatherLighting=null;
         loaded=visible=false;LoadedCourseId=-1;spectatorCount=0;appliedWeather=samples=-1;
     }
     void OnDestroy(){ClearScenery();}

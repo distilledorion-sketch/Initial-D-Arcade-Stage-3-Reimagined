@@ -79,7 +79,9 @@ Course Course::load(const std::filesystem::path& pathRoot,const std::string& cou
     auto folder=pathRoot;
     if(std::filesystem::is_directory(folder/"HOSTFS")) folder/="HOSTFS";
     if(std::filesystem::is_directory(folder/"path")) folder/="path";
-    Course c; c.id=courseId;c.name=courseName.empty()?courseId:courseName;c.sourceRoot=std::filesystem::absolute(folder).string();c.reversed=reverse;
+    Course c; c.id=courseId;c.name=courseName.empty()?courseId:courseName;c.reversed=reverse;
+    const auto utf8Root=std::filesystem::absolute(folder).u8string();
+    c.sourceRoot.assign(utf8Root.begin(),utf8Root.end());
     std::vector<unsigned char> bytes;
     c.points=readPath(folder/(courseId+"_path.bin"),bytes);
     c.left=readPath(folder/(courseId+"_path_l.bin"),bytes);

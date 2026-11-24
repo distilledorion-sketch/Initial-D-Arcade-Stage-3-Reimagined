@@ -1,0 +1,116 @@
+Initial D Arcade Stage 3 Reimagined
+
+Use Install Initial D Arcade Stage 3 Reimagined from the setup download and select the game folder.
+Existing Windows players can also choose Update inside the game. Both paths
+install the same player and run the same local setup on restart.
+For a fresh manual install, extract the full Windows ZIP into a writable
+folder and open InitialDUnity.exe once to run setup. After setup, launch
+Initial D Arcade Stage 3 Reimagined.exe. Existing shortcuts to the original
+name continue to work.
+Select your original English GDS-0033 Arcade Stage 3 CHD. Keep the matching
+317-0384-COM.pic or initdv3e.zip beside it, or choose it when prompted.
+The security PIC is needed to read the encrypted arcade disc.
+
+Setup reads the disc and builds the local files for the original courses,
+cars, sounds and interface. Leave the window open until setup finishes.
+Setup copies the verified disc and security file into rom. Move the entire game
+folder to keep the disc, extracted assets and player data together.
+Open Verify Game Files.cmd to verify the installed cache, courses and music.
+Installation logs are in InitialDUnity_Data\StreamingAssets beside the cache.
+
+Open Options > Replays to watch a recording in the game window. Back to game
+returns you to the same screen or paused race. Replay Viewer.cmd can also open
+a local .idreplay recording in the running game.
+
+Saves, settings, replays, online records, logs and game caches live in UserData.
+On first play, close older Windows builds. The launcher moves previous game
+files from this Windows profile into UserData, verifying each file first.
+Older builds that shared those saves will no longer see them in AppData.
+When two files differ, the existing portable file stays active and the older
+copy is kept under UserData\Migration conflicts. Back up UserData for safekeeping.
+Windows, display drivers and online account services manage their own system data.
+
+The original nine courses and full Stage 3 soundtrack come from your disc.
+Extra songs and Sound Room tracks are included. The game runs with no mod maps.
+To install an optional track, extract its ZIP into Mods\Maps beside the game.
+For example, the Enna Skyline pack creates Mods\Maps\ENNA. Existing course
+installations are kept, including courses migrated from older game folders.
+To make a car or HUD skin, open Mods\Texture Workshop.cmd and choose a car
+or HUD bank. The workshop exports editable PNGs from your disc to
+Mods\Workshop. Edit a PNG and copy it to the matching folder under Mods\Cars
+or Mods\HUD. Keep its filename and pixel dimensions. Restart to see your
+art in the game. HUD PNGs use your transparency. Car skins keep the
+original texture's transparency.
+Exporting again preserves your edits. Remove the installed PNG and restart
+to return that texture to its original appearance.
+
+For in-race panel colors, edit Mods\HUD\Race Colors.json and restart.
+Use a six-digit RGB tint such as "#FF8800" for timer or "#80FFFF" for
+minimap. White ("#FFFFFF") keeps the original colors. Each entry affects
+one panel; mirrorFrame changes the surround only. The meter tint works
+with the original meter and installed alternate meters.
+
+For replacement artwork choose Export in-race HUD textures. Use game2d for
+the original dial, timer and race messages (texture_027.png holds the main
+countdown digits and texture_009.png the clock digits); game2d_sprites for speed and
+gear; game2d_ta for records; and cupwater for the paper cup. navigation/<code>
+contains the original course's map, frame and driver markers. faces/<driver>
+contains rival portraits. Imported courses draw their minimap from the route
+and use the minimap tint. After editing, install only the PNGs you changed.
+
+To try a first mod, choose the cyan needle in the workshop and race with the
+original meter. Its file is Mods\HUD\game2d\texture_053.png. To share
+your own skin, zip your edited PNGs with their folder paths starting at Cars
+or HUD. Another player can extract that ZIP into Mods and restart. Back up
+an existing skin before replacing a PNG with the same name.
+
+Cars use the installed model folder names (for example, toyota_ae86t).
+HUD includes game2d for the original meter and game2d_sprites for race
+sprites.
+
+TRACK MODS
+Extract each track pack into its own folder in Mods\Maps. Keep the nine
+official folder names reserved for their original packs. Open Time Attack
+and select MODS. New folders are detected at startup and while choosing a
+course. Use the wheel, directional buttons or keys to scroll through the list.
+Restart after replacing or removing a track that was already loaded.
+
+Track authors can use HAKONE as a file layout example. Supply the Stage 8
+exported race.bin, lamps.bin, menu.idastex (two images), road.bin, scene.bin,
+scene.json, the referenced DDS textures, and one set of <slug>_path.bin,
+<slug>_path_l.bin, <slug>_path_r.bin and <slug>.rcl. Optional day_wet,
+night_dry and night_wet folders contain scenery in the same format. Missing
+variants use the base scenery. Use lowercase a-z, digits and underscores in
+<slug>. Extract a ZIP before dropping the folder in.
+
+For a stable ID across geometry edits, add track.json to your pack:
+  {"key":"yourname.ridge-pass","name":"Ridge Pass"}
+Use a unique lowercase key and keep it across compatible updates. Give a new
+layout its own key. Set the optional "direction" to "downhill", "outbound" or
+"clockwise" for matching forward and reverse labels. The default is downhill.
+Without track.json the game uses the folder name for display
+and the main path file for identity. Renaming the folder preserves the ID.
+Distinct packs with the same identity cannot be installed side by side.
+Times and ghosts are local. To play a shared replay, install its track pack.
+Extra race songs use 160 kbps MP3 with their source loop positions.
+The Season 5 songs keep their existing Ogg Vorbis audio and loop data.
+The built-in courses accept community times. In the Mods list, supported
+tracks are marked COMMUNITY LEADERBOARD SUPPORT in red.
+Other mod tracks use local records and replays. Both online drivers need the
+chosen track installed.
+On supported Windows NTFS drives it also compresses large game files to save
+disk space. The courses, textures, and music keep their original quality.
+
+For an existing installation, close the game before using the standalone setup.
+It reuses your local ROM and previously verified game files.
+Upgrading the original Windows release builds its disc cache before retiring
+the previous assets. Altered or unrecognized previous assets are kept under
+UserData/Previous Windows Assets. If you supplied CUE/BIN files to the old
+player, select your GDS-0033 CHD when asked. Leave setup open until it finishes.
+The Windows player and conversion tools run locally. No Python installation,
+Unity Editor or external downloads are required for setup.
+
+Tool acknowledgments
+CHD tools from MAME, hardware arithmetic reference from Flycast, Unicorn
+Engine 2.1.4, minimp3 (upstream revision 1428237), and CPython 3.13. Notices are under InitialDUnity_Data/GameSetup/licenses and its python folder. Game source files are supplied by the player.
+

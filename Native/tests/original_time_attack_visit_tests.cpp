@@ -226,10 +226,11 @@ int main(int argc,char** argv){try{
     const auto own=std::find_if(loaded.entries().begin(),loaded.entries().end(),[](const auto& e){return e.ticks6000==987654;});
     require(own!=loaded.entries().end()&&own->nameGlyphs==first.nameGlyphs&&own->manual&&!own->night,"Persist original name and transmission metadata");
     const auto legacy=out/"legacy.csv";{std::ofstream f(legacy);f<<"condition,weather,car,finish_ticks6000\n6,0,0,999999\n";}
-    require(loaded.load(legacy)&&loaded.entries()[0].nameGlyphs[0]==221,"Legacy CSV remains readable and unnamed");
+    require(loaded.load(legacy)&&loaded.entries().empty(),"Legacy CSV is recognized and old-season rows are retired");
     require(loaded.save(legacy),"Legacy saves migrate atomically");
+    require(loaded.load(file)&&loaded.entries().size()==4,"Restore current-season test records");
     {std::ofstream f(file);f<<"condition,weather,car,finish_ticks6000,name0,name1,name2,name3,name4,manual,night\n6,0,0,987654,999,0,0,0,0,0,0\n";}
-    require(!loaded.load(file)&&loaded.entries()[0].ticks6000==999999,"Bad glyph rejected without discarding live records");
+    require(!loaded.load(file)&&loaded.entries().size()==4,"Bad glyph rejected without discarding live records");
     // Some banks have unused chunks beyond their four logical map views.
     // Exercise real rendering (including valid telemetry) through every view,
     // both directions, repeated wraps, and a fresh visit after each course.

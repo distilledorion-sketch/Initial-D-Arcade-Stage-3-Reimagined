@@ -2,6 +2,8 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <map>
+#include <string>
 #include <stdexcept>
 
 namespace idas3 {
@@ -27,18 +29,32 @@ inline constexpr std::array<ImportedCourseDefinition,9> importedCourseDefinition
     {17,14,"odawara","ODAWARA","ODAWARA",false,false,67108864u,1.f,0u},
 }};
 inline constexpr unsigned supportedCourseCount=9+unsigned(importedCourseDefinitions.size());
+inline constexpr bool communityLeaderboardCourse(unsigned id){return id<supportedCourseCount;}
 inline constexpr unsigned supportedConditionCount=supportedCourseCount*2;
-// Presentation only: never swap the stable route, collision or leaderboard IDs.
-// Odawara's source-ordered path (condition 34) runs clockwise.
-inline constexpr unsigned originalCoursePresentationCondition(unsigned condition){
-    const auto course=condition/2,reverse=condition&1;
-    return course<9?condition:course==17?(reverse^1u):course==16?8u+reverse:6u+reverse;
-}
 // Revision 1 retired pre-.45 Gunsai/Odawara handling. The requested Odawara
 // leaderboard/ghost reset starts revision 2 without disturbing Gunsai's epoch.
 inline constexpr unsigned localTimeAttackRevision(unsigned course){return course==17?2u:course==16?1u:0u;}
-inline constexpr bool isImportedCourseId(int id){return id>=9&&id<int(supportedCourseCount);}
-inline const ImportedCourseDefinition& importedCourseDefinition(unsigned id){
+// User IDs occupy a separate range. A condition and its weather still fit a signed int.
+inline constexpr bool isUserCourseId(unsigned id){return id>=0x10000000u&&id<=0x1fffffffu;}
+inline constexpr bool validLocalCondition(unsigned condition){return condition<supportedConditionCount||isUserCourseId(condition/2);}
+struct UserCourseInfo {std::string slug,name;unsigned route;};
+inline std::map<unsigned,UserCourseInfo> userCourseCatalog;
+// Presentation only: never swap the stable route, collision or leaderboard IDs.
+// Odawara's source-ordered path (condition 34) runs clockwise.
+inline unsigned originalCoursePresentationCondition(unsigned condition){
+    const auto course=condition/2,reverse=condition&1;
+    if(isUserCourseId(course)){
+        const auto it=userCourseCatalog.find(course);
+        if(it!=userCourseCatalog.end())return it->second.route^reverse;
+    }
+    return course<9?condition:course==17?(reverse^1u):course==16?8u+reverse:6u+reverse;
+}
+inline bool isImportedCourseId(int id){return (id>=9&&id<int(supportedCourseCount))||userCourseCatalog.contains(unsigned(id));}
+inline ImportedCourseDefinition importedCourseDefinition(unsigned id){
+    if(isUserCourseId(id)){
+        const auto& info=userCourseCatalog.at(id);
+        return {id,6,info.slug.c_str(),info.name.c_str(),"",false,false,0};
+    }
     if(!isImportedCourseId(int(id)))throw std::invalid_argument("Unknown imported course");
     return importedCourseDefinitions[id-9];
 }

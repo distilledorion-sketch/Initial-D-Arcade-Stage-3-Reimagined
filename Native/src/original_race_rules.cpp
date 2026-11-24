@@ -147,14 +147,20 @@ OriginalRaceGate OriginalRaceRules::gate(std::int32_t relativeIndex)const{
     return {center_[index],{across[2],0.0f,-across[0]}};
 }
 OriginalRaceEvents OriginalRaceRules::tick(OriginalPathCoordinate coordinate,OriginalRacePoint position,bool vehicleStopped){
+    return tick(coordinate,position,vehicleStopped,nullptr);
+}
+OriginalRaceEvents OriginalRaceRules::tick(OriginalPathCoordinate coordinate,OriginalRacePoint position,bool vehicleStopped,const OriginalRaceCabinetControls* cabinet){
     if(battle_)throw std::logic_error("Battle requires tickBattle with original rival coordinates");
-    return tickFrame(coordinate,position,vehicleStopped,nullptr);
+    return tickFrame(coordinate,position,vehicleStopped,nullptr,cabinet);
 }
 OriginalRaceEvents OriginalRaceRules::tickBattle(OriginalPathCoordinate coordinate,OriginalRacePoint position,OriginalPathCoordinate rival,bool vehicleStopped){
-    if(!battle_)throw std::logic_error("tickBattle requires resetLegend or resetBunta");
-    return tickFrame(coordinate,position,vehicleStopped,&rival);
+    return tickBattle(coordinate,position,rival,vehicleStopped,nullptr);
 }
-OriginalRaceEvents OriginalRaceRules::tickFrame(OriginalPathCoordinate coordinate,OriginalRacePoint position,bool vehicleStopped,const OriginalPathCoordinate* rival){
+OriginalRaceEvents OriginalRaceRules::tickBattle(OriginalPathCoordinate coordinate,OriginalRacePoint position,OriginalPathCoordinate rival,bool vehicleStopped,const OriginalRaceCabinetControls* cabinet){
+    if(!battle_)throw std::logic_error("tickBattle requires resetLegend or resetBunta");
+    return tickFrame(coordinate,position,vehicleStopped,&rival,cabinet);
+}
+OriginalRaceEvents OriginalRaceRules::tickFrame(OriginalPathCoordinate coordinate,OriginalRacePoint position,bool vehicleStopped,const OriginalPathCoordinate* rival,const OriginalRaceCabinetControls* cabinet){
     OriginalRaceEvents events;if(state_.phase!=OriginalRacePhase::Running)return events;
     validate(coordinate,period_);for(float x:position)if(!std::isfinite(x))throw std::invalid_argument("Non-finite race position");
     if(rival)validate(*rival,period_);
@@ -169,14 +175,28 @@ OriginalRaceEvents OriginalRaceRules::tickFrame(OriginalPathCoordinate coordinat
         events.secondsAdded=(imported_?importedBonuses_:legend_?originalLegendBonusSeconds(enemy_):originalTimeAttackBonusSeconds(setup_.condition))[state_.extensionCounter];
         state_.remaining.value+=std::uint32_t(events.secondsAdded)*6000u;++state_.extensionCounter;
     }
-    if(events.finished){recordOriginalFinishTime(state_.times,crossing(row_.goalIndex));state_.phase=OriginalRacePhase::Finished;}
+    if(events.finished){
+        recordOriginalFinishTime(state_.times,crossing(row_.goalIndex));state_.phase=OriginalRacePhase::Finished;
+        //068520 precedes067D00. A same-tick chord may subsequently set this
+        //marker again without replacing the already-recorded goal or outcome.
+        if(cabinet){cabinet->profileFlags1180&=0xfffdffffu;state_.automaticBrake=false;}
+    }
     if(rival)updateOriginalBattleResult(state_.battleResult,state_.progress,state_.rivalProgress,row_.goalIndex);
     // Local067D00: a nonpositive countdown requests original automatic brake;
     // the transition waits for actorbit14 (or the <=-5sec fallback).
     if(signed32(state_.remaining.value)<=0){
         state_.automaticBrake=true;
         if(vehicleStopped||signed32(state_.remaining.value)<=-30000){state_.timeUpFlag=true;if(!events.finished){state_.phase=OriginalRacePhase::TimeUp;events.timeUp=true;}}
-    }else {state_.automaticBrake=false;advanceOriginalRaceTimer(state_.remaining);}
+    }else {
+        //Entry was positive even if this decrement crosses zero. The source
+        //does not clear an existing brake here; goal initialization owns that.
+        if(!cabinet)state_.automaticBrake=false;
+        const auto code=cabinet?(cabinet->configWord12>>14)&3u:0u;
+        if(code!=1&&code!=2)advanceOriginalRaceTimer(state_.remaining);
+        if(cabinet)applyOriginalForcedQuitInPositiveBranch(cabinet->buttons,true,
+            battle_?0u:2u,cabinet->configWord12,cabinet->cardByte1189,
+            state_.remaining.value,cabinet->profileFlags1180);
+    }
     state_.previousCoordinate=coordinate;state_.previousPosition=position;state_.previousSampleTime=state_.elapsed.value;
     advanceOriginalRaceTimer(state_.elapsed);return events;
 }

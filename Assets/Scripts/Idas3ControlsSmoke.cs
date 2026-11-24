@@ -296,14 +296,13 @@ public sealed class Idas3ControlsSmoke : MonoBehaviour
     }
     private IEnumerator VerifyMeterCameraPlacement(){
         var options=host.GameOptions;var saved=options.Current.Clone();var ui=host.GetComponent<Idas3UnityUi>();Rect bumper=default,chase=default;
-        for(int view=0;view<3;++view){
+        for(int view=0;view<2;++view){
             options.BeginEdit();options.Draft.hudMeterStyle=12;options.Draft.hudMeterLayout=1;options.Draft.defaultCamera=view;
             Check(options.ApplyDraft(),"Could not select meter/camera for private placement check");yield return Frames(4);
             Check(Idas3Native.ReadOptions().cameraView==view&&ui.ArcadeMeterVisible&&ui.HudBounds(2,out _),"Live meter camera state was not available");
             ui.HudBounds(2,out var bounds);
             if(view==0)bumper=bounds;
             else if(view==1){chase=bounds;Check(chase.x<bumper.x&&chase.size==bumper.size,"Live chase view did not move the wide meter left");}
-            else Check(bounds==chase,"Natural camera did not use chase meter placement");
         }
         options.BeginEdit();JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(saved),options.Draft);
         Check(options.ApplyDraft(),"Could not restore private meter options");yield return Frames(4);

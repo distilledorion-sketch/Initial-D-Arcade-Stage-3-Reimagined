@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -41,12 +46,24 @@ public sealed class Idas3SceneGame : MonoBehaviour
     internal Idas3ControllerDevices ControllerDevices => controllerDevices;
     internal Idas3ControlBindings ControlBindings => controlBindings;
     internal Idas3Native.FrameInput DiagnosticSubmittedInput { get; private set; }
+    private readonly Idas3UserTracks userTracks=new Idas3UserTracks();
+    private double nextTrackCheck;
+    private readonly Idas3RankedMaps rankedMaps=new Idas3RankedMaps();
+    private void RefreshOptionalTracks(){
+        int mask=rankedMaps.Discover(true);
+        if((userTracks.Discover()>0||(mask&((1<<9)|(1<<10)|(7<<15)))!=0)&&FindAnyObjectByType<Idas8HakoneCourse>()==null)
+            new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
+        if((mask&(15<<11))!=0&&FindAnyObjectByType<IdasSpecialStageEnnaCourse>()==null)
+            new GameObject("Special Stage courses").AddComponent<IdasSpecialStageEnnaCourse>();
+    }
+    private bool precisePedalExportUnavailable;
+    private static readonly Idas3PrecisePedals.LegacyStep LegacyPedalStep=Idas3SceneStep;
+    private static readonly Idas3PrecisePedals.PreciseStep PrecisePedalStep=Idas3Native.Idas3SceneStepWithPedals;
     private Idas3RaceMusicCatalog raceMusic;
     private Idas3RaceMusicMenu raceMusicMenu;
     internal Idas3CustomRaceMusic CustomMusic {get;private set;}
     private bool saveCarLevelsLoaded, saveCarLevelsWarned;
     private int musicPickerContext;
-    private string musicControlHintInput;
     private static readonly Func<KeyCode,bool> ReadPhysicalKey = Input.GetKey, ReadNoKey = NoKeyHeld;
     internal Idas3RaceMusicCatalog RaceMusic => raceMusic;
     internal Idas3RaceMusicMenu RaceMusicMenu => raceMusicMenu;
@@ -68,6 +85,21 @@ public sealed class Idas3SceneGame : MonoBehaviour
     }
     private bool Focused => diagnosticFocusOverride ?? Application.isFocused;
     private bool OnlineRace => multiplayer != null && multiplayer.IsRacing;
+    internal bool CanViewReplay => ready && !stopping && !OnlineRace && !multiplayer.InLobby && !multiplayer.Busy && !multiplayer.ChallengerPending;
+    internal void SetReplayPresentation(bool playback){
+        scene.SetWorldVisible(!playback);
+        pauseMenu.enabled=!playback;
+        timeAttackGhost.enabled=!playback;
+        if(playback){
+            wheelFeedback?.Stop();controllerVibration?.Stop();
+            sound.StopOutput();
+        }else if(!stopping){
+            if(audioEnabled)sound.Initialize();
+            controlBindings.BlockStartUntilRelease();
+            menuInput.VisibilityChanged(pauseMenu.IsOpen,Time.frameCount);
+            RefreshScene();
+        }
+    }
     private bool GameplayInputContext => OnlineRace || (Status.flags & 1u) == 0;
     private bool CanOpenPause => ready && (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 0 && Status.racePhase < 3;
     private bool AttractScreen => ready && (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 1u &&
@@ -109,10 +141,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
     [DllImport("Idas3Unity", CallingConvention = CallingConvention.Cdecl)]
     private static extern int Idas3SceneShutdown();
 
+    internal static readonly bool SilentTestOutput = Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-test-silent") >= 0;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void ConfigureSilentTestOutput()
     {
-        if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-test-silent") < 0) return;
+        if (!SilentTestOutput) return;
         // Mute the final listener before any scene starts audio. Keep sources
         // and the native mixer running for state/timing diagnostics.
         AudioListener.volume = 0;
@@ -153,17 +187,16 @@ public sealed class Idas3SceneGame : MonoBehaviour
             string assets = Application.isEditor
                 ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native"))
                 : Path.Combine(Application.streamingAssetsPath, "IDAS3");
-            string saves = Path.Combine(Application.persistentDataPath, "userdata-unity-scene");
+            string saves = Path.Combine(PlayerStorage.persistentDataPath, "userdata-unity-scene");
             Idas3MenuLocalization.SetLanguage(Idas3MenuLocalization.LoadLanguage(saves));
             if(Idas3Native.Idas3SceneSetCustomMenuLanguage(Idas3MenuLocalization.Language)!=1)throw new InvalidOperationException(Idas3Native.Error());
             var hakone=FindAnyObjectByType<Idas8HakoneCourse>();
             var enna=FindAnyObjectByType<IdasSpecialStageEnnaCourse>();
             bool ennaTest=enna!=null&&enna.testBuild;
             bool importedTest=(hakone!=null&&hakone.testBuild)||ennaTest;
-            string pack=Path.Combine(Application.streamingAssetsPath,"HAKONE");
-            bool importedCourse=File.Exists(Path.Combine(pack,"menu.idastex"));
+            string pack=Idas3CourseCatalog.PackPath("HAKONE");
             if(importedTest&&!Application.isEditor)assets=File.ReadAllText(Path.Combine(Application.streamingAssetsPath,"d3-assets.txt")).Trim();
-            if(importedTest)saves=Path.Combine(Application.persistentDataPath,"hakone-race-test");
+            if(importedTest)saves=Path.Combine(PlayerStorage.persistentDataPath,"hakone-race-test");
             bool diagnostic = Idas3RomGateSmoke.Configure(ref saves);
             diagnostic = Idas3SceneSmoke.Configure(this, ref saves) || diagnostic;
             diagnostic = Idas8HakoneTimeAttackSmoke.Configure(ref saves) || diagnostic;
@@ -183,15 +216,15 @@ public sealed class Idas3SceneGame : MonoBehaviour
             diagnosticMode = diagnostic || (importedTest && (Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-smoke")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-menu-smoke")>=0));
             performanceDiagnostics = Idas3StutterTrace.Requested || diagnostic && (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-transition-check") >= 0 || Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-multiplayer-profile") >= 0);
             if (Idas3StutterTrace.Requested)
-                gameObject.AddComponent<Idas3StutterTrace>().Initialize(this, Path.Combine(diagnosticMode ? saves : Application.persistentDataPath, "Diagnostics"));
+                gameObject.AddComponent<Idas3StutterTrace>().Initialize(this, Path.Combine(diagnosticMode ? saves : PlayerStorage.persistentDataPath, "Diagnostics"));
             MatchOutputResolution();
             if (!diagnostic && !Directory.Exists(saves))
             {
-                string prior = Path.Combine(Application.persistentDataPath, "userdata");
+                string prior = Path.Combine(PlayerStorage.persistentDataPath, "userdata");
                 if (Directory.Exists(prior))
                 {
                     string staging = saves + ".import-" + Guid.NewGuid().ToString("N");
-                    string parent = Path.GetFullPath(Application.persistentDataPath);
+                    string parent = Path.GetFullPath(PlayerStorage.persistentDataPath);
                     if (Path.GetDirectoryName(Path.GetFullPath(saves)) != parent || Path.GetDirectoryName(Path.GetFullPath(staging)) != parent)
                         throw new IOException("Save import must stay inside the Unity save directory.");
                     Directory.CreateDirectory(staging);
@@ -230,6 +263,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (audioEnabled) sound.Initialize();
             RefreshScene();
             Debug.Log("IDAS3 Unity scene ready: native simulation, Unity meshes/materials/cameras/UI and AudioSource. No external framebuffer.");
+            RefreshOptionalTracks();
             multiplayer = new Idas3MultiplayerSession(Status.car,saves);
             multiplayerMenu = gameObject.AddComponent<Idas3MultiplayerMenu>();
             multiplayerMenu.InputRouter = menuInput;
@@ -262,10 +296,18 @@ public sealed class Idas3SceneGame : MonoBehaviour
             raceMusic.Initialize();
             raceMusicMenu = gameObject.AddComponent<Idas3RaceMusicMenu>();
             raceMusicMenu.Initialize(raceMusic.Entries, raceMusic.State.selectedIndex);
+            multiplayerMenu.CurrentArcadeSong=()=>CustomMusic.SelectedId<0?null:CustomMusic.SelectedTitle;
+            multiplayerMenu.SelectArcadeSong=title=>{
+                foreach(var entry in raceMusic.Entries)if(string.Equals(entry.title,title,StringComparison.OrdinalIgnoreCase)&&raceMusic.Select(entry.id,1)){
+                    CustomMusic.ClearSelection();return true;
+                }
+                return false;
+            };
             raceMusicMenu.ConfigurePlayer(saves);
             raceMusicMenu.Preview.AudibilityChanged += MusicPreviewChanged;
             CustomMusic=gameObject.AddComponent<Idas3CustomRaceMusic>();
             CustomMusic.Initialize(saves,raceMusicMenu,raceMusic,diagnosticMode?Path.Combine(Path.GetDirectoryName(saves),Idas3CustomRaceMusic.FolderName):null);
+            raceMusicMenu.HintPressed += () => OpenRaceMusic(MusicLobbyAllowed?1:0);
             raceMusicMenu.Selected += SelectRaceMusic;
             raceMusicMenu.DeleteRequested += DeleteRaceMusic;
             raceMusicMenu.OpenChanged += MusicVisibilityChanged;
@@ -284,43 +326,15 @@ public sealed class Idas3SceneGame : MonoBehaviour
             Idas3OnlineControllerSmoke.Attach(this);
             Idas3RaceMusicSmoke.Attach(this);
             Idas3AttractOptionsSmoke.Attach(this);
-            foreach(string idZeroCourse in new[]{"GUNSAI","ODAWARA"}){
-                string idZeroPack=Path.Combine(Application.streamingAssetsPath,idZeroCourse);
-                if(!File.Exists(Path.Combine(idZeroPack,"menu.idastex")))continue;
-                if(Idas3Native.Idas3SceneRegisterImportedCourse(idZeroPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
-                if(hakone==null)hakone=new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
+            if(ennaTest&&Idas3CourseCatalog.Available(11)){
+                string ennaPack=Idas3CourseCatalog.PackPath("ENNA");
+                int direction=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-uphill")>=0?1:0;
+                bool direct=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-race")>=0;
+                int weather=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-wet")>=0?1:0;
+                int started=direct?Idas3Native.Idas3SceneStartImportedCourseConditions(ennaPack,direction,1,weather):Idas3Native.Idas3SceneShowImportedCourseMenu(ennaPack);
+                if(started!=1)throw new InvalidOperationException(Idas3Native.Error());RefreshScene();
             }
-            string sadaminePack=Path.Combine(Application.streamingAssetsPath,"SADAMINE");
-            string ennaPack=Path.Combine(Application.streamingAssetsPath,"ENNA");
-            if(File.Exists(Path.Combine(ennaPack,"menu.idastex"))){
-                if(Idas3Native.Idas3SceneRegisterImportedCourse(ennaPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
-                if(enna==null)enna=new GameObject("Enna Skyline course").AddComponent<IdasSpecialStageEnnaCourse>();
-                if(ennaTest){
-                    int direction=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-uphill")>=0?1:0;
-                    bool direct=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-race")>=0;
-                    int weather=Array.IndexOf(Environment.GetCommandLineArgs(),"-enna-wet")>=0?1:0;
-                    int started=direct?Idas3Native.Idas3SceneStartImportedCourseConditions(ennaPack,direction,1,weather):Idas3Native.Idas3SceneShowImportedCourseMenu(ennaPack);
-                    if(started!=1)throw new InvalidOperationException(Idas3Native.Error());RefreshScene();
-                }
-            }
-            foreach(var name in new[]{"MYOGI_SPECIAL","USUI_SPECIAL","MOMIJI"}){
-                string specialPack=Path.Combine(Application.streamingAssetsPath,name);
-                if(!File.Exists(Path.Combine(specialPack,"menu.idastex")))continue;
-                if(Idas3Native.Idas3SceneRegisterImportedCourse(specialPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
-                if(enna==null)enna=new GameObject("Special Stage courses").AddComponent<IdasSpecialStageEnnaCourse>();
-            }
-            if(File.Exists(Path.Combine(sadaminePack,"menu.idastex"))){
-                if(Idas3Native.Idas3SceneRegisterImportedCourse(sadaminePack)!=1)throw new InvalidOperationException(Idas3Native.Error());
-                if(hakone==null)hakone=new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
-            }
-            string tsubakiPack=Path.Combine(Application.streamingAssetsPath,"TSUBAKI");
-            if(File.Exists(Path.Combine(tsubakiPack,"menu.idastex"))){
-                if(Idas3Native.Idas3SceneRegisterImportedCourse(tsubakiPack)!=1)throw new InvalidOperationException(Idas3Native.Error());
-                if(hakone==null)hakone=new GameObject("Imported courses").AddComponent<Idas8HakoneCourse>();
-            }
-            if(importedCourse){
-                if(Idas3Native.Idas3SceneRegisterImportedCourse(pack)!=1)throw new InvalidOperationException(Idas3Native.Error());
-                if(hakone==null)hakone=new GameObject("Hakone course").AddComponent<Idas8HakoneCourse>();
+            if(Idas3CourseCatalog.Available(9)){
                 if(importedTest&&!ennaTest){
                 int direction=Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-uphill")>=0?1:0;
                 int night=Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-night")>=0?1:0;
@@ -333,6 +347,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 if(diagnosticMode)DiagnosticFocusOverride=true;
             }
             Idas8HakoneTimeAttackSmoke.Attach(this);
+            if(Idas3ReplayViewer.LaunchIndex>=0&&!Idas3ReplayViewer.Requested)replayLibrary.OpenViewer(Idas3ReplayViewer.LaunchFile);
         }
         catch (Exception error) { Fail(error.ToString()); }
     }
@@ -373,7 +388,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             NativeStepMilliseconds = RendererMilliseconds = UiMilliseconds = NetworkMilliseconds = CommandMilliseconds = 0;
         }
         if(!ready&&!stopping&&failure==null){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();return;}
-        if (!ready || stopping || failure != null) return;
+        if (!ready || stopping || failure != null || ReplayViewerOpen) return;
         try
         {
             double networkBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
@@ -384,7 +399,6 @@ public sealed class Idas3SceneGame : MonoBehaviour
             presentedOnlineRace=0;
             multiplayer.BeforeFrame();
             if(performanceDiagnostics)NetworkMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-networkBegan)*1000);
-            challenger.Tick();
             // A modal owns local input, not online discovery or heartbeats.
             if(pauseMenu.Updates.WindowVisible&&multiplayer.IsRacing){
                 pauseMenu.Updates.ContinueToGame();pauseMenu.SetOpen(false);
@@ -399,7 +413,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             double commandBegan=performanceDiagnostics?Time.realtimeSinceStartupAsDouble:0;
             ExecutePauseCommands();
             if(performanceDiagnostics)CommandMilliseconds=(float)((Time.realtimeSinceStartupAsDouble-commandBegan)*1000);
-            if (stopping) return;
+            if (stopping || ReplayViewerOpen) return;
             if (Focused && !pauseMenu.IsOpen && !controlBindings.SuppressInput && Input.GetKeyDown(KeyCode.F11)) ToggleFullscreen();
             bool muteBackground = gameOptions.Current.muteWhenUnfocused && !Focused;
             if (muteBackground != appliedBackgroundMute) ApplyNativeOptions(gameOptions.Current, false);
@@ -414,8 +428,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
             };
             // A waiting room must not capture the original offline menus.
             bool networkRoom = multiplayer.IsRacing || multiplayer.ChallengerPending;
-            bool saveMenuOwnsPointer = Idas3Native.Idas3SceneSaveMenuPointer(0, 0, Screen.width, Screen.height, 0) == 1;
-            SyncSaveCarLevels(saveMenuOwnsPointer);
+            int pointerOwner = Idas3Native.Idas3SceneSaveMenuPointer(0, 0, Screen.width, Screen.height, 0);
+            if(Status.frontendStage==6&&(Status.flags&1u)!=0&&!networkRoom&&Time.unscaledTimeAsDouble>=nextTrackCheck){
+                nextTrackCheck=Time.unscaledTimeAsDouble+3;
+                RefreshOptionalTracks();
+            }
+            bool nativeMenuOwnsPointer = pointerOwner != 0;
+            SyncSaveCarLevels(pointerOwner == 1);
             var physicalPad = new Idas3ControlBindings.PadState();
             if (Focused)
             {
@@ -425,7 +444,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 // their click to Enter activates the controller selection first.
                 Idas3MenuPointer.ApplyConfirm(ref frame,Input.GetKey(KeyCode.KeypadEnter),Input.GetMouseButton(0),
                     !networkRoom&&!pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&
-                    !saveMenuOwnsPointer&&!menuInput.SavePointerReleaseBlocked);
+                    !nativeMenuOwnsPointer&&!menuInput.SavePointerReleaseBlocked);
                 controllerDevices.TryRead(out physicalPad);
             }
             Func<KeyCode,bool> physicalKey = Focused ? ReadPhysicalKey : ReadNoKey;
@@ -455,6 +474,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             bool bindingInputBlocked = controlBindings.SuppressInput || controlBindings.IsCapturing;
             controlBindings.StripStartSourceAliases(ref frame);
             bool onlineMenuWasOpen=multiplayerMenu.IsOpen;
+            multiplayerMenu.NativeFinishDriving=(Status.flags&0x10000000u)!=0;
             multiplayerMenu.RaceHudActive = (Status.flags & 1u) == 0;
             multiplayerMenu.ProcessControlInput(controlBindings.RawOnlineHeld, controlBindings.RawPauseHeld||controlBindings.StartHeld,
                 bindingInputBlocked || !Focused || raceMusicMenu.BlocksGameInput || menuInput.MusicReleaseBlocked || pauseMenu.AttractOptions || challenger.Active,
@@ -470,10 +490,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             // The native menus retain their established navigation. Only the
             // driving packet is translated; original steering conditioning
             // and simulation code receive the same analog ranges as before.
-            bool drivingBindings = (Status.flags & (1u | 32u | 512u | 1024u | 4096u)) == 0 && Status.racePhase < 3;
-            if (drivingBindings && !pauseMenu.IsOpen && !multiplayerMenu.BlocksGameInput)
-                controlBindings.ApplyDriving(ref frame);
-            else controlBindings.ApplyMenu(ref frame,controllerDevices.ActiveIsGeneric,true);
+            var precisePedals=ApplyControlBindings(ref frame,physicalPad,controlBindings,
+                Status.flags,Status.racePhase,pauseMenu.IsOpen,multiplayerMenu.BlocksGameInput,controllerDevices.ActiveIsGeneric);
             if (!Idas3SceneSmoke.PrepareFrame(ref frame)) return;
             if (!Idas3MultiplayerSmoke.PrepareFrame(ref frame)) return;
             if (!Idas3PauseSmoke.PrepareFrame(ref frame)) return;
@@ -486,7 +504,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if (!Idas3AttractOptionsSmoke.PrepareFrame(ref frame)) return;
             // Start belongs to the original frontend until a host modal or race owns it.
             // Translating it to Escape on Title used to request application exit.
-            if ((controlBindings.RawPauseHeld||controlBindings.StartHeld) && ((Status.flags & 1u) == 0 || pauseMenu.IsOpen || multiplayerMenu.IsOpen || raceMusicMenu.IsOpen)) frame.SetKey(27);
+            bool challengeStart=RouteChallengeStart(frame,bindingInputBlocked);
+            ApplyCabinetPauseRouting(ref frame,controlBindings,Status.flags,pauseMenu.IsOpen,multiplayerMenu.IsOpen,raceMusicMenu.IsOpen,challengeStart);
             multiplayerMenu.ProcessResultsInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
                 controlBindings.PauseHeld || controlBindings.StartHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
                 !Focused || bindingInputBlocked);
@@ -495,9 +514,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 controlBindings.PauseHeld || controlBindings.StartHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
                 !Focused || bindingInputBlocked);
             if (disconnectedFinish && !multiplayer.DisconnectedFinish) menuInput.BlockMusicUntilRelease();
-            bool musicInputBlocked = UpdateRaceMusic(ref frame, bindingInputBlocked || multiplayerMenu.CapturesTextInput);
+            bool musicInputBlocked = UpdateRaceMusic(ref frame, bindingInputBlocked || multiplayerMenu.CapturesTextInput, pointerOwner == 3);
             bool attractInputBlocked = UpdateAttractOptions(ref frame, bindingInputBlocked || musicInputBlocked);
-            bool savePointerBlocked = RouteSaveMenuPointer(frame, saveMenuOwnsPointer,
+            bool savePointerBlocked = RouteSaveMenuPointer(frame, nativeMenuOwnsPointer,
                 bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active || networkRoom);
             if (diagnosticFocusOverride.HasValue) frame.flags = (frame.flags & ~1u) | (diagnosticFocusOverride.Value ? 1u : 0u);
             if (bindingInputBlocked || musicInputBlocked || attractInputBlocked || disconnectedFinish || challenger.Active || savePointerBlocked)
@@ -522,9 +541,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
             frame.width = renderWidth; frame.height = renderHeight;
             if (diagnosticMode) DiagnosticSubmittedInput = frame;
             double began = Time.realtimeSinceStartupAsDouble;
-            if (Idas3SceneStep(ref frame) != 1) throw new InvalidOperationException(Idas3Native.Error());
+            if (Idas3PrecisePedals.Submit(ref frame,precisePedals,diagnosticMode,
+                ref precisePedalExportUnavailable,LegacyPedalStep,PrecisePedalStep) != 1)
+                throw new InvalidOperationException(Idas3Native.Error());
             if (performanceDiagnostics) NativeStepMilliseconds = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
             RefreshScene();
+            if((Status.flags&Idas3Native.OfferChallengersFlag)!=0)multiplayerMenu.OfferChallengers();
             simulationAndSubmissionMs = (float)((Time.realtimeSinceStartupAsDouble - began) * 1000);
             if(multiplayer.IsRacing&&!multiplayer.RaceReleased&&!multiplayer.DisconnectedFinish)
                 presentedOnlineRace=multiplayer.CurrentRaceId;
@@ -581,25 +603,13 @@ public sealed class Idas3SceneGame : MonoBehaviour
         menuInput.ResetNavigation();
     }
 
-    internal void BeginChallenger()
-    {
-        // Restore the updater's cursor state before closing its parent options.
-        if(pauseMenu.Updates.WindowVisible)pauseMenu.Updates.ContinueToGame();
-        controlBindings.CancelEdit(false);
-        pauseMenu.SetOpen(false);raceMusicMenu.SetOpen(false);multiplayerMenu.SetOpen(false);
-        menuInput.ClearMusicReleaseGuard();menuInput.ClearAttractReleaseGuard();
-        if(Idas3Native.Idas3SceneChallenger(1)!=1)throw new InvalidOperationException(Idas3Native.Error());
-        Status=Idas3Native.ReadStatus();
-    }
-    internal void CancelChallenger()
-    {
-        if(Idas3Native.Idas3SceneChallenger(0)!=1)throw new InvalidOperationException(Idas3Native.Error());
-        menuInput.BlockMusicUntilRelease();
-    }
     internal void EnterChallengerLobby()
     {
+        if(pauseMenu.Updates.WindowVisible)pauseMenu.Updates.ContinueToGame();
+        controlBindings.CancelEdit(false);
+        menuInput.ClearAttractReleaseGuard();
         if(Idas3Native.Idas3SceneChallenger(2)!=1)throw new InvalidOperationException(Idas3Native.Error());
-        ShowReturnedLobby();multiplayerMenu.SetOpen(true);
+        ShowReturnedLobby();multiplayerMenu.BeginBattleEntry();
     }
 
     private void ApplyNativeOptions(Idas3GameOptions.Values values) => ApplyNativeOptions(values, true);
@@ -607,6 +617,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         if(Idas3Native.Idas3SceneSetCustomMenuLanguage(values.customMenuLanguage)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if (!ready || stopping) return;
+        if(Idas3Native.Idas3UseInstallationRankings(values.communityTimes?0:1)!=1)throw new InvalidOperationException(Idas3Native.Error());
         if(Idas3ReplayLibrary.Idas3ReplayRecordingOptions(Idas3ReplayLibrary.RecordingFlags(values))!=1)throw new InvalidOperationException("Could not apply replay recording options.");
         var options = Idas3Native.ReadOptions();
         appliedBackgroundMute = values.muteWhenUnfocused && !Focused;
@@ -683,10 +694,11 @@ public sealed class Idas3SceneGame : MonoBehaviour
         controlBindings.ControllerDeviceChanged();
     }
 
-    private bool MusicLobbyAllowed => multiplayerMenu.IsOpen && !multiplayerMenu.CapturesTextInput && multiplayer.InLobby && !multiplayer.IsRacing && !multiplayer.Busy && !multiplayer.HasCourseDraw;
-    private bool MusicOpponentAllowed => raceMusic.State.opponentEligible != 0 && !multiplayerMenu.IsOpen && !pauseMenu.IsOpen;
-    private bool MusicSelectionHintVisible => raceMusic.State.hintVisible != 0 && !multiplayerMenu.IsOpen && !pauseMenu.IsOpen;
-    private string ViewChangeHint()
+    private bool MusicLobbyAllowed => (!multiplayerMenu.BattleEntry.Active || multiplayerMenu.BattleEntry.CanSelectMusic) && multiplayerMenu.IsOpen && !multiplayerMenu.CapturesTextInput && multiplayer.InLobby && !multiplayer.IsRacing && !multiplayer.Busy && !multiplayer.HasCourseDraw;
+    private bool OfflineMusicControlsVisible => !multiplayer.ChallengerPending && !multiplayerMenu.BattleEntry.Active && !multiplayerMenu.IsOpen && !pauseMenu.IsOpen;
+    private bool MusicOpponentAllowed => raceMusic.State.opponentEligible != 0 && OfflineMusicControlsVisible;
+    private bool MusicSelectionHintVisible => raceMusic.State.hintVisible != 0 && OfflineMusicControlsVisible;
+    private string ViewChangeHint(bool compact = false)
     {
         string keyboard = controlBindings.BindingName(Idas3ControlBindings.ActionId.Camera, Idas3ControlBindings.Slot.Primary, false);
         for (int slot = 1; slot < 3 && keyboard == "Unbound"; ++slot)
@@ -694,7 +706,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
         string controller = controlBindings.BindingName(Idas3ControlBindings.ActionId.Camera, Idas3ControlBindings.Slot.Controller, false);
         string controls = keyboard == "Unbound" ? "" : keyboard;
         if (controller != "Unbound") controls += (controls.Length > 0 ? " / " : "") + controller;
-        return controls.Length == 0 ? "VIEW CHANGE" : "VIEW CHANGE (" + controls + ")";
+        if (controls.Length == 0) return "VIEW CHANGE";
+        return compact ? controls : "VIEW CHANGE (" + controls + ")";
     }
     private void OpenRaceMusic(int context)
     {
@@ -703,7 +716,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         if (!Focused || controlBindings.SuppressInput || raceMusicMenu.IsOpen ||
             (context == 1 ? !MusicLobbyAllowed : !MusicOpponentAllowed)) return;
         musicPickerContext = context;
-        if (context == 1 && multiplayer.LocalReady) multiplayer.SetReady(false);
+        if (context == 1 && multiplayer.LocalReady && !multiplayerMenu.BattleEntry.Active) multiplayer.SetReady(false);
         raceMusicMenu.SetSelected(CustomMusic.SelectedId);
         raceMusicMenu.SetOpen(true);
         raceMusicMenu.SetNotice("");
@@ -744,6 +757,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         controlBindings?.BlockStartUntilRelease();
         multiplayerMenu.InputCovered = open;
+        multiplayerMenu.BattleEntry.MusicVisibilityChanged(open);
         menuInput.MusicVisibilityChanged();
     }
     private void MusicPreviewChanged(bool playing)
@@ -757,7 +771,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         Held(raw, 13) || Held(raw, 8) || Held(raw, 27) || Held(raw,46) ||
         (raw.padButtons & 0xf010u) != 0 || Input.GetMouseButton(0) ||
         (!controlBindings.UsesStartKey(KeyCode.P)&&Input.GetKey(KeyCode.P));
-    private bool UpdateRaceMusic(ref Idas3Native.FrameInput frame, bool bindingBlocked)
+    private bool UpdateRaceMusic(ref Idas3Native.FrameInput frame, bool bindingBlocked, bool inModsPicker)
     {
         raceMusicMenu.WheelNavigation=controllerDevices.ActiveIsGeneric;
         raceMusicMenu.Busy=CustomMusic.Busy;
@@ -766,23 +780,21 @@ public sealed class Idas3SceneGame : MonoBehaviour
         bool opponent = MusicOpponentAllowed, lobby = MusicLobbyAllowed;
         multiplayerMenu.RaceHudActive = (Status.flags & 1u) == 0;
         if (raceMusicMenu.IsOpen && !(musicPickerContext == 1 ? lobby : opponent)) raceMusicMenu.SetOpen(false);
-        bool selectionHint = MusicSelectionHintVisible;
-        string hint = selectionHint || lobby ? ViewChangeHint() : "VIEW CHANGE";
+        bool battleMusic = lobby && multiplayerMenu.BattleEntry.CanSelectMusic;
+        bool modsMusic = battleMusic ? multiplayerMenu.BattleEntry.ModsOpen : inModsPicker;
+        bool selectionHint = MusicSelectionHintVisible || battleMusic;
+        string hint = selectionHint || lobby ? ViewChangeHint(modsMusic) : "VIEW CHANGE";
         multiplayerMenu.MusicSelectionAllowed = lobby;
         multiplayerMenu.SelectedMusicTitle = CustomMusic.SelectedTitle;
-        if(musicControlHintInput!=hint){
-            musicControlHintInput=hint;
-            multiplayerMenu.MusicControlHint = "HOLD " + hint + " TO SELECT MUSIC";
-        }
         var sample = new Idas3MenuInputRouter.MusicSample {
             Navigation = MenuInputSample(frame), Delete = Held(frame, 46),
-            ViewHeld = controlBindings.ViewChangeHeld, AnyControlHeld = MusicControlsHeld(frame),
+            ViewHeld = controlBindings.ViewChangeHeld || (multiplayerMenu.BattleEntry.CanSelectMusic && MenuInputSample(frame).ViewChange), AnyControlHeld = MusicControlsHeld(frame),
             SearchEscapePressed = Input.GetKeyDown(KeyCode.Escape), PreviewPressed = !controlBindings.UsesStartKey(KeyCode.P) && Input.GetKeyDown(KeyCode.P)
         };
         var command = menuInput.ProcessMusic(sample, new Idas3MenuInputRouter.MusicContext {
             Focused = Focused, Blocked = bindingBlocked, MenuOpen = raceMusicMenu.IsOpen,
             BlocksGameInput = raceMusicMenu.BlocksGameInput, SearchFocused = raceMusicMenu.SearchFocused,
-            LobbyAllowed = lobby, OpponentAllowed = opponent, Gameplay = GameplayInputContext, DeltaSeconds = Time.unscaledDeltaTime,
+            LobbyAllowed = lobby, BattleMusicAllowed = multiplayerMenu.BattleEntry.CanSelectMusic, OpponentAllowed = opponent, Gameplay = GameplayInputContext, DeltaSeconds = Time.unscaledDeltaTime,
             Now = Time.realtimeSinceStartupAsDouble,
             PointerActive = Idas3MenuPointer.Active,
             NavigationHeld = MenuNavigationHeld(frame) || Held(frame, 46) || (frame.padButtons & 0x4000u) != 0
@@ -796,11 +808,12 @@ public sealed class Idas3SceneGame : MonoBehaviour
             case Idas3MenuInputRouter.MusicAction.Delete: raceMusicMenu.RequestDelete(); break;
             case Idas3MenuInputRouter.MusicAction.Navigate:
                 raceMusicMenu.NavigateDevice(command.Horizontal, command.Vertical, controllerDevices.ActiveIsGeneric); break;
+            case Idas3MenuInputRouter.MusicAction.BattleViewTap: multiplayerMenu.BattleEntry.TapView(); break;
             case Idas3MenuInputRouter.MusicAction.OpenLobby: OpenRaceMusic(1); break;
             case Idas3MenuInputRouter.MusicAction.OpenOpponent: OpenRaceMusic(0); break;
         }
         // Opening the picker resets hold progress in its visibility callback.
-        raceMusicMenu.SetContext(selectionHint, command.ShowHoldProgress ? menuInput.MusicHoldProgress : 0, hint);
+        raceMusicMenu.SetContext(selectionHint, command.ShowHoldProgress ? menuInput.MusicHoldProgress : 0, hint, modsMusic);
         if (command.BlocksGameInput) NeutralizeControls(ref frame);
         return command.BlocksGameInput;
     }
@@ -849,7 +862,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             switch (command)
             {
                 case Idas3PauseMenu.Command.Resume: pauseMenu.SetOpen(false); break;
-                case Idas3PauseMenu.Command.Replays: replayLibrary.OpenViewer(); break;
+                case Idas3PauseMenu.Command.Replays: replayLibrary.OpenViewer(); return;
                 case Idas3PauseMenu.Command.FullTune:
                     if(multiplayer.InLobby||multiplayer.Busy||multiplayer.ChallengerPending)break;
                     result=Idas3Native.Idas3SceneFullTune();
@@ -906,9 +919,54 @@ public sealed class Idas3SceneGame : MonoBehaviour
             case 6: frame.key6 &= mask; break; default: frame.key7 &= mask; break;
         }
     }
+    internal static Idas3PrecisePedals.Sample ApplyControlBindings(ref Idas3Native.FrameInput frame,
+        Idas3ControlBindings.PadState physicalPad,Idas3ControlBindings bindings,uint statusFlags,int racePhase,
+        bool pauseOpen,bool onlineBlocked,bool genericDevice)
+    {
+        // Native advertises the local finish child explicitly. A result or
+        // Continue menu, and older native builds, retain their menu routing.
+        bool driving=(statusFlags&(1u|32u|512u|1024u|4096u))==0&&
+            (racePhase<3||(statusFlags&0x10000000u)!=0);
+        var pedals=Idas3PrecisePedals.Physical(frame,physicalPad);
+        if(driving&&!pauseOpen&&!onlineBlocked)bindings.ApplyDriving(ref frame,out pedals);
+        else bindings.ApplyMenu(ref frame,genericDevice,true);
+        // Read the physical/configured source, never Enter/A emitted by menu
+        // aliases. Native samples this HELD bit on accepted source updates.
+        frame.flags &= ~Idas3Native.CabinetStartHeldFlag;
+        if((frame.flags&3u)==1u&&!pauseOpen&&!onlineBlocked&&bindings.CabinetStartHeld)
+            frame.flags |= Idas3Native.CabinetStartHeldFlag;
+        return pedals;
+    }
+    bool challengeStartArmed, challengeStartWasHeld, challengeChoiceInputGuard;
+    bool RouteChallengeStart(Idas3Native.FrameInput frame,bool blocked){
+        bool eligible=multiplayerMenu.CanChangeChallengeChoice&&CanOpenPause&&Status.racePhase==2&&!OnlineRace&&
+            !multiplayer.ChallengerPending&&(!multiplayer.InLobby||multiplayer.IsQuickMatching)&&!ReplayViewerOpen&&
+            !pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&Focused&&!blocked;
+        bool start=controlBindings.CabinetStartHeld||(frame.flags&Idas3Native.CabinetStartHeldFlag)!=0;
+        bool view=controlBindings.ViewChangeHeld||MenuInputSample(frame).ViewChange;
+        // Commit on release so a Start + View Change retirement chord always has priority.
+        if(!eligible||view)challengeStartArmed=false;
+        else if(start&&!challengeStartWasHeld)challengeStartArmed=true;
+        else if(!start&&challengeStartArmed){challengeStartArmed=false;multiplayerMenu.ToggleChallengers();}
+        challengeStartWasHeld=start;
+        return eligible&&!view;
+    }
+    internal static void ApplyCabinetPauseRouting(ref Idas3Native.FrameInput frame,Idas3ControlBindings bindings,
+        uint statusFlags,bool pauseOpen,bool onlineOpen,bool musicOpen,bool challengeStart=false)
+    {
+        bool reserve=(challengeStart||(statusFlags&Idas3Native.SourceCabinetForcedQuitFlag)!=0)&&!pauseOpen&&!onlineOpen&&!musicOpen;
+        if(reserve){
+            //Remove only menu aliases of logical Start; separately bound Pause
+            //and Escape still reach the host. No invented delayed-Pause timer.
+            if(bindings.UsesStartKey(KeyCode.Escape))ClearKey(ref frame,27);
+            frame.padButtons&=~0x10u;
+            if(bindings.ExplicitPauseWithoutCabinetStart)frame.SetKey(27);
+        }else if((bindings.RawPauseHeld||bindings.StartHeld)&&
+            ((statusFlags&1u)==0||pauseOpen||onlineOpen||musicOpen))frame.SetKey(27);
+    }
     private static void NeutralizeControls(ref Idas3Native.FrameInput frame)
     {
-        frame.flags = (frame.flags & ~0x3F00u) | 2u; // Reset native steering smoothing while gameplay controls are blocked.
+        frame.flags = (frame.flags & ~0x7F00u) | 2u; // Reset native steering smoothing while gameplay controls are blocked.
         frame.key0 = frame.key1 = frame.key2 = frame.key3 = frame.key4 = frame.key5 = frame.key6 = frame.key7 = 0;
         frame.padButtons = frame.leftTrigger = frame.rightTrigger = frame.padConnected = 0;
         frame.thumbLX = frame.thumbLY = frame.thumbRX = frame.thumbRY = 0;
@@ -957,7 +1015,9 @@ public sealed class Idas3SceneGame : MonoBehaviour
             Allowed = Focused && !inputBlocked && !pauseMenu.BlocksGameInput && !multiplayerMenu.BlocksGameInput,
             OwnsPointer = ownsPointer, Focused = Focused, Gameplay = GameplayInputContext
         });
-        if (command.Hover) Idas3Native.Idas3SceneSaveMenuPointer(point.x, Screen.height - point.y, Screen.width, Screen.height, 2);
+        float wheel=ownsPointer&&Focused&&!diagnosticMode&&!inputBlocked&&!pauseMenu.BlocksGameInput&&!multiplayerMenu.BlocksGameInput?Input.mouseScrollDelta.y:0;
+        if(wheel!=0)Idas3Native.Idas3SceneSaveMenuPointer(point.x,Screen.height-point.y,Screen.width,Screen.height,wheel>0?3:4);
+        else if (command.Hover) Idas3Native.Idas3SceneSaveMenuPointer(point.x, Screen.height - point.y, Screen.width, Screen.height, 2);
         if (command.Click) Idas3Native.Idas3SceneSaveMenuPointer(point.x, Screen.height - point.y, Screen.width, Screen.height, 1);
         return command.BlocksGameInput;
     }
@@ -976,11 +1036,27 @@ public sealed class Idas3SceneGame : MonoBehaviour
     private void RoutePauseInput(ref Idas3Native.FrameInput frame)
     {
         var sample = MenuInputSample(frame);
+        if(multiplayerMenu.BattleEntry.Active){
+            challengeChoiceInputGuard=multiplayerMenu.BattleEntry.ChoosingChallengers;
+            multiplayerMenu.BattleEntry.Input(sample.Horizontal,sample.Vertical,
+                sample.Confirm||(sample.Buttons&0x1000)!=0||frame.rightTrigger>80||Held(frame,87),
+                sample.Back||(sample.Escape&&!controlBindings.CabinetStartHeld)||(sample.Buttons&0x2000)!=0,
+                controlBindings.CabinetStartHeld||(frame.flags&Idas3Native.CabinetStartHeldFlag)!=0,
+                frame.leftTrigger>40||Held(frame,83)||Held(frame,40),
+                (frame.flags&1)==0||controlBindings.SuppressInput,Time.realtimeSinceStartupAsDouble);
+            NeutralizeControls(ref frame);
+            return;
+        }
+        if(challengeChoiceInputGuard){
+            challengeChoiceInputGuard=MenuNavigationHeld(frame)||frame.rightTrigger>80||Held(frame,87)||controlBindings.CabinetStartHeld;
+            if(challengeChoiceInputGuard){NeutralizeControls(ref frame);return;}
+        }
         pauseMenu.SetWheelNavigation(controllerDevices.ActiveIsGeneric);
         var command = menuInput.Process(sample, new Idas3MenuInputRouter.Context {
             Focused = (frame.flags & 1) != 0, OnlineBlocksInput = multiplayerMenu.BlocksGameInput,
             PauseOpen = pauseMenu.IsOpen, CanOpenPause = CanOpenPause, Now = Time.realtimeSinceStartupAsDouble,
             CardForcedQuit = (Status.flags & 134217728u) != 0 && !OnlineRace,
+            SourceCabinetStartReserved = (Status.flags & Idas3Native.SourceCabinetForcedQuitFlag) != 0,
             PointerActive = Idas3MenuPointer.Active, NavigationHeld = MenuNavigationHeld(frame)
         });
         switch (command.Kind)
@@ -998,15 +1074,23 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 break;
             case Idas3MenuInputRouter.Action.OpenPause: pauseMenu.SetOpen(true); break;
         }
-        bool returningToFrontend = (Status.flags & 1u) != 0;
+        ApplyPauseOwnership(ref frame,menuInput,pauseMenu.BlocksGameInput,(Status.flags&1u)!=0,Time.frameCount);
+    }
+
+    // Final ownership is evaluated after ProcessResultsInput has refreshed
+    // its page. A transition to points cannot leak an already-mapped shift.
+    internal static void ApplyPauseOwnership(ref Idas3Native.FrameInput frame,Idas3MenuInputRouter menuInput,
+        bool pauseBlocksInput,bool returningToFrontend,int frameNumber)
+    {
         if (menuInput.SuppressClosingControls && !returningToFrontend)
         {
             ClearKey(ref frame, 27); ClearKey(ref frame, 13); ClearKey(ref frame, 8);
             // Preserve canonical shift-up B and unrelated driving controls
             // while a closing confirm/Start button is still held.
             frame.padButtons &= ~0x1010u;
+            frame.flags &= ~Idas3Native.CabinetStartHeldFlag;
         }
-        if (menuInput.BlocksGameInput(pauseMenu.BlocksGameInput, returningToFrontend, Time.frameCount))
+        if (menuInput.BlocksGameInput(pauseBlocksInput, returningToFrontend, frameNumber))
             NeutralizeControls(ref frame);
     }
 
@@ -1043,8 +1127,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
         // Keep a small standalone report alongside Player.log for support.
         try
         {
-            string path = Path.Combine(Application.persistentDataPath, "last-error.txt");
-            Directory.CreateDirectory(Application.persistentDataPath);
+            string path = Path.Combine(PlayerStorage.persistentDataPath, "last-error.txt");
+            Directory.CreateDirectory(PlayerStorage.persistentDataPath);
             File.WriteAllText(path, failureReport);
             failureReportPath = path;
         }
@@ -1079,6 +1163,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         if (stopping) return;
         stopping = true;
+        replayLibrary?.CloseViewer();
         if(loadKeepAliveRegistered){Idas3Native.Idas3SceneSetLoadKeepAlive(null);loadKeepAliveRegistered=false;}
         if(timeAttackGhost!=null)timeAttackGhost.ShowGhost=false;
         raceMusicMenu?.StopPreview();

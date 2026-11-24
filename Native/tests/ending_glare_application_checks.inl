@@ -46,14 +46,15 @@
     // not a claim that the source ending uses this inspection viewpoint.
     const auto authoredCamera=app->endingCamera;
     app->endingCamera.reset(shown.cars[0].body+forward(shown.cars[0].yaw)*12+Vec3{0,.7f,0},shown.cars[0].body,1);
-    const auto seed=app->endingRandom,frame=app->ending.timeline.totalFrame;
+    const auto seed=app->originalSession.sharedRandomSeed(),frame=app->ending.timeline.totalFrame;
+    const auto repaintPhysics=app->originalSession.rollbackDigest();
     const auto on=captureGlare("on");app->endingHeadlightGlare.reset();const auto off=captureGlare("off");
     app->endingHeadlightGlare=owner;check(captureGlare("restored")==on,"Restored optical headlights changed pixels");
     unsigned changed=0;for(unsigned i=0;i<on.size();++i)changed+=(on[i]&0xffffffu)!=(off[i]&0xffffffu);
     std::cout<<"Ending optical headlights rain="<<rain<<" frame="<<frame<<" lamps="<<append(shown,app->endingCamera)
         <<" changed RGB pixels="<<changed<<'\n'<<std::flush;
     check(changed>8,"Ending optical headlights do not reach rendered pixels");
-    check(seed==app->endingRandom&&frame==app->ending.timeline.totalFrame&&app->originalSession.rollbackDigest()==nightPhysics,
+    check(seed==app->originalSession.sharedRandomSeed()&&frame==app->ending.timeline.totalFrame&&app->originalSession.rollbackDigest()==repaintPhysics,
         "Optical headlight repaint advanced ending or live physics");
     app->endingCamera=authoredCamera;
 }

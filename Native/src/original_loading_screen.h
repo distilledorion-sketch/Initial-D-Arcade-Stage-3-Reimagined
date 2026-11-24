@@ -24,6 +24,9 @@ public:
     // it as "Load BG Number". Cycle the installed pool without repeating a
     // painting until every available painting has been used.
     void begin(std::uint32_t sequence);
+    // Select the authored number, independent of missing banks in the pool.
+    // Missing artwork returns false and leaves the current bank untouched.
+    bool beginArtwork(std::uint32_t number);
     std::uint32_t artwork() const { return artwork_.empty() ? 0 : artwork_[chosen_].number; }
     void paint(std::span<std::uint32_t> target, int width, int height) const;
 

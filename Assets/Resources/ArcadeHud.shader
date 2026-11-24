@@ -1,5 +1,5 @@
 Shader "Idas3/Arcade HUD" {
- Properties { _MainTex("Texture",2D)="white"{} _Fill("Pedal fill",Float)=-1 [HideInInspector] _DstBlend("Destination blend",Float)=10 }
+ Properties { _RaceTint("Race HUD tint",Color)=(1,1,1,1) _MainTex("Texture",2D)="white"{} _Fill("Pedal fill",Float)=-1 [HideInInspector] _DstBlend("Destination blend",Float)=10 }
  SubShader { Tags { "Queue"="Overlay" "RenderType"="Transparent" } Pass {
   Cull Off ZWrite Off ZTest Always Blend SrcAlpha [_DstBlend]
   HLSLPROGRAM
@@ -7,7 +7,7 @@ Shader "Idas3/Arcade HUD" {
   #pragma fragment frag
   #include "UnityCG.cginc"
   #include "ArcadeHudImported.cginc"
-  float4 _Canvas;float _Fill,_Brake,_AlphaOnly;
+  float4 _Canvas,_RaceTint;float _Fill,_Brake,_AlphaOnly;
   struct app {float4 vertex:POSITION;float2 uv:TEXCOORD0;float4 color:COLOR;};
   struct fragdata {float4 pos:SV_POSITION;float2 uv:TEXCOORD0;float4 color:COLOR;};
   fragdata vert(app i){fragdata o;o.pos=float4(2*i.vertex.x/_Canvas.x-1,1-2*i.vertex.y/_Canvas.y,0,1);o.pos.y*=_ProjectionParams.x;o.uv=i.uv;o.color=i.color;return o;}
@@ -19,7 +19,7 @@ Shader "Idas3/Arcade HUD" {
    if(_Fill>=0){float2 d=i.uv-.5;float phase=frac(atan2(d.y,d.x)/6.2831853-.25);
     float arc=_Brake>.5?(.375-phase)/.25:(phase-.625)/.25;float aa=max(fwidth(arc),.002);
     result.a*=step(.0001,_Fill)*(1-smoothstep(_Fill-aa,_Fill+aa,arc));}
-   result.a*=ImportedMeterAlpha(uv);return result;
+   result.a*=ImportedMeterAlpha(uv);result.rgb*=_RaceTint.rgb;return result;
   }
   ENDHLSL
  } }

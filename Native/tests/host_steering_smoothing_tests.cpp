@@ -15,6 +15,18 @@ constexpr float tick=1.f/60.f;
 }
 int main()try{
     using idas3::HostSteeringSmoothing;
+    {
+        idas3::HostSteeringSource axes;
+        require(axes.pairedAtHorizontalChange(16384,0)==0,"Initial X sample lost");
+        require(axes.pairedAtHorizontalChange(16384,24576)==0,"Y-only event rewrote horizontal steering");
+        require(axes.pairedAtHorizontalChange(16385,24576)==24576,"New X event did not take current Y");
+        require(axes.pairedAtHorizontalChange(16385,0)==24576,"Vertical release rewrote held steering");
+        require(axes.pairedAtHorizontalChange(-16384,-24576)==-24576,"Direction reversal retained stale Y");
+        require(axes.pairedAtHorizontalChange(-16384,8000,false)==8000,"Non-default response retained old Y");
+        require(axes.pairedAtHorizontalChange(-16384,10000)==10000,"Restored profile inherited stale Y");
+        axes.reset();
+        require(axes.pairedAtHorizontalChange(-16384,0)==0,"Reconnect inherited previous axis history");
+    }
     float keyboard=0;
     for(int tickIndex=0;tickIndex<10;++tickIndex)keyboard=idas3::advanceHostKeyboardSteering(keyboard,1,tick);
     require(close(keyboard,1),"Keyboard must reach full lock within 167ms");
@@ -28,6 +40,8 @@ int main()try{
         idas3::HostSteeringSource alone,idlePad;float a=0,b=0;
         for(unsigned frame=0;frame<90;++frame){
             const float key=frame<12?direction:frame<25?0:frame<45?-direction:0;
+            alone.sampleKeyboard(1000+frame*17,key<0,key>0);
+            idlePad.sampleKeyboard(1000+frame*17,key<0,key>0);
             a=alone.advance(a,key,0,false,original,tick);
             b=idlePad.advance(b,key,0,true,original,tick);
             require(bits(a,b),"Idle controller changed keyboard press, countersteer or release");
@@ -35,12 +49,13 @@ int main()try{
     }
     idas3::HostSteeringSource source;
     float controlled=0;
-    for(unsigned i=0;i<12;++i)controlled=source.advance(controlled,1,0,true,true,tick);
+    for(unsigned i=0;i<12;++i){source.sampleKeyboard(1000+i*17,false,true);controlled=source.advance(controlled,1,0,true,true,tick);}
+    source.sampleKeyboard(1204,false,false);
     require(source.advance(controlled,0,0,true,true,tick)>.8f,"Keyboard release snapped with an idle controller");
     controlled=source.advance(controlled,1,-.5f,true,true,tick);
     require(bits(controlled,-.5f),"Active stick failed to take immediate ownership");
     require(source.advance(controlled,0,0,true,true,tick)==0,"Real stick release inherited the keyboard return ramp");
-    for(unsigned i=0;i<12;++i)controlled=source.advance(controlled,-1,0,true,true,tick);
+    for(unsigned i=0;i<12;++i){source.sampleKeyboard(1221+i*17,true,false);controlled=source.advance(controlled,-1,0,true,true,tick);}
     source.reset();
     require(source.advance(controlled,0,0,true,true,tick)==0,"Lifecycle reset retained keyboard ownership");
     HostSteeringSmoothing bypass;

@@ -24,9 +24,14 @@ internal static class Idas3Native
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)]
     internal static extern float Idas3NormalizeMusicPreview([In,Out] float[] samples,int count,int rate,int channels);
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneShowImportedCourseMenu([MarshalAs(UnmanagedType.LPUTF8Str)] string root);
+    [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneAbandonInvalidTrack(int id);
+    [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneRegisterUserCourse([MarshalAs(UnmanagedType.LPUTF8Str)] string root,int id,[MarshalAs(UnmanagedType.LPUTF8Str)] string slug,[MarshalAs(UnmanagedType.LPUTF8Str)] string name,int route);
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneRegisterImportedCourse([MarshalAs(UnmanagedType.LPUTF8Str)] string root);
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneStartImportedCourse([MarshalAs(UnmanagedType.LPUTF8Str)] string root,int reverse);
     [DllImport(Library,CallingConvention=CallingConvention.Cdecl)] internal static extern int Idas3SceneStartImportedCourseConditions([MarshalAs(UnmanagedType.LPUTF8Str)] string root,int reverse,int night,int wet);
+    internal const uint CabinetStartHeldFlag = 1u << 14;
+    internal const uint SourceCabinetForcedQuitFlag = 0x20000000u;
+    internal const uint OfferChallengersFlag = 0x40000000u;
     [StructLayout(LayoutKind.Sequential, Pack = 8)]
     internal struct FrameInput
     {
@@ -50,6 +55,14 @@ internal static class Idas3Native
             }
         }
     }
+    [StructLayout(LayoutKind.Sequential, Pack = 8)]
+    internal struct PedalInput
+    {
+        public uint size,version,validMask;
+        public ushort throttleAdc,brakeAdc;
+    }
+    [DllImport(Library,CallingConvention=CallingConvention.Cdecl)]
+    internal static extern int Idas3SceneStepWithPedals(ref FrameInput input,ref PedalInput pedals);
     [StructLayout(LayoutKind.Sequential, Pack = 8)]
     internal struct Status
     {
@@ -77,6 +90,8 @@ internal static class Idas3Native
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern float Idas3SceneGetSteeringDeadzone();
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetSteeringSmoothing(float value);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneSetPerformance(int rainDetail);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3UseInstallationRankings(int local);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3CopyInstallationRankings([Out] int[] rows,int capacity);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)] internal static extern int Idas3SceneConfigureLanguage(int language);
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)]
     public static extern int Idas3SceneSetCustomMenuLanguage(int language);

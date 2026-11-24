@@ -349,7 +349,7 @@ PERSONAL REPLAYS
 New filenames include driver/opponent, track, direction, day/night, wet/dry, and mode: chris_vs_tak_akina_dh_night_wet_lots.idreplay. Modes: lots = Legend of the Streets, tat = Time Attack, ol = Online. Solo Time Attack omits the opponent. Repeated names get _2, _3, etc.; existing recordings are kept. Direction labels follow the course: uh/dh, ob/ib, cw/ccw, or rev.
 Options > Replays opens your local replay library and controls Time Attack, Online Battle and Legend of the Streets recording. Apply saves the recording options. Community Times always requires Time Attack recording. Online and Legend recording are optional and start with the next race.
 Personal recordings are saved under %USERPROFILE%\AppData\LocalLow\Chris\Initial D Unity\userdata-unity-scene\replays. They are not uploaded. Only the replay attached to a submitted Time Attack result is uploaded. Keep or back up these files yourself; no automatic deletion is performed.
-The viewer opens separately so your game and save remain intact. Use D-pad/arrow keys and A/Enter to open a recording; B/Esc returns to the library. During playback, A/Start/Space pauses, Y/C switches camera, D-pad left/right seeks, and Select/H hides controls. X/Tab switches between your car and your opponent in current Online Battle recordings, preserving each driver's recorded speed, RPM, gear, movement and HUD clocks. Older connection formats without complete opponent telemetry retain the player POV. Legend replays show both cars from the player's cameras.
+The replay library opens in the game window. Select a recording with D-pad or arrow keys and A or Enter. B or Esc opens the library during playback and returns to the game from the library.
 
 TIME ATTACK REPLAYS
 Every new shared time requires a driving replay. Older clients cannot upload times without one. The Upload Previous Times option has been removed; old queued times without replays are excluded. New completed runs include a compact driving replay with the shared time. Replays queue offline and can be downloaded by the leaderboard administrator for review. New recordings capture car position, heading, RPM, speed, gear, body and wheel poses, clocks, lights and car appearance at 60 Hz with lossless compression. They are not verified simulations or video recordings.
@@ -551,7 +551,7 @@ W or Up: accelerate
 S, Down, or Space: brake
 A/D or Left/Right: steer
 Q/E: manual gears
-C: bumper / chase / natural camera (bumper is the default)
+C: switch between bumper and chase (bumper is the default)
 F11: fullscreen at the display resolution / return to window
 Escape or controller Start: pause / online race menu
 Backspace or controller B in the pause menu: back
@@ -600,9 +600,8 @@ Display changes revert after 15 seconds unless you choose KEEP CHANGES.
 Navigate with arrows and Enter/Escape, controller D-pad and A/B, or mouse.
 Settings are saved to game-options.json beside the existing scene saves.
 
-Gameplay > DEFAULT CAMERA offers BUMPER, CHASE and NATURAL. Natural adds
-smooth following and turns, a steady horizon, and gentle speed-based framing.
-Choose APPLY to save your default; View Change cycles cameras during a race.
+Gameplay > DEFAULT CAMERA offers BUMPER and CHASE. Choose APPLY to save your
+default. View Change moves the race camera between the two positions.
 
 Gameplay includes STEERING SMOOTHING beside STEERING DEADZONE. At 0% the
 current steering response is preserved; higher values soften sudden steering

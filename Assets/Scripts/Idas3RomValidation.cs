@@ -12,7 +12,7 @@ public static class Idas3RomValidation
     internal const string ChdSha256 = "9be8db03c0f75415373937545786ac6f6b9d12627f0f0584ff9f2f5cd414cf8e";
     internal const long ChdBytes = 236940011;
     public const string ReadmeText = "GDS-0033 REQUIRED\n\n" +
-        "Place your original gds-0033.chd in this rom folder beside InitialDUnity.exe.\n" +
+        "Place your original gds-0033.chd in this rom folder beside the game executable.\n" +
         "Supported CHD: 236940011 bytes\nSHA256: " + ChdSha256 + "\n\n" +
         "Alternatively, place all four extracted disc files here:\n" +
         "gds-0033.cue\ngds-0033-track1.bin\ngds-0033-track2.bin\ngds-0033-track3.bin\n\n" +
@@ -46,6 +46,11 @@ public static class Idas3RomValidation
         {
             string folder = Path.Combine(Path.GetFullPath(gameRoot), "rom");
             string chd = Path.Combine(folder, "gds-0033.chd");
+#if IDAS3_PORTABLE_PLAYER
+            string cache = Path.Combine(gameRoot, "InitialDUnity_Data", "StreamingAssets", "IDAS3");
+            if (!File.Exists(Path.Combine(cache, "disc-receipt.json")) || !File.Exists(chd))
+                return new Result(false, "Open Play Reimagined to set up your original disc in this game's rom folder.");
+#endif
             bool foundChd = File.Exists(chd);
             bool unreadableChd = false;
             if (foundChd)

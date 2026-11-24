@@ -21,7 +21,9 @@ std::uint32_t originalBuntaDialogKind(OriginalBattleProfile& profile,bool before
     if(kind>=51)throw std::out_of_range("Original Bunta dialogue saved level");
     return kind;
 }
-void OriginalBuntaVisit::begin(OriginalBattleProfile& profile,const Setup& setup){
+void OriginalBuntaVisit::begin(OriginalBattleProfile& profile,const Setup& setup){beginImpl(profile,setup,nullptr);}
+void OriginalBuntaVisit::begin(OriginalBattleProfile& profile,const Setup& setup,std::uint32_t& sharedRandom){beginImpl(profile,setup,&sharedRandom);}
+void OriginalBuntaVisit::beginImpl(OriginalBattleProfile& profile,const Setup& setup,std::uint32_t* sharedRandom){
     if(!loaded())throw std::runtime_error("Original Bunta dialogue data not loaded");
     setup_=setup;events_.clear();finished_=false;closing_=false;active_=true;
     OriginalRivalDialogSetup dialog;
@@ -29,17 +31,21 @@ void OriginalBuntaVisit::begin(OriginalBattleProfile& profile,const Setup& setup
     dialog.kind=originalBuntaDialogKind(profile,setup.beforeRace,setup.resultStatus);
     dialog.playerCar=setup.playerCar;
     //0F88C0 does not copy the player's name or draw the Legend name plate.
-    scene_.begin(profile,dialog);
+    if(sharedRandom)scene_.beginWithSharedRandom(profile,dialog,*sharedRandom);
+    else scene_.begin(profile,dialog);
     using C=OriginalLegendReturnCommand;
     events_.push_back({C::SoundSet,2,0});
     events_.push_back({C::MusicRequest,setup.beforeRace?33u:(setup.resultStatus==0?34u:35u),1});
 }
-void OriginalBuntaVisit::advance(OriginalBattleProfile& profile,const Input& input){
+void OriginalBuntaVisit::advance(OriginalBattleProfile& profile,const Input& input){advanceImpl(profile,input,nullptr);}
+void OriginalBuntaVisit::advance(OriginalBattleProfile& profile,const Input& input,std::uint32_t& sharedRandom){advanceImpl(profile,input,&sharedRandom);}
+void OriginalBuntaVisit::advanceImpl(OriginalBattleProfile& profile,const Input& input,std::uint32_t* sharedRandom){
     if(!active_||finished_)return;
     // Pre-race182E20 checks skip before child Main; post182840/182B20
     // updates child first through0F0560, then handles the skip bit.
     if(setup_.beforeRace&&input.skip)skipOriginalRivalDialog(scene_.state());
-    scene_.step(profile);
+    if(sharedRandom)scene_.stepWithSharedRandom(profile,*sharedRandom);
+    else scene_.step(profile);
     if(!setup_.beforeRace&&input.skip)skipOriginalRivalDialog(scene_.state());
     if(!closing_&&scene_.ready()){
         closeOriginalRivalDialog(scene_.state());closing_=true;

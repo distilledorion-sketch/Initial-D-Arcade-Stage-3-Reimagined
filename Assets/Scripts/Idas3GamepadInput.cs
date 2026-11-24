@@ -69,6 +69,7 @@ internal sealed class Idas3GamepadInput
          Math.Abs((int)pad.thumbRX) > 8000 || Math.Abs((int)pad.thumbRY) > 8000);
     private static short Stick(float value) => (short)Mathf.Clamp(Mathf.RoundToInt(value * (value < 0 ? 32768 : 32767)), -32768, 32767);
     private static byte Trigger(float value) => (byte)Mathf.Clamp(Mathf.RoundToInt(value * 255), 0, 255);
+    private static float FinitePedal(float value) => float.IsNaN(value)||float.IsInfinity(value)?0:value;
     internal static Idas3ControlBindings.PadState ReadUnityPad(Gamepad pad)
     {
         // Read unprocessed stick values: original native steering applies its
@@ -89,9 +90,13 @@ internal sealed class Idas3GamepadInput
         if (pad.buttonEast.isPressed) buttons |= 0x2000;
         if (pad.buttonWest.isPressed) buttons |= 0x4000;
         if (pad.buttonNorth.isPressed) buttons |= 0x8000;
+        // Malformed HID reports are neutral at the device boundary, before
+        // either byte fallback or precise ADC conversion. The internal ADC
+        // converter remains strict about invalid programmatic values.
+        float leftTrigger=FinitePedal(pad.leftTrigger.ReadUnprocessedValue()),rightTrigger=FinitePedal(pad.rightTrigger.ReadUnprocessedValue());
         return new Idas3ControlBindings.PadState {
-            connected = true, buttons = buttons, leftTrigger = Trigger(pad.leftTrigger.ReadUnprocessedValue()),
-            rightTrigger = Trigger(pad.rightTrigger.ReadUnprocessedValue()),
+            connected = true, buttons = buttons, leftTrigger = Trigger(leftTrigger),rightTrigger = Trigger(rightTrigger),
+            preciseTriggers=!(pad is XInputController),preciseLeftTrigger=leftTrigger,preciseRightTrigger=rightTrigger,
             thumbLX = Stick(left.x), thumbLY = Stick(left.y), thumbRX = Stick(right.x), thumbRY = Stick(right.y)
         };
     }

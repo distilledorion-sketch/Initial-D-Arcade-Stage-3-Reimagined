@@ -13,7 +13,19 @@ namespace Idas3.Multiplayer
         internal const string Empty = "Choose an online username before joining a battle.";
         internal const string TooLong = "Use no more than 16 characters.";
         internal const string Invalid = "Use visible characters without formatting or angle brackets.";
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        private static string cachedName;
+        private static string NamePath => System.IO.Path.Combine(Idas3DiscStorage.persistentDataPath, "online-username.txt");
+        internal static string Saved {
+            get {
+                if (cachedName != null) return cachedName;
+                string value = System.IO.File.Exists(NamePath) ? System.IO.File.ReadAllText(NamePath) : "";
+                return cachedName = TryNormalize(value, out var name, out _) ? name : "";
+            }
+        }
+#else
         internal static string Saved => TryNormalize(PlayerPrefs.GetString(PreferenceKey, ""), out var name, out _) ? name : "";
+#endif
 
         internal static bool TryNormalize(string input, out string name, out string error)
         {
@@ -42,6 +54,25 @@ namespace Idas3.Multiplayer
         internal static bool TrySave(string input, out string error)
         {
             if (!TryNormalize(input, out string name, out error)) return false;
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            string temp = NamePath + "." + Guid.NewGuid().ToString("N");
+            try {
+                System.IO.Directory.CreateDirectory(Idas3DiscStorage.persistentDataPath);
+                System.IO.File.WriteAllText(temp, name);
+                if (System.IO.File.Exists(NamePath)) System.IO.File.Replace(temp, NamePath, null);
+                else System.IO.File.Move(temp, NamePath);
+                cachedName = name;
+                return true;
+            } catch (System.IO.IOException) {
+                error = "Your online username could not be saved. Please try again.";
+                return false;
+            } catch (UnauthorizedAccessException) {
+                error = "Your online username could not be saved. Please try again.";
+                return false;
+            } finally {
+                try { System.IO.File.Delete(temp); } catch (System.IO.IOException) { } catch (UnauthorizedAccessException) { }
+            }
+#else
             bool existed = PlayerPrefs.HasKey(PreferenceKey);
             string previous = PlayerPrefs.GetString(PreferenceKey, "");
             try { PlayerPrefs.SetString(PreferenceKey, name); PlayerPrefs.Save(); return true; }
@@ -50,6 +81,7 @@ namespace Idas3.Multiplayer
                 catch (Exception) { /* A broken preference store must not crash the menu. */ }
                 error = "Your online username could not be saved. Please try again."; return false;
             }
+#endif
         }
 
         internal static string DeleteLast(string value)

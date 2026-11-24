@@ -9,8 +9,8 @@
             prepareEndingBackfireUnityFixture(*app,490+scenario*3+phase);
             check(app->renderer.saveBitmap((out/("ending-backfire-"+std::to_string(scenario)+"-"+std::to_string(phase)+".bmp")).wstring()),"Capture ending backfire comparison");
         }
-        const auto clip=app->endingReplay;const auto physics=app->originalSession.rollbackDigest();const auto profile=app->battleProfile.words;
-        const auto sample=app->ending.timeline.totalFrame;const auto fields=state(app->endingBackfire);const auto random=app->endingRandom;
+        const auto clip=app->endingReplay;const auto physics=app->originalSession.rollbackDigest(false);const auto profile=app->battleProfile.words;
+        const auto sample=app->ending.timeline.totalFrame;const auto fields=state(app->endingBackfire);const auto random=app->originalSession.sharedRandomSeed();
         const auto& frame=clip.playbackFrame(sample-1);Mesh flame;
         check(app->endingBackfire.append(flame,app->backfire,frame,app->endingBackfireTextureBase)>0,"Ending backfire disappeared after restore");
         for(const auto& range:flame.ranges)check(range.original&&range.emissive&&range.viewMask==1&&!range.carLighting&&!range.courseLighting&&
@@ -19,17 +19,20 @@
         const auto lightCount=app->endingDrawLightSets->course.count;
         check(lightCount>app->endingLightSets->course.count,"Ending backfire omitted its point light");
         app->renderEnding(0);app->paused=true;app->renderEnding(.5);app->paused=false;
-        check(fields==state(app->endingBackfire)&&random==app->endingRandom,"Repaint/pause advanced ending backfire");
+        check(fields==state(app->endingBackfire)&&random==app->originalSession.sharedRandomSeed(),"Repaint/pause advanced ending backfire");
         check(app->endingDrawLightSets->course.count==lightCount,"Repaint accumulated backfire lights");
         std::vector<unsigned> expected;unsigned expectedRandom=0;
+        const auto fpsSeed=app->originalSession.sharedRandomSeed();
         for(unsigned fps:{30u,60u,144u,240u}){
+            // Repeat the same captured RNG boundary only for this FPS comparison.
+            app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
             app->endingReplay=clip;app->beginEnding();
             for(unsigned render=0;render<fps*10;++render)app->advanceEnding(1./fps);
             check(app->endingBackfire.fields().updates==600,"Ending backfire lost original cadence");
-            if(fps==30){expected=state(app->endingBackfire);expectedRandom=app->endingRandom;}
-            else check(expected==state(app->endingBackfire)&&expectedRandom==app->endingRandom,"Backfire depends on display FPS");
+            if(fps==30){expected=state(app->endingBackfire);expectedRandom=app->originalSession.sharedRandomSeed();}
+            else check(expected==state(app->endingBackfire)&&expectedRandom==app->originalSession.sharedRandomSeed(),"Backfire depends on display FPS");
         }
-        check(app->originalSession.rollbackDigest()==physics&&app->battleProfile.words==profile,"Backfire changed race/save state");
+        check(app->originalSession.rollbackDigest(false)==physics&&app->battleProfile.words==profile,"Backfire changed race/save state");
         app->start();check(!app->endingBackfire.active()&&!app->endingBackfire.fields().updates&&!app->endingDrawLightSets,"Restart retained ending backfire/light state");
     }
     auto config=original::OriginalCarAppearanceConfig(19);config.word=0x40080000u;

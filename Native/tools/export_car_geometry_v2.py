@@ -70,7 +70,10 @@ def main():
         shutil.copyfile(old/'materials.bin',output/'materials.bin')
         oldDraws=json.loads((old/'source_capture.json').read_text())['draws']
         retained=[d for d in captures[0]['draws'] if d['semantic']<187]
-        if retained!=oldDraws:raise ValueError('Restoration unexpectedly changed pre-existing day draws')
+        # A fresh import uses the current capture tool for both passes. Older imports
+        # contain only the original subset of semantic slots.
+        if oldDraws != captures[0]['draws'] and oldDraws != retained:
+            raise ValueError('Restoration unexpectedly changed pre-existing day draws')
         (output/'source_capture.json').write_text(json.dumps(captures[0]))
         (output/'night_capture.json').write_text(json.dumps(captures[2]))
         record=dict(car=car,enemy=enemy,color=color,day_draws=len(captures[0]['draws']),old_day_draws=len(oldDraws),restored_day_slots=[d['semantic'] for d in captures[0]['draws'] if d['semantic']>=187],lighting_states=states)

@@ -9,20 +9,13 @@ JOIN DISCORD: [https://discord.gg/mJCZ5AvBb](https://discord.gg/fUZySYrPss)
 
 ## Play
 
-1. Download `Initial-D-Setup-0.3.95.56.zip` from **Releases**.
-2. Extract it and run `Install Initial D.cmd`. It downloads and verifies the game and additional courses into a new folder.
-3. Put your original **Initial D Arcade Stage 3 GDS-0033** dump in a `rom` folder beside `InitialDUnity.exe`.
-4. Run `InitialDUnity.exe`. Keep its data folders and DLLs beside it.
+1. Download **Initial-D-Setup-0.3.95.57.zip** from **Releases**. Extract it and run **Install Initial D Arcade Stage 3 Reimagined.exe**.
+2. Choose a writable game folder. When prompted, select your original English GDS-0033 CHD and its matching `317-0384-COM.pic` or `initdv3e.zip`. Setup generates the original arcade assets on your PC.
+3. Launch **Initial D Arcade Stage 3 Reimagined.exe**. Optional track downloads extract into `Mods/Maps` beside the game. Open **Mods** in Time Attack to select an installed track.
 
-Use `rom/gds-0033.chd`, or the complete set `rom/gds-0033.cue`, `rom/gds-0033-track1.bin`, `rom/gds-0033-track2.bin` and `rom/gds-0033-track3.bin`. The game validates the supported dump before gameplay; a filename alone is insufficient. It creates `rom/README.txt` on first launch when needed. Updates and Full Repair preserve your ROM files and do not replace a missing or invalid dump.
+**Windows update .57** can also be installed through the in-game updater. Setup and the updater use the same complete Windows ZIP. Keep older copies of the game closed during the first launch so setup can migrate your previous player files into `UserData`. Keep this folder when moving or backing up the game.
 
-The download includes the runtime assets but no original ROM. You do not need Unity to play. For a manual installation, extract both the `Windows-x64.zip` and the matching `Initial-D-Additional-Courses` ZIP into the same folder. Source-code ZIPs are the development project, not the playable build.
-
-**Current release:** `0.3.95-community-replays.56` · **Platform:** Windows x64 / Direct3D 11
-
-**Latest update:** `.56` adds local replay analysis and a configurable Start button, and fixes the upside-down match-found screen and split Challenge Received banner. Both online drivers should update; only `.56` can submit new times. Existing Season 2 records, cars, tuning and battle progress remain intact. See the changelog for details and verification limits.
-
-If an older updater reports **"An update path resolves through a link"**, close the game and extract both release ZIPs over the existing installation, replacing game files. Personal saves, settings, replays and custom music are preserved. Normal updates use one smaller changed-file patch that includes all required courses. Full Repair in `.44` or newer fetches both parts automatically; if an older updater falls back to its full download, the new game prompts for Full Repair to finish installing missing courses.
+For manual setup, extract the Windows x64 ZIP to a writable folder and open `InitialDUnity.exe` once. After setup, use **Initial D Arcade Stage 3 Reimagined.exe**. See the [changelog](CHANGELOG.md) for this update.
 
 Optional [Discord Rich Presence](docs/discord/README.md) shows **Initial D Arcade Stage 3**, the game logo, and your current race, menu, or replay activity. Toggle it under **Options > Gameplay > Discord Rich Presence**.
 
@@ -44,9 +37,9 @@ This project is a work in progress. Rendering fidelity, performance and multipla
 
 ## Records and replays
 
-While connected, in-game rankings combine the selected save's personal bests with the current community leaderboard. Offline, only that save's personal records appear. Matching published personal times appear once.
+While connected, in-game rankings combine the selected save's personal bests with the current community leaderboard. With Community Times switched off, the in-game leaderboard shows local finishes and saved bests from every slot on this installation, including legacy cards. Open Options → Online → Local Leaderboard to browse them. The race’s personal-best target still belongs to the selected card. Matching published personal times appear once.
 
-Season 2 requires version `.55` and a new Time Attack completed after updating. Previous-season local records and ghosts are reset; older queued runs cannot be uploaded retrospectively. Cars, tuning, battle progress and ordinary replay recordings are preserved. Replay recording is optional and is not required to post a time. Submitted times and client build declarations are not authoritative anti-cheat verification.
+Season 2 accepts new Time Attacks from supported builds. Previous-season local records and ghosts are reset; older queued runs cannot be uploaded retrospectively. Cars, tuning, battle progress and ordinary replay recordings are preserved. Replay recording is optional and is not required to post a time. Submitted times and client build declarations are not authoritative anti-cheat verification.
 
 Personal Time Attack, Online Battle and Legend recordings stay on the player's PC. Community replay uploads and downloads are disabled. Options > Replays opens the local library and recording controls.
 

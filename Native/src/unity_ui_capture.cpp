@@ -77,6 +77,11 @@ void append(Surface& dst,const Surface& src,float sx,float sy,float ox,float oy,
  }
 }
 }
+void switchReplayUiCapture(){
+    // Preserve the paused game's texture indices, surfaces and frame revision.
+    static Capture other;
+    std::swap(state(),other);
+}
 bool unityUiEnabled(){return state().enabled;}
 bool unityUiFrameReuseEnabled(){return unityUiEnabled()&&!performanceBaseline();}
 void unityUiForgetTexture(const NativeImage& image){state().texturePointers.erase(image.argb.data());}

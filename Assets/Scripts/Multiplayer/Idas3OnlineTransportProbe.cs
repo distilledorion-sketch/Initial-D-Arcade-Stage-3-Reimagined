@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -69,7 +74,7 @@ namespace Idas3.Multiplayer
                 foreach(char c in scope)Require(char.IsLetterOrDigit(c)||c=='-'||c=='_',"Probe scope contains invalid characters.");
                 scopeHash=Hash(scope);roomName="Probe "+scopeHash.Substring(0,24);
                 root=Path.GetFullPath(Argument(args,"-idas3-probe-root"));
-                string saves=Path.GetFullPath(Application.persistentDataPath).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);
+                string saves=Path.GetFullPath(PlayerStorage.persistentDataPath).TrimEnd(Path.DirectorySeparatorChar,Path.AltDirectorySeparatorChar);
                 Require(!root.Equals(saves,StringComparison.OrdinalIgnoreCase)&&!root.StartsWith(saves+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase),"Probe output must be outside the player save folder.");
                 Directory.CreateDirectory(root);
                 using(var marker=new FileStream(Path.Combine(root,role+".started"),FileMode.CreateNew,FileAccess.Write,FileShare.Read)){

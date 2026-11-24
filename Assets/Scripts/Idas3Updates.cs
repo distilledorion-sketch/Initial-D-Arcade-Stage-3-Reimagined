@@ -102,7 +102,12 @@ public sealed class Idas3Updates : MonoBehaviour
     }
 
     public void Initialize(bool checkOnStartup=true){
+#if IDAS3_PORTABLE_PLAYER
+        // Package revisions can change without changing the racing/network protocol.
+        InstalledVersion=File.ReadAllText(Path.Combine(Application.dataPath,"GameSetup","package-version.txt")).Trim();
+#else
         InstalledVersion=Application.version;
+#endif
         if(checkOnStartup){StartupFinished=false;startupWindow=true;ShowWindow();CheckNow();}
     }
     public void Activate(){
@@ -138,8 +143,7 @@ public sealed class Idas3Updates : MonoBehaviour
             if(operation!=null)yield return operation;
             ApplyResponse(request.responseCode,response.Text,operation==null||request.result!=UnityWebRequest.Result.Success||response.Exceeded);
             activeRequest=null;
-            if(State==CheckState.Current&&startupWindow&&MissingCourseContent())Message="Additional course files are missing. Choose Full Repair to download and install them.";
-            else if(State==CheckState.Current&&startupWindow)ContinueToGame();
+            if(State==CheckState.Current&&startupWindow)ContinueToGame();
             else if(State==CheckState.Unavailable&&startupWindow){yield return new WaitForSecondsRealtime(1.5f);ContinueToGame();}
         }
     }
@@ -163,19 +167,29 @@ public sealed class Idas3Updates : MonoBehaviour
         string url=RepositoryUrl+"/releases/tag/"+Uri.EscapeDataString(release.tag_name);
         if(!string.Equals(release.html_url,url,StringComparison.Ordinal))return unavailable;
         Asset windows=null;
+#if IDAS3_PORTABLE_PLAYER
+        var packageVersion=release.tag_name.TrimStart('v').Replace("-community-replays.",".");
+        var packageName="Initial-D-Arcade-Stage-3-Reimagined-"+packageVersion+"-Windows-x64.zip";
+#endif
         if(release.assets!=null)foreach(var asset in release.assets){
             if(asset==null||asset.state!="uploaded"||asset.size<=0||asset.name==null||
                 !asset.name.StartsWith("Initial-D-Arcade-Stage-3-Reimagined-",StringComparison.Ordinal)||
                 !asset.name.EndsWith("-Windows-x64.zip",StringComparison.Ordinal))continue;
+#if IDAS3_PORTABLE_PLAYER
+            if(asset.name!=packageName)continue;
+#endif
             string expected=RepositoryUrl+"/releases/download/"+Uri.EscapeDataString(release.tag_name)+"/"+Uri.EscapeDataString(asset.name);
             if(string.Equals(asset.browser_download_url,expected,StringComparison.Ordinal)&&asset.digest!=null&&Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z")){windows=asset;break;}
         }
+#if IDAS3_PORTABLE_PLAYER
+        if(windows==null&&order<0)return new Result{state=CheckState.Current,version=release.tag_name.TrimStart('v'),url=url,message="Your installed game is newer than the public release."};
+#endif
         if(windows==null){unavailable.message="The latest release does not have a verified Windows download yet. Try again later.";return unavailable;}
         Asset content=null;
         string contentName="Initial-D-Additional-Courses-"+release.tag_name.TrimStart('v')+".zip";
         if(release.assets!=null)foreach(var asset in release.assets)if(asset!=null&&asset.name==contentName){
             string expected=RepositoryUrl+"/releases/download/"+Uri.EscapeDataString(release.tag_name)+"/"+contentName;
-            if(content!=null||asset.state!="uploaded"||asset.size<=0||asset.size>=2L*1024*1024*1024||asset.browser_download_url!=expected||asset.digest==null||!Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z"))return unavailable;
+            if(content!=null||asset.state!="uploaded"||asset.size<=0||asset.size>=2L*1024*1024*1024||asset.browser_download_url!=expected||asset.digest==null||!Regex.IsMatch(asset.digest,@"\Asha256:[0-9a-fA-F]{64}\z"))continue;
             content=asset;
         }
         Asset patch=null;
@@ -223,7 +237,6 @@ public sealed class Idas3Updates : MonoBehaviour
         usingPatch=!full&&patchUrl!=null;
         downloadUrl=usingPatch?patchUrl:fullUrl;downloadHash=usingPatch?patchHash:fullHash;downloadBytes=usingPatch?patchBytes:fullBytes;
     }
-    private bool MissingCourseContent()=>contentUrl!=null&&(!Idas3CourseCatalog.Available(16)||!Idas3CourseCatalog.Available(17));
     internal void AcceptUpdate(){BeginInstall(false);}
     internal void AcceptRepair(){BeginInstall(true);}
     private void BeginInstall(bool full){
@@ -279,7 +292,7 @@ public sealed class Idas3Updates : MonoBehaviour
         try{
         sessionLease=Idas3UpdateCache.AcquireLease(session);
         string archive=Path.Combine(session,"game.zip");
-        if(new DriveInfo(Path.GetPathRoot(session)).AvailableFreeSpace<downloadBytes+(!usingPatch?contentBytes:0)+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
+        if(new DriveInfo(Path.GetPathRoot(session)).AvailableFreeSpace<downloadBytes+(!usingPatch&&repair?contentBytes:0)+64L*1024*1024)throw new IOException("Not enough disk space for the update download.");
         downloadingContent=false;State=CheckState.Downloading;Message="Downloading update…";
         using(var request=UnityWebRequest.Get(downloadUrl)){
             activeRequest=request;request.downloadHandler=new DownloadHandlerFile(Idas3UpdatePaths.FileSystemPath(archive)){removeFileOnAbort=true};
@@ -305,7 +318,7 @@ public sealed class Idas3Updates : MonoBehaviour
         while(!verification.IsCompleted)yield return null;
         if(!verification.GetAwaiter().GetResult())throw new IOException("Download verification failed. Nothing was installed.");
         string contentArchive=null;
-        if(!usingPatch&&contentUrl!=null){
+        if(repair&&!usingPatch&&contentUrl!=null){
             contentArchive=Path.Combine(session,"content.zip");
             downloadingContent=true;State=CheckState.Downloading;Message="Downloading additional courses…";
             using(var request=UnityWebRequest.Get(contentUrl)){
@@ -329,7 +342,20 @@ public sealed class Idas3Updates : MonoBehaviour
         string helper=Path.Combine(session,"install.exe");
         File.WriteAllBytes(Idas3UpdatePaths.FileSystemPath(helper),helperAsset.bytes);
         int parentId;long parentTime;
+#if IDAS3_PORTABLE_PLAYER
+        // The public launcher waits for the engine and every setup child to exit.
+        if(!int.TryParse(Environment.GetEnvironmentVariable("IDAS3_LAUNCHER_PID"),out parentId))
+            throw new IOException("Start the game using Initial D Arcade Stage 3 Reimagined.exe to install updates.");
+        using(var launcher=System.Diagnostics.Process.GetProcessById(parentId)){
+            string path=Path.GetFullPath(launcher.MainModule.FileName);
+            if(!string.Equals(path,Path.Combine(root,"InitialDUnity.exe"),StringComparison.OrdinalIgnoreCase) &&
+               !string.Equals(path,Path.Combine(root,"Initial D Arcade Stage 3 Reimagined.exe"),StringComparison.OrdinalIgnoreCase))
+                throw new IOException("The running launcher is outside this installation.");
+            parentTime=launcher.StartTime.ToUniversalTime().ToFileTimeUtc();
+        }
+#else
         using(var current=System.Diagnostics.Process.GetCurrentProcess()){parentId=current.Id;parentTime=current.StartTime.ToUniversalTime().ToFileTimeUtc();}
+#endif
         Message="Checking game files and preparing the update…";
         int checkedFiles=0,totalFiles=0;
         var preparation=Task.Run(()=>Idas3UpdateStaging.Prepare(root,session,archive,downloadHash,usingPatch,InstalledVersion,AvailableVersion,parentId,parentTime,json=>JsonUtility.FromJson<Idas3UpdateStaging.Patch>(json),
@@ -482,7 +508,7 @@ public sealed class Idas3Updates : MonoBehaviour
         }else Idas3MenuLocalization.Label(new Rect(30,76,580,80),Message,windowText);
         if(State==CheckState.Available||State==CheckState.Current){
             Idas3MenuLocalization.Label(new Rect(30,157,580,58),State==CheckState.Available?
-                "Update: "+((patchUrl!=null?patchBytes:fullBytes+contentBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB":
+                "Update: "+((patchUrl!=null?patchBytes:fullBytes)/1048576d).ToString("0.0")+" MB    •    Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB":
                 "Full Repair: "+((fullBytes+contentBytes)/1048576d).ToString("0")+" MB",windowText);
             for(int i=0;i<3;i++){
                 bool enabled=i==2||CanInstall&&fullUrl!=null&&TryCompareVersions(AvailableVersion,InstalledVersion,out int order)&&order>=0&&(i!=0||State==CheckState.Available);

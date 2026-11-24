@@ -28,6 +28,7 @@
 #include <filesystem>
 #include <future>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,24 @@ class Frontend {
 public:
     struct AttractAudioEvent {unsigned child=0,sourceFrame=0;bool finished=false;};
     FrontendStage stage = FrontendStage::Title;
+    enum class BattlePage { Closed, Card, SavedCar, Make, Model, Gearbox, Course, Route, Surface, Time, Waiting, Selected, Loading, AcceptChallengers, EnterBattle };
+    struct BattleEntry {
+        BattlePage page=BattlePage::Closed;
+        int focus=0,seconds=0,frame=0,make=0,car=0,course=0,flags=0;
+        unsigned points=0,wins=0,battles=0,streak=0,level=1;
+        std::array<unsigned,36> times{};
+        std::array<int,5> courseTiles{};
+        unsigned paint=0,fade=0;
+        int confirmFrame=-1,tileSlot=2,scroll=0,leadingTile=0,trailingTile=0;
+        int modFocus=0;
+        std::vector<int> sharedModCourses;
+        std::vector<unsigned> driverGlyphs;
+        original::OriginalBattleProfile cardProfile;
+        std::string driver,musicHint,caption,music;
+    } battleEntry;
+    const std::vector<std::uint32_t>& paintBattleEntry(int width,int height);
+    std::vector<std::uint32_t> battleCanvas,battleOutput;
+    NativeImage battleLogoBackdrop;
     int make = 6, car = 0, course = 3;
     bool automatic = true, reverse = false, wet = false, night = false;
     bool liveCarPreview = false;
@@ -91,7 +110,13 @@ public:
     static constexpr int hakoneCourse=9,sadamineCourse=10,ennaCourse=11;
     static bool isImportedCourse(int value){return isImportedCourseId(value);}
     void enableHakoneCourse(const std::filesystem::path& root,int id=hakoneCourse);
+    // This token belongs to the carousel only. The race always uses a real course ID.
+    static constexpr int modsTab=-1;
     std::vector<int> courseChoices()const;
+    bool coursePointerActive()const;
+    bool scrollModsAt(float x,float y,int delta);
+    bool modsPickerOpen()const{return coursePointerActive()&&modsFocus!=ModsFocus::Closed;}
+    bool coursePointer(float x,float y,bool click);
     void initialize(const std::filesystem::path& rootPath,bool preloadArtwork=false);
     // A covering lobby keeps Mode's entry fade, artwork and music alive,
     // while its input, profile countdown and exit transition stay suspended.
@@ -153,7 +178,8 @@ public:
     const original::OriginalDemoData& demoData()const{return attractDemo;}
     original::OriginalDemoCursor demoCursor()const{return displayedDemoCursor;}
     const original::OriginalRankingPlayback& rankingState()const{return rankingPlayback;}
-    const original::OriginalRankingRecords& rankingData()const{return rankingRecords;}
+    std::optional<original::OriginalRankingRecords> localRanking;
+    const original::OriginalRankingRecords& rankingData()const{return localRanking?*localRanking:rankingRecords;}
     std::vector<AttractAudioEvent> takeAttractAudioEvents(){auto result=std::move(attractAudioEvents);attractAudioEvents.clear();return result;}
     std::vector<original::OriginalSelectionMusicCommand> takeSelectionMusicCommands(){auto result=std::move(selectionMusicCommands);selectionMusicCommands.clear();return result;}
     const original::OriginalSelectionMusicState& selectionMusicState()const{return selectionMusic;}
@@ -183,9 +209,20 @@ public:
     static std::vector<int> carsForMake(int makeIndex);
 private:
     std::uint32_t choiceFadeArgb()const;
-    std::array<NativeTextureBank,importedCourseDefinitions.size()> importedArtworks;
-    NativeTextureBank& importedArtwork(int id){return importedArtworks.at(unsigned(id-hakoneCourse));}
-    const NativeTextureBank& importedArtwork(int id)const{return importedArtworks.at(unsigned(id-hakoneCourse));}
+    std::map<int,NativeTextureBank> importedArtworks;
+    static constexpr int visibleModRows=9;
+    int firstModRow=0;
+    NativeTextureBank& importedArtwork(int id){return importedArtworks[id];}
+    const NativeTextureBank& importedArtwork(int id)const{return importedArtworks.at(id);}
+    enum class ModsFocus { Closed, Tracks, Direction, Surface, Time, Start };
+    ModsFocus modsFocus=ModsFocus::Closed;
+    std::vector<int> installedModCourses;
+    int lastModCourse=-1;
+    int carouselChoice()const;
+    void selectModTrack(int id);
+    void stepModsFocus(int delta);
+    void drawModsPicker(int width,int height,const std::vector<int>& courses);
+    void drawModsTile(int width,int height,float x,float y,float scale);
     void drawHakoneBackdrop(int width,int height);
     struct Bank { NativeModel model; NativeTextureBank textures; };
     std::filesystem::path projectRoot,assetRoot;
@@ -285,7 +322,7 @@ private:
     void collectPreloadedArtwork();
     void synchronizeCarousel();
     void drawCarCarousel(int width,int height);
-    void drawCarColorIndicator(int width,int height);
+    void drawCarColorIndicator(int width,int height,unsigned paint,unsigned count);
     void drawMakeStrip(int width,int height);
     void synchronizeCourseCarousel();
     void drawCourseCarousel(int width,int height);

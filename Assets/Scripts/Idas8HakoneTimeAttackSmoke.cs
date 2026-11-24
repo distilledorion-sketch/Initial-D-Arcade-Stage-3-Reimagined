@@ -89,7 +89,7 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
             if(host.Status.frontendStage!=0||(host.Status.flags&16385u)!=1u)throw new Exception("Main build must retain normal title startup");
             yield return Capture("main-build-title");
         }
-        if(Idas3SceneHakoneTimeAttackTest(Path.Combine(Application.streamingAssetsPath,packName))!=1)throw new Exception(Idas3Native.Error());
+        if(Idas3SceneHakoneTimeAttackTest(Idas3CourseCatalog.PackPath(packName))!=1)throw new Exception(Idas3Native.Error());
         yield return Frames(30);
         if(SpecialStage){
             string recordings=Path.Combine(output,"userdata/replays");
@@ -146,7 +146,7 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
         if(performance)FindAnyObjectByType<Idas8HakoneCourse>().CheckSceneryPerformance(output,"race",true);
         for(int condition=0;condition<8;condition++){
             if(SpecialStage&&condition<4)continue;
-            if(Idas3Native.Idas3SceneStartImportedCourseConditions(Path.Combine(Application.streamingAssetsPath,packName),condition&1,(condition>>2)&1,(condition>>1)&1)!=1)throw new Exception(Idas3Native.Error());
+            if(Idas3Native.Idas3SceneStartImportedCourseConditions(Idas3CourseCatalog.PackPath(packName),condition&1,(condition>>2)&1,(condition>>1)&1)!=1)throw new Exception(Idas3Native.Error());
             yield return Frames(35);
             var scenery=FindAnyObjectByType<Idas8HakoneCourse>();
             if(SpecialStage){
@@ -158,7 +158,7 @@ public sealed class Idas8HakoneTimeAttackSmoke : MonoBehaviour {
             if(performance)scenery.CheckSceneryPerformance(output,"condition-"+condition,false);
             yield return Capture("condition-"+condition);
             if(IntroCameraCheck){
-                if(Idas3Native.Idas3SceneShowImportedCourseMenu(Path.Combine(Application.streamingAssetsPath,packName))!=1)throw new Exception(Idas3Native.Error());
+                if(Idas3Native.Idas3SceneShowImportedCourseMenu(Idas3CourseCatalog.PackPath(packName))!=1)throw new Exception(Idas3Native.Error());
                 yield return Frames(25);yield return SelectImportedRace();
                 yield return CheckIntroCamera("condition-"+condition);
             }

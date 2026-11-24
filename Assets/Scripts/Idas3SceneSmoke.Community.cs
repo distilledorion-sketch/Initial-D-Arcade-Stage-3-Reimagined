@@ -15,6 +15,17 @@ public sealed partial class Idas3SceneSmoke
         File.WriteAllText(Path.Combine(root,"ISOLATED_MODE_FLOW_TEST.txt"),"Private combined ranking cache check.");
         Check(Idas3SceneModeFlowFixture(-18)==1,"Full personal/community display cache matches prior rankings");
         Check(Idas3SceneModeFlowFixture(-9)==1,"Ranking ownership, real save selection and race targets remain correct");
+        var menu=host.GetComponent<Idas3PauseMenu>();menu.SetOpen(true);
+        menu.SelectCategory(Idas3PauseMenu.Category.Online);
+        host.GameOptions.Draft.communityTimes=false;Check(host.GameOptions.ApplyDraft(),"Apply local-only rankings");
+        menu.Navigate(1);menu.Activate();
+        var flags=BindingFlags.Instance|BindingFlags.NonPublic;
+        bool IsLocal()=> (bool)typeof(Idas3PauseMenu).GetField("localRankingsOpen",flags).GetValue(menu);
+        int Page()=> (int)typeof(Idas3PauseMenu).GetField("rankPage",flags).GetValue(menu);
+        Check(IsLocal()&&Page()==0,"View Leaderboards opened the local table");
+        menu.NavigateHorizontal(1);Check(Page()==1,"Next recorded course and conditions");
+        menu.Back();Check(!IsLocal()&&menu.IsOpen,"Back returns to the same options page");
+        menu.SetOpen(false);
         yield return Frames(2);Finish(true,null);
     }
     [System.Runtime.InteropServices.DllImport("Idas3Unity",CallingConvention=System.Runtime.InteropServices.CallingConvention.Cdecl)]

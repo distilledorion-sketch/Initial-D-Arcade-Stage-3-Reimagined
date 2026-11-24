@@ -9,7 +9,7 @@ void runHakoneTimeAttackTests(App& app,const fs::path& pack){
     check(app.importedRoot(id)==pack,"Installed Hakone pack registered before testing");
     auto previousMode=app.frontend.gameMode;
     app.frontend.gameMode=original::OriginalGameMode::TimeAttack;
-    check(app.frontend.courseChoices().size()>=10,"Main Time Attack offers ten courses");
+    check(app.frontend.courseChoices().back()==Frontend::modsTab,"Main Time Attack offers the Mods tab");
     app.frontend.gameMode=previousMode;app.validationMode=false;
     auto start=[&](unsigned scenario){
         app.timeAttackVisitActive=false;app.loadingActive=false;app.menu=false;app.input={};

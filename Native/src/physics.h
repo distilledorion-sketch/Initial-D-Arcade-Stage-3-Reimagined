@@ -18,6 +18,8 @@ struct DriverInput {
     bool shiftDown = false;
     bool automatic = true;
     std::uint8_t requestedGear = 0; // 0 no direct selection; 1..6 forward gears
+    int originalSteeringAnalog = -1; // optional full keyboard JVS word; -1 uses steer
+    int originalThrottleAnalog = -1, originalBrakeAnalog = -1; // optional precise HID JVS pedals
 };
 
 enum class DriveLayout { Rear, Front, All };

@@ -122,6 +122,10 @@ Place gds-0033.chd in the rom folder.	gds-0033.chdをromフォルダーに入れ
 gds-0033.cue does not describe the required three-track disc.	gds-0033.cueが必要な3トラック構成と一致しません。	gds-0033.cue与所需的三轨光盘结构不匹配。
 Could not read GDS-0033. Check that the rom files are accessible.	GDS-0033を読み込めません。ROMファイルにアクセスできるか確認してください。	无法读取GDS-0033。请检查ROM文件是否可访问。
 GAME DEFAULT	ゲーム標準	游戏默认
+{0} has selected Boost Off	{0} がブーストOFFを選択しました	{0} 已选择关闭助跑
+The first course picker is drawn at random. Drivers take turns on rematches.	初戦のコース選択は抽選で決まります。再戦では交互に選びます。	首场随机决定选赛道的车手，重赛时轮流选择。
+Continue to rematch this driver	コンティニューで同じ相手と再戦	选择继续与同一对手再战
+HOLD {0} TO SELECT MUSIC	{0}の長押しで音楽選択	长按{0}选择音乐
 HOLD VIEW CHANGE TO SELECT MUSIC	視点切替の長押しで音楽選択	长按切换视角键选择音乐
 SELECT COURSE	コースを選択	选择赛道
 F1  ONLINE BATTLE	F1  オンライン対戦	F1  在线对战
@@ -494,6 +498,7 @@ SELECTED	選択中	已选择
 LOADING…	読み込み中…	加载中…
 PLAY PREVIEW	試聴する	试听
 HOLD {0}  /  MUSIC SELECT	{0} 長押し / 音楽選択	长按 {0} / 选择音乐
+HOLD {0} FOR MUSIC	{0} 長押しで音楽選択	长按 {0} 选择音乐
 HOLD {0} FOR OPTIONS	{0} 長押しで設定	长按 {0} 打开设置
 {0} FULL	全曲 {0}	全曲 {0}
 ONLINE BATTLE	オンライン対戦	在线对战
@@ -820,3 +825,9 @@ SAVED CAR IS NOT READY	この車両は点検できません	此车辆暂时无�
 CONTROLLER VIBRATION	コントローラーの振動	手柄振动
 VIBRATION STRENGTH	振動の強さ	振动强度
 Vibration uses the active controller. Pausing or losing focus stops it.	使用中のコントローラーが振動します。ポーズ中や非アクティブ時は停止します。	仅使用当前手柄振动。暂停或切出游戏时停止。
+LOCAL LEADERBOARD	ローカルランキング	本机排行榜
+Local rankings include Time Attack results from every save slot on this installation.	この端末のすべてのセーブ枠のタイムアタック記録を表示します。	显示本机所有存档的计时赛成绩。
+No Time Attack finishes on this installation yet.	この端末にはタイムアタックの完走記録がありません。	本机还没有计时赛完赛记录。
+Could not read local times.	ローカル記録を読み込めませんでした。	无法读取本机成绩。
+Sharing is off. Local rankings include every save slot.	共有はオフです。全セーブ枠のローカル記録を表示します。	分享已关闭。本机排行榜包含所有存档。
+RANK	順位	名次

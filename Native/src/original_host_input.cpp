@@ -4,6 +4,9 @@
 #include <stdexcept>
 
 namespace idas3::original {
+float originalHostPedalAmount(std::uint16_t analog){
+    return std::clamp(((int(analog)>>8)-64)/107.f,0.f,1.f);
+}
 float effectiveSteeringDeadzone(ControllerResponse response,float steeringDeadzone){
     return steeringDeadzone<0?(response==ControllerResponse::Previous?.13f:
         response==ControllerResponse::FlycastGamepad?.1f:0.f):steeringDeadzone;
@@ -43,7 +46,7 @@ OriginalHostControls controllerHostControls(std::int16_t steeringAxis,
         // 15-bit half axis; quantize to it before its JVS conversion.
         int analog=int(std::lround(value*(32767.f/255.f)))*2;
         if(analog>=0x8000&&analog<0x8100)analog=0x8100;
-        return std::clamp(((std::min(analog,0xff7f)>>8)-64)/107.f,0.f,1.f);
+        return originalHostPedalAmount(std::uint16_t(std::min(analog,0xff7f)));
     };
     return {std::clamp((steerByte-128)/80.f,-1.f,1.f),pedal(throttle),pedal(brake)};
 }
@@ -52,6 +55,10 @@ OriginalVehicleInputs adaptOriginalHostInput(OriginalHostInputState& state,
     std::int32_t elapsedFrames){
     if(!std::isfinite(controls.steering)||!std::isfinite(controls.throttle)||!std::isfinite(controls.brake))
         throw std::invalid_argument("Native driving controls must be finite");
+    if(controls.steeringAnalog < -1||controls.steeringAnalog>0xffff)
+        throw std::invalid_argument("Native raw steering must be a JVS word or absent");
+    if(controls.throttleAnalog < -1||controls.throttleAnalog>0xff7f||controls.brakeAnalog < -1||controls.brakeAnalog>0xff7f)
+        throw std::invalid_argument("Native raw pedals must be JVS words in0..0xff7f or absent");
     OriginalVehicleInputs out;
     // Physical right is positive ADC displacement; original conditioning
     // negates it into the original steering axis. With the original RH chase
@@ -61,6 +68,9 @@ OriginalVehicleInputs adaptOriginalHostInput(OriginalHostInputState& state,
     // therefore starts at raw high-byte64, then spans107 original steps.
     const auto pedal=[](float value){return 64+int(std::lround(std::clamp(value,0.f,1.f)*107.f));};
     out.analog={std::uint16_t(steering<<8),std::uint16_t(pedal(controls.throttle)<<8),std::uint16_t(pedal(controls.brake)<<8)};
+    if(controls.steeringAnalog>=0)out.analog.steering=std::uint16_t(controls.steeringAnalog);
+    if(controls.throttleAnalog>=0)out.analog.throttle=std::uint16_t(controls.throttleAnalog);
+    if(controls.brakeAnalog>=0)out.analog.brake=std::uint16_t(controls.brakeAnalog);
     out.calibration={128,32,32};
     const auto held=std::uint8_t((controls.shiftDown?0x10u:0u)|(controls.shiftUp?0x20u:0u));
     out.pressedByte=held&std::uint8_t(~state.previousShiftButtons);

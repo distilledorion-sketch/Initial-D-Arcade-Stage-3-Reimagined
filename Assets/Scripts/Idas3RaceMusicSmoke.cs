@@ -28,6 +28,10 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     [Serializable] private class AudioObservation {public uint phase;public int selected,active;public Idas3PreRaceSmoke.RaceAudioStatus audio;}
     [Serializable] private class CountdownReport {public bool passed;public string scope;public int expected;public AudioObservation[] observations;}
     [Serializable] private class Report {public bool passed,shutdownComplete;public int checks,selectedIndex,activeIndex;public string applicationVersion=Application.version,error,scope;public string[] captures;}
+    private static bool OptionalTrackCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-optional-map-check")>=0;
+    private static bool UserTrackCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-user-track-check")>=0;
+    private static bool ModsHintCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-mods-hint-check")>=0;
+    [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowFixture(int scene);
     public static bool Configure(ref string saves)
     {
         var args=Environment.GetCommandLineArgs();int at=Array.IndexOf(args,"-idas3-race-music-smoke");if(at<0)return false;
@@ -35,6 +39,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         pendingRoot=Path.GetFullPath(args[at+1]);if(Directory.Exists(pendingRoot)||File.Exists(pendingRoot))throw new IOException("Use a fresh music diagnostic directory.");
         Directory.CreateDirectory(pendingRoot);saves=Path.Combine(pendingRoot,"userdata");Directory.CreateDirectory(saves);
         File.WriteAllText(Path.Combine(saves,"settings.txt"),"0 0 0 0 0 1 1 0\n");File.WriteAllText(Path.Combine(saves,"native_selection.txt"),"0 0\n");
+        if(ModsHintCheck||UserTrackCheck||OptionalTrackCheck)File.WriteAllText(Path.Combine(pendingRoot,"ISOLATED_MODE_FLOW_TEST.txt"),"Private mod track music test.");
         int fixture=Array.IndexOf(args,"-idas3-music-return-fixture");
         if(fixture>=0){
             if(fixture+1>=args.Length)throw new ArgumentException("Missing music return fixture");
@@ -49,7 +54,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         active.started=Time.realtimeSinceStartupAsDouble;active.StartCoroutine(active.Guard(active.Run()));
     }
     internal static bool PreparePhysicalInput(ref Func<KeyCode,bool> key,ref Idas3ControlBindings.PadState pad)
-    {if(active==null||active.finished)return false;key=active.KeyHeld;pad=new Idas3ControlBindings.PadState{connected=active.SetupHintCheck||active.physicalThumbX!=0,thumbLX=active.physicalThumbX,buttons=active.physicalButtons};return true;}
+    {if(active==null||active.finished)return false;key=active.KeyHeld;pad=new Idas3ControlBindings.PadState{connected=ModsHintCheck||active.SetupHintCheck||active.physicalThumbX!=0,thumbLX=active.physicalThumbX,buttons=active.physicalButtons};return true;}
     private bool KeyHeld(KeyCode key)=>host.DiagnosticFocusOverride!=false&&physicalKey!=KeyCode.None&&key==physicalKey;
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame)
     {if(active==null)return true;if(active.finished)return !active.ownsPlayer;
@@ -72,9 +77,77 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
             if(failure!=null){Finish(false,failure.ToString());yield break;}if(value is IEnumerator child)stack.Push(child);else yield return value;}
     }
     private void Update(){if(ownsPlayer&&!finished&&(host.Failure!=null||Time.realtimeSinceStartupAsDouble-started>(ReturnCheck?360:210)))Finish(false,host.Failure??"Music diagnostic timeout.");}
+    private IEnumerator UserTrackRoundTrip()
+    {
+        var args=Environment.GetCommandLineArgs();
+        int expected=int.Parse(args[Array.IndexOf(args,"-idas3-user-track-check")+1]);
+        Check(Idas3SceneModeFlowFixture(306)==1,"Enter mod list");
+        File.WriteAllText(Path.Combine(root,"picker-ready.txt"),expected.ToString());
+        yield return Until(()=>Idas3UserTracks.Name(expected)!="Mod track "+expected,25,"Detecting dropped pack in open Mods tab");
+        yield return Frames(4);
+        for(int i=0;i<16;i++)Idas3Native.Idas3SceneSaveMenuPointer(80,100,640,480,4);
+        // After scrolling to the end, hit the ninth visible row to exercise the viewport offset.
+        Idas3Native.Idas3SceneSaveMenuPointer(90,380,640,480,1);
+        // Pick the reverse, wet, night combination. This pack has only base scenery.
+        Idas3Native.Idas3SceneSaveMenuPointer(565,282,640,480,1);
+        Idas3Native.Idas3SceneSaveMenuPointer(565,316,640,480,1);
+        Idas3Native.Idas3SceneSaveMenuPointer(565,356,640,480,1);
+        Idas3Native.Idas3SceneSaveMenuPointer(500,425,640,480,1);
+        yield return Until(()=>host.Status.course==expected,30,"Starting last mod track");
+        var scenery=FindAnyObjectByType<Idas8HakoneCourse>();
+        yield return Until(()=>scenery.LoadedCourse==Idas3UserTracks.Folder(expected),45,"Loading custom scenery");
+        Check(Idas3SceneModeFlowFixture(690)==1,"Finish user course: "+Idas3Native.Error());
+        var library=host.GetComponent<Idas3ReplayLibrary>();
+        yield return Until(()=>Directory.Exists(library.Folder)&&Directory.GetFiles(library.Folder,"*.idreplay").Length==1,15,"Saving custom replay");
+        string file=Directory.GetFiles(library.Folder,"*.idreplay")[0];
+        var meta=Idas3ReplayData.Load(file).Metadata;
+        Check(meta.condition==expected*2+1&&meta.weather==1&&meta.night==1,"Saved replay track ID and conditions");
+        bool unkeyed=Array.IndexOf(args,"-idas3-unkeyed-track-check")>=0;
+        Check(Path.GetFileName(file).Contains(unkeyed?"_uh_night_wet_":"_ib_night_wet_"),"Route label in replay name");
+        library.OpenViewer(file);
+        yield return Until(()=>Idas3ReplayViewer.Instance!=null&&Idas3ReplayViewer.Instance.Status.course==expected,30,"Playing recorded custom track");
+        Check(scenery.LoadedCourse==Idas3UserTracks.Folder(expected),"Replay scenery");
+        library.CloseViewer();
+        yield return Frames(3);
+    }
     private IEnumerator Run()
     {
         yield return Frames(5);Check(host.Ready,"Player initialized");host.DiagnosticFocusOverride=true;
+        if(OptionalTrackCheck){
+            Check(Idas3RankedMaps.AvailableMask==Idas3RankedMaps.ArcadeMask,"Only the nine original tracks should be available");
+            yield return Pulse(116);
+            yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1025u)==0,45,"Starting an original race without optional maps");
+            Check(Idas3Native.Idas3SceneSetPaused(1)==1&&Idas3Native.Idas3SceneReturnToCourse()==1,"Return to course selection");
+            File.WriteAllText(Path.Combine(root,"picker-ready.txt"),"Ready to install Enna");
+            yield return Until(()=>Idas3CourseCatalog.Available(11),40,"Discovering the separately installed Enna pack");
+            Check(Idas3RankedMaps.AvailableMask==(Idas3RankedMaps.ArcadeMask|(1<<11)),"Only Enna should be added");
+            Check(Idas3SceneModeFlowFixture(306)==1,"Open the installed track in Mods");
+            yield return Frames(8);
+            yield return new WaitForEndOfFrame();
+            ScreenCapture.CaptureScreenshot(Path.Combine(root,"ranked-list.png"));
+            yield return Frames(6);
+            Idas3Native.Idas3SceneSaveMenuPointer(500,425,640,480,1);
+            yield return Until(()=>FindAnyObjectByType<IdasSpecialStageEnnaCourse>()?.LoadedCourseId==11,45,"Racing on the installed Enna pack");
+            Finish(true,null);yield break;
+        }
+        if(UserTrackCheck){
+            yield return UserTrackRoundTrip();
+            Finish(true,null);yield break;
+        }
+        if(ModsHintCheck){
+            Check(Idas3SceneModeFlowFixture(306)==1,"Enter the Enna track list");
+            yield return Frames(4);
+            Check(host.RaceMusicMenu.ModsHintVisible,"Music prompt missing from Mods");
+            yield return CheckSetupPicker("mods-list",6,2);
+            yield return Pulse(13);yield return Frames(3);
+            Check(host.RaceMusicMenu.ModsHintVisible,"Music prompt missing while choosing the route");
+            yield return Hold(KeyCode.C,.85);
+            Check(host.RaceMusicMenu.IsOpen,"Holding C in track conditions did not open music");
+            yield return MusicIdle();StageFilter(3);SelectTrack(4);yield return Frames(5);
+            Check(!host.RaceMusicMenu.IsOpen&&host.RaceMusic.State.selectedIndex==4,"Song selection did not return to track conditions");
+            yield return Capture("mods-direction-hint");
+            Finish(true,null);yield break;
+        }
         if(SetupHintCheck){yield return CheckSetupHint();Finish(true,null);yield break;}
         CheckRaceCatalog();Check(!host.RaceMusicMenu.HintVisible,"Music hint appeared outside opponent selection");yield return Pulse(116);
         yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1025u)==0,45,"Quick start did not reach running");
@@ -207,6 +280,19 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
         yield return Hold(KeyCode.L,.85);yield return MusicIdle();StageFilter(3);HighlightTrack(1);menu.TogglePreview();
         yield return Until(()=>menu.Preview.Playing,15,"Original Arcade Stage song preview");
         Check(menu.Preview.NormalizationGain>0&&menu.Preview.NormalizationGain<.7f,"Original song preview loudness was not balanced");menu.StopPreview();
+#if IDAS3_PORTABLE_PLAYER
+        for (int id = 1; id <= 12; ++id) {
+            HighlightTrack(id);
+            menu.TogglePreview();
+            yield return Until(() => menu.Preview.Playing, 10, "Disc song preview failed: " + id);
+            Check(menu.Preview.Duration >= 29.9f && menu.Preview.Duration <= 30.1f, "Disc preview duration: " + id);
+            Check(Array.Exists(menu.Preview.Waveform, level => level > .5f), "Disc preview has no signal: " + id);
+            menu.StopPreview();
+        }
+        HighlightTrack(1);menu.TogglePreview();menu.Navigate(1);menu.TogglePreview();
+        yield return Until(() => menu.Preview.Playing && menu.Preview.TrackId == 2, 10, "Changing songs while decoding a disc preview");
+        menu.StopPreview();
+#endif
         StageFilter(11);HighlightTrack(2000);menu.Activate();yield return MusicIdle();host.RaceMusic.Refresh();
         Check(!menu.IsOpen&&host.CustomMusic.SelectedId==2000&&host.RaceMusic.State.selectedIndex==-2,"Full Season 5 song did not commit through the actual native race mixer");
         Check(File.ReadAllText(Path.Combine(root,"userdata","custom-music","library.json")).Contains("arcade5.A_ONE_01"),"Selected song was not persisted by stable key");
@@ -512,6 +598,17 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
             QualitySettings.antiAliasing=0;yield return Frames(5);yield return new WaitForEndOfFrame();
             window=ScreenCapture.CaptureScreenshotAsTexture();SavePicture(name+"-window",window);
             bool windowNonblank=Nonblank(window),windowHeader=PickerHeaderVisible(window);
+            if(music.ModsHintVisible){
+                float fit=Mathf.Min(window.width/640f,window.height/480f);
+                int left=(int)((window.width-640*fit)*.5f+240*fit),right=(int)(left+374*fit);
+                int top=(int)((window.height-480*fit)*.5f+30*fit),letters=0;
+                var pixels=window.GetPixels32();
+                for(int y=top;y<top+(int)(26*fit);++y)for(int x=left;x<right;++x){
+                    var pixel=pixels[(window.height-1-y)*window.width+x];
+                    if(pixel.r>170&&pixel.r>pixel.g+60&&pixel.r>pixel.b+60)++letters;
+                }
+                Check(letters>70*fit*fit,"The music shortcut text did not render inside the Mods header");
+            }
             var camera=host.GetComponent<Camera>();var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();var previous=camera.targetTexture;
             target=new RenderTexture(Screen.width,Screen.height,24,RenderTextureFormat.ARGB32){antiAliasing=1};Check(target.Create(),"Capture target failed");
             try{
@@ -552,7 +649,7 @@ public sealed class Idas3RaceMusicSmoke : MonoBehaviour
     private void WriteReport(string file,bool passed,string error,bool stopped)
     {
         var state=host.RaceMusic.State;File.WriteAllText(Path.Combine(root,file),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,checks=checks,error=error,captures=captures.ToArray(),selectedIndex=state.selectedIndex,activeIndex=state.activeIndex,
-            scope=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-no-capture")>=0?"Hidden private-save Unity/native player: production controller/key routing, tab order, song choices and countdown playback checked; screenshots and IMGUI appearance not validated.":SetupHintCheck?"Private-save Unity/native setup flow: synthetic controller Y uses production bindings; Legend course/rival and Time Attack course/direction/weather/time hint, picker, intermediate confirmation continuity, final song playback and mode/race exclusion. Actual OnGUI captures; no physical controller claim.":ReturnCheck?"Private-save actual Unity/native player: first/second car showcase and running-race returns, held View Change routed through production bindings, picker eligibility/visibility/open and native selection checked; hidden test has no IMGUI screenshot validation.":"Private-save actual Unity/native player. Injected physical key reaches production bindings and held-View-Change router; captures are actual scene and OnGUI, with AA1 readback only."},true));
+            scope=UserTrackCheck?"Custom track discovery, scrolling, race, local times, ghost and in-game replay.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-music-no-capture")>=0?"Hidden private-save Unity/native player: production controller/key routing, tab order, song choices and countdown playback checked; screenshots and IMGUI appearance not validated.":SetupHintCheck?"Private-save Unity/native setup flow: synthetic controller Y uses production bindings; Legend course/rival and Time Attack course/direction/weather/time hint, picker, intermediate confirmation continuity, final song playback and mode/race exclusion. Actual OnGUI captures; no physical controller claim.":ReturnCheck?"Private-save actual Unity/native player: first/second car showcase and running-race returns, held View Change routed through production bindings, picker eligibility/visibility/open and native selection checked; hidden test has no IMGUI screenshot validation.":"Private-save actual Unity/native player. Injected physical key reaches production bindings and held-View-Change router; captures are actual scene and OnGUI, with AA1 readback only."},true));
     }
     private void Finish(bool passed,string error)
     {

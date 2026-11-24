@@ -1,4 +1,5 @@
 #include "unity_ui_capture.h"
+#include "original_menu_backdrop.h"
 #include "original_gasstand_attract.h"
 #include "original_gasstand_data.h"
 #include <algorithm>
@@ -12,31 +13,7 @@ std::span<const Message> script(unsigned id){switch(id){case 0:return script0;ca
 int glyph(char c){const auto it=std::find(fontCharacters.begin(),fontCharacters.end(),c);return it==fontCharacters.end()?-1:int(it-fontCharacters.begin());}
 unsigned lineCount(const Message& m){return !m.lines[2].empty()?3:!m.lines[1].empty()?2:1;}
 void validate(const OriginalGasstandState& s){const auto rows=script(s.script);if(s.phase>3||s.message>rows.size()||s.speaker>2||s.fade<0||s.fade>15||!std::isfinite(s.brandX)||!std::isfinite(s.bubbleX)||!std::isfinite(s.bubbleY))throw std::invalid_argument("Invalid original gasstand state");}
-// Tile57 is one exact fixed material: white diffuse, no offset, replace
-// destination, ignore texture alpha, wrappingUV. Preserve the general
-// compositor's coverage and barycentric operation order, but specialize away
-// material switches and floating-point floor library calls for bounded UVs.
-void opaqueTile(std::span<std::uint32_t> target,int width,int height,const NativeModelBatch& batch,const NativeImage& image,const SpritePlacement& p){
-    struct V{float x,y,u,v;};std::vector<V> vertices;
-    for(const auto& v:batch.vertices)vertices.push_back({v.position.x*p.scale+p.offsetX,(0.f-v.position.y)*p.scale+p.offsetY,v.u,v.v});
-    const auto edge=[](const V& a,const V& b,float x,float y){return(b.x-a.x)*(y-a.y)-(b.y-a.y)*(x-a.x);};
-    const auto topLeft=[](const V& a,const V& b){return a.y>b.y||(a.y==b.y&&a.x<b.x);};
-    const auto floorInt=[](float x){const int integer=int(x);return integer-int(x<float(integer));};
-    for(std::size_t i=0;i<batch.indices.size();i+=3){auto a=vertices[batch.indices[i]],b=vertices[batch.indices[i+1]],c=vertices[batch.indices[i+2]];
-        float area=edge(a,b,c.x,c.y);if(std::abs(area)<1e-7f)continue;if(area<0){std::swap(b,c);area=-area;}
-        const int minx=std::max(0,floorInt(std::min({a.x,b.x,c.x}))),maxx=std::min(width,-floorInt(-std::max({a.x,b.x,c.x})));
-        const int miny=std::max(0,floorInt(std::min({a.y,b.y,c.y}))),maxy=std::min(height,-floorInt(-std::max({a.y,b.y,c.y})));
-        const bool ab=topLeft(a,b),bc=topLeft(b,c),ca=topLeft(c,a);
-        for(int y=miny;y<maxy;++y)for(int x=minx;x<maxx;++x){
-            const float px=x+.5f,py=y+.5f,ea=edge(b,c,px,py),eb=edge(c,a,px,py),ec=edge(a,b,px,py);
-            if(ea<0||eb<0||ec<0||(ea==0&&!bc)||(eb==0&&!ca)||(ec==0&&!ab))continue;
-            const float wa=ea/area,wb=eb/area,wc=ec/area,u=wa*a.u+wb*b.u+wc*c.u,v=wa*a.v+wb*b.v+wc*c.v;
-            const float uf=u-float(floorInt(u)),vf=v-float(floorInt(v));
-            const int tx=std::clamp(int(uf*image.width),0,int(image.width)-1),ty=std::clamp(int(vf*image.height),0,int(image.height)-1);
-            target[std::size_t(y)*width+x]=image.argb[std::size_t(ty)*image.width+tx]|0xff000000u;
-        }
-    }
-}
+
 }
 void resetOriginalGasstand(OriginalGasstandState& s,unsigned id){(void)script(id);s={};s.script=id;s.brandX=gasstand_data::lit_0C0D095C;}
 unsigned nextOriginalGasstandScript(unsigned previous,bool skipBattle,bool skipCustomization){if(previous>2)throw std::invalid_argument("Invalid prior gasstand script");unsigned next=(previous+1)%3;if(skipCustomization&&next==0)next=1;if(skipBattle&&next==1)next=2;return next;}
@@ -133,6 +110,7 @@ void OriginalGasstandAttract::load(const std::filesystem::path& root){
     etc_=NativeModel::load(etc/"v3sA00etc.idasmesh");etcTextures_=NativeTextureBank::load(etc/"textures/textures.idastex");
     alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
     if(gasstand_.chunks.size()!=58||gasstandTextures_.sourceSize()!=15||alphabet_.size()!=62||etc_.chunks.size()<5)throw std::runtime_error("Original gasstand asset identity mismatch");reset();
+    logoBackdrop_=buildMenuLogoBackdrop(gasstandTextures_,gasstand_.chunks.at(57));
     preparedAlphabet_.clear();preparedAlphabet_.reserve(alphabet_.size());
     for(unsigned i=0;i<alphabet_.size();++i){auto glyph=alphabet_.at(i);
         for(auto& color:glyph.argb){if((color&0xffffff)!=0xffffff)throw std::runtime_error("Original alphabet expects white source glyphs");color=(color&0xff000000)|0x010101;}
@@ -149,103 +127,36 @@ void OriginalGasstandAttract::paintText(std::span<std::uint32_t> target,int widt
         advance+=gasstand_data::word(gasstand_data::fontWidthWords[unsigned(i)]);
     }else advance+=5;}
 }
-void OriginalGasstandAttract::extendBackdrop(std::span<std::uint32_t> target,int width,int height)const{
-    paintMargins(target,width,height,state_.displayedBackgroundPhase,true);
-}
 void OriginalGasstandAttract::paintMenuMargins(std::span<std::uint32_t> target,int width,int height,std::uint64_t frame)const{
-    const auto period=unsigned(std::ceil(gasstand_data::lit_0C112F88/gasstand_data::lit_0C112E28));
-    paintMargins(target,width,height,unsigned(frame%period),false);
-}
-void OriginalGasstandAttract::paintMargins(std::span<std::uint32_t> target,int width,int height,unsigned backgroundPhase,bool attract)const{
-    if(width<=0||height<=0||target.size()!=std::size_t(width)*height)throw std::invalid_argument("Invalid attract backdrop destination");
-    const float fit=std::min(width/640.f,height/480.f);const int drawWidth=std::max(1,int(640*fit)),drawHeight=std::max(1,int(480*fit));
-    const int left=(width-drawWidth)/2,top=(height-drawHeight)/2;
-    if(drawWidth==width&&drawHeight==height)return;
-    if(attract&&left==0)return;
-    const auto& batch=gasstand_.chunks.at(57).batches.at(0);const auto& image=gasstandTextures_.at(batch.material[9]);
-    const auto& a=batch.vertices.at(batch.indices.at(0));const auto& b=batch.vertices.at(batch.indices.at(1));const auto& c=batch.vertices.at(batch.indices.at(2));
-    const float dx1=b.position.x-a.position.x,dy1=b.position.y-a.position.y,dx2=c.position.x-a.position.x,dy2=c.position.y-a.position.y,det=dx1*dy2-dx2*dy1;
-    const float ux=((b.u-a.u)*dy2-(c.u-a.u)*dy1)/det,uy=(dx1*(c.u-a.u)-dx2*(b.u-a.u))/det;
-    const float vx=((b.v-a.v)*dy2-(c.v-a.v)*dy1)/det,vy=(dx1*(c.v-a.v)-dx2*(b.v-a.v))/det;
-    if(std::abs(uy)>1e-5f||std::abs(vx)>1e-5f)throw std::runtime_error("Attract tile is not axis aligned");
-    const auto wrap=[](float uv,int size){const int i=int(std::floor(uv*size));return (i%size+size)%size;};
-    const float phase=float(backgroundPhase)*gasstand_data::lit_0C112E28;
-    const auto& gradientBatch=etc_.chunks.at(1).batches.at(0);const auto& gradient=etcTextures_.at(gradientBatch.material[9]);
-    const auto& ga=gradientBatch.vertices.at(0);const auto& gb=gradientBatch.vertices.at(1);
-    if(unityUiEnabled()){
-        // Attract extends its own header/footer and gradient. Other menus use
-        // the blue tile alone: the conversation's white lower glow belongs to
-        // that scene, not to the blank space around unrelated menu artwork.
-        const std::array<std::array<float,4>,4> margins={{{0,0,float(left),float(height)},
-            {float(left+drawWidth),0,float(width),float(height)},
-            {float(left),0,float(left+drawWidth),float(top)},
-            {float(left),float(top+drawHeight),float(left+drawWidth),float(height)}}};
-        for(const auto& rect:std::span(margins).first(attract?2:4)){
-            const float xx=rect[0],ww=rect[2]-rect[0];
-            if(ww<=0||rect[3]<=rect[1])continue;
-            float y1=rect[1],y2=rect[3];
-            if(attract){
-                const float edge=xx==0?float(left):float(left+drawWidth-1);
-                unityUiCopyRegion(target.data(),width,height,edge,float(top),edge+1,top+63*fit,xx,float(top),ww,63*fit);
-                unityUiCopyRegion(target.data(),width,height,edge,top+424*fit,edge+1,float(top+drawHeight),xx,top+424*fit,ww,drawHeight-424*fit);
-                y1=top+63*fit;y2=top+424*fit;
-            }
-            auto uv=[&](float x,float y){const float sx=(x-left)/fit/100.f-phase,sy=(y-top)/fit;return std::array<float,2>{(sx-a.position.x)*ux+a.u,(-sy/100.f+phase-a.position.y)*vy+a.v};};
-            auto vertex=[&](float x,float y){const auto p=uv(x,y);return UnityUiVertex{x,y,p[0],p[1],0xffffffff,0};};
-            const auto aa=vertex(xx,y1),bb=vertex(xx+ww,y1),cc=vertex(xx,y2),dd=vertex(xx+ww,y2);
-            unityUiTriangle(target.data(),width,height,image,aa,bb,cc,1,batch.ich[2],true,batch.ich[0]);unityUiTriangle(target.data(),width,height,image,cc,bb,dd,1,batch.ich[2],true,batch.ich[0]);
-            float gy1=std::max((y1-top)/fit,(-std::max(ga.position.y,gb.position.y)-gasstand_data::lit_0C0D13D8)*100.f);
-            float gy2=std::min((y2-top)/fit,(-std::min(ga.position.y,gb.position.y)-gasstand_data::lit_0C0D13D8)*100.f);
-            if(attract&&gy2>gy1){auto gv=[&](float x,float y){const float gy=-y/100.f-gasstand_data::lit_0C0D13D8;return UnityUiVertex{x,top+y*fit,0,ga.v+(gy-ga.position.y)*(gb.v-ga.v)/(gb.position.y-ga.position.y),0xffffffff,0};};
-                const auto a1=gv(xx,gy1),b1=gv(xx+ww,gy1),c1=gv(xx,gy2),d1=gv(xx+ww,gy2);
-                unityUiTriangle(target.data(),width,height,gradient,a1,b1,c1,1,(1u<<29)|(1u<<26)|(3u<<6),true,8);unityUiTriangle(target.data(),width,height,gradient,c1,b1,d1,1,(1u<<29)|(1u<<26)|(3u<<6),true,8);}
-        }return;
-    }
-    std::vector<int> columns(std::size_t(width),0);
-    for(int x=0;x<width;++x){const float sourceX=(x-left+.5f)/fit/100.f-phase;
-        columns[std::size_t(x)]=wrap((sourceX-a.position.x)*ux+a.u,int(image.width));}
-    for(int y=attract?top:0;y<(attract?top+drawHeight:height);++y){
-        const float sourceY=(y-top+.5f)/fit;auto* row=target.data()+std::size_t(y)*width;
-        if(attract&&(sourceY<63.f||sourceY>=424.f)){
-            std::fill(row,row+left,row[left]);std::fill(row+left+drawWidth,row+width,row[left+drawWidth-1]);
-        }else{
-            const int ty=wrap((-sourceY/100.f+phase-a.position.y)*vy+a.v,int(image.height));const auto* texture=image.argb.data()+std::size_t(ty)*image.width;
-            // etc chunk1 adds the original vertical gradient over the moving
-            // tile. Extend that layer too, preventing a seam at the 4:3 edge.
-            const float gy=-sourceY/100.f-gasstand_data::lit_0C0D13D8;std::uint32_t glow=0;
-            if(attract&&gy>=std::min(ga.position.y,gb.position.y)&&gy<=std::max(ga.position.y,gb.position.y)){
-                const float uv=ga.v+(gy-ga.position.y)*(gb.v-ga.v)/(gb.position.y-ga.position.y);
-                glow=gradient.argb[std::size_t(wrap(uv,int(gradient.height)))*gradient.width];
-            }
-            const auto shade=[&](std::uint32_t pixel){
-                return 0xff000000u|(std::min(255u,((pixel>>16)&255)+((glow>>16)&255))<<16)|
-                    (std::min(255u,((pixel>>8)&255)+((glow>>8)&255))<<8)|std::min(255u,(pixel&255)+(glow&255));};
-            const bool outsideRows=y<top||y>=top+drawHeight;
-            for(int x=0;x<(outsideRows?width:left);++x)row[x]=shade(texture[columns[std::size_t(x)]]);
-            if(!outsideRows)for(int x=left+drawWidth;x<width;++x)row[x]=shade(texture[columns[std::size_t(x)]]);
-        }
-    }
+    paintMenuLogoBackdrop(target,width,height,logoBackdrop_,frame,true);
 }
 void OriginalGasstandAttract::paintImpl(std::span<std::uint32_t> target,int width,int height,bool optimized)const{
     if(width<=0||height<=0||target.size()!=std::size_t(width)*height)throw std::invalid_argument("Invalid gasstand destination");
-    if(unityUiEnabled())optimized=false;
+    if(optimized)paintMenuLogoBackdrop(target,width,height,logoBackdrop_,state_.displayedBackgroundPhase);
     using Bank=OriginalGasstandDraw::Bank;auto commands=originalGasstandDraws(state_);
     // These source depth bands put the moving tile behind the source full
     // panel, and text at1e-5 in front. Preserve the original list separately.
     const float fit=std::min(float(width)/640.f,float(height)/480.f),ox=(width-640.f*fit)*.5f,oy=(height-480.f*fit)*.5f;
-    struct Batch{NativeModelChunk chunk;const NativeTextureBank* textures;float depth;bool tile;};std::vector<Batch> batches;
-    for(const auto& d:commands){if(d.bank==Bank::alphabet)continue;
+    struct Batch{NativeModelChunk chunk;const NativeTextureBank* textures;float depth;};std::vector<Batch> batches;
+    for(const auto& d:commands){if(d.bank==Bank::alphabet||(optimized&&d.bank==Bank::gasstand&&d.index==57))continue;
         const auto& model=d.bank==Bank::gasstand?gasstand_:etc_;const auto* textures=d.bank==Bank::gasstand?&gasstandTextures_:&etcTextures_;
         for(auto batch:model.chunks.at(d.index).batches){float depth=0;
             for(auto& v:batch.vertices){v.position.x=v.position.x*d.scaleX+d.position.x;v.position.y=v.position.y*d.scaleY+d.position.y;v.position.z+=d.position.z;depth+=v.position.z;}
-            const bool tile=optimized&&d.bank==Bank::gasstand&&d.index==57&&batch.ich[2]==0x2008246d&&batch.material[3]==0xffffffff&&batch.material[4]==0;
-            depth/=float(batch.vertices.size());NativeModelChunk chunk;chunk.batches.push_back(std::move(batch));batches.push_back({std::move(chunk),textures,depth,tile});
+            // The independent reference mesh uses the same pixel-center tie
+            // convention as the baked texture. Source strip roundoff can
+            // otherwise select either adjacent texel on a half-pixel phase.
+            if(!optimized&&d.bank==Bank::gasstand&&d.index==57)
+                for(auto& v:batch.vertices){v.position.x-=.00001f;v.position.y+=.00001f;}
+            // The title and conversation stay fitted to the cabinet canvas.
+            // Only the horizontal backing strips and their glow span the screen.
+            if(d.bank==Bank::etc&&d.index<=1&&ox>0)
+                for(auto& v:batch.vertices)v.position.x=(v.position.x-3.2f)*width/(640*fit)+3.2f;
+            depth/=float(batch.vertices.size());NativeModelChunk chunk;chunk.batches.push_back(std::move(batch));batches.push_back({std::move(chunk),textures,depth});
         }
     }
     std::stable_sort(batches.begin(),batches.end(),[](const auto& a,const auto& b){return a.depth<b.depth;});
     SpritePlacement p;p.scale=100.f*fit;p.offsetX=ox;p.offsetY=oy;p.invertY=true;p.authoredHeight=0;
-    for(const auto& b:batches){if(b.tile)opaqueTile(target,width,height,b.chunk.batches[0],b.textures->at(b.chunk.batches[0].material[9]),p);
-        else compositeOriginalMenuChunk(target,width,height,*b.textures,b.chunk,p);}
+    for(const auto& b:batches)compositeOriginalMenuChunk(target,width,height,*b.textures,b.chunk,p);
     p={};p.scale=fit;p.offsetX=ox;p.offsetY=oy;
     for(const auto& d:commands)if(d.bank==Bank::alphabet){const float x=d.position.x,y=d.position.y;
         const auto color=optimized?0xffffffffu:d.color;

@@ -24,8 +24,8 @@ public:
     void cancel(){if(ready()&&!inspectionCompletion_)input_.cancel=true;}
     void nextPage(){if(ready()&&!inspectionCompletion_)input_.nextPage=true;}
     OriginalCardCheckEvents advance(OriginalBattleProfile&);
-    void paint(std::span<std::uint32_t>,int,int,const OriginalBattleProfile&)const;
-    void paintBackground(std::span<std::uint32_t>,int,int)const;
+    struct CarPicker{unsigned frame,seconds,page=0;};
+    void paint(std::span<std::uint32_t>,int,int,const OriginalBattleProfile&,const CarPicker* picker=nullptr)const;
     bool ready()const{return state_.phase452==1;}
     std::uint32_t fadeArgb()const{return state_.overlay460?std::min(state_.fade464,15u)*255/15<<24:0;}
     const OriginalCardCheckState& state()const{return state_;}
@@ -33,6 +33,7 @@ private:
     struct Bank{NativeModel model;NativeTextureBank textures;};
     std::map<std::string,Bank> banks_;
     NativeTextureBank optionFont_;
+    NativeImage logoBackdrop_;
     std::array<std::uint16_t,9216> glyphMap_{};
     std::array<std::pair<std::uint16_t,float>,35> spacing_{};
     OriginalTuningData tuning_;

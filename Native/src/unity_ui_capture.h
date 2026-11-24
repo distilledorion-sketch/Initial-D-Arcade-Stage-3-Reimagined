@@ -12,6 +12,7 @@ struct UnityUiDraw{std::uint32_t first,count,texture,tsp,pcw,flags;float opacity
 struct UnityUiFrame{std::uint32_t size,width,height,drawCount,vertexCount,textureCount,unresolvedSurfaces,reserved;std::uint64_t revision;};
 struct UnityUiTextureInfo{std::uint32_t size,width,height,bytes;};
 bool unityUiEnabled();
+void switchReplayUiCapture();
 // Command-only HUD pixels and reusable frame storage. The exact diagnostic
 // argument -idas3-scene-perf-baseline restores the prior allocation/clear work.
 bool unityUiFrameReuseEnabled();

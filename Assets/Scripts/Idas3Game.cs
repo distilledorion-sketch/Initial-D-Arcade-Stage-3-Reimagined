@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -74,7 +79,7 @@ public sealed class Idas3Game : MonoBehaviour
             assetRoot = Application.isEditor
                 ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native"))
                 : Path.Combine(Application.streamingAssetsPath, "IDAS3");
-            saveRoot = Path.Combine(Application.persistentDataPath, "userdata");
+            saveRoot = Path.Combine(PlayerStorage.persistentDataPath, "userdata");
             Idas3RomGateSmoke.Configure(ref saveRoot);
             Idas3Smoke.Configure(this, ref saveRoot);
             Directory.CreateDirectory(saveRoot);

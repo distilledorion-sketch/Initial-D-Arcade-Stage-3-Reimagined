@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -46,16 +47,29 @@ public sealed class Idas3TimeAttackGhost : MonoBehaviour
     private void CreateVisual()
     {
         const string root="TimeAttackGhost/";
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        string folder=Path.Combine(Application.streamingAssetsPath,"TimeAttackGhost");
+        string json=File.ReadAllText(Path.Combine(folder,"Mesh.json"));
+#else
         var data=Resources.Load<TextAsset>(root+"Mesh");
+        if(data==null)throw new InvalidOperationException("Ghost mesh is missing.");
+        string json=data.text;
+#endif
         var shader=Resources.Load<Shader>("Idas3TimeAttackGhost");
-        if(data==null||shader==null||!shader.isSupported)throw new InvalidOperationException("Ghost mesh or shader is missing.");
-        var source=JsonUtility.FromJson<SourceMesh>(data.text);
+        if(shader==null||!shader.isSupported)throw new InvalidOperationException("Ghost mesh or shader is missing.");
+        var source=JsonUtility.FromJson<SourceMesh>(json);
         materials=new Material[2];textures=new Texture2D[2];meshes=new Mesh[source.parts.Length];
         for(int i=0;i<2;++i){
-            var bytes=Resources.Load<TextAsset>(root+(i==0?"Shadow.png":"Body.png"));
+            string imageName=i==0?"Shadow.png":"Body.png";
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            byte[] pixels=File.ReadAllBytes(Path.Combine(folder,imageName));
+#else
+            var bytes=Resources.Load<TextAsset>(root+imageName);
             if(bytes==null)throw new InvalidOperationException("Ghost texture is missing.");
+            byte[] pixels=bytes.bytes;
+#endif
             textures[i]=new Texture2D(2,2,TextureFormat.RGBA32,false);
-            if(!textures[i].LoadImage(bytes.bytes,true))throw new InvalidOperationException("Ghost texture is invalid.");
+            if(!textures[i].LoadImage(pixels,true))throw new InvalidOperationException("Ghost texture is invalid.");
             textures[i].wrapMode=TextureWrapMode.Clamp;textures[i].filterMode=FilterMode.Bilinear;
             materials[i]=new Material(shader){mainTexture=textures[i],renderQueue=3100+i};
             materials[i].SetColor("_Tint",i==0?Color.white:new Color(.5f,.5f,.5f,1));

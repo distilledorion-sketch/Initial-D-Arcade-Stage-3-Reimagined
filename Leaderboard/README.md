@@ -25,9 +25,10 @@ submission namespace is **epoch 3**: epoch 2 was already used by an earlier
 reset and must not be reused. New runs require exactly
 `0.3.95-community-replays.56` and epoch 3. Old queued runs retain their original
 build and epoch and are permanently rejected; they are never relabelled.
-All courses start with empty public boards. Previous server scores remain in
-the authenticated administration archive, with their original metadata and
-moderation reasons. Installation identities, bans and the online directory
+The public website defaults to Season 2. Select Season 1 to view the rankings
+from the final Season 1 epoch with the same course, direction, weather and car
+filters. Hidden runs and blocked installations are excluded in both seasons.
+The in-game board continues to use the current season. Installation identities, bans and the online directory
 are preserved. Replays remain disabled.
 
 Deployment order for the existing production database:

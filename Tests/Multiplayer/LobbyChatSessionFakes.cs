@@ -56,10 +56,19 @@ public static class Idas3Native {
     public static int Idas3SceneSetPreRaceNames(string local,string remote)=>throw new InvalidOperationException(Error());
 #endif
 }
+internal static class Idas3RankedMaps {
+    internal const int ArcadeMask=(1<<9)-1;
+    internal static int AvailableMask=>ArcadeMask;
+}
 public static class Idas3CourseCatalog {
     public const int Count=18;
     public static bool RequiresNight(int course)=>false;
-    public static bool Available(int course)=>false;
+    public static bool Available(int course)=>course>=0&&course<9;
+    public static int NextAvailable(int course,int direction,Func<int,bool> available=null){
+        available=available??Available;
+        for(int i=0;i<Count;++i){course=(course+(direction<0?Count-1:1))%Count;if(available(course))return course;}
+        throw new InvalidOperationException("No fixture courses");
+    }
     public static readonly string[] Packs=new string[9],Slugs=new string[9];
 }
 namespace Idas3.Multiplayer {

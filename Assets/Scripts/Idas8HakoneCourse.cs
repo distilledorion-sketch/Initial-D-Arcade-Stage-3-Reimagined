@@ -25,9 +25,20 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     [Serializable] public class AreaFogKey { public float point,start,end,density; public float[] color; }
     [Serializable] public class AreaFog { public AreaFogKey[] keys; }
     AreaFog areaFog; float areaFogPoint=-1;
+    Vector4 lastAreaFog; Color lastAreaFogColor;
     int lightingProfile=-1,foliageSamples=-1;
     sealed class Scenery { public Placement source; public MeshFilter filter; public MeshRenderer renderer; public Transform transform; public Vector3 position; public bool tree; public int lod=-2; public Quaternion authoredRotation; }
     readonly List<Scenery> scenery=new List<Scenery>(); Mesh[] sourceMeshes; int[] sourceMaterials;
+    // IDZero's distant trees keep their authored orientation. A whole cell
+    // can keep its current meshes if even its nearest and farthest points
+    // are still within the same LOD hysteresis interval.
+    sealed class TreeCell {
+        public readonly List<Scenery> items=new List<Scenery>();
+        public Bounds bounds;
+        public int uniformLod=-2;
+    }
+    readonly List<TreeCell> treeCells=new List<TreeCell>();
+    readonly List<Scenery> individualScenery=new List<Scenery>();
     Manifest data; Vector3[][] roads; Material[] materials;
     readonly Dictionary<string,Texture2D> textures=new Dictionary<string,Texture2D>();
     readonly List<Transform> skies=new List<Transform>();
@@ -59,14 +70,19 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         foreach(var texture in textures.Values)if(texture!=null)bytes+=UnityEngine.Profiling.Profiler.GetRuntimeMemorySizeLong(texture);
         return bytes;
     }
-    uint SceneFlags => Idas3ReplayViewer.Instance != null ? Idas3ReplayViewer.Instance.Status.flags : host.Status.flags;
+    Idas3Native.Status CurrentStatus => Idas3ReplayViewer.Instance != null ? Idas3ReplayViewer.Instance.Status : host.Status;
+    uint SceneFlags => CurrentStatus.flags;
+    int failedUserTrack;
+    string ActivePack => Idas3UserTracks.IsUser(CurrentStatus.course)?Idas3UserTracks.Folder(CurrentStatus.course):CourseName(SceneFlags);
     public string LoadedVariant => variant;
     public int PairedTreeTriangles {get;private set;}
     public int PairedRoadsideTriangles {get;private set;}
     public string LoadedCourse {get;private set;}
     public static int CourseId(uint flags)=>(flags&67108864u)!=0?17:(flags&33554432u)!=0?16:(flags&16777216u)!=0?15:(flags&524288u)!=0?10:9;
     public static string CourseName(uint flags)=>Idas3CourseCatalog.Packs[CourseId(flags)-9];
-    public static string Variant(uint flags) => ((flags&65536u)!=0?"night":"day")+((flags&131072u)!=0?"_wet":"_dry");
+    public static string Variant(uint flags) => (flags&65536u)!=0
+        ? ((flags&131072u)!=0?"night_wet":"night_dry")
+        : ((flags&131072u)!=0?"day_wet":"day_dry");
     // Courses converted from IDZero's YABX scenery (Tools/idas_efo.py).
     static bool IdZero(string course)=>course=="GUNSAI"||course=="ODAWARA";
     // Source verification costs more than the small face-classification workload
@@ -79,7 +95,18 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             host=FindAnyObjectByType<Idas3SceneGame>();view=Idas3ReplayViewer.Instance != null ? Idas3ReplayViewer.Instance.View : host.GetComponent<Camera>();
             if((SceneFlags&16384u)!=0&&(SceneFlags&IdasSpecialStageEnnaCourse.SceneFlag)==0)LoadVariant(Variant(SceneFlags));
             if(testBuild&&(Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-smoke")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-hakone-menu-smoke")>=0))gameObject.AddComponent<Idas8HakoneRaceSmoke>();
-        } catch(Exception e) {Debug.LogException(e);Application.Quit(1);}
+        } catch(Exception e) {HandleLoadFailure(e);}
+    }
+    void HandleLoadFailure(Exception error){
+        Debug.LogException(error);
+        if((host!=null||Idas3ReplayViewer.Instance!=null)&&Idas3UserTracks.IsUser(CurrentStatus.course)){
+            failedUserTrack=CurrentStatus.course;
+            ClearScene();
+            if(Idas3ReplayViewer.Instance!=null)Idas3ReplayViewer.Instance.CloseViewer();
+            else Idas3Native.Idas3SceneAbandonInvalidTrack(failedUserTrack);
+            return;
+        }
+        enabled=false;Application.Quit(1);
     }
     void LateUpdate(){
         if(!diagnosticTiming){UpdateScene();return;}
@@ -87,19 +114,22 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         try{UpdateScene();}finally{DiagnosticUpdateMs=(Time.realtimeSinceStartupAsDouble-began)*1000;}
     }
     void UpdateScene(){
+        view=Idas3ReplayViewer.Instance!=null?Idas3ReplayViewer.Instance.View:host!=null?host.GetComponent<Camera>():null;
         if(view==null)return;
         bool active=(SceneFlags&16384u)!=0&&(SceneFlags&(1u|4096u|262144u|IdasSpecialStageEnnaCourse.SceneFlag))==0;
         if(active!=visible){foreach(Transform child in transform)child.gameObject.SetActive(active);visible=active;}
         if(!active){
+            failedUserTrack=0;
             // Menus/results may return to this same race. Once another scenery
             // owner is actually presenting a course, release this owner's cache.
             // Hiding thousands of objects does not free their meshes/textures.
             if(sourceMeshes!=null&&(SceneFlags&8u)!=0&&(SceneFlags&(1u|1024u|4096u|262144u))==0)ClearScene();
             return;
         }
+        if(failedUserTrack!=0&&failedUserTrack==CurrentStatus.course)return;
         string wanted=Variant(SceneFlags);
-        if(wanted!=variant||LoadedCourse!=CourseName(SceneFlags)){
-            try{LoadVariant(wanted);}catch(Exception e){Debug.LogException(e);enabled=false;Application.Quit(1);return;}
+        if(wanted!=variant||LoadedCourse!=ActivePack){
+            try{LoadVariant(wanted);}catch(Exception e){HandleLoadFailure(e);return;}
         }
         bool backwards=(SceneFlags&32768u)!=0;if(backwards!=reverse){reverse=backwards;lightingProfile=-1;UpdateDirection();}
         var cameraPosition=view.transform.position;
@@ -115,14 +145,14 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     }
     void LoadVariant(string selected){
         double loadBegan=diagnosticTiming?Time.realtimeSinceStartupAsDouble:0;
-        if(diagnosticTiming)DiagnosticLoad=new LoadTimings{course=CourseName(SceneFlags),variant=selected};
+        if(diagnosticTiming)DiagnosticLoad=new LoadTimings{course=ActivePack,variant=selected};
         ClearScene();
-        LoadedCourse=CourseName(SceneFlags);root=Path.Combine(Application.streamingAssetsPath,LoadedCourse);
+        LoadedCourse=ActivePack;root=Idas3CourseCatalog.PackPath(LoadedCourse);
         // IDZero 2.20 ships only dry Gunsai and Odawara scenery. Wet races use
         // that scenery under a Stage 8 rain sky, regraded as wet.json describes,
         // with the ordinary D3 rain and wet vehicle handling.
         string sceneryVariant=IdZero(LoadedCourse)?selected.Replace("_wet","_dry"):selected;
-        if(sceneryVariant!="day_dry")root=Path.Combine(root,sceneryVariant);
+        if(sceneryVariant!="day_dry"&&(!Idas3UserTracks.IsUser(CurrentStatus.course)||File.Exists(Path.Combine(root,sceneryVariant,"scene.json"))))root=Path.Combine(root,sceneryVariant);
         wet=null;
         if(sceneryVariant!=selected&&File.Exists(Path.Combine(root,"wet.json"))){
             wet=JsonUtility.FromJson<WetLook>(File.ReadAllText(Path.Combine(root,"wet.json")));
@@ -151,6 +181,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         if(materials!=null)foreach(var material in materials)Destroy(material);
         foreach(var texture in textures.Values)Destroy(texture);
         PairedTreeTriangles=PairedRoadsideTriangles=0;textures.Clear();scenery.Clear();skies.Clear();directionalScenery.Clear();sourceMeshes=null;materials=null;
+        treeCells.Clear();individualScenery.Clear();
         sourceMaterials=null;data=null;roads=null;wet=null;areaFog=null;
         root=variant=LoadedCourse=null;areaFogPoint=-1;lightingProfile=foliageSamples=-1;
     }
@@ -227,7 +258,6 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             Idas3.Multiplayer.Idas3OnlineTransportPump.KeepAliveDuringNativeLoad();
             var s=data.materials[i]; var m=new Material(directShader){name=s.name}; materials[i]=m;
             m.EnableKeyword("IDAS_IMPORTED_COURSE");
-            if(direct)m.EnableKeyword("IDAS_IMPORTED_VERTEX_FACES");
             m.SetFloat("_ImportedSponsorSigns",(LoadedCourse=="TSUBAKI"?IsTsubakiSignAtlas(s):IsSponsorMaterial(LoadedCourse,s.name))?1:0);
             // Repeated cutout trees share meshes/materials. Instance their
             // world transforms; blended road shadows retain their draw order.
@@ -260,6 +290,9 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 m.SetFloat("_SrcBlend",(float)BlendMode.DstColor);m.SetFloat("_DstBlend",(float)BlendMode.Zero);
             }
             if(s.sky) { m.SetFloat("_ZWrite",0); m.renderQueue=800; }
+            if(direct && m.GetFloat("_ImportedCutoff")==0 && !s.shadow &&
+                m.GetFloat("_ImportedShadowOnly")==0 && m.GetFloat("_ImportedHasShadow")==0)
+                m.EnableKeyword("IDAS_IMPORTED_OPAQUE_PLAIN");
         }
         if(diagnosticTiming)DiagnosticLoad.materialsMs=(Time.realtimeSinceStartupAsDouble-partBegan)*1000;
         using(var r=new BinaryReader(File.OpenRead(Path.Combine(root,"scene.bin")))) {
@@ -298,15 +331,17 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 else if(IsSponsorMaterial(LoadedCourse,data.materials[mat].name))
                     treeFaces=SponsorFaceTags(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,LoadedCourse=="SADAMINE"&&Path.GetFileName(root)=="night_wet"?.25f:0,LoadedCourse=="HAKONE",LoadedCourse=="TSUBAKI"?4:0);
                 if(diagnosticTiming){DiagnosticLoad.tagMs+=(Time.realtimeSinceStartupAsDouble-stageBegan)*1000;stageBegan=Time.realtimeSinceStartupAsDouble;}
+                int paired=0;
                 if(UsesPairedFoliageFaces(LoadedCourse,data.materials[mat])&&(!roadsideBaseline||data.materials[mat].kind=="tree")){
                     var preparedMask=prepared?.ForShape(shape,nt);
                     if(diagnosticTiming&&preparedMask!=null)++DiagnosticLoad.preparedShapes;
-                    treeFaces=PrepareSceneryFacesCore(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,treeFaces,out int paired,preparedMask);
+                    treeFaces=PrepareSceneryFacesCore(ref vertices,ref normals,ref uv,ref uv2,ref colors,ref indices,treeFaces,out paired,preparedMask);
                     if(data.materials[mat].kind=="tree")PairedTreeTriangles+=paired;
                     else PairedRoadsideTriangles+=paired;
                 }
                 if(diagnosticTiming){DiagnosticLoad.faceMs+=(Time.realtimeSinceStartupAsDouble-stageBegan)*1000;stageBegan=Time.realtimeSinceStartupAsDouble;}
-                var planes=direct?SceneryFacePlanes(vertices,indices,treeFaces):null;
+                var planes=direct&&paired>0?SceneryFacePlanes(vertices,indices,treeFaces):null;
+                if(planes!=null)materials[mat].EnableKeyword("IDAS_IMPORTED_VERTEX_FACES");
                 if(diagnosticTiming){DiagnosticLoad.planeMs+=(Time.realtimeSinceStartupAsDouble-stageBegan)*1000;stageBegan=Time.realtimeSinceStartupAsDouble;}
                 bool tree=data.materials[mat].kind=="tree";
                 if(tree){treeVerticesBefore+=vertices.Length;treeIndexBytesBefore+=(long)indices.Length*4;}
@@ -316,7 +351,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                     double elapsed=(Time.realtimeSinceStartupAsDouble-prepareBegan)*1000;
                     if(elapsed>DiagnosticLoad.longestPrepareMs){DiagnosticLoad.longestPrepareMs=elapsed;DiagnosticLoad.longestShape=shape;DiagnosticLoad.longestMaterial=data.materials[mat].name;DiagnosticLoad.longestVertices=nv;DiagnosticLoad.longestIndices=nt;}
                 }
-                var indexFormat=packTrees&&tree&&vertices.Length<=65535?IndexFormat.UInt16:IndexFormat.UInt32;
+                var indexFormat=vertices.Length<=65535?IndexFormat.UInt16:IndexFormat.UInt32;
                 if(tree){treeVerticesAfter+=vertices.Length;treeIndexBytesAfter+=(long)indices.Length*(indexFormat==IndexFormat.UInt16?2:4);}
                 if(diagnosticTiming){DiagnosticLoad.meshPrepareMs+=(Time.realtimeSinceStartupAsDouble-partBegan)*1000;partBegan=Time.realtimeSinceStartupAsDouble;}
                 var mesh=new Mesh{name="Hakone original shape "+shape,indexFormat=indexFormat};
@@ -326,7 +361,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
                 // arbitrary texture UVs can turn into per-corner culling flags.
                 if(direct)mesh.uv3=treeFaces??new Vector2[vertices.Length];
                 else if(treeFaces!=null)mesh.uv3=treeFaces;
-                if(direct)mesh.SetUVs(3,planes);
+                if(planes!=null)mesh.SetUVs(3,planes);
                 mesh.triangles=indices; mesh.RecalculateBounds(); mesh.UploadMeshData(true);
                 sourceMeshes[shape]=mesh; sourceMaterials[shape]=mat;
                 if(diagnosticTiming){DiagnosticLoad.meshUploadMs+=(Time.realtimeSinceStartupAsDouble-partBegan)*1000;partBegan=Time.realtimeSinceStartupAsDouble;}
@@ -360,6 +395,7 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
             item.renderer.shadowCastingMode=ShadowCastingMode.Off; item.renderer.receiveShadows=false; scenery.Add(item);
         }
         Debug.Log("HAKONE scenery placements: "+scenery.Count);
+        GroupScenery();
         LoadLampGlows();
         LoadLampLightingGrid();
         if(diagnosticTiming)DiagnosticLoad.objectsMs+=(Time.realtimeSinceStartupAsDouble-partBegan)*1000;
@@ -389,13 +425,15 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
     void UpdateDirection(){foreach(var item in directionalScenery)item.renderer.enabled=item.uphill==reverse;}
     void UpdateAreaFog(float pathPoint){
         if(pathPoint==areaFogPoint)return;
-        areaFogPoint=pathPoint;var keys=areaFog.keys;Vector4 fog=Vector4.zero;Color color=Color.black;
+        bool first=areaFogPoint<0;areaFogPoint=pathPoint;var keys=areaFog.keys;Vector4 fog=Vector4.zero;Color color=Color.black;
         for(int i=0;i+1<keys.Length;++i){
             if(pathPoint<keys[i].point||pathPoint>keys[i+1].point)continue;
             var a=keys[i];var b=keys[i+1];float t=(pathPoint-a.point)/(b.point-a.point);
             fog=new Vector4(Mathf.Lerp(a.start,b.start,t),Mathf.Lerp(a.end,b.end,t),Mathf.Lerp(a.density,b.density,t),0);
             color=Color.Lerp(new Color(a.color[0],a.color[1],a.color[2]),new Color(b.color[0],b.color[1],b.color[2]),t);break;
         }
+        if(!first&&fog.Equals(lastAreaFog)&&color.Equals(lastAreaFogColor))return;
+        lastAreaFog=fog;lastAreaFogColor=color;
         foreach(var m in materials){m.SetVector("_ImportedAreaFog",fog);m.SetColor("_ImportedAreaFogColor",color);}
     }
     void UpdateLighting(float pathPoint) {
@@ -570,23 +608,54 @@ public sealed partial class Idas8HakoneCourse : MonoBehaviour
         float scale=detail==2?.4f:detail==1?.65f:1f;
         return distanceSquared/(scale*scale);
     }
+    void GroupScenery() {
+        bool dense=IdZero(LoadedCourse)&&!idZeroGeometryBaseline;
+        var byPosition=new Dictionary<Vector2Int,TreeCell>();
+        foreach(var item in scenery) {
+            if(!dense||!item.tree){individualScenery.Add(item);continue;}
+            var key=new Vector2Int(Mathf.FloorToInt(item.position.x/96f),Mathf.FloorToInt(item.position.z/96f));
+            if(!byPosition.TryGetValue(key,out var cell)){
+                cell=new TreeCell{bounds=new Bounds(item.position,Vector3.zero)};
+                byPosition.Add(key,cell);treeCells.Add(cell);
+            }
+            cell.bounds.Encapsulate(item.position);cell.items.Add(item);
+        }
+        // Include a generous rounding margin at threshold positions.
+        foreach(var cell in treeCells)cell.bounds.Expand(2f);
+    }
     void UpdateScenery(Vector3 cameraPosition) {
         int detail=host.GameOptions?.Current.importedSceneryDetail??0;
-        bool denseModels=IdZero(LoadedCourse)&&!idZeroGeometryBaseline;
-        foreach(var item in scenery) {
-            float d=SceneryDistanceSquared((item.position-cameraPosition).sqrMagnitude,detail);
-            bool tree=item.tree;
-            int lod=tree?TreeLod(d,item.lod,denseModels):(d<500*500?0:-1);
-            if(item.lod!=lod) {
-                item.lod=lod; item.renderer.enabled=lod>=0;
-                if(lod>=0) { int index=item.source.meshes[lod]; item.filter.sharedMesh=sourceMeshes[index]; item.renderer.sharedMaterial=materials[sourceMaterials[index]];
-                    if(tree&&!BillboardTree(lod))item.transform.rotation=item.authoredRotation;
-                }
+        foreach(var item in individualScenery)UpdateSceneryItem(item,cameraPosition,detail,false);
+        foreach(var cell in treeCells){
+            int previous=cell.uniformLod;
+            if(previous!=-2){
+                float nearest=SceneryDistanceSquared(cell.bounds.SqrDistance(cameraPosition),detail);
+                Vector3 delta=cameraPosition-cell.bounds.center;
+                Vector3 farthest=new Vector3(Mathf.Abs(delta.x),Mathf.Abs(delta.y),Mathf.Abs(delta.z))+cell.bounds.extents;
+                if(TreeLod(nearest,previous,true)==previous&&
+                   TreeLod(SceneryDistanceSquared(farthest.sqrMagnitude,detail),previous,true)==previous)continue;
             }
-            if(lod>=0&&(!tree||BillboardTree(lod))) {
-                Vector3 facing=cameraPosition-item.position; facing.y=0;
-                if(facing.sqrMagnitude>.01f) item.transform.rotation=Quaternion.LookRotation(facing,Vector3.up);
+            int uniform=UpdateSceneryItem(cell.items[0],cameraPosition,detail,true);
+            for(int i=1;i<cell.items.Count;i++){
+                if(UpdateSceneryItem(cell.items[i],cameraPosition,detail,true)!=uniform)uniform=-2;
+            }
+            cell.uniformLod=uniform;
+        }
+    }
+    int UpdateSceneryItem(Scenery item,Vector3 cameraPosition,int detail,bool denseModels) {
+        float d=SceneryDistanceSquared((item.position-cameraPosition).sqrMagnitude,detail);
+        bool tree=item.tree;
+        int lod=tree?TreeLod(d,item.lod,denseModels):(d<500*500?0:-1);
+        if(item.lod!=lod) {
+            item.lod=lod; item.renderer.enabled=lod>=0;
+            if(lod>=0) { int index=item.source.meshes[lod]; item.filter.sharedMesh=sourceMeshes[index]; item.renderer.sharedMaterial=materials[sourceMaterials[index]];
+                if(tree&&!BillboardTree(lod))item.transform.rotation=item.authoredRotation;
             }
         }
+        if(lod>=0&&(!tree||BillboardTree(lod))) {
+            Vector3 facing=cameraPosition-item.position; facing.y=0;
+            if(facing.sqrMagnitude>.01f) item.transform.rotation=Quaternion.LookRotation(facing,Vector3.up);
+        }
+        return lod;
     }
 }

@@ -132,6 +132,9 @@ int main(int argc,char** argv)try{
         soloControl.reset(root,selection,spawn.position,spawn.angles);
         check(app->originalSession.rollbackDigest()==soloControl.rollbackDigest(),"Solo control fixture differs before observation");
         app->playerBody.reset();app->projectOriginalPose(false);
+        // Source 063280 -> 035220 updates the live actor lamp flag at pose publication.
+        // Match that independent owner on the bare control; feedback observation remains read-only.
+        soloControl.feedbackActorHeadlights(false,app->playerProjectedHeadlight.enabled());
         auto producer=referenceAtReset(*app);original::OriginalHostInputState host;
         for(unsigned step=0;step<300;++step){
             const float steering=step<80?0.f:step<160?.15f:step<240?-.2f:0.f;
@@ -141,6 +144,7 @@ int main(int argc,char** argv)try{
             check(before==soloControl.rollbackDigest(),"Feedback observer changed next solo physics step");
             const auto expected=producer.update(idas3ffb::feedbackInput(app->originalSession.vehicle(),cars[scenario],conditions[scenario],cards[scenario]));
             const auto tick=app->vehicle.tick;app->projectOriginalPose(true);++activeSteps;
+            soloControl.feedbackActorHeadlights(false,app->playerProjectedHeadlight.enabled());
             check(idas3ffb::capturedCar==cars[scenario]&&idas3ffb::capturedCondition==conditions[scenario]&&
                 idas3ffb::capturedCard==cards[scenario],"App changed selected car/course/card at the feedback boundary");
             check(app->vehicle.tick==tick+1&&app->originalFeedback.tick()==app->vehicle.tick,

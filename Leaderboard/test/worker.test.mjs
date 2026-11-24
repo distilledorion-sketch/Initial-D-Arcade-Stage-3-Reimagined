@@ -1170,13 +1170,28 @@ test('archive cleanup guard preserves old metadata independent of SQLite trigger
  assert.deepEqual(tables.map(table=>db.prepare('SELECT * FROM '+table).all()),before);
 });
 
-test('Season 2 website uses public season label rather than internal epoch and marks archived rows read-only',()=>{
- const html=readFileSync(new URL('../src/index.html',import.meta.url),'utf8');
- assert.match(html,/<h1>Season 2/);assert.match(html,/Season 1 is closed/);
- assert.match(html,/data\.season\|\|2/);assert.doesNotMatch(html,/' · Season '\+data\.epoch/);
- assert.match(html,/if\(r\.archived&&spec\.path==='run'\)continue/);
+test('public season selector isolates scores, applies filters and respects moderation',async()=>{
+ const old=await season1Times();
+ const hidden=run({epoch:2,car:2});assert.equal((await submitTime(hidden)).status,200);
+ db.prepare('UPDATE runs SET hidden=1 WHERE id=?').run(hidden.id);
+ season2Cutover();openSeason2();
+ const recent=run({epoch:3});assert.equal((await submitTime(recent)).status,200);
+ const board=(params='')=>call('/api/v1/board?condition=0&weather=0'+params);
+ const archived=await(await board('&season=1')).json();
+ assert.equal(archived.season,1);assert.equal(archived.epoch,2);
+ assert.deepEqual(archived.entries.map(r=>r.id),[old.id]);assert.equal(archived.entries[0].replayAvailable,false);
+ for(const params of ['','&season=2']){
+  const current=await(await board(params)).json();
+  assert.equal(current.season,2);assert.deepEqual(current.entries.map(r=>r.id),[recent.id]);
+ }
+ assert.deepEqual((await(await board('&season=1&car=1')).json()).entries,[]);
+ assert.deepEqual((await(await call('/api/v1/board?condition=1&weather=1&season=1')).json()).entries,[]);
+ for(const invalid of ['0','3','1.0',''])assert.equal((await board('&season='+invalid)).status,400);
+ db.exec('UPDATE devices SET blocked=1');
+ assert.deepEqual((await(await board('&season=1')).json()).entries,[]);
+ db.exec('DELETE FROM leaderboard_season_cutovers');
+ assert.equal((await board('&season=1')).status,404);
 });
-
 
 test('release .56 advances only the required build and preserves existing Season 2 times',async()=>{
  await season1Times();db.exec(season2Sql);openSeason2();env.REQUIRED_CLIENT_BUILD='0.3.95-community-replays.55';

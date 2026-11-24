@@ -8,9 +8,11 @@ import texture_bank
 BANKS=[('game2d','game2d'),('game2d','game2d_ta'),('game2d','game2d_vs'),
        ('game2d','game2d_intr'),('v3sG00game2d','v3sG00game2d'),('shift','shift'),('start2d','start2d')]
 def sha(b):return hashlib.sha256(b).hexdigest()
-def export(hostfs:Path,out:Path):
+def export(hostfs:Path,out:Path,banks=None):
+    if banks is None:
+        banks = BANKS
     entries=[]
-    for folder,prefix in BANKS:
+    for folder,prefix in banks:
         source=hostfs/'model'/folder
         _,chunks,sources,polygon=models.parse_model(source,prefix+'_pol.tbl',prefix+'_tex.tbl')
         dst=out/prefix;dst.mkdir(parents=True,exist_ok=True)
@@ -44,4 +46,5 @@ def export(hostfs:Path,out:Path):
     (out/'index.json').write_text(json.dumps(result,indent=2)+'\n');return result
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('--hostfs',type=Path,required=True);p.add_argument('--out',type=Path,required=True)
-    a=p.parse_args();print(json.dumps(export(a.hostfs,a.out),indent=2))
+    p.add_argument('--rain-only', action='store_true', help='Export the separate rain effect bank.')
+    a=p.parse_args();print(json.dumps(export(a.hostfs,a.out,[('effect/rain','rain')] if a.rain_only else BANKS),indent=2))

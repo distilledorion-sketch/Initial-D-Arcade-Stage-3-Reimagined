@@ -59,6 +59,7 @@ struct UiState {
     const RaceClock* race=nullptr;
     // The race-end announcement holds the road view before the results.
     OriginalHudState::FinishBanner finishBanner=OriginalHudState::FinishBanner::none;
+    bool originalFinishOwner=false,originalFinishRecord=false;
     std::uint32_t finishNoticeFrame=0;
     const OriginalResultsState* results=nullptr;
     const OriginalBattleResultsState* battleResults=nullptr;

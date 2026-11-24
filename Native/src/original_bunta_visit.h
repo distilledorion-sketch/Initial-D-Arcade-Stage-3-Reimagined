@@ -13,7 +13,9 @@ public:
     void load(const std::filesystem::path& root){scene_.load(root);}
     bool loaded()const{return scene_.loaded()&&scene_.data().hasBunta();}
     void begin(OriginalBattleProfile&,const Setup&);
+    void begin(OriginalBattleProfile&,const Setup&,std::uint32_t& sharedRandom);
     void advance(OriginalBattleProfile&,const Input&);
+    void advance(OriginalBattleProfile&,const Input&,std::uint32_t& sharedRandom);
     bool active()const{return active_;}
     bool finished()const{return finished_;}
     bool beforeRace()const{return setup_.beforeRace;}
@@ -22,6 +24,8 @@ public:
     std::uint32_t fadeArgb()const{return scene_.fadeArgb();}
     std::vector<OriginalLegendReturnEvent> takeEvents(){auto out=std::move(events_);events_.clear();return out;}
 private:
+    void beginImpl(OriginalBattleProfile&,const Setup&,std::uint32_t* sharedRandom);
+    void advanceImpl(OriginalBattleProfile&,const Input&,std::uint32_t* sharedRandom);
     OriginalRivalDialogScene scene_;
     Setup setup_{};
     bool active_=false,finished_=false,closing_=false;

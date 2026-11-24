@@ -40,13 +40,13 @@ void prepareEndingLeafUnityFixture(App& app,unsigned scene){
         app.endingReplay=clip;app.beginEnding();
         for(unsigned tick=0;tick<1305;++tick)app.advanceEnding(1./60);
         if(app.endingLeaves.system().order().empty())throw std::runtime_error("Leaf fixture has no source particles");
-        prepared=true;seed=app.endingRandom;physics=app.originalSession.rollbackDigest();saved=app.endingLeaves;
+        prepared=true;seed=app.originalSession.sharedRandomSeed();physics=app.originalSession.rollbackDigest();saved=app.endingLeaves;
     }else{
         if(!prepared)throw std::logic_error("Leaf comparison before preparation");
         if(phase==1)app.endingLeaves.reset();else app.endingLeaves=saved;
     }
     app.input={};if(!app.renderEnding(0))throw std::runtime_error(app.renderer.error);
-    if(app.endingRandom!=seed||app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Leaf repaint changed RNG/physics");
+    if(app.originalSession.sharedRandomSeed()!=seed||app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Leaf repaint changed RNG/physics");
     Mesh mesh;const auto leaves=app.endingLeaves.append(mesh,app.endingLeafTextureBase,*app.courseLightFsca);
     std::ofstream out(app.saveRoot.parent_path()/("ending-leaf-"+std::to_string(phase)+".json"));
     out<<"{\"sample\":1305,\"leaves\":"<<leaves<<",\"textureBase\":"<<app.endingLeafTextureBase

@@ -7,10 +7,10 @@ audio. Production uses the original PCM from the independently preserved banks.
 """
 from pathlib import Path
 import hashlib,json,struct,sys,os
-sys.path.insert(0,str(Path(__file__).resolve().parents[2].parent/"InitialDRemake/tools"))
+# The disc installer runs the same importer against its private output tree.
 from reference_original_music_sequence import Reference,WORK,DRIVER_SHA,UC_HOOK_CODE,UC_ARM_REG_R7
 
-ROOT=Path(__file__).resolve().parents[1]
+ROOT=Path(os.environ.get('IDAS3_AUDIO_PROJECT', Path(__file__).resolve().parents[1]))
 DEST=ROOT/'data/original_audio/oneshot'
 def fnv(b):
     n=14695981039346656037

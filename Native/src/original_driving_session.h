@@ -89,7 +89,9 @@ public:
     bool rollbackSafe() const;
     // Same-build diagnostic digest of numerical outputs and hidden histories.
     // Never used as network authority or as a cryptographic checksum.
-    std::uint64_t rollbackDigest() const;
+    // Ending diagnostics may exclude only the two shared RNG mirror words.
+    // Presentation consumes that global while the completed vehicle is frozen.
+    std::uint64_t rollbackDigest(bool includeSharedRandom=true) const;
     OriginalDrivingSession();
     ~OriginalDrivingSession();
     OriginalDrivingSession(OriginalDrivingSession&&) noexcept;
@@ -122,8 +124,11 @@ public:
     // The outer scene invokes1415E0 after its race object update. This gives
     // tire selection the same shared seed, then preserves it for the next tick.
     void finishSoundFrame(const std::function<void(std::uint32_t&)>& output);
-    // Result owners consume the same37C778 generator as driving and sound.
-    // The outer owner supplies its original ordering at the scene boundary.
+    // Menus, course construction, results and driving share source37C778.
+    // Available before the first reset, so earlier scene draws are preserved.
+    // The outer owner supplies its original ordering at the scene boundary;
+    // callback mutations remain consumed even when the callback throws.
+    std::uint32_t sharedRandomSeed() const noexcept;
     void withSharedRandom(const std::function<void(std::uint32_t&)>& action);
     //159920 copies incomingFR4 to901650 and4004D8 to9015D4 each frame.
     // The outer race supplies these values; this owner does not derive a
@@ -136,14 +141,28 @@ public:
     //05BEE0 GO Init: set bit15 before the same frame's rules and solver.
     // Numeric mode0 also enables the rival's public actor; mode2 is solo.
     void enableRaceStart(std::uint32_t numericRaceMode);
+    // Explicit ACar035220 presentation feedback. The owner invokes this
+    // after the solver's actor publication, so the published snapshot changes
+    // only at the next solver update. No reset/tick calls this automatically.
+    // Online authority/checkpoint owners must synchronize such commands before
+    // opting in; ordinary App presentation may use this only offline.
+    void feedbackActorHeadlights(bool secondaryActor,bool enabled);
     std::uint8_t raceAutomaticBrakeByte() const;
     // Original race transition observes actor bit14, which the numerical
     // solver publishes from its stopped latch. No host speed threshold.
     bool stoppedForRace() const;
-    // Global platform frame and snapshot key are independent of elapsed race
-    // frames. Default host policy starts frame0 and advances once per tick;
-    // an outer original frame scheduler may supply its actual counter here.
-    void setPlatformFrame(std::uint32_t frame0C92DE30,std::uint8_t digitalByte0C92ED00=0);
+    // Host/authority sequence, independent of source recorder190D00. The
+    // historical API name is retained;0C92DE30 is NOT a platform clock.
+    // Unowned/imported/online history keeps its existing host-frame policy.
+    void setPlatformFrame(std::uint32_t hostFrame,std::uint8_t digitalByte0C92ED00=0);
+    // Source0C92DE30 is a GLOBAL recording-progress latch:157DFC/1580E2
+    // read it during the solver, before parent06007C updates it in mode2.
+    // It survives session resets. Fresh native storage starts0 as an
+    // explicit host boundary; the original cold initialization is unproved.
+    void useRecordingProgress(bool enabled);
+    bool usesRecordingProgress() const;
+    void setRecordingProgress(std::uint32_t progress);
+    std::uint32_t recordingProgress() const;
     bool ready() const noexcept;
     std::uint32_t platformFrame() const;
     const OriginalDrivingSelection& selection() const;
@@ -172,6 +191,9 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
+    // Existing native boot policy remains1 until an explicit platform-clock
+    // owner is provided. This word owns draws before the first vehicle exists.
+    std::uint32_t pendingRandomSeed_=1;
     Impl& state();
     const Impl& state() const;
 };

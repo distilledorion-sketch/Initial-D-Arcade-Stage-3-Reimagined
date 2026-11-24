@@ -18,6 +18,14 @@ bool valid(const OriginalVehicleInputs& input){
     return input.calibration.steeringWord==128&&input.calibration.throttleWord==32&&input.calibration.brakeWord==32&&
         !input.suppressRawThrottle0C2F4BC8&&(input.pressedByte&~0x30u)==0&&input.requestedGear<=6;
 }
+bool validEdges(const OriginalVehicleInputs& before,const OriginalVehicleInputs& after){
+    // Packets carry newly-pressed bits from adaptOriginalHostInput, not held
+    // buttons. The same bit cannot be newly pressed on two adjacent samples:
+    // that requires an intervening release sample. This is the current host
+    // producer contract, not a guessed human reaction-time limit. Opposite
+    // edges, simultaneous source edges and direct gear selections stay legal.
+    return (before.pressedByte&after.pressedByte)==0;
+}
 }
 OnlineRaceTimeline::OnlineRaceTimeline(OnlineRaceSimulation& simulation,std::uint64_t race,bool host,ConfirmedOutput output)
     :simulation_(simulation),race_(race),host_(host),output_(std::move(output)){
@@ -27,9 +35,17 @@ OnlineRaceTimeline::OnlineRaceTimeline(OnlineRaceSimulation& simulation,std::uin
 OnlineRaceTimeline::Entry& OnlineRaceTimeline::entry(std::uint64_t frame){
     auto& value=entries_[frame%capacity];if(value.frame!=frame){value=Entry{};value.frame=frame;}return value;
 }
+const OriginalVehicleInputs* OnlineRaceTimeline::knownInput(std::uint64_t frame,unsigned slot)const {
+    if(confirmed_&&frame==confirmed_-1)return &previousConfirmed_[slot];
+    const auto& value=entries_[frame%capacity];
+    return value.frame==frame&&value.known[slot]?&value.received[slot]:nullptr;
+}
 bool OnlineRaceTimeline::localInput(const OriginalVehicleInputs& input){
     if(!valid(input)||next_-confirmed_>=capacity)return false;
-    const unsigned slot=host_?0:1;auto& e=entry(next_);
+    const unsigned slot=host_?0:1;
+    if(next_)if(const auto* before=knownInput(next_-1,slot);before&&!validEdges(*before,input))return false;
+    if(const auto* after=knownInput(next_+1,slot);after&&!validEdges(input,*after))return false;
+    auto& e=entry(next_);
     if(e.known[slot]&&!equal(e.received[slot],input))return false;
     e.known[slot]=true;e.authoritative[slot]=host_;e.received[slot]=input;return true;
 }
@@ -43,6 +59,18 @@ bool OnlineRaceTimeline::receive(std::span<const OnlineInputRecord> records){
         const auto& e=entries_[r.frame%capacity];
         if(e.frame==r.frame&&e.known[r.slot]&&!equal(e.received[r.slot],r.input))return reject();
         for(std::size_t j=0;j<i;++j)if(records[j].frame==r.frame&&records[j].slot==r.slot&&!equal(records[j].input,r.input))return reject();
+    }
+    // Validate the whole proposed history before writing any entry. Packets
+    // can be reordered and may fill a predecessor after its successor arrived.
+    // Unknown neighbours remain pending; the later packet validates the pair.
+    const auto proposed=[&](std::uint64_t frame,unsigned slot)->const OriginalVehicleInputs*{
+        for(const auto& r:records)if(r.frame>=confirmed_&&r.frame>=oldest&&r.frame==frame&&r.slot==slot)return &r.input;
+        return knownInput(frame,slot);
+    };
+    for(const auto& r:records){
+        if(r.frame<oldest||r.frame<confirmed_)continue;
+        if(r.frame)if(const auto* before=proposed(r.frame-1,r.slot);before&&!validEdges(*before,r.input))return reject();
+        if(const auto* after=proposed(r.frame+1,r.slot);after&&!validEdges(r.input,*after))return reject();
     }
     for(const auto& r:records){
         if(r.frame<oldest||r.frame<confirmed_)continue;

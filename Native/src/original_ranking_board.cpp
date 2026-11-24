@@ -12,6 +12,27 @@ OriginalRankingRecords OriginalRankingRecords::load(const std::filesystem::path&
     if(bytes.size()!=16+53288||std::string(bytes.begin(),bytes.begin()+8)!="ID3RANK1"||u32(bytes,8)!=53288)throw std::runtime_error("Original ranking record format");
     OriginalRankingRecords out;out.seed_=u32(bytes,12);out.data_.assign(bytes.begin()+16,bytes.end());return out;
 }
+OriginalRankingRecords OriginalRankingRecords::fromTimes(std::span<const TimeAttackEntry> ranked){
+    OriginalRankingRecords board;board.data_.resize(53288);
+    std::array<unsigned,36> counts{};
+    for(unsigned page=0;page<counts.size();++page){
+        const unsigned base=8+page*1480;
+        for(unsigned car=0;car<35;++car)board.data_[base+900+car*16+11]=std::uint8_t(car<<2);
+    }
+    for(const auto& e:ranked){
+        if(e.condition>=18||e.weather>1||e.car>=35)continue;
+        const unsigned page=e.condition*2+e.weather,base=8+page*1480;
+        const auto write=[&](unsigned at){
+            for(unsigned i=0;i<4;++i)board.data_[at+i]=std::uint8_t(e.ticks6000>>(8*i));
+            std::copy(e.nameGlyphs.begin(),e.nameGlyphs.end(),board.data_.begin()+at+4);
+            board.data_[at+11]=std::uint8_t(e.car<<2);board.data_[at+12]=unsigned(e.manual)|(unsigned(e.night)<<1);
+        };
+        if(counts[page]<10)write(base+740+16*counts[page]++);
+        const unsigned model=base+900+16*e.car;
+        if(!u32(board.data_,model))write(model);
+    }
+    return board;
+}
 OriginalRankingRecord OriginalRankingRecords::record(unsigned course,unsigned direction,unsigned wet,unsigned rank)const{
     if(course>=9||direction>=2||wet>=2||rank>=10||data_.size()!=53288)throw std::out_of_range("Original ranking record selector");
     const unsigned at=8+course*5920+direction*2960+wet*1480+740+rank*16;
@@ -29,7 +50,7 @@ OriginalRankingRecord OriginalRankingRecords::modelRecord(unsigned course,unsign
     if(out.car()!=car)throw std::runtime_error("Original model ranking identity");return out;
 }
 std::vector<OriginalRankingBoardDraw> originalRankingRowDraws(const OriginalRankingRecord&r,float y,int age){
-    using namespace ranking_data;std::vector<OriginalRankingBoardDraw> out;if(age<0)return out;
+    using namespace ranking_data;std::vector<OriginalRankingBoardDraw> out;if(age<0||!r.word(0))return out;
     float slide=0;if(age<=10){float t=float(age)*f(lit_0C1BE0AC);slide=f(lit_0C1BE0B0)-t;}
     auto material=[&](OriginalRankingBoardDraw&d,bool uv=false){d.overrideMaterial=slide!=0||uv;if(!d.overrideMaterial)return;int progress=10-int(slide/f(lit_0C1BE0AC));unsigned red,green,blue;if(progress<=4){red=153+20*progress;green=76+15*progress;blue=0;}else{red=255;green=230+5*(progress-5);blue=51*(progress-5);}d.color=0xff000000+(red<<16)+(green<<8)+blue;};
     auto emit=[&](unsigned chunk,float x,OriginalRankingBoardDraw::Bank bank=OriginalRankingBoardDraw::Bank::ranking){OriginalRankingBoardDraw d;d.bank=bank;d.chunk=chunk;d.position={x,y,f(lit_0C1BE0B4)};material(d);out.push_back(d);};

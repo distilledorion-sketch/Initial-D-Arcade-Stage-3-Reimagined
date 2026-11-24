@@ -10,6 +10,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
     private static bool MenuHighlightCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-highlight-check")>=0;
     private static bool MenuPresentationCheck => MenuHighlightCheck || Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-menu-presentation-check")>=0;
     private static bool StartCheck => Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-start-check")>=0;
+    private static readonly bool ChallengeChoiceCheck=Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-challenger-choice-check")>=0;
     private bool headlightsCheck;
     private KeyCode headlightKey;
     private ushort headlightPad;
@@ -50,7 +51,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         if(active==null)return false;
         // Isolate the private frame fixtures before bindings/pause/music read
         // hardware; the user may still be playing the ordinary desktop build.
-        key=_=>false;pad=StartCheck?new Idas3ControlBindings.PadState{connected=true,buttons=active.boundStartButtons}:default;return true;
+        key=_=>false;pad=StartCheck||ChallengeChoiceCheck?new Idas3ControlBindings.PadState{connected=true,buttons=active.boundStartButtons}:default;return true;
     }
     internal static bool PrepareFrame(ref Idas3Native.FrameInput frame){
         if(active==null)return true;if(active.finished||active.frozen)return false;
@@ -153,6 +154,10 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         if((Idas3SceneModeFlowValue(51)==1)!=automatic)yield return Pad(8);
         Check((Idas3SceneModeFlowValue(51)==1)==automatic,"Select the requested saved-car transmission");
         yield return Pad(0x1000);
+        var entry=host.GetComponent<Idas3.Multiplayer.Idas3MultiplayerMenu>().BattleEntry;
+        yield return Until(()=>entry.ChoosingChallengers,350,"Confirmed transmission opens the challenger choice");
+        yield return Frames(2);yield return Pad(0x1000);
+        yield return Until(()=>!entry.Active,350,"Refuse continues the saved-car setup");
         yield return Until(()=> (Idas3SceneModeFlowValue(5)==5||Idas3SceneModeFlowValue(5)==12)&&Idas3SceneModeFlowValue(27)==1,
             350,"Confirmed transmission reaches mode selection or an untuned car's route choice");
         if(Idas3SceneModeFlowValue(5)==12){
@@ -273,6 +278,72 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         Check(StartStatus().playerRanges>0&&StartStatus().rivalRanges>0,"Both cars load into the reset story's race");
         yield return Capture("legend-cycle-dry-race");
         File.WriteAllBytes(Path.Combine(root,"legend-completed-after.profile"),File.ReadAllBytes(profile));
+        Finish(true,null);
+    }
+    private IEnumerator ChallengerChoice(){
+        Check(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-challenger-check")>=0,"Use isolated local matchmaking");
+        yield return Until(()=>host.Ready,600,"Scene initialized");
+        var session=host.MultiplayerSession;
+        session.ConfigureLocalTest(41237,"SMOKE HOST");
+        var entry=host.GetComponent<Idas3.Multiplayer.Idas3MultiplayerMenu>().BattleEntry;
+        yield return Fixture(350);
+        yield return SaveClick(150,366);
+        foreach(int stage in new[]{2,3,4,12,11}){
+            yield return Until(()=>Idas3SceneModeFlowValue(5)==stage&&Idas3SceneModeFlowValue(27)==1,350,"New card reaches setup stage "+stage);
+            Check(!entry.Active,"New card setup still owns input at stage "+stage);
+            if(stage!=11)yield return Pad(0x1000);
+        }
+        int slot=Idas3SceneModeFlowValue(28),car=Idas3SceneModeFlowValue(43);
+        string card=Path.Combine(root,"userdata","saves","slot_"+(slot+1));
+        string setup=Path.Combine(card,"driver_profiles_v1","car_"+car.ToString("D2")+".setup");
+        Check(slot>=2&&!File.Exists(setup),"Fresh card is still being created during name entry");
+        for(int i=0;i<6;++i)yield return Pad(0x1000);
+        yield return Until(()=>entry.ChoosingChallengers,350,"Finished name entry opens the challenger choice");
+        Check(File.Exists(setup)&&File.Exists(Path.Combine(card,"save.txt")),"Card and completed setup are saved before the prompt");
+        yield return Frames(3);yield return Pad(0x1000);
+        yield return Until(()=>!entry.Active,350,"New driver can refuse challengers");
+        yield return SaveStage(5,"New driver continues to mode selection");
+        Check(!entry.Active&&!session.IsQuickMatching,"The prompt appears once for a new card");
+        yield return Fixture(351);yield return Fixture(370);
+        yield return SaveClick(150,130);yield return SaveClick(380,380);yield return SavedDataToTransmission();
+        yield return Pad(0x2000);yield return SaveStage(1,"Back from transmission returns to the card");
+        Check(!entry.Active,"Backing out of transmission skips the challenger choice");
+        yield return SaveClick(380,380);yield return SavedDataToTransmission();
+        foreach(bool automatic in new[]{false,true}){
+            if((Idas3SceneModeFlowValue(51)==1)!=automatic)yield return Pad(8);
+            yield return Pad(0x1000);
+            yield return Until(()=>entry.ChoosingChallengers,350,"Confirmed gearbox opens the challenger choice");
+            Check(!entry.AcceptSelected,"Refuse is highlighted on entry");
+            yield return Frames(30);
+            if(!automatic)yield return Capture("refuse-challengers");
+            else{
+                boundStartButtons=0x10;yield return Frames(3);boundStartButtons=0;yield return Frames(2);
+                Check(entry.AcceptSelected,"Start toggles the challenger choice");
+                yield return Pad(4);Check(!entry.AcceptSelected,"Steer left selects Refuse");
+                yield return Pad(8);Check(entry.AcceptSelected,"Steer right selects Accept");
+                yield return Capture("accept-challengers");
+            }
+            yield return Pad(0x1000);yield return Until(()=>!entry.Active,350,"Confirmed challenger choice dismisses");
+            yield return SaveStage(5,"The original mode selection resumes");
+            Check(session.IsQuickMatching==automatic,"Only Accept starts the local match search");
+            if(automatic)Check(session.LocalSavedCar.Automatic,"The search uses the confirmed transmission");
+            if(!automatic){yield return Pad(0x2000);yield return SaveStage(4,"Reopen the gearbox selection");}
+        }
+        yield return Pad(0x2000);yield return SaveStage(4,"Revisit the current challenger preference");
+        yield return Pad(0x1000);yield return Until(()=>entry.ChoosingChallengers,350,"Choices reopen");
+        Check(entry.AcceptSelected,"Existing search is reflected when revisiting");
+        yield return Frames(2);yield return Pad(4);yield return Pad(0x1000);
+        yield return Until(()=>!entry.Active,350,"Refuse dismisses");
+        Check(!session.IsQuickMatching,"Refuse cancels the previous search");
+        yield return Fixture(6);yield return Frames(30);yield return Pad(0x1000);
+        yield return Until(()=>host.Status.frontendStage==6,160,"Time Attack course selection opens");
+        yield return Frames(30);yield return Capture("built-in-course");
+        yield return Fixture(240);
+        yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&3)==0,160,"Solo race is running");
+        foreach(bool expected in new[]{true,false}){
+            boundStartButtons=0x10;yield return Frames(3);boundStartButtons=0;yield return Frames(3);
+            Check((host.Status.flags&3)==0&&session.IsQuickMatching==expected,"Start toggles matchmaking while the solo race continues");
+        }
         Finish(true,null);
     }
     private IEnumerator SaveChange(){
@@ -452,6 +523,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         public void Apply(Idas3GameOptions.Values a,Idas3GameOptions.Values b,bool displayChanged){}
     }
     private IEnumerator Run(){
+        if(ChallengeChoiceCheck){yield return ChallengerChoice();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-leaf-check")>=0){yield return EndingLeaves();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-tire-check")>=0){yield return EndingTires();yield break;}
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-glare-check")>=0){yield return EndingGlare();yield break;}
@@ -655,7 +727,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         }
         if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-selection-defaults-check")>=0){
             yield return Until(()=>host.Ready,600,"Scene initialized");yield return Frames(3);
-            int[] stages={7,8,9,9,7,8,7,8},conditions={0,0,0,7,6,4,4,4};
+            int[] stages={7,8,9,9,7,8,6,6},conditions={0,0,0,7,6,4,4,4};
             for(int fixture=300;fixture<=307;++fixture){
                 frozen=true;Check(Idas3SceneModeFlowFixture(fixture)==1,"Selection defaults fixture");
                 typeof(Idas3SceneGame).GetMethod("RefreshScene",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(host,null);
@@ -664,6 +736,13 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
                 Check(Idas3SceneModeFlowValue(41)==conditions[fixture-300],"Left defaults, explicit choices and forced conditions");
                 yield return Capture("selection-"+fixture);
             }
+            // Enna is night-only. Pick the reverse route and rain, then launch from the popup.
+            frozen=false;
+            yield return Pad(8);yield return Pad(0x1000);
+            yield return Pad(8);yield return Pad(0x1000);
+            Check(Idas3SceneModeFlowValue(41)==7,"Mods picker kept uphill, wet and forced night");
+            yield return Pad(0x1000);
+            yield return Until(()=>(host.Status.flags&1u)==0&&(host.Status.flags&1048576u)!=0,900,"Selected Enna race loads from Mods");
             Finish(true,null);yield break;
         }
 
@@ -893,6 +972,26 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
             Check(Idas3SceneModeFlowFixture(-8)==1,"Both modes capture private recordings");yield return Frames(4);
             var library=host.GetComponent<Idas3ReplayLibrary>();yield return Until(()=>library!=null&&Idas3ReplayLibrary.Files(library.Folder).Length==1,600,"Asynchronous personal replay save");Check(library!=null&&Idas3ReplayLibrary.Files(library.Folder).Length==1,"Pending personal replay automatically saved locally");
             var saved=Idas3ReplayData.Load(Idas3ReplayLibrary.Files(library.Folder)[0]);Check(saved.Metadata.mode==1&&saved.Opponent!=null,"Stored online replay retains both cars");
+            var original=Idas3Native.ReadStatus();
+            var menuCamera=Array.Find(host.GetComponentsInChildren<Camera>(true),c=>c.name=="Original UI foreground");
+            Check(menuCamera!=null,"Live game owns its credit/HUD overlay camera");
+            menuCamera.enabled=true;
+            library.OpenViewer();yield return Frames(3);
+            var viewer=Idas3ReplayViewer.Instance;
+            Check(library.ViewerOpen&&viewer!=null&&!host.GetComponent<Camera>().enabled,"Library opens inside the game's window");
+            viewer.SelectFile(Idas3ReplayLibrary.Files(library.Folder)[0]);yield return Frames(6);
+            Check(viewer.OrnamentReplay!=null&&viewer.OrnamentReplay.Metadata.mode==1&&viewer.PlaybackSeconds>0,"In-game replay advances both-car recording");
+            yield return new WaitForEndOfFrame();
+            var playbackImage=ScreenCapture.CaptureScreenshotAsTexture();
+            File.WriteAllBytes(Path.Combine(root,"in-game-replay.png"),playbackImage.EncodeToPNG());
+            UnityEngine.Object.Destroy(playbackImage);
+            Check(!menuCamera.enabled,"Live credit/HUD overlay stays hidden during saved replay playback");
+            viewer.CloseViewer();yield return Frames(3);
+            var restored=Idas3Native.ReadStatus();
+            Check(!library.ViewerOpen&&host.GetComponent<Camera>().enabled&&original.frontendStage==restored.frontendStage&&original.simulationTicks==restored.simulationTicks,
+                "Closing replay restores the original native session, camera and clock");
+            library.OpenViewer();yield return Frames(2);library.CloseViewer();yield return Frames(2);
+            Check(!library.ViewerOpen&&host.Ready,"Empty library round trip leaves game ready");
             var menu=host.PauseMenu;menu.OpenAttractOptions();menu.SelectTab(6);Check(menu.SelectedTab==6,"Replays category selectable");menu.Activate();
             Check(menu.TryConsumeCommand(out var command)&&command==Idas3PauseMenu.Command.Replays,"Controller can open library");
             host.GameOptions.Draft.communityTimes=true;host.GameOptions.Draft.replayTimeAttack=false;menu.Navigate(1);menu.Activate();
@@ -1359,7 +1458,9 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         if(finished)return;finished=true;bool stopped=false;
         try{host.StopNative();stopped=!host.Ready;}catch(Exception e){error=(error??"")+e;passed=false;}
         File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(new Report{passed=passed,shutdownComplete=stopped,applicationVersion=Application.version,
-            checks=checks,error=error,captures=captures.ToArray(),scope=(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0)?
+            checks=checks,error=error,captures=captures.ToArray(),scope=ChallengeChoiceCheck?
+            "Automatic and Manual through the real card menus, original challenger artwork, accept/refuse and Start controls, and background matchmaking using a private loopback transport.":
+            (Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-sequence-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-roadside-dust-check")>=0)?
             "Actual source driving from a Tsuchisaka shoulder in both directions across a full five-tick emission interval and two later times, with night/rain controls. Full Unity camera/material stack; source brown-emitter admission and paired particle removal/restoration. Isolated muted player; no full-lap, tunnel, Internet peer or full-cabinet parity claim.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-stopped-mirror-check")>=0?
             "Six isolated stationary original-course scenes through the actual Unity main/mirror/HUD stack, including braking from driving. Paired smoke/dust removal and restoration. No ordinary save, online peer or claim to reproduce the reported field issue.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-glare-check")>=0?
             "Genuine night Akagi ending poses viewed from an arranged frontal inspection camera. Optical headlights removed/restored without changing the recording or live physics; native texture bindings, main-view geometry and paired Unity pixels. Private, muted and hidden; not a claim of original ending camera parity.":Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-ending-tire-check")>=0?

@@ -18,7 +18,7 @@ public sealed partial class Idas8HakoneCourse
             int source=indices[i],target=remap[source];
             if(target<0){
                 var key=(vertices[source],normals[source],uv[source],uv2[source],colors[source],
-                    flags==null?Vector2.zero:flags[source],planes[source]);
+                    flags==null?Vector2.zero:flags[source],planes==null?Vector4.zero:planes[source]);
                 if(!unique.TryGetValue(key,out target)){
                     target=sources.Count;unique.Add(key,target);sources.Add(source);
                 }
@@ -30,11 +30,12 @@ public sealed partial class Idas8HakoneCourse
         int count=sources.Count;
         var points=new Vector3[count];var ns=new Vector3[count];
         var ts=new Vector2[count];var ts2=new Vector2[count];
-        var cs=new Color32[count];var fs=new Vector2[count];var ps=new List<Vector4>(count);
+        var cs=new Color32[count];var fs=new Vector2[count];var ps=planes==null?null:new List<Vector4>(count);
         for(int i=0;i<count;i++){
             int source=sources[i];points[i]=vertices[source];ns[i]=normals[source];
             ts[i]=uv[source];ts2[i]=uv2[source];cs[i]=colors[source];
-            fs[i]=flags==null?Vector2.zero:flags[source];ps.Add(planes[source]);
+            fs[i]=flags==null?Vector2.zero:flags[source];
+            if(ps!=null)ps.Add(planes[source]);
         }
         vertices=points;normals=ns;uv=ts;uv2=ts2;colors=cs;flags=fs;planes=ps;indices=packedIndices;
     }

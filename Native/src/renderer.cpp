@@ -61,14 +61,30 @@ void rebuildObjectMesh(const NativeModel& model,const NativeAssembly& next,Nativ
     rebuilt.vertices.clear();rebuilt.ranges.clear();rebuilt.vertices.reserve(mesh.vertices.size());rebuilt.ranges.reserve(mesh.ranges.size());
     std::vector<std::size_t> boundaries;boundaries.reserve(next.instances.size()+1);boundaries.push_back(0);
     NativeAssembly single;single.instances.resize(1);
+    // Sector changes often retain long runs of consecutive placements. Copy
+    // each run together so full, unchanged draw ranges retain their GPU IDs.
+    std::size_t firstReused=0,afterReused=0;
+    auto flushReused=[&]{
+        if(firstReused!=afterReused)
+            appendCachedSlice(rebuilt,mesh,offsets[firstReused],offsets[afterReused]);
+        firstReused=afterReused=0;
+    };
     for(const auto& instance:next.instances){
-        bool reused=false;const auto [first,last]=lookup.equal_range(instanceKey(instance));
-        for(auto it=first;it!=last;++it)if(sameInstance(instance,previous.instances[it->second])){
-            appendCachedSlice(rebuilt,mesh,offsets[it->second],offsets[it->second+1]);reused=true;break;
+        const bool continues=firstReused!=afterReused&&afterReused<previous.instances.size()&&
+            sameInstance(instance,previous.instances[afterReused]);
+        if(continues)++afterReused;
+        else{
+            flushReused();
+            const auto [first,last]=lookup.equal_range(instanceKey(instance));
+            for(auto it=first;it!=last;++it)if(sameInstance(instance,previous.instances[it->second])){
+                firstReused=it->second;afterReused=firstReused+1;break;
+            }
+            if(firstReused==afterReused){single.instances[0]=instance;rebuilt.originalCar(model,single,{},0);}
         }
-        if(!reused){single.instances[0]=instance;rebuilt.originalCar(model,single,{},0);}
-        boundaries.push_back(rebuilt.vertices.size());
+        const auto pending=firstReused==afterReused?0:offsets[afterReused]-offsets[firstReused];
+        boundaries.push_back(rebuilt.vertices.size()+pending);
     }
+    flushReused();
     for(auto& range:rebuilt.ranges)range.courseGeometry=courseGeometry;
     identifyCachedGeometry(rebuilt);std::swap(mesh,rebuilt);offsets=std::move(boundaries);previous=next;
 }
@@ -214,13 +230,35 @@ void Mesh::originalCar(const NativeModel& model,const NativeAssembly& assembly,V
             // VR/VUR's second packed color belongs to volume1; offset0 comes
             // from GMP specular0, never from that second diffuse color.
             Color offset=(batch.material[2]&2)?unpack(batch.material[4]):Color{0,0,0,0};
+            // Shared strip vertices have the same transformed position and normal
+            // in every triangle of this batch. Keep the triangle order and its
+            // provoking colour when expanding them into the scene ABI.
+            static thread_local std::vector<Vertex> transformed;
+            const bool reuse=!instance.billboard&&batch.vertices.size()<=65536&&
+                batch.indices.size()>=2*batch.vertices.size()&&!batch.vertices.empty();
+            const bool packedColors=batch.ich[6]==0x42||batch.ich[6]==0x4a;
+            const bool vertexColors=!(batch.material[2]&1)&&packedColors;
+            const Color constantColor=unpack(batch.material[2]&1?batch.material[3]:0xffffffffu);
+            if(reuse){
+                transformed.resize(batch.vertices.size());
+                for(std::size_t i=0;i<batch.vertices.size();++i){
+                    const auto& v=batch.vertices[i];
+                    transformed[i]={pos+rotate(point(v.position)),rotate(normal(v.normal)),
+                        vertexColors?unpack(v.color0):constantColor,v.u,v.v,offset};
+                }
+                for(std::size_t j=0;j<batch.indices.size();++j){
+                    auto vertex=transformed[batch.indices[j]];
+                    if(vertexColors&&!(pcw&2))vertex.color=transformed[batch.indices[j-j%3+2]].color;
+                    vertices.push_back(vertex);
+                }
+                continue;
+            }
             for(std::size_t j=0;j<batch.indices.size();++j){auto i=batch.indices[j];const auto& v=batch.vertices[i];
                 // Original flat shading uses the final strip vertex; the
                 // extracted triangle's third index is that vertex for both
                 // alternating strips and fans.
                 const auto& colorVertex=(pcw&2)?v:batch.vertices[batch.indices[j-j%3+2]];
-                const bool packedColors=batch.ich[6]==0x42||batch.ich[6]==0x4a;
-                auto bits=(batch.material[2]&1)?batch.material[3]:(packedColors?colorVertex.color0:0xffffffffu);
+                const auto color=vertexColors?unpack(colorVertex.color0):constantColor;
                 if(instance.billboard){
                     // Preserve the original packed normal of lit spectator
                     // cards in their unused planar Z coordinate. The exact
@@ -239,8 +277,8 @@ void Mesh::originalCar(const NativeModel& model,const NativeAssembly& assembly,V
                         }
                         local.z=float(packed)*(1.f/16777216.f);
                     }
-                    vertices.push_back({local,pos+rotate({m[3],m[7],m[11]}),unpack(bits),v.u,v.v,offset});
-                }else vertices.push_back({pos+rotate(point(v.position)),rotate(normal(v.normal)),unpack(bits),v.u,v.v,offset});
+                    vertices.push_back({local,pos+rotate({m[3],m[7],m[11]}),color,v.u,v.v,offset});
+                }else vertices.push_back({pos+rotate(point(v.position)),rotate(normal(v.normal)),color,v.u,v.v,offset});
             }
         }
     }

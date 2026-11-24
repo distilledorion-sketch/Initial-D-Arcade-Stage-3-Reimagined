@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <vector>
+#include "original_forced_quit.h"
 
 namespace idas3::original {
 struct OriginalRaceRuleRow {
@@ -76,6 +77,14 @@ struct OriginalRaceRuleState {
     OriginalPathCoordinate rivalProgress{},previousRivalCoordinate{};
     OriginalBattleResult battleResult{};
 };
+// Optional local cabinet owner. A null pointer preserves host/imported/online
+// extensions. The App owns these references for exactly one accepted GO call.
+struct OriginalRaceCabinetControls {
+    OriginalCabinetButtonCounters& buttons;
+    std::uint32_t& profileFlags1180;
+    std::uint32_t configWord12;
+    std::uint8_t cardByte1189;
+};
 struct OriginalRaceEvents {
     bool lap{},section{},timeExtension{},finished{},timeUp{};
     std::int32_t secondsAdded{};
@@ -111,8 +120,12 @@ public:
     // original actor+80 bit14, not a guessed speed threshold.
     OriginalRaceEvents tick(OriginalPathCoordinate coordinate,OriginalRacePoint position,
         bool vehicleStopped=false);
+    OriginalRaceEvents tick(OriginalPathCoordinate coordinate,OriginalRacePoint position,
+        bool vehicleStopped,const OriginalRaceCabinetControls* cabinet);
     OriginalRaceEvents tickBattle(OriginalPathCoordinate coordinate,OriginalRacePoint position,
         OriginalPathCoordinate rivalCoordinate,bool vehicleStopped=false);
+    OriginalRaceEvents tickBattle(OriginalPathCoordinate coordinate,OriginalRacePoint position,
+        OriginalPathCoordinate rivalCoordinate,bool vehicleStopped,const OriginalRaceCabinetControls* cabinet);
     const OriginalRaceRuleState& state()const{return state_;}
     // Trusted, same-race numerical checkpoint only; never a packet decoder.
     void restoreNumericalState(const OriginalRaceRuleState& state){state_=state;}
@@ -122,7 +135,7 @@ public:
     std::uint32_t displayedElapsed()const;
 private:
     OriginalRaceEvents tickFrame(OriginalPathCoordinate,OriginalRacePoint,bool,
-        const OriginalPathCoordinate* rivalCoordinate);
+        const OriginalPathCoordinate* rivalCoordinate,const OriginalRaceCabinetControls* cabinet);
     OriginalTimeAttackSetup setup_{};
     bool legend_{},battle_{},imported_{};
     std::array<std::int32_t,6> importedBonuses_{};

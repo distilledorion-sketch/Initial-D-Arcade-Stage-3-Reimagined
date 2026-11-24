@@ -5,7 +5,7 @@ using UnityEngine;
 internal static class Idas3UpdateChecks
 {
     internal static string Fixture(string tag){
-        string file="Initial-D-Arcade-Stage-3-Reimagined-test-Windows-x64.zip";
+        string file="Initial-D-Arcade-Stage-3-Reimagined-"+tag.TrimStart('v').Replace("-community-replays.",".")+"-Windows-x64.zip";
         return JsonUtility.ToJson(new Idas3Updates.Release{tag_name=tag,html_url=Idas3Updates.RepositoryUrl+"/releases/tag/"+Uri.EscapeDataString(tag),
             assets=new[]{new Idas3Updates.Asset{name=file,state="uploaded",size=123,digest="sha256:"+new string('a',64),
                 browser_download_url=Idas3Updates.RepositoryUrl+"/releases/download/"+Uri.EscapeDataString(tag)+"/"+file}}});

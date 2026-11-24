@@ -25,7 +25,9 @@ std::string OriginalLegendVisit::playerName(const OriginalBattleProfile& profile
     return originalRivalDialogPlayerName(profile);
 }
 
-void OriginalLegendVisit::begin(OriginalBattleProfile& profile,const Setup& setup){
+void OriginalLegendVisit::begin(OriginalBattleProfile& profile,const Setup& setup){beginImpl(profile,setup,nullptr);}
+void OriginalLegendVisit::begin(OriginalBattleProfile& profile,const Setup& setup,std::uint32_t& sharedRandom){beginImpl(profile,setup,&sharedRandom);}
+void OriginalLegendVisit::beginImpl(OriginalBattleProfile& profile,const Setup& setup,std::uint32_t* sharedRandom){
     setup_=setup;
     state_={};
     pending_.clear();
@@ -36,13 +38,18 @@ void OriginalLegendVisit::begin(OriginalBattleProfile& profile,const Setup& setu
     returnSetup.action96=0;
     frame_=initializeOriginalLegendReturn(state_,profile,returnSetup);
     active_=true;
-    apply(profile,frame_);
+    apply(profile,frame_,sharedRandom);
 }
 
-void OriginalLegendVisit::advance(OriginalBattleProfile& profile,const Input& in){
+void OriginalLegendVisit::advance(OriginalBattleProfile& profile,const Input& input){advanceImpl(profile,input,nullptr);}
+void OriginalLegendVisit::advance(OriginalBattleProfile& profile,const Input& input,std::uint32_t& sharedRandom){advanceImpl(profile,input,&sharedRandom);}
+void OriginalLegendVisit::advanceImpl(OriginalBattleProfile& profile,const Input& in,std::uint32_t* sharedRandom){
     if(!active_||state_.finished)return;
     // The dialogue's own Main runs before the owner dispatch reads its state.
-    if(dialogVisible_)scene_.step(profile);
+    if(dialogVisible_){
+        if(sharedRandom)scene_.stepWithSharedRandom(profile,*sharedRandom);
+        else scene_.step(profile);
+    }
     if(in.previous&&selected_)selected_=0;
     if(in.next&&!selected_)selected_=1;
     OriginalLegendReturnInput input;
@@ -58,10 +65,10 @@ void OriginalLegendVisit::advance(OriginalBattleProfile& profile,const Input& in
     input.nextDialogPageExists=originalRivalDialogKindAvailable(scene_.state().kind+1);
     frame_=advanceOriginalLegendReturn(state_,profile,input);
     timerTicks_=profile.u(1176);
-    apply(profile,frame_);
+    apply(profile,frame_,sharedRandom);
 }
 
-void OriginalLegendVisit::apply(OriginalBattleProfile& profile,const OriginalLegendReturnFrame& frame){
+void OriginalLegendVisit::apply(OriginalBattleProfile& profile,const OriginalLegendReturnFrame& frame,std::uint32_t* sharedRandom){
     overlayVisible_=false;
     for(const auto& event:frame.events){
         switch(event.command){
@@ -70,7 +77,8 @@ void OriginalLegendVisit::apply(OriginalBattleProfile& profile,const OriginalLeg
             dialog.enemy=event.a;dialog.kind=event.b;
             dialog.weather=setup_.weather;dialog.playerCar=setup_.playerCar;dialog.cheer=setup_.cheer;
             dialog.playerName=playerName(profile);
-            scene_.begin(profile,dialog);
+            if(sharedRandom)scene_.beginWithSharedRandom(profile,dialog,*sharedRandom);
+            else scene_.begin(profile,dialog);
             dialogVisible_=true;
             break;}
         case C::AdvanceDialog:

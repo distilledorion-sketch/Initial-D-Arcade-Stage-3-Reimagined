@@ -335,7 +335,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         pulse=13;yield return Frames(5);Check(updates.WindowVisible,"Can reopen update prompt");
         updates.HandleWindowInput(true,false,false,false);updates.HandleWindowInput(true,false,true,false);Check(installs==1&&!updates.DiagnosticRepair,"Update requests normal installation once");updates.ContinueToGame();
         updates.Activate();updates.HandleWindowInput(true,false,true,false);Check(installs==2&&updates.DiagnosticRepair,"Full Repair explicitly selects the full package");updates.ContinueToGame();
-        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v"+Application.version));updates.Activate();
+        updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v"+updates.InstalledVersion));updates.Activate();
         Check(updates.WindowVisible&&updates.State==Idas3Updates.CheckState.Current,"Current build can open repair");
         updates.HandleWindowInput(true,false,true,false);Check(installs==3&&updates.DiagnosticRepair,"Same-version Full Repair available");updates.ContinueToGame();
         updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v99.0.0"));
@@ -344,7 +344,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         menu.SetWheelNavigation(true);menu.Activate();Check(updates.WindowVisible&&!menu.WheelEditing,"Wheel confirm invokes update prompt");updates.ContinueToGame();menu.SetWheelNavigation(false);
         updates.InstallOverride=null;
         var patchFixture=JsonUtility.FromJson<Idas3Updates.Release>(Idas3UpdateChecks.Fixture("v99.0.0"));
-        var patchAsset=new Idas3Updates.Asset{name="Initial-D-Update-from-"+Application.version+"-to-99.0.0-Patch.zip",size=50,state="uploaded",digest="sha256:"+new string('b',64)};
+        var patchAsset=new Idas3Updates.Asset{name="Initial-D-Update-from-"+updates.InstalledVersion+"-to-99.0.0-Patch.zip",size=50,state="uploaded",digest="sha256:"+new string('b',64)};
         patchAsset.browser_download_url=Idas3Updates.RepositoryUrl+"/releases/download/v99.0.0/"+patchAsset.name;
         patchFixture.assets=new[]{patchAsset,patchFixture.assets[0]};
         var attempts=new List<bool>();
@@ -845,7 +845,7 @@ public sealed class Idas3AttractOptionsSmoke : MonoBehaviour
         try{
             updates.Activate();updates.HandleWindowInput(false,true,true,false);
             Check(offlineInstalls==1&&!updates.DiagnosticRepair,"Leaving the room did not restore normal update installation");
-            updates.ContinueToGame();updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v"+Application.version));updates.Activate();
+            updates.ContinueToGame();updates.ApplyResponse(200,Idas3UpdateChecks.Fixture("v"+updates.InstalledVersion));updates.Activate();
             updates.HandleWindowInput(true,false,true,false);
             Check(offlineInstalls==2&&updates.DiagnosticRepair,"Leaving the room did not restore same-version Full Repair");
             observations.Add("After leaving room: keyboard Update and same-version Full Repair admitted; intercepted installs="+offlineInstalls);

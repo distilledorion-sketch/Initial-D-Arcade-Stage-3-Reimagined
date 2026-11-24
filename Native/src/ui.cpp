@@ -332,8 +332,8 @@ const std::uint32_t* Hud::paint(const UiState& s){
     const bool onlineBattle=s.onlineBattleHud.active;
     const bool blindAttack=onlineBattle&&s.night&&!s.onlineBattleHud.opponentHeadlights;
     const bool battleHud=s.battle||onlineBattle;
-    const bool settledBattleResults=useOriginalHud&&s.battle&&s.battleResults&&(s.battleResults->profileMode==0||s.battleResults->profileMode==2)&&race.phase==RacePhase::Finished&&!s.menu&&!s.paused&&s.finishBanner==OriginalHudState::FinishBanner::none;
-    const bool settledTimeAttackResults=useOriginalHud&&s.results&&!battleHud&&race.phase==RacePhase::Finished&&!race.timeUp&&!s.menu&&!s.paused&&s.finishBanner==OriginalHudState::FinishBanner::none;
+    const bool settledBattleResults=!s.originalFinishOwner&&useOriginalHud&&s.battle&&s.battleResults&&(s.battleResults->profileMode==0||s.battleResults->profileMode==2)&&race.phase==RacePhase::Finished&&!s.menu&&!s.paused&&s.finishBanner==OriginalHudState::FinishBanner::none;
+    const bool settledTimeAttackResults=(!s.originalFinishOwner||s.originalFinishRecord)&&useOriginalHud&&s.results&&!battleHud&&race.phase==RacePhase::Finished&&!race.timeUp&&!s.menu&&!s.paused&&s.finishBanner==OriginalHudState::FinishBanner::none;
     const bool settledResults=settledBattleResults||settledTimeAttackResults;
     if(settledTimeAttackResults&&(s.results->recordFlags&(OriginalResultsState::newRecord|OriginalResultsState::courseRecord|OriginalResultsState::modelRecord|OriginalResultsState::personalBest))){
         auto results=*s.results;results.announcementOnly=true;

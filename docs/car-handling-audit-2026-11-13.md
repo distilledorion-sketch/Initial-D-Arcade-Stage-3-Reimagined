@@ -1,5 +1,12 @@
 # Car handling and acceleration audit — November 13, 2026
 
+This is a chronological record of an earlier audit and its intermediate
+installation, not the status of every subsequent build. The
+[deep driving audit](driving-parity-deep-audit-2026-11-13.md) records later
+corrections and candidate verification. Historical statements below about
+remaining keyboard/feedback approximations must be read in that context;
+neither report claims measured physical-wheel equivalence.
+
 The objective is original Arcade Stage 3 behavior, not a subjective handling
 rebalance. This audit found a reproducible host-input defect, a narrow solo
 oil-rule discrepancy and substantial remaining force-feedback differences.
@@ -219,3 +226,48 @@ physical-gate correction does not rewrite that rendering policy.
 Private reproducible sources, logs, metrics and hashes are under
 `Verification/car-handling-deep-20261113/`, including the `acceleration`,
 `steering` and `input` subdirectories. GitHub publication remains held.
+
+## Follow-up: repeating TST, November 13
+
+The player clarified that the report concerns a **second complete TST**:
+the cabinet reportedly develops unwanted oversteer or understeer, while the
+remake allows the repeat to remain useful. This is distinct from whether
+ordinary erasers or TST existed. That reported corner has not been reproduced.
+
+The inspected steering/transmission blocks do not count named techniques.
+Downshift edges and steering reversals contribute to pending state at drive
+`+288`, which transfers into active correction at `+284`; correction drains
+over subsequent ticks. Opposing steering is recorded at `+28C`. Neither
+ordinary shifts nor this second sequence clear those histories in the native
+solver. Direct H-pattern gears remain a separate host extension.
+
+Added `original_repeated_shift_reference_tests`: 64 cases across AE86 Trueno,
+R32, DC2 and FD3S; Akina/Irohazaka condition rows; both steering directions;
+one/four-tick shift spacing; one/two consecutive parameterized sequences.
+Each sequence performs two inward up/down pairs, an outward feint, then an
+inward up/down pair. This is a synthetic input family, not a captured expert
+TST. Manual sequential shifts and stock tables are used, without boost or
+direct gear selection. Entry speeds were 116.19–148.29 km/h.
+
+The current solver matched actual original CEC0 instruction execution for all
+81,920 frames and 51,036,160 state/global/history comparisons. The reference
+executed 528,521,474 instructions with no call hooks. All 64 cases carried
+nonzero steering memory into the second-sequence boundary; 720 frames exercised
+opposing steering. The 32 single/repeated pairs matched until the second
+sequence. Repeating it increased the sampled absolute direction error in 16
+pairs and decreased it in 16. Neither result is a scored corner, a lap-time
+advantage or proof of the reported understeer/oversteer penalty.
+
+This test isolates the complete CEC0 solver with **synthetic road/contact
+inputs**. It does not validate the enclosing collision pipeline, controller
+sampling, physical cabinet wheel motion, online ownership or the player's
+specific corner. An exact car/course/input trace is still needed to reproduce
+the complaint. No handling coefficients, steering limits or TST restrictions
+were changed. Private metrics, original-image provenance and logs are under
+`Verification/repeated-tst-20261113/`.
+
+The subsequent [deep driving audit](driving-parity-deep-audit-2026-11-13.md)
+adds real-road repeated shifting, transmission/profile boundaries, a fresh
+Flycast contact capture and actual Unity integration. It also identifies the
+remaining keyboard-response and higher-level RNG initialization differences;
+the solver results above must not be read as certification of those owners.

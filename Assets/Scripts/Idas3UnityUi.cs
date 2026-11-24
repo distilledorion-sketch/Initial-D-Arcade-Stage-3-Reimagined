@@ -142,6 +142,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
     Shader shader;
     Mesh mesh, fadeMesh;
     Material fadeMaterial;
+    UnityEngine.Color[] raceColors;
     Draw[] draws = Array.Empty<Draw>(); Vertex[] vertices = Array.Empty<Vertex>();
     MeshVertex[] meshVertices = Array.Empty<MeshVertex>();
     int[] sequentialIndices = Array.Empty<int>();
@@ -191,6 +192,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
         source = camera ? camera : throw new ArgumentNullException(nameof(camera));
         // Unity native objects cannot be constructed in MonoBehaviour field
         // initializers during editor deserialization/component creation.
+        raceColors = Idas3RaceHudColors.Load(System.IO.Path.Combine(Application.dataPath, "..", "Mods", "HUD", "Race Colors.json"));
         fadeProperties = new MaterialPropertyBlock();
         performanceBaseline = Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-scene-perf-baseline") >= 0;
         SubmissionCacheBaseline = Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-ui-submission-baseline") >= 0;
@@ -377,7 +379,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
                 if(reset){arcadeHud?.Dispose();arcadeHud=null;}
                 if(arcadeHud==null)arcadeHud=new Idas3ArcadeHud();
                 bool thirdPerson=ArcadePreview?ArcadePreviewThirdPerson:Idas3Native.ReadOptions().cameraView!=0;
-                arcadeHud.Build(layout,telemetry,frame.width,frame.height,seconds,ArcadePreview,out hudBounds[2],thirdPerson);
+                arcadeHud.Build(layout,telemetry,frame.width,frame.height,seconds,ArcadePreview,out hudBounds[2],thirdPerson,raceColors[2]);
                 ArcadeMeterVisible=true;
             }
         }
@@ -442,7 +444,7 @@ public sealed class Idas3UnityUi : MonoBehaviour
                 properties = drawProperties[i];
             }
             properties.SetTexture("_MainTex", textures[(int)d.texture]); properties.SetVector("_Canvas", size); properties.SetVector("_Clip", d.clip);
-            properties.SetFloat("_Opacity", d.opacity); properties.SetColor("_Tint", UnityEngine.Color.white);
+            properties.SetFloat("_Opacity", d.opacity); properties.SetColor("_Tint", (d.flags & 8) != 0 ? raceColors[(d.flags >> 8) & 15] : UnityEngine.Color.white);
             var command = (d.flags & 2) != 0 ? background : foreground;
             command.DrawMesh(mesh, Matrix4x4.identity, GetMaterial(d), i, 0, properties);
         }

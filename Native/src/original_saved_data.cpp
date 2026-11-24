@@ -1,4 +1,5 @@
 #include "original_saved_data.h"
+#include "original_menu_backdrop.h"
 #include "original_time_attack_background.h"
 #include "original_time_attack_visit.h"
 #include "original_record_rules.h"
@@ -44,6 +45,8 @@ void OriginalSavedData::load(const std::filesystem::path& root){
     };
     for(const auto name:{"v3sS10conf","cardcheck","cardcheck2","cardcheck_car","cardfont_a","cardfont_h","cardfont_k"})add(name,base/"saved_data"/name);
     add("select",base/"name_entry/select");add("select0302",base/"name_entry/select0302");
+    const auto& select=banks_.at("select");
+    logoBackdrop_=buildMenuLogoBackdrop(select.textures,select.model.chunks.at(45));
     add("v3sS00common",base/"menus/v3/v3sS00common");
     add("v3sS07tune",base/"tuning_course/v3sS07tune");
     add("shift",base/"hud/shift");
@@ -105,21 +108,8 @@ OriginalCardCheckEvents OriginalSavedData::advance(OriginalBattleProfile& p){
     input_={};input_.selectorValue=state_.selectedValue1452;
     background_=advanceOriginalTimeAttackBackground(background_);++animationFrame_;return events;
 }
-void OriginalSavedData::paintBackground(std::span<std::uint32_t> pixels,int width,int height)const{
-    const float fit=std::min(width/640.f,height/480.f),left=(width-640*fit)*.5f,top=(height-480*fit)*.5f;
-    const auto& bank=banks_.at("select");const auto& tile=bank.model.chunks.at(45);
-    // Extend the same authored tile grid and displayed phase beyond the4:3
-    // canvas. A separately timed attract backdrop creates a moving seam.
-    const int extraX=int(std::ceil(left/(254*fit))),extraY=int(std::ceil(top/(254*fit)));
-    for(int row=-1-extraY;row<2+extraY;++row)for(int col=-1-extraX;col<3+extraX;++col){
-        const auto position=originalTimeAttackBackgroundPosition(background_,col,row);
-        SpritePlacement placement;placement.scale=100*fit;placement.invertY=true;placement.authoredHeight=0;
-        placement.offsetX=left+position.x*100*fit;placement.offsetY=top-position.y*100*fit;
-        placement.defaultOriginalUiColors=true;
-        compositeOriginalMenuChunk(pixels,width,height,bank.textures,tile,placement);
-    }
-}
-void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int height,const OriginalBattleProfile& p)const{
+void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int height,const OriginalBattleProfile& p,const CarPicker* picker)const{
+    const bool inspection=inspectionCompletion_&&!picker;
     const float fit=std::min(width/640.f,height/480.f),left=(width-640*fit)*.5f,top=(height-480*fit)*.5f;
     const auto render=[&](const Bank& bank,const NativeModelChunk& chunk,float x=0,float y=0){
         SpritePlacement placement;placement.scale=100*fit;placement.invertY=true;placement.authoredHeight=0;
@@ -139,26 +129,26 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
         render(b,c,x,y);
     };
     const auto digits=[&](std::string value,float x,float y,float size=16.f){for(char ch:value){if(ch>='0'&&ch<='9')placed("cardcheck",36+ch-'0',x,y,size,size*2);else if(ch!=' ')placed("cardcheck",46,x,y,size,size*2);x+=size;}};
-    paintBackground(pixels,width,height);
+    paintMenuLogoBackdrop(pixels,width,height,logoBackdrop_,picker?picker->frame:background_);
     draw("v3sS00common",20);
-    const unsigned page=state_.page492;
-    draw("v3sS10conf",inspectionCompletion_?28u:page==7?(state_.editPhase1456==2?24u:state_.editPhase1456==1?25u:26u):22u);
-    for(const auto& d:originalTimeAttackCountdownDraws(countdown_))draw("select",d.chunk,d.x,d.y);
+    const unsigned page=picker?picker->page:state_.page492;
+    draw("v3sS10conf",inspection?28u:page==7?(state_.editPhase1456==2?24u:state_.editPhase1456==1?25u:26u):22u);
+    for(const auto& d:originalTimeAttackCountdownDraws(picker?picker->seconds*80:countdown_))draw("select",d.chunk,d.x,d.y);
     // 10EF40 uses the six-row inspection panel at -0.48, and passes
     // -0.32 into109300 for its fields (ordinary review uses -0.16).
-    if(inspectionCompletion_&&japanese_){
+    if(inspection&&japanese_){
         // Japan Rev C keeps the six-row renewal panel in cardcheck5;
         // its v3sS10conf bank ends at26 and has no English27/28 additions.
         draw("cardcheck",5,0,32);
-    }else draw("v3sS10conf",inspectionCompletion_?27u:14+page,0,inspectionCompletion_?48.f:32.f);
+    }else draw("v3sS10conf",inspection?27u:14+page,0,inspection?48.f:32.f);
     if(page==0){
         const auto length=std::min(p.u(76),5u);float x=386.f-(length?length-1:0)*12.f;
         for(unsigned i=0;i<length;++i,x+=24){const auto glyph=p.u(44+4*i);if(glyph>=220)continue;
             const char* font=glyph<81?"cardfont_k":glyph<162?"cardfont_h":"cardfont_a";
-            draw(font,glyph<81?glyph:glyph<162?glyph-81:glyph-162,x,inspectionCompletion_?156.f:140.f);
+            draw(font,glyph<81?glyph:glyph<162?glyph-81:glyph-162,x,inspection?156.f:140.f);
         }
         constexpr std::array<unsigned,7> makers{28,29,31,32,33,34,35};
-        const float fieldY=inspectionCompletion_?32.f:16.f;
+        const float fieldY=inspection?32.f:16.f;
         draw("cardcheck",makers.at(originalCarManufacturerIds.at(std::min(p.u(16),34u))),0,fieldY);
         draw("cardcheck_car",std::min(p.u(16),34u),0,fieldY);draw("cardcheck",48+std::min(p.u(68),1u),0,fieldY);
         const auto rgb=carPaintPalettes.at(std::min(p.u(16),34u)).at(std::min(p.u(64),carPaintCount-1));
@@ -167,11 +157,11 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
         // The cabinet swatches include a dark rim around the paint sample.
         const auto fill=[&](int x,int y,int w,int h,unsigned color){if(unityUiEnabled()){unityUiSolid(pixels.data(),width,height,left+x*fit,top+y*fit,w*fit,h*fit,color);return;}
             for(int yy=int(top+y*fit);yy<std::min(height,int(top+(y+h)*fit));++yy)for(int xx=int(left+x*fit);xx<std::min(width,int(left+(x+w)*fit));++xx)if(xx>=0&&yy>=0)pixels[yy*width+xx]=color;};
-        const int swatchY=inspectionCompletion_?16:0;
+        const int swatchY=inspection?16:0;
         fill(382,264+swatchY,48,22,0xff343434);fill(384,266+swatchY,44,18,0xff000000u|rgb);
         // AE86 factory paints retain their original contrasting lower body.
         if(p.u(16)<=2&&p.u(64)<originalCarColorCounts[p.u(16)])fill(384,278+swatchY,44,6,0xff151515);
-        if(inspectionCompletion_){
+        if(inspection){
             const auto count=tuning_.car(p.u(16)).packages.size();
             const unsigned package=std::min<unsigned>(p.byte(152),unsigned(count-1));
             draw("cardcheck",package==count-1?4:package,0,32);

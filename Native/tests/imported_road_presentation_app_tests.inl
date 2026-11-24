@@ -103,7 +103,7 @@ int runImportedRoadPresentationAppTests(App& app,bool wetCornersOnly=false){
                 check(length(expectedChase.eye-app.originalCamera.frame().eye)<.00001f,"Chase camera bypassed corrected pose");
                 check(length(expectedBumper.eye-app.bumperCamera.frame().eye)<.00001f,"Bumper camera bypassed corrected pose");
                 app.originalCamera=savedChase;app.bumperCamera=savedBumper;
-                for(auto view:{OriginalDrivingView::Chase,OriginalDrivingView::Bumper,OriginalDrivingView::Natural}){
+                for(auto view:{OriginalDrivingView::Chase,OriginalDrivingView::Bumper}){
                     app.drivingView=view;Idas3UiBeginFrame(app.renderer.width,app.renderer.height);
                     check(app.render(1./120),"Road presentation frame failed");
                     check(words==d.words,"Presentation/render changed original driving state");

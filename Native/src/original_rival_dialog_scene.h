@@ -18,8 +18,18 @@ public:
     bool loaded()const{return loaded_;}
     // Loads this rival's portrait and background banks and resets the scene.
     void begin(const OriginalBattleProfile&,const OriginalRivalDialogSetup&);
+    // Normal setup selects the original cheer during virtual Init, then both
+    // normal/Bunta owners initialize their shared random particle records.
+    void beginWithSharedRandom(const OriginalBattleProfile&,const OriginalRivalDialogSetup&,std::uint32_t&);
     std::uint32_t step(const OriginalBattleProfile& profile){
         return stepOriginalRivalDialog(state_,data_,profile);
+    }
+    // Original Main0FAD60 ends with its viewport Draw before the parent can
+    // close/destroy/reconfigure it. Host repaints never advance this state.
+    std::uint32_t stepWithSharedRandom(const OriginalBattleProfile& profile,std::uint32_t& seed){
+        const auto cues=step(profile);
+        prepareOriginalDialogParticles(state_.particles,profile.u(4),state_.spectators,seed);
+        return cues;
     }
     const OriginalRivalDialogState& state()const{return state_;}
     OriginalRivalDialogState& state(){return state_;}

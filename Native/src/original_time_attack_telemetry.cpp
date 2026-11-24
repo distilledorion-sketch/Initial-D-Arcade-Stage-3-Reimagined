@@ -175,6 +175,14 @@ void OriginalTimeAttackTelemetry::record(std::span<const OriginalImpactRecord> i
         walls_.push_back(event);
     }
 }
+void OriginalTimeAttackTelemetry::recordDitches(const OriginalContactCompletionState& completion){
+    const auto count=std::min<std::uint32_t>({completion.positionCursor,completion.frameCursor,98});
+    if(count<ditchCursor_){ditches_.clear();ditchCursor_=0;}
+    for(;ditchCursor_<count;++ditchCursor_){
+        const auto& bits=completion.impactPositions[ditchCursor_];
+        ditches_.push_back({{f(bits[0]),f(bits[1]),f(bits[2])},completion.impactFrames[ditchCursor_]});
+    }
+}
 void OriginalTimeAttackTelemetry::recordDitches(const OriginalContactCompletionState& completion,std::uint32_t originalProgressIndex){
     const auto count=std::min<std::uint32_t>({completion.positionCursor,completion.frameCursor,98});
     if(count<ditchCursor_){ditches_.clear();ditchCursor_=0;}
@@ -209,6 +217,27 @@ OriginalTimeAttackTelemetrySnapshot OriginalTimeAttackTelemetry::snapshot(unsign
         result.ditchEvents.push_back({{f(bits[0]),f(bits[1]),f(bits[2])},completion.impactFrames[i]});
     }
     if(convertMaps)convertOriginalTimeAttackEvents(course,result);
+    return result;
+}
+
+
+OriginalTimeAttackTelemetrySnapshot OriginalTimeAttackTelemetry::snapshotForLecture(unsigned course,
+    const OriginalDriveState& drive,const OriginalTailState& tail,const OriginalContactCompletionState& completion) const{
+    auto result=snapshot(course,drive,tail,completion,0,false);
+    const auto& published=tail.statistics0C91FB0C;
+    //15ECE0 publishes BEFORE this solver's wall/ditch append.18D140/18D4E0
+    //admit only the final published count; do not synthesize another solver
+    //publication to include a last, as-yet-unpublished contact.
+    result.maxSpeedKph=f(published[0]);
+    result.maxSteeringDelta=f(published[15]);
+    result.wallCount=published[4];result.ditchCount=published[8];
+    result.ditchWallCount=published[11];result.maxGearUsed=published[14];
+    const auto admitted=[](std::uint32_t value,std::size_t available){
+        return std::bit_cast<std::int32_t>(value)>0?std::min<std::size_t>(value,available):std::size_t(0);
+    };
+    result.wallEvents.resize(admitted(result.wallCount,result.wallEvents.size()));
+    result.ditchEvents.resize(admitted(result.ditchCount,result.ditchEvents.size()));
+    convertOriginalTimeAttackEvents(course,result);
     return result;
 }
 

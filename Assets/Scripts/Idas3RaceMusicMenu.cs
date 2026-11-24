@@ -14,6 +14,17 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         public float duration;
         public float[] waveform;
         public int pcmRate,pcmChannels;
+#if IDAS3_PORTABLE_PLAYER
+        internal Idas3DiscMusicPreview discPreview;
+#endif
+        internal bool CanPreview {
+            get {
+#if IDAS3_PORTABLE_PLAYER
+                if (discPreview != null) return true;
+#endif
+                return !string.IsNullOrEmpty(previewPath) || !string.IsNullOrEmpty(pcmPath);
+            }
+        }
         public int stage;
     }
     private const float Width=1120,Height=664;
@@ -70,11 +81,14 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     public int DeleteTrackId=>deleteId;
     public bool BlocksGameInput=>IsOpen||Time.frameCount<=blockThroughFrame;
     public bool HintVisible=>showHint&&!IsOpen;
+    internal bool ModsHintVisible=>HintVisible&&inModsPicker;
+    private bool inModsPicker;
     public float HoldProgress=>holdProgress;
     public int HighlightedTrackId=>visible.Count==0?-1:entries[visible[selection]].id;
     public int SelectedTrackId=>selectedId;
     public int StageFilter=>stageFilter;
     public int VisibleTrackCount=>visible.Count;
+    public event Action HintPressed;
     public event Action<int> Selected;
     public event Action<int> DeleteRequested;
     public event Action<bool> OpenChanged;
@@ -91,9 +105,9 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
                 throw new ArgumentException("The race music catalog contains an invalid or duplicate entry.",nameof(catalog));
         CancelDelete();entries=(Entry[])catalog.Clone();selectedId=ids.Contains(currentId)?currentId:entries[0].id;stageFilter=0;RebuildList(true);
     }
-    public void SetContext(bool showSelectionHint,float progress,string controlLabel)
+    public void SetContext(bool showSelectionHint,float progress,string controlLabel,bool modsPicker=false)
     {
-        showHint=showSelectionHint;holdProgress=float.IsNaN(progress)?0:Mathf.Clamp01(progress);
+        inModsPicker=modsPicker;showHint=showSelectionHint;holdProgress=float.IsNaN(progress)?0:Mathf.Clamp01(progress);
         viewChangeLabel=string.IsNullOrWhiteSpace(controlLabel)?"VIEW CHANGE":controlLabel;
     }
     public void ReplaceCatalog(Entry[] catalog,int currentId){int filter=stageFilter;Initialize(catalog,currentId);stageFilter=filter;RebuildList(true);}
@@ -256,11 +270,21 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
     private void DrawHint()
     {
         var safe=SafeRect();float scale=Mathf.Min(1.5f,Mathf.Min(safe.width/1000f,safe.height/720f));
-        const float width=540,height=28;
+        float width=540,height=28;
         float x=safe.x+(safe.width-width*scale)*.5f,y=safe.yMax-(height+13)*scale;
+        if(inModsPicker){
+            // Fit the native 640x480 Mods panel, including its widescreen margins.
+            scale=Mathf.Min(Screen.width/640f,Screen.height/480f);
+            x=Mathf.Max(safe.x,(Screen.width-640*scale)*.5f+239*scale);
+            y=Mathf.Max(safe.y,(Screen.height-480*scale)*.5f+29*scale);
+            width=Mathf.Min(376,(safe.xMax-x)/scale);
+            if(width<=0)return;
+        }
         GUI.matrix=Matrix4x4.TRS(new Vector3(x,y,0),Quaternion.identity,new Vector3(scale,scale,1));
-        Fill(new Rect(0,0,width,height),new Color(0,0,0,.72f));
-        Text(new Rect(8,1,width-16,height-2),Idas3MenuLocalization.Format("HOLD {0}  /  MUSIC SELECT",viewChangeLabel.ToUpperInvariant()),button,Yellow);
+        Fill(new Rect(0,0,width,height),inModsPicker?Panel:new Color(0,0,0,.72f));
+        string prompt=Idas3MenuLocalization.Format(inModsPicker?"HOLD {0} FOR MUSIC":"HOLD {0}  /  MUSIC SELECT",viewChangeLabel.ToUpperInvariant());
+        Text(new Rect(8,1,width-16,height-2),prompt,button,Yellow,false);
+        if(GUI.Button(new Rect(0,0,width,height),GUIContent.none,GUIStyle.none))HintPressed?.Invoke();
         if(holdProgress>0){Fill(new Rect(0,height-2,width,2),Edge);Fill(new Rect(0,height-2,width*holdProgress,2),Yellow);}
     }
     private void DrawPicker()
@@ -318,7 +342,7 @@ public sealed class Idas3RaceMusicMenu : MonoBehaviour
         if(DeleteConfirmationOpen)DrawDeleteConfirmation();
     }
     private static string DurationText(float seconds)=>seconds<=0?"—":((int)seconds/60)+":"+((int)seconds%60).ToString("00");
-    private bool Previewable(Entry entry)=>!string.IsNullOrEmpty(entry.previewPath)||!string.IsNullOrEmpty(entry.pcmPath);
+    private bool Previewable(Entry entry)=>entry.CanPreview;
     private Texture2D Cover(string path)
     {
         if(string.IsNullOrEmpty(path))return null;if(covers.TryGetValue(path,out var cached))return cached;

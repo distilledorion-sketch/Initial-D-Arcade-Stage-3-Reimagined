@@ -22,9 +22,13 @@ namespace Idas3.Multiplayer
             else foreach(int offset in AppearanceOffsets)if(Words[offset/4]!=other.Words[offset/4])return false;
             return true;
         }
-        internal void Write(BinaryWriter w){w.Write(Selection);w.Write(Saved);w.Write(Automatic);foreach(int offset in AppearanceOffsets)w.Write(Words[offset/4]);}
+        // The cabinet's card holds 18 route records for each weather, in 1/6000 s.
+        internal const int FirstPersonalTime=176/4, PersonalTimeCount=36;
+        internal void Write(BinaryWriter w){w.Write(Words[72/4]);for(int i=0;i<PersonalTimeCount;i++)w.Write(Words[FirstPersonalTime+i]);w.Write(Selection);w.Write(Saved);w.Write(Automatic);foreach(int offset in AppearanceOffsets)w.Write(Words[offset/4]);}
         internal static Idas3OnlineCar Read(BinaryReader r,int expected){
-            var car=new Idas3OnlineCar{Selection=r.ReadInt32(),Saved=r.ReadBoolean(),Automatic=r.ReadBoolean()};
+            var car=new Idas3OnlineCar();
+            car.Words[72/4]=r.ReadUInt32();for(int i=0;i<PersonalTimeCount;i++)car.Words[FirstPersonalTime+i]=r.ReadUInt32();
+            car.Selection=r.ReadInt32();car.Saved=r.ReadBoolean();car.Automatic=r.ReadBoolean();
             foreach(int offset in AppearanceOffsets)car.Words[offset/4]=r.ReadUInt32();
             if(car.Selection<0||car.Selection>=SelectionCount||(car.Selection>=40&&(car.Selection-40)%35!=expected)||car.Car!=expected||expected<0||expected>=35||car.Words[19]>5||car.Words[16]>=93)
                 throw new InvalidDataException("Invalid saved car selection");

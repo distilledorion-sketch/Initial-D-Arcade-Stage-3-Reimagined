@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -59,7 +64,7 @@ namespace Idas3.Multiplayer
                     ClientCredentials = new ClientCredentials { ClientId = config.ClientId, ClientSecret = config.ClientSecret },
                     Flags = PlatformFlags.DisableOverlay | PlatformFlags.DisableSocialOverlay | (Application.isEditor ? PlatformFlags.LoadingInEditor : PlatformFlags.None),
                     IsServer = false, TickBudgetInMilliseconds = 2,
-                    CacheDirectory = Path.Combine(Application.persistentDataPath, "EOS", Idas3EosOnlineConfig.AuthenticationProfile),
+                    CacheDirectory = Path.Combine(PlayerStorage.persistentDataPath, "EOS", Idas3EosOnlineConfig.AuthenticationProfile),
                     TaskNetworkTimeoutSeconds = 30
                 };
                 Handle = PlatformInterface.Create(ref options);

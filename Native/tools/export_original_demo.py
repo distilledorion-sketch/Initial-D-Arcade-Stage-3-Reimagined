@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Import original Demo7 animation records; does not synthesize a video/camera."""
-import argparse,hashlib,json,struct
+import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
 from extract_original_models import read_payload
 
 CANONICAL='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 def main():
-    p=argparse.ArgumentParser();p.add_argument('image',type=Path);p.add_argument('hostfs',type=Path);p.add_argument('project',type=Path);a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('image',type=Path);p.add_argument('hostfs',type=Path);p.add_argument('project',type=Path)
+    p.add_argument('--capture-exe',type=Path,help='Regenerate the demo rival presets directly from the disc')
+    a=p.parse_args()
     image=a.image.read_bytes();assert hashlib.sha256(image).hexdigest()==CANONICAL
     def words(at,n):return struct.unpack_from('<'+'I'*n,image,at-0xc020000)
     root=a.project/'data/original_assets/attract/demo';root.mkdir(parents=True,exist_ok=True)
@@ -24,7 +26,15 @@ def main():
     enemies=[enemy_ids[x] for x in pairs];(root/'enemies.bin').write_bytes(struct.pack('<'+'I'*len(enemies),*enemies))
     appearances=[]
     for car,enemy in zip(car_ids,enemy_ids):
-        capture=json.loads((a.project/'data/original_models/rivals_v2'/f'enemy_{enemy:02}'/'source_capture.json').read_text())
+        models=a.project/'data/original_models'
+        source=models/'rivals_v2'/f'enemy_{enemy:02}'/'source_capture.json'
+        if a.capture_exe:
+            folder=json.loads((models/'car_catalog.json').read_text())['cars'][car]['folder']
+            count_chunks=json.loads((models/folder/'model_manifest.json').read_text())['chunk_count']
+            source=evidence/f'enemy_{enemy:02}.json'
+            subprocess.run([str(a.capture_exe),str(a.image),str(a.hostfs/'parts'/f'{folder}.bin'),
+                            str(source),str(car),str(count_chunks),str(enemy)],check=True)
+        capture=json.loads(source.read_text())
         if capture['car_index']!=car or capture['enemy_id']!=enemy:raise ValueError('Rival appearance identity mismatch')
         appearances.append({'car':car,'enemy':enemy,'config_word':capture['config_word'],'material_variant':7,'plate_digits':capture['plate_digits']})
     (root/'appearances.bin').write_bytes(b''.join(struct.pack('<4I5B3x',r['car'],r['enemy'],r['config_word'],7,*r['plate_digits']) for r in appearances))

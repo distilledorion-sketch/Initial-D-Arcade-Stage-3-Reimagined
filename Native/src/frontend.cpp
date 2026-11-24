@@ -2,6 +2,7 @@
 #include "frontend.h"
 #include "car_catalog.h"
 #include "original_choice_menu.h"
+#include "original_menu_backdrop.h"
 #include "original_record_rules.h"
 #include "original_legend_menu.h"
 #include "original_bunta_menu.h"
@@ -12,6 +13,9 @@
 #include <cmath>
 #include <chrono>
 #include <stdexcept>
+#include <cstdio>
+#include <tuple>
+#include <utility>
 
 namespace idas3 {
 namespace {
@@ -66,17 +70,165 @@ void Frontend::enableHakoneCourse(const std::filesystem::path& root,int id) {
     if(importedArtwork(id).size())return;
     auto artwork=NativeTextureBank::load(root/"menu.idastex");
     if(artwork.size()!=2)throw std::runtime_error("Hakone menu requires backdrop and thumbnail");
-    importedArtwork(id)=std::move(artwork);previousKey.clear();previousMotionKey.clear();
+    importedArtwork(id)=std::move(artwork);
+    installedModCourses.insert(std::lower_bound(installedModCourses.begin(),installedModCourses.end(),id),id);
+    if(modsPickerOpen()){
+        const int selected=int(std::lower_bound(installedModCourses.begin(),installedModCourses.end(),course)-installedModCourses.begin());
+        firstModRow=std::clamp(firstModRow,std::max(0,selected-visibleModRows+1),selected);
+    }
+    previousKey.clear();previousMotionKey.clear();
 }
 void Frontend::drawHakoneBackdrop(int width,int height) {
     compositeImage(pixels,width,height,importedArtwork(course).at(0),0,168,640,312);
 }
 std::vector<int> Frontend::courseChoices()const {
-    if(gameMode==original::OriginalGameMode::TimeAttack){std::vector<int> choices{0,1,2,3,5,8,4,6,7};for(int id=hakoneCourse;id<int(supportedCourseCount);++id)if(importedArtwork(id).size())choices.push_back(id);return choices;}
+    if(gameMode==original::OriginalGameMode::TimeAttack){
+        std::vector<int> choices{0,1,2,3,5,8,4,6,7};
+        if(!installedModCourses.empty())choices.push_back(modsTab);
+        return choices;
+    }
     if(gameMode!=original::OriginalGameMode::BuntaChallenge)return {0,1,2,3,5,8,4,6,7};
     std::vector<int> result;
     for(unsigned i=0;i<8;++i)result.push_back(int(original::originalBuntaCourse(i,std::bit_cast<std::int32_t>(battleProfile.u(1080+i*4)))));
     return result;
+}
+int Frontend::carouselChoice()const {
+    return stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::TimeAttack&&isImportedCourse(course)?modsTab:course;
+}
+void Frontend::selectModTrack(int id){
+    course=lastModCourse=id;
+    const int index=int(std::lower_bound(installedModCourses.begin(),installedModCourses.end(),id)-installedModCourses.begin());
+    firstModRow=std::clamp(firstModRow,std::max(0,index-visibleModRows+1),index);
+    reverse=false;wet=false;night=courseRequiresNight(unsigned(id));
+}
+void Frontend::stepModsFocus(int delta){
+    int next=int(modsFocus)+delta;
+    if(next==int(ModsFocus::Time)&&courseRequiresNight(unsigned(course)))next+=delta;
+    modsFocus=ModsFocus(std::clamp(next,int(ModsFocus::Tracks),int(ModsFocus::Start)));
+}
+bool Frontend::coursePointerActive()const{
+    return stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::TimeAttack&&!installedModCourses.empty();
+}
+
+namespace {
+constexpr int trackListX=24,trackListY=80,trackListWidth=196,trackRowPitch=36;
+constexpr int optionX=239,optionY=270,optionWidth=376,optionPitch=38,optionHeight=31;
+constexpr int optionSplit=optionX+89,optionSecond=optionSplit+(optionX+optionWidth-optionSplit)/2;
+constexpr int actionY=410,actionH=34;
+constexpr std::uint32_t menuInk=0xff0b0c0fu,menuPanel=0xff191b21u,menuEdge=0xff383b44u,
+    menuRaised=0xff30333du,menuAccent=0xffde1f34u,menuWhite=0xfff5f5f8u,menuMuted=0xffa4a8b2u;
+void menuRect(std::vector<std::uint32_t>& canvas,int w,int h,int x,int y,int rw,int rh,std::uint32_t color){
+    if(unityUiEnabled()){unityUiSolid(canvas.data(),w,h,float(x),float(y),float(rw),float(rh),color);return;}
+    const int x0=std::clamp(x,0,w),x1=std::clamp(x+rw,0,w);
+    for(int row=std::max(y,0);row<std::min(y+rh,h);++row)
+        std::fill(canvas.begin()+row*w+x0,canvas.begin()+row*w+x1,color);
+}
+}
+void Frontend::drawModsTile(int w,int h,float x,float y,float scale){
+    const int left=int(x-48*scale),top=int(y-32*scale);
+    menuRect(pixels,w,h,left,top,int(96*scale),int(64*scale),menuPanel);
+    menuRect(pixels,w,h,left,top,int(96*scale),int(4*scale),menuAccent);
+    const float size=21*scale;
+    menuFont.paint(pixels,w,h,"MODS",x-menuFont.width("MODS",size)*.5f,y-size*.56f,size,menuWhite);
+}
+bool Frontend::scrollModsAt(float x,float y,int delta){
+    if(!modsPickerOpen()||!inputReady()||x<trackListX||x>=trackListX+trackListWidth+8||
+       y<trackListY||y>=trackListY+visibleModRows*trackRowPitch)return false;
+    auto it=std::lower_bound(installedModCourses.begin(),installedModCourses.end(),course);
+    int next=std::clamp(int(it-installedModCourses.begin())+delta,0,int(installedModCourses.size())-1);
+    modsFocus=ModsFocus::Tracks;
+    if(course!=installedModCourses[next])selectModTrack(installedModCourses[next]);
+    return true;
+}
+void Frontend::drawModsPicker(int w,int h,const std::vector<int>& courses){
+    const auto box=[&](int x,int y,int rw,int rh,std::uint32_t color){menuRect(pixels,w,h,x,y,rw,rh,color);};
+    const auto label=[&](std::string_view text,int x,int y,float size,std::uint32_t color,float limit){
+        const float measure=menuFont.width(text,size);
+        if(measure>limit)size*=limit/measure;
+        menuFont.paint(pixels,w,h,text,float(x),float(y),size,color);
+    };
+    box(12,16,616,444,menuInk);box(12,16,616,3,menuAccent);
+    label("MOD TRACKS",24,27,26,menuWhite,330);
+    // The music prompt uses the right side of this header in the Unity player.
+    box(24,66,591,1,menuEdge);
+    const int total=int(courses.size());
+    if(total>visibleModRows){
+        const int height=visibleModRows*trackRowPitch-4;
+        box(trackListX+trackListWidth+3,trackListY,3,height,menuEdge);
+        box(trackListX+trackListWidth+3,trackListY+firstModRow*height/total,3,std::max(4,visibleModRows*height/total),menuMuted);
+    }
+    for(int i=firstModRow;i<std::min(total,firstModRow+visibleModRows);++i){
+        const int id=courses[i],y=trackListY+(i-firstModRow)*trackRowPitch;
+        const bool selected=course==id;
+        const bool supported=communityLeaderboardCourse(unsigned(id));
+        box(trackListX,y,trackListWidth,32,selected?menuRaised:menuPanel);
+        if(selected)box(trackListX,y,3,32,menuAccent);
+        label(importedCourseDefinition(id).name,trackListX+10,y+(supported?1:7),15,selected?menuWhite:menuMuted,trackListWidth-18);
+        if(supported)label("COMMUNITY LEADERBOARD SUPPORT",trackListX+10,y+18,10,0xffff646du,trackListWidth-18);
+    }
+    box(optionX-1,79,optionWidth+2,185,menuEdge);
+    compositeImage(pixels,w,h,importedArtwork(course).at(0),float(optionX),80,float(optionWidth),183.f);
+    const auto row=[&](int index,ModsFocus focus,std::string_view title,std::string_view first,std::string_view second,bool value,bool locked){
+        const int y=optionY+index*optionPitch;
+        box(optionX,y,optionWidth,optionHeight,menuPanel);
+        if(modsFocus==focus)box(optionX,y,3,optionHeight,menuAccent);
+        label(title,optionX+9,y+8,12,menuMuted,75);
+        for(int i=0;i<2;++i){
+            const int x=i?optionSecond:optionSplit,right=i?optionX+optionWidth:optionSecond;
+            const bool chosen=bool(i)==value;
+            box(x,y,right-x-1,optionHeight,chosen?(modsFocus==focus?menuAccent:menuRaised):menuPanel);
+            const auto text=i?second:first;
+            const float size=std::min(14.f,14.f*(right-x-8)/std::max(1.f,menuFont.width(text,14)));
+            label(text,x+int((right-x-menuFont.width(text,size))*.5f),y+6,size,locked&&!chosen?menuEdge:chosen?menuWhite:menuMuted,float(right-x-5));
+        }
+    };
+    auto route=originalCoursePresentationCondition(unsigned(course)*2);
+    const bool circuit=route/2==0,outbound=route/2==4;
+    row(0,ModsFocus::Direction,"DIRECTION",circuit?"CLOCKWISE":outbound?"OUTBOUND":"DOWNHILL",
+        circuit?"COUNTERCLOCKWISE":outbound?"INBOUND":"UPHILL",reverse,false);
+    row(1,ModsFocus::Surface,"SURFACE","DRY","WET",wet,false);
+    row(2,ModsFocus::Time,"TIME","DAY","NIGHT",night,courseRequiresNight(unsigned(course)));
+    box(trackListX,actionY,82,actionH,menuPanel);label("BACK",39,actionY+7,15,menuWhite,65);
+    box(optionX,actionY,optionWidth,actionH,modsFocus==ModsFocus::Start?menuAccent:menuRaised);
+    label("START RACE",optionX+int((optionWidth-menuFont.width("START RACE",17))*.5f),actionY+5,17,menuWhite,optionWidth);
+}
+bool Frontend::coursePointer(float x,float y,bool click){
+    if(!coursePointerActive()||!inputReady()||startRequested)return false;
+    if(modsFocus==ModsFocus::Closed){
+        if(!click)return false;
+        if(y>=96&&y<160&&x>=70&&x<570){
+            const int row=int((x-70)/100);
+            if(row!=courseSlot){
+                change(row-courseSlot);courseSlot=row;courseScroll=displayedCourseScroll=0;
+                if(carouselChoice()!=modsTab)return true;
+            }
+        }
+        confirm();return true;
+    }
+    if(x>=trackListX&&x<trackListX+trackListWidth&&y>=trackListY&&y<trackListY+visibleModRows*trackRowPitch){
+        const int offset=int(y-trackListY),i=firstModRow+offset/trackRowPitch;
+        if(i<int(installedModCourses.size())&&offset%trackRowPitch<32){
+            if(!click&&modsFocus!=ModsFocus::Tracks)return false;
+            if(course!=installedModCourses[i])selectModTrack(installedModCourses[i]);
+            if(click)modsFocus=ModsFocus::Direction;
+            return click;
+        }
+    }
+    if(!click)return false;
+    if(y>=actionY&&y<actionY+actionH){
+        if(x>=trackListX&&x<trackListX+82){modsFocus=ModsFocus::Closed;return true;}
+        if(x>=optionX&&x<optionX+optionWidth){modsFocus=ModsFocus::Start;confirm();return true;}
+    }
+    if(x>=optionSplit&&x<optionX+optionWidth&&y>=optionY){
+        const int offset=int(y-optionY),i=offset/optionPitch;
+        if(i>2||offset%optionPitch>=optionHeight)return false;
+        const bool second=x>=optionSecond;
+        if(i==0){modsFocus=ModsFocus::Direction;reverse=second;}
+        if(i==1){modsFocus=ModsFocus::Surface;wet=second;}
+        if(i==2){if(courseRequiresNight(unsigned(course)))return false;modsFocus=ModsFocus::Time;night=second;}
+        return true;
+    }
+    return false;
 }
 void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtwork) {
     preloadedBanks={};
@@ -101,6 +253,7 @@ void Frontend::initialize(const std::filesystem::path& rootPath,bool preloadArtw
     carConfirmationFrame=-1;selectionExitFrame=-1;frameRemainder=0;carFrame=0;
     startRequested=false;selectionMusic={};selectionMusicCommands.clear();selectionMusicStageInitialized=false;
     stageInitialized=false;makerConfirmPending=false;makerTransition={};makerConfirmationPhase=0;
+    modsFocus=ModsFocus::Closed;lastModCourse=-1;
     carouselCourse=-1;courseSlot=courseScroll=displayedCourseScroll=0;
     buntaBadgeCourse=-1;buntaBadgeFrame=0;
     modeState={};original::selectOriginalGameMode(modeState,gameMode);modeMenu.load(rootPath);
@@ -143,12 +296,45 @@ void Frontend::collectPreloadedArtwork(){
         auto ready=preloadedBanks.get();banks.merge(ready);
     }
 }
+// These planar card tables pack the background, overprinted punctuation and
+// labels into the same draw batches. Sort individual depth runs once on load.
+static void orderOpponentTable(NativeModelChunk& chunk){
+    std::vector<NativeModelBatch> layers;
+    for(const auto& source:chunk.batches){
+        for(std::size_t first=0;first<source.indices.size();){
+            const auto depth=source.vertices[source.indices[first]].position.z;
+            auto end=first+3;
+            while(end<source.indices.size()&&source.vertices[source.indices[end]].position.z==depth)end+=3;
+            auto& layer=layers.emplace_back(source);
+            layer.indices.assign(source.indices.begin()+first,source.indices.begin()+end);
+            first=end;
+        }
+    }
+    // At equal depth, an opaque polygon with a strict depth test keeps the
+    // first write. The translucent lettering is composited over that surface.
+    const auto rank=[](const NativeModelBatch& b){
+        const auto list=(b.ich[0]>>24)&7u;
+        const auto order=list==0&&(b.ich[1]>>29)==4?~b.sourceOffset:b.sourceOffset;
+        return std::tuple{b.vertices[b.indices.front()].position.z,list,order};
+    };
+    std::stable_sort(layers.begin(),layers.end(),[&](const auto& a,const auto& b){return rank(a)<rank(b);});
+    chunk.batches=std::move(layers);
+}
 Frontend::Bank& Frontend::bank(const std::string& name) {
     collectPreloadedArtwork();
     auto found=banks.find(name);
     if(found!=banks.end()) return found->second;
-    const auto folder=assetRoot/name;
+    const bool cardField=name=="cardcheck"||name=="cardcheck_car"||name=="cardfont_a"||name=="cardfont_h"||name=="cardfont_k";
+    const auto folder=cardField?projectRoot/"data/original_assets/saved_data"/name:assetRoot/name;
     Bank loaded{NativeModel::load(folder/(name+".idasmesh")),NativeTextureBank::load(folder/"textures"/"textures.idastex")};
+    if(name=="v3sV00wait"){
+        for(auto& chunk:loaded.model.chunks)orderOpponentTable(chunk);
+    }else if(name=="select01"||name=="selvswait"){
+        for(auto& chunk:loaded.model.chunks)std::stable_sort(chunk.batches.begin(),chunk.batches.end(),[](const auto& a,const auto& b){
+            const auto depth=[](const auto& batch){return batch.vertices.empty()?0.f:batch.vertices.front().position.z;};
+            return depth(a)<depth(b);
+        });
+    }
     return banks.emplace(name,std::move(loaded)).first->second;
 }
 void Frontend::change(int delta) {
@@ -195,8 +381,19 @@ void Frontend::change(int delta) {
     }
     case FrontendStage::Course: {
         synchronizeCourseCarousel();
+        if(modsFocus!=ModsFocus::Closed){
+            if(modsFocus==ModsFocus::Tracks){
+                auto it=std::find(installedModCourses.begin(),installedModCourses.end(),course);
+                selectModTrack(installedModCourses[wrapped(int(it-installedModCourses.begin())+delta,int(installedModCourses.size()))]);
+            }else if(delta%2){
+                if(modsFocus==ModsFocus::Direction)reverse=!reverse;
+                else if(modsFocus==ModsFocus::Surface)wet=!wet;
+                else if(modsFocus==ModsFocus::Time)night=!night;
+            }
+            break;
+        }
         const auto choices=courseChoices();const int count=int(choices.size());
-        const int index=int(std::find(choices.begin(),choices.end(),course)-choices.begin());
+        const int index=int(std::find(choices.begin(),choices.end(),carouselChoice())-choices.begin());
         const int next=wrapped(index+delta,count);
         // Original194A00 selects one of five visible slots and scrolls at
         // either end over five original frames.
@@ -205,7 +402,10 @@ void Frontend::change(int delta) {
         } else if(wrapped(next-index,count)==1) {
             if(courseSlot<=3){++courseSlot;courseScroll=0;}else courseScroll=5;
         }
-        course=choices[std::size_t(next)];carouselCourse=course;displayedCourseScroll=courseScroll;
+        const int target=choices[std::size_t(next)];
+        if(target==modsTab)selectModTrack(lastModCourse<0?installedModCourses.front():lastModCourse);
+        else course=target;
+        carouselCourse=target;displayedCourseScroll=courseScroll;
         if(course==8){wet=true;night=true;}break;
     }
     case FrontendStage::Transmission: if(delta%2) automatic=!automatic; break;
@@ -229,6 +429,11 @@ bool Frontend::back() {
         return true;
     }
     if(carConfirmationFrame>=0)return true;
+    if(modsFocus!=ModsFocus::Closed){
+        if(modsFocus==ModsFocus::Tracks)modsFocus=ModsFocus::Closed;
+        else stepModsFocus(-1);
+        return true;
+    }
     if(stage==FrontendStage::Title) return false;
     if(stage==FrontendStage::SavedData){savedData_->cancel();return true;}
     if(stage==FrontendStage::Name){if(inputReady())nameInput.backPressed=true;return true;}
@@ -332,6 +537,12 @@ void Frontend::driverProfileLoaded(){
     }
 }
 void Frontend::changeColor(int delta){
+    if(stage==FrontendStage::Course&&modsFocus!=ModsFocus::Closed){
+        if(!inputReady()||!delta)return;
+        if(modsFocus==ModsFocus::Tracks)change(-delta);
+        else stepModsFocus(delta>0?-1:1);
+        return;
+    }
     if(stage==FrontendStage::SavedData){if(delta)savedData_->moveRow(delta);return;}
     if(stage==FrontendStage::SaveSelect){change(-delta);return;}
     if(stage==FrontendStage::Name){if(inputReady()&&delta)nameInput.rowJump=delta>0?-1:1;return;}
@@ -346,6 +557,16 @@ bool Frontend::confirm() {
     synchronizeStage();
     if(!inputReady())return false;
     if(startRequested)return false;
+    if(stage==FrontendStage::Course&&carouselChoice()==modsTab){
+        if(modsFocus==ModsFocus::Closed){
+            selectModTrack(course);
+            modsFocus=ModsFocus::Tracks;
+        }else if(modsFocus==ModsFocus::Start){
+            selectionExitFrame=0;
+            carConfirmationFrame=0;
+        }else stepModsFocus(1);
+        return false;
+    }
     if(stage==FrontendStage::SavedData){savedData_->confirm();return false;}
     if(stage==FrontendStage::Title){titleConfirmPending=true;return false;}
     if(stage==FrontendStage::SaveSelect){
@@ -462,6 +683,7 @@ void Frontend::synchronizeSelectionMusicStage(){
 void Frontend::synchronizeStage(){
     synchronizeSelectionMusicStage();
     if(stageInitialized&&observedStage==stage)return;
+    modsFocus=ModsFocus::Closed;
     observedStage=stage;stageInitialized=true;carFrame=0;carConfirmationFrame=-1;selectionExitFrame=-1;
     if(stage!=FrontendStage::TuningCourse)savedCarTuningCourse=false;
     if(stage!=FrontendStage::Transmission)savedCarTransmission=savedTransmissionReturnToCar=false;
@@ -551,7 +773,7 @@ void Frontend::advanceAttractChild(){
         if(completed)attractAudioEvents.push_back({7,oldFrame,true});
     }else if(attractChildId==11){gasstand.step();completed=gasstand.completed();
         if(completed)nextAttractScript=original::nextOriginalGasstandScript(gasstand.state().script);
-    }else if(attractChildId==12){rankingPlayback.step(rankingRecords,rankingInput);rankingInput={};completed=rankingPlayback.completed();}
+    }else if(attractChildId==12){rankingPlayback.step(rankingData(),rankingInput);rankingInput={};completed=rankingPlayback.completed();}
     ++titleFrame;
     if(completed){
         const auto completion=original::originalAttractCompletion(attractChildId,false,false);
@@ -596,7 +818,7 @@ void Frontend::advance(double seconds,bool modeCovered) {
                 appendSelectionMusic(original::exitOriginalSelectionMusic(selectionMusic));
             if(selectionExitFrame>15){
                 appendSelectionMusic(original::stopOriginalSelectionMusic(selectionMusic));
-                selectionExitFrame=-1;carConfirmationFrame=-1;startRequested=true;
+                selectionExitFrame=-1;carConfirmationFrame=-1;modsFocus=ModsFocus::Closed;startRequested=true;
                 frameRemainder=0;return true;
             }
             return false;
@@ -826,14 +1048,18 @@ void Frontend::drawMakeStrip(int width,int height) {
 }
 void Frontend::synchronizeCourseCarousel() {
     const auto choices=courseChoices();
-    if(std::find(choices.begin(),choices.end(),course)==choices.end())course=choices[3];
+    const int selected=carouselChoice();
+    if(std::find(choices.begin(),choices.end(),selected)==choices.end()||
+       (selected==modsTab&&!std::binary_search(installedModCourses.begin(),installedModCourses.end(),course))){
+        course=choices[3];modsFocus=ModsFocus::Closed;
+    }else if(selected==modsTab)lastModCourse=course;
     // Source19A940 resets the staggered progress stars only on selection
     // changes. Keep this separate from the scrolling carousel's identity.
     if(gameMode==original::OriginalGameMode::BuntaChallenge&&buntaBadgeCourse!=course){
         buntaBadgeCourse=course;buntaBadgeFrame=0;
     }
-    if(carouselCourse==course)return;
-    carouselCourse=course;courseSlot=0;courseScroll=displayedCourseScroll=0;
+    if(carouselCourse==carouselChoice())return;
+    carouselCourse=carouselChoice();courseSlot=0;courseScroll=displayedCourseScroll=0;
 }
 void Frontend::prepareRankingAttractFixture(unsigned page){
     if(page>=4)throw std::out_of_range("Ranking fixture model page");
@@ -916,7 +1142,7 @@ void Frontend::drawCourseCarousel(int width,int height) {
     // Original194C60, literals2A1594/194D78/194D80. The extra off-edge
     // tile and signed scroll are retained from the original draw loop.
     const auto choices=courseChoices();const int count=int(choices.size());
-    const int selectedIndex=int(std::find(choices.begin(),choices.end(),course)-choices.begin());
+    const int selectedIndex=int(std::find(choices.begin(),choices.end(),carouselChoice())-choices.begin());
     int index=wrapped(selectedIndex-courseSlot,count);
     const int first=displayedCourseScroll>0?-1:0;
     const int end=displayedCourseScroll<0?6:5;
@@ -932,7 +1158,7 @@ void Frontend::drawCourseCarousel(int width,int height) {
         const float scale=selected?1.f:(1.f-phase)*.9f;
         if(scale>0){
             const int selectedCourse=choices[std::size_t(index)];
-            if(isImportedCourse(selectedCourse))compositeImage(pixels,width,height,importedArtwork(selectedCourse).at(1),x-48*scale,128-32*scale,96*scale,64*scale);
+            if(selectedCourse==modsTab)drawModsTile(width,height,x,128.f,scale);
             else draw("v3sK01course",courseThumbnailChunk[std::size_t(selectedCourse)],width,height,x,128.f,scale);
         }
         index=wrapped(index+1,count);
@@ -1020,11 +1246,11 @@ void Frontend::drawCarCarousel(int width,int height) {
         index=wrapped(index+1,count);
     }
 }
-void Frontend::drawCarColorIndicator(int width,int height){
+void Frontend::drawCarColorIndicator(int width,int height,unsigned selected,unsigned count){
     const auto& rgb=original::carPaintPalettes.at(std::size_t(car));
-    const auto selected=selectedColor(),first=selected/8*8;
+    const auto first=selected/8*8;
     const auto commands=original::originalCarColorIndicatorDraws(first?35u:unsigned(car),selected-first,
-        std::span(rgb).subspan(first,std::min(8u,original::carPaintCount-first)));
+        std::span(rgb).subspan(first,std::min(8u,count-first)));
     auto& assets=bank("v3sS05cars");const float fit=std::min(float(width)/640.f,float(height)/480.f);
     struct PaletteBatch{NativeModelChunk chunk;SpritePlacement placement;float depth;};
     std::vector<PaletteBatch> batches;
@@ -1067,10 +1293,22 @@ void Frontend::advanceMenuBackdrop(double seconds){
     const auto frames=std::uint64_t(std::floor(menuBackdropRemainder+1.e-9));
     menuBackdropRemainder-=double(frames);menuBackdropFrame+=frames;
 }
+#include "frontend_battle_entry.inl"
+
 const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
     synchronizeStage();
     if(width<=0 || height<=0 || width>16384 || height>16384) throw std::invalid_argument("Invalid native menu dimensions");
     collectPreloadedArtwork();
+    if((width!=640||height!=480)&&(showingGasstand()||stage==FrontendStage::SavedData)){
+        // The original foreground fits the cabinet rectangle. Draw the scrolling
+        // pattern once underneath it at the actual viewport size.
+        displayedCanvas=nullptr;
+        displayPixels.resize(std::size_t(width)*height);
+        unityUiClear(displayPixels.data(),width,height);
+        if(stage==FrontendStage::SavedData)savedData_->paint(displayPixels,width,height,battleProfile);
+        else{gasstand.paint(displayPixels,width,height);paintAttractPrompts(displayPixels,width,height);}
+        return displayPixels;
+    }
     const auto& canvas=paintOriginalCanvas();
     if(width==640&&height==480)return canvas;
     const bool menuMargins=stage!=FrontendStage::Title&&std::int64_t(width)*3!=std::int64_t(height)*4;
@@ -1088,7 +1326,6 @@ const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     const int drawWidth=std::max(1,int(640.f*fit)),drawHeight=std::max(1,int(480.f*fit));
     const int left=(width-drawWidth)/2,top=(height-drawHeight)/2;
-    if(menuMargins&&stage==FrontendStage::SavedData)savedData_->paintBackground(displayPixels,width,height);
     unityUiCopy(displayPixels.data(),canvas.data(),width,height,float(drawWidth)/640,float(drawHeight)/480,float(left),float(top),true);
     if(!unityUiEnabled()){
     std::vector<int> columns(std::size_t(drawWidth),0);
@@ -1096,8 +1333,7 @@ const std::vector<std::uint32_t>& Frontend::paint(int width,int height) {
     for(int y=0;y<drawHeight;++y){const auto* row=canvas.data()+std::size_t(y*480/drawHeight)*640;auto* destination=displayPixels.data()+std::size_t(top+y)*width+left;
         for(int x=0;x<drawWidth;++x)destination[x]=row[columns[std::size_t(x)]];}
     }
-    if(showingGasstand())gasstand.extendBackdrop(displayPixels,width,height);
-    else if(menuMargins&&stage!=FrontendStage::SavedData)paintMenuMargins(displayPixels,width,height);
+    if(menuMargins)paintMenuMargins(displayPixels,width,height);
     if(stage==FrontendStage::Title&&attractChildId==7)demoOverlays.extendBackdrop(displayPixels,width,height,titleFrame?titleFrame-1:0);
     displayedCanvas=&canvas;displayedRevision=canvasRevision;displayedWidth=width;displayedHeight=height;
     displayedBackdropFrame=menuBackdropFrame;
@@ -1304,14 +1540,15 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
     }
     const bool courseRecords=gameMode==original::OriginalGameMode::TimeAttack &&
         (stage==FrontendStage::Course||stage==FrontendStage::Route||stage==FrontendStage::Weather||stage==FrontendStage::Time);
-    if(courseRecords){
+    if(stage==FrontendStage::Course){key.push_back(int(modsFocus));key.push_back(firstModRow);key.push_back(int(installedModCourses.size()));key.push_back(customMenuLanguage());}
+    if(courseRecords&&carouselChoice()!=modsTab){
         for(auto time:courseRecordTimes())key.push_back(std::bit_cast<std::int32_t>(time));
         for(auto recordCar:courseRecordCars())key.push_back(int(recordCar));
     }
     std::vector<int> motionKey;
     if(stage==FrontendStage::Car)motionKey={carouselSlot,displayedScroll,int(std::bit_cast<std::uint32_t>(carConfirmationPhase)),carConfirmationPhase<.01f?0:int(carFrame&6u),int(selectedColor())};
     if(stage==FrontendStage::Make)motionKey={int(std::bit_cast<std::uint32_t>(makerConfirmationPhase)),makerConfirmationPhase<.01f?0:int(carFrame&6u)};
-    if(stage==FrontendStage::Course)motionKey={courseSlot,displayedCourseScroll,carConfirmationFrame,carConfirmationFrame<0?0:int(carFrame&6u)};
+    if(stage==FrontendStage::Course&&modsFocus==ModsFocus::Closed)motionKey={courseSlot,displayedCourseScroll,carConfirmationFrame,carConfirmationFrame<0?0:int(carFrame&6u)};
     if(stage==FrontendStage::Course&&gameMode==original::OriginalGameMode::BuntaChallenge)motionKey.push_back(int(buntaBadgeFrame));
     if(choiceStage(stage))motionKey={stage==FrontendStage::Transmission?int(std::bit_cast<std::uint32_t>(transmissionConfirmationPhase)):carConfirmationFrame<0?0:1,carConfirmationFrame<0?0:int(carFrame&6u)};
     if(stage==FrontendStage::Transmission&&inspectionActive)motionKey.push_back(int(carFrame));
@@ -1322,6 +1559,8 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
     if(stage==FrontendStage::Title) {
         // Original central artwork overwrites every generated central pixel.
         draw("adv_newtitle",0,width,height); draw("adv_newtitle",1,width,height);
+    } else if(stage==FrontendStage::Course&&modsFocus!=ModsFocus::Closed){
+        drawModsPicker(width,height,installedModCourses);
     } else {
         if(!choiceStage(stage)){draw("v3sS00common",46,width,height);draw("v3sS00common",20,width,height);}
         switch(stage) {
@@ -1356,7 +1595,16 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
             draw("v3sK00common",83,width,height);
             draw("v3sK01course",26,width,height);
             draw("v3sK01course",14,width,height);
-            if(isImportedCourse(course)){drawHakoneBackdrop(width,height);break;}
+            if(carouselChoice()==modsTab){
+                menuRect(pixels,width,height,40,202,560,206,menuInk);
+                menuRect(pixels,width,height,40,202,560,3,menuAccent);
+                menuFont.paint(pixels,width,height,"MOD TRACKS",62,227,28,menuWhite);
+                const auto count=std::to_string(installedModCourses.size())+" INSTALLED";
+                menuFont.paint(pixels,width,height,count,63,275,15,menuMuted);
+                const auto& preview=importedArtwork(course).at(0);
+                compositeImage(pixels,width,height,preview,258,224,324,158);
+                break;
+            }
             draw("v3sK00common",courseBackgroundChunk[std::size_t(course)],width,height);
             draw("v3sK00common",30,width,height);
             draw("v3sK00common",courseDifficultyChunk[std::size_t(course)],width,height,0,168.f);
@@ -1372,15 +1620,15 @@ const std::vector<std::uint32_t>& Frontend::paintOriginalCanvas() {
         case FrontendStage::Mode: break; // Separate original mode composition above.
         }
     }
-    if(courseRecords)drawCourseRecords(width,height);
+    if(courseRecords&&carouselChoice()!=modsTab)drawCourseRecords(width,height);
     staticPixels=pixels;unityUiCopy(staticPixels.data(),pixels.data(),width,height);
     previousKey=key;
     }
     pixels=staticPixels;unityUiCopy(pixels.data(),staticPixels.data(),width,height);
-    if(stage==FrontendStage::Car){drawCarCarousel(width,height);drawCarColorIndicator(width,height);}
+    if(stage==FrontendStage::Car){drawCarCarousel(width,height);drawCarColorIndicator(width,height,selectedColor(),original::carPaintCount);}
     if(stage==FrontendStage::Make)drawMakeStrip(width,height);
     if(choiceStage(stage))drawChoiceMenu(width,height,true);
-    if(stage==FrontendStage::Course) {
+    if(stage==FrontendStage::Course&&modsFocus==ModsFocus::Closed) {
         drawCourseCarousel(width,height);
         // Original depth places these arrows in front of the scrolling row.
         // Keep that layering explicit in the depthless CPU compositor.

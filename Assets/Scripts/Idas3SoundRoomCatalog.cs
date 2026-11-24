@@ -31,7 +31,23 @@ internal static class Idas3SoundRoomCatalog
     }
     internal static Idas3RaceMusicMenu.Entry Decorate(Idas3RaceMusicMenu.Entry entry)
     {
-        var t=Find(entry.key);if(t==null)return entry;
+        var t=Find(entry.key);
+        if (t == null) {
+#if IDAS3_PORTABLE_PLAYER
+            if (entry.stage == 3) {
+                string dir = Path.Combine(Application.streamingAssetsPath, "IDAS3/data/original_audio/streams");
+                try { entry.discPreview = Idas3DiscMusicPreview.Open(dir, entry.key); }
+                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException) {
+                    Debug.LogWarning("Could not open preview for " + entry.title + ": " + error.Message);
+                }
+                if (entry.discPreview != null) {
+                    entry.duration = entry.discPreview.SongDuration;
+                    entry.collection = "Arcade Stage 3";
+                }
+            }
+#endif
+            return entry;
+        }
         entry.collection=t.collection;entry.duration=t.duration;entry.previewPath=AssetPath(t.preview);
         entry.coverPath=AssetPath(t.cover);entry.waveform=t.waveform;return entry;
     }

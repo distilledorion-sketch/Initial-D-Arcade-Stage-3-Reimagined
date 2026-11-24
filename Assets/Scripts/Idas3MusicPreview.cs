@@ -13,6 +13,9 @@ public sealed class Idas3MusicPreview : MonoBehaviour
     AudioClip pendingClip;
     Coroutine loading;
     UnityWebRequest request;
+#if IDAS3_PORTABLE_PLAYER
+    private System.Threading.CancellationTokenSource discRead;
+#endif
     int generation;
     bool audible,paused;
     volatile float outputGain=.7f;
@@ -28,7 +31,7 @@ public sealed class Idas3MusicPreview : MonoBehaviour
     internal float NormalizationGain {get;private set;}=1;
     public event Action<bool> AudibilityChanged;
 
-    void Awake(){source=GetComponent<AudioSource>();source.playOnAwake=false;source.loop=false;source.spatialBlend=0;source.ignoreListenerPause=true;source.volume=1;}
+    void Awake(){source=GetComponent<AudioSource>();source.playOnAwake=false;source.loop=false;source.spatialBlend=0;source.ignoreListenerPause=true;source.volume=1;if(Idas3SceneGame.SilentTestOutput)source.mute=true;}
     void Update(){RefreshGain();SetAudible(Playing);}
     void RefreshGain(){
         float gain=float.IsNaN(Gain)||float.IsInfinity(Gain)?.7f:Mathf.Clamp(Gain,0,Idas3GameOptions.MaximumVolume);
@@ -38,6 +41,7 @@ public sealed class Idas3MusicPreview : MonoBehaviour
     // AudioSource.volume is capped at one. Apply the user's gain to decoded
     // PCM here so preview, Music and Master boosts all work on the audio thread.
     void OnAudioFilterRead(float[] data,int channels){
+        if(Idas3SceneGame.SilentTestOutput){Array.Clear(data,0,data.Length);return;}
         float gain=outputGain;
         for(int i=0;i<data.Length;++i)data[i]=Mathf.Clamp(data[i]*gain,-1,1);
     }
@@ -50,13 +54,16 @@ public sealed class Idas3MusicPreview : MonoBehaviour
             else{source.time=0;source.Play();}
             SetAudible(Playing);return;
         }
-        Stop();if(string.IsNullOrEmpty(track.previewPath)&&string.IsNullOrEmpty(track.pcmPath))return;
+        Stop();if(!track.CanPreview)return;
         TrackId=track.id;Waveform=track.waveform;Loading=true;int ticket=generation;
         loading=StartCoroutine(Load(track,ticket));
     }
     public void Seek(float seconds){if(Duration>0)source.time=Mathf.Clamp(seconds,0,Mathf.Max(0,Duration-.025f));}
     public void Stop()
     {
+#if IDAS3_PORTABLE_PLAYER
+        if (discRead != null) { discRead.Cancel(); discRead.Dispose(); discRead = null; }
+#endif
         ++generation;if(loading!=null){StopCoroutine(loading);loading=null;}
         if(request!=null){request.Abort();request.Dispose();request=null;}
         if(source!=null){source.Stop();var old=source.clip;source.clip=null;if(old!=null)Destroy(old);}
@@ -67,14 +74,26 @@ public sealed class Idas3MusicPreview : MonoBehaviour
     IEnumerator Load(Idas3RaceMusicMenu.Entry track,int ticket)
     {
         AudioClip clip=null;
-        if(!string.IsNullOrEmpty(track.pcmPath)){
-            // Read at most thirty seconds from our imported PCM cache off the main thread.
-            var task=Task.Run(()=>ReadPcm(track));
+        float[] pcm=null;
+        Task<float[]> task=null;
+        int rate=track.pcmRate,channels=track.pcmChannels;
+#if IDAS3_PORTABLE_PLAYER
+        if (track.discPreview != null) {
+            discRead = new System.Threading.CancellationTokenSource();
+            var token = discRead.Token;
+            rate = track.discPreview.Rate;
+            channels = Idas3DiscMusicPreview.Channels;
+            task = Task.Run(() => track.discPreview.ReadSamples(token), token);
+        } else
+#endif
+        if (!string.IsNullOrEmpty(track.pcmPath)) task = Task.Run(() => ReadPcm(track));
+        if(task!=null){
             while(!task.IsCompleted)yield return null;
             if(ticket!=generation)yield break;
             if(task.IsFaulted||task.Result.Length==0){Fail("Preview unavailable.");yield break;}
-            var samples=task.Result;clip=AudioClip.Create("Custom music preview",samples.Length/track.pcmChannels,track.pcmChannels,track.pcmRate,false);
-            clip.SetData(samples,0);Waveform=Envelope(samples);
+            pcm=task.Result;
+            clip=AudioClip.Create("Music preview",pcm.Length/channels,channels,rate,false);
+            Waveform=Envelope(pcm);
         }else{
             try{request=UnityWebRequestMultimedia.GetAudioClip(new Uri(track.previewPath).AbsoluteUri,AudioType.MPEG);request.timeout=15;}
             catch(Exception){Fail("Preview unavailable.");yield break;}
@@ -88,9 +107,11 @@ public sealed class Idas3MusicPreview : MonoBehaviour
         // Normalize decoded PCM off the main thread using the same meter as race playback.
         // Retain the clip here so Stop also releases it if this coroutine is cancelled.
         pendingClip=clip;
-        var pcm=new float[clip.samples*clip.channels];
-        if(!clip.GetData(pcm,0)){Destroy(pendingClip);pendingClip=null;Fail("Preview unavailable.");yield break;}
-        int rate=clip.frequency,channels=clip.channels;
+        if(pcm==null){
+            pcm=new float[clip.samples*clip.channels];
+            if(!clip.GetData(pcm,0)){Destroy(pendingClip);pendingClip=null;Fail("Preview unavailable.");yield break;}
+        }
+        rate=clip.frequency;channels=clip.channels;
         var normalize=Task.Run(()=>Idas3Native.Idas3NormalizeMusicPreview(pcm,pcm.Length,rate,channels));
         while(!normalize.IsCompleted)yield return null;
         if(ticket!=generation)yield break;

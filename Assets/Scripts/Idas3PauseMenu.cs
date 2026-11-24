@@ -3,7 +3,7 @@ using UnityEngine;
 
 // The host owns pause/input/network behavior. This view emits explicit commands
 // and remains usable while an online race continues at its normal source rate.
-public sealed class Idas3PauseMenu : MonoBehaviour
+public sealed partial class Idas3PauseMenu : MonoBehaviour
 {
     public enum Command {None,Resume,Restart,ReturnToCourse,LeaveOnline,Quit,Retire,FullTune,Replays}
     private const float Width=1040,Height=680;
@@ -19,7 +19,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     public string CommunityStatus {get;set;}="Community times ready.";
     public Idas3Updates Updates {get;set;}
     private static readonly string[] DisplayModes={"WINDOWED","BORDERLESS","FULLSCREEN"};
-    private static readonly string[] CameraModes={"BUMPER","CHASE","NATURAL"};
+    private static readonly string[] CameraModes={"BUMPER","CHASE"};
     private static readonly string[] ControllerResponses={"FLYCAST GAMEPAD","PREVIOUS RESPONSE","FLYCAST WHEEL"};
     private static readonly int[] FrameCaps={0,30,60,90,120,144,165,240,360},AaValues={0,2,4,8};
     private Idas3GameOptions options;
@@ -103,7 +103,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     public void SetOpen(bool open)=>SetOpen(open,false);
     private void SetOpen(bool open,bool attractContext){
         blockThroughFrame=Time.frameCount+1;if(open==IsOpen)return;
-        IsOpen=open;bindingChoice=false;hudSizesOpen=false;
+        IsOpen=open;localRankingsOpen=false;bindingChoice=false;hudSizesOpen=false;
         if(open){
             AttractOptions=attractContext;
             previousCursorVisible=Cursor.visible;previousCursorLock=Cursor.lockState;
@@ -128,11 +128,12 @@ public sealed class Idas3PauseMenu : MonoBehaviour
     public void SelectTab(int index){
         if(!IsOpen)SetOpen(true);
         if(bindings!=null&&bindings.IsCapturing)return;
-        if(!showOptions){options.BeginEdit();bindings?.BeginEdit();}showOptions=true;tab=Wrap(index,Tabs.Length);selection=1;wheelEditing=false;hudSizesOpen=false;notice="";
+        if(!showOptions){options.BeginEdit();bindings?.BeginEdit();}showOptions=true;localRankingsOpen=false;tab=Wrap(index,Tabs.Length);selection=1;wheelEditing=false;hudSizesOpen=false;notice="";
         if(tab==3&&controllerDevices!=null)bindingColumn=controllerDevices.Controls.Count>0?3:0;
         if(tab==4)wheelFeedback?.RefreshDevices();
     }
     public void Navigate(int delta){
+        if(localRankingsOpen){ChangeRankPage(delta);return;}
         if(EditingLayout){HudEditor.Navigate(delta);return;}
         if(CustomizingHud){HudCustomization.Navigate(delta);return;}
         if(EditingHud)return;
@@ -144,6 +145,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         selection=showOptions?1+Wrap(selection-1+Math.Sign(delta),Rows+3):Wrap(selection+Math.Sign(delta),online?4:5);
     }
     public void NavigateHorizontal(int delta){
+        if(localRankingsOpen){ChangeRankPage(delta);return;}
         if(EditingLayout){HudEditor.NavigateHorizontal(delta,wheelNavigation);return;}
         if(CustomizingHud){if(wheelNavigation)HudCustomization.Navigate(delta);else HudCustomization.NavigateHorizontal(delta);return;}
         if(EditingHud)return;
@@ -156,6 +158,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(selection<=Rows){if(tab==3){if(DeviceRowSelected)ChangeControllerDevice(Math.Sign(delta));else bindingColumn=Wrap(bindingColumn+Math.Sign(delta),4);}else Adjust(selection-1,Math.Sign(delta));}
     }
     public void Activate(){
+        if(localRankingsOpen){localRankingsOpen=false;return;}
         if(EditingLayout){HudEditor.Activate();return;}
         if(CustomizingHud){HudCustomization.Activate();return;}
         if(EditingHud)return;
@@ -167,7 +170,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         if(selection==0){selection=1;return;}
         if(tab==2&&selection==5){if(FullTuneAvailable)queued=Command.FullTune;return;}
         if(tab==8&&selection==1){if(AttractOptions)Updates?.Activate();return;}
-        if(tab==5&&selection==2){Application.OpenURL(Idas3CommunityTimes.ServiceUrl);return;}
+        if(tab==5&&selection==2){OpenRankings();return;}
         if(tab==6&&selection==1){queued=Command.Replays;return;}
         if(tab==7&&!hudSizesOpen){
             if(selection==1){OpenHudCustomization();return;}
@@ -183,6 +186,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
         else if(selection==Rows+2)Apply();else Back();
     }
     public void Back(){
+        if(localRankingsOpen){localRankingsOpen=false;return;}
         if(EditingLayout){HudEditor.Back();return;}
         if(CustomizingHud){HudCustomization.Back();return;}
         if(EditingHud){HudEditor.Close(false);return;}
@@ -413,7 +417,7 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             Text(new Rect(710,77,295,23),Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?"UPDATE AVAILABLE — UPDATES":"v"+Application.version,small,Updates!=null&&Updates.State==Idas3Updates.CheckState.Available?PromptYellow:Muted);
             if(Button(new Rect(984,22,34,35),"×")){Back();if(!IsOpen)return;}
             bool enabled=GUI.enabled;GUI.enabled=enabled&&!Modal&&!BindingInputBlocked;
-            if(showOptions)OptionsView();else MainView();
+            if(localRankingsOpen)LocalRankingsView();else if(showOptions)OptionsView();else MainView();
             GUI.enabled=enabled;
             Fill(new Rect(24,630,Width-48,1),Edge);
             Text(new Rect(32,646,974,22),showOptions&&tab==3?"↑ ↓  DEVICE / ACTION    ← →  DEVICE / SLOT    ENTER / A  REBIND    ESC / B  BACK":"↑ ↓  SELECT    ← →  CHANGE    ENTER / A  CONFIRM    ESC / B  BACK",small);
@@ -535,10 +539,10 @@ public sealed class Idas3PauseMenu : MonoBehaviour
             Text(new Rect(288,485,687,56),help,wrapped);
         }else if(tab==5){
             ChoiceRow(0,"COMMUNITY TIMES",v.communityTimes?"ON":"OFF");
-            if(Button(new Rect(282,256,692,39),"VIEW LEADERBOARDS",selection==2)){selection=2;Application.OpenURL(Idas3CommunityTimes.ServiceUrl);}
+            if(Button(new Rect(282,256,692,39),UseLocalRankings?"LOCAL LEADERBOARD":"VIEW LEADERBOARDS",selection==2)){selection=2;OpenRankings();}
             ChoiceRow(2,"DISCORD RICH PRESENCE",v.discordPresence?"ON":"OFF");
             ChoiceRow(3,"LIGHTS-OFF ADVANTAGE",v.hideLightsOffAdvantage?"HIDDEN":"VISIBLE");
-            Text(new Rect(288,436,681,48),selection==4?"Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.":selection==3?"Shows your game activity in the Discord desktop app.":"Community Times shares race times only. Replays stay on this computer. Turning sharing off stops new submissions; posted times remain.",wrapped);
+            Text(new Rect(288,436,681,48),selection==4?"Hide the numerical gap when the opponent's headlights are off in night Online/LAN battles. Day races are unaffected.":selection==3?"Shows your game activity in the Discord desktop app.":UseLocalRankings?"Local rankings include Time Attack results from every save slot on this installation.":"Community Times shares race times only. Replays stay on this computer. Turning sharing off stops new submissions; posted times remain.",wrapped);
             Text(new Rect(288,490,681,45),CommunityStatus,wrapped);
         }else if(tab==6){
             if(Button(new Rect(282,197,692,39),"OPEN REPLAY LIBRARY",selection==1))queued=Command.Replays;

@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,8 +37,9 @@ namespace Idas3.Multiplayer
     public sealed class Idas3MultiplayerSession : IDisposable
     {
         const uint Magic = 0x504D3349;
-        const ushort Protocol = 11;
-        enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs, LobbyChat }
+        const ushort Protocol = 14;
+        int sentCourseMask,commonCourses;
+        enum Packet : byte { Hello=1, Lobby, Player, Load, Loaded, Release, ReleaseAck, Pose, Ping, Pong, Finish, Results, Leave, ReturnRequest, ReturnLobby, ReturnAck, RecordUpdate, AuthorityInputs, LobbyChat, BrakeVote, BeginLoading, BrakeSelected, AcceptBattle }
         // Retain this diagnostic property name; shared simulation is now the
         // normal online path, including rooms with car collisions switched off.
         public bool ExperimentalAuthority { get; } = true;
@@ -86,8 +92,10 @@ namespace Idas3.Multiplayer
                 if(found<0)throw new InvalidOperationException(Idas3Native.Error());
                 if(found==0)return null;
                 item.Saved=found==1;item.Automatic=item.Words[17]==0;
-                if(LocalSavedCar!=null&&item.SaveSlot==LocalSavedCar.SaveSlot&&item.Car==LocalSavedCar.Car)
+                if(LocalSavedCar!=null&&item.SaveSlot==LocalSavedCar.SaveSlot&&item.Car==LocalSavedCar.Car){
                     item.Automatic=LocalSavedCar.Automatic;
+                    if(!item.Saved&&!LocalSavedCar.Saved)item.Words[16]=LocalSavedCar.Words[16];
+                }
                 return item;
             }
             for(int slot=0;slot<5;++slot){
@@ -182,11 +190,20 @@ namespace Idas3.Multiplayer
         string state = "Offline";
         Exception terminalFailure;
         public bool Available => transport != null && transport.Available;
+        internal bool SupportsMatchmaking => transport is IIdas3MatchmakingTransport;
         public bool InLobby => transport != null && !string.IsNullOrEmpty(transport.RoomCode);
         public bool IsHost => transport != null && transport.IsHost;
         public bool IsRacing => nativeRace;
         public bool IsQuickMatching => transport is IIdas3QueuedMatchmakingTransport queued && queued.IsMatching || quickMatch != null && quickMatch.IsActive;
         bool matchAnnounced;
+        internal bool LocalBattleAccepted { get; private set; }
+        bool remoteBattleAccepted;
+        internal bool BattleAccepted => LocalBattleAccepted && remoteBattleAccepted;
+        internal void AcceptBattle(){
+            if(!HandshakeComplete||LocalBattleAccepted||IsRacing)return;
+            Send(Packet.AcceptBattle);
+            LocalBattleAccepted=true;
+        }
         public bool ChallengerPending { get; private set; }
         public event Action ChallengerFound;
         public void CompleteChallengerPresentation(){ChallengerPending=false;}
@@ -250,9 +267,14 @@ namespace Idas3.Multiplayer
         public Idas3RaceChoice LocalChoice { get; private set; } = new Idas3RaceChoice(3,false,false,true);
         public Idas3RaceChoice RemoteChoice { get; private set; } = new Idas3RaceChoice(3,false,false,true);
         public int CourseWinnerSlot { get; private set; } = -1;
+        // Both room nonces are random and odd. Bit one supplies the same fair opening draw on both cabinets.
+        internal static int OpeningPicker(ulong first,ulong second)=>(int)(((first^second)>>1)&1UL);
+        internal int CoursePickerSlot {get;private set;}=-1;
+        internal bool LocalPicksCourse=>CoursePickerSlot==(IsHost?0:1);
+        internal bool IsRematch=>retiredRaceIds.Count!=0;
         public bool HasCourseDraw => CourseWinnerSlot>=0;
         public Idas3RaceChoice SelectedChoice => HasCourseDraw?selectedChoice:LocalChoice;
-        public string CourseDrawText => HasCourseDraw?"RANDOM SELECTION: "+(CourseWinnerSlot==(IsHost?0:1)?Clean(transport?.LocalName):remoteName)+"'S PICK":"Each driver's course pick has a 50% chance.";
+        public string CourseDrawText => HasCourseDraw?"COURSE SELECTED":"Selecting a course.";
         public int Course => SelectedChoice.Course;
         public int LocalCar { get; private set; }
         public int TransportIndex { get; private set; }
@@ -276,8 +298,10 @@ namespace Idas3.Multiplayer
         public Idas3CarSnapshot LocalSnapshot { get; private set; }
         public Idas3CarSnapshot RemoteSnapshot { get; private set; }
         public IReadOnlyList<Idas3Room> Rooms => transport?.Rooms ?? emptyRooms;
-        public bool EnnaAvailable { get; } = File.Exists(Path.Combine(Application.streamingAssetsPath,"ENNA/menu.idastex"));
-        public int AvailableCourseCount { get {int count=0;for(int i=0;i<Idas3CourseCatalog.Count;++i)if(Idas3CourseCatalog.Available(i))++count;return count;} }
+        public bool EnnaAvailable=>CourseAvailable(11);
+        internal bool CourseAvailable(int id)=>Idas3CourseCatalog.Available(id)&&(!HandshakeComplete||(commonCourses&(1<<id))!=0);
+        public int NextAvailableCourse(int course,int step)=>Idas3CourseCatalog.NextAvailable(course,step,CourseAvailable);
+        public int AvailableCourseCount { get {int count=0;for(int i=0;i<Idas3CourseCatalog.Count;++i)if(CourseAvailable(i))++count;return count;} }
         public IReadOnlyList<Idas3PlayerInfo> Players { get { UpdatePlayers(); return players; } }
         public static readonly string[] CarNames = {
             "AE86 TRUENO","AE86 LEVIN","AE85 LEVIN","SW20 MR2","ZZW30 MR-S","SXE10 ALTEZZA","ST205 CELICA",
@@ -289,11 +313,36 @@ namespace Idas3.Multiplayer
         };
         static double Now => Time.realtimeSinceStartupAsDouble;
         static ulong Nonce() { var b = new byte[8]; using (var r = RandomNumberGenerator.Create()) r.GetBytes(b); return BitConverter.ToUInt64(b,0) | 1UL; }
-        // One unbiased bit per accepted start. Do not use Nonce(), whose low
-        // bit is deliberately forced to 1, or redraw independently on peers.
-        static int ChooseCourseSlot() { var b=new byte[1];using(var r=RandomNumberGenerator.Create())r.GetBytes(b);return b[0]&1; }
+        double selectionAt,lastBrakeNotice;
+        bool localBrake, remoteBrake, localVoteSent, remoteVoteReceived;
+        public bool ShowingCourseSelected => state=="CourseSelected";
+        public bool ShowingLoadArtwork => state=="BattleArtwork";
+        internal bool LocalBrakeSelected=>ShowingCourseSelected&&localBrake;
+        internal bool RemoteBrakeSelected=>ShowingCourseSelected&&remoteBrake;
+        internal string LocalDriverName=>Clean(transport?.LocalName);
+        internal void SampleBoostBrake(bool pressed) {
+            if(!pressed||!ShowingCourseSelected||localVoteSent||localBrake)return;
+            localBrake=true;lastBrakeNotice=Now;
+            Send(Packet.BrakeSelected,w=>w.Write(raceId));
+        }
+        void BeginCoursePresentation() {
+            state="CourseSelected";selectionAt=lastBrakeNotice=Now;
+            localBrake=remoteBrake=localVoteSent=remoteVoteReceived=false;
+        }
+        void AdvanceCoursePresentation(double now) {
+            if(ShowingCourseSelected && !localVoteSent && now-selectionAt>=5) {
+                localVoteSent=true;
+                if(!IsHost)Send(Packet.BrakeVote,w=>{w.Write(raceId);w.Write(localBrake);});
+            }
+            if(IsHost&&ShowingCourseSelected&&localVoteSent&&remoteVoteReceived&&now-lastBrakeNotice>=1.25) {
+                BoostEnabled=!(localBrake&&remoteBrake);
+                state="BattleArtwork";selectionAt=now;
+                Send(Packet.BeginLoading,w=>{w.Write(raceId);w.Write(BoostEnabled);});
+            }
+            if(ShowingLoadArtwork&&now-selectionAt>=1.5)LoadRace();
+        }
         public Idas3MultiplayerSession(int selectedCar=0,string saveRoot=null)
-            : this(new Idas3MultiplayerRecords(saveRoot??Path.Combine(Application.persistentDataPath,"userdata-unity-scene")),selectedCar) { }
+            : this(new Idas3MultiplayerRecords(saveRoot??Path.Combine(PlayerStorage.persistentDataPath,"userdata-unity-scene")),selectedCar) { }
         internal Idas3MultiplayerSession(Idas3MultiplayerRecords recordStore,int selectedCar) {
             impairment=new Idas3NetworkImpairment(()=>Now);
             LocalCar=Mathf.Clamp(selectedCar,0,34);
@@ -392,14 +441,20 @@ namespace Idas3.Multiplayer
                 ClearError();nextRoomRefresh=Time.realtimeSinceStartupAsDouble+15;transport.Browse();
             }
         }
-        public void QuickMatch()
+        public void QuickMatch()=>QuickMatch(false);
+        internal void QuickMatch(bool useDrivingCar)
         {
             OpenMenu();if(!RequireOnlineUsername()||nativeRace||DisconnectedFinish||!Available||Busy||InLobby||!(transport is IIdas3MatchmakingTransport matchmaking))return;
+            if(useDrivingCar){
+                int selection=Idas3MultiplayerNative.Idas3MultiplayerCurrentCar();
+                var car=garage.Find(item=>item.Selection==selection);
+                if(car!=null){SelectSavedCar(car);SetAutomatic(car.Words[17]==0);}
+            }
             ResetPeer();localNonce=Nonce();ClearError();state="Matching";ResultText="";
             if(transport is IIdas3QueuedMatchmakingTransport queued){quickMatch=null;queued.StartMatchmaking();return;}
             quickMatch=new Idas3QuickMatch(matchmaking,()=>Now,()=>UnityEngine.Random.value,Idas3LobbyNames.ForHost(transport.LocalName));
             quickMatch.Failed+=Fail;
-            quickMatch.Matched+=()=>{state="Lobby";status="Opponent found. Choose your car and course, then Ready. One driver's course is selected randomly.";};
+            quickMatch.Matched+=()=>{state="Lobby";status="Opponent found.";};
             quickMatch.Start();
         }
         public void CancelQuickMatch()
@@ -448,6 +503,26 @@ namespace Idas3.Multiplayer
             localReady=value;++localPlayerSerial;
             if (IsHost) SendLobby(); else SendPlayer();
         }
+        internal string OpponentName=>remoteName;
+        internal Idas3OnlineCar StockCar(int id){
+            // The saved garage hides duplicate stock models. Read the stock selector explicitly.
+            var car=garage.Find(c=>c.Selection==5+id);
+            if(car==null){
+                car=new Idas3OnlineCar{Selection=5+id};
+                int found=Idas3MultiplayerNative.Idas3MultiplayerReadCar(car.Selection,car.Words,307);
+                if(found<=0)throw new InvalidOperationException("Could not select the car.");
+                car.Automatic=car.Words[17]==0;car.Saved=found==1;garage.Add(car);
+            }
+            return car;
+        }
+        internal void SelectStockCar(Idas3OnlineCar car,int paint){
+            if(!car.Saved&&car.Words[16]!=(uint)paint){
+                var chosen=new Idas3OnlineCar{Selection=car.Selection,Automatic=car.Automatic,Words=(uint[])car.Words.Clone()};
+                chosen.Words[16]=(uint)paint;
+                garage[garage.IndexOf(car)]=chosen;car=chosen;
+            }
+            SelectSavedCar(car);
+        }
         public void SetCar(int car)
         {
             if(nativeRace||HasCourseDraw||Busy||car<0||car>=CarNames.Length)return;
@@ -457,8 +532,8 @@ namespace Idas3.Multiplayer
         }
         public void SetRaceOptions(int course, bool reverse, bool wet, bool night)
         {
-            if (nativeRace || HasCourseDraw || Busy || course < 0 || course >= Idas3CourseCatalog.Count) return;
-            if(!Idas3CourseCatalog.Available(course))return;
+            if (HandshakeComplete && !LocalPicksCourse || nativeRace || HasCourseDraw || Busy || course < 0 || course >= Idas3CourseCatalog.Count) return;
+            if(!CourseAvailable(course))return;
             var choice=new Idas3RaceChoice(course,reverse,wet,night);
             if(LocalChoice.Equals(choice))return;
             LocalChoice=choice;localReady=remoteReady=false;++localPlayerSerial;localSelectionSerial=localPlayerSerial;
@@ -478,10 +553,11 @@ namespace Idas3.Multiplayer
             Require(record.Valid,"Invalid driver battle record.");return record;
         }
         static void WriteChoice(BinaryWriter w,Idas3RaceChoice choice) {w.Write(choice.Course);w.Write(choice.Reverse);w.Write(choice.Wet);w.Write(choice.Night);}
-        static Idas3RaceChoice ReadChoice(BinaryReader r)
+        Idas3RaceChoice ReadChoice(BinaryReader r,bool negotiated=true)
         {
             int course=r.ReadInt32(); bool reverse=r.ReadBoolean(),wet=r.ReadBoolean(),night=r.ReadBoolean();
             Require(course>=0 && course<Idas3CourseCatalog.Count && (!Idas3CourseCatalog.RequiresNight(course) || night) && (course!=8 || wet&&night),"Invalid course options.");
+            if(negotiated&&HandshakeComplete)Require((commonCourses&(1<<course))!=0,"This course is not installed for both drivers.");
             return new Idas3RaceChoice(course,reverse,wet,night);
         }
         void PeerChanged()
@@ -489,7 +565,8 @@ namespace Idas3.Multiplayer
             if (leaving || disposing || DisconnectedFinish) return;
             if (transport.Connected) {
                 if (!helloSent) { ResetPeer(); helloSent=true; lastHeard=Now; operationAt=Now; state="Connecting";
-                    Send(Packet.Hello,w=>{w.Write(Compatibility());w.Write(IsHost);w.Write(Clean(transport.LocalName));w.Write(LocalCar);w.Write(localPlayerSerial);WriteChoice(w,LocalChoice);WriteRecord(w,LocalRecord);LocalSavedCar.Write(w);}); }
+                    sentCourseMask=Idas3RankedMaps.AvailableMask;
+                    Send(Packet.Hello,w=>{w.Write(Compatibility());w.Write(IsHost);w.Write(Clean(transport.LocalName));w.Write(LocalCar);w.Write(localPlayerSerial);WriteChoice(w,LocalChoice);WriteRecord(w,LocalRecord);LocalSavedCar.Write(w);w.Write(sentCourseMask);}); }
             } else if (HandshakeComplete || nativeRace || helloSent) {
                 if(state=="Returning"&&recordCommitted){ReturnToMode();return;}
                 if(nativeRace){DisconnectRace("Connection to the other driver was lost.");return;}
@@ -506,12 +583,7 @@ namespace Idas3.Multiplayer
                 using(var file=File.OpenRead(path)) complete="idas3-mp9-"+Convert.ToBase64String(hash.ComputeHash(file));
                 using(var file=File.OpenRead(typeof(Idas3MultiplayerSession).Assembly.Location)) complete+="-"+Convert.ToBase64String(hash.ComputeHash(file));
             }
-            for(int course=11;course<16;++course)
-                complete+="-"+course+"-"+SpecialStageFingerprint(Path.Combine(Application.streamingAssetsPath,Idas3CourseCatalog.Packs[course-9]),Idas3CourseCatalog.Slugs[course-9],course>=12&&course<=14,course==15);
-            complete+="-16-"+GunsaiFingerprint(Path.Combine(Application.streamingAssetsPath,"GUNSAI"));
-            complete+="-17-"+OdawaraFingerprint(Path.Combine(Application.streamingAssetsPath,"ODAWARA"));
             complete+=ExperimentalAuthority?"-authority1":"-pose1";
-            // Never cache an incomplete identity when reading a course fails.
             return compatibility=complete;
         }
         internal static string GunsaiFingerprint(string folder)=>IdZeroFingerprint(folder,"course.id","gunsai_path.bin","gunsai_path_l.bin","gunsai_path_r.bin","gunsai.rcl","gunsai-reverse.rcl","race.bin");
@@ -574,15 +646,21 @@ namespace Idas3.Multiplayer
                     case Packet.Hello:
                         Require(sender!=0 && recipient==0,"Invalid handshake.");
                         string build=r.ReadString();bool host=r.ReadBoolean();string name=r.ReadString();int car=r.ReadInt32();
-                        uint helloSerial=r.ReadUInt32();var helloChoice=ReadChoice(r);var helloRecord=ReadRecord(r);var helloCar=Idas3OnlineCar.Read(r,car);
+                        uint helloSerial=r.ReadUInt32();var helloChoice=ReadChoice(r,false);var helloRecord=ReadRecord(r);var helloCar=Idas3OnlineCar.Read(r,car);
                         Require(build==Compatibility(),"Both drivers need the same game build. Copy the complete Current folder to the other PC.");
                         Require(host!=IsHost && name.Length<=128 && car>=0 && car<35,"Invalid driver handshake.");
                         if (HandshakeComplete) { Require(sender==remoteNonce,"Driver session changed unexpectedly."); break; }
-                        remoteNonce=sender;remoteName=Clean(name);RemoteSavedCar=helloCar;remoteCar=car;remoteRecord=helloRecord;remotePlayerSerial=helloSerial;RemoteChoice=helloChoice;HandshakeComplete=true;state="Lobby";
+                        int advertised=r.ReadInt32();
+                        Require((advertised&Idas3RankedMaps.ArcadeMask)==Idas3RankedMaps.ArcadeMask&&(advertised>>Idas3CourseCatalog.Count)==0,"Invalid course list.");
+                        commonCourses=sentCourseMask&advertised;
+                        var fallback=new Idas3RaceChoice(3,false,false,true);
+                        if((commonCourses&(1<<LocalChoice.Course))==0)LocalChoice=fallback;
+                        if((commonCourses&(1<<helloChoice.Course))==0)helloChoice=fallback;
+                        remoteNonce=sender;CoursePickerSlot=OpeningPicker(localNonce,remoteNonce);remoteName=Clean(name);RemoteSavedCar=helloCar;remoteCar=car;remoteRecord=helloRecord;remotePlayerSerial=helloSerial;RemoteChoice=helloChoice;HandshakeComplete=true;state="Lobby";
                         if(HasOnlinePlayerDetails && transport.Connected && !string.IsNullOrEmpty(transport.RemoteId)) {
                             RecentOpponentPlayerId=transport.RemoteId;RecentOpponentPlayerName=remoteName;
                         }
-                        status="Choose your car and course, then Ready. The game randomly selects one driver's complete course pick when the host starts.";
+                        status="Connected.";
                         if(IsHost)SendLobby(); break;
                     case Packet.Lobby:
                         Require(!IsHost,"Unexpected room configuration.");
@@ -637,13 +715,32 @@ namespace Idas3.Multiplayer
                         ulong incomingRace=r.ReadUInt64();Require(incomingRace!=0,"Invalid race identity.");
                         uint loadRev=r.ReadUInt32();Require(loadRev==revision,"Race settings changed before start.");
                         int winnerSlot=r.ReadInt32();var winningChoice=ReadChoice(r);
-                        Require(!HasCourseDraw&&winnerSlot>=0&&winnerSlot<=1,"Invalid course selection result.");
-                        Require(winningChoice.Equals(winnerSlot==0?RemoteChoice:LocalChoice),"Selected race does not match that driver's agreed course pick.");
+                        Require(!HasCourseDraw&&winnerSlot==CoursePickerSlot,"Invalid course selection result.");
+                        Require(winningChoice.Equals(LocalPicksCourse?LocalChoice:RemoteChoice),"Selected race does not match that driver's agreed course pick.");
                         Require(m.Position==m.Length,"Unexpected extra race selection data.");
                         raceId=incomingRace;CourseWinnerSlot=winnerSlot;selectedChoice=winningChoice;
-                        LoadRace();break;
+                        BeginCoursePresentation();break;
+                    case Packet.AcceptBattle:
+                        remoteBattleAccepted=true;
+                        break;
+                    case Packet.BrakeSelected:
+                        if(r.ReadUInt64()==raceId&&ShowingCourseSelected&&!remoteBrake){
+                            remoteBrake=true;lastBrakeNotice=Now;
+                        }
+                        break;
+                    case Packet.BrakeVote:
+                        ulong voteRace=r.ReadUInt64();bool brakePressed=r.ReadBoolean();
+                        if(voteRace!=raceId)break;
+                        Require(IsHost&&ShowingCourseSelected&&!remoteVoteReceived,"Unexpected boost vote.");
+                        if(brakePressed&&!remoteBrake)lastBrakeNotice=Now;
+                        remoteBrake|=brakePressed;remoteVoteReceived=true;break;
+                    case Packet.BeginLoading:
+                        ulong confirmedRace=r.ReadUInt64();bool boost=r.ReadBoolean();
+                        if(confirmedRace!=raceId)break;
+                        Require(!IsHost&&ShowingCourseSelected&&localVoteSent,"Unexpected course confirmation.");
+                        BoostEnabled=boost;state="BattleArtwork";selectionAt=Now;break;
                     case Packet.Loaded:
-                        if(r.ReadUInt64()!=raceId)break;Require(IsHost&&nativeRace&&!RaceReleased,"Unexpected loading acknowledgement.");
+                        if(r.ReadUInt64()!=raceId)break;Require(IsHost&&(nativeRace||ShowingLoadArtwork)&&!RaceReleased,"Unexpected loading acknowledgement.");
                         remoteLoaded=true;lastHeard=Now;break;
                     case Packet.Release:
                         ulong startId=r.ReadUInt64();double hostAt=r.ReadDouble();
@@ -751,7 +848,7 @@ namespace Idas3.Multiplayer
             } catch(Exception e) { Fail("Connection stopped: "+e.Message); }
         }
         static bool Finite(double x)=>!double.IsNaN(x)&&!double.IsInfinity(x);
-        static bool IsRacePacket(Packet type) => type==Packet.Load||type==Packet.Loaded||type==Packet.Release||type==Packet.ReleaseAck||type==Packet.Pose||type==Packet.AuthorityInputs||type==Packet.Finish||type==Packet.Results||type==Packet.RecordUpdate;
+        static bool IsRacePacket(Packet type) => type==Packet.BrakeSelected||type==Packet.BrakeVote||type==Packet.BeginLoading||type==Packet.Load||type==Packet.Loaded||type==Packet.Release||type==Packet.ReleaseAck||type==Packet.Pose||type==Packet.AuthorityInputs||type==Packet.Finish||type==Packet.Results||type==Packet.RecordUpdate;
         public void ReturnToLobby()
         {
             if(DisconnectedFinish){LeaveRoom();ReturnedToLobby?.Invoke();return;}
@@ -795,6 +892,7 @@ namespace Idas3.Multiplayer
         void RetireNativeRace()
         {
             Require(nativeRace&&Idas3MultiplayerNative.Idas3MultiplayerLeave()==1,Idas3Native.Error());
+            CoursePickerSlot=1-CourseWinnerSlot;
             retiredRaceIds.Add(raceId);raceId=0;nativeRace=false;RaceReleased=false;
             localPresentationReady=loadedSent=false;
             localReady=remoteReady=remoteLoaded=releaseAck=finishSent=resultSent=remoteFinished=remoteTimeUp=false;
@@ -808,14 +906,10 @@ namespace Idas3.Multiplayer
         {
             try {
                 PollTransport();if(!CanStart)return;
-                raceId=Nonce();CourseWinnerSlot=ChooseCourseSlot();selectedChoice=CourseWinnerSlot==0?LocalChoice:RemoteChoice;
-                state="Loading";operationAt=Now;
+                raceId=Nonce();CourseWinnerSlot=CoursePickerSlot;selectedChoice=LocalPicksCourse?LocalChoice:RemoteChoice;
+                BeginCoursePresentation();operationAt=Now;
                 Send(Packet.Load,w=>{w.Write(raceId);w.Write(revision);w.Write(CourseWinnerSlot);WriteChoice(w,selectedChoice);});
-                if(!HandshakeComplete||!HasCourseDraw)return;
-                // Native loading initializes remoteLoaded. Only poll after it
-                // finishes, so a fast peer's Loaded reply cannot be rejected
-                // or erased before our own waiting race exists.
-                LoadRace();PollTransport();
+                PollTransport();
             }catch(Exception e){Fail("Could not load multiplayer race: "+e.Message);}
         }
         void LoadRace()
@@ -824,7 +918,7 @@ namespace Idas3.Multiplayer
             RaceLocalRecord=LocalRecord;RaceRemoteRecord=remoteRecord;recordCommitted=false;settlement=null;lastRecordSaveFailure=null;resultPresentationRetryAt=0;
             LocalContinueRequested=RemoteContinueRequested=ResultPeerLeft=false;
             TuningPointsEarned=BattlePointsEarned=0;
-            state="Loading";operationAt=Now;releaseAt=0;RaceReleased=remoteLoaded=releaseAck=finishSent=resultSent=remoteFinished=false;
+            state="Loading";operationAt=Now;releaseAt=0;RaceReleased=releaseAck=finishSent=resultSent=remoteFinished=false;
             localPresentationReady=loadedSent=false;
             LocalSnapshot=RemoteSnapshot=previousPose=default;RemoteSnapshotsReceived=SnapshotsSent=0;ResultText="";
             poseCount=0;
@@ -890,10 +984,11 @@ namespace Idas3.Multiplayer
                 matchAnnounced=true;ChallengerPending=true;ChallengerFound?.Invoke();
             }
             double now=Now;
+            if(HandshakeComplete&&(ShowingCourseSelected||ShowingLoadArtwork))AdvanceCoursePresentation(now);
             if(state=="Connecting" && !(transport is IIdas3MatchmakingTransport pending&&pending.IsBusy) && now-operationAt>35) {Fail("The other driver did not complete the connection.");return;}
             if(!HandshakeComplete)return;
             if(state=="Returning"&&now-operationAt>30){Fail("The other driver did not return to the lobby.");return;}
-            if(now-lastHeard>(state=="Loading"?60:15)) {Fail("Connection to the other driver timed out.");return;}
+            if(now-lastHeard>(state=="Loading"||ShowingLoadArtwork?60:15)) {Fail("Connection to the other driver timed out.");return;}
             if(now-lastPing>.35) {
                 lastPing=lastPingStamp=now;
                 if(pendingPings.Count>=20)pendingPings.Clear();
@@ -1087,7 +1182,8 @@ namespace Idas3.Multiplayer
         void ResetPeer()
         {
             lobbyChat.Clear();
-            matchAnnounced=false;ChallengerPending=false;
+            matchAnnounced=false;ChallengerPending=false;CoursePickerSlot=-1;
+            LocalBattleAccepted=remoteBattleAccepted=false;
             HandshakeComplete=false;helloSent=false;remoteNonce=0;localReady=remoteReady=false;bestRtt=double.MaxValue;PingMilliseconds=-1;recentRtt.Clear();RecentRttMilliseconds=JitterMilliseconds=0;
             remoteLoaded=releaseAck=false;releaseAt=0;lastPing=0;
             localPresentationReady=loadedSent=false;

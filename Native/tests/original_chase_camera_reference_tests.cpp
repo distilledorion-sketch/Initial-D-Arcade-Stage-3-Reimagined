@@ -6,8 +6,9 @@ using namespace idas3::reference;
 int main(int argc,char** argv)try{
     if(argc!=3)throw std::runtime_error("project-root canonical-image required");
     const std::filesystem::path root=argv[1];
-    for(auto drivingView:{OriginalDrivingView::Bumper,OriginalDrivingView::Chase}){
-    const bool bumper=drivingView==OriginalDrivingView::Bumper;
+    for(unsigned sequence=0;sequence<3;++sequence){
+    auto drivingView=sequence==1?OriginalDrivingView::Chase:OriginalDrivingView::Bumper;
+    bool bumper=drivingView==OriginalDrivingView::Bumper;
     RefMemory memory(argv[2]);auto camera=OriginalChaseCamera::load(root,drivingView);
     constexpr unsigned obj=0xd000000,car=0xd010000,actor=0xd020000,stack=0xd030000,frame=0xd040000,context=0xd050000,view=0xd060000,output=0xd070000,matrixStack=0xce00000,stop=0xf000000;
     for(auto address:{obj,car,actor,stack,frame,context,view,output,matrixStack})memory.zeroRegion(address,0x10000);
@@ -19,8 +20,12 @@ int main(int argc,char** argv)try{
     RefCpu cpu(memory);cpu.fscaHalfWave=wave;cpu.callHooks[0xc221fc0]=[](RefCpu& c){c.r[0]=context;};
     std::size_t instructions=0,comparisons=0;auto equal=[&](unsigned a,unsigned b,const char* label){++comparisons;if(a!=b){std::cerr<<label<<" native="<<std::hex<<a<<" source="<<b<<std::dec<<" comparison="<<comparisons<<'\n';throw std::runtime_error("Original chase differential failed");}};
     // Execute the original chase-profile literal setup and09D640 initializer.
-    memory.write32(frame+192,car);memory.write32(frame+216,obj);memory.write32(frame+204,obj);cpu.r[14]=frame;cpu.r[15]=stack+0xf000;
-    instructions+=cpu.run(bumper?0xc0a99a4:0xc0a9ae4,bumper?0xc0a9a1a:0xc0a9b5c,2000);
+    const auto initializeProfile=[&]{
+        memory.write32(frame+192,car);memory.write32(frame+216,obj);memory.write32(frame+204,obj);
+        cpu.r[14]=frame;cpu.r[15]=stack+0xf000;
+        instructions+=cpu.run(bumper?0xc0a99a4:0xc0a9ae4,bumper?0xc0a9a1a:0xc0a9b5c,2000);
+    };
+    initializeProfile();
     equal(memory.read32(obj+128),bumper?0x3f800000:0x3fd9999a,"profile height");equal(memory.read32(obj+132),bumper?0xbf800000:0x40933333,"profile distance");
     equal(memory.read32(obj+60),bumper?0x3f800000:0x41f00000,"profile recurrence");equal(memory.read32(obj+64),std::bit_cast<unsigned>(bumper?OriginalChaseCamera::sourceBumperFieldOfView:OriginalChaseCamera::sourceVerticalFieldOfView),"profile FOV");
     for(unsigned tick=0;tick<360;++tick){
@@ -34,6 +39,16 @@ int main(int argc,char** argv)try{
         cpu.r[13]=car;cpu.r[14]=frame+0x1000;cpu.r[15]=stack+0xf000;cpu.r[0]=context;
         instructions+=cpu.run(0xc03485c,0xc034924,3000);
         for(unsigned i=0;i<3;++i)equal(memory.read32(car+0x9b8+i*4),memory.read32(actor+24+i*4),"raw actor angle binding");
+        if(sequence==2&&(tick==24||tick==28||tick==40||tick==150||tick==220)){
+            constexpr auto outgoing=obj+0x1000;
+            for(unsigned i=20;i<=68;i+=4)memory.write32(outgoing+i,memory.read32(obj+i));
+            bumper=!bumper;drivingView=bumper?OriginalDrivingView::Bumper:OriginalDrivingView::Chase;
+            initializeProfile();
+            cpu.r[4]=obj;cpu.r[5]=outgoing;cpu.r[15]=stack+0xf000;cpu.pr=stop;
+            instructions+=cpu.run(0xc09db20,stop,1000);
+            auto next=OriginalChaseCamera::load(root,drivingView);
+            next.transitionFrom(camera);camera=std::move(next);
+        }
         if(tick==0){ // The source starts with the current actor angles.
             cpu.r[4]=obj;cpu.r[15]=stack+0xf000;cpu.pr=stop;instructions+=cpu.run(0xc09dbc0,stop,1000);
         }
@@ -45,6 +60,6 @@ int main(int argc,char** argv)try{
         const unsigned phase=memory.read32(view+152);const float expected=float(phase)*std::bit_cast<float>(0x40c90fdbu)/65536.f;
         equal(std::bit_cast<unsigned>(native.verticalFieldOfView),std::bit_cast<unsigned>(expected),"projection phase");
     }
-    std::cout<<"PASS 360 sequential original "<<(bumper?"bumper":"chase")<<" frames, "<<comparisons<<" bit-exact comparisons, "<<instructions<<" original instructions. Only the exception-context provider is hooked; camera state, actor binding and all matrix/trigonometry execute source bytes.\n";
+    std::cout<<"PASS 360 sequential original "<<(sequence==2?"switch/reversal":bumper?"bumper":"chase")<<" frames, "<<comparisons<<" bit-exact comparisons, "<<instructions<<" original instructions. Only the exception-context provider is hooked; camera state, actor binding and all matrix/trigonometry execute source bytes.\n";
     }
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}

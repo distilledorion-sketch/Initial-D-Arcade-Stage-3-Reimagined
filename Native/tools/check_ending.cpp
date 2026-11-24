@@ -128,7 +128,7 @@ int main(int argc,char** argv)try{
     check(footage.ready()&&footage.highlightSize()==EndingReplay::highlightCapacity,"Live race did not fill highlight recording");
     check(length(footage.playbackFrame(4600).cars[0].body-footage.playbackFrame(4599).cars[0].body)>.01f,
         "Driving stopped before the late credits");
-    const auto physics=app->originalSession.rollbackDigest();
+    const auto physics=app->originalSession.rollbackDigest(false);
     const auto raceLightPacket=original::originalCourseLightingPacket(*app->raceLighting,original::originalLightIdentityMatrix);
     const auto raceTicks=app->race.ticks;
     // Boundary coverage: overwrite oldest, preserve chronological order,
@@ -145,13 +145,17 @@ int main(int argc,char** argv)try{
     std::array<Vec3,3> referenceTargets{};
     std::array<std::vector<unsigned>,3> referenceSmoke;
     unsigned smokeTicks=0,smokeDraws=0;
+    const auto fpsSeed=app->originalSession.sharedRandomSeed();
     for(unsigned fps:{30u,60u,144u,240u}){
+        // Replay this same captured owner boundary for each display rate.
+        app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
         app->endingReplay=footage;
         app->beginEnding();check(app->extraModeVisitActive(),"Ending input ownership");
+        check(app->originalSession.sharedRandomSeed()==fpsSeed,"Beginning ending rewound or advanced shared RNG");
         app->commands(1);check(app->endingActive,"Generic command interrupted ending");
         check(app->endingCamera.updates()==0,"Ending camera inherited earlier playback state");
         auto expectedCamera=app->endingCamera;
-        auto expectedSmoke=app->endingSmoke;auto expectedRandom=app->endingRandom;
+        auto expectedSmoke=app->endingSmoke;auto expectedRandom=app->originalSession.sharedRandomSeed();
         auto expectedLeaves=app->endingLeaves;
         unsigned renders=0;
         while(app->endingActive&&renders<fps*100){
@@ -173,7 +177,7 @@ int main(int argc,char** argv)try{
                 }
                 const auto actual=app->endingCamera.target(),expected=expectedCamera.target();
                 check(actual.x==expected.x&&actual.y==expected.y&&actual.z==expected.z,"Camera advanced on render time instead of original ticks");
-                check(app->endingRandom==expectedRandom,"Ending split camera/smoke/leaf random streams");
+                check(app->originalSession.sharedRandomSeed()==expectedRandom,"Ending split camera/smoke/leaf random streams");
                 check(app->endingLeaves.updates()==app->endingCamera.updates(),"Ending leaves did not advance once per source tick");
                 smokeTicks+=!app->endingSmoke.order().empty();
                 if(renders==fps*10||renders==fps*40||renders==fps*75){
@@ -187,11 +191,13 @@ int main(int argc,char** argv)try{
             }
             if(fps==60&&(renders==600||renders==2400||renders==4600||renders==5100)){
                 check(app->renderEnding(0),"Ending frame");
-                const auto smokeBefore=smokeState(app->endingSmoke);const auto seedBefore=app->endingRandom;
+                const auto smokeBefore=smokeState(app->endingSmoke);const auto seedBefore=app->originalSession.sharedRandomSeed();
+                const auto repaintPhysics=app->originalSession.rollbackDigest();
                 Mesh smokeMesh;
                 smokeDraws+=app->endingSmokePresentation.appendSystem(app->endingSmoke,smokeMesh,app->endingCamera.eye(),app->endingCamera.target(),
                     {0,1,0},OriginalEndingCamera::fieldOfView(),4.f/3.f,app->endingSmokeTextureBase,1,480.f);
-                check(smokeState(app->endingSmoke)==smokeBefore&&app->endingRandom==seedBefore,"Drawing ending smoke mutated its state");
+                check(smokeState(app->endingSmoke)==smokeBefore&&app->originalSession.sharedRandomSeed()==seedBefore,"Drawing ending smoke mutated its state");
+                check(app->originalSession.rollbackDigest()==repaintPhysics,"Repaint changed completed race state");
                 check(app->ending.timeline.finalCard||app->endingTexturesLoaded,"Driving backdrop was not rendered");
                 if(!app->ending.timeline.finalCard){
                     check(app->endingLightSets.has_value(),"Ending lighting was not initialized");
@@ -216,27 +222,34 @@ int main(int argc,char** argv)try{
             if(renders==fps*10){
                 check(app->audio.legendStreamStatistics().stream==12&&app->audio.legendStreamStatistics().playing,"Ending music not playing");
                 const auto tick=app->ending.timeline.frame,updates=app->endingCamera.updates();
-                const auto smokeBefore=smokeState(app->endingSmoke);const auto randomBefore=app->endingRandom;
+                const auto smokeBefore=smokeState(app->endingSmoke);const auto randomBefore=app->originalSession.sharedRandomSeed();
+                const auto pausedPhysics=app->originalSession.rollbackDigest();
                 app->paused=true;app->advanceEnding(.2);app->paused=false;
                 check(app->ending.timeline.frame==tick,"Paused credits moved");
                 check(app->endingCamera.updates()==updates,"Paused credits advanced camera");
-                check(smokeState(app->endingSmoke)==smokeBefore&&app->endingRandom==randomBefore,"Paused credits advanced smoke/random state");
+                check(smokeState(app->endingSmoke)==smokeBefore&&app->originalSession.sharedRandomSeed()==randomBefore,"Paused credits advanced smoke/random state");
+                check(app->originalSession.rollbackDigest()==pausedPhysics,"Paused credits changed completed race state");
             }
         }
         check(app->legendRunCompleted&&!app->endingActive&&app->frontend.stage==FrontendStage::Title,"Ending did not reach title");
         check(app->ending.timeline.totalFrame==5460,"Ending depends on render FPS");
         check(!app->audio.legendStreamStatistics().playing,"Ending stream leaked into title");
         check(app->battleProfile.words==before,"Ending re-awarded or changed profile");
-        check(app->originalSession.rollbackDigest()==physics&&app->race.ticks==raceTicks,"Ending stepped race simulation");
+        check(app->originalSession.rollbackDigest(false)==physics&&app->race.ticks==raceTicks,"Ending stepped race simulation");
         check(!app->endingReplay.ready()&&app->endingReplay.size()==0,"Ending retained race recording after exit");
         check(app->endingCamera.updates()==0,"Ending retained camera state after exit");
-        check(app->endingSmoke.order().empty()&&app->endingSmoke.freeParticles()==60&&app->endingRandom==1,"Ending retained smoke after exit");
+        check(app->endingSmoke.order().empty()&&app->endingSmoke.freeParticles()==60,"Ending retained smoke after exit");
+        check(app->originalSession.sharedRandomSeed()==expectedRandom,"Ending exit discarded consumed shared RNG");
         check(!app->endingLightSets&&!app->endingCourseLighting&&!app->endingCourseAnimation.active(),"Ending retained lighting/animation owner after exit");
     }
     check(smokeTicks>0,"Natural Legend recording never emitted replay smoke");
     std::cout<<"Ending smoke active samples "<<smokeTicks<<", submitted clouds "<<smokeDraws<<'\n'<<std::flush;
     app->endingReplay=footage;
-    app->beginEnding();app->input.down[VK_ESCAPE]=true;
+    const auto skipSeed=app->originalSession.sharedRandomSeed();
+    app->beginEnding();check(app->originalSession.sharedRandomSeed()==skipSeed,"Beginning another ending rewound consumed RNG");
+    app->advanceEnding(1./60);const auto restartedSeed=app->originalSession.sharedRandomSeed();
+    app->beginEnding();check(app->originalSession.sharedRandomSeed()==restartedSeed,"Restarting active ending rewound shared RNG");
+    app->input.down[VK_ESCAPE]=true;
     check(app->renderEnding(1./60)&&app->ending.timeline.frame==1,"Held dialogue skip skipped credits");
     app->input.down[VK_ESCAPE]=false;app->renderEnding(0);
     app->input.down[VK_ESCAPE]=true;app->renderEnding(1./60);
@@ -263,7 +276,7 @@ int main(int argc,char** argv)try{
             if(app->endingReplay.size()>old)nightClip.record(app->endingReplay.recentFrame(unsigned(app->endingReplay.size()-1)),*app->courseLightFsca,.7f,0);
         }
         check(nightClip.highlightSize()==600,"Night fixture did not record real driving poses");
-        const auto nightPhysics=app->originalSession.rollbackDigest();
+        const auto nightPhysics=app->originalSession.rollbackDigest(false);
         const auto nightProfile=app->battleProfile.words;
         const auto raceAnimationPhase=app->courseAnimation.phase();
         const std::array raceHeadlights{projectionState(app->playerProjectedHeadlight),projectionState(app->rivalProjectedHeadlight)};
@@ -279,7 +292,9 @@ int main(int argc,char** argv)try{
         }
         std::array<std::vector<unsigned>,2> fixedRateProjection;
         std::vector<unsigned> fixedRateSmoke,fixedRateRain;unsigned fixedRateRandom=0,totalGlareDraws=0;
+        const auto nightFpsSeed=app->originalSession.sharedRandomSeed();
         for(unsigned fps:{30u,60u,144u,240u}){
+            app->originalSession.withSharedRandom([&](auto& seed){seed=nightFpsSeed;});
             app->endingReplay=nightClip;app->beginEnding();
             check(app->endingRain.active()==rain,"Wrong ending rain admission");
             if(rain){check(app->endingRain.owner().preserveStreakMotion==1,"Ending lost original rain motion mode");
@@ -287,8 +302,8 @@ int main(int argc,char** argv)try{
             for(unsigned render=0;render<fps*10;++render){app->advanceEnding(1./fps);
                 if(fps==60)totalGlareDraws+=unsigned(app->endingRain.glare().size());}
             check(app->endingCourseAnimation.phase()==600,"Night ending tick count differs by host FPS");
-            if(fps==30){fixedRateSmoke=smokeState(app->endingSmoke);fixedRateRandom=app->endingRandom;fixedRateRain=rainState(app->endingRain);}
-            else {check(smokeState(app->endingSmoke)==fixedRateSmoke&&app->endingRandom==fixedRateRandom,"Night/wet ending smoke depends on host FPS");
+            if(fps==30){fixedRateSmoke=smokeState(app->endingSmoke);fixedRateRandom=app->originalSession.sharedRandomSeed();fixedRateRain=rainState(app->endingRain);}
+            else {check(smokeState(app->endingSmoke)==fixedRateSmoke&&app->originalSession.sharedRandomSeed()==fixedRateRandom,"Night/wet ending smoke depends on host FPS");
                 check(rainState(app->endingRain)==fixedRateRain,"Rain records, glare or collision cache depend on host FPS");}
             for(unsigned i=0;i<2;++i){const auto state=projectionState(app->endingProjectedHeadlights[i]);
                 if(fps==30)fixedRateProjection[i]=state;
@@ -300,7 +315,7 @@ int main(int argc,char** argv)try{
         if(rain){
             check(app->endingRainTextureBase==app->endingSmokeTextureBase+app->smokeTextures.size(),"Rain texture bank overlap");
             check(totalGlareDraws>0,"Actual road queries never accepted ending rear glare");
-            const auto before=rainState(app->endingRain);const auto seed=app->endingRandom;
+            const auto before=rainState(app->endingRain);const auto seed=app->originalSession.sharedRandomSeed();
             Mesh weather;const auto drawn=app->endingRain.append(weather,app->endingRainTextureBase,*app->courseLightFsca);
             check(drawn.streaks>0&&drawn.splashes>0&&drawn.mist>0,"Ending omitted one rain particle family");
             check(weather.vertices.size()==6u*(drawn.streaks+drawn.splashes+drawn.mist+drawn.glare),"Rain source quads not submitted");
@@ -309,7 +324,7 @@ int main(int argc,char** argv)try{
             for(const auto& range:weather.ranges){check(range.original&&range.emissive&&range.viewMask==1&&!range.courseLighting&&!range.carLighting,"Rain inherited car lighting or rear view");
                 check(range.texture>=app->endingRainTextureBase&&range.texture<app->endingRainTextureBase+11,"Rain texture outside authored bank");}
             app->renderEnding(0);app->paused=true;app->advanceEnding(.5);app->paused=false;
-            check(rainState(app->endingRain)==before&&app->endingRandom==seed,"Rain rendering or pause advanced queries/state/RNG");
+            check(rainState(app->endingRain)==before&&app->originalSession.sharedRandomSeed()==seed,"Rain rendering or pause advanced queries/state/RNG");
             std::ofstream(out/"rain-summary.txt")<<"streaks="<<drawn.streaks<<" splashes="<<drawn.splashes<<" mist="<<drawn.mist
                 <<" glare="<<drawn.glare<<" accepted_glare_over_600_ticks="<<totalGlareDraws<<"\n";
         }
@@ -352,13 +367,14 @@ int main(int argc,char** argv)try{
             check(app->renderer.saveBitmap((out/"ending-akagi-night-wet-no-smoke.bmp").wstring()),"No-smoke control image");
             app->endingSmoke=savedSmoke;check(app->renderEnding(0),"Restore ending smoke after control");
         }
-        const auto phase=app->endingCourseAnimation.phase();app->renderEnding(0);
+        const auto phase=app->endingCourseAnimation.phase();const auto repaintPhysics=app->originalSession.rollbackDigest();app->renderEnding(0);
         app->paused=true;app->renderEnding(.25);app->paused=false;
-        check(smokeState(app->endingSmoke)==fixedRateSmoke&&app->endingRandom==fixedRateRandom,"Ending repaint advanced smoke/random state");
+        check(smokeState(app->endingSmoke)==fixedRateSmoke&&app->originalSession.sharedRandomSeed()==fixedRateRandom,"Ending repaint advanced smoke/random state");
+        check(app->originalSession.rollbackDigest()==repaintPhysics,"Night ending repaint changed completed race state");
         for(unsigned i=0;i<2;++i)check(projectionState(app->endingProjectedHeadlights[i])==fixedRateProjection[i],"Ending repaint advanced headlight geometry/queries");
         check(projectionState(app->playerProjectedHeadlight)==raceHeadlights[0]&&projectionState(app->rivalProjectedHeadlight)==raceHeadlights[1],"Ending changed live race headlight owners");
         check(app->endingCourseAnimation.phase()==phase&&app->courseAnimation.phase()==raceAnimationPhase,"Ending repaint changed presentation/race animation clocks");
-        check(app->originalSession.rollbackDigest()==nightPhysics&&app->battleProfile.words==nightProfile,"Night ending changed race physics/profile");
+        check(app->originalSession.rollbackDigest(false)==nightPhysics&&app->battleProfile.words==nightProfile,"Night ending changed race physics/profile");
         #include "../tests/ending_glare_application_checks.inl"
         // Seed only the recorded lamp bits to cover blind-attack playback.
         // The moving poses remain real captured race frames.
@@ -384,6 +400,6 @@ int main(int argc,char** argv)try{
     app->load();
     check(smokeDraws>0,"No recorded ending smoke was submitted to rendering");
     check(runLegendRunSmoke(*app,out/"legend-run")==0,"Full Legend result-to-ending flow");
-    std::ofstream(out/"PASS.txt")<<checks<<" checks; real two-car Legend recording with archives disabled,43% highlight trigger and bounded two-buffer playback/cleanup, driving backdrop, source ending camera and fixed-tick spring/shake, ending roll/final artwork/music,30/60/144/240 FPS, pause, repeated render, held-input guard, skip, unchanged physics/profile; separate simulated Akagi night dry/wet clips with seeded highlights, camera lighting, fog, independent prop animation, original projected headlights with publication delay, render-rate independence, separate road queries, recorded blind attack and restart cleanup; captured actor smoke inputs, replay-specific rear-wheel smoke/spray/dust, private shared camera/smoke RNG, exact particle state across host FPS and paused/repeated renders, submitted original smoke geometry.\n";
+    std::ofstream(out/"PASS.txt")<<checks<<" checks; real two-car Legend recording with archives disabled,43% highlight trigger and bounded two-buffer playback/cleanup, driving backdrop, source ending camera and fixed-tick spring/shake, ending roll/final artwork/music,30/60/144/240 FPS, pause, repeated render, held-input guard, skip, unchanged physics/profile; separate simulated Akagi night dry/wet clips with seeded highlights, camera lighting, fog, independent prop animation, original projected headlights with publication delay, render-rate independence, separate road queries, recorded blind attack and restart cleanup; captured actor smoke inputs, replay-specific rear-wheel smoke/spray/dust, canonical shared camera/smoke RNG, exact particle state across host FPS and paused/repeated renders, submitted original smoke geometry.\n";
     std::cout<<"PASS "<<checks<<" ending application checks\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

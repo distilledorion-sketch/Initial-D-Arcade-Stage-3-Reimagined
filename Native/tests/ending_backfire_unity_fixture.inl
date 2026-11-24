@@ -42,27 +42,42 @@ void prepareEndingBackfireUnityFixture(App& app,unsigned scene){
             }
         }
         if(clip.highlightSize()!=1800||!playerFlags)throw std::runtime_error("Ending backfire fixture did not record trigger-bearing driving");
+        const auto replaySeed=app.originalSession.sharedRandomSeed();
         app.endingReplay=clip;app.beginEnding();
         if(!app.endingBackfire.enabled()[0]||!app.endingBackfire.enabled()[1])throw std::runtime_error("Missing tuned Evo ending owner");
-        unsigned best=0;sample=0;
+        unsigned best=0,bestSeed=0;sample=0;
+        OriginalEndingBackfire bestBackfire;
         for(unsigned tick=0;tick<1800;++tick){
             app.advanceEnding(1./60);if(tick<180)continue;
             const auto& fields=app.endingBackfire.fields();
             const unsigned score=unsigned(fields.cars[0].presentedFrame>=0)*(scenario==3?1:2)+
                 unsigned(fields.cars[1].presentedFrame>=0)*(scenario==3?2:1);
-            if(score>best){best=score;sample=tick+1;}if(best==3)break;
+            if(score>best){best=score;sample=tick+1;bestSeed=app.originalSession.sharedRandomSeed();bestBackfire=app.endingBackfire;}if(best==3)break;
         }
         if(best<2)throw std::runtime_error("Recorded ending never produced the selected driver's backfire");
+        // Reconstruct the selected diagnostic frame from the same captured
+        // input boundary. Production beginEnding deliberately retains the
+        // shared stream; it must not rewind the preceding search for us.
+        app.originalSession.withSharedRandom([&](auto& word){word=replaySeed;});
         app.endingReplay=clip;app.beginEnding();for(unsigned tick=0;tick<sample;++tick)app.advanceEnding(1./60);
+        if(app.originalSession.sharedRandomSeed()!=bestSeed||
+            app.endingBackfire.fields().updates!=bestBackfire.fields().updates||
+            app.endingBackfire.fields().primarySoundRequest!=bestBackfire.fields().primarySoundRequest)
+            throw std::runtime_error("Ending diagnostic replay did not reproduce its selected RNG boundary");
+        for(unsigned i=0;i<2;++i){const auto& a=app.endingBackfire.fields().cars[i];const auto& b=bestBackfire.fields().cars[i];
+            if(a.active!=b.active||a.frame!=b.frame||a.presentedFrame!=b.presentedFrame||
+                std::bit_cast<unsigned>(a.variation)!=std::bit_cast<unsigned>(b.variation))
+                throw std::runtime_error("Ending diagnostic replay did not reproduce its selected backfire");
+        }
         if(scenario==3){
             const auto& frame=app.endingReplay.playbackFrame(sample-1);const auto& world=frame.cars[1].visualWorld;
             constexpr auto e=OriginalEndingCamera::eyeOffset,t=OriginalEndingCamera::targetOffset;
             const auto eye=original::transformOriginalPoint(world,{e.x,e.y,e.z});
             const auto target=original::transformOriginalPoint(world,{t.x,t.y,t.z});
-            app.endingCamera.reset({eye[0],eye[1],eye[2]},{target[0],target[1],target[2]},app.endingRandom);
+            app.endingCamera.reset({eye[0],eye[1],eye[2]},{target[0],target[1],target[2]},app.originalSession.sharedRandomSeed());
             app.updateEndingLighting(frame);
         }
-        saved=app.endingBackfire;physics=app.originalSession.rollbackDigest();seed=app.endingRandom;prepared=scenario;
+        saved=app.endingBackfire;physics=app.originalSession.rollbackDigest();seed=app.originalSession.sharedRandomSeed();prepared=scenario;
         std::ofstream(app.saveRoot.parent_path()/("ending-backfire-"+std::to_string(scenario)+"-recording.txt"))
             <<"sample="<<sample<<" recorded flags="<<playerFlags<<'/'<<rivalFlags<<'\n';
     }else{
@@ -70,7 +85,7 @@ void prepareEndingBackfireUnityFixture(App& app,unsigned scene){
         if(phase==1)app.endingBackfire.reset();else app.endingBackfire=saved;
     }
     app.input={};if(!app.renderEnding(0))throw std::runtime_error(app.renderer.error);
-    if(app.originalSession.rollbackDigest()!=physics||app.endingRandom!=seed)throw std::runtime_error("Ending backfire repaint changed physics or RNG");
+    if(app.originalSession.rollbackDigest()!=physics||app.originalSession.sharedRandomSeed()!=seed)throw std::runtime_error("Ending backfire repaint changed physics or RNG");
     const auto& frame=app.endingReplay.playbackFrame(sample-1);Mesh flame;
     const unsigned count=app.endingBackfire.append(flame,app.backfire,frame,app.endingBackfireTextureBase);
     if((phase==1)!=(count==0))throw std::runtime_error("Backfire comparison did not change submission");

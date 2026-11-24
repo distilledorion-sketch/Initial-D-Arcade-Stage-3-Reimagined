@@ -66,7 +66,15 @@ OriginalRaceHud OriginalRaceHud::load(const std::filesystem::path& root){
                 }
             }
         }
-        if(!std::isfinite(minX))throw std::runtime_error("Original countdown texture contains no visible ink");
+        if(!std::isfinite(minX)){
+            const bool skinned=std::any_of(chunk.batches.begin(),chunk.batches.end(),[&](const auto& batch){
+                return out.modelTextures_.at(batch.material[9]).hasTextureSkin;
+            });
+            if(!skinned)throw std::runtime_error("Original countdown texture contains no visible ink");
+            // A transparent custom countdown has no visible pixels to center.
+            out.startSignalCenters_[index]={};
+            continue;
+        }
         out.startSignalCenters_[index]={(minX+maxX)*.5f,(minY+maxY)*.5f,0};
     }
     {

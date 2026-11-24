@@ -23,6 +23,46 @@ namespace Idas3.Multiplayer
         private int port,course,checks,pulse,maxPeerRanges,maxPeerMainRanges;
         private bool finished,frozen,driving,raceObserved,onlineCheck,pauseCheck,showcaseCheck,courseDrawCheck,musicCheck,disconnectCheck,returnCheck,finishMusicCheck;
         private bool returnCheckInProgress,acceleratedReturnWait;
+        // Read-only, opt-in return diagnostic. Keep every original input and
+        // timeout; buffered observations distinguish animation from rearming.
+        [Serializable] private class ResultInputObservation {
+            public string marker;
+            public double seconds;
+            public int unityFrame,nativePage,pointsPhase,pageFrame,pointsFrame,nativeInputState;
+            public int managedPage,openedFrame,queuedPulse,consumedPulse;
+            public bool armed,blocked,entered,previousConfirm,previousCancel;
+            public bool canAcknowledge,savePending,inputCovered,textCapture,frozen,rawConfirm;
+            public uint rawFlags;
+        }
+        [Serializable] private class ResultInputTrace {
+            public string scope="Read-only result selectors and managed state. Pending bit1=blocked, bit2=confirm, bit4=cancel. Raw sample precedes ProcessResultsInput; wait samples follow the host update. No input, timeout, animation or release guard is changed.";
+            public int dropped;
+            public List<ResultInputObservation> samples=new List<ResultInputObservation>();
+        }
+        private readonly ResultInputTrace resultInputTrace=new ResultInputTrace();
+        private bool traceResultInput;
+        private static readonly System.Reflection.FieldInfo[] ResultInputFields=Array.ConvertAll(
+            new[]{"resultsInputArmed","resultsInputBlocked","resultsEntered","resultsPreviousConfirm","resultsPreviousCancel","resultsOpenedFrame"},
+            name=>typeof(Idas3MultiplayerMenu).GetField(name,System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic));
+        private void ObserveResultInput(string marker,int consumedPulse=0,uint rawFlags=0,bool rawConfirm=false){
+            if(!traceResultInput||menu==null)return;
+            var sample=new ResultInputObservation {
+                marker=marker,seconds=diagnosticClock.Elapsed.TotalSeconds,unityFrame=Time.frameCount,
+                nativePage=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(0),
+                pointsPhase=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5),
+                pageFrame=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(4),
+                pointsFrame=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(8),
+                nativeInputState=Idas3MultiplayerNative.Idas3MultiplayerResultScreen(9),
+                managedPage=menu.ResultsPage,openedFrame=(int)ResultInputFields[5].GetValue(menu),
+                armed=(bool)ResultInputFields[0].GetValue(menu),blocked=(bool)ResultInputFields[1].GetValue(menu),
+                entered=(bool)ResultInputFields[2].GetValue(menu),previousConfirm=(bool)ResultInputFields[3].GetValue(menu),
+                previousCancel=(bool)ResultInputFields[4].GetValue(menu),canAcknowledge=menu.CanAcknowledgeReturnToLobby,
+                savePending=session.ResultSavePending,inputCovered=menu.InputCovered,textCapture=menu.CapturesTextInput,
+                frozen=frozen,queuedPulse=pulse,consumedPulse=consumedPulse,rawFlags=rawFlags,rawConfirm=rawConfirm
+            };
+            if(resultInputTrace.samples.Count<4096)resultInputTrace.samples.Add(sample);
+            else {++resultInputTrace.dropped;resultInputTrace.samples[4095]=sample;}
+        }
         private bool lobbyAutoClosed,liveMenuReopened,secondLobbyAutoClosed;
         private bool? priorDiagnosticFocus;
         private double began,releaseObservedAt=-1,firstPoseObservedAt=-1,lastPoseObservedAt=-1;
@@ -40,6 +80,55 @@ namespace Idas3.Multiplayer
         private ulong lastProgressTick;
         private Idas3AuthorityStatus lastAuthority;
         private int authorityStallFrames,maxObservedPing;
+        // Diagnostic observations only. The native stalled field is a cached
+        // last-attempt flag; authorityStallFrames remains the original count.
+        [Serializable] private struct AuthorityTracePoint {
+            public string marker,phase;
+            public double diagnosticSeconds,hostWallDeltaSeconds;
+            public long utcUnixMilliseconds;
+            public int unityFrame,racePhase,stallObservations,captures,recoveryPackets,recoveries;
+            public bool frozen,driving,released;
+            public ulong frame,confirmed,verified,localTicks,remoteTicks,localSnapshotSequence,remoteSnapshotSequence;
+            public uint stalled;
+        }
+        private readonly List<AuthorityTracePoint> authorityTrace=new List<AuthorityTracePoint>();
+        private AuthorityTracePoint authorityFirstObservation,authorityLastObservation;
+        private bool authorityTraceObserved;
+        private int authorityTraceDropped;
+        private double diagnosticFrameDelta;
+        private AuthorityTracePoint AuthorityPoint(string marker) {
+            var status=session.AuthorityStatus;var local=session.LocalSnapshot;var remote=session.RemoteSnapshot;
+            return new AuthorityTracePoint{marker=marker,phase=phase,diagnosticSeconds=diagnosticClock.Elapsed.TotalSeconds,
+                hostWallDeltaSeconds=diagnosticFrameDelta,utcUnixMilliseconds=DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),unityFrame=Time.frameCount,racePhase=host.Status.racePhase,
+                stallObservations=authorityStallFrames,captures=shots.Count,recoveryPackets=session.AuthorityRecoveryPacketsSent,
+                recoveries=session.AuthorityRecoveries,frozen=frozen,driving=driving,released=session.RaceReleased,
+                frame=status.frame,confirmed=status.confirmed,verified=status.verified,stalled=status.stalled,
+                localTicks=local.raceTicks,remoteTicks=remote.raceTicks,localSnapshotSequence=local.sequence,remoteSnapshotSequence=remote.sequence};
+        }
+        private void AppendAuthorityPoint(AuthorityTracePoint point,string marker) {
+            point.marker=marker;
+            if(authorityTrace.Count<4096)authorityTrace.Add(point);else ++authorityTraceDropped;
+        }
+        private void TraceAuthorityEvent(string marker) {
+            if(session==null||host==null||!session.ExperimentalAuthority)return;
+            AppendAuthorityPoint(AuthorityPoint(marker),marker);
+        }
+        private void ObserveAuthorityTrace() {
+            var point=AuthorityPoint(null);
+            if(!authorityTraceObserved){authorityFirstObservation=point;AppendAuthorityPoint(point,"first-authority-observation");}
+            else if((point.stalled!=0)!=(authorityLastObservation.stalled!=0)) {
+                if(authorityLastObservation.stalled!=0)AppendAuthorityPoint(authorityLastObservation,"last-stalled-observation");
+                AppendAuthorityPoint(point,point.stalled!=0?"stall-began":"stall-ended");
+            }else if(point.stalled!=0&&(point.phase!=authorityLastObservation.phase||point.frozen!=authorityLastObservation.frozen||
+                point.racePhase!=authorityLastObservation.racePhase||point.frame!=authorityLastObservation.frame||
+                point.confirmed!=authorityLastObservation.confirmed||point.verified!=authorityLastObservation.verified||
+                point.captures!=authorityLastObservation.captures||point.recoveryPackets!=authorityLastObservation.recoveryPackets||
+                point.recoveries!=authorityLastObservation.recoveries)) {
+                AppendAuthorityPoint(authorityLastObservation,"last-stall-context-observation");
+                AppendAuthorityPoint(point,"stall-context-changed");
+            }
+            authorityLastObservation=point;authorityTraceObserved=true;
+        }
 
 
         [Serializable] private class ChoiceRecord {
@@ -92,6 +181,10 @@ namespace Idas3.Multiplayer
             public bool authorityEnabled,menuPixelsChecked,mirrorInputFixture,boostEnabled,collisionsEnabled;
             public Idas3AuthorityStatus authority;
             public int authorityStallFrames,maxObservedPing;
+            public string authorityTraceScope="Cached native status at managed observations; raw lifetime stall count unchanged. Event timestamps use the local diagnostic Stopwatch. Last-observation records may refer to an earlier observation, not a new native attempt. No pause, capture, recovery or pre-GO stall is excused.";
+            public AuthorityTracePoint authorityFirstObservation,authorityLastObservation;
+            public AuthorityTracePoint[] authorityEvents;
+            public int authorityTraceDropped;
             public double configuredRttMs,configuredJitterMs,configuredLossPercent;
             public long droppedPackets;
 
@@ -114,6 +207,7 @@ namespace Idas3.Multiplayer
         private string largestConnectedGapPhase="";
         private static bool P2pRaceCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-p2p-check")>=0||Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-relay-check")>=0;
         private static string P2pScope=>Argument(Environment.GetCommandLineArgs(),"-idas3-probe-scope","");
+        private static bool ArcadeEntryCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-arcade-entry-check")>=0;
         private static bool WorldOnly=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-world-only")>=0;
         private static bool ObserveStartOnly=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-observe-start")>=0;
         private static bool ChallengerCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-challenger-check")>=0;
@@ -253,8 +347,11 @@ namespace Idas3.Multiplayer
                 if(ScoredCheck){frame.padConnected=mapped.padConnected;frame.padButtons=mapped.padButtons;
                     frame.thumbLX=mapped.thumbLX;frame.thumbLY=mapped.thumbLY;frame.rightTrigger=mapped.rightTrigger;frame.leftTrigger=mapped.leftTrigger;}
             }
+            int observedPulse=active.pulse;
             if(active.pulse!=0){frame.SetKey(active.pulse);active.pulse=0;}
             if(active.preloadHeldKey!=0)frame.SetKey(active.preloadHeldKey);
+            active.ObserveResultInput("raw-before-results-owner",observedPulse,frame.flags,
+                HasKey(frame,13)||(frame.padButtons&0x1000)!=0);
             return true;
         }
         private static string Argument(string[] args,string key,string fallback)
@@ -272,13 +369,15 @@ namespace Idas3.Multiplayer
         {
             if(finished)return;
             double diagnosticNow=diagnosticClock.Elapsed.TotalSeconds;
+            diagnosticFrameDelta=lastDiagnosticFrame>=0?diagnosticNow-lastDiagnosticFrame:0;
+            if(previousFrameConnected&&diagnosticFrameDelta>=.1)TraceAuthorityEvent("connected-host-gap-at-least-100ms");
             if(lastDiagnosticFrame>=0&&previousFrameConnected&&diagnosticNow-lastDiagnosticFrame>maxConnectedFrameGapSeconds){
                 maxConnectedFrameGapSeconds=diagnosticNow-lastDiagnosticFrame;largestConnectedGapPhase=phase;
             }
             lastDiagnosticFrame=diagnosticNow;previousFrameConnected=session.HandshakeComplete||session.IsRacing;
             if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-profile")>=0){QualitySettings.vSyncCount=0;Application.targetFrameRate=240;}
             if(host.Failure!=null){Finish(false,host.Failure);return;}
-            double timeout=ScoredCheck||OnlinePreloadCheck?900:returnCheck?360:240;
+            double timeout=ScoredCheck||OnlinePreloadCheck?900:ArcadeEntryCheck?600:returnCheck?360:240;
             if(Time.realtimeSinceStartupAsDouble-began>timeout){Finish(false,"Multiplayer diagnostic exceeded "+timeout+" seconds.");return;}
             if(session.IsRacing&&session.RaceReleased&&!returnCheckInProgress&&!ScoredCheck)ObserveRace();
         }
@@ -308,7 +407,7 @@ namespace Idas3.Multiplayer
         }
         private void Phase(string value)
         {
-            phase=value;File.WriteAllText(Path.Combine(root,"status.json"),JsonUtility.ToJson(new RoomNotice{
+            phase=value;TraceAuthorityEvent("phase:"+value);File.WriteAllText(Path.Combine(root,"status.json"),JsonUtility.ToJson(new RoomNotice{
                 role=role,code=roomCode,phase=phase,port=port,course=course,utc=DateTime.UtcNow.ToString("O")},true));
         }
         private bool PeerConnected()
@@ -345,10 +444,10 @@ namespace Idas3.Multiplayer
         }
         private void CheckLockedCourseDraw(){
             Check(courseReadinessInvalidated&&session.HasCourseDraw,"Race started without the synchronized choice check.");
-            int winner=session.CourseWinnerSlot;Check(winner==0||winner==1,"Selected course winner is not a player slot.");
+            int winner=session.CourseWinnerSlot;Check(winner==session.CoursePickerSlot,"Course selection changed cabinets before the start.");
             var selected=winner==0?HostCoursePick:GuestCoursePick;
             Check(session.SelectedChoice.Equals(selected)&&CoursePicksAgree(GuestCoursePick),"Selected complete course does not match the winning player's agreed pick.");
-            string text=session.CourseDrawText;Check(text.Contains(winner==0?"SMOKE HOST":"SMOKE JOIN"),"Selected-player result uses the wrong identity.");
+            string text=session.CourseDrawText;Check(text=="COURSE SELECTED","Missing shared course confirmation.");
             var source=new Idas3PreRaceSmoke.PreRaceStatus{size=(uint)Marshal.SizeOf<Idas3PreRaceSmoke.PreRaceStatus>()};
             Check(Idas3SceneGetPreRaceStatus(ref source)==1&&host.Status.course==selected.Course&&source.condition==(uint)(selected.Course*2+(selected.Reverse?1:0)),"Actual native course/route differs from selected choice.");
             int car=session.LocalCar;session.SetRaceOptions(7,false,false,false);session.SetCar(34);session.SetReady(false);session.StartRace();
@@ -401,7 +500,7 @@ namespace Idas3.Multiplayer
                     role=role,code=roomCode,phase="room-open",port=P2pRaceCheck?0:port,course=course,utc=DateTime.UtcNow.ToString("O"),probeScope=P2pRaceCheck?P2pScope:""},true));
             }else{
                 Phase("joining");
-                if(OnlinePreloadCheck)yield return Until(()=>File.Exists(Path.Combine(peerRoot,"room.json")),30,"Preload host did not open its local room.");
+                if(OnlinePreloadCheck||ArcadeEntryCheck)yield return Until(()=>File.Exists(Path.Combine(peerRoot,"room.json")),ArcadeEntryCheck?360:30,"The host did not open its local room.");
                 if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-lan-entry-check")>=0){
                     var notice=JsonUtility.FromJson<RoomNotice>(File.ReadAllText(Path.Combine(peerRoot,"room.json")));
                     Check(notice!=null&&notice.role=="host"&&notice.port==27035&&!string.IsNullOrEmpty(notice.code),"Missing normal LAN host address.");
@@ -416,7 +515,12 @@ namespace Idas3.Multiplayer
                 }
                 if(ChallengerCheck)session.QuickMatch();else session.JoinRoom(address);
             }
-            yield return Until(()=>session.HandshakeComplete&&PeerConnected(),90,"Two-client handshake did not complete.");
+            yield return Until(()=>session.HandshakeComplete&&PeerConnected(),ArcadeEntryCheck?360:90,"Two-client handshake did not complete.");
+            if(ArcadeEntryCheck){
+                yield return CheckArcadeEntry();Finish(true,null);yield break;
+            }
+            // Connection and driving probes run unattended. The entry probe above exercises both real menu choices.
+            session.AcceptBattle();
             if(P2pRaceCheck){
                 connectionType=OnlineTransport().ConnectionType;
                 Check(connectionType=="direct"||connectionType=="relayed","EOS did not report the established peer connection type.");
@@ -425,35 +529,14 @@ namespace Idas3.Multiplayer
             }
             if(ChallengerCheck){
                 var overlay=host.GetComponent<Idas3ChallengerOverlay>();
-                yield return Until(()=>overlay.Active,5,"Admitted peer did not announce challenger");
-                RecordChallengerState("announced");
-                Check(!overlay.SearchingVisible&&!session.CanReady&&!menu.IsOpen,"Found match left search badge/Ready/lobby visible");
-                var tick=host.Status.simulationTicks;
-                yield return new WaitForSecondsRealtime(.45f);
-                Check(host.Status.simulationTicks==tick,"Offline race advanced under challenger banner");
-                RecordChallengerState("before-capture");
-                yield return CaptureChallenger("challenge-received");
-                RecordChallengerState("after-capture");
+                yield return Until(()=>menu.BattleEntry.Active,5,"Admitted peer did not reach course selection");
+                Check(!overlay.Active&&!overlay.SearchingVisible&&!session.ChallengerPending&&overlay.Announcements==1,"Match handoff retained the interruption or search badge");
                 if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-challenger-drop-check")>=0){
-                    if(role=="join"){RecordChallengerState("leaving");session.LeaveRoom();}
-                    yield return Until(()=>!session.HandshakeComplete&&!overlay.Active,10,"Disconnected challenger retained input/modal hold");
-                    RecordChallengerState("cancelled");
-                    if(role=="host"){
-                        // Hidden players can render 15 frames in less than one
-                        // 60 Hz simulation tick. Observe native progress, not
-                        // a machine-dependent number of Unity frames.
-                        tick=host.Status.simulationTicks;
-                        yield return Until(()=>host.Status.simulationTicks>=tick+3,2,"Cancelled challenger did not resume offline race");
-                        RecordChallengerState("resumed-three-ticks");
-                        Check((host.Status.flags&1u)==0&&host.Status.racePhase==2&&!menu.IsOpen,
-                            "Cancelled challenger changed the running offline race owner");
-                    }
+                    if(role=="join")session.LeaveRoom();
+                    yield return Until(()=>!session.HandshakeComplete&&!menu.BattleEntry.Active,10,"Disconnect retained the course or opponent menu");
                     Check(!overlay.SearchingVisible&&!session.ChallengerPending,"Disconnected challenger retained search badge");
                     Finish(true,null);yield break;
                 }
-                yield return Until(()=>!overlay.Active&&session.CanReady,15,"Challenger did not enter ready lobby");
-                Check(host.Status.frontendStage==6&&(host.Status.flags&1)!=0&&menu.IsOpen,"Challenger did not open course select and lobby");
-                Check(overlay.Announcements==1&&!overlay.SearchingVisible,"Duplicate announcement or stale search badge");
                 File.WriteAllText(Path.Combine(root,"challenger-report.json"),JsonUtility.ToJson(new ChallengerReport{passed=true,announcements=overlay.Announcements,role=role},true));
             }
             yield return Until(()=>session.CanReady,15,"Connected room did not finish challenger presentation");
@@ -572,7 +655,7 @@ namespace Idas3.Multiplayer
             Check(menu.IsOpen,"Lobby must remain open before starting the auto-close regression.");
             if(role=="host"){
                 yield return Until(()=>session.CanStart,30,"Both drivers did not become ready.");
-                double loadingAt=diagnosticClock.Elapsed.TotalSeconds;session.StartRace();hostStartCallSeconds=diagnosticClock.Elapsed.TotalSeconds-loadingAt;
+                TraceAuthorityEvent("host-start-race-begin");double loadingAt=diagnosticClock.Elapsed.TotalSeconds;session.StartRace();hostStartCallSeconds=diagnosticClock.Elapsed.TotalSeconds-loadingAt;TraceAuthorityEvent("host-start-race-end");
             }
             yield return Until(()=>session.IsRacing,30,"Native multiplayer loading did not start.");
             if(ChallengerCheck){
@@ -585,6 +668,7 @@ namespace Idas3.Multiplayer
             lobbyAutoClosed=!menu.IsOpen&&renderedStart.phase<=1&&renderedStart.rivalRanges>0;
             Check(lobbyAutoClosed,"The first rendered native race did not automatically close the lobby before its showcase.");
             yield return Until(()=>session.IsRacing&&session.RaceReleased,40,"Synchronized race countdown did not release.");
+            TraceAuthorityEvent("network-release-observed");
             if(course>=9){
                 var choice=session.SelectedChoice;
                 bool specialStage=course>=11&&course<=14;
@@ -599,7 +683,7 @@ namespace Idas3.Multiplayer
             if(courseDrawCheck)CheckLockedCourseDraw();
             if(musicCheck)yield return Idas3RaceMusicSmoke.VerifyOnlineRace(host,root,role);
             Phase("racing");driving=true;
-            if(InputReleaseCheck)yield return VerifyInputReleaseDuringRace("first-race");
+            if(InputReleaseCheck){TraceAuthorityEvent("input-release-begin:first-race");yield return VerifyInputReleaseDuringRace("first-race");TraceAuthorityEvent("input-release-end:first-race");}
             yield return Until(()=>raceObserved&&session.RemoteSnapshotsReceived>=10&&lastLocal.raceTicks-firstLocalTick>=90,25,"Race snapshots did not begin moving.");
             Check(!host.ControlBindings.SuppressInput,"Private neutral input did not clear the controller-change release latch.");
             Check((host.DiagnosticSubmittedInput.flags&2u)==0&&HasKey(host.DiagnosticSubmittedInput,87),"Mapped private throttle did not reach the native driving packet.");
@@ -617,6 +701,7 @@ namespace Idas3.Multiplayer
             yield return CaptureWorld("race-bumper-early");
             yield return Idas3MultiplayerHudSmoke.VerifyView(host,session,root,role,0);
             if(pauseCheck){Phase("pause-options-check");yield return Idas3PauseSmoke.VerifyOnline(host,session,root,role);Phase("racing");}
+            if(peerRoot.Length>0)yield return VerifyUninterruptedRaceClock();
             yield return Until(()=>raceObserved&&lastPoseObservedAt-firstPoseObservedAt>=10&&lastLocal.raceTicks-firstLocalTick>=600&&lastRemote.raceTicks-firstRemoteTick>=600&&greatestReceived>=100,70,
                 "Both native cars did not complete600 source race ticks with100 remote snapshots.");
             if(ContactMotionCheck){
@@ -626,8 +711,12 @@ namespace Idas3.Multiplayer
             }
             Check(lastLocal.Valid((uint)(role=="host"?0:8))&&lastRemote.Valid((uint)(role=="host"?8:0)),"Final snapshots contain the wrong car model or invalid state.");
             Check(localTravel>10&&remoteTravel>10&&peakLocalSpeed>3&&peakRemoteSpeed>3,"Both drivers did not move through the course.");
-            double wall=lastPoseObservedAt-firstPoseObservedAt,sourceSeconds=(lastLocal.raceTicks-firstLocalTick)/60.0;
-            Check(sourceSeconds/wall>.85&&sourceSeconds/wall<1.15,"Native race clock did not track wall time.");
+            if(peerRoot.Length==0){
+                // A peer without a diagnostic output path cannot participate in
+                // the capture barrier. Keep its existing uncoordinated check.
+                double wall=lastPoseObservedAt-firstPoseObservedAt,sourceSeconds=(lastLocal.raceTicks-firstLocalTick)/60.0;
+                Check(sourceSeconds/wall>.85&&sourceSeconds/wall<1.15,"Native race clock did not track wall time.");
+            }
             Check(maxPeerRanges>0&&maxPeerMainRanges>0,"Received opponent was never submitted as main-view car geometry.");
             Check(greatestSent>=100,"Local client sent fewer than100 snapshots.");
             // Use the public action invoked by F1; this checks lifecycle
@@ -635,7 +724,7 @@ namespace Idas3.Multiplayer
             menu.Toggle();yield return Frames(3);liveMenuReopened=menu.IsOpen;
             Check(liveMenuReopened,"The same live race could not reopen its F1 menu after automatic closure.");
             menu.Toggle();yield return Frames(3);Check(!menu.IsOpen,"Live race menu could not close again.");
-            if(InputReleaseCheck)yield return VerifyInputReleaseDuringRace("closed-live-overlay");
+            if(InputReleaseCheck){TraceAuthorityEvent("input-release-begin:closed-live-overlay");yield return VerifyInputReleaseDuringRace("closed-live-overlay");TraceAuthorityEvent("input-release-end:closed-live-overlay");}
             yield return CaptureWorld("race-bumper-late");
             pulse=67;yield return Frames(8);yield return CaptureWorld("race-chase-late");
             if(courseDrawCheck){menu.SetOpen(true);yield return Frames(3);yield return CaptureMenu("selected-course");menu.SetOpen(false);yield return Frames(3);}
@@ -666,12 +755,77 @@ namespace Idas3.Multiplayer
             if(course>=11)yield return VerifyEnnaReplay();
             Finish(true,null);
         }
+        [Serializable] private sealed class RaceClockWindow {
+            public string schema="idas3-uninterrupted-race-clock-v1",role,roomCode,startUtc,endUtc;
+            public string scope="Fresh uninterrupted driving interval after both peers complete early diagnostics. Both peers wait for both measurements before further captures or lifecycle actions. Lifetime release/trajectory measurements remain unmodified; no pause or stall duration is subtracted.";
+            public bool peerCoordinated=true,localPassed,peerCompleted,passed;
+            public ulong startLocalTick,startRemoteTick,endLocalTick,endRemoteTick;
+            public double startRealtime,endRealtime,wallSeconds,localSourceSeconds,remoteSourceSeconds;
+            public double nominalSourcePeriodSeconds=852.0*530.0/27000000.0,expectedWallSeconds,sourceUnitsToWallRatio,nominalToWallRatio;
+            public double minimumRatio=.85,maximumRatio=1.15;
+            public int capturesAtStart,capturesAtEnd,authorityStallFramesAtStart,authorityStallFramesAtEnd;
+        }
+        private IEnumerator RaceClockBarrier(string fileName)
+        {
+            Check(peerRoot.Length>0,"Coordinated race clock requires both private output directories.");
+            TraceAuthorityEvent("barrier-enter:"+fileName);
+            string own=Path.Combine(root,fileName),other=Path.Combine(peerRoot,fileName);
+            var notice=new RoomNotice{role=role,code=roomCode,phase=fileName,port=port,course=course,utc=DateTime.UtcNow.ToString("O")};
+            // Fresh diagnostic roots make these one-shot markers. Rename only
+            // after the small notice is complete so readers never see partial JSON.
+            File.WriteAllText(own+".new",JsonUtility.ToJson(notice));File.Move(own+".new",own);
+            yield return Until(()=>File.Exists(other),90,"Peer did not reach "+fileName+".");
+            var peer=JsonUtility.FromJson<RoomNotice>(File.ReadAllText(other));
+            Check(peer!=null&&peer.role==(role=="host"?"join":"host")&&peer.code==roomCode&&peer.phase==fileName,
+                "Race clock barrier belongs to a different role or room.");
+            TraceAuthorityEvent("barrier-exit:"+fileName);
+        }
+        private IEnumerator VerifyUninterruptedRaceClock()
+        {
+            Phase("clock-window-ready");
+            yield return Frames(2);
+            yield return RaceClockBarrier("clock-window-ready.json");
+            Check(raceObserved&&session.IsRacing&&session.RaceReleased&&!frozen,"Race clock window did not begin in active driving.");
+            var window=new RaceClockWindow{role=role,roomCode=roomCode,startUtc=DateTime.UtcNow.ToString("O"),
+                startRealtime=lastPoseObservedAt,startLocalTick=lastLocal.raceTicks,startRemoteTick=lastRemote.raceTicks,
+                capturesAtStart=shots.Count,authorityStallFramesAtStart=authorityStallFrames};
+            phase="clock-window";TraceAuthorityEvent("clock-window-measurement-begin");
+            try{
+                yield return Until(()=>lastLocal.raceTicks>=window.startLocalTick&&lastRemote.raceTicks>=window.startRemoteTick&&
+                    lastPoseObservedAt-window.startRealtime>=10&&lastLocal.raceTicks-window.startLocalTick>=600&&
+                    lastRemote.raceTicks-window.startRemoteTick>=600,70,
+                    "Both native cars did not complete the uninterrupted600-tick clock window.");
+                window.endUtc=DateTime.UtcNow.ToString("O");window.endRealtime=lastPoseObservedAt;
+                window.endLocalTick=lastLocal.raceTicks;window.endRemoteTick=lastRemote.raceTicks;
+                window.wallSeconds=window.endRealtime-window.startRealtime;
+                window.localSourceSeconds=(window.endLocalTick-window.startLocalTick)/60.0;
+                window.remoteSourceSeconds=(window.endRemoteTick-window.startRemoteTick)/60.0;
+                window.expectedWallSeconds=(window.endLocalTick-window.startLocalTick)*window.nominalSourcePeriodSeconds;
+                window.sourceUnitsToWallRatio=window.localSourceSeconds/window.wallSeconds;
+                window.nominalToWallRatio=window.expectedWallSeconds/window.wallSeconds;
+                window.capturesAtEnd=shots.Count;window.authorityStallFramesAtEnd=authorityStallFrames;
+                Check(session.IsRacing&&session.RaceReleased&&!frozen&&window.capturesAtStart==window.capturesAtEnd,
+                    "Diagnostic capture or race transition contaminated the clock window.");
+                // Retain the existing source-unit conversion and exact bounds;
+                // also report the nominal source period without changing the test.
+                Check(window.sourceUnitsToWallRatio>.85&&window.sourceUnitsToWallRatio<1.15,
+                    "Native race clock did not track wall time during uninterrupted driving.");
+                window.localPassed=true;
+                yield return RaceClockBarrier("clock-window-done.json");
+                window.peerCompleted=true;window.passed=true;
+            }finally{
+                // Defer report I/O until the peer also leaves its measured window.
+                File.WriteAllText(Path.Combine(root,"clock-window.json"),JsonUtility.ToJson(window,true));
+            }
+            Phase("racing");
+        }
         private KeyCode manualKey;
         private ushort manualPad;
         private bool ManualCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-manual-check")>=0;
         private bool MirrorCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-mirror-check")>=0;
         private int Gear()=>Idas3MultiplayerNative.Idas3MultiplayerCurrentGear();
         private IEnumerator VerifyManualShifts(){
+            TraceAuthorityEvent("manual-shifts-begin");
             var words=new uint[307];Check(Idas3MultiplayerNative.Idas3MultiplayerReadRaceCar(0,words,307)==1&&words[17]==1,"Online race was not manual");
             Check(Gear()==1,"Manual gearbox shifted without player input");
             manualKey=KeyCode.E;yield return Until(()=>Gear()==2,3,"Keyboard upshift failed online");
@@ -685,6 +839,7 @@ namespace Idas3.Multiplayer
             yield return Frames(10);Check(Gear()==2,"Held controller shift repeated");manualPad=0;yield return Frames(6);
             manualPad=0x100;yield return Until(()=>Gear()==1,3,"Rebound controller downshift failed online");manualPad=0;yield return Frames(6);
             File.WriteAllText(Path.Combine(root,"manual-shifts-passed.txt"),"Manual override synchronized; keyboard E/Q and remapped controller shoulder buttons changed actual native gears 1 -> 2 -> 1; held buttons did not repeat.\n");
+            TraceAuthorityEvent("manual-shifts-end");
         }
         private bool SavedCarCheck=>Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-multiplayer-saved-cars-check")>=0;
         private void VerifySavedRaceCars(){
@@ -708,17 +863,7 @@ namespace Idas3.Multiplayer
         }
         private string SaveFingerprint(bool includeResultReceipts=true)
         {
-            string directory=Path.Combine(root,"userdata");var files=Directory.GetFiles(directory,"*",SearchOption.AllDirectories);Array.Sort(files,StringComparer.Ordinal);
-            var text=new System.Text.StringBuilder();using(var sha=System.Security.Cryptography.SHA256.Create())foreach(string file in files){
-                string relative=file.Substring(directory.Length+1).Replace('\\','/');
-                if(!includeResultReceipts&&(relative=="online_result_v1.json"||relative=="online_result_v1.json.previous"))continue;
-                if(!includeResultReceipts&&relative.EndsWith(".profile.lock",StringComparison.Ordinal)){
-                    Check(new FileInfo(file).Length==0,"Profile coordination lock unexpectedly contains progress data.");continue;
-                }
-                text.Append(relative).Append('=');
-                using(var stream=File.OpenRead(file))text.Append(BitConverter.ToString(sha.ComputeHash(stream)).Replace("-",""));text.Append('\n');
-            }
-            return text.ToString();
+            return Idas3DiagnosticSaveFingerprint.Compute(Path.Combine(root,"userdata"),includeResultReceipts,Check);
         }
         private void CheckNeutralResultReceipt(ulong raceId)
         {
@@ -848,15 +993,46 @@ namespace Idas3.Multiplayer
                 Check(report.naturalFinish&&!session.DisconnectedFinish&&session.HandshakeComplete,"Connected result was not a natural native finish.");
                 CheckNeutralResultReceipt(report.firstRaceId);report.neutralReceiptVerified=true;
                 Check(SaveFingerprint(false)==report.saveFingerprint,"Natural multiplayer result modified private profile/settings/records.");
+                yield return Until(()=>menu.ResultsVisible&&menu.IsOpen&&menu.ResultsPage>=0,5,"Finished race did not expose its native results owner.");
+                int priorHeldResultKey=preloadHeldKey,finishPageObservations=0;
+                bool holdAcrossFinish=menu.ResultsPage==0;
+                try{
+                    // This is the existing diagnostic raw Enter/menu-confirm
+                    // path, not a manufactured cabinet Start edge. Native
+                    // linked Finish ignores manual skip. We wait for its real
+                    // page transition; exact duration has separate source tests.
+                    if(holdAcrossFinish)preloadHeldKey=13;
+                    yield return Until(()=>{
+                        if(menu.ResultsPage==0){
+                            ++finishPageObservations;
+                            Check(!menu.CanAcknowledgeReturnToLobby&&!session.LocalContinueRequested&&!session.RemoteContinueRequested,
+                                "Linked Finish armed a return/Continue choice before the points owner.");
+                        }
+                        return menu.ResultsPage==1;
+                    },30,"Original finish presentation did not advance to points.");
+                    if(holdAcrossFinish){
+                        yield return Frames(2);
+                        Check(finishPageObservations>0&&menu.ResultsPage==1&&!menu.CanAcknowledgeReturnToLobby,
+                            "Held Finish confirmation bypassed the points release guard.");
+                    }
+                }finally{preloadHeldKey=priorHeldResultKey;}
+                // Preserve the five-second controller-accessibility assertion
+                // at its actual owner boundary, after releasing the held key.
                 yield return Until(()=>menu.ResultsVisible&&menu.IsOpen&&menu.CanAcknowledgeReturnToLobby,5,"Finished race did not expose the controller-accessible Return to Lobby action.");
                 yield return CaptureMenu("return-results");
                 File.WriteAllText(Path.Combine(root,"return-results-ready.json"),"{\"ready\":true}");
                 yield return Until(()=>File.Exists(Path.Combine(peerRoot,"return-results-ready.json")),20,"Both peers did not reach results before return.");
-                yield return Until(()=>menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,30,"Original finish presentation did not advance to points.");
+                Check(menu.ResultsPage==1&&menu.CanAcknowledgeReturnToLobby,"Points owner lost its armed controller action at the peer barrier.");
                 yield return Until(()=>Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5)>=1,3,"Original points reveal did not finish.");
+                traceResultInput=true;ObserveResultInput("before-points-capture");
                 yield return CaptureMenu("return-points");
-                pulse=13;
-                yield return Until(()=>menu.ResultsPage==2&&menu.CanAcknowledgeReturnToLobby,5,"Points did not advance to Continue.");
+                ObserveResultInput("after-points-capture");
+                pulse=13;ObserveResultInput("pulse-queued");
+                yield return Until(()=>{
+                    ObserveResultInput("points-continue-wait");
+                    return menu.ResultsPage==2&&menu.CanAcknowledgeReturnToLobby;
+                },5,"Points did not advance to Continue.");
+                ObserveResultInput("continue-accessible");traceResultInput=false;
                 yield return CaptureMenu("return-continue");
                 Phase("requesting-connected-lobby");
                 if(role=="join"){
@@ -919,7 +1095,7 @@ namespace Idas3.Multiplayer
                 report.secondCountdown=previousPhase==5&&digits.Count==3&&digits[0]==3&&digits[1]==2&&digits[2]==1;
                 Check(report.secondCountdown&&session.RaceReleased,"Second race did not complete source 3,2,1 and synchronized GO.");
                 Phase("driving-second-race");driving=true;
-                if(InputReleaseCheck)yield return VerifyInputReleaseDuringRace("rematch");
+                if(InputReleaseCheck){TraceAuthorityEvent("input-release-begin:rematch");yield return VerifyInputReleaseDuringRace("rematch");TraceAuthorityEvent("input-release-end:rematch");}
                 yield return Until(()=>session.LocalSnapshot.raceTicks>=300&&session.RemoteSnapshot.raceTicks>=300&&session.RemoteSnapshotsReceived>=50&&session.LocalSnapshot.speed>3&&session.RemoteSnapshot.speed>3,35,"Second race did not resume local/remote driving and snapshots.");
                 PeerGeometry(out int peerRanges,out int mainRanges);report.secondLocalTicks=session.LocalSnapshot.raceTicks;report.secondRemoteTicks=session.RemoteSnapshot.raceTicks;report.secondReceived=session.RemoteSnapshotsReceived;report.secondSent=session.SnapshotsSent;
                 report.secondDrive=peerRanges>0&&mainRanges>0&&(host.Status.flags&16u)!=0;
@@ -1132,7 +1308,7 @@ namespace Idas3.Multiplayer
         private void ObserveRace()
         {
             var local=session.LocalSnapshot;var remote=session.RemoteSnapshot;
-            if(session.ExperimentalAuthority){lastAuthority=session.AuthorityStatus;if(lastAuthority.stalled!=0)++authorityStallFrames;}
+            if(session.ExperimentalAuthority){lastAuthority=session.AuthorityStatus;if(lastAuthority.stalled!=0)++authorityStallFrames;ObserveAuthorityTrace();}
             maxObservedPing=Math.Max(maxObservedPing,session.PingMilliseconds);
             if(releaseObservedAt<0){
                 releaseObservedAt=Time.realtimeSinceStartupAsDouble;releaseObservedUtc=DateTime.UtcNow.ToString("O");
@@ -1145,7 +1321,7 @@ namespace Idas3.Multiplayer
             if(local.raceTicks==0||remote.raceTicks==0)return;
             if(!raceObserved){raceObserved=true;firstLocalTick=local.raceTicks;firstRemoteTick=remote.raceTicks;
                 firstPoseObservedAt=Time.realtimeSinceStartupAsDouble;firstPoseObservedUtc=DateTime.UtcNow.ToString("O");
-                firstLocalPosition=local.actor;firstRemotePosition=remote.actor;lastProgressTick=local.raceTicks;}
+                firstLocalPosition=local.actor;firstRemotePosition=remote.actor;lastProgressTick=local.raceTicks;TraceAuthorityEvent("first-source-race-tick");}
             lastPoseObservedAt=Time.realtimeSinceStartupAsDouble;
             lastLocal=local;lastRemote=remote;
             localTravel=Mathf.Max(localTravel,Vector3.Distance(firstLocalPosition,local.actor));
@@ -1179,6 +1355,160 @@ namespace Idas3.Multiplayer
                 ticks=s.simulationTicks,flags=s.flags,stage=s.frontendStage,racePhase=s.racePhase,
                 active=overlay.Active,pending=session.ChallengerPending,connected=session.HandshakeComplete,
                 session=session.StateName,menuOpen=menu.IsOpen})+"\n");
+        }
+        private IEnumerator CheckArcadeEntry(){
+            var entry=menu.BattleEntry;var overlay=host.GetComponent<Idas3ChallengerOverlay>();
+            IEnumerator Photo(string name){
+                yield return Frames(2);yield return new WaitForEndOfFrame();
+                var t=ScreenCapture.CaptureScreenshotAsTexture();
+                try{File.WriteAllBytes(Path.Combine(root,name+".png"),t.EncodeToPNG());}finally{Destroy(t);}
+            }
+            IEnumerator Press(int key){pulse=key;yield return Frames(4);}
+            IEnumerator Page(Idas3ArcadeBattleEntry.Page expected){
+                yield return Until(()=>entry.Current==expected,expected==Idas3ArcadeBattleEntry.Page.Selected?55:20,"Missing cabinet page "+expected+" (current "+entry.Current+")");
+                yield return Until(()=>entry.FadeAlpha(Time.realtimeSinceStartupAsDouble)==0,3,"Page did not fade in: "+expected);
+                yield return Photo(expected.ToString());
+            }
+            int firstPicker=session.CoursePickerSlot;
+            bool picks=session.LocalPicksCourse;
+            int selectedMusic=-1;
+            Check(entry.Current==(picks?Idas3ArcadeBattleEntry.Page.Course:Idas3ArcadeBattleEntry.Page.Waiting),
+                "First match screen was not the assigned course or opponent page: "+entry.Current);
+            Check(!overlay.Active&&!session.ChallengerPending&&overlay.Announcements==1,"Match handoff did not complete exactly once");
+            Check(Idas3MultiplayerSession.OpeningPicker(1,1)==0&&Idas3MultiplayerSession.OpeningPicker(3,1)==1&&
+                Idas3MultiplayerSession.OpeningPicker(1,3)==1&&Idas3MultiplayerSession.OpeningPicker(3,3)==0,"Opening draw biased by network slot");
+            if(!picks){
+                yield return Page(Idas3ArcadeBattleEntry.Page.Waiting);
+                Check(host.RaceMusicMenu.HintVisible,"Shared music prompt missing on opponent information");
+                yield return Press(67);yield return Photo("Times1");yield return Press(67);yield return Photo("Times2");
+                preloadHeldKey=67;
+                yield return Until(()=>host.RaceMusicMenu.IsOpen,5,"Holding View did not open the waiting driver's music catalog");
+                preloadHeldKey=0;yield return Frames(4);yield return Photo("WaitingMusic");
+                host.RaceMusicMenu.Search("EXPRESS LOVE");
+                selectedMusic=host.RaceMusicMenu.HighlightedTrackId;
+                Check(selectedMusic>=0,"Could not find a race song");
+                yield return Press(13);yield return Until(()=>!host.RaceMusicMenu.IsOpen,5,"Local song selection did not close");
+                host.RaceMusic.Refresh();
+                Check(host.RaceMusic.State.selectedIndex==selectedMusic,"Waiting driver's music selection was lost");
+                File.WriteAllText(Path.Combine(root,"wait-seen"),"ok");
+            }else{
+                yield return Page(Idas3ArcadeBattleEntry.Page.Course);
+                Check(host.RaceMusicMenu.HintVisible,"Shared music prompt missing on course selection");
+                int sharedMods=session.AvailableCourseCount-9;
+                yield return Press(37);
+                if(sharedMods>0){
+                    Check(session.LocalChoice.Course>=9,"Shared mods tile missing");
+                    int firstMod=session.LocalChoice.Course;
+                    yield return Press(13);Check(entry.ModsOpen,"MODS did not open the shared list");
+                    yield return Photo("ModsList");
+                    Check(host.RaceMusicMenu.ModsHintVisible,"Mod list is missing the regular music prompt");
+                    if(sharedMods>1){
+                        yield return Press(40);
+                        Check(session.LocalChoice.Course>=9&&session.LocalChoice.Course!=firstMod,"Second shared mod is unreachable");
+                    }
+                    yield return Press(27);Check(!entry.ModsOpen,"Back did not close MODS");
+                    yield return Press(37);
+                }
+                Check(session.LocalChoice.Course==7,"Carousel has duplicate MODS or incorrect arcade order");
+                yield return Press(39);if(sharedMods>0)yield return Press(39);
+                Check(session.LocalChoice.Course==0,"Carousel did not wrap to Myogi");
+                yield return Photo("PickerMusicPrompt");
+                host.RaceMusic.Refresh();int originalMusic=host.RaceMusic.State.selectedIndex;
+                yield return Press(39);yield return Press(67);host.RaceMusic.Refresh();
+                Check(host.RaceMusic.State.selectedIndex!=originalMusic,"Tapping View did not cycle the course picker's song");
+                yield return Until(()=>File.Exists(Path.Combine(peerRoot,"wait-seen")),15,"Peer did not display opponent pages.");
+                yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Route);
+                yield return Press(39);yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Surface);
+                yield return Press(39);yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Time);
+                yield return Press(39);
+                int beforeHold=host.RaceMusic.State.selectedIndex;
+                preloadHeldKey=67;
+                yield return Until(()=>host.RaceMusicMenu.IsOpen,5,"Course picker could not open the music catalog");
+                preloadHeldKey=0;yield return Frames(4);yield return Photo("PickerMusic");
+                host.RaceMusic.Refresh();
+                Check(host.RaceMusic.State.selectedIndex==beforeHold,"Holding View also changed the current song");
+                yield return new WaitForSecondsRealtime(11f);
+                Check(entry.Current==Idas3ArcadeBattleEntry.Page.Time&&host.RaceMusicMenu.IsOpen&&!session.HasCourseDraw,"Race selection expired while the picker was choosing music");
+                host.RaceMusicMenu.Search("OVER THE RAINBOW");selectedMusic=host.RaceMusicMenu.HighlightedTrackId;
+                Check(selectedMusic>=0,"Could not find the course picker's chosen song");
+                yield return Press(13);yield return Until(()=>!host.RaceMusicMenu.IsOpen,5,"Course picker's song selection did not close");
+                yield return Frames(4);Check(entry.Current==Idas3ArcadeBattleEntry.Page.Time,"Choosing race music confirmed the race conditions");
+                yield return Press(13);
+            }
+            yield return Page(Idas3ArcadeBattleEntry.Page.Selected);
+            if(!picks)yield return Until(()=>session.RemoteBrakeSelected,4,"Other driver's brake choice was not announced immediately");
+            yield return Press(83);
+            yield return Until(()=>session.LocalBrakeSelected&&session.RemoteBrakeSelected,4,"Both boost names were not visible");
+            yield return Photo("BoostVotes");
+            Check(session.CourseWinnerSlot==firstPicker&&session.Course==1&&session.Reverse&&session.Wet&&session.Night,"Peers did not use the challenger's settings");
+            yield return Page(Idas3ArcadeBattleEntry.Page.Loading);
+            yield return Until(()=>session.IsRacing&&session.RaceReleased,45,"Both drivers did not release to the showcase");
+            Check(!session.BoostEnabled&&!entry.Active&&!menu.IsOpen,"Brake agreement or entry input ownership was lost");
+            yield return Photo("Showcase");
+            Idas3PreRaceSmoke.PreRaceStatus ReadIntro(){
+                var intro=new Idas3PreRaceSmoke.PreRaceStatus{size=(uint)Marshal.SizeOf<Idas3PreRaceSmoke.PreRaceStatus>()};
+                Check(Idas3SceneGetPreRaceStatus(ref intro)==1,"Missing native intro state");return intro;
+            }
+            yield return Until(()=>ReadIntro().reserved>=150,15,"Missing second car and VS presentation");
+            yield return Photo("Versus");
+            foreach(int digit in new[]{3,2,1}){
+                yield return Until(()=>ReadIntro().countdownDigit==digit,15,"Missing countdown digit "+digit);
+                yield return Photo("Countdown"+digit);
+            }
+            yield return Until(()=>host.Status.racePhase==2,45,"Countdown did not reach GO.");
+            yield return Photo("Go");host.RaceMusic.Refresh();
+            Check(selectedMusic>=0&&host.RaceMusic.State.selectedIndex==selectedMusic&&host.RaceMusic.State.activeIndex==selectedMusic,$"Race music expected {selectedMusic}, selected {host.RaceMusic.State.selectedIndex}, active {host.RaceMusic.State.activeIndex}");
+            File.WriteAllText(Path.Combine(root,"go-seen"),"ok");
+            yield return Until(()=>File.Exists(Path.Combine(peerRoot,"go-seen")),20,"Peer did not reach GO.");
+            string firstRoom=session.RoomCode;ulong firstRace=SessionField<ulong>("raceId");
+            returnCheckInProgress=true;acceleratedReturnWait=true;
+            try{
+                yield return Until(()=>session.CanReturnToLobby,180,"Source race did not reach connected results");
+            }finally{acceleratedReturnWait=false;}
+            Phase("rematch-results");
+            yield return Until(()=>menu.CanAcknowledgeReturnToLobby&&(menu.ResultsPage==2||
+                (menu.ResultsPage==1&&Idas3MultiplayerNative.Idas3MultiplayerResultScreen(5)>=2)),60,"Points screen did not finish counting");
+            if(menu.ResultsPage==1)yield return Press(13);
+            yield return Until(()=>menu.ResultsPage==2&&menu.CanAcknowledgeReturnToLobby,60,"Continue did not become available");
+            yield return Photo("RematchContinue");yield return Press(13);
+            yield return Until(()=>!session.IsRacing&&entry.Active,25,"Continue did not start a rematch");
+            Check(session.RoomCode==firstRoom&&session.CoursePickerSlot==1-firstPicker&&session.LocalPicksCourse!=picks,"Rematch lost its opponent or failed to alternate the course picker");
+            if(session.LocalPicksCourse){
+                yield return Page(Idas3ArcadeBattleEntry.Page.Course);
+                if(session.AvailableCourseCount>9){
+                    while(session.LocalChoice.Course<9)yield return Press(37);
+                    yield return Press(13);
+                    if(session.AvailableCourseCount>10)yield return Press(40);
+                    int mod=session.LocalChoice.Course;
+                    yield return Press(13);yield return Press(39);
+                    yield return Press(13);yield return Press(39);
+                    yield return Press(13);
+                    if(!Idas3CourseCatalog.RequiresNight(mod))yield return Press(13);
+                    yield return Press(13);
+                    yield return Page(Idas3ArcadeBattleEntry.Page.Selected);
+                    Check(session.Course==mod&&session.Reverse&&session.Wet,"Real mod course or conditions lost at the handshake");
+                }else{
+                yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Route);
+                yield return Press(13);
+                if(session.LocalChoice.Course!=8){
+                    yield return Page(Idas3ArcadeBattleEntry.Page.Surface);yield return Press(13);
+                    if(!Idas3CourseCatalog.RequiresNight(session.LocalChoice.Course)){
+                        yield return Page(Idas3ArcadeBattleEntry.Page.Time);yield return Press(13);
+                    }
+                }
+                }
+            }else yield return Page(Idas3ArcadeBattleEntry.Page.Waiting);
+            yield return Page(Idas3ArcadeBattleEntry.Page.Selected);
+            Check(!session.LocalBrakeSelected&&!session.RemoteBrakeSelected,"Previous boost votes leaked into the rematch");
+            if(picks)yield return Press(83);
+            else yield return Until(()=>session.RemoteBrakeSelected,4,"Single rematch boost vote was not visible");
+            yield return Photo("OneBoostVote");
+            yield return Until(()=>session.IsRacing&&session.RaceReleased&&host.Status.racePhase==2,75,"Rematch did not reach GO");
+            host.RaceMusic.Refresh();
+            Check(session.BoostEnabled&&SessionField<ulong>("raceId")!=firstRace&&host.RaceMusic.State.selectedIndex==selectedMusic,"One vote disabled boost, or the rematch lost music or reused its race ID");
+            yield return Photo("RematchGo");
+            File.WriteAllText(Path.Combine(root,"rematch-go"),"ok");
+            yield return Until(()=>File.Exists(Path.Combine(peerRoot,"rematch-go")),20,"Peer did not reach rematch GO");
         }
         private IEnumerator CaptureChallenger(string name,int width=0,int height=0)
         {
@@ -1338,7 +1668,7 @@ namespace Idas3.Multiplayer
         }
         private IEnumerator CaptureWorld(string name)
         {
-            frozen=true;
+            frozen=true;TraceAuthorityEvent("capture-begin:"+name);
             var camera=host.GetComponent<Camera>();var scene=host.GetComponent<Idas3SceneRenderer>();var ui=host.GetComponent<Idas3UnityUi>();
             var previous=camera.targetTexture;
             var target=new RenderTexture(1200,720,24,RenderTextureFormat.ARGB32){name="Multiplayer smoke capture",antiAliasing=1};
@@ -1355,7 +1685,7 @@ namespace Idas3.Multiplayer
             var picture=new Texture2D(target.width,target.height,TextureFormat.RGB24,false);
             picture.ReadPixels(new Rect(0,0,target.width,target.height),0,0);picture.Apply();RenderTexture.active=oldActive;
             SaveCapture(name,"AA1-manual-world",picture,cameras.Count);Destroy(picture);
-            camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();target.Release();Destroy(target);frozen=false;
+            camera.targetTexture=previous;scene.ApplyFrame();ui.ApplyFrame();target.Release();Destroy(target);frozen=false;TraceAuthorityEvent("capture-end:"+name);
             yield return null;
         }
         private void SaveCapture(string name,string kind,Texture2D picture,int cameraCount)
@@ -1388,6 +1718,7 @@ namespace Idas3.Multiplayer
                 remoteSourceSeconds=raceObserved?(lastRemote.raceTicks-firstRemoteTick)/60.0:0,
                 localSourceMinusWallSeconds=raceObserved?(lastLocal.raceTicks-firstLocalTick)/60.0-(lastPoseObservedAt-firstPoseObservedAt):0,
                 minRemoteSnapshotMinusLocalSeconds=raceObserved?minObservedRemoteOffset:0,maxRemoteSnapshotMinusLocalSeconds=raceObserved?maxObservedRemoteOffset:0,
+                authorityFirstObservation=authorityFirstObservation,authorityLastObservation=authorityLastObservation,authorityEvents=authorityTrace.ToArray(),authorityTraceDropped=authorityTraceDropped,
                 authorityEnabled=session.ExperimentalAuthority,boostEnabled=session.BoostEnabled,collisionsEnabled=session.CollisionsEnabled,menuPixelsChecked=!WorldOnly,mirrorInputFixture=MirrorCheck,authority=lastAuthority,authorityStallFrames=authorityStallFrames,maxObservedPing=maxObservedPing,
                 configuredRttMs=session.DiagnosticRttMs,configuredJitterMs=session.DiagnosticJitterMs,configuredLossPercent=session.DiagnosticLossPercent,droppedPackets=session.DiagnosticDroppedPackets,
                 elapsedSeconds=Time.realtimeSinceStartupAsDouble-began,maxPeerRanges=maxPeerRanges,maxPeerMainRanges=maxPeerMainRanges,
@@ -1406,7 +1737,9 @@ namespace Idas3.Multiplayer
         }
         private void Finish(bool passed,string error)
         {
-            if(finished)return;WriteMotion();finished=true;frozen=true;driving=false;
+            if(finished)return;
+            ObserveResultInput("final-before-shutdown");traceResultInput=false;
+            TraceAuthorityEvent("diagnostic-finish");WriteMotion();finished=true;frozen=true;driving=false;
             if(passed)try{Idas3MultiplayerPresentationSmoke.RequirePassed();}catch(Exception failure){passed=false;error=failure.ToString();}
             if(passed)try{Idas3MultiplayerHudSmoke.RequirePassed();}catch(Exception failure){passed=false;error=failure.ToString();}
             bool stopped=false;
@@ -1414,6 +1747,8 @@ namespace Idas3.Multiplayer
             catch(Exception e){error=(error??"")+"\nShutdown: "+e.Message;passed=false;}
             if(!stopped)passed=false;
             host.DiagnosticFocusOverride=priorDiagnosticFocus;
+            if(resultInputTrace.samples.Count!=0)
+                File.WriteAllText(Path.Combine(root,"result-input-trace.json"),JsonUtility.ToJson(resultInputTrace,true));
             File.WriteAllText(Path.Combine(root,"report.json"),JsonUtility.ToJson(BuildReport(passed,error,stopped),true));
             Debug.Log((passed?"PASS":"FAIL")+" multiplayer "+role+": "+error);
 #if UNITY_EDITOR

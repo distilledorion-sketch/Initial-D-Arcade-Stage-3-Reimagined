@@ -91,7 +91,7 @@ public static class Idas3ControllerMenuChecks
     private static void CheckCameraOptions(string root){
         var options=new Idas3GameOptions(new Platform());options.Initialize(Path.Combine(root,"new"));
         Check(options.Current.defaultCamera==0&&options.Draft.defaultCamera==0&&!options.HasUnsavedChanges,"New preferences must keep Bumper as the default camera");
-        foreach(int camera in new[]{0,1,2}){
+        foreach(int camera in new[]{0,1}){
             string folder=Path.Combine(root,"saved-"+camera);Directory.CreateDirectory(folder);
             string file=Path.Combine(folder,"game-options.json");
             string json="{\"version\":1,\"defaultCamera\":"+camera+",\"musicVolume\":0.4,\"showFps\":true}";
@@ -103,7 +103,7 @@ public static class Idas3ControllerMenuChecks
             var reload=new Idas3GameOptions(new Platform());reload.Initialize(folder);
             Check(reload.Current.defaultCamera==camera&&reload.Current.musicVolume==.4f&&reload.Current.showFps,"Camera persistence changed another preference: "+camera);
         }
-        foreach(int invalid in new[]{-1,3,int.MinValue,int.MaxValue})
+        foreach(int invalid in new[]{-1,2,3,int.MinValue,int.MaxValue})
             Check(Idas3GameOptions.Normalize(new Idas3GameOptions.Values{defaultCamera=invalid}).defaultCamera==0,"Invalid camera must fall back to Bumper: "+invalid);
 
         options.BeginEdit();options.Draft.musicVolume=.35f;Check(options.ApplyDraft(),"Camera menu fixture preferences could not be saved");
@@ -111,20 +111,20 @@ public static class Idas3ControllerMenuChecks
         var go=new GameObject("Private camera menu checks");
         try{
             var menu=go.AddComponent<Idas3PauseMenu>();menu.Initialize(options);menu.OpenAttractOptions();menu.SelectTab(2);
-            foreach(int camera in new[]{1,2,0}){menu.NavigateHorizontal(1);Check(options.Draft.defaultCamera==camera,"Forward camera navigation lost an option: "+camera);}
-            foreach(int camera in new[]{2,1,0}){menu.NavigateHorizontal(-1);Check(options.Draft.defaultCamera==camera,"Reverse camera navigation lost an option: "+camera);}
-            menu.Activate();menu.Activate();Check(options.Draft.defaultCamera==2&&options.Current.defaultCamera==0&&options.HasUnsavedChanges,"Confirm should select Natural only in the draft");
+            foreach(int camera in new[]{1,0}){menu.NavigateHorizontal(1);Check(options.Draft.defaultCamera==camera,"Forward camera navigation lost an option: "+camera);}
+            foreach(int camera in new[]{1,0}){menu.NavigateHorizontal(-1);Check(options.Draft.defaultCamera==camera,"Reverse camera navigation lost an option: "+camera);}
+            menu.Activate();Check(options.Draft.defaultCamera==1&&options.Current.defaultCamera==0&&options.HasUnsavedChanges,"Confirm should select Chase only in the draft");
             menu.Back();menu.Back();Check(!menu.IsOpen&&options.Current.defaultCamera==0&&File.ReadAllText(options.FilePath)==original,"Back committed an unapplied camera choice");
             menu.OpenAttractOptions();menu.SelectTab(2);menu.NavigateHorizontal(-1);
             for(int i=0;i<menu.OptionRows+1;++i)menu.Navigate(1);menu.Activate();
-            expected.defaultCamera=2;
+            expected.defaultCamera=1;
             Check(!options.HasUnsavedChanges&&Idas3GameOptions.Equivalent(options.Current,expected),"Camera menu Apply did not preserve all unrelated preferences");
             var reload=new Idas3GameOptions(new Platform());reload.Initialize(Path.GetDirectoryName(options.FilePath));
-            Check(Idas3GameOptions.Equivalent(reload.Current,expected),"Natural camera did not survive a preferences reload");
+            Check(Idas3GameOptions.Equivalent(reload.Current,expected),"Chase camera did not survive a preferences reload");
             string applied=File.ReadAllText(options.FilePath);menu.SelectTab(2);menu.NavigateHorizontal(1);
-            Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==2,"Natural should wrap to Bumper without applying it");
-            menu.Back();menu.Back();Check(options.Current.defaultCamera==2&&File.ReadAllText(options.FilePath)==applied,"Cancel overwrote the saved Natural preference");
-            options.BeginEdit();options.ResetDraft();Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==2,"Reset defaults must propose Bumper without changing the saved camera");
+            Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==1,"Chase should wrap to Bumper without applying it");
+            menu.Back();menu.Back();Check(options.Current.defaultCamera==1&&File.ReadAllText(options.FilePath)==applied,"Cancel overwrote the saved Chase preference");
+            options.BeginEdit();options.ResetDraft();Check(options.Draft.defaultCamera==0&&options.Current.defaultCamera==1,"Reset defaults must propose Bumper without changing the saved camera");
         }finally{UnityEngine.Object.DestroyImmediate(go);}
     }
     public static void RunCameraFovChecks(){
@@ -137,7 +137,7 @@ public static class Idas3ControllerMenuChecks
     }
     private static void CheckCameraFovOptions(string root){
         Directory.CreateDirectory(root);string file=Path.Combine(root,"game-options.json");
-        const string legacy="{\"version\":1,\"defaultCamera\":2,\"musicVolume\":0.4}";
+        const string legacy="{\"version\":1,\"defaultCamera\":1,\"musicVolume\":0.4}";
         File.WriteAllText(file,legacy);
         var options=new Idas3GameOptions(new Platform());options.Initialize(root);
         Check(options.Current.cameraFovPercent==100&&!options.HasUnsavedChanges,"Legacy settings must retain each camera's original FOV");
@@ -151,10 +151,10 @@ public static class Idas3ControllerMenuChecks
         }
         foreach(int percent in new[]{50,67,100,150,200}){
             string folder=Path.Combine(root,"saved-"+percent);var saved=new Idas3GameOptions(new Platform());saved.Initialize(folder);
-            saved.BeginEdit();saved.Draft.cameraFovPercent=percent;saved.Draft.defaultCamera=2;saved.Draft.musicVolume=.4f;
+            saved.BeginEdit();saved.Draft.cameraFovPercent=percent;saved.Draft.defaultCamera=1;saved.Draft.musicVolume=.4f;
             Check(saved.ApplyDraft(),"FOV fixture Apply failed for "+percent);
             var reload=new Idas3GameOptions(new Platform());reload.Initialize(folder);
-            Check(reload.Current.cameraFovPercent==percent&&reload.Current.defaultCamera==2&&reload.Current.musicVolume==.4f,"FOV persistence changed the field or unrelated settings");
+            Check(reload.Current.cameraFovPercent==percent&&reload.Current.defaultCamera==1&&reload.Current.musicVolume==.4f,"FOV persistence changed the field or unrelated settings");
         }
         var go=new GameObject("Private FOV menu checks");
         try{
@@ -167,7 +167,7 @@ public static class Idas3ControllerMenuChecks
             Check(options.Draft.cameraFovPercent==50,"Controller FOV minimum must clamp without wrapping");
             for(int i=0;i<160;++i)menu.NavigateHorizontal(1);
             Check(options.Draft.cameraFovPercent==200,"Controller FOV maximum must clamp without wrapping");
-            Check(options.Draft.defaultCamera==2&&options.Draft.aiDifficulty==0,"FOV row changed a neighbouring option");
+            Check(options.Draft.defaultCamera==1&&options.Draft.aiDifficulty==0,"FOV row changed a neighbouring option");
             menu.Back();menu.Back();Check(!menu.IsOpen&&options.Current.cameraFovPercent==100&&File.ReadAllText(file)==legacy,"Back must discard unapplied FOV without writing");
             menu.OpenAttractOptions();menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);menu.Navigate(1);menu.NavigateHorizontal(-1);
             var expected=options.Current.Clone();expected.cameraFovPercent=99;

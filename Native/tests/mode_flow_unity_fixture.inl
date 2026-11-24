@@ -2,6 +2,27 @@
 // separate regression in mode_flow_app_tests.inl; these select authored scenes
 // quickly for Unity rendering and controller-route verification.
 void prepareModeFlowFixture(App& app,unsigned scene){
+    if(scene==690){
+        if(!app.importedCourse||!isUserCourseId(app.importedCourse->id)||app.menu)
+            throw std::logic_error("Expected a running user track");
+        app.validationMode=false;app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
+        for(int frame=0;frame<700&&app.race.phase==RacePhase::Countdown;++frame)app.simulate({});
+        DriverInput gas;gas.throttle=1;
+        for(int frame=0;frame<180;++frame)app.simulate(gas);
+        for(int i=0;i<=app.originalRace.rules().goalIndex+8&&app.race.phase==RacePhase::Running;i+=2){
+            auto gate=app.originalRace.gate(i);
+            app.vehicle.position={gate.center[0],gate.center[1],gate.center[2]};app.simulate(gas);
+        }
+        if(!app.finishedSaved||!app.resultsReady||app.race.timeUp||app.localReplayPlayer.empty())
+            throw std::runtime_error("Custom finish did not save time and recording");
+        app.finishPendingRaceSave(true);
+        TimeAttackRecords disk;
+        if(!disk.load(app.userdataRoot()/"time_attack_records_v1.csv")||
+           !disk.best(app.results.condition,unsigned(app.wet),app.results.carId).course||
+           !std::filesystem::exists(app.personalGhostPath())||!app.sharedFinishJson.empty())
+            throw std::runtime_error("Custom finish persistence or upload isolation failed");
+        return;
+    }
     if(scene==400){
         if(app.multiplayer.active)app.leaveMultiplayer();
         app.validationMode=true;app.menu=true;app.paused=false;app.replayPlaybackActive=false;
@@ -47,6 +68,8 @@ void prepareModeFlowFixture(App& app,unsigned scene){
         app.validationMode=true;app.menu=true;app.paused=false;app.replayPlaybackActive=false;
         app.loadingActive=app.vsActive=app.preRaceDialogueActive=false;
         auto& f=app.frontend;f.gameMode=original::OriginalGameMode::TimeAttack;
+        // Each sample starts a fresh course-menu visit, including the Mods popup.
+        f.stage=FrontendStage::Route;f.advance(0);
         f.stage=FrontendStage::Course;f.course=scene>=306?11:scene==305?4:scene==304?8:3;
         f.reverse=f.wet=f.night=true;f.advance(0);f.confirm();f.advance(31./60.);
         if(scene==301||scene==302||scene==303||scene==305||scene==307){
@@ -194,7 +217,8 @@ void prepareModeFlowFixture(App& app,unsigned scene){
         std::ofstream log(app.saveRoot.parent_path()/("camera-"+std::to_string(scene)+".csv"));
         log<<"tick,shot,x,y,z,road_y,clearance\n";
         for(unsigned tick=0;tick<(scene%2?180u:60u);++tick){
-            app.advanceStartPresentation(1.0/60.0);
+            if(app.originalShowcaseUsesDrivingClock())app.advanceHostClock(OriginalDrivingClock::step,[]{});
+            else app.advanceStartPresentation(1.0/60.0);
             const auto& frame=app.startShowcaseCamera.frame();auto query=app.playerBody.query();
             for(unsigned axis=0;axis<3;++axis)query.setf(32+axis*4,frame.eye[axis]);
             original::OriginalTriangleSearchTrace trace;original::OriginalSurfaceScratch surface;
@@ -369,7 +393,8 @@ void prepareModeFlowFixture(App& app,unsigned scene){
         app.battleProfile=app.frontend.battleProfile;app.validationMode=false;app.start();
         // Advance the actual intro owner: advancing only the text produced
         // settled names over the initial rear camera instead of the matching shot.
-        for(unsigned i=0;i<160;++i)app.advanceStartPresentation(1.0/60.0);
+        for(unsigned i=0;i<160;++i)if(app.originalShowcaseUsesDrivingClock())app.advanceHostClock(OriginalDrivingClock::step,[]{});
+            else app.advanceStartPresentation(1.0/60.0);
         if(!app.vsActive||app.vsShot!=1||!app.vsBanner.animationSettled())throw std::runtime_error("Intro fixture did not reach the settled front shot");
         app.paused=true;app.input={};return;
     }

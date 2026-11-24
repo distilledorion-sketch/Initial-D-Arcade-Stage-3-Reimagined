@@ -138,7 +138,9 @@ private:
         // hairpins would otherwise count neighbouring roads as extra width.
         constexpr float strokes[]{8.25f,7.5f,3.5f,2.125f,2.5f,1.875f,3.125f,1.875f};
         const auto texture=b.model.chunks.at(b.day).batches.at(0).material[9];
-        b.textures.replaceImage(texture,navigationArtwork(b.textures.at(texture),b.path,strokes[index]));
+        // A custom route PNG already contains the artist's finished artwork.
+        if (!b.textures.at(texture).hasTextureSkin)
+            b.textures.replaceImage(texture,navigationArtwork(b.textures.at(texture),b.path,strokes[index]));
         return b;
     }
 };

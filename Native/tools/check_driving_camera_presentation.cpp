@@ -23,9 +23,17 @@ int main(int argc,char** argv)try{
         app.input.pressed['C']=true;app.commands(0);app.input.pressed['C']=false;
         if(app.drivingView!=OriginalDrivingView::Chase)throw std::runtime_error("C did not select chase view");
         capture("chase-start");
-        if(length(app.camera-lerp(app.previousCameraFrame.eye,app.originalCamera.frame().eye,.5f))>1e-5f)throw std::runtime_error("Chase camera not applied");
+        if(length(app.camera-expected)>1e-5f)throw std::runtime_error("Camera jumped on the input frame");
+        for(unsigned tick=0;tick<12;++tick)app.advanceOriginalCamera();
+        const float between=length(app.originalCamera.frame().eye-expected);
+        if(!(between>.01f&&between<5.6f))throw std::runtime_error("Chase transition skipped the intermediate frames");
         app.input.pressedButtons=XINPUT_GAMEPAD_Y;app.commands(0);app.input.pressedButtons=0;
         if(app.drivingView!=OriginalDrivingView::Bumper)throw std::runtime_error("Controller Y did not select bumper view");
+        app.advanceOriginalCamera();
+        const float returning=length(app.bumperCamera.frame().eye-expected);
+        if(!(returning>0&&returning<between))throw std::runtime_error("Camera reversal snapped");
+        for(unsigned tick=0;tick<180;++tick)app.advanceOriginalCamera();
+        if(length(app.bumperCamera.frame().eye-expected)>.002f)throw std::runtime_error("Camera failed to return to the bumper");
         unsigned wraps=0,poses=0;float minUp=1;
         for(unsigned tick=0;tick<720;++tick){
             DriverInput input;input.automatic=true;input.throttle=.55f;input.steer=std::sin(float(tick)*.025f)*.18f;

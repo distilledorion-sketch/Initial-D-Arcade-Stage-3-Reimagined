@@ -1,4 +1,5 @@
 #include "native_assets.h"
+#include "texture_skins.h"
 #include "native_asset_storage.h"
 #include "native_load_keepalive.h"
 #include "unity_ui_capture.h"
@@ -194,7 +195,9 @@ NativeTextureBank NativeTextureBank::load(const std::filesystem::path& path){
         auto& im=bank.images[index];im.width=w;im.height=h;im.argb.resize(std::size_t(w)*h);
         for(auto& px:im.argb){auto rgba=reader.u32();px=(rgba&0xff00ff00u)|((rgba&255)<<16)|((rgba>>16)&255);}
     }
-    if(!reader.end())throw std::runtime_error("Unexpected native texture trailing bytes");return bank;
+    if(!reader.end())throw std::runtime_error("Unexpected native texture trailing bytes");
+    applyTextureSkin(path, bank.images);
+    return bank;
 }
 const NativeImage& NativeTextureBank::at(std::uint32_t index)const{return images.at(index);}
 NativeModel NativeModel::load(const std::filesystem::path& path){

@@ -63,6 +63,8 @@ public:
     // The race-end WIN/LOSE/TIMEUP stream plays once and stops; the announcement
     // holds the road view until it runs out. No clip loaded counts as over.
     bool raceMusicFinished()const{return music.frames()==0||musicFrame>=double(music.frames());}
+    //141D80 at source Finish completion: stop stream, independent of PCM length.
+    void stopOriginalFinishStream();
     const OriginalAudioDspRuntime* dspRuntime()const{return nativeDsp.get();}
     // Diagnostic: how much the DSP wet return actually contributes.
     double dspWetEnergy=0,dspInputEnergy=0;
@@ -115,6 +117,10 @@ public:
     const original::OriginalEngineControlInput& showcaseEngineControl()const{return showcaseEngineInput;}
     void useDevelopmentEngine(){nativeEngine.reset();presentationEngine.reset();nativeTire.reset();onlineEngineOutput=false;resetEngineVoiceHistory();}
     void stepOriginalEngine(const original::OriginalEngineControlInput& input,std::uint32_t& sharedSeed);
+    // 1427E0: stop the four engine voices and latch31DE55. The local
+    // finish child owns this gate; it is not the earlier automatic brake.
+    void stopOriginalDriving();
+    bool originalDrivingStopped()const{return originalDrivingStopped_;}
     void requestOriginalTire(const original::OriginalAngularResult& feedback);
     void finishSoundFrame(std::uint32_t& sharedSeed);
     void applyConfirmedOnlineAudio(std::span<const original::OriginalEngineCommand> engine,
@@ -190,6 +196,8 @@ private:
     original::OriginalSelectionMusicState resultMusicManager;
     original::OriginalTireAudioState tireState;
     bool pendingEngineFrame=false;
+    bool originalDrivingStopped_=false;
+    std::unique_ptr<OriginalIcsPlayer> stoppedEngine_;
     // Confirmations update instrument controls, not the output clock. A late
     // peer must not drain a fixed amount of pre-rendered engine PCM.
     bool onlineEngineOutput=false;
@@ -208,7 +216,7 @@ private:
     };
     std::deque<EngineVoiceCheckpoint> engineVoiceCheckpoints_;
     std::uint64_t engineSamplesWritten_=0;
-    enum class EngineOutputSource { None, Presentation, Online, Queued };
+    enum class EngineOutputSource { None, Presentation, Online, Queued, Stopped };
     EngineOutputSource lastEngineOutputSource_=EngineOutputSource::None;
     void resetEngineVoiceHistory();
     std::unique_ptr<OriginalIcsPlayer> snapshotOutputEngine()const;

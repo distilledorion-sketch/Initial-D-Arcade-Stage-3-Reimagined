@@ -19,6 +19,7 @@ struct NativeImage {
     // Navigation artwork: R is signed edge distance, G/B are field/road
     // alpha. Decode coverage at the final display resolution, not in texels.
     bool navigationDistanceField=false;
+    bool hasTextureSkin=false;
 };
 class NativeTextureBank {
 public:

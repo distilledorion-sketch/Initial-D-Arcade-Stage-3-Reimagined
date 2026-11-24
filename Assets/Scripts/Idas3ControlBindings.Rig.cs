@@ -7,6 +7,8 @@ public sealed partial class Idas3ControlBindings
     readonly Dictionary<string,RigState> rigStates=new Dictionary<string,RigState>(StringComparer.Ordinal);
     readonly List<string> expiredRigStates=new List<string>();
     readonly float[] rigAmounts=new float[ActionCount];
+    readonly bool[] rigPrecise=new bool[ActionCount];
+    readonly float[] rigPedalAmounts=new float[2];
     readonly HashSet<string> rigStartSources=new HashSet<string>(StringComparer.Ordinal);
 
     static bool GearAction(int action)=>action==(int)ActionId.ShiftUp||action==(int)ActionId.ShiftDown||action>=(int)ActionId.Gear1;
@@ -27,6 +29,8 @@ public sealed partial class Idas3ControlBindings
     void PollRig(IReadOnlyList<Idas3ControllerDevices.RigSample> samples)
     {
         Array.Clear(rigAmounts,0,rigAmounts.Length);
+        Array.Clear(rigPrecise,0,rigPrecise.Length);
+        Array.Clear(rigPedalAmounts,0,rigPedalAmounts.Length);
         rigStartSources.Clear();
         foreach(var state in rigStates.Values)state.seen=false;
         if(genericProfile&&samples!=null)foreach(var sample in samples){
@@ -41,16 +45,24 @@ public sealed partial class Idas3ControlBindings
                 if(control!=null&&!string.IsNullOrEmpty(control.path)&&Finite(control.value))state.controls[control.path]=control;
             for(int i=0;i<rigAmounts.Length;++i){
                 if(!profile.generic&&!GearAction(i))continue;
-                var binding=profile.actions[i];float amount=0;
+                var binding=profile.actions[i];float amount=0;bool precise=false;
                 if(!string.IsNullOrEmpty(binding.controlPath)&&state.controls.TryGetValue(binding.controlPath,out var control)){
                     float extent=binding.controlDirection>0?binding.controlMax-binding.controlRest:binding.controlRest-binding.controlMin;
                     amount=binding.controlButton?(control.value>.5f?1:0):extent>.0001f?Math.Max(0,Math.Min(1,(control.value-binding.controlRest)*binding.controlDirection/extent)):0;
+                    precise=!binding.controlButton&&extent>.0001f;
                 }
                 else if(string.IsNullOrEmpty(binding.controlPath))amount=RawMagnitude(sample.pad,binding.pad)/32768f;
+                float pedalAmount=amount;
+                if(i<2&&string.IsNullOrEmpty(binding.controlPath)&&RawPrecisePedal(sample.pad,binding.pad,out float raw))
+                {pedalAmount=raw;precise=true;}
                 int bit=1<<i;
                 if(fresh&&amount>.15f)state.blocked|=bit;
                 if(amount<=.15f)state.blocked&=~bit;
                 if((state.blocked&bit)==0){
+                    if(i<2){
+                        if(pedalAmount>rigPedalAmounts[i]||(pedalAmount==rigPedalAmounts[i]&&precise))rigPrecise[i]=precise;
+                        rigPedalAmounts[i]=Math.Max(rigPedalAmounts[i],pedalAmount);
+                    }
                     rigAmounts[i]=Math.Max(rigAmounts[i],amount);
                     if(i==(int)ActionId.Start&&amount>=.5f)rigStartSources.Add("rig:"+sample.key+":"+binding.controlPath);
                 }

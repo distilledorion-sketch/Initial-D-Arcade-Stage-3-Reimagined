@@ -1,6 +1,7 @@
 #include "original_driving_session.h"
 #include "original_driving_float.h"
 #include "sh4_scalar_reference.h"
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -21,8 +22,13 @@ int main(int argc,char** argv)try{
     // The scalar opcode interpreter uses host FP instructions. Explicitly
     // execute it in the captured original game's nearest/flush mode too.
     const OriginalDrivingFloatScope originalExecutionMode;
-    if(argc!=4&&argc!=5)throw std::invalid_argument("Usage: original_driving_session_reference_tests native_root canonical_image primary_fsca_header [--handling-matrix]");
-    const bool matrix=argc==5&&std::string(argv[4])=="--handling-matrix";
+    if(argc!=4&&argc!=5)throw std::invalid_argument("Usage: original_driving_session_reference_tests native_root canonical_image primary_fsca_header [--handling-matrix|--repeated-shifts|--steering-history|--surface-encounters|--surface-approaches]");
+    const std::string option=argc==5?argv[4]:"";
+    const bool repeated=option=="--repeated-shifts",history=option=="--steering-history";
+    const bool extended=repeated||history;
+    const bool surfaces=option=="--surface-encounters";
+    const bool approaches=option=="--surface-approaches";
+    const bool matrix=option=="--handling-matrix"||extended||surfaces||approaches;
     if(argc==5&&!matrix)throw std::invalid_argument("Unknown session reference option");
     const std::filesystem::path root=argv[1];RefMemory memory{std::filesystem::path(argv[2])};
     const auto data=OriginalPhysicsData::load(root/"data/original_physics/tables.bin");
@@ -33,6 +39,10 @@ int main(int argc,char** argv)try{
     std::size_t comparisons=0,instructions=0,impactRecords=0,acceptedContacts=0,suppressedContacts=0;
     std::size_t wallFrames=0,cleanSteeringFrames=0,movingBrakeFrames=0,gearChanges=0;
     float peakSpeed=0;
+    std::size_t tstFrames=0,cleanTstFrames=0,downEdges=0,opposedFrames=0,carryBoundaries=0;
+    std::size_t totalRareGates=0,totalMovingGates=0;
+    std::size_t oilFrames=0,shoulderFrames=0,validAirFrames=0,landingTransitions=0,recoveryFrames=0;
+    std::size_t movingOilFrames=0,drivenLandings=0;
     // Isolate159720's final backup write set before the sequential tests.
     // Random suffixes/actor records ensure the native helper does not clear
     // data which the original copy/invalidation deliberately leaves intact.
@@ -56,11 +66,14 @@ int main(int argc,char** argv)try{
         }
         comparisons+=42;if(recovery.actor0C8FF580!=savedActor)throw std::runtime_error("Outer backup altered actor");
     }
-    const unsigned scenarios=matrix?70:4,frames=matrix?900:600;
+    const unsigned scenarios=approaches?6:surfaces?72:history?3:repeated?144:matrix?70:4;
+    const unsigned frames=history?24000:repeated?1600:matrix?900:600;
     for(unsigned scenario=0;scenario<scenarios;++scenario){
         const bool contactAudio=matrix?true:scenario>=2;
-        const unsigned variant=scenario%2,car=matrix?scenario/2:variant?7:0;
-        const unsigned condition=matrix?(car*7+variant*9)%18:6+variant;
+        const unsigned variant=history||approaches?0:scenario%2;
+        const unsigned surfaceCase=(scenario/2)%4;
+        const unsigned car=approaches?std::array<unsigned,3>{0,7,17}[scenario/2]:surfaces?std::array<unsigned,3>{0,7,17}[scenario/24]:history?0:repeated?std::array<unsigned,4>{0,7,17,22}[scenario/36]:matrix?scenario/2:variant?7:0;
+        const unsigned condition=approaches?(scenario%2?10:14):surfaces?std::array<unsigned,4>{14,6,10,6}[surfaceCase]:history?6:repeated?(scenario/2)%18:matrix?(car*7+variant*9)%18:6+variant;
         OriginalDrivingSelection selection;selection.physics.conditionCode=condition;
         selection.physics.vehicleIndex=car;selection.collisionVariant=condition&1;
         if(matrix){
@@ -68,13 +81,40 @@ int main(int argc,char** argv)try{
             selection.physics.mode0C9015FC=variant;
             selection.physics.mode0C9015C0=condition>15?1:0;
             selection.physics.upgradeIndex0C9015F0=variant?63:0;
+            if(extended)selection.physics.vehicleMode0C9015E0=history?scenario:std::array<unsigned,6>{0,1,2,24,25,30}[(scenario/2)%6];
             // The tuned Trueno's original engine override is selected by its
             // profile package; other cars retain their own authored gearbox.
             selection.physics.overrideMode0C9015F4=variant&&car==0?1:0;
         }
         const auto path=data.loadPath(root/"data/original_physics",condition);
         auto position=path.points[0];position[1]+=1.0f;
-        const auto& next=path.points[1];const std::array<float,3> angles{0,std::atan2(position[0]-next[0],position[2]-next[2]),0};
+        const auto& next=path.points[1];std::array<float,3> angles{0,std::atan2(position[0]-next[0],position[2]-next[2]),0};
+        const unsigned surfaceMaterial=approaches?(condition==14?24:28):std::array<unsigned,4>{24,32,28,16}[surfaceCase];
+        const float elevation=std::array<float,3>{1.f,6.f,25.f}[(scenario/8)%3];
+        if(surfaces){
+            // Explicit initial poses on actual authored collision triangles.
+            // Elevated starts exercise the source landing/contact equations;
+            // they are constructed fixtures, not captures of expert jumps.
+            const auto collision=OriginalCollisionData::load(root/"data/original_physics"/originalCollisionFile(condition,selection.collisionVariant));
+            const auto& triangle=collision.triangles.at(std::array<unsigned,4>{17107,16509,9909,10079}[surfaceCase]);
+            if((unsigned(triangle[7])&0x80ff)!=surfaceMaterial)throw std::runtime_error("Surface encounter authored material changed");
+            position={};for(unsigned axis=0;axis<3;++axis)for(unsigned corner=0;corner<3;++corner)
+                position[axis]+=std::bit_cast<float>(collision.vertices.at(triangle[corner])[axis])/3.f;
+            unsigned nearest=0;float best=1e30f;
+            for(unsigned j=0;j+1<path.points.size();++j){const auto& p=path.points[j];const float dx=p[0]-position[0],dz=p[2]-position[2],distance=dx*dx+dz*dz;if(distance<best){best=distance;nearest=j;}}
+            const auto& a=path.points[nearest];const auto& b=path.points[nearest+1];
+            angles={0,std::atan2(a[0]-b[0],a[2]-b[2]),0};position[1]+=elevation;
+        }
+        unsigned approachNearest=condition==14?162:339;
+        if(approaches){
+            // Real upstream authored path points, normal one-unit road start.
+            // After reset only steering/throttle inputs move the car; no
+            // injected speed, lift, material or physics/history correction.
+            selection.physics=makeOriginalFreshTimeAttackSelection(car,condition,OriginalWeather::Dry);
+            position=path.points.at(approachNearest);position[1]+=1.f;
+            const auto& target=path.points.at(approachNearest+1);
+            angles={0,std::atan2(position[0]-target[0],position[2]-target[2]),0};
+        }
         OriginalDrivingSession session;session.reset(root,selection,position,angles);
         OriginalDrivingSession observedSession;std::vector<unsigned> callbackEvents;
         if(contactAudio){
@@ -92,6 +132,7 @@ int main(int argc,char** argv)try{
         memory.write32(0x0C901728,pathBase);memory.write32(0x0C901654,selection.physics.vehicleIndex);
         memory.write32(0x0C9015CC,selection.physics.conditionCode);
         memory.write32(0x0C9015FC,selection.physics.mode0C9015FC);
+        memory.write32(0x0C9015E0,selection.physics.vehicleMode0C9015E0);
         memory.write32(0x0C9015C0,selection.physics.mode0C9015C0);
         memory.write32(0x0C9015F0,selection.physics.upgradeIndex0C9015F0);
         memory.write32(0x0C9015F4,selection.physics.overrideMode0C9015F4);
@@ -115,7 +156,13 @@ int main(int argc,char** argv)try{
             memory.write32(0x0C8FF1CC,contactQueue);memory.write8(0x0C31DE55,0);
             session.setContactSoundQueueActive(true);
         }
-        std::uint32_t previousGear=0;
+        std::uint32_t previousGear=0,lastShift=0;
+        std::size_t caseClean=0,caseWall=0,caseOpposed=0,rareGates=0,movingGates=0;
+        float entrySpeed=0;
+        std::size_t materialFrames=0,caseOil=0,caseShoulder=0,caseAir=0,caseLandings=0,caseRecovery=0;
+        bool previousValidAir=false;
+        unsigned groundRun=0,maximumGroundRun=0,caseDrivenLandings=0,caseMovingOil=0;
+        bool qualifiedAir=false;float firstOilSpeed=-1.f;
         for(std::uint32_t tick=0;tick<frames;++tick){
             OriginalVehicleInputs in;in.calibration={128,32,32};in.automaticMode=!matrix||!variant;in.gearEnabled=true;
             const int steering=tick>=120&&tick<220?6:tick>=220&&tick<320?-6:0;
@@ -130,6 +177,77 @@ int main(int argc,char** argv)try{
                 const int brake=tick>=420&&tick<510?171:tick>=510&&tick<600?118:64;
                 in.analog={std::uint16_t((128+lock)<<8),std::uint16_t(throttle<<8),std::uint16_t(brake<<8)};
                 in.pressedByte=tick==30||tick==120||tick==210||tick==300||tick==720?0x20:tick==450||tick==540?0x10:0;
+            }
+            bool tst=false;
+            if(extended){
+                // Input-only path follower establishes moving/contact-rich
+                // states on actual roads. Both executions receive this same
+                // tape. This is not an expert line or cab steering model.
+                const auto& drive=session.vehicle().drive;
+                const auto& pts=path.points;
+                unsigned nearest=drive.u(0x118);float best=1e30f;
+                for(unsigned j=0;j<pts.size();++j){const float dx=pts[j][0]-drive.f(0),dz=pts[j][2]-drive.f(8);const float sq=dx*dx+dz*dz;if(sq<best){best=sq;nearest=j;}}
+                unsigned target=nearest;float length=0;
+                const float look=std::clamp(drive.f(0x238)*.7f,10.f,28.f);
+                while(target+1<pts.size()&&length<look){const auto& a=pts[target];const auto& b=pts[target+1];const float dx=b[0]-a[0],dz=b[2]-a[2];length+=std::sqrt(dx*dx+dz*dz);++target;}
+                const auto& goal=pts[target];
+                const float angle=std::remainder(std::atan2(goal[0]-drive.f(0),goal[2]-drive.f(8))-(drive.f(0x10)+3.14159265358979323846f),6.28318530717958647692f);
+                int lock=int(std::lround(std::clamp(-angle*1.5f,-1.f,1.f)*80));
+                int throttle=tick<30?64:171,brake=64;
+                // One full TST-like sequence followed immediately by another,
+                // then another at later, slower spacing; both directions.
+                for(unsigned burst=0;burst<(history?1u:2u);++burst){
+                    const unsigned start=history?600u+(tick>=600?(tick-600)/600:0)*600u:burst?1000u:600u;
+                    const unsigned gap=history?((start/600)%2==1?1:4):(start==600?1:4),len=10*gap;
+                    if(tick>=start&&tick<start+len*3){
+                        const auto phase=(tick-start)%len;
+                        const int sign=history?((start/600)%2==1?1:-1):(start==600?1:-1);
+                        lock=sign*(phase>=4*gap&&phase<7*gap?-40:40);
+                        if(phase==0||phase==2*gap||phase==7*gap)in.pressedByte=0x20;
+                        else if(phase==gap||phase==3*gap||phase==8*gap)in.pressedByte=0x10;
+                        else in.pressedByte=0;
+                        tst=true;
+                        if(tick==start+len){if(drive.f(0x284)!=0||drive.f(0x288)!=0)++carryBoundaries;}
+                    }
+                }
+                if(!tst){
+                    in.pressedByte=0;
+                    const auto gear=session.vehicle().transmission.gear00;
+                    const auto& profile=session.parameters().profile;
+                    if(tick>lastShift+1&&gear+1<session.parameters().transmission.maximumGear&&drive.f(0x248)>=profile.atByteOffset(4+4*gear)*profile.atByteOffset(0)){in.pressedByte=0x20;lastShift=tick;}
+                }
+                if((history?tick%2400:tick)>=1300&&(history?tick%2400:tick)<1380){throttle=64;brake=171;}
+                in.automaticMode=false;
+                in.analog={std::uint16_t((128+lock)<<8),std::uint16_t(throttle<<8),std::uint16_t(brake<<8)};
+                if(tick==600)entrySpeed=drive.f(0x238)*3.6f;
+                if(tst){++tstFrames;downEdges+=(in.pressedByte&0x10)!=0;}
+            }
+            if(history&&(session.contactCompletion().steeringMask0C900EBC&session.parameters().steeringMemory.mask0CAA9CF0)==0){
+                ++rareGates;
+                if(session.vehicle().drive.f(0x238)>1.f)++movingGates;
+                std::cout<<"GATE enemy="<<scenario<<" tick="<<tick<<" speed_kmh="<<session.vehicle().drive.f(0x238)*3.6f<<" pending="<<session.vehicle().drive.f(0x288)<<" active="<<session.vehicle().drive.f(0x284)<<std::endl;
+            }
+            if(surfaces){
+                const auto& d=session.vehicle().drive;unsigned nearest=0;float best=1e30f;
+                for(unsigned j=0;j+1<path.points.size();++j){const auto& p=path.points[j];const float dx=p[0]-d.f(0),dz=p[2]-d.f(8),distance=dx*dx+dz*dz;if(distance<best){best=distance;nearest=j;}}
+                const auto& target=path.points[std::min<std::size_t>(nearest+3,path.points.size()-1)];
+                const float error=std::remainder(std::atan2(target[0]-d.f(0),target[2]-d.f(8))-(d.f(0x10)+3.141592653589793f),6.283185307179586f);
+                const int lock=int(std::lround(std::clamp(-error*1.5f,-1.f,1.f)*80));
+                in.analog={std::uint16_t((128+lock)<<8),std::uint16_t((tick<30?64:171)<<8),64<<8};
+                in.pressedByte=0;
+                const auto gear=session.vehicle().transmission.gear00;const auto& profile=session.parameters().profile;
+                if(tick>lastShift+1&&gear+1<session.parameters().transmission.maximumGear&&d.f(0x248)>=profile.atByteOffset(4+4*gear)*profile.atByteOffset(0)){in.pressedByte=0x20;lastShift=tick;}
+            }
+            if(approaches){
+                const auto& d=session.vehicle().drive;float best=1e30f;unsigned found=approachNearest;
+                for(unsigned j=approachNearest>3?approachNearest-3:0;j<std::min<unsigned>(approachNearest+13,unsigned(path.points.size()-1));++j){const auto& p=path.points[j];const float dx=p[0]-d.f(0),dz=p[2]-d.f(8),distance=dx*dx+dz*dz;if(distance<best){best=distance;found=j;}}
+                approachNearest=found;unsigned target=found;float length=0;
+                while(target+1<path.points.size()&&length<22.f){const auto& a=path.points[target];const auto& b=path.points[target+1];const float dx=b[0]-a[0],dz=b[2]-a[2];length+=std::sqrt(dx*dx+dz*dz);++target;}
+                const auto& p=path.points[target];
+                const float error=std::remainder(std::atan2(p[0]-d.f(0),p[2]-d.f(8))-(d.f(0x10)+3.141592653589793f),6.283185307179586f);
+                const int lock=int(std::lround(std::clamp(-error*1.5f,-1.f,1.f)*80));
+                in.automaticMode=true;in.pressedByte=0;
+                in.analog={std::uint16_t((128+lock)<<8),std::uint16_t((tick<30?64:171)<<8),64<<8};
             }
             memory.write16(0x0C92F0E0,in.analog.steering);memory.write16(0x0C92F0E2,in.analog.throttle);memory.write16(0x0C92F0E4,in.analog.brake);
             memory.write32(memory.read32(0x0C15D0E4),in.calibration.steeringWord);
@@ -166,8 +284,8 @@ int main(int argc,char** argv)try{
             const auto effects=session.tick(in);
             if(contactAudio){
                 const auto after=session.rollbackDigest();session.restore(before);
-                const auto repeated=session.tick(in);
-                if(after!=session.rollbackDigest()||effects.acceptedContactCues!=repeated.acceptedContactCues)
+                const auto resimulated=session.tick(in);
+                if(after!=session.rollbackDigest()||effects.acceptedContactCues!=resimulated.acceptedContactCues)
                     throw std::runtime_error("Rollback changed contact queue/RNG or accepted cues");
                 callbackEvents.clear();observedSession.setPlatformFrame(10000+tick,tick%120==0?0x80:0);
                 const auto observed=observedSession.tick(in);
@@ -182,7 +300,26 @@ int main(int argc,char** argv)try{
                 ++comparisons;const auto expected=memory.read32(address);if(expected!=actual){std::cerr<<"car="<<car<<" condition="<<condition<<" variant="<<variant<<" tick="<<tick<<" address="<<hex(address)<<" expected="<<hex(expected)<<" actual="<<hex(actual)<<'\n';throw std::runtime_error("Integrated original state differential mismatch");}
             };
             const auto& v=session.vehicle();const auto& g=v.transmissionGlobals;const auto& h=v.tail;const auto& c=v.controls;
+            if(surfaces||approaches){
+                bool material=false,allAir=true,allGround=true,valid=true;
+                for(unsigned wheel=0;wheel<4;++wheel){material|=v.drive.u(0x164+wheel*4)==surfaceMaterial;allAir&=v.drive.u(0x12c+wheel*4)!=0;allGround&=v.drive.u(0x12c+wheel*4)==0;valid&=std::int32_t(session.roadContact().surfaces0CAA9518[wheel].u(60))>=0;}
+                materialFrames+=material;caseOil+=v.drive.u(0x140)!=0;caseShoulder+=v.drive.u(0x148)!=0;
+                caseAir+=allAir&&valid;caseLandings+=previousValidAir&&!allAir&&valid;
+                if(approaches){
+                    groundRun=allGround&&valid?groundRun+1:0;maximumGroundRun=std::max(maximumGroundRun,groundRun);
+                    if(allAir&&valid&&!previousValidAir&&tick>60&&maximumGroundRun>=30&&v.drive.f(0x238)>3.f)qualifiedAir=true;
+                    if(qualifiedAir&&allGround&&valid){++caseDrivenLandings;qualifiedAir=false;}
+                    if(v.drive.u(0x140)){if(firstOilSpeed<0.f)firstOilSpeed=v.drive.f(0x238);caseMovingOil+=v.drive.f(0x238)>20.f;}
+                }
+                previousValidAir=allAir&&valid;
+                caseRecovery+=effects.restoredValidRoadState;
+            }
             peakSpeed=std::max(peakSpeed,v.drive.f(0x238));
+            if(tst){
+                if(v.drive.u(0x150)==0&&v.drive.f(0x238)>20.f){++cleanTstFrames;++caseClean;}
+                else if(v.drive.u(0x150)!=0)++caseWall;
+                if(v.drive.f(0x28C)>0.f){++opposedFrames;++caseOpposed;}
+            }
             wallFrames+=v.drive.u(0x150)!=0;
             cleanSteeringFrames+=v.drive.u(0x150)==0&&v.drive.f(0x238)>20.f&&std::abs(v.drive.f(0x1CC))>.1f;
             movingBrakeFrames+=v.drive.f(0x238)>5.f&&v.drive.f(0x1C4)>.1f;
@@ -238,13 +375,37 @@ int main(int argc,char** argv)try{
                 equal(memory.read32(contactQueue+48),std::uint32_t(session.contactSoundCooldown()),"outer contact queue tick");
             }
         }
-        if(matrix)std::cout<<"MATCH car="<<car<<" condition="<<condition<<" wet="<<variant<<" upgrade="<<selection.physics.upgradeIndex0C9015F0<<" automatic="<<(!variant)<<" frames="<<frames<<std::endl;
+        if(extended)std::cout<<"REPEAT COVERAGE car="<<car<<" condition="<<condition<<" wet="<<variant<<" enemy="<<selection.physics.vehicleMode0C9015E0<<" clean_above72="<<caseClean<<" wall="<<caseWall<<" opposed="<<caseOpposed<<" first_entry_kmh="<<entrySpeed<<std::endl;
+        if(history)std::cout<<"GATE COVERAGE enemy="<<scenario<<" rare="<<rareGates<<" moving_above3_6kmh="<<movingGates<<std::endl;
+        totalRareGates+=rareGates;totalMovingGates+=movingGates;
+        if(surfaces){
+            std::cout<<"SURFACE car="<<car<<" condition="<<condition<<" wet="<<variant<<" material="<<surfaceMaterial<<" elevation="<<elevation<<" material_frames="<<materialFrames<<" oil="<<caseOil<<" shoulder="<<caseShoulder<<" valid_air="<<caseAir<<" landings="<<caseLandings<<" recovery="<<caseRecovery<<std::endl;
+            if(!materialFrames||(elevation>1.f&&(!caseAir||!caseLandings)))throw std::runtime_error("Surface fixture missed its material or elevated landing");
+            if(surfaceMaterial==24&&((variant&&caseOil)||(!variant&&!caseOil)))throw std::runtime_error("Actual oil surface missed dry/wet activation coverage");
+            oilFrames+=caseOil;shoulderFrames+=caseShoulder;validAirFrames+=caseAir;landingTransitions+=caseLandings;recoveryFrames+=caseRecovery;
+        }
+        if(approaches){
+            std::cout<<"APPROACH car="<<car<<" condition="<<condition<<" material_frames="<<materialFrames<<" oil_above72kmh="<<caseMovingOil<<" first_oil_kmh="<<firstOilSpeed*3.6f<<" valid_air="<<caseAir<<" driven_landings="<<caseDrivenLandings<<" recovery="<<caseRecovery<<std::endl;
+            if(!materialFrames||caseRecovery||(condition==14&&(!caseMovingOil||firstOilSpeed<=20.f))||(condition==10&&(!caseDrivenLandings||!caseAir)))throw std::runtime_error("Input-only approach missed moving oil or driven takeoff/landing coverage");
+            movingOilFrames+=caseMovingOil;drivenLandings+=caseDrivenLandings;
+        }
+        if(matrix)std::cout<<"MATCH car="<<car<<" condition="<<condition<<" wet="<<variant<<" upgrade="<<selection.physics.upgradeIndex0C9015F0<<" automatic="<<(extended?false:!variant)<<" frames="<<frames<<std::endl;
     }
+    if(extended&&(!cleanTstFrames||!downEdges||!opposedFrames||!carryBoundaries))
+        throw std::runtime_error("Repeated sequence fixture missed clean steering/shift/history coverage");
+    if(history&&(totalRareGates<=scenarios||!totalMovingGates))
+        throw std::runtime_error("Retained history fixture missed a moving rare steering gate");
     if(!acceptedContacts||!suppressedContacts)throw std::runtime_error("Session fixture missed contact acceptance/suppression");
-    if(matrix&&(!wallFrames||!cleanSteeringFrames||!movingBrakeFrames||!gearChanges))
+    if(matrix&&!surfaces&&!approaches&&(!wallFrames||!cleanSteeringFrames||!movingBrakeFrames||!gearChanges))
         throw std::runtime_error("Handling matrix missed a driving/contact/braking/shifting condition");
+    if(surfaces){
+        if(!oilFrames||!shoulderFrames||!validAirFrames||!landingTransitions)throw std::runtime_error("Surface suite missed a required source branch");
+        std::cout<<"SURFACE TOTAL oil_frames="<<oilFrames<<" shoulder_frames="<<shoulderFrames<<" valid_air_frames="<<validAirFrames<<" landings="<<landingTransitions<<" recovery="<<recoveryFrames<<'\n';
+    }
+    if(approaches)std::cout<<"APPROACH TOTAL oil_above72kmh="<<movingOilFrames<<" driven_landings="<<drivenLandings<<'\n';
+    if(extended)std::cout<<"REPEAT TOTAL tst_frames="<<tstFrames<<" clean_tst_above72kmh="<<cleanTstFrames<<" tst_down_edges="<<downEdges<<" opposed_frames="<<opposedFrames<<" carry_boundaries="<<carryBoundaries<<'\n';
     if(matrix)std::cout<<"COVERAGE wall_frames="<<wallFrames<<" clean_steering_above72kmh_frames="<<cleanSteeringFrames
         <<" moving_brake_frames="<<movingBrakeFrames<<" gear_changes="<<gearChanges<<" peak_speed_kmh="<<peakSpeed*3.6f<<'\n';
     std::cout<<"PASS 512 outer backup cases and "<<scenarios*frames<<" sequential complete original player session frames after actual1595C0 plus159720 publication/backup startup, "<<comparisons<<" bit comparisons, "<<instructions
-        <<" original instructions, "<<impactRecords<<" impact records. "<<(matrix?"70 paired scenarios across35 cars/all18 course-directions, dry AT stock/wet MT tuned (not their full Cartesian product); ":"Two actual Akina datasets/cars; ")<<"source contact queue, "<<acceptedContacts<<" accepted and "<<suppressedContacts<<" suppressed contact cues, exact RNG/steering state and rollback. Engine/diagnostic/digital-reset hooks and inactive rival-pair boundary remain; enabled contact path executes actual queue/RNG instructions with final sound-command sink and integer quotient hooks.\n";
+        <<" original instructions, "<<impactRecords<<" impact records. "<<(approaches?"Six upstream real-road input-only approaches, three stock dry AT cars, high-speed oil entry and driven Irohazaka takeoff/landing; ":surfaces?"72 actual-road surface fixtures: three cars, dry AT/wet tuned MT, oil/Akina shoulder/Irohazaka material28/road, three constructed elevations; ":history?"Three24,000-tick AE86/Akina dry MT sessions with retained enemy0/1/2, periodic repeated shifts and actual rare steering gates; ":repeated?"144 cases: four cars x18 original directions x2 weather, dry stock/wet tuned MT repeated shifts and feints; synthetic input-only path follower, not expert lines; ":matrix?"70 paired scenarios across35 cars/all18 course-directions, dry AT stock/wet MT tuned (not their full Cartesian product); ":"Two actual Akina datasets/cars; ")<<"source contact queue, "<<acceptedContacts<<" accepted and "<<suppressedContacts<<" suppressed contact cues, exact RNG/steering state and rollback. Engine/diagnostic/digital-reset hooks and inactive rival-pair boundary remain; enabled contact path executes actual queue/RNG instructions with final sound-command sink and integer quotient hooks.\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}

@@ -10,9 +10,17 @@ int main(int argc,char** argv)try{
     setOriginalUiLanguage(argc==4?std::stoi(argv[3]):0);
     unsigned checks=0;auto check=[&](bool value,const char* why){++checks;if(!value)throw std::runtime_error(why);};
     for(unsigned fps:{30,60,120,144,240}){
-        OnlineResultScreen screen;screen.begin(2000,14000);FixedClock clock;
-        for(unsigned i=0;i<fps*10;++i)clock.advance(1./fps,[&]{screen.advance(true);});
-        check(screen.page==1&&screen.points.displayedBalance==14000&&screen.frame==286,"Original result timing depends on display frame rate");
+        OnlineResultScreen screen;screen.begin(2000,14000);OriginalDrivingClock clock;
+        unsigned ticks=0,transition=0;
+        for(unsigned i=0;i<fps*11&&!transition;++i)clock.advance(1./fps,[&]{
+            if(screen.page!=0)return;
+            ++ticks;screen.input(true,true,1,0);screen.advance(false);
+            if(screen.page==1)transition=ticks;
+        });
+        check(transition==610&&screen.frame==0,"Linked finish duration/input depends on host cadence");
+        FixedClock points;
+        for(unsigned i=0;i<fps*2;++i)points.advance(1./fps,[&]{screen.advance(false);});
+        check(screen.page==1&&screen.points.displayedBalance==14000&&screen.frame==120,"Points UI clock changed");
     }
     {
         OnlineResultScreen screen;screen.begin(0,9000);screen.page=2;
@@ -55,10 +63,19 @@ int main(int argc,char** argv)try{
         check(app->profiles.load(0).profile.words==offline.words,"Award touched another save/car");
         app->setMultiplayerResult(winner);check(rewards.load(8).profile.words==earned.words,"Duplicate result awarded twice");
         check(app->onlineResult.page==0,"Settled result did not start original finish presentation");
-        app->onlineResult.input(false,false,0,1);app->advanceOnlineResult(.1);
+        app->onlineResult.input(false,false,0,1);app->advanceHostClock(.1,[]{});app->advanceOnlineResult(.1);
         check(app->onlineResult.frame==0,"Blocked result input advanced presentation");
-        app->onlineResult.input(true,false,0,0);app->advanceOnlineResult(1./60.);
-        check(app->onlineResult.page==1&&app->onlineResultPreview,"Original result car scene did not open");
+        app->clock.reset();app->onlineResult.input(true,false,0,0);
+        app->advanceOnlineResult(.1);check(app->onlineResult.frame==0,"Rendering advanced source finish timing");
+        app->advanceHostClock(OriginalDrivingClock::step,[]{});
+        check(app->onlineResult.page==0&&app->onlineResult.frame==1,"Driving confirmation skipped the readiness update");
+        for(unsigned tick=1;tick<609;++tick)app->advanceHostClock(OriginalDrivingClock::step,[]{});
+        check(app->onlineResult.page==0&&app->onlineResult.finish.done()&&!app->onlineResult.finish.blank&&
+            !app->onlineResultPreview,"Exit End did not unblank before the next dispatch");
+        app->advanceHostClock(OriginalDrivingClock::step,[]{});
+        check(app->onlineResult.page==1&&app->onlineResultPagePending&&!app->onlineResultPreview,"Source callback materialized preview assets");
+        app->advanceOnlineResult(.1);
+        check(app->onlineResult.page==1&&app->onlineResultPreview&&app->onlineResult.frame==0,"EOS result handoff consumed old host elapsed time");
         check(app->onlineResultPoints.profileMode==2&&app->onlineResultPoints.points[3]==amount,
             "Online points were not supplied to the original battle result panel");
         check(app->onlineResultPoints.resultStatus==(winner<0?2:winner==int(slot)?0:1)&&
@@ -196,6 +213,130 @@ int main(int argc,char** argv)try{
             rejected=false;try{owner->setMultiplayerResult(1-int(winner));}catch(const std::logic_error&){rejected=true;}
             check(rejected,"Unverified winner overrode the shared result");
             owner->setMultiplayerResult(int(winner));check(owner->race.phase==RacePhase::Finished,"Verified result did not end both local presentations");
+        }
+        // Real App host/guest path after a verified terminal boundary. Only
+        // boundary seeding above is synthetic; source clock, driver mapper,
+        // authority wire/ACKs, camera presenter and result owner are actual.
+        const auto exchange=[&]{
+            const auto host=app->authorityLink->packet(),guest=peer->authorityLink->packet();
+            app->receiveAuthority(guest);peer->receiveAuthority(host);
+        };
+        const auto cameraKey=[](const App& a){
+            return std::array{a.originalCamera.frame().cameraWorld.elements,
+                a.bumperCamera.frame().cameraWorld.elements,
+                a.previousCameraFrame.cameraWorld.elements,a.previousBumperFrame.cameraWorld.elements};
+        };
+        for(auto* owner:{app.get(),peer.get()}){
+            owner->setMultiplayerGo(true);owner->vsActive=false;owner->active=true;
+            owner->clock.reset();owner->setHostDrivingControlsBlocked(false);
+            owner->input={};owner->input.connected=true;
+            owner->input.pad.Gamepad.sThumbLX=12000;owner->input.pad.Gamepad.bRightTrigger=65;
+            owner->input.pad.Gamepad.bLeftTrigger=32;
+            owner->input.originalThrottleAnalog=16578;owner->input.originalBrakeAnalog=8191;
+            owner->input.pad.Gamepad.wButtons=XINPUT_GAMEPAD_B;
+            owner->steeringSmoothing.setAmount(0);
+            const auto oldView=owner->drivingView;
+            owner->input.pressed['C']=true;owner->input.pressedButtons=XINPUT_GAMEPAD_Y;
+            owner->commands(0);check(owner->drivingView==oldView,"Finish accepted GO-only camera toggle");
+            for(auto phase:{RacePhase::Countdown,RacePhase::Running}){
+                owner->race.phase=phase;const auto before=owner->drivingView;
+                owner->commands(0);check(owner->drivingView!=before,"Nonfinish camera toggle was removed");
+            }
+            owner->race.phase=RacePhase::Finished;owner->setDrivingView(oldView);
+            owner->input.pressed={};owner->input.pressedButtons=0;
+            // An actual modal freezes both counter and camera. Simulation
+            // may still process neutral peer inputs; its world is not paused.
+            owner->onlineResult.input(true,true,0,1);const auto camera=cameraKey(*owner);
+            owner->advanceHostClock(OriginalDrivingClock::step,[&]{
+                const auto d=owner->driver();check(d.throttle==0&&d.brake==0&&!d.shiftUp,"Modal passed driving to authority");
+                owner->simulate(d);
+            });
+            check(owner->onlineResult.frame==0&&cameraKey(*owner)==camera,"Blocked authority presenter advanced finish camera/counter");
+            owner->onlineResult.input(true,true,0,0);owner->clock.reset();
+        }
+        exchange();exchange();
+        std::array<unsigned,2> attempts{},accepted{},blankCalls{};
+        std::array<std::uint64_t,2> stallFrame{},stallDigest{};
+        const auto sourceTick=[&](App& owner){
+            const unsigned slot=owner.multiplayer.config.localSlot;
+            ++attempts[slot];
+            // Timing callback already ran. Every call through final Exit
+            // remains a genuine driving owner; the next dispatch is menu.
+            const auto d=owner.driver();
+            if(attempts[slot]<=609){
+                check(d.originalThrottleAnalog==16578&&d.originalBrakeAnalog==8191&&d.shiftUp,
+                    "Finish changed precise pedal/upshift before source owner ended");
+            }else check(d.throttle==0&&d.brake==0&&d.originalThrottleAnalog<0&&!d.shiftUp,
+                "Catch-up source ticks leaked old driving sample into points");
+            if(owner.onlineFinishTickViews){
+                // The pre-solver callback has already drawn. The real
+                // authority presenter must not update either camera again.
+                const auto drawn=cameraKey(owner);owner.simulate(d);
+                check(cameraKey(owner)==drawn,"Authority presenter double-ticked Finish camera");
+            }else{
+                const auto before=cameraKey(owner);owner.simulate(d);
+                check(cameraKey(owner)==before,"Exit/points advanced the retained race camera");
+            }
+            if(attempts[slot]==1)check(owner.onlineResult.finish.counter==0&&
+                owner.onlineResult.finish.visibleHudCode==0,"First settled call skipped readiness/HUD lag");
+            if(owner.onlineResult.finish.blank)++blankCalls[slot];
+            const auto frame=owner.authorityLink->timeline().frame();
+            if(!owner.authorityStalled){
+                ++accepted[slot];
+                const auto records=owner.authorityLink->timeline().outgoing(frame-1,1);
+                bool found=false;
+                for(const auto& record:records)if(record.slot==slot){
+                    found=true;
+                    check(record.input.analog.throttle==(attempts[slot]<=609?16578:0x4000)&&
+                        record.input.analog.brake==(attempts[slot]<=609?8191:0x4000),
+                        "Accepted local packet lost precise finish controls/neutral handoff");
+                    check(record.input.pressedByte==(attempts[slot]==1?0x20:0),
+                        "Terminal packet lost the initial upshift or repeated a held edge");
+                }
+                check(found,"Accepted local authority frame had no input record");
+            }else if(!stallFrame[slot]){stallFrame[slot]=frame;stallDigest[slot]=owner.authorityRace->digest();}
+            else check(frame==stallFrame[slot]&&owner.authorityRace->digest()==stallDigest[slot],
+                "Presentation synthesized authority movement during transport outage");
+            if(attempts[slot]==609)check(owner.onlineResult.page==0&&owner.onlineResult.finish.done()&&
+                !owner.onlineResult.finish.blank,"609th call skipped End-unblank boundary");
+        };
+        // Normal peers share packets at30 host FPS (two source calls often
+        // share one sample). The second outcome deliberately loses transport
+        // at15 FPS: ACK stalls must not strand the settled presentation.
+        const unsigned hz=winner?15:30;
+        for(unsigned hostFrame=0;hostFrame<hz*12&&app->onlineResult.page==0;++hostFrame){
+            app->advanceHostClock(1./hz,[&]{sourceTick(*app);});
+            peer->advanceHostClock(1./hz,[&]{sourceTick(*peer);});
+            if(!winner){exchange();exchange();}
+        }
+        for(auto* owner:{app.get(),peer.get()}){
+            const auto slot=owner->multiplayer.config.localSlot;
+            check(attempts[slot]>=610&&owner->onlineResult.page==1&&owner->onlineResult.frame==0,
+                "EOS settled result was stranded or points consumed catch-up ticks");
+            check(blankCalls[slot]==5,"Hardware blank persisted for wrong number of completed updates");
+            check(owner->onlineResultPagePending&&!owner->onlineResultPreview,"Source callback loaded result assets");
+            owner->advanceOnlineResult(.1);check(owner->onlineResultPreview&&owner->onlineResult.frame==0,
+                "Materialization advanced new points with prior host time");
+            if(winner)check(stallFrame[slot]&&accepted[slot]<attempts[slot],"Transport-outage fixture did not stall real authority");
+            else check(accepted[slot]==attempts[slot]&&owner->authorityLink->verifiedPeerFrames()>600,
+                "Connected terminal authority stopped accepting/verifying both drivers");
+        }
+        if(!winner)check(app->authorityLink->timeline().confirmedDigest()==peer->authorityLink->timeline().confirmedDigest(),
+            "Postfinish local/remote accepted history did not converge");
+        // A nonmodal save may delay only the EOS replacement for SSNC. It
+        // does not consume another driving phase or allow queued confirmation.
+        app->beginOnlineResult();app->onlineResult.input(true,true,0,16);app->clock.reset();
+        for(unsigned tick=0;tick<620;++tick)app->advanceHostClock(OriginalDrivingClock::step,[]{});
+        check(app->onlineResult.page==0&&app->onlineResult.finish.done()&&!app->onlineFinishAcceptsDriving(),
+            "Pending save froze source owner or allowed postowner controls");
+        app->onlineResult.input(true,true,0,0);app->advanceHostClock(OriginalDrivingClock::step,[]{});
+        check(app->onlineResult.page==1&&app->onlineResult.frame==0,"Completed save did not release EOS handoff");
+        app->disconnectMultiplayer();const auto stopped=app->authorityRace->frame();unsigned calls=0;
+        app->advanceHostClock(.25,[&]{++calls;app->simulate(app->driver());});
+        check(!calls&&app->authorityRace->frame()==stopped&&app->onlineResult.page==-1,
+            "Disconnect resumed stale source presentation/authority controls");
+
+        for(auto* owner:{app.get(),peer.get()}){
             owner->leaveMultiplayer();check(!owner->authorityResultFrame,"Result frame survived a rematch reset");
         }
     }

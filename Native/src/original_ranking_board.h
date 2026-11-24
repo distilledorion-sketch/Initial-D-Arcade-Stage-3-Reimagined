@@ -1,5 +1,6 @@
 #pragma once
 #include "native_assets.h"
+#include "time_attack_records.h"
 #include <array>
 namespace idas3::original {
 struct OriginalRankingRecord {
@@ -9,6 +10,7 @@ struct OriginalRankingRecord {
 };
 class OriginalRankingRecords {
 public:
+    static OriginalRankingRecords fromTimes(std::span<const TimeAttackEntry> ranked);
     static OriginalRankingRecords load(const std::filesystem::path&);
     OriginalRankingRecord record(unsigned course,unsigned direction,unsigned wet,unsigned rank)const;
     OriginalRankingRecord modelRecord(unsigned course,unsigned direction,unsigned wet,unsigned car)const;

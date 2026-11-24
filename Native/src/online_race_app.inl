@@ -137,7 +137,7 @@ void receiveAuthority(std::span<const std::uint8_t> packet){
 }
 void simulateAuthority(const DriverInput& d,bool showcase=false){
     auto inputState=authorityInput;
-    const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear};
+    const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog};
     const auto input=original::adaptOriginalHostInput(inputState,controls,automatic,false,0);
     if(!archivePublished&&authorityReplay.active()){
         std::array<OnlineReplayRecording::Lamps,2> lamps;
@@ -178,7 +178,10 @@ void simulateAuthority(const DriverInput& d,bool showcase=false){
     race.progress=float(state.progress.index)+state.progress.fraction;race.furthest=std::max(race.furthest,race.progress);
     race.sector=int(state.times.sectionCount);race.sectionTimes6000=state.times.sectionTimes;
     for(unsigned i=0;i<4;++i)race.splits[i]=race.sectionTimes6000[i]/100;
-    projectOriginalPose(true);projectAuthorityRemote(true);advanceOriginalCamera();
+    projectOriginalPose(true);projectAuthorityRemote(true);
+    // Page0's draw/camera owner already ran before this source attempt; it
+    // also runs on a transport stall without manufacturing a solver frame.
+    if(onlineResult.page<0)advanceOriginalCamera();
     projectedLightPriorAdvantage=battleMetrics.advantage(state.progress,authorityRace->rules(1-local).state().progress);
     advanceProjectedHeadlights();
     advanceRoadsideDust();

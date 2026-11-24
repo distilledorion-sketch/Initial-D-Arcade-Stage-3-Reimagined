@@ -127,6 +127,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     private readonly Dictionary<ulong, Texture2D> textureCache = new Dictionary<ulong, Texture2D>();
     private readonly Transform[] owners = new Transform[4];
     private Transform worldRoot;
+    internal void SetWorldVisible(bool visible){if(worldRoot!=null)worldRoot.gameObject.SetActive(visible);}
     private readonly Light[] lampObjects = new Light[8];
     private SceneTexture[] textureRecords = Array.Empty<SceneTexture>();
     private ulong textureGeneration = ulong.MaxValue;
@@ -158,6 +159,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     };
     private readonly Dictionary<ulong, RangeObject> geometryLookup = new Dictionary<ulong, RangeObject>();
     private readonly List<RangeObject> selectedRanges = new List<RangeObject>();
+    private NativeArray<uint> sceneIndexScratch;
     private readonly List<RangeObject> movingRangeCandidates = new List<RangeObject>();
     private readonly Dictionary<RangeMaterialKey, RangeObject> compatibleRanges = new Dictionary<RangeMaterialKey, RangeObject>();
     private bool rangeAllocationReuse;
@@ -226,6 +228,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
         public int count, selectedStamp;
         public ulong geometryKey;
         public ulong geometryId;
+        public ulong indexedGeometry;
         public RangeObject nextGeometry;
         public RangeObject nextCompatible;
         public NativeArray<SceneVertex> vertexCache;
@@ -534,21 +537,24 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                     item.gameObject.transform.SetParent(owners[range.lightScope], false);
                     item.parentScope = range.lightScope;
                 }
-                if (item.count != range.count)
+                bool resize = item.count != range.count;
+                if (resize)
                 {
                     ++MeshResizeCount;
                     if (item.vertexCache.IsCreated) item.vertexCache.Dispose();
                     item.mesh.Clear(); item.mesh.SetVertexBufferParams((int)range.count, layout);
                     item.mesh.SetIndexBufferParams((int)range.count, IndexFormat.UInt32);
-                    var indices = new NativeArray<uint>((int)range.count, Allocator.Temp, NativeArrayOptions.UninitializedMemory);
-                    for (int j = 0; j < indices.Length; ++j) indices[j] = (uint)j;
-                    item.mesh.SetIndexBufferData(indices, 0, 0, indices.Length, UploadFlags); indices.Dispose();
-                    item.mesh.subMeshCount = 1;
-                    item.mesh.SetSubMesh(0, new SubMeshDescriptor(0, (int)range.count, MeshTopology.Triangles), UploadFlags);
                     item.count = (int)range.count;
                 }
                 bool billboard = (range.flags & 4) != 0;
                 var rangeVertices = (SceneVertex*)frame.vertices.ToPointer() + (int)range.first;
+                if (resize || item.indexedGeometry != geometryId) {
+                    SetTriangleIndices(item, rangeVertices, geometryId);
+                    if (resize) {
+                        item.mesh.subMeshCount = 1;
+                        item.mesh.SetSubMesh(0, new SubMeshDescriptor(0, item.count, MeshTopology.Triangles), UploadFlags);
+                    }
+                }
                 long vertexBytes = (long)range.count * 64;
                 // The scene ABI publishes complete world vertices each frame,
                 // including static course geometry. Immutable cached ranges
@@ -829,6 +835,40 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
     // Called by the isolated scene checks outside measured frames. Inspect the
     // actual Unity mesh buffers, including every colour/UV/normal word, so stale
     // cached geometry cannot hide behind a successful draw/count assertion.
+    // The arcade mesh stream expands triangle strips into individual corners.
+    // Adjacent triangles frequently share two complete vertices. Let the GPU
+    // reuse them in both cameras without changing any source triangle or seam.
+    private unsafe void SetTriangleIndices(RangeObject item, SceneVertex* vertices, ulong identity)
+    {
+        if (!sceneIndexScratch.IsCreated || sceneIndexScratch.Length < item.count) {
+            if (sceneIndexScratch.IsCreated) sceneIndexScratch.Dispose();
+            sceneIndexScratch = new NativeArray<uint>(Mathf.NextPowerOfTwo(item.count), Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+        }
+        var indices = (uint*)NativeArrayUnsafeUtility.GetUnsafePtr(sceneIndexScratch);
+        for (int i = 0; i < item.count; ++i) {
+            indices[i] = (uint)i;
+            if (identity == 0 || i < 3) continue;
+            int triangle = i - i % 3;
+            for (int j = triangle - 3; j < triangle; ++j) {
+                if (UnsafeUtility.MemCmp(vertices + i, vertices + j, sizeof(SceneVertex)) != 0) continue;
+                indices[i] = indices[j];
+                break;
+            }
+        }
+        item.mesh.SetIndexBufferData(sceneIndexScratch, 0, 0, item.count, UploadFlags);
+        item.indexedGeometry = identity;
+    }
+
+    private static unsafe bool SameTriangleStream(NativeArray<SceneVertex> vertices, NativeArray<uint> indices, int count)
+    {
+        var data = (SceneVertex*)NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(vertices);
+        for (int i = 0; i < count; ++i) {
+            uint index = indices[i];
+            if (index >= count || (index != i && UnsafeUtility.MemCmp(data + i, data + index, sizeof(SceneVertex)) != 0)) return false;
+        }
+        return true;
+    }
+
     private static unsafe void VerifyDepthBatches(List<DepthBatch> batches, Action<bool, string> check)
     {
         foreach (var batch in batches) {
@@ -844,10 +884,24 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
                 offset += item.count;
             }
             check(mesh.GetSubMesh(0).indexCount == offset, "Scenery depth group changed its triangle count.");
-            bool sequential = true;
-            for (int i = 0; i < offset; ++i) sequential &= indices[i] == (uint)i;
-            check(sequential, "Scenery depth group changed source triangle ordering.");
+            check(SameTriangleStream(vertices,indices,offset), "Scenery depth group changed source triangle ordering.");
         }
+    }
+    internal unsafe float DiagnosticNearestPlayerBodyDepth()
+    {
+        var frame = CurrentFrame;
+        var camera = frame.mainCamera;
+        var direction = (camera.target - camera.eye).normalized;
+        var ranges = (SceneRange*)frame.ranges.ToPointer();
+        var vertices = (SceneVertex*)frame.vertices.ToPointer();
+        float nearest = float.PositiveInfinity;
+        for (int i = 0; i < frame.rangeCount; ++i) {
+            var range = ranges[i];
+            if (range.lightScope != 2 || (range.viewMask & 1) == 0 || (range.flags & 4) != 0) continue;
+            for (uint j = range.first; j < range.first + range.count; ++j)
+                nearest = Mathf.Min(nearest, Vector3.Dot(vertices[j].position - camera.eye, direction));
+        }
+        return nearest;
     }
     internal unsafe void VerifySceneBuffers(Action<bool, string> check)
     {
@@ -868,8 +922,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             check(vertices.Length==range.count && mesh.GetSubMesh(0).indexCount==range.count, "Source mesh size changed.");
             check(UnsafeUtility.MemCmp(NativeArrayUnsafeUtility.GetUnsafeReadOnlyPtr(vertices),
                 (SceneVertex*)frame.vertices.ToPointer()+range.first,(long)range.count*64)==0, "Source mesh contains stale moving vertices.");
-            bool sequential=true;for(int j=0;j<range.count;++j)sequential&=indices[j]==(uint)j;
-            check(sequential, "Source mesh changed triangle order.");
+            check(SameTriangleStream(vertices,indices,(int)range.count), "Source mesh changed triangle order or attributes.");
         }
         check(rank==ActiveMeshCount,"Source mesh verification missed active ranges.");
     }
@@ -1264,6 +1317,7 @@ public sealed class Idas3SceneRenderer : MonoBehaviour
             mirrorAlphaDepth.Release(); mirrorAlphaDepth = null;
         }
         framesBuffer?.Release(); lightsBuffer?.Release(); fogBuffer?.Release();
+        if (sceneIndexScratch.IsCreated) sceneIndexScratch.Dispose();
         foreach (var item in objects) {
             if (item.vertexCache.IsCreated) item.vertexCache.Dispose();
             if (item.material != null) Destroy(item.material);

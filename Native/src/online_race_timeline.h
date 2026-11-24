@@ -50,6 +50,7 @@ private:
     std::array<OriginalVehicleInputs,2> previousConfirmed_;
     OnlineTimelineMetrics metrics_;
     Entry& entry(std::uint64_t frame);
+    const OriginalVehicleInputs* knownInput(std::uint64_t frame,unsigned slot)const;
     void simulate(std::uint64_t frame);
     void confirm();
 };

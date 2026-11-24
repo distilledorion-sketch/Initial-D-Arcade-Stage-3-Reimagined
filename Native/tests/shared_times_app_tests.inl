@@ -59,6 +59,8 @@ int runSharedRecordResetAppTests(App& app){
                 TimeAttackEntry e{condition,weather,car,ticks};e.nameGlyphs[0]=std::uint8_t(p.u(44));app.importedPersonalRecords.record(e);
             }
         }
+        TimeAttackEntry unique{22,0,unsigned(slot+1),800000u+unsigned(slot+1)*1000};
+        unique.nameGlyphs[0]=std::uint8_t(164+slot+1);app.importedPersonalRecords.record(unique);
         require(app.importedPersonalRecords.save(app.importedPersonalPath),"Could not seed imported personal times");
     }
     for(int slot=4;slot>=-1;--slot){
@@ -82,6 +84,26 @@ int runSharedRecordResetAppTests(App& app){
         for(const auto& row:app.displayedTimeAttackRecords().entries())require(row.nameGlyphs[0]==164+unsigned(slot+1),"Ranking included another player's name");
     }
     app.sharedRecordsEnabled=false;app.menu=true;
+    app.records={};
+    const auto savedRow=app.importedPersonalRecords.entries().front();
+    app.records.record(savedRow);
+    TimeAttackEntry cabinet{18,0,1,700000};app.records.record(cabinet);
+    TimeAttackRecords online;online.record({18,0,1,400000});app.setSharedRecords(online,true);
+    app.useInstallationRankings(true);
+    for(int slot=0;slot<5;++slot){
+        app.useSaveSlot(slot);
+        const auto& board=app.displayedTimeAttackRecords();
+        require(board.best(18,0,1).course==700000,"A downloaded score reached local standings");
+        const auto& rows=board.entries();
+        require(std::count_if(rows.begin(),rows.end(),[&](const auto& e){return e.condition==savedRow.condition&&e.weather==savedRow.weather&&e.car==savedRow.car&&e.ticks6000==savedRow.ticks6000;})==1,"Card and cabinet copies displayed twice");
+        for(unsigned i=0;i<6;++i)
+            require(board.best(22,0,i).model==800000+i*1000,"Missing a legacy or numbered save");
+        require(board.best(0,0,34).model==1034000,"Missing original course backup card");
+        require(app.frontend.rankingData().record(0,0,0,0).word(0)==1000000,"Attract rankings showed a factory time");
+        require(app.frontend.rankingData().modelRecord(0,0,0,1).word(0)==0,"Empty car class showed a factory time");
+    }
+    app.useInstallationRankings(false);
+    require(!app.frontend.localRanking.has_value(),"Attract rankings did not leave local mode");
     std::ofstream(output/"record-separation-native.txt")<<"PASS "<<checks<<" combined online/personal rankings, duplicate suppression, remote removals, all five saves + legacy cards, 35 car selectors, original/imported routes/weather, backup recovery, offline ownership, unchanged personal records\n";
     return 0;
 }

@@ -46,6 +46,7 @@
 #include <limits>
 
 static_assert(sizeof(Idas3UnityInput)==88);
+static_assert(sizeof(Idas3UnityPedals)==16);
 static_assert(sizeof(Idas3UnityStatus)==80);
 static_assert(sizeof(Idas3RivalStatus)==56);
 static_assert(sizeof(Idas3Options)==40);
@@ -96,11 +97,13 @@ struct UnityRuntime {
     void* texture=nullptr;
     std::uint64_t frames=0,ticks=0,textureGeneration=0,rendererGeneration=0;
 };
-UnityRuntime& unityRuntime(){
-    // Unity's managed host MUST drain Shutdown before unloading the plugin.
-    // Avoid CRT/DllMain invoking App/D3D/waveOut destruction under loader lock.
+UnityRuntime& mainRuntime(){
+    // App destruction must happen before Unity unloads the plugin.
     static auto* state=new UnityRuntime;return *state;
 }
+UnityRuntime& replayRuntime(){static auto* state=new UnityRuntime;return *state;}
+std::atomic<bool> replaySessionActive{false};
+UnityRuntime& unityRuntime(){return replaySessionActive.load()?replayRuntime():mainRuntime();}
 void unityError(const std::string& text,bool fatal=false)noexcept{
     try{auto& r=unityRuntime();std::lock_guard lock(r.statusMutex);r.error=text;if(fatal)r.status.state=2;}catch(...){}
 }
@@ -141,10 +144,23 @@ void publish(UnityRuntime& r,int eventId){
     s.lastEventId=std::uint32_t(eventId);s.renderedFrames=r.frames;s.simulationTicks=r.ticks;s.textureGeneration=r.textureGeneration;
     if(!r.app){s.state=0;s.flags=0;s.width=s.height=0;r.texture=nullptr;return;}
     const auto& app=*r.app;s.state=1;s.width=app.renderer.width;s.height=app.renderer.height;
-    s.frontendStage=int(app.frontend.stage);s.attractChild=int(app.frontend.attractChild());s.course=app.courseIndex;s.car=app.frontend.car;
+    s.frontendStage=int(app.frontend.stage);s.attractChild=int(app.frontend.attractChild());s.course=app.importedCourse&&isUserCourseId(app.importedCourse->id)?int(app.importedCourse->id):app.courseIndex;s.car=app.frontend.car;
     s.racePhase=int(app.race.phase);s.flags=(app.menu?1u:0)|(app.paused?2u:0)|(app.active?4u:0)|(app.running?8u:0)|(app.originalHandling?16u:0)|(app.legendVisitActive?32u:0)|(app.legendVisitActive&&app.legendVisit.choiceVisible()?64u:0)|(app.multiplayer.active?128u:0)|(app.multiplayer.active&&app.multiplayer.waiting?256u:0)|(app.preRaceDialogueActive?512u:0)|(app.loadingActive?1024u:0)|(app.multiplayerDisconnected()?2048u:0)|(app.extraModeVisitActive()?4096u:0)|(app.canRetireLegendRace()?8192u:0);
     if(app.resultVisit.initialized||app.onlineResult.page>0)s.flags|=262144u;
-    if(!app.menu&&!app.multiplayer.active&&!app.bunta&&!app.replayPlaybackActive&&app.battleProfile.byte(1189)==1)
+    if(app.menu&&app.offerChallengers)s.flags|=0x40000000u;
+    // The original finish child still accepts cabinet controls while the
+    // course/car remains visible, including the Time Attack record hold.
+    // Result/tuning/Continue owners keep their normal menu bindings. Online
+    // retains the finish driving owner until its points page replaces the
+    // course. Waiting and terminal disconnects never gain this capability.
+    if(app.originalHandling&&app.race.phase==RacePhase::Finished&&
+       (!app.originalOfflineFinishContext()||app.originalOfflineFinishOwnsDriving())&&
+       (!app.multiplayer.active||(!app.multiplayer.waiting&&!app.multiplayer.disconnected&&app.onlineFinishAcceptsDriving()))&&
+       !app.menu&&!app.loadingActive&&!app.legendVisitActive&&!app.preRaceDialogueActive&&
+       !app.extraModeVisitActive()&&!app.resultVisit.initialized&&!app.fullTuneActive&&
+       !app.fullTuneSelecting&&!app.replayPlaybackActive)s.flags|=0x10000000u;
+    if(app.sourceCabinetStartReserved())s.flags|=0x20000000u; // source card owner reserves logical Start; Escape/Pause remain host controls.
+    if(app.sourceCabinetStartReserved()||(!app.originalOfflineCabinetContext()&&!app.menu&&!app.multiplayer.active&&!app.bunta&&!app.replayPlaybackActive&&app.battleProfile.byte(1189)==1))
         s.flags|=134217728u; // Saved Data: Start + View Change may retire this offline race.
     if(app.importedCourse)s.flags|=importedCourseDefinition(app.importedCourse->id).sceneFlags|16384u|(app.reverse?32768u:0u)|(app.night?65536u:0u)|(app.wet?131072u:0u);
     s.speedMetresPerSecond=app.vehicle.speed;s.rpm=app.vehicle.rpm;
@@ -200,7 +216,19 @@ void initialize(UnityRuntime& r,const UnityCommand& command){
     {std::lock_guard lock(r.statusMutex);r.error.clear();}
 }
 #endif
-void assignInput(HostInput& dst,const Idas3UnityInput& src,bool focused){
+void validatePedals(const Idas3UnityPedals& p){
+    if(p.size!=sizeof(p)||p.version!=1||(p.validMask&~3u)||
+       ((p.validMask&1u)?p.throttleAdc>0xff7f:p.throttleAdc!=0)||
+       ((p.validMask&2u)?p.brakeAdc>0xff7f:p.brakeAdc!=0))
+        throw std::invalid_argument("Precise pedal ABI requires version1,16bytes and valid JVS pedals");
+}
+void assignInput(HostInput& dst,const Idas3UnityInput& src,bool focused,const Idas3UnityPedals* pedals=nullptr){
+    dst.cabinetStartHeld=focused&&!(src.flags&2u)&&(src.flags&(1u<<14))!=0;
+    dst.originalThrottleAnalog=dst.originalBrakeAnalog=-1;
+    if(pedals&&focused&&!(src.flags&2u)&&src.padConnected){
+        if(pedals->validMask&1u)dst.originalThrottleAnalog=pedals->throttleAdc;
+        if(pedals->validMask&2u)dst.originalBrakeAnalog=pedals->brakeAdc;
+    }
     const auto gear=(src.flags>>8)&7u;
     dst.requestedGear=focused&&!(src.flags&2u)&&gear<=6?std::uint8_t(gear):0;
     const auto source=(src.flags>>11)&7u;
@@ -213,7 +241,7 @@ void assignInput(HostInput& dst,const Idas3UnityInput& src,bool focused){
         p.bLeftTrigger=BYTE(std::min(src.leftTrigger,255u));p.bRightTrigger=BYTE(std::min(src.rightTrigger,255u));}
     dst.pad=pad;dst.pressedButtons=pad.Gamepad.wButtons&~dst.oldButtons;dst.oldButtons=pad.Gamepad.wButtons;
 }
-void frame(UnityRuntime& r,const Idas3UnityInput& input){
+void frame(UnityRuntime& r,const Idas3UnityInput& input,const Idas3UnityPedals* pedals=nullptr){
     if(!r.app)throw std::logic_error("Unity game is not initialized");auto& app=*r.app;
     if(app.challengerNotice){
         // The original interrupt displays the preceding captured frame. Do
@@ -229,10 +257,10 @@ void frame(UnityRuntime& r,const Idas3UnityInput& input){
     const double dt=input.deltaSeconds;
     if(app.multiplayer.active)app.paused=false;
     else if(app.active&&!focused&&!app.menu&&!app.extraModeVisitActive()&&!app.legendVisitActive&&!app.preRaceDialogueActive&&!app.loadingActive&&app.race.phase!=RacePhase::Finished){app.paused=true;app.clock.reset();}
-    app.active=focused;assignInput(app.input,input,focused);
+    app.active=focused;assignInput(app.input,input,focused,pedals);
     app.setHostDrivingControlsBlocked((input.flags&2u)!=0);
     // Exactly the standalone outer-loop order: input/commands, focus gate,
-    // resize, fixed60Hz solver ticks, render(owner updates), then sound service.
+    // resize, source-clock driving ticks, render(owner updates), then sound service.
     app.commands(dt);
     if(!app.running||(!focused&&!app.multiplayer.active)){
         app.clock.reset();app.updateAudioScene(true);
@@ -246,7 +274,7 @@ void frame(UnityRuntime& r,const Idas3UnityInput& input){
 #endif
         if(!app.renderer.resize(input.width,input.height))throw std::runtime_error(app.renderer.error);
     }
-    if(!app.menu&&!app.paused&&!app.loadingActive&&!app.extraModeVisitActive()&&!app.legendVisitActive&&!app.preRaceDialogueActive&&!app.vsActive&&!(app.multiplayer.active&&app.multiplayer.waiting))app.advanceHostClock(dt,[&]{
+    if(app.hostDrivingClockMayAdvance())app.advanceHostClock(dt,[&]{
         auto driver=app.driver();
         if(r.diagnosticCourseDriver&&app.race.phase==RacePhase::Running){
             if(r.diagnosticTimerGrace&&app.originalRace.state().remaining.value<60000u){
@@ -366,6 +394,26 @@ int IDAS3_UNITY_CALL Idas3SharedReadPersonalImport(char* output,int capacity){
         if(!output||capacity<=int(text.size()))return -1;
         std::memcpy(output,text.c_str(),text.size()+1);return int(text.size());
     }catch(...){return -1;}
+}
+int IDAS3_UNITY_CALL Idas3UseInstallationRankings(int local){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.sceneMode)return 0;
+    try{r.app->useInstallationRankings(local!=0);return 1;}
+    catch(const std::exception& e){unityError(e.what());return 0;}
+}
+int IDAS3_UNITY_CALL Idas3CopyInstallationRankings(int32_t* output,int capacity){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.app||!r.sceneMode)return -1;
+    try{
+        const auto& rows=r.app->localInstallationRecords().entries();
+        if(!output)return capacity==0?int(rows.size()):-1;
+        if(capacity<0||rows.size()*9>std::size_t(capacity))return -1;
+        for(const auto& e:rows){
+            *output++=int(e.condition);*output++=int(e.weather);*output++=int(e.car);*output++=int(e.ticks6000);
+            for(auto glyph:e.nameGlyphs)*output++=glyph;
+        }
+        return int(rows.size());
+    }catch(const std::exception& e){unityError(e.what());return -1;}
 }
 int IDAS3_UNITY_CALL Idas3SharedSetRecords(const int32_t* values,int count,int enabled){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
@@ -608,6 +656,33 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneHakoneTimeAttackTest(const cha
         Idas3UiBeginFrame(r.app->renderer.width,r.app->renderer.height);if(!r.app->render(0))throw std::runtime_error(r.app->renderer.error);publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
+int IDAS3_UNITY_CALL Idas3SceneAbandonInvalidTrack(int id){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||r.app->multiplayer.active||!isUserCourseId(unsigned(id))||
+       !r.app->importedCourse||r.app->importedCourse->id!=unsigned(id))return 0;
+    try{
+        auto& a=*r.app;a.returnToCourseSelection(true);
+        a.status("Could not load the selected mod track. Check its scenery files.");
+        idas3::resetUnityAudioOutput();a.updateAudioScene();publish(r,0);
+        return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
+int IDAS3_UNITY_CALL Idas3SceneRegisterUserCourse(const char* root,int id,const char* slug,const char* name,int route){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.sceneMode||!r.app||!isUserCourseId(unsigned(id))||!slug||!*slug||!name||!*name||(route!=1&&route!=6&&route!=8))
+            throw std::invalid_argument("Invalid user track registration");
+        auto path=unicodePath(root);
+        if(r.app->userCourseRoots.contains(id))return r.app->userCourseRoots.at(id)==path?1:0;
+        userCourseCatalog[id]={slug,name,unsigned(route)};
+        try{
+            ImportedCourse::load(path,unsigned(id));
+            r.app->frontend.enableHakoneCourse(path,id);
+            r.app->userCourseRoots.emplace(id,path);
+        }catch(...){userCourseCatalog.erase(id);throw;}
+        return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
 int IDAS3_UNITY_CALL Idas3SceneRegisterImportedCourse(const char* root){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
@@ -651,10 +726,16 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayStart(int condition,int weath
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.app||!r.sceneMode||r.app->saveRoot.filename()!="replay-viewer-session")throw std::logic_error("Replay playback requires isolated viewer storage");
-        if(condition<0||condition>=int(supportedConditionCount)||weather<0||weather>1||night<0||night>1||car<0||car>34||manual<0||manual>1)throw std::invalid_argument("Invalid replay selection");
-        auto& a=*r.app;a.replayPlaybackActive=true;a.validationMode=true;
+        if(!validLocalCondition(unsigned(condition))||weather<0||weather>1||night<0||night>1||car<0||car>34||manual<0||manual>1)throw std::invalid_argument("Invalid replay selection");
+        auto& a=*r.app;
+        if(isUserCourseId(unsigned(condition)/2)&&!a.userCourseRoots.contains(condition/2))
+            throw std::runtime_error("Install the original mod track in Mods/Maps to play this replay");
+        const unsigned course=unsigned(condition)/2;
+        if(course>=9&&course<supportedCourseCount&&a.importedRoot(course).empty())
+            throw std::runtime_error(std::string("Install ")+importedCourseDefinitions[course-9].folder+" in Mods/Maps to play this replay");
+        a.replayPlaybackActive=true;a.validationMode=true;
         a.frontend.gameMode=original::OriginalGameMode::TimeAttack;
-        a.frontend.course=condition/2;a.courseIndex=condition/2;
+        a.frontend.course=condition/2;a.courseIndex=condition>=18?3:condition/2;
         a.reverse=a.frontend.reverse=(condition%2)!=0;a.wet=a.frontend.wet=weather!=0;a.night=a.frontend.night=night!=0;
         a.frontend.car=car;a.automatic=a.frontend.automatic=manual==0;
         a.frontend.battleProfile=original::makeOriginalFreshBattleProfile();a.start();a.vsActive=false;a.loadingActive=false;a.preRaceDialogueActive=false;
@@ -864,21 +945,33 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3ReplayAudio(double dt,int playing,i
         return 1;
     }catch(const std::exception& e){idas3::resetUnityAudioOutput();unityError(e.what());return 0;}
 }
-int IDAS3_UNITY_CALL Idas3SceneStep(const Idas3UnityInput* input){
+static int sceneStep(const Idas3UnityInput* input,const Idas3UnityPedals* pedals){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.sceneMode||!r.app)throw std::logic_error("Unity scene simulation is not initialized");
         if(!input||input->size!=sizeof(*input))throw std::invalid_argument("Unity input ABI size must be88bytes");
+        if(pedals)validatePedals(*pedals);
         if(!std::isfinite(input->deltaSeconds)||input->deltaSeconds<0||input->deltaSeconds>.25)
             throw std::invalid_argument("Unity scene delta must be finite in0..0.25seconds");
         if(input->width||input->height)sceneDimensions(input->width,input->height);
-        frame(r,*input);publish(r,0);return 1;
+        frame(r,*input,pedals);publish(r,0);return 1;
     }catch(const std::exception& e){try{destroyApp(r,false);publish(r,0);}catch(...){}unityError(e.what(),true);return 0;}
     catch(...){try{destroyApp(r,false);publish(r,0);}catch(...){}unityError("Unknown Unity scene step error",true);return 0;}
 }
+int IDAS3_UNITY_CALL Idas3SceneStep(const Idas3UnityInput* input){return sceneStep(input,nullptr);}
+int IDAS3_UNITY_CALL Idas3SceneStepWithPedals(const Idas3UnityInput* input,const Idas3UnityPedals* pedals){
+    // A null sidecar explicitly selects the unchanged legacy input path.
+    // Malformed optional input is rejected before entering the frame owner;
+    // unlike a simulation failure it must not destroy an existing game.
+    try{if(pedals)validatePedals(*pedals);}
+    catch(const std::exception& e){unityError(e.what());return 0;}
+    return sceneStep(input,pedals);
+}
 int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int height,int click){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
-    if(!r.sceneMode||!r.app||!r.app->menu||r.app->frontend.stage!=FrontendStage::SaveSelect)return 0;
+    if(!r.sceneMode||!r.app||!r.app->menu)return 0;
+    const bool coursePicker=r.app->frontend.coursePointerActive();
+    if(!coursePicker&&r.app->frontend.stage!=FrontendStage::SaveSelect)return 0;
     try{
     auto& app=*r.app;
     if(click&&width>0&&height>0&&std::isfinite(x)&&std::isfinite(y)&&!app.paused){
@@ -886,6 +979,12 @@ int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int hei
         const int drawWidth=std::max(1,int(640.f*fit)),drawHeight=std::max(1,int(480.f*fit));
         const int left=(width-drawWidth)/2,top=(height-drawHeight)/2;
         auto& f=app.frontend;
+        if(coursePicker){
+            if(click==3||click==4)f.scrollModsAt((x-left)*640.f/drawWidth,(y-top)*480.f/drawHeight,click==3?-1:1);
+            else if(f.coursePointer((x-left)*640.f/drawWidth,(y-top)*480.f/drawHeight,click==1))
+                app.audio.playMenuCue(OriginalMenuCue::Confirm);
+            return f.modsPickerOpen()?3:2;
+        }
         const auto selection=[&]{return std::array<int,8>{f.saveSelected,int(f.saveActionsOpen),f.saveActionSelected,
             int(f.saveFileChosen),int(f.saveCarChangeRequested),int(f.saveDeleteOpen),f.saveDeleteSelected,f.saveDeleteRequested};};
         const auto before=selection();
@@ -894,7 +993,8 @@ int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int hei
         if(click==1&&selection()!=before)app.audio.playMenuCue(OriginalMenuCue::Confirm);
     }
     }catch(const std::exception& e){unityError(e.what());}
-    catch(...){unityError("Unknown save menu pointer error");}
+    catch(...){unityError("Unknown menu pointer error");}
+    if(coursePicker)return r.app->frontend.modsPickerOpen()?3:2;
     return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count){
@@ -910,6 +1010,22 @@ int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count
 }
 void IDAS3_UNITY_CALL Idas3SceneSetLoadKeepAlive(Idas3LoadKeepAliveCallback callback){
     idas3::setLoadKeepAlive(callback);
+}
+int IDAS3_UNITY_CALL Idas3SceneReplaySession(int open){
+    // Called on Unity's main thread after stopping the previous audio consumer.
+    auto& game=mainRuntime();auto& viewer=replayRuntime();
+    std::scoped_lock lock(game.renderMutex,viewer.renderMutex);
+    if(open){
+        if(replaySessionActive||!game.sceneMode||!game.app||game.app->multiplayer.active)return 0;
+        idas3::resetUnityAudioOutput();
+        idas3::switchReplayUiCapture();
+        replaySessionActive=true;
+    }else if(replaySessionActive){
+        destroyApp(viewer,false);viewer.sceneMode=false;
+        idas3::switchReplayUiCapture();
+        replaySessionActive=false;
+    }
+    return 1;
 }
 int IDAS3_UNITY_CALL Idas3SceneShutdown(){
     idas3::setLoadKeepAlive(nullptr);
@@ -1172,7 +1288,7 @@ int IDAS3_UNITY_CALL Idas3SceneApplyOptions(const Idas3Options* options){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
         if(!r.sceneMode||!r.app)throw std::logic_error("Options require initialized Unity scene mode");
-        if(!options||options->size!=sizeof(*options)||options->version!=1||options->cameraView>2||
+        if(!options||options->size!=sizeof(*options)||options->version!=1||options->cameraView>1||
             options->paused>1||options->managedPauseOverlay>1||options->reserved)
             throw std::invalid_argument("Invalid options v1");
         auto& app=*r.app;
@@ -1473,6 +1589,48 @@ int IDAS3_UNITY_CALL Idas3SceneRetire(){
     }catch(const std::exception& e){unityError(e.what());return 0;}
     catch(...){unityError("Unknown retire error");return 0;}
 }
+int IDAS3_UNITY_CALL Idas3SceneBattleEntry(const int* values,int count,const char* driver,const char* model,const char* caption,const char* music){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    try{
+        if(!r.app||!values||(count!=55+307&&count!=55+307+6&&count!=55+307+8))throw std::invalid_argument("Invalid battle entry presentation");
+        auto& app=*r.app;auto& b=app.frontend.battleEntry;
+        using Page=idas3::Frontend::BattlePage;
+        if(values[0]<0||values[0]>int(Page::EnterBattle)||values[4]<0||values[4]>=7||values[5]<0||values[5]>=35||
+            values[6]<0||values[6]>=32)throw std::invalid_argument("Invalid battle page selection");
+        const auto page=Page(values[0]);
+        if(page==Page::Loading&&page!=b.page&&app.loadingScreen.loaded())app.loadingScreen.begin(app.loadingSequence++);
+        if(page!=b.page){app.battlePreviewStage=-1;app.menuTexturesLoaded=false;app.texturesPending=true;}
+        for(int i=0;i<5;++i)b.courseTiles[i]=std::clamp(values[49+i],0,31);
+        b.paint=std::clamp(values[54],0,92);
+        constexpr int motion=55+307;
+        b.fade=count>motion?std::clamp(values[motion],0,255):0;
+        b.confirmFrame=count>motion?values[motion+1]:-1;
+        b.tileSlot=count>motion?std::clamp(values[motion+2],0,4):2;
+        b.scroll=count>motion?std::clamp(values[motion+3],-5,5):0;
+        b.leadingTile=count>motion?std::clamp(values[motion+4],0,31):0;
+        b.trailingTile=count>motion?std::clamp(values[motion+5],0,31):0;
+        b.modFocus=count>=motion+8?std::clamp(values[motion+6],0,5):0;
+        if(b.modFocus){
+            b.sharedModCourses.clear();
+            for(int id=9;id<32;++id)
+                if(std::uint32_t(values[motion+7])&(1u<<id))b.sharedModCourses.push_back(id);
+            if(page!=Page::Course||!std::binary_search(b.sharedModCourses.begin(),b.sharedModCourses.end(),values[6]))
+                throw std::invalid_argument("Selected mod is outside the shared course list");
+        }
+        if(page==Page::SavedCar||page==Page::Waiting)std::copy_n(values+55,b.cardProfile.words.size(),b.cardProfile.words.begin());
+        b.page=page;b.focus=values[1];b.seconds=std::clamp(values[2],0,99);b.frame=values[3];
+        b.make=values[4];b.car=values[5];b.course=values[6];b.flags=values[7];b.points=values[8];
+        b.wins=values[9];b.battles=values[10];b.streak=values[11];b.level=values[12];
+        for(unsigned i=0;i<36;++i)b.times[i]=values[13+i];
+        const char* incoming=driver?driver:"";
+        if(b.driver!=incoming){
+            b.driver=incoming;
+            b.driverGlyphs=app.vsBanner.cardNameGlyphs(b.driver);
+        }
+        b.musicHint=model?model:"";b.caption=caption?caption:"";b.music=music?music:"";
+        return 1;
+    }catch(const std::exception& e){unityError(e.what());return 0;}
+}
 int IDAS3_UNITY_CALL Idas3SceneChallenger(int action){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
@@ -1549,6 +1707,9 @@ int IDAS3_UNITY_CALL Idas3MultiplayerCurrentCar(){
     return slots.at(unsigned(slot)).used&&slots.at(unsigned(slot)).car==unsigned(car)
         ?slot:onlineSlotCarSelection(slot,car);
 }
+int IDAS3_UNITY_CALL Idas3MultiplayerStockPaintCount(int car){
+    return car>=0&&unsigned(car)<original::originalCarColorCounts.size()?int(original::originalCarColorCounts.at(car)):0;
+}
 int IDAS3_UNITY_CALL Idas3MultiplayerReadCar(int selection,uint32_t* words,uint32_t count){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     try{
@@ -1569,7 +1730,10 @@ int IDAS3_UNITY_CALL Idas3MultiplayerStartSaved(const Idas3MultiplayerConfig* co
         if(!r.sceneMode||!r.app||!config||!local||!remote||count!=307)throw std::invalid_argument("Invalid saved race cars");
         validateMultiplayerConfig(*config);
         original::OriginalBattleProfile player;
-        if(!r.app->onlineCarProfile(selection,player)||player.u(16)!=config->localCar||
+        const int source=r.app->onlineCarProfile(selection,player);
+        // Only an unsaved stock profile may take a race-local showroom paint choice.
+        if(source==2&&selection>=5&&selection<40&&local[16]<original::originalCarColorCounts.at(selection-5))player.setu(64,local[16]);
+        if(!source||player.u(16)!=config->localCar||
            !std::equal(player.words.begin(),player.words.end(),local))
             throw std::invalid_argument("Saved car changed; reopen the online menu and select it again");
         // Only appearance/name data are accepted from the peer. Its tuning,
@@ -1757,12 +1921,16 @@ int IDAS3_UNITY_CALL Idas3MultiplayerResultScreen(int field){
     const auto& s=r.app->onlineResult;
     switch(field){case 0:return s.page;case 1:return s.selected;case 2:return s.decision;
         case 3:return int(s.countdown);case 4:return int(s.frame);case 5:return int(s.points.phase);
-        case 6:return int(s.pointsFrame.displayedBalance);case 7:return s.confirming;default:return -1;}
+        case 6:return int(s.pointsFrame.displayedBalance);case 7:return s.confirming;
+        // Additive read-only diagnostic selectors; no input or owner advance.
+        case 8:return int(s.points.frame);
+        case 9:return int(s.blocked)|(int(s.confirmPending)<<1)|(int(s.cancelPending)<<2);
+        default:return -1;}
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerResultInput(int confirm,int cancel,int direction,unsigned flags){
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.app||!r.app->multiplayer.active||r.app->onlineResult.page<0||
-        unsigned(confirm)>1||unsigned(cancel)>1||direction< -1||direction>1||(flags&~15u))return 0;
+        unsigned(confirm)>1||unsigned(cancel)>1||direction< -1||direction>1||(flags&~31u))return 0;
     r.app->onlineResult.input(confirm!=0,cancel!=0,direction,flags);return 1;
 }
 int IDAS3_UNITY_CALL Idas3MultiplayerResultRecord(int points,unsigned level){

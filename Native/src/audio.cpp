@@ -127,7 +127,7 @@ void EngineAudio::selectOriginalEngine(const std::filesystem::path& root,const o
             nativeDsp->setReturnPan(handle,64);
         }
     }
-    nativeTire->reset();original::resetOriginalTireAudio(tireState);pendingEngineFrame=false;
+    nativeTire->reset();original::resetOriginalTireAudio(tireState);pendingEngineFrame=false;originalDrivingStopped_=false;
 }
 void EngineAudio::selectOriginalSoundSet(int soundSet){
     if(!nativeDsp||soundSet==originalSoundSet)return;
@@ -155,6 +155,7 @@ void EngineAudio::resetEngineVoiceHistory(){
     // Checkpoints and queued PCM share the same absolute sample origin.
     // Clear them together, including reconfiguration/development-mode resets.
     engineRead=engineCount=0;enginePrimed=false;pendingEngineFrame=false;
+    stoppedEngine_.reset();
     engineVoiceCheckpoints_.clear();engineSamplesWritten_=0;lastEngineOutputSource_=EngineOutputSource::None;
 }
 std::unique_ptr<OriginalIcsPlayer> EngineAudio::snapshotOutputEngine()const{
@@ -163,6 +164,8 @@ std::unique_ptr<OriginalIcsPlayer> EngineAudio::snapshotOutputEngine()const{
         return std::make_unique<OriginalIcsPlayer>(presentationEngine->snapshotVoices());
     if(lastEngineOutputSource_==EngineOutputSource::Online)
         return std::make_unique<OriginalIcsPlayer>(nativeEngine->snapshotVoices());
+    if(lastEngineOutputSource_==EngineOutputSource::Stopped&&stoppedEngine_)
+        return std::make_unique<OriginalIcsPlayer>(*stoppedEngine_);
     if(lastEngineOutputSource_!=EngineOutputSource::Queued)return {};
     const auto nextSample=engineSamplesWritten_-engineCount;
     for(auto it=engineVoiceCheckpoints_.rbegin();it!=engineVoiceCheckpoints_.rend();++it)if(it->firstSample<=nextSample){
@@ -176,6 +179,7 @@ void EngineAudio::clearOriginalDspSends(){
     if(nativeMusic)nativeMusic->clearDspSends();
     if(nativeEngine)nativeEngine->clearDspSends();
     if(presentationEngine)presentationEngine->clearDspSends();
+    if(stoppedEngine_)stoppedEngine_->clearDspSends();
     if(nativeOneShots)nativeOneShots->clearDspSends();
     // PCM was synthesized ahead of the output clock. Apply the hardware
     // register clear to the pending sends at this same output boundary.
@@ -186,17 +190,39 @@ void EngineAudio::stepOriginalEngine(const original::OriginalEngineControlInput&
     if(!nativeEngine)return;
     if(pendingEngineFrame)throw std::logic_error("Original audio frame was not finished");
     if(backfireFrames_)--backfireFrames_;
+    // The visual effect owner17CB00 keeps its two-frame lifetime after the
+    // engine-control owner142860 is disabled. Aging adds no sound/RNG request.
+    if(originalDrivingStopped_)return;
     nativeEngine->step(input,seed,[&](unsigned bank,unsigned cue){if(bank==5)++engineStats.releaseCues;else ++engineStats.backfireCues;playRaceCue(bank,cue);});
     pendingEngineFrame=true;++engineStats.simulationFrames;
 }
+void EngineAudio::stopOriginalDriving(){
+    if(originalDrivingStopped_)return;
+    // The solver synthesizes ahead of output. Release the voices at the
+    // audible sample boundary, not that future cursor, without a new priming
+    // delay. The existing PCM/DSP output clock owns their short key-off tail.
+    auto stopped=snapshotOutputEngine();
+    if(stopped)for(unsigned i=0;i<4;++i)stopped->stop(i);
+    originalDrivingStopped_=true;
+    if(nativeEngine){
+        // 0C4200 issues A6=0 to every continuous handle without resetting
+        // the controller or shared RNG. Keep the registered DSP tails.
+        std::array<original::OriginalEngineCommand,4> commands{};
+        for(unsigned i=0;i<commands.size();++i)commands[i]={original::OriginalEngineCommandTarget::Continuous,i,0xa6,0};
+        nativeEngine->applyContinuous(commands);
+    }
+    // Previously rendered engine samples must not outlive this scene cut.
+    resetEngineVoiceHistory();
+    stoppedEngine_=std::move(stopped);
+}
 void EngineAudio::requestOriginalTire(const original::OriginalAngularResult& feedback){
     if(!nativeTire)return;
-    ++engineStats.tireRequests;original::requestOriginalTireAudio(tireState,0,feedback.feedbackSpeed,0,feedback.feedbackArgument,feedback.feedbackStrength);
+    ++engineStats.tireRequests;original::requestOriginalTireAudio(tireState,originalDrivingStopped_?1:0,feedback.feedbackSpeed,0,feedback.feedbackArgument,feedback.feedbackStrength);
     engineStats.maximumTireStrength=std::max(engineStats.maximumTireStrength,feedback.feedbackStrength);engineStats.maximumTireSpeed=std::max(engineStats.maximumTireSpeed,feedback.feedbackSpeed);
 }
 void EngineAudio::finishSoundFrame(std::uint32_t& seed){
     if(!nativeEngine)return;
-    for(const auto& command:original::stepOriginalTireAudio(tireState,0,seed)){if(command.type==original::OriginalTireCommandType::Play)engineStats.tireCueMask|=1u<<unsigned(command.value);nativeTire->apply(command);}
+    for(const auto& command:original::stepOriginalTireAudio(tireState,originalDrivingStopped_?1:0,seed)){if(command.type==original::OriginalTireCommandType::Play)engineStats.tireCueMask|=1u<<unsigned(command.value);nativeTire->apply(command);}
     nativeEngine->finishSoundFrame();renderOriginalEngineFrame();
 }
 void EngineAudio::applyConfirmedOnlineAudio(std::span<const original::OriginalEngineCommand> engine,
@@ -306,6 +332,9 @@ void EngineAudio::beginOriginalMusicCue(unsigned cue,bool requestSoundSet,int so
     resultMusicManager={};selectOriginalSoundSet(soundSet);
     for(const auto& command:original::requestOriginalSelectionMusic(resultMusicManager,
         static_cast<original::OriginalSelectionMusicCue>(cue)))selection(command);
+}
+void EngineAudio::stopOriginalFinishStream(){
+    music={};musicFrame=0;resetOutputQueue();
 }
 void EngineAudio::fadeOriginalMusicCue(){
     if(!originalResultOwner||!resultMusicRequested)return;
@@ -445,7 +474,17 @@ std::array<short,2> EngineAudio::renderStereo(float rpm,float throttle,float spe
             const auto scaleSend=[](std::int32_t value,float gain){return gain==1.f?value:std::int32_t(float(value)*gain);};
             if(nativeEngine){
                 if(active&&!musicPaused&&!vehicleMuted){
-                    if(((raceMusicHeld&&!showcaseDrivingEngine)||replayEngineEnabled)&&presentationEngine){
+                    if(originalDrivingStopped_){
+                        if(stoppedEngine_){
+                            const auto pcm=stoppedEngine_->renderFrame();
+                            lastEngineOutputSource_=EngineOutputSource::Stopped;
+                            for(unsigned c=0;c<2;++c){engine[c]=pcm.dry[c]/32768.f;engineStats.dryEnergy+=double(pcm.dry[c])*pcm.dry[c];}
+                            dspInput=pcm.effects;
+                            for(auto value:pcm.effects)engineStats.effectSendEnergy+=double(value)*value;
+                            ++engineStats.pcmFrames;
+                            if(stoppedEngine_->activeVoices()==0)stoppedEngine_.reset();
+                        }
+                    }else if(((raceMusicHeld&&!showcaseDrivingEngine)||replayEngineEnabled)&&presentationEngine){
                         if(presentationPcmFrames%735==0){
                             // The showcase owner supplies neutral revs using
                             // the original powertrain tables. Audio uses its

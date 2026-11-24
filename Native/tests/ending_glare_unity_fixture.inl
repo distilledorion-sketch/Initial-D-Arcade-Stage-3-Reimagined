@@ -10,13 +10,13 @@ void prepareEndingGlareUnityFixture(App& app,unsigned scene){
         const auto& frame=app.endingReplay.playbackFrame(599);
         const auto& car=frame.cars[0];
         app.endingCamera.reset(car.body+forward(car.yaw)*12+Vec3{0,.7f,0},car.body,1);
-        seed=app.endingRandom;physics=app.originalSession.rollbackDigest();saved=app.endingHeadlightGlare;prepared=true;
+        seed=app.originalSession.sharedRandomSeed();physics=app.originalSession.rollbackDigest();saved=app.endingHeadlightGlare;prepared=true;
     }else{
         if(!prepared)throw std::logic_error("Glare comparison before preparation");
         if(phase==1)app.endingHeadlightGlare.reset();else app.endingHeadlightGlare=saved;
     }
     app.input={};if(!app.renderEnding(0))throw std::runtime_error(app.renderer.error);
-    if(app.endingRandom!=seed||app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Glare repaint changed RNG/physics");
+    if(app.originalSession.sharedRandomSeed()!=seed||app.originalSession.rollbackDigest()!=physics)throw std::runtime_error("Glare repaint changed RNG/physics");
     Mesh mesh;const auto lamps=app.endingHeadlightGlare.append(mesh,app.endingReplay.playbackFrame(599),
         {unsigned(app.frontend.car),unsigned(app.loadedRivalCar)},app.rivalVisible,app.endingCamera,app.endingHeadlightGlareTextureBase);
     if((lamps>0)!=(phase!=1))throw std::runtime_error("Glare fixture missing lamps/removal");

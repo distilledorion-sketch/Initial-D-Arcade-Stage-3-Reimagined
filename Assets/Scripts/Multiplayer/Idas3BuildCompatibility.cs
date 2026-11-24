@@ -13,9 +13,7 @@ namespace Idas3.Multiplayer
         {
             if (string.IsNullOrWhiteSpace(fullIdentity) || fullIdentity.IndexOf('\0') >= 0)
                 throw new ArgumentException("The game build identity is invalid.", nameof(fullIdentity));
-            // Course fingerprints grow as maps are added. Keep Steam metadata
-            // bounded without dropping any code, course or simulation identity.
-            // The session still compares the complete identity in its handshake.
+            // Lobby search and the handshake share the same build and race rules.
             using (var hash = SHA256.Create())
                 return "idas3-build1-" + Convert.ToBase64String(hash.ComputeHash(Encoding.UTF8.GetBytes(fullIdentity)));
         }

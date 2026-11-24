@@ -1,4 +1,5 @@
 #include "local_driver_profiles.h"
+#include "car_catalog.h"
 #include "time_attack_season.h"
 #include <algorithm>
 #include <array>
@@ -116,6 +117,7 @@ std::filesystem::path LocalDriverProfiles::path(unsigned car)const{
 LocalDriverProfiles::Loaded LocalDriverProfiles::load(unsigned car)const{
     const auto file=path(car),backup=std::filesystem::path(file.wstring()+L".previous");
     Loaded result{original::makeOriginalFreshBattleProfile(),Origin::Fresh};result.profile.setu(16,car);
+    result.profile.setu(40,originalCarManufacturerIds.at(car));
     unsigned season=0;bool future=false;
     const auto accepted=[&](Origin origin){result.origin=origin;result.needsTimeAttackSeasonMigration=season<timeAttackSeason;
         if(result.needsTimeAttackSeasonMigration)clearPreviousSeasonTimeAttack(result.profile);return result;};

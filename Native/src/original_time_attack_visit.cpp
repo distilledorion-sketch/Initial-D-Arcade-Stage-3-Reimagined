@@ -1,4 +1,5 @@
 #include "imported_course_catalog.h"
+#include "original_menu_backdrop.h"
 #include "original_time_attack_visit.h"
 #include "original_time_attack_background.h"
 #include "original_time_attack_stats.h"
@@ -21,7 +22,7 @@ using Route=OriginalTimeAttackVisit::Route;
 using Command=OriginalLegendReturnCommand;
 constexpr std::array<const char*,8> mapNames{"myogi","usui","akagi","akina","happo","iroha","syomaru","tuchizaka"};
 constexpr float f(unsigned word){return std::bit_cast<float>(word);}
-bool valid(const OriginalTimeAttackVisit::Setup& s){return (s.condition<18||(s.condition<idas3::supportedConditionCount&&!s.customCourseName.empty()&&!s.customMaps.empty()&&s.customMaps.size()<=5))&&s.weather<2&&s.car<35;}
+bool valid(const OriginalTimeAttackVisit::Setup& s){return (s.condition<18||(idas3::validLocalCondition(s.condition)&&!s.customCourseName.empty()&&!s.customMaps.empty()&&s.customMaps.size()<=5))&&s.weather<2&&s.car<35;}
 void putWord(OriginalRankingRecord& r,unsigned offset,std::uint32_t word){
     for(unsigned i=0;i<4;++i)r.bytes[offset+i]=std::uint8_t(word>>(i*8));
 }
@@ -134,6 +135,7 @@ void OriginalTimeAttackVisit::load(const std::filesystem::path& root){
     const auto rank=root/"data/original_assets/attract/ranking";
     ranking_=loadBank(rank,"v3sT13rankin");common_=loadBank(rank,"v3sT00common");
     select_=loadBank(root/"data/original_assets/name_entry","select");
+    logoBackdrop_=buildMenuLogoBackdrop(select_.textures,select_.model.chunks.at(45));
     alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
     auto spritePath=root/"data/original_assets/saved_data/password_sprite";
     if(originalUiLanguage()==1&&std::filesystem::exists(root/"data/localization/ja/original_assets/saved_data/password_sprite/original_rip.tbl"))spritePath=root/"data/localization/ja/original_assets/saved_data/password_sprite";
@@ -266,8 +268,7 @@ std::uint32_t OriginalTimeAttackVisit::fadeArgb()const{
 }
 void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int width,int height)const{
     const Canvas c(target,width,height);
-    for(const auto& draw:originalTimeAttackBackgroundDraws(displayedBackgroundFrame_))
-        c.chunk(select_.model,select_.textures,draw.chunk,draw.position.x*100.f,-draw.position.y*100.f);
+    paintMenuLogoBackdrop(target,width,height,logoBackdrop_,displayedBackgroundFrame_);
     // 18DA60: imported parts preserve authored coordinates. The source makes
     // only the listed Y=-.24 translation and1.1 X scale on the speech panel.
     c.chunk(lecture_.model,lecture_.textures,37,0,24);

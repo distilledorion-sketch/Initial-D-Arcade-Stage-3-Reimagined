@@ -1,5 +1,5 @@
 {
-    const auto tirePhysics=app->originalSession.rollbackDigest();
+    const auto tirePhysics=app->originalSession.rollbackDigest(false);
     const auto tireState=[](const OriginalEndingTireMarks& marks){
         std::uint64_t hash=14695981039346656037ull;
         const auto word=[&](unsigned value){hash=(hash^value)*1099511628211ull;};
@@ -27,10 +27,10 @@
         app->advanceEnding(1./60);
         if(tick<120||tick%30||app->endingTireMarks.system().order().empty())continue;
         Mesh mesh;drawn=app->endingTireMarks.append(mesh,app->endingCamera);if(!drawn)continue;
-        const auto saved=app->endingTireMarks;const auto state=tireState(saved);const auto random=app->endingRandom;
+        const auto saved=app->endingTireMarks;const auto state=tireState(saved);const auto random=app->originalSession.sharedRandomSeed();
         const auto on=capture("tires-on");app->endingTireMarks.reset();const auto off=capture("tires-off");app->endingTireMarks=saved;
         check(on==capture("tires-restored"),"Restored tyre marks changed pixels");
-        check(tireState(app->endingTireMarks)==state&&app->endingRandom==random,"Mark repaint changed state/RNG");
+        check(tireState(app->endingTireMarks)==state&&app->originalSession.sharedRandomSeed()==random,"Mark repaint changed state/RNG");
         changed=0;for(unsigned i=0;i<on.size();++i)changed+=(on[i]&0xffffffu)!=(off[i]&0xffffffu);
         if(changed>8){selected=tick;break;}
     }
@@ -39,12 +39,15 @@
     const auto before=tireState(app->endingTireMarks);app->paused=true;app->advanceEnding(3);app->renderEnding(0);app->paused=false;
     check(before==tireState(app->endingTireMarks),"Pause advanced tyre marks");
     std::uint64_t reference=0;
+    const auto fpsSeed=app->originalSession.sharedRandomSeed();
     for(unsigned fps:{30u,60u,144u,240u}){
+        // Repeat the same captured RNG boundary only for this FPS comparison.
+        app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
         app->endingReplay=leafFootage;app->beginEnding();for(unsigned frame=0;frame<fps*22;++frame)app->advanceEnding(1./fps);
         check(app->endingTireMarks.updates()==1320&&!app->endingTireMarks.system().order().empty(),"Tyre tick-rate coverage");
         if(fps==30)reference=tireState(app->endingTireMarks);else check(reference==tireState(app->endingTireMarks),"Tyre state depends on rendering FPS");
     }
-    check(app->originalSession.rollbackDigest()==tirePhysics,"Tyre playback changed live physics");
+    check(app->originalSession.rollbackDigest(false)==tirePhysics,"Tyre playback changed live physics");
     app->wet=true;app->endingReplay=leafFootage;app->beginEnding();app->advanceEnding(1./60);
     check(!app->endingTireMarks.active()&&app->endingTireMarks.system().order().empty(),"Wet ending admitted tyre marks");app->wet=false;
     app->clearEndingPresentation();check(!app->endingTireMarks.active()&&app->endingTireMarks.updates()==0,"Tyre marks survived cleanup");

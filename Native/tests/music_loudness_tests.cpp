@@ -89,6 +89,25 @@ int main(int argc,char** argv)try{
         check(bool(file),"Could not write race output fixture");
         std::cout<<"Captured actual race output: source LUFS="<<measured.lufs<<", normalization="<<measured.gain<<", output frames="<<frames<<'\n';return 0;
     }
+    if(argc==4 && std::string(argv[1])=="--check-race-loop"){
+        const auto index=std::stoi(argv[3]);
+        const auto root=std::filesystem::path(argv[2]);
+        const auto clip=loadOriginalSpsd(root/"data/original_audio/streams"/raceMusicCatalog.at(index).relativePath);
+        check(clip.looping && clip.loopStart>0,"Choose a race song with an intro");
+        EngineAudio audio;
+        audio.configure(root);
+        audio.musicTrack=index;
+        audio.scene(false,false,false);
+        const auto end=clip.loopEnd?clip.loopEnd:clip.frames();
+        const auto count=std::uint64_t(end)*44100/clip.sampleRate;
+        for(std::uint64_t i=0;i<count+2;++i)audio.renderStereo(0,0,0,0,false);
+        const auto position=audio.raceTimingStatistics().streamFrame;
+        const auto expected=clip.loopStart+double(count+2)*clip.sampleRate/44100-end;
+        check(std::abs(position-expected)<0.1,"Race mixer returned to the wrong loop frame");
+        std::cout<<"PASS "<<raceMusicCatalog[index].title<<" looped at "<<end
+                 <<" to "<<clip.loopStart<<" (next playback frame "<<position<<")\n";
+        return 0;
+    }
     if(argc==3&&std::string(argv[1])=="--audit-originals"){
         const auto root=std::filesystem::path(argv[2])/"data/original_audio/streams";
         for(std::size_t i=0;i<raceMusicCatalog.size();++i){

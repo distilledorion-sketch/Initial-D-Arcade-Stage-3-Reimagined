@@ -1,4 +1,5 @@
 #include "frontend.h"
+#include "original_menu_backdrop.h"
 #include "original_car_color_catalog.h"
 #include "original_record_rules.h"
 #include "unity_ui_capture.h"
@@ -17,8 +18,67 @@ bool sameWideMenuCenter(const std::vector<std::uint32_t>& a,const std::vector<st
         if(a[std::size_t(y)*1280+x]!=b[std::size_t(y)*1280+x])return false;
     return true;
 }
+void verifyBattleBackdrop(const std::filesystem::path& root){
+    Frontend menu;
+    menu.initialize(root,false);
+    const auto folder=root/"data/original_assets/name_entry/select";
+    const auto model=NativeModel::load(folder/"select.idasmesh");
+    const auto logo=original::buildMenuLogoBackdrop(NativeTextureBank::load(folder/"textures/textures.idastex"),model.chunks.at(45));
+    std::vector<Frontend::BattlePage> pages{Frontend::BattlePage::SavedCar};
+    if(std::filesystem::exists(root/"data/original_assets/menus/v3/selreceive/selreceive.idasmesh")){
+        pages.insert(pages.end(),{Frontend::BattlePage::Card,Frontend::BattlePage::AcceptChallengers,Frontend::BattlePage::EnterBattle});
+    }
+    for(auto page:pages){
+        menu.battleEntry.page=page;
+        for(auto [w,h]:{std::pair{1152,480},std::pair{853,480},std::pair{480,640}}){
+            for(unsigned tick:{0u,37u}){
+                menu.battleEntry.frame=tick;
+                const auto& actual=menu.paintBattleEntry(w,h);
+                std::vector<unsigned> expected(actual.size());
+                original::paintMenuLogoBackdrop(expected,w,h,logo,tick);
+                const bool wide=w*3>h*4;
+                for(int y=0;y<h;++y)for(int x=0;x<w;++x){
+                    if(wide?(x>12&&x<w-13):(y>12&&y<h-13))continue;
+                    require(actual[y*w+x]==expected[y*w+x],"Linked menu lost the scrolling logo at a viewport edge");
+                }
+                require(actual!=expected,"Linked menu lost its foreground");
+            }
+        }
+    }
+}
 void verifyMenuMargins(const std::filesystem::path& root){
     original::OriginalGasstandAttract art;art.load(root);
+    // On the conversation screen the foreground is below this strip. Each
+    // horizontal repeat has to match even across the old 4:3 boundary.
+    for(unsigned tick=0;tick<322;++tick){
+        art.step();
+        if(tick!=0&&tick!=83&&tick!=319&&tick!=321)continue;
+        for(const int w:{640,960,1441}){
+            constexpr int h=480;
+            std::vector<unsigned> frame(w*h);
+            art.paint(frame,w,h);
+            for(int y=72;y<148;++y)
+                for(int x=0;x<w-254;++x)
+                    require(frame[y*w+x]==frame[y*w+x+254],"Scrolling logo grid broke across the menu");
+            Idas3UiEnable(1);Idas3UiBeginFrame(w,h);unityUiClear(frame.data(),w,h);
+            art.paint(frame,w,h);unityUiSubmit(frame.data(),w,h,false,false,false);
+            UnityUiFrame ui{sizeof(UnityUiFrame)};Idas3UiGetFrame(&ui);
+            std::vector<UnityUiDraw> draws(ui.drawCount);Idas3UiCopyDraws(draws.data(),int(draws.size()));
+            std::vector<UnityUiVertex> vertices(ui.vertexCount);Idas3UiCopyVertices(vertices.data(),int(vertices.size()));
+            unsigned triangles=0;
+            for(const auto& draw:draws){
+                UnityUiTextureInfo texture{sizeof(UnityUiTextureInfo)};Idas3UiGetTextureInfo(draw.texture,&texture);
+                if(texture.width!=1016||texture.height!=508)continue;
+                require(draw.count==3&&draw.clipLeft==0&&draw.clipRight==w,"Logo clipped to the original canvas");
+                const auto a=vertices[draw.first],b=vertices[draw.first+1],c=vertices[draw.first+2];
+                require(std::min({a.x,b.x,c.x})==0&&std::max({a.x,b.x,c.x})==w,
+                        "Logo background missed a viewport edge");
+                ++triangles;
+            }
+            require(triangles==2,"Expected one screen-sized logo background");
+            Idas3UiEnable(0);
+        }
+    }
     constexpr std::uint32_t marker=0x12345678;
     for(const auto size:std::array<std::array<int,2>,5>{{{640,480},{1280,720},{1920,800},{720,1280},{1365,768}}}){
         const int w=size[0],h=size[1];const float fit=std::min(w/640.f,h/480.f);
@@ -438,6 +498,7 @@ int main(int argc,char**argv) {
         }
         if(argc>1) {
             verifyMenuMargins(argv[1]);
+            verifyBattleBackdrop(argv[1]);
             {
                 Frontend saves;saves.initialize(argv[1]);saves.stage=FrontendStage::SaveSelect;
                 saves.saveFiles[0]={true,"CHRIS","AE86 TRUENO","B1","2026/09/23",3661,9};
@@ -691,34 +752,80 @@ int main(int argc,char**argv) {
             require(preloaded.paint(640,480).size()==640*480,"Artwork preload failed during menu reinitialization");
         }
         if(argc>3){
-            Frontend hakone;hakone.initialize(argv[1]);hakone.enableHakoneCourse(argv[3]);
-            const auto choices=hakone.courseChoices();
-            require(choices.size()==10&&std::set<int>(choices.begin(),choices.end()).size()==10,"Hakone replaced an original course");
-            for(auto mode:{original::OriginalGameMode::LegendOfTheStreets,original::OriginalGameMode::BuntaChallenge}){
-                hakone.gameMode=mode;const auto original=hakone.courseChoices();
-                require(std::find(original.begin(),original.end(),9)==original.end(),"Hakone leaked into unsupported mode");
-            }
-            hakone.gameMode=original::OriginalGameMode::TimeAttack;hakone.course=9;hakone.stage=FrontendStage::Course;
-            require(hakone.courseRecordTimes()==std::array<std::uint32_t,3>{},"Hakone displayed another course's records");
-            hakone.advance(1);hakone.paint(640,480);hakone.change(1);hakone.advance(.2);
-            require(hakone.course==0,"Hakone carousel did not navigate to Myogi");
-            hakone.change(-1);hakone.advance(.2);require(hakone.course==9,"Hakone carousel did not navigate back");
-            for(int scenario=0;scenario<8;++scenario){
-                hakone.stage=FrontendStage::Course;hakone.course=9;
-                hakone.reverse=(scenario&1)!=0;hakone.wet=(scenario&2)!=0;hakone.night=(scenario&4)!=0;
-                for(auto stage:{FrontendStage::Course,FrontendStage::Route,FrontendStage::Weather,FrontendStage::Time}){
-                    hakone.advance(1);require(hakone.stage==stage,"Hakone source selection transition failed");
-                    if(stage==FrontendStage::Route&&bool(scenario&1)!=hakone.reverse)hakone.change(1);
-                    if(stage==FrontendStage::Weather&&bool(scenario&2)!=hakone.wet)hakone.change(1);
-                    if(stage==FrontendStage::Time&&bool(scenario&4)!=hakone.night)hakone.change(1);
-                    if(scenario==0)saveBitmap(std::filesystem::path(argv[2])/("hakone-menu-"+std::to_string(int(stage))+".bmp"),hakone.paint(1280,720),1280,720);
-                    else hakone.paint(640,480);
-                    hakone.confirm();hakone.advance(1);
+            Frontend menu;menu.initialize(argv[1]);menu.stage=FrontendStage::Course;
+            require(menu.courseChoices().size()==9,"Empty Mods tab appeared on a base-only install");
+            const auto maps=std::filesystem::path(argv[3]).parent_path();
+            std::vector<int> mods;
+            for(const auto& def:importedCourseDefinitions){
+                const auto pack=maps/def.folder;
+                if(std::filesystem::exists(pack/"menu.idastex")){
+                    menu.enableHakoneCourse(pack,int(def.id));mods.push_back(int(def.id));
                 }
-                require(hakone.takeStartRequest(),"Hakone selection did not request a race");
-                require(hakone.course==9&&hakone.reverse==bool(scenario&1)&&hakone.wet==bool(scenario&2)&&hakone.night==bool(scenario&4),"Hakone conditions changed during menu confirmation");
             }
-            std::cout<<"Hakone menu passed ten-course navigation, original modes, eight conditions and race-start requests.\n";
+            require(!mods.empty(),"Mod picker test needs at least one map pack");
+            const std::vector<int> expected{0,1,2,3,5,8,4,6,7,Frontend::modsTab};
+            require(menu.courseChoices()==expected,"Mod tracks must share a single tab after the nine arcade tracks");
+            for(auto mode:{original::OriginalGameMode::LegendOfTheStreets,original::OriginalGameMode::BuntaChallenge}){
+                menu.gameMode=mode;const auto original=menu.courseChoices();
+                require(std::find(original.begin(),original.end(),Frontend::modsTab)==original.end(),"Mods appeared in a story mode");
+            }
+            menu.gameMode=original::OriginalGameMode::TimeAttack;menu.course=0;menu.advance(1);
+            const auto hasSupportLabel=[](const auto& image,int left,int top,int right,int bottom){
+                for(int y=top;y<bottom;++y){
+                    const auto begin=image.begin()+640*y;
+                    if(std::find(begin+left,begin+right,0xffff646du)!=begin+right)return true;
+                }
+                return false;
+            };
+            for(int i=0;i<9;++i){
+                menu.course=expected[i];
+                require(!hasSupportLabel(menu.paint(640,480),360,449,628,471),"Built-in course advertised community support");
+            }
+            menu.course=0;
+            menu.change(-1);menu.advance(.2);const auto tab=menu.paint(640,480);
+            require(menu.course==mods.front(),"Mods tab did not remember a valid installed map");
+            menu.confirm();const auto picker=menu.paint(640,480);
+            require(hasSupportLabel(picker,32,98,219,112),"Supported map lost its label in the Mods list");
+            require(tab!=picker&&!menu.takeStartRequest(),"Mods tab must open a separate picker");
+            saveBitmap(std::filesystem::path(argv[2])/"mods-picker.bmp",picker,640,480);
+            menu.back();require(menu.paint(640,480)==tab,"Back from the list did not restore the Mods tab");
+            menu.change(1);require(menu.course==0,"Could not wrap from Mods back to the first arcade track");
+            menu.change(-1);menu.confirm();
+            for(std::size_t i=0;i<mods.size();++i){
+                require(menu.course==mods[i],"List order differs from installed maps");
+                const auto image=menu.paint(640,480);
+                menu.changeColor(-1);
+                const auto& next=menu.paint(640,480);
+                if(mods.size()>1){
+                    bool different=false;
+                    for(int y=80;y<263&&!different;++y)
+                        different=!std::equal(image.begin()+y*640+239,image.begin()+y*640+615,next.begin()+y*640+239);
+                    require(different,"Moving to the next map did not change its preview");
+                }
+            }
+            menu.back();
+            for(int id:mods)for(int scenario=0;scenario<(courseRequiresNight(id)?4:8);++scenario){
+                menu.confirm();
+                for(std::size_t step=0;menu.course!=id&&step<mods.size();++step)menu.change(1);
+                require(menu.course==id,"Installed track is unreachable from the Mods list");
+                menu.confirm();
+                if(scenario&1)menu.change(1);
+                menu.confirm();if(scenario&2)menu.change(1);
+                menu.confirm();
+                if(!courseRequiresNight(id)){if(scenario&4)menu.change(1);menu.confirm();}
+                require(!menu.takeStartRequest(),"Choosing a condition started a race early");
+                menu.confirm();menu.advance(1);
+                require(menu.takeStartRequest()&&!menu.takeStartRequest(),"Start did not launch exactly once");
+                require(menu.course==id&&menu.reverse==bool(scenario&1)&&menu.wet==bool(scenario&2)&&
+                    menu.night==(courseRequiresNight(id)||bool(scenario&4)),"Wrong race or conditions after leaving the mod picker");
+            }
+            menu.confirm();require(menu.coursePointer(30,84,true),"Cannot select a track by mouse");
+            require(menu.course==mods.front(),"Mouse list click selected the wrong track");
+            menu.coursePointer(570,280,true);menu.coursePointer(570,320,true);menu.coursePointer(570,350,true);
+            require(menu.reverse&&menu.wet&&menu.night,"Mouse condition choices did not reach the race");
+            menu.coursePointer(410,424,true);menu.advance(1);
+            require(menu.takeStartRequest(),"Mouse start failed");
+            std::cout<<"Mods picker passed navigation, previews and condition selection for "<<mods.size()<<" installed tracks.\n";
         }
         std::cout<<"Native frontend navigation passed. Original animation/projection parity is not established.\n";
         return 0;

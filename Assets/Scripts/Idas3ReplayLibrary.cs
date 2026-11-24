@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.IO;
 using System.Linq;
@@ -9,11 +14,13 @@ using UnityEngine;
 // Personal recordings are local files. This component has no network client.
 public sealed class Idas3ReplayLibrary : MonoBehaviour
 {
-    public static string DefaultFolder => Path.Combine(Application.persistentDataPath, "userdata-unity-scene", "replays");
+    public static string DefaultFolder => Path.Combine(PlayerStorage.persistentDataPath, "userdata-unity-scene", "replays");
     public string Folder { get; private set; }
-    System.Diagnostics.Process viewerProcess;
-    internal bool ViewerOpen { get { try { return viewerProcess!=null&&!viewerProcess.HasExited; } catch { return false; } } }
+    Idas3ReplayViewer viewer;
+    internal bool ViewerOpen => viewer!=null;
     Idas3SceneGame host; Idas3PauseMenu menu; double retryAt;
+    string replayInbox;
+    double nextInboxCheck;
     Task<string> saveJob;byte[] savingJson;double nextPoll;
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] public static extern int Idas3ReplayRecordingOptions(uint flags);
     [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] static extern int Idas3LocalReplayRead(int part, byte[] bytes, int capacity);
@@ -22,6 +29,10 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
     public void Initialize(Idas3SceneGame owner, Idas3PauseMenu view, string saves)
     {
         host=owner;menu=view;Folder=Path.Combine(saves,"replays");
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+        using(var process=System.Diagnostics.Process.GetCurrentProcess())
+            replayInbox=Path.GetFullPath(Path.Combine(Application.dataPath,"../UserData/Temp/replay-"+process.Id+".request"));
+#endif
         try { Directory.CreateDirectory(Folder); } catch(Exception) { menu.ReplayStatus="Replay folder unavailable. Check free disk space and folder permissions."; }
     }
     byte[] ReadPart(int part,int maximum)
@@ -32,7 +43,21 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
     }
     void Update()
     {
-        if(host==null||!host.Ready||Time.realtimeSinceStartupAsDouble<retryAt)return;
+        if(replayInbox!=null && host!=null && host.Ready && Time.realtimeSinceStartupAsDouble>=nextInboxCheck){
+            nextInboxCheck=Time.realtimeSinceStartupAsDouble+0.5;
+            try{
+                if(File.Exists(replayInbox)){
+                    var info=new FileInfo(replayInbox);
+                    string path=info.Length<=32768?File.ReadAllText(replayInbox):null;
+                    File.Delete(replayInbox);
+                    if(path!=null && (path.Length==0 || Path.IsPathRooted(path) && string.Equals(Path.GetExtension(path),".idreplay",StringComparison.OrdinalIgnoreCase))){
+                        if(ViewerOpen)viewer.SelectFile(path);
+                        else OpenViewer(path);
+                    }
+                }
+            }catch(IOException e){Debug.LogWarning("Replay shortcut: "+e.Message);}
+        }
+        if(host==null||!host.Ready||ViewerOpen||Time.realtimeSinceStartupAsDouble<retryAt)return;
         try
         {
             if(saveJob!=null){
@@ -94,7 +119,7 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
         string player=m.playerName;
         if(string.IsNullOrWhiteSpace(player)&&m.nameGlyphs!=null){var name=new StringBuilder();foreach(int g in m.nameGlyphs)if(g>=162&&g<=187)name.Append((char)('A'+g-162));else if(g>=188&&g<=197)name.Append((char)('0'+(g-187)%10));else if(g==220)name.Append(' ');player=name.ToString();}
         return FileToken(player,"driver")+(m.mode==0?"":"_vs_"+FileToken(m.opponentName,"opponent"))+"_"+
-            FileToken(Idas3ReplayData.Courses[course],"course")+"_"+Idas3CourseCatalog.DirectionToken(course,(m.condition&1)!=0)+"_"+
+            FileToken(Idas3CourseCatalog.DisplayName(course),"course")+(Idas3UserTracks.IsUser(course)?"_"+course:"")+"_"+Idas3CourseCatalog.DirectionToken(course,(m.condition&1)!=0)+"_"+
             (m.night==1?"night":"day")+"_"+(m.weather==1?"wet":"dry")+"_"+(m.mode==1?"ol":m.mode==2?"lots":"tat");
     }
     static string FileToken(string value,string fallback)
@@ -114,18 +139,15 @@ public sealed class Idas3ReplayLibrary : MonoBehaviour
         writer.Write(json.Length);writer.Write(json);writer.Write(player);writer.Write(opponent);if(telemetry!=null)writer.Write(telemetry);return output.ToArray();
     }
     public static string[] Files(string folder) => Directory.Exists(folder)?new DirectoryInfo(folder).GetFiles("*.idreplay").OrderByDescending(f=>f.LastWriteTimeUtc).Select(f=>f.FullName).ToArray():Array.Empty<string>();
-    public void OpenViewer()
+    public void OpenViewer(string path=null)
     {
-        try
-        {
-            if(ViewerOpen)return;
-            viewerProcess?.Dispose();viewerProcess=null;
+        if(ViewerOpen)return;
+        if(!host.CanViewReplay){menu.ReplayStatus="Leave matchmaking or the online room to watch a replay.";return;}
+        try{
             Directory.CreateDirectory(Folder);
-            string executable=Path.GetFullPath(Path.Combine(Application.dataPath,"../InitialDUnity.exe"));
-            if(Application.isEditor)throw new InvalidOperationException("Open the replay viewer from a built game.");
-            Idas3DiscordPresence.YieldToReplay();
-            viewerProcess=System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(executable,"-idas3-replay-viewer -idas3-replay-library \""+Folder+"\""){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(executable)});
-        }
-        catch(Exception e){menu.ReplayStatus="Could not open replay viewer: "+e.Message;}
+            viewer=Idas3ReplayViewer.OpenInGame(host,Folder,path);
+        }catch(Exception e){menu.ReplayStatus="Could not open replay viewer: "+e.Message;}
     }
+    internal void CloseViewer(){if(viewer!=null)viewer.CloseViewer();}
+
 }

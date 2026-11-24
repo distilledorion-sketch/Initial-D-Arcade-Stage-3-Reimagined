@@ -46,6 +46,14 @@ void OriginalLoadingScreen::begin(std::uint32_t sequence) {
     chosen_ = artwork_.empty() ? 0 : sequence % std::uint32_t(artwork_.size());
 }
 
+bool OriginalLoadingScreen::beginArtwork(std::uint32_t number) {
+    const auto found=std::find_if(artwork_.begin(),artwork_.end(),
+        [number](const Artwork& entry){return entry.number==number;});
+    if(found==artwork_.end())return false;
+    chosen_=std::uint32_t(found-artwork_.begin());
+    return true;
+}
+
 void OriginalLoadingScreen::paintBank(std::span<std::uint32_t> target, int width, int height,
                                       const Bank& bank, int onlyChunk) const {
     // Authored at a hundred units per pixel with y upward, fitted to whatever

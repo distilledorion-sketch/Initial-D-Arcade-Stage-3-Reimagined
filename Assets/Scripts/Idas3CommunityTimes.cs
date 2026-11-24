@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -51,7 +56,7 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SharedSetRecords(int[] values,int count,int enabled);
     [DllImport("Idas3Unity",CallingConvention=CallingConvention.Cdecl)] private static extern int Idas3SceneModeFlowValue(int field);
     public void Initialize(Idas3SceneGame owner,Idas3GameOptions settings,Idas3PauseMenu view,string diagnosticStorage=null,bool diagnosticOffline=false){
-        host=owner;options=settings;menu=view;folder=Path.Combine(Application.persistentDataPath,"community-times");
+        host=owner;options=settings;menu=view;folder=Path.Combine(PlayerStorage.persistentDataPath,"community-times");
         if(diagnosticOffline&&diagnosticStorage==null)throw new InvalidOperationException("Offline diagnostic requires isolated storage.");
         if(diagnosticStorage!=null){
             var p=Path.GetFullPath(diagnosticStorage);
@@ -68,6 +73,8 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
             pending.runs.RemoveAll(r=>!Uploadable(r));if(pending.runs.Count>MaximumPendingRuns)pending.runs.RemoveRange(MaximumPendingRuns,pending.runs.Count-MaximumPendingRuns);
             Write("pending.json",pending);CleanReplayFiles();
             if(File.Exists(Path.Combine(folder,"snapshot.json"))){try{snapshot=Read<Snapshot>("snapshot.json",2*1024*1024);if(!UsableCommunitySnapshot(snapshot))snapshot=null;}catch(Exception){snapshot=null;}}
+            enabledLast=options.Current.communityTimes;options.Changed+=SharingPreferenceChanged;
+            if(!enabledLast)status="Sharing is off. Local rankings include every save slot.";
             cacheDirty=true;StartCoroutine(Collect());if(!diagnosticOffline)StartCoroutine(Synchronize());
             if(diagnosticStorage==null&&!Application.isEditor)StartCoroutine(ShareActivity());
         }catch(Exception e){status="Community storage unavailable. Local records remain active.";Debug.LogWarning("Community times initialization: "+e.GetType().Name);menu.CommunityStatus=status;}
@@ -150,11 +157,20 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
         // Snapshots are validated before assignment, never on the frame loop.
         return enabled&&current!=null&&now<liveUntil;
     }
+    private int sharingRevision;
+    private void SharingPreferenceChanged(Idas3GameOptions.Values values){
+        if(enabledLast==values.communityTimes)return;
+        enabledLast=values.communityTimes;++sharingRevision;
+        cacheDirty=true;nextNetwork=0;confirmedUntil=0;applied=false;
+        if(enabledLast)status="Connecting to community times…";
+        else{clearWrite=ClearPending();status="Sharing is off. Local rankings include every save slot.";}
+        menu.CommunityStatus=status;
+    }
     private IEnumerator Collect(){
         while(host!=null&&host.Ready){
+            if(host.ReplayViewerOpen){yield return null;continue;}
             bool enabled=options.Current.communityTimes;
             try{
-                if(enabled!=enabledLast){enabledLast=enabled;cacheDirty=true;nextNetwork=0;confirmedUntil=0;if(!enabled){clearWrite=ClearPending();status="Sharing is off. Personal records are active.";}else status="Connecting to community times…";}
                 if(clearWrite!=null&&clearWrite.IsCompleted){if(!PublishPending(clearWrite))status="Could not save upload queue. Retrying.";clearWrite=null;}
                 if(finishWrite!=null&&finishWrite.IsCompleted){
                     if(PublishPending(finishWrite)){
@@ -209,7 +225,9 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
         }
     }
     private IEnumerator RefreshSnapshot(){
+        int revision=sharingRevision;
         yield return Request("/api/v2/snapshot?ruleset="+Ruleset+"&imports=1");
+        if(revision!=sharingRevision||!options.Current.communityTimes)yield break;
         yield return ProcessSnapshot(responseCode,responseBody);
     }
     internal static Task<Snapshot> PrepareSnapshot(byte[] body,string directory,int minimumEpoch,CancellationToken stop){
@@ -230,9 +248,10 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
     internal IEnumerator ProcessSnapshot(long code,byte[] body){
         confirmedUntil=0;cacheDirty=true;
         if(code==200){
+            int revision=sharingRevision;
             var work=PrepareSnapshot(body,folder,CurrentSeasonEpoch,lifetime.Token);
             while(!work.IsCompleted)yield return null;
-            if(lifetime.IsCancellationRequested||!options.Current.communityTimes)yield break;
+            if(lifetime.IsCancellationRequested||!options.Current.communityTimes||revision!=sharingRevision)yield break;
             var next=work.GetAwaiter().GetResult();
             if(next!=null){snapshot=next;confirmedUntil=Time.realtimeSinceStartupAsDouble+75;
                 status="Community times updated. Personal records stay with your save.";}
@@ -251,7 +270,7 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
         }
         public override void Dispose(){body.Dispose();base.Dispose();}
     }
-    private void OnDestroy(){if(stopping)return;stopping=true;lifetime.Cancel();lifetime.Dispose();}
+    private void OnDestroy(){if(options!=null)options.Changed-=SharingPreferenceChanged;if(stopping)return;stopping=true;lifetime.Cancel();lifetime.Dispose();}
     private IEnumerator Synchronize(){
         yield return new WaitForSecondsRealtime(5);
         while(host!=null&&host.Ready){
@@ -260,6 +279,7 @@ public sealed partial class Idas3CommunityTimes : MonoBehaviour
             // Reading current rankings is public: an upload/authentication
             // failure must not keep deleted remote records on screen.
             yield return RefreshSnapshot();
+            if(!options.Current.communityTimes)continue;
             if(!registered){yield return Request("/api/v1/register",JsonUtility.ToJson(new Identity{token=credential}));if(responseCode==200)registered=true;else{status=responseCode==403?"This installation is blocked from sharing.":"Community times offline; uploads will retry.";yield return null;continue;}}
             // Maximum one upload per second, preserving the server's rate limit.
             int sent=0;while(options.Current.communityTimes&&pending.runs.Count>0&&sent<5){

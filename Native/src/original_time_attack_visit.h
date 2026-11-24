@@ -94,12 +94,14 @@ public:
     std::uint32_t mapIndex()const{return mapIndex_;}
     std::uint32_t fadeArgb()const;
     std::vector<OriginalLegendReturnEvent> takeEvents(){return std::move(events_);}
+    void replaceRankingRecords(std::vector<TimeAttackEntry> rows){setup_.localRecords=std::move(rows);prepareRanking();}
     const Setup& setup()const{return setup_;}
     const std::vector<OriginalRankingRecord>& rankingRows()const{return rows_;}
 private:
     struct Bank { NativeModel model; NativeTextureBank textures; };
     Bank lecture_,ranking_,common_,select_,password_,passwordTitle_,selectionCommon_;
     NativeTextureBank alphabet_,passwordSpriteTextures_;
+    NativeImage logoBackdrop_;
     NativeSpriteBank passwordSprites_;
     std::array<Bank,8> maps_;
     OriginalRivalDialogScene choices_;

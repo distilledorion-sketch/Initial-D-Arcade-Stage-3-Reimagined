@@ -8,8 +8,9 @@
 namespace idas3 {
 // Kind13 (0A34E0): the eye follows its authored car-relative point while
 // 09C9C0 applies the authored spring/noise to the look-at point. Run once per
-// original tick, not per render. Own the presentation RNG so credits cannot
-// mutate the completed race or its rollback/save state.
+// original tick, not per render. The application ending uses advanceShared
+// because source09C9C0 consumes37C778; standalone replay tools may useadvance
+// with an isolated captured seed instead.
 class OriginalEndingCamera {
 public:
     static constexpr Vec3 eyeOffset{std::bit_cast<float>(0x3fdd709cu),

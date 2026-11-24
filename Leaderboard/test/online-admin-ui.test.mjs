@@ -29,7 +29,7 @@ function app(pathname='/admin',handler){
  for(const match of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*\bid="([^"]+)"[^>]*)>/g)){
   const el=new Element(match[1]);el.hidden=/\bhidden\b/.test(match[2]);elements.set(match[3],el);
  }
- for(const [id,value] of [['course','0'],['direction','0'],['weather','0'],['car','-1']])elements.get(id).value=value;
+ for(const [id,value] of [['season','2'],['course','0'],['direction','0'],['weather','0'],['car','-1']])elements.get(id).value=value;
  elements.get('direction').options=[new Element('option'),new Element('option')];
  const calls=[];
  const context={
@@ -50,6 +50,27 @@ test('public rankings never request or display the private player directory',asy
  assert.equal(ui.calls.some(call=>call.path.startsWith('/api/admin/')),false);
  ui.$('onlineSearchForm').onsubmit({preventDefault(){}});await tick();
  assert.equal(ui.calls.some(call=>call.path.startsWith('/api/admin/')),false);
+});
+
+test('changing season preserves filters and ignores out-of-order board responses',async()=>{
+ const pending=[];
+ const ui=app('/',path=>path.startsWith('/api/v1/board')
+  ? new Promise(resolve=>pending.push({url:new URL(path,'https://example.test'),resolve}))
+  : response({available:false}));
+ assert.equal(pending[0].url.searchParams.get('season'),'2');
+ ui.$('car').value='3';ui.$('direction').value='1';ui.$('weather').value='1';
+ ui.$('season').value='1';const archiveRead=ui.$('season').onchange();
+ for(const [key,val] of Object.entries({season:'1',condition:'1',weather:'1',car:'3'}))
+  assert.equal(pending[1].url.searchParams.get(key),val);
+ pending[1].resolve(response({entries:[],season:1,generatedAt:1730000000}));await archiveRead;
+ assert.match(ui.$('boardSeason').textContent,/ARCHIVE/);assert.match(ui.$('empty').textContent,/Season 1/);
+ assert.equal(ui.$('empty').hidden,false);
+ pending[0].resolve(response({error:'Stale response'},500));await tick();
+ assert.match(ui.$('status').textContent,/Season 1$/);
+ ui.$('season').value='2';const currentRead=ui.$('season').onchange();
+ assert.equal(ui.$('empty').hidden,true);assert.equal(ui.$('car').value,'3');
+ pending[2].resolve(response({entries:[],season:2,generatedAt:1730000000}));await currentRead;
+ assert.match(ui.$('status').textContent,/Season 2$/);
 });
 
 test('Season 2 UI shows its public label and keeps closed scores read-only without hiding installation moderation',async()=>{

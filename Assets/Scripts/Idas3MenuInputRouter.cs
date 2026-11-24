@@ -14,7 +14,7 @@ internal sealed partial class Idas3MenuInputRouter
     }
     internal struct Context
     {
-        internal bool Focused, OnlineBlocksInput, PauseOpen, CanOpenPause, PointerActive, NavigationHeld, CardForcedQuit;
+        internal bool Focused, OnlineBlocksInput, PauseOpen, CanOpenPause, PointerActive, NavigationHeld, CardForcedQuit, SourceCabinetStartReserved;
         internal double Now;
     }
     internal struct Command
@@ -114,7 +114,7 @@ internal sealed partial class Idas3MenuInputRouter
         }
         // The original card option gives Start + View Change to the native
         // race owner. Do not consume that chord by opening the host pause menu.
-        else if (context.CardForcedQuit && context.CanOpenPause && !suppressClosingControls &&
+        else if (context.CardForcedQuit && !context.SourceCabinetStartReserved && context.CanOpenPause && !suppressClosingControls &&
             sample.ViewChange && (sample.Escape || (sample.Buttons & 0x10u) != 0))
             return default;
         else if (escapePressed && context.CanOpenPause && !suppressClosingControls)

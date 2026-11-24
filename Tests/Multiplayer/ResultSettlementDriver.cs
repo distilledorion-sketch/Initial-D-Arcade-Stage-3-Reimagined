@@ -101,7 +101,7 @@ internal static class ResultSettlementDriver
     }
     static byte[] RecordPacket(Idas3BattleRecord record){
         using(var stream=new MemoryStream())using(var writer=new BinaryWriter(stream)){
-            writer.Write(0x504D3349u);writer.Write((ushort)11);writer.Write((byte)17);
+            writer.Write(0x504D3349u);writer.Write((ushort)14);writer.Write((byte)17);
             writer.Write(202UL);writer.Write(101UL);writer.Write(123UL);
             writer.Write(record.battles);writer.Write(record.wins);writer.Write(record.level);writer.Write(record.streak);
             return stream.ToArray();

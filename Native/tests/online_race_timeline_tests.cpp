@@ -165,7 +165,8 @@ void contracts(const std::filesystem::path& root){
         ended.step(held);
         for(unsigned slot=0;slot<2;++slot){const auto& controls=ended.car(slot).vehicle().controls;
             require(controls.steeringHighByte==(slot?68u:188u)&&std::abs(controls.steering)>.4f,"Online ended race lost steering");
-            require(controls.throttle==0.f&&controls.brake>.9f&&ended.car(slot).raceAutomaticBrakeByte()!=0,"Online ended race accepted acceleration or lost braking");
+            require(controls.throttle==0.f&&controls.brake==0.f&&controls.throttleAlias==1.f&&ended.car(slot).raceAutomaticBrakeByte()!=0,"Online ended race lost source automatic braking or overwrote accepted pedals");
+            require((ended.car(slot).actor().u(0x50)&0x8000u)!=0&&ended.car(slot).vehicle().transmission.gear00!=0,"Online finish forced neutral instead of retaining source gear engagement");
         }
         const auto digest=ended.digest();ended.restore(saved);ended.step(held);
         require(ended.digest()==digest,"Post-race steering changed across rollback replay");
@@ -181,10 +182,10 @@ void contracts(const std::filesystem::path& root){
         std::vector<std::array<OriginalVehicleInputs,2>> replay;
         bool observed=false;
         for(unsigned frame=0;frame<600;++frame){
-            const float gap=metrics.advantage(boosted.rules(0).state().progress,boosted.rules(1).state().progress);
             std::array<OriginalVehicleInputs,2> inputs;
             for(unsigned slot=0;slot<2;++slot)inputs[slot]=adaptOriginalHostInput(adapters[slot],{0,slot==0?1.f:0.f,0,false,false},true,false,0);
             replay.push_back(inputs);boosted.step(inputs);
+            const float gap=metrics.advantage(boosted.rules(0).state().progress,boosted.rules(1).state().progress);
             for(unsigned slot=0;slot<2;++slot){
                 const bool trailing=(slot==0?gap:-gap)<0;
                 require((boosted.car(slot).vehicle().drive.u(0x43C)!=0)==(enabled&&trailing),"Boost affected leader/off mode or missed trailing car");

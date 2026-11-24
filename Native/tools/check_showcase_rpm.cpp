@@ -41,7 +41,7 @@ int main(int argc,char** argv)try{
         const auto controls=app->driver();
         const auto input=original::adaptOriginalHostInput(referenceInput,{controls.steer,controls.throttle,controls.brake},false,false,0);
         const auto effect=reference.tick(input);
-        app->advanceStartPresentation(1./60.);
+        app->advanceHostClock(OriginalDrivingClock::step,[&]{app->simulate(app->driver());});
         const auto& actual=app->audio.showcaseEngineControl();
         maxAudioDifference=std::max(maxAudioDifference,std::abs(actual.rpm-effect.completion.engineValue));
         maxTachDifference=std::max(maxTachDifference,std::abs(app->showcaseTransmission.tach1c-effect.completion.engineValue));
@@ -58,7 +58,7 @@ int main(int argc,char** argv)try{
     app->simulate(app->driver());
     summary<<car<<','<<wet<<','<<maxAudioDifference<<','<<maxTachDifference<<','<<before<<','<<app->vehicle.rpm<<'\n';summary.flush();
     if(maxAudioDifference!=0||maxTachDifference!=0)throw std::runtime_error("Showcase rev response differs from complete neutral driving frames");
-    if(app->vehicle.rpm!=next.completion.engineValue||app->originalRaceOwnerFrame!=1||app->originalRaceStart.remaining()!=239)
+    if(app->vehicle.rpm!=next.completion.engineValue||app->originalRaceOwnerFrame!=1||app->originalRaceStart.remaining()!=240)
         throw std::runtime_error("Countdown discarded showcase RPM or advanced at the wrong boundary");
     if(app->audio.engineStatistics().simulationFrames!=242)
         throw std::runtime_error("Countdown reset the live engine controller");

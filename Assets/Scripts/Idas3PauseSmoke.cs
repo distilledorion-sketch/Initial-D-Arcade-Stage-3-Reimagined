@@ -189,66 +189,50 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(Mathf.Abs(actual.aspect-expected.aspect)<=.000001f,name+" aspect changed after returning from Natural");
     }
     private IEnumerator CameraControl(uint expected,bool controller=false){
-        if(controller)padPulse=0x8000;else pulse=67;yield return Frames(6);CheckCamera(expected);
+        // The cabinet samples held buttons on simulation ticks. A single render
+        // frame on an uncapped or hidden desktop can contain zero cabinet ticks.
+        var scene=host.GetComponent<Idas3SceneRenderer>();
+        float startFov=scene.CurrentFrame.mainCamera.verticalFov;
+        int visible=0,hidden=0;bool moving=false;
+        void Sample(){
+            var camera=scene.CurrentFrame.mainCamera;
+            float depth=scene.DiagnosticNearestPlayerBodyDepth();
+            if(float.IsPositiveInfinity(depth))++hidden;
+            else{
+                ++visible;
+                Check(depth>=camera.nearClip-.002f,"View Change exposed the inside of the player car");
+            }
+            moving|=Mathf.Abs(camera.verticalFov-startFov)>.001f;
+        }
+        ulong start=host.Status.simulationTicks;
+        float deadline=Time.realtimeSinceStartup+6f;
+        do{
+            Sample();
+            if(host.Status.simulationTicks<start+4){if(controller)padPulse=0x8000;else pulse=67;}
+            yield return null;
+            Check(Time.realtimeSinceStartup<deadline,"Camera transition stopped advancing");
+        }while(host.Status.simulationTicks<start+42);
+        CheckCamera(expected);
+        Check(moving&&visible>0&&hidden>0,"View Change did not cover both visible and hidden car frames");
+        Debug.Log("Camera clearance toward view "+expected+" passed on "+visible+" visible and "+hidden+" hidden frames");
     }
     private IEnumerator NaturalCameraChecks(){
-        yield return Until(()=>host.Status.racePhase==2,15,"Natural camera fixture did not reach running race");
-        Check(options.Current.defaultCamera==0&&CameraOptions().cameraView==0,"Natural camera changed the established default");CheckCamera(0);
-        string bindingsBefore=JsonUtility.ToJson(host.ControlBindings.Current);
-        yield return CameraControl(1);yield return CameraControl(2,true);yield return CameraControl(0);
-        Check(options.Current.defaultCamera==0,"View Change overwrote the saved default camera");
-        pulse=27;yield return Frames(5);Check(menu.IsOpen&&(host.Status.flags&2)!=0,"Natural camera test could not pause");
-        var originalOptions=options.Current.Clone();
-        ulong frozen=host.Status.simulationTicks;string savedBefore=File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null;
-        float pausedSpeed=host.Status.speedMetresPerSecond,pausedRpm=host.Status.rpm;
-        var originalBumper=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;RecordCamera("original-bumper-paused");
-        SetRuntimeCamera(1);yield return Frames(4);CheckCamera(1);
-        var originalChase=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;RecordCamera("original-chase-paused");
-        SetRuntimeCamera(0);yield return Frames(4);CheckCamera(0);
-        Check(host.Status.simulationTicks==frozen,"Original-camera baseline changed the paused race tick");
+        yield return Until(()=>host.Status.racePhase==2,15,"Race camera fixture did not start");
+        CheckCamera(0);
+        yield return CameraControl(1);
+        yield return CameraControl(0,true);
+        Check(options.Current.defaultCamera==0,"View Change overwrote the saved default");
+        pulse=27;yield return Frames(5);Check(menu.IsOpen,"Could not pause for the camera options");
         menu.SelectTab(2);menu.NavigateHorizontal(-1);
-        Check(options.Draft.defaultCamera==2&&options.Current.defaultCamera==0&&CameraOptions().cameraView==0&&options.HasUnsavedChanges,"Left from Bumper did not select an unapplied Natural draft");
-        yield return Capture("natural-camera-draft");menu.Back();menu.Back();yield return Frames(3);
-        Check(options.Current.defaultCamera==0&&options.Draft.defaultCamera==0&&CameraOptions().cameraView==0,"Cancelling Natural camera changed the active/default view");
-        Check((File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null)==savedBefore,"Cancelling Natural camera wrote the options file");
-        menu.SelectTab(2);menu.NavigateHorizontal(1);Check(options.Draft.defaultCamera==1,"Chase moved from its existing option index");menu.NavigateHorizontal(1);
-        Check(options.Draft.defaultCamera==2&&CameraOptions().cameraView==0,"Natural draft applied before the menu APPLY action");
-        for(int row=0;row<menu.OptionRows+1;++row)menu.Navigate(1);menu.Activate();yield return Frames(4);
-        Check(options.LastError==null&&!options.HasUnsavedChanges&&options.Current.defaultCamera==2,"Gameplay APPLY did not save Natural camera");CheckCamera(2);
-        Check(host.Status.simulationTicks==frozen&&host.Status.speedMetresPerSecond==pausedSpeed&&host.Status.rpm==pausedRpm,"Applying Natural advanced or modified paused driving state");
-        var persisted=JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath));
-        var reloaded=new Idas3GameOptions(new OptionsTestPlatform());reloaded.Initialize(Path.GetDirectoryName(options.FilePath));
-        Check(persisted.defaultCamera==2&&reloaded.LastError==null&&reloaded.Current.defaultCamera==2&&Idas3GameOptions.Equivalent(reloaded.Current,options.Current),"Natural camera did not persist and reload");
-        originalOptions.defaultCamera=2;Check(Idas3GameOptions.Equivalent(originalOptions,options.Current),"Applying Natural changed unrelated options");
-        Check(JsonUtility.ToJson(host.ControlBindings.Current)==bindingsBefore,"Natural camera changed driving bindings");
-        menu.SelectTab(2);yield return Capture("gameplay-natural");
-        // Both clean scene captures use exactly the same paused race state.
-        // Only the production camera option changes; the managed pause overlay
-        // is omitted from this scene-only readback so the car stays visible.
-        SetRuntimeCamera(1);yield return Frames(4);CheckCamera(1);
-        var chase=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
-        yield return CaptureCamera("chase-same-frame");string chaseHash=lastCameraCaptureHash;
-        Check(host.Status.simulationTicks==frozen,"Chase comparison capture advanced the paused race");
-        SetRuntimeCamera(2);yield return Frames(4);CheckCamera(2);
-        var natural=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
-        Check((natural.eye-chase.eye).sqrMagnitude>.000001f||(natural.target-chase.target).sqrMagnitude>.000001f||Mathf.Abs(natural.verticalFov-chase.verticalFov)>.000001f,"Natural duplicates the existing Chase view");
-        yield return CaptureCamera("natural-same-frame");
-        if(chaseHash!=null)Check(lastCameraCaptureHash!=chaseHash,"Natural and Chase captured identical scene images");
-        yield return Frames(45);var stable=host.GetComponent<Idas3SceneRenderer>().CurrentFrame.mainCamera;
-        Check(host.Status.simulationTicks==frozen&&(host.Status.flags&2)!=0,"Natural camera advanced the paused solver");
-        Check((stable.eye-natural.eye).sqrMagnitude<.000001f&&(stable.target-natural.target).sqrMagnitude<.000001f&&(stable.up-natural.up).sqrMagnitude<.000001f&&Mathf.Abs(stable.verticalFov-natural.verticalFov)<.000001f,"Natural camera drifts while paused");
-        SetRuntimeCamera(1);yield return Frames(4);CheckCamera(1);CheckRestoredCamera("Chase",originalChase);RecordCamera("restored-chase-paused");
-        SetRuntimeCamera(0);yield return Frames(4);CheckCamera(0);CheckRestoredCamera("Bumper",originalBumper);RecordCamera("restored-bumper-paused");
-        Check(host.Status.simulationTicks==frozen,"Restoring original cameras advanced the paused race");
-        SetRuntimeCamera(2);yield return Frames(4);CheckCamera(2);
-        var invalid=new Idas3Native.Options{size=(uint)Marshal.SizeOf<Idas3Native.Options>()};Check(Idas3Native.Idas3SceneGetOptions(ref invalid)==1,"Could not snapshot valid Natural options");invalid.cameraView=3;
-        Check(Idas3Native.Idas3SceneApplyOptions(ref invalid)!=1&&CameraOptions().cameraView==2,"Invalid camera mode was accepted or replaced Natural");
-        RecordCamera("natural-paused-stable");menu.SetOpen(false);
-        yield return Until(()=>host.Status.simulationTicks>frozen+30,5,"Natural camera race did not resume");CheckCamera(2);
-        for(int i=0;i<30;++i){yield return Frames(2);CheckCamera(2);}RecordCamera("natural-moving");
-        yield return CameraControl(0);yield return CameraControl(1);yield return CameraControl(2,true);
-        Check(options.Current.defaultCamera==2&&JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(options.FilePath)).defaultCamera==2,"Runtime camera cycle overwrote the Natural preference");
-        Check(JsonUtility.ToJson(host.ControlBindings.Current)==bindingsBefore,"Camera cycling changed driving bindings");Observe("natural-resumed-and-cycled");
+        Check(options.Draft.defaultCamera==1&&options.Current.defaultCamera==0,"Left from Bumper should propose Chase");
+        for(int row=0;row<menu.OptionRows+1;++row)menu.Navigate(1);
+        menu.Activate();yield return Frames(4);
+        CheckCamera(1);
+        var invalid=Idas3Native.ReadOptions();invalid.cameraView=2;
+        Check(Idas3Native.Idas3SceneApplyOptions(ref invalid)!=1&&CameraOptions().cameraView==1,"Retired view accepted");
+        menu.SetOpen(false);
+        yield return CameraControl(0);yield return CameraControl(1,true);
+        Check(options.Current.defaultCamera==1,"View Change changed the default");
     }
     private static Matrix4x4 ReadNativeProjection(IntPtr words,int view=0){
         var values=new float[16];Marshal.Copy(IntPtr.Add(words,view*92*sizeof(float)),values,0,16);
@@ -273,7 +257,7 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         Check(options.Current.cameraFovPercent==100&&options.HasUnsavedChanges&&scene.CurrentFrame.mainCamera.verticalFov==beforeDraft.verticalFov&&MatrixError(ReadNativeProjection(scene.CurrentFrame.frameConstants),beforeVp)==0,"Unapplied FOV draft changed the live projection");
         options.BeginEdit();yield return Frames(3);
         Check(options.Draft.cameraFovPercent==100&&!options.HasUnsavedChanges&&(File.Exists(options.FilePath)?File.ReadAllText(options.FilePath):null)==saved,"Discarding the FOV draft changed the preference or save file");
-        for(uint view=0;view<3;++view){
+        for(uint view=0;view<2;++view){
             options.BeginEdit();options.Draft.defaultCamera=(int)view;options.Draft.cameraFovPercent=100;
             Check(options.ApplyDraft(),"Could not apply the authored FOV baseline");yield return Frames(4);CheckCamera(view);
             var baseline=scene.CurrentFrame;var camera=baseline.mainCamera;var mirror=baseline.mirrorCamera;
@@ -636,8 +620,8 @@ public sealed class Idas3PauseSmoke : MonoBehaviour
         passed=passed,error=error,online=online,shutdownComplete=stopped,checks=checks,seconds=Time.realtimeSinceStartupAsDouble-began,options=options.Current,
         observations=observations.ToArray(),captures=captures.ToArray(),verifiedControllerResponses=verifiedControllerResponses.ToArray(),verifiedSteeringSmoothing=verifiedSteeringSmoothing.ToArray(),cameras=cameraObservations.ToArray(),fov=fovObservations.ToArray(),scope=FocusGapCheck?
         "Private native race with normal pause owner and injected keyboard/controller controls. Focus override supplies the neutral input gap seen when hardware is not sampled; held controls must wait for focused release before resuming. No OS Alt-Tab, physical device or visual capture acceptance.":FovCheck?
-        "Isolated actual Unity/native race frozen through the ordinary pause owner. Unapplied/cancelled FOV drafts preserve live projection. Production options apply 50/100/150/200 percent to all three authored driving cameras; native camera FOV and VP agree with Unity projection/culling, pose and simulation remain fixed, and any rear-view mirror stays unchanged. Restores authored 100 percent and original view. Scene captures use Camera.Render and omit the managed pause overlay; no live online route or replay camera is exercised.":NaturalCameraCheck?
-        "Isolated actual Unity/native race: existing C/controller-Y view control cycles Bumper 0, Chase 1 and Natural 2; Gameplay DEFAULT CAMERA navigates, cancels, applies and reloads Natural without changing other settings or bindings. Native and Unity camera frames stay finite, external views include the player car, and Natural stays stable while paused and resumes with the race. Chase/Natural scene captures omit the managed pause overlay at one frozen simulation tick. No diagnostic camera pose or physics changes are used. "+(SceneOnlyCapture?"Scene-only capture explicitly skips menu OnGUI screenshots; menu appearance is not visually validated.":"Options captures use actual OnGUI Repaint. The no-capture flag skips all screenshot checks."):
+        "Isolated actual Unity/native race frozen through the ordinary pause owner. Unapplied/cancelled FOV drafts preserve live projection. Production options apply 50/100/150/200 percent to both arcade driving cameras; native camera FOV and VP agree with Unity projection/culling, pose and simulation remain fixed, and any rear-view mirror stays unchanged. Restores authored 100 percent and original view. Scene captures use Camera.Render and omit the managed pause overlay; no live online route or replay camera is exercised.":NaturalCameraCheck?
+        "Keyboard C and controller Y switch between the two arcade race views. Checks default selection, persistence and rejection of the retired view.":
         "Actual game/options owners with isolated saves; keyboard/controller input traverses the normal SceneGame pause router. Controller response/deadzone checks use normal gameplay-row navigation and APPLY, native setters/getters, per-response persistence, bounds and isolated legacy JSON migration. Steering smoothing uses the sixth Gameplay slider, one-percent navigation, BACK cancellation, APPLY, native range checks, legacy-off defaults and global save/reload; online clocks and packets are checked while smoothing options remain open. Wheel rows and persistence are tested with live feedback disabled; enabled persistence uses a platform without hardware output. Focus loss uses its diagnostic override through normal managed/native gates. Options images use real OnGUI Repaint on AA1 target. Online snapshots use normal two-client LAN transport; this is not Steam internet or OS Alt-Tab event coverage."},true));}
     private void Finish(bool passed,string error){
         if(finished)return;finished=true;host.DiagnosticFocusOverride=null;bool stopped=false;

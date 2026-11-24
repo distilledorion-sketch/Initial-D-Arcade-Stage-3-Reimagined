@@ -298,7 +298,7 @@ public sealed class Idas3GameOptions
         value.height=Math.Max(360,Math.Min(8192,value.height));
         if(value.antiAliasing!=0&&value.antiAliasing!=2&&value.antiAliasing!=4&&value.antiAliasing!=8)value.antiAliasing=4;
         if(value.frameRateLimit!=0)value.frameRateLimit=Math.Max(30,Math.Min(360,value.frameRateLimit));
-        if(value.defaultCamera<0||value.defaultCamera>2)value.defaultCamera=0;
+        if(value.defaultCamera<0||value.defaultCamera>1)value.defaultCamera=0;
         value.cameraFovPercent=Math.Max(MinimumCameraFovPercent,Math.Min(MaximumCameraFovPercent,value.cameraFovPercent));
         value.aiDifficulty=Math.Max(0,Math.Min(2,value.aiDifficulty));
         if(!Idas3ArcadeMeterCatalog.IsValidStyle(value.hudMeterStyle))value.hudMeterStyle=0;

@@ -4,9 +4,7 @@
 #include "original_rear_view.h"
 
 namespace idas3 {
-// The recovered camera implementations remain Bumper and Chase. Natural is
-// an optional host presentation and never enters their source camera logic.
-enum class OriginalDrivingView {Bumper,Chase,Natural};
+enum class OriginalDrivingView {Bumper,Chase};
 struct OriginalChaseFrame {
     Vec3 eye{},target{},up{0,1,0};
     float verticalFieldOfView=0;
@@ -16,7 +14,9 @@ struct OriginalChaseFrame {
 class OriginalChaseCamera {
 public:
     static OriginalChaseCamera load(const std::filesystem::path& root,OriginalDrivingView view=OriginalDrivingView::Chase);
-    void reset(){ready_=false;}
+    void reset(){ready_=false;switching_=false;}
+    void transitionFrom(const OriginalChaseCamera& outgoing);
+    void settleProfile();
     // Call at 60 Hz using original actor XYZ and actor pitch/yaw/roll radians.
     // Inputs precede the car's ride-height lift and visual half-turn.
     const OriginalChaseFrame& update(Vec3 actorPosition,Vec3 actorAngles);
@@ -39,7 +39,9 @@ private:
     original::OriginalFscaTable trig_;
     Vec3 angles_{},previousAnchor_{},localOffset_{};
     OriginalChaseFrame frame_;
-    bool ready_=false;
+    Vec3 lastActor_{},lastActorAngles_{};
+    float response_=1.f,rawFov_=sourceBumperFieldOfView;
+    bool ready_=false,switching_=false;
     OriginalDrivingView view_=OriginalDrivingView::Chase;
 };
 }

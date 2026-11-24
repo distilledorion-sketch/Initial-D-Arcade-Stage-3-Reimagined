@@ -79,7 +79,7 @@ internal static class Idas8ImportedShadowChecks {
     }
     internal static void Scene(Action<bool,string> check,Idas8HakoneCourse course,string pack,bool uphill,string variant){
         check(course.LoadedCourse==pack&&course.LoadedVariant==variant,"Requested course and weather loaded");
-        string root=Path.Combine(Application.streamingAssetsPath,pack,variant=="day_dry"?"":variant);
+        string root=Path.Combine(Idas3CourseCatalog.PackPath(pack),variant=="day_dry"?"":variant);
         var manifest=JsonUtility.FromJson<Idas8HakoneCourse.Manifest>(File.ReadAllText(Path.Combine(root,"scene.json")));
         var sourceMaterials=(Material[])typeof(Idas8HakoneCourse).GetField("materials",System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).GetValue(course);
         int up=0,down=0,shared=0,masked=0;

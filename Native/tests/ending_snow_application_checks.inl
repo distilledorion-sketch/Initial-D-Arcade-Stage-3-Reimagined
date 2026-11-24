@@ -2,7 +2,7 @@
 //Legend course availability or claim a natural Legend finish on Akina Snow.
 {
     prepareEndingWeatherUnityFixture(*app,482);
-    const auto clip=app->endingReplay;const auto physics=app->originalSession.rollbackDigest();
+    const auto clip=app->endingReplay;const auto physics=app->originalSession.rollbackDigest(false);
     const auto profile=app->battleProfile.words;
     const auto state=[](const OriginalSnowPresentation& snow){
         std::vector<unsigned> result{unsigned(snow.active()),snow.updates(),snow.fields().cursor};
@@ -13,13 +13,16 @@
         return result;
     };
     std::vector<unsigned> expected;unsigned expectedRandom=0;
+    const auto fpsSeed=app->originalSession.sharedRandomSeed();
     for(unsigned fps:{30u,60u,144u,240u}){
+        // Repeat the same captured RNG boundary only for this FPS comparison.
+        app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
         app->endingReplay=clip;app->beginEnding();
         check(app->endingSnow.active()&&!app->endingRain.active(),"Snow/rain admission overlap");
         for(unsigned render=0;render<fps*10;++render)app->advanceEnding(1./fps);
         check(app->endingSnow.updates()==600,"Snow source cadence");
-        if(fps==30){expected=state(app->endingSnow);expectedRandom=app->endingRandom;}
-        else check(state(app->endingSnow)==expected&&app->endingRandom==expectedRandom,"Snow changes with host frame rate");
+        if(fps==30){expected=state(app->endingSnow);expectedRandom=app->originalSession.sharedRandomSeed();}
+        else check(state(app->endingSnow)==expected&&app->originalSession.sharedRandomSeed()==expectedRandom,"Snow changes with host frame rate");
     }
     check(app->renderEnding(0),"Render snow ending");
     check(app->endingSnowTextureBase==app->endingSmokeTextureBase+app->smokeTextures.size(),"Snow texture overlap");
@@ -33,8 +36,8 @@
     app->endingSnow=saved;check(app->renderEnding(0),"Restore snow ending");
     check(app->renderer.saveBitmap((out/"ending-snow-restored.bmp").wstring()),"Capture restored snow");
     app->paused=true;app->advanceEnding(10);app->renderEnding(0);app->paused=false;
-    check(state(app->endingSnow)==expected&&app->endingRandom==expectedRandom,"Snow repaint/pause changed state");
-    check(app->originalSession.rollbackDigest()==physics&&app->battleProfile.words==profile,"Ending snow changed race/save state");
+    check(state(app->endingSnow)==expected&&app->originalSession.sharedRandomSeed()==expectedRandom,"Snow repaint/pause changed state");
+    check(app->originalSession.rollbackDigest(false)==physics&&app->battleProfile.words==profile,"Ending snow changed race/save state");
     std::cout<<"Snow ending600 ticks: "<<flakes<<" flakes / "<<mesh.ranges.size()<<" ranges / "<<mesh.vertices.size()<<" vertices\n";
     app->start();check(!app->endingSnow.active()&&!app->endingSnow.updates(),"Restart retained ending snow");
 }

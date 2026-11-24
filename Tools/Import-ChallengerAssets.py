@@ -15,12 +15,14 @@ from texture_bank import decode, write_png
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--hostfs', type=Path, default=Path(r'C:/Users/Developer/Documents/Codex/Initial D Arcade Stage 3 Recompiled - Crash Safe Test/game files/driveA/HOSTFS'))
 parser.add_argument('--check', action='store_true')
+parser.add_argument('--out', type=Path, default=PROJECT / 'Assets/Resources/Challenger')
+parser.add_argument('--audio-root', type=Path, default=PROJECT / 'Native/data/original_audio/race')
 args = parser.parse_args()
 source = args.hostfs / 'model/interrupt'
 table = (source / 'interrupt02_tex.tbl').read_bytes()
 raw = read_payload(source / 'interrupt02_tex.bin.nz')
 assert len(table) == 80 and len(raw) == 204800
-dest = PROJECT / 'Assets/Resources/Challenger'
+dest = args.out
 dest.mkdir(parents=True, exist_ok=True)
 records = []
 for i in range(5):
@@ -40,7 +42,7 @@ for i in range(5):
         write_png(path, w, h, pixels)
     records.append(dict(file=path.name, index=i, width=w, height=h, rgbaSha256=hashlib.sha256(pixels).hexdigest(), fileSha256=hashlib.sha256(path.read_bytes()).hexdigest()))
 sound = (args.hostfs / 'sound/pack/PACK20.bin.nz').read_bytes()
-target = PROJECT / 'Native/data/original_audio/race/PACK20.dtpk'
+target = args.audio_root / 'PACK20.dtpk'
 assert sound[:4] == b'DTPK'
 if args.check:
     assert target.read_bytes() == sound

@@ -70,6 +70,7 @@ public sealed class Idas3UnityAudio : MonoBehaviour
             ownedListenerObject.AddComponent<AudioListener>();
         }
         output.playOnAwake = false;
+        if (Idas3SceneGame.SilentTestOutput) output.mute = true;
         output.loop = true;
         output.spatialBlend = 0;
         output.dopplerLevel = 0;
@@ -112,6 +113,8 @@ public sealed class Idas3UnityAudio : MonoBehaviour
             Interlocked.Add(ref callbackReturned, Idas3UnityReadAudioDevice(data, frames, channels, Volatile.Read(ref deviceSampleRate)));
             for (int i = frames * channels; i < data.Length; ++i) data[i] = 0;
             meterSpectrum?.Capture(data,channels);
+            // Diagnostic meters can inspect the mix. The device receives silence.
+            if (Idas3SceneGame.SilentTestOutput) Array.Clear(data, 0, data.Length);
         }
         catch (Exception)
         {

@@ -75,6 +75,8 @@ public:
     bool animationSettled() const { return sourceTick_ >= animationSettleTicks; }
     int activeVsChunk() const { return setup_.showVersus ? vsChunk_ : -1; }
     const std::string& displayName(unsigned side) const;
+    // Empty if an online alias needs characters outside the cabinet card alphabet.
+    std::vector<unsigned> cardNameGlyphs(const std::string& utf8)const;
     std::string profileDisplayName(const original::OriginalBattleProfile&) const;
     // Static source name glyphs for compact host menus. Coordinates and size
     // are target pixels; no VS animation or banner state is changed.
@@ -106,6 +108,7 @@ private:
     NativeTextureBank textures_;
     NativeTextureBank nameFont_;
     NativeTextureBank recordFont_,importedTitles_;
+    std::filesystem::path importedTitlePath_;
     struct BattleRecordLayout {
         float origin=0,width=367,winRight=207,percentRight=315,tenthsRight=341;
         float secondLabelThreshold=2;
@@ -133,7 +136,7 @@ private:
     void paintNames(std::span<std::uint32_t> target, int width, int height) const;
     void paintBattleRecords(std::span<std::uint32_t> target,int width,int height) const;
     std::vector<std::uint16_t> encodeSource(std::span<const std::uint8_t>) const;
-    std::vector<std::uint16_t> encodeUtf8(const std::string&) const;
+    std::vector<std::uint16_t> encodeUtf8(const std::string&,bool* substituted=nullptr) const;
     std::string decodeName(const std::vector<std::uint16_t>&) const;
 };
 }

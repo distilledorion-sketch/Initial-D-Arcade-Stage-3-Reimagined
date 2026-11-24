@@ -299,6 +299,7 @@ float4 mainPS(P v):SV_TARGET{
  // Hakone packs the lettering along decreasing V instead of increasing U.
  if(_ImportedSponsorSigns!=0&&v.sponsorAxis<0&&ddx(v.uv.y)>0)v.uv.y=-v.sponsorAxis-v.uv.y;
  float4 color=_MainTex.Sample(sampler_MainTex,v.uv);
+#if !defined(IDAS_IMPORTED_OPAQUE_PLAIN)
  // Stage 8 type-6 atlases encode visibility, not black-overlay opacity.
  // The standalone road-shadow pass must invert the same mask as UV2 shadows.
  if(_ImportedShadowOnly!=0)color.a=(1-color.a)*_ImportedShadowOnly;
@@ -308,6 +309,7 @@ float4 mainPS(P v):SV_TARGET{
   color.a=saturate((color.a-_ImportedCutoff)/max(fwidth(color.a),1.0/255.0)+.5);
   clip(color.a-1.0/255.0);
  }else clip(color.a-_ImportedCutoff);
+#endif
  // Stage 8 night vertices contain light contributions, often zero, rather
  // than a complete surface tint. Supply D3's existing night ambient before
  // the ordinary D3 projected-headlight pass multiplies the road beneath it.
@@ -332,8 +334,12 @@ float4 mainPS(P v):SV_TARGET{
   color.rgb*=_ImportedAuthoredNormals!=0
    ?.32+.68*saturate(dot(normalize(v.n),normalize(_ImportedSunDirection.xyz)))
    :idasNativeDiffuse(v.n,v.world,_WorldSpaceCameraPos,_ImportedSunDirection.xyz);
- float4 shadow=_ImportedShadowTex.Sample(sampler_ImportedShadowTex,shadowUv);
- color.rgb*=lerp(1,.32+.68*shadow.rgb,(1-shadow.a)*_ImportedHasShadow);
+#if !defined(IDAS_IMPORTED_OPAQUE_PLAIN)
+ if(_ImportedHasShadow!=0){
+  float4 shadow=_ImportedShadowTex.Sample(sampler_ImportedShadowTex,shadowUv);
+  color.rgb*=lerp(1,.32+.68*shadow.rgb,(1-shadow.a)*_ImportedHasShadow);
+ }
+#endif
  if(_TrackSurface!=0&&_ImportedSky==0&&_ImportedShadowOnly==0)
   color.rgb=idasTrackPresentation(color.rgb,_ImportedNight);
  if(_ImportedSky==0){

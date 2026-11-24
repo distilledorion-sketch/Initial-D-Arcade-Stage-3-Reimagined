@@ -60,6 +60,16 @@ void OriginalRivalDialogScene::begin(const OriginalBattleProfile& profile,
     resetOriginalRivalDialog(state_,data_,profile,setup);
 }
 
+void OriginalRivalDialogScene::beginWithSharedRandom(const OriginalBattleProfile& profile,
+    const OriginalRivalDialogSetup& setup,std::uint32_t& seed){
+    auto selected=setup;
+    //0F8780 virtual Init is0F8B00, whose cheer draw precedes both arrays.
+    //0F88C0 calls0F9A00 instead and does not execute that cheer selection.
+    if(!selected.buntaChallenge)selected.cheer=selectOriginalRivalSpectator(seed);
+    begin(profile,selected);
+    resetOriginalDialogParticles(state_.particles,seed);
+}
+
 void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,int height)const{
     if(width<=0||height<=0||target.size()!=std::size_t(width)*height)
         throw std::invalid_argument("Invalid original rival dialogue destination");

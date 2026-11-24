@@ -1,3 +1,8 @@
+#if IDAS3_PORTABLE_PLAYER && UNITY_STANDALONE_WIN && !UNITY_EDITOR
+using PlayerStorage = Idas3DiscStorage;
+#else
+using PlayerStorage = UnityEngine.Application;
+#endif
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -10,7 +15,31 @@ using UnityEngine.InputSystem;
 [DefaultExecutionOrder(-110)]
 public sealed partial class Idas3ReplayViewer : MonoBehaviour
 {
-    public static bool Requested => Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-replay-viewer") >= 0;
+    internal static readonly string[] LaunchArguments=Environment.GetCommandLineArgs();
+    internal static readonly int LaunchIndex=Array.IndexOf(LaunchArguments,"-idas3-replay-viewer");
+    // Automated viewer-only diagnostics have their own bootstrap.
+    public static bool Requested => LaunchIndex>=0 && (Array.IndexOf(LaunchArguments,"-idas3-replay-proof")>=0 ||
+        Array.IndexOf(LaunchArguments,"-idas3-replay-audio-proof")>=0);
+    internal static string LaunchFile => LaunchIndex>=0 && LaunchIndex+1<LaunchArguments.Length && !LaunchArguments[LaunchIndex+1].StartsWith("-")?LaunchArguments[LaunchIndex+1]:null;
+    Idas3SceneGame gameHost;
+    string requestedFile;
+    Camera[] gameCameras;
+    bool ownsReplaySession,closing;
+    internal static Idas3ReplayViewer OpenInGame(Idas3SceneGame host,string folder,string path){
+        var go=new GameObject("In-game replay library");
+        go.SetActive(false);
+        var viewer=go.AddComponent<Idas3ReplayViewer>();
+        viewer.gameHost=host;viewer.libraryFolder=folder;viewer.requestedFile=path;
+        try{
+            if(Idas3SceneReplaySession(1)!=1)throw new InvalidOperationException("The race session is busy.");
+            viewer.ownsReplaySession=true;
+            host.SetReplayPresentation(true);
+            go.SetActive(true);
+            viewer.InitializeViewer();
+            return viewer;
+        }catch{viewer.CloseViewer();throw;}
+    }
+    [DllImport("Idas3Unity", CallingConvention=CallingConvention.Cdecl)] static extern int Idas3SceneReplaySession(int open);
     public static Idas3ReplayViewer Instance { get; private set; }
     internal Idas3Native.Status Status { get; private set; }
     public Camera View { get; private set; }
@@ -96,19 +125,24 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        if (Idas3RomGate.Verified && Idas3Updates.StartupFinished) InitializeViewer();
+        if(gameHost==null && Idas3RomGate.Verified && Idas3Updates.StartupFinished) InitializeViewer();
     }
     void InitializeViewer()
     {
         if (!Idas3RomGate.Verified || !Idas3Updates.StartupFinished || startupInitialized) return;
         startupInitialized = true;
-        foreach (var camera in FindObjectsByType<Camera>(FindObjectsSortMode.None)) camera.enabled = false;
+        // The live UI cameras use DontSave and are absent from a scene-wide
+        // search. Include the host's overlay, mirror and background cameras.
+        var candidates=gameHost!=null?gameHost.GetComponentsInChildren<Camera>(true):
+            FindObjectsByType<Camera>(FindObjectsSortMode.None);
+        gameCameras=Array.FindAll(candidates,c=>c.enabled);
+        foreach(var camera in gameCameras)camera.enabled=false;
         View = gameObject.AddComponent<Camera>(); View.clearFlags = CameraClearFlags.SolidColor; View.backgroundColor = Color.black;
         scene = gameObject.AddComponent<Idas3SceneRenderer>(); scene.Initialize(View);
         ui = gameObject.AddComponent<Idas3UnityUi>(); ui.Initialize(View);
-        Application.runInBackground = true; Application.targetFrameRate = 60; QualitySettings.vSyncCount = 1;
+        if(gameHost==null){Application.runInBackground=true;Application.targetFrameRate=60;QualitySettings.vSyncCount=1;}
         try{
-            string optionsFile=Path.Combine(Application.persistentDataPath,"userdata-unity-scene","game-options.json");
+            string optionsFile=Path.Combine(PlayerStorage.persistentDataPath,"userdata-unity-scene","game-options.json");
             if(File.Exists(optionsFile)){
                 audioOptions=new Idas3GameOptions.Values{version=0,steeringSettingsVersion=0,audioSettingsVersion=0,hudMeterLayout=-1};
                 JsonUtility.FromJsonOverwrite(File.ReadAllText(optionsFile),audioOptions);
@@ -118,16 +152,17 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         }catch(Exception e){audioOptions=new Idas3GameOptions.Values();Debug.LogWarning("Replay uses default settings: "+e.Message);}
         Idas3MenuLocalization.SetLanguage(audioOptions.customMenuLanguage);scene.HudOptions=audioOptions;ui.HudOptionsOverride=audioOptions;
         var args = Environment.GetCommandLineArgs();
-        int index = Array.IndexOf(args, "-idas3-replay-viewer");
         int library=Array.IndexOf(args,"-idas3-replay-library");
-        libraryFolder=library>=0&&library+1<args.Length?Path.GetFullPath(args[library+1]):Idas3ReplayLibrary.DefaultFolder;
+        if(gameHost==null)libraryFolder=library>=0&&library+1<args.Length?Path.GetFullPath(args[library+1]):Idas3ReplayLibrary.DefaultFolder;
         int proof = Array.IndexOf(args, "-idas3-replay-proof");
         if (proof >= 0 && proof + 1 < args.Length) proofDirectory = args[proof + 1];
-        if (index + 1 < args.Length && !args[index + 1].StartsWith("-")) Open(args[index + 1]);
+        string path=gameHost!=null?requestedFile:LaunchFile;
+        if (!string.IsNullOrEmpty(path)) Open(path);
         else Browse();
         int audioProof=Array.IndexOf(args,"-idas3-replay-audio-proof");
         if(audioProof>=0&&audioProof+1<args.Length)StartCoroutine(AudioProof(args[audioProof+1]));
     }
+    internal void SelectFile(string path){if(string.IsNullOrEmpty(path))Browse();else Open(path);}
     void Open(string path)
     {
         if (!Idas3RomGate.Verified || !startupInitialized) return;
@@ -141,7 +176,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
                 string assets = Application.isEditor ? Path.GetFullPath(Path.Combine(Application.dataPath, "../Native")) : Path.Combine(Application.streamingAssetsPath, "IDAS3");
                 if (!Application.isEditor && Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-enna-test") >= 0)
                     assets = File.ReadAllText(Path.Combine(Application.streamingAssetsPath, "d3-assets.txt")).Trim();
-                string storage = Path.Combine(Application.temporaryCachePath, "replay-viewer-session");
+                string storage = Path.Combine(PlayerStorage.temporaryCachePath, "replay-viewer-session");
                 if (Idas3Native.Idas3SceneConfigureLanguage(audioOptions.arcadeTextLanguage) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 if (Idas3SceneInitialize(assets, storage, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 initialized = true;
@@ -151,12 +186,9 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
                 if(Idas3Native.Idas3SceneSetMapSize(audioOptions.minimapSize)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 if(Idas3Native.Idas3SceneSetLightsOffAdvantage(audioOptions.hideLightsOffAdvantage?1:0)!=1)throw new InvalidOperationException(Idas3Native.Error());
                 audioOutput=gameObject.AddComponent<Idas3UnityAudio>();audioOutput.Initialize();
-                foreach (var pack in Idas3CourseCatalog.Packs)
-                {
-                    string root = Path.Combine(Application.streamingAssetsPath, pack);
-                    if (File.Exists(Path.Combine(root, "menu.idastex")) && Idas3Native.Idas3SceneRegisterImportedCourse(root) != 1) throw new InvalidOperationException(Idas3Native.Error());
-                }
-                new GameObject("Replay imported course").AddComponent<Idas8HakoneCourse>();
+                new Idas3UserTracks().Discover();
+                new Idas3RankedMaps().Discover(false);
+                if(FindAnyObjectByType<Idas8HakoneCourse>()==null)new GameObject("Replay imported course").AddComponent<Idas8HakoneCourse>();
                 if(FindAnyObjectByType<IdasSpecialStageEnnaCourse>()==null)
                     new GameObject("Replay Enna Skyline").AddComponent<IdasSpecialStageEnnaCourse>();
             }
@@ -213,7 +245,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
     {
         if(picker!=null||PointerOwnsControls())return;
         var key=Keyboard.current;var pad=Gamepad.current;
-        if(key?.escapeKey.wasPressedThisFrame==true||pad?.buttonEast.wasPressedThisFrame==true){if(replay!=null)browsing=false;return;}
+        if(key?.escapeKey.wasPressedThisFrame==true||pad?.buttonEast.wasPressedThisFrame==true){if(gameHost!=null||replay==null)CloseViewer();else browsing=false;return;}
         if(libraryFiles.Length==0)return;
         if(key?.upArrowKey.wasPressedThisFrame==true||pad?.dpad.up.wasPressedThisFrame==true)librarySelection=(librarySelection+libraryFiles.Length-1)%libraryFiles.Length;
         if(key?.downArrowKey.wasPressedThisFrame==true||pad?.dpad.down.wasPressedThisFrame==true)librarySelection=(librarySelection+1)%libraryFiles.Length;
@@ -226,7 +258,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         GUILayout.BeginHorizontal();Idas3MenuGui.Label("REPLAYS — LOCAL LIBRARY");
         if(Idas3MenuGui.Button("Open file…",GUILayout.Width(110)))RequestFile();
         if(Idas3MenuGui.Button("Refresh",GUILayout.Width(90)))Browse();
-        if(Idas3MenuGui.Button(replay==null?"Close viewer":"Back",GUILayout.Width(110))){if(replay==null)Application.Quit();else browsing=false;}
+        if(Idas3MenuGui.Button(gameHost!=null?"Back to game":replay==null?"Close viewer":"Back",GUILayout.Width(130))){if(gameHost!=null||replay==null)CloseViewer();else browsing=false;}
         GUILayout.EndHorizontal();GUILayout.Space(12);
         Idas3MenuGui.Label("Personal recordings stay on this computer. Community Times uploads race times only.");
         if(libraryFiles.Length==0)Idas3MenuGui.Label("No saved replays yet. Enable recording in Options > Replays, then finish a race.");
@@ -365,7 +397,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
             UpdateReplayAudio(delta);
             if (proofDirectory != null) Proof();
         }
-        catch (Exception e) { playing = false; SilenceAudio(); message = e.Message; Debug.LogError(e); enabled = false; }
+        catch (Exception e) { playing = false; SilenceAudio(); Browse(); message = e.Message; Debug.LogError(e); }
     }
     void SilenceAudio(){
         if(initialized&&replay!=null)Idas3ReplayAudio(0,0,0,audioOptions.masterVolume,audioOptions.engineVolume,audioOptions.effectsVolume);
@@ -420,9 +452,9 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
             RequestFile();
         }
         if (Idas3MenuGui.Button("Replay library", GUILayout.Width(125))) Browse();
-        GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button("Close viewer", GUILayout.Width(120))) Application.Quit(); GUILayout.EndHorizontal();
+        GUILayout.FlexibleSpace(); if (Idas3MenuGui.Button(gameHost!=null?"Back to game":"Close viewer", GUILayout.Width(120))) CloseViewer(); GUILayout.EndHorizontal();
         GUI.enabled = true;
-        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3ReplayData.Courses[m.condition / 2] + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); var setup=Steering(m).TrimStart(' ', '\u00b7'); if(setup.Length>0)Idas3MenuGui.RawLabel(setup); }
+        if (replay != null) { var m = replay.Metadata; Idas3MenuGui.Label(Idas3CourseCatalog.DisplayName(m.condition / 2) + "  ·  " + Idas3MenuLocalization.T(m.condition % 2 == 0 ? "Forward" : "Reverse") + "  ·  " + Idas3MenuLocalization.T(m.night == 1 ? "Night" : "Day") + " / " + Idas3MenuLocalization.T(m.weather == 1 ? "Wet" : "Dry") + "  ·  "+Idas3MenuLocalization.T("H / Select: hide controls")); var setup=Steering(m).TrimStart(' ', '\u00b7'); if(setup.Length>0)Idas3MenuGui.RawLabel(setup); }
         if (message != null) Idas3MenuGui.Label(message);
         GUILayout.EndArea();
         if (replay == null) return;
@@ -549,5 +581,28 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
         Application.Quit(passed?0:1);
     }
     void OnDisable(){SilenceAudio();}
-    void OnDestroy() { telemetry.Dispose();if(audioOutput!=null)audioOutput.StopOutput();if (initialized) Idas3SceneShutdown();initialized=false; if (Instance == this) Instance = null; }
+    internal void CloseViewer(){
+        if(closing)return;
+        if(gameHost==null){Application.Quit();return;}
+        closing=true;
+        scene?.SetWorldVisible(false);
+        gameObject.SetActive(false);
+        ReleaseViewer();
+        Destroy(gameObject);
+    }
+    void ReleaseViewer(){
+        if(audioOutput!=null)audioOutput.StopOutput();
+        // Deferred component destruction must never stop the restored game mixer.
+        if(ownsReplaySession){
+            ownsReplaySession=false;
+            Idas3SceneReplaySession(0);
+            if(Instance==this)Instance=null;
+            if(gameCameras!=null)foreach(var camera in gameCameras)if(camera!=null)camera.enabled=true;
+            if(gameHost!=null)gameHost.SetReplayPresentation(false);
+        }else if(initialized&&gameHost==null)Idas3SceneShutdown();
+        initialized=false;
+        if(Instance==this)Instance=null;
+    }
+    void OnDestroy(){telemetry.Dispose();ReleaseViewer();}
+
 }

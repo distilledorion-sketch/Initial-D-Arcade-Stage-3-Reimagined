@@ -50,6 +50,7 @@ public sealed class Idas3ArcadeHud : IDisposable
     readonly List<MaterialPropertyBlock> properties=new List<MaterialPropertyBlock>();
     readonly byte[] nameBytes=new byte[128];
     Mesh mesh;Material material,additiveMaterial;
+    Color meterTint=Color.white;
     readonly Idas3ImportedMeter imported=new Idas3ImportedMeter();
     // Per-renderer deterministic input for GPU verification; live rendering
     // leaves this null and reads the game's PCM spectrum.
@@ -192,7 +193,7 @@ public sealed class Idas3ArcadeHud : IDisposable
         point-=sourceOrigin;
         points.Add(new Vector3(bounds.x+point.x*scale,bounds.y+(point.y+shift)*scale,0));colors.Add(item.color);
     }
-    internal void Build(Idas3GameOptions.Values options,Telemetry data,float width,float height,float seconds,bool preview,out Rect bounds,bool thirdPerson=false){
+    internal void Build(Idas3GameOptions.Values options,Telemetry data,float width,float height,float seconds,bool preview,out Rect bounds,bool thirdPerson=false,Color? tint=null){
         imported.AudioBandsOverride=AudioBandsOverride;
         Compose(sprites,options,data,seconds,imported);DriftLampOpacity=available?LampOpacity(data):0;bounds=MeterBounds(width,height,options,thirdPerson);
         DriftLampSpriteCount=options.hudMeterStyle>1||options.hudMeterStyle==1&&data.version>=3?imported.DriftSpriteCount:DriftLampOpacity>0?3:0;
@@ -200,6 +201,11 @@ public sealed class Idas3ArcadeHud : IDisposable
         if(mesh==null){mesh=new Mesh{name="Arcade meter",hideFlags=HideFlags.DontSave};mesh.MarkDynamic();}
         if(material==null){var shader=Resources.Load<Shader>("ArcadeHud");if(!shader)throw new InvalidOperationException("Arcade HUD shader is missing");material=new Material(shader){hideFlags=HideFlags.DontSave};
             additiveMaterial=new Material(shader){hideFlags=HideFlags.DontSave};additiveMaterial.SetInt("_DstBlend",(int)BlendMode.One);}
+        var requestedTint=tint??Color.white;
+        if(meterTint!=requestedTint){
+            meterTint=requestedTint;
+            material.SetColor("_RaceTint",meterTint);additiveMaterial.SetColor("_RaceTint",meterTint);
+        }
         var content=Idas3MeterLayoutBounds.Get(options.hudMeterStyle);var size=content.size;float scale=bounds.width/size.x,yShift=options.hudNameplateStyle==1?72:0;
         points.Clear();uv.Clear();colors.Clear();
         int count=sprites.Count;
@@ -311,5 +317,5 @@ public sealed class Idas3ArcadeHud : IDisposable
         Graphics.DrawTexture(area,item.texture,item.uv,0,0,0,0,item.color,previewMaterial);
     }
     static void DestroyOwned(UnityEngine.Object value){if(!value)return;if(Application.isPlaying)UnityEngine.Object.Destroy(value);else UnityEngine.Object.DestroyImmediate(value);}
-    public void Dispose(){imported.Dispose();DestroyOwned(mesh);DestroyOwned(material);DestroyOwned(additiveMaterial);mesh=null;material=null;additiveMaterial=null;}
+    public void Dispose(){imported.Dispose();DestroyOwned(mesh);DestroyOwned(material);DestroyOwned(additiveMaterial);mesh=null;material=null;additiveMaterial=null;meterTint=Color.white;}
 }

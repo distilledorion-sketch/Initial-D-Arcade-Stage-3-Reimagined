@@ -65,7 +65,7 @@ public sealed class Idas3TransitionProfile : MonoBehaviour
         Camera.onPostRender+=Rendered;
     }
     internal void Section(string label){sections.Add(label);section=sections.Count-1;}
-    private int Course => (host.Status.flags&IdasSpecialStageEnnaCourse.SceneFlag)!=0?IdasSpecialStageEnnaCourse.CourseId(host.Status.flags):
+    private int Course => Idas3UserTracks.IsUser(host.Status.course)?host.Status.course:(host.Status.flags&IdasSpecialStageEnnaCourse.SceneFlag)!=0?IdasSpecialStageEnnaCourse.CourseId(host.Status.flags):
         (host.Status.flags&16384u)!=0?Idas8HakoneCourse.CourseId(host.Status.flags):host.Status.course;
     private bool Active(Camera camera)=>camera!=scene.MirrorCamera||scene.ShowGameHud&&scene.CurrentFrame.viewCount==2;
     internal void RestoreCameras(){foreach(var camera in cameras)camera.enabled=Active(camera);}

@@ -19,6 +19,7 @@ public sealed partial class Idas8HakoneCourse
         return result;
     }
     void RestoreScenery(SceneryState[] saved) {
+        foreach(var cell in treeCells)cell.uniformLod=-2;
         for(int i=0;i<saved.Length;i++){var s=scenery[i];var old=saved[i];
             s.lod=old.lod;s.renderer.enabled=old.enabled;s.filter.sharedMesh=old.mesh;
             s.renderer.sharedMaterial=old.material;s.transform.rotation=old.rotation;}

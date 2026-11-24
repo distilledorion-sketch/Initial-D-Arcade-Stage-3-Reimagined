@@ -254,7 +254,7 @@ int main(int argc,char** argv)try{
     f.car=0;f.course=0;f.reverse=false;f.night=false;f.wet=false;f.gameMode=original::OriginalGameMode::TimeAttack;
     f.battleProfile=original::makeOriginalFreshBattleProfile();f.battleProfile.setu(16,0);
     app->courseIndex=0;app->reverse=false;app->night=false;app->wet=false;app->start();
-    app->environment.load(root);app->paused=true;app->vsActive=false;app->drivingView=OriginalDrivingView::Natural;
+    app->environment.load(root);app->paused=true;app->vsActive=false;app->setDrivingView(OriginalDrivingView::Chase);
     const auto sun=app->environment.sunDirection(0);app->vehicle.yaw=std::atan2(sun.x,sun.z);app->previous=app->vehicle;
     app->cameraReady=false;app->texturesPending=true;
     check(app->render(0),"Actual daytime race render failed");
@@ -276,7 +276,7 @@ int main(int argc,char** argv)try{
     const Vec3 actorPosition{drive.f(0),drive.f(4),drive.f(8)},actorAngles{drive.f(0x0c),drive.f(0x10),drive.f(0x14)};
     const auto expectedMirror=app->originalCamera.rearView(actorPosition,actorAngles);
     const auto bodyPosition=app->playerBodyWorld;
-    for(auto drivingView:{OriginalDrivingView::Bumper,OriginalDrivingView::Chase,OriginalDrivingView::Natural}){
+    for(auto drivingView:{OriginalDrivingView::Bumper,OriginalDrivingView::Chase}){
         app->drivingView=drivingView;
         for(unsigned car=0;car<35;++car){
             app->playerBodyWorld=actorPosition+Vec3{.1f,originalCarRideHeight(car),-.05f};

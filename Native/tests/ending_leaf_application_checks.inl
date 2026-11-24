@@ -23,7 +23,7 @@
     }
     std::cout<<"Leaf clip frames="<<leafFootage.highlightSize()<<" eligible wheel contacts="<<contactFrames<<'\n'<<std::flush;
     check(contactFrames>0,"Usui drive did not cross original leaf surfaces");
-    const auto leafPhysics=app->originalSession.rollbackDigest();
+    const auto leafPhysics=app->originalSession.rollbackDigest(false);
     app->endingReplay=leafFootage;app->beginEnding();
     check(app->endingLeaves.active()&&app->endingLeaves.updates()==0&&app->endingLeaves.system().order().empty(),"Ending leaf reset/admission");
     const auto leafState=[](const OriginalEndingLeaves& leaves){
@@ -48,28 +48,31 @@
     for(unsigned tick=1;tick<=5000&&app->endingActive;++tick){
         app->advanceEnding(1./60);maximum=std::max(maximum,unsigned(app->endingLeaves.system().order().size()));
         if(tick<120||tick%15||app->endingLeaves.system().order().empty())continue;
-        const auto saved=app->endingLeaves;const auto beforeState=leafState(saved);const auto random=app->endingRandom;
+        const auto saved=app->endingLeaves;const auto beforeState=leafState(saved);const auto random=app->originalSession.sharedRandomSeed();
         const auto on=capture("on");app->endingLeaves.reset();const auto off=capture("off");app->endingLeaves=saved;
         const auto restored=capture("restored");check(on==restored,"Restored ending leaves changed pixels");
-        check(leafState(app->endingLeaves)==beforeState&&app->endingRandom==random,"Leaf rendering advanced state/RNG");
+        check(leafState(app->endingLeaves)==beforeState&&app->originalSession.sharedRandomSeed()==random,"Leaf rendering advanced state/RNG");
         changed=0;for(unsigned i=0;i<on.size();++i)changed+=on[i]!=off[i];
         if(changed>8){selected=tick;break;}
     }
     std::cout<<"Ending leaves selected="<<selected<<" changed="<<changed<<" maximum="<<maximum<<'\n'<<std::flush;
     check(selected>0,"Captured Legend contacts produced no visible ending leaves");
-    const auto beforeState=leafState(app->endingLeaves);const auto random=app->endingRandom;
+    const auto beforeState=leafState(app->endingLeaves);const auto random=app->originalSession.sharedRandomSeed();
     app->paused=true;app->advanceEnding(10);app->renderEnding(0);app->paused=false;
-    check(leafState(app->endingLeaves)==beforeState&&app->endingRandom==random,"Paused ending advanced leaves");
+    check(leafState(app->endingLeaves)==beforeState&&app->originalSession.sharedRandomSeed()==random,"Paused ending advanced leaves");
     std::vector<unsigned> reference;unsigned referenceRandom=0;
+    const auto fpsSeed=app->originalSession.sharedRandomSeed();
     for(unsigned fps:{30u,60u,144u,240u}){
+        // Repeat the same captured RNG boundary only for this FPS comparison.
+        app->originalSession.withSharedRandom([&](auto& seed){seed=fpsSeed;});
         app->endingReplay=leafFootage;app->beginEnding();
         for(unsigned render=0;render<fps*22;++render)app->advanceEnding(1./fps);
         check(app->endingLeaves.updates()==1320,"Leaf tick rate follows render rate");
         check(!app->endingLeaves.system().order().empty(),"Frame-rate comparison missed active leaves");
-        if(fps==30){reference=leafState(app->endingLeaves);referenceRandom=app->endingRandom;}
-        else check(reference==leafState(app->endingLeaves)&&referenceRandom==app->endingRandom,"Leaf state differs by host FPS");
+        if(fps==30){reference=leafState(app->endingLeaves);referenceRandom=app->originalSession.sharedRandomSeed();}
+        else check(reference==leafState(app->endingLeaves)&&referenceRandom==app->originalSession.sharedRandomSeed(),"Leaf state differs by host FPS");
     }
-    check(app->originalSession.rollbackDigest()==leafPhysics,"Ending leaves changed live physics");
+    check(app->originalSession.rollbackDigest(false)==leafPhysics,"Ending leaves changed live physics");
     app->clearEndingPresentation();
     check(!app->endingLeaves.active()&&app->endingLeaves.updates()==0&&app->endingLeaves.system().order().empty(),"Ending leaves survived cleanup");
     #include "ending_tire_application_checks.inl"

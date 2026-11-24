@@ -2,6 +2,8 @@
 // result/Continue painters and captured by Unity's normal scene UI pipeline.
 OnlineResultScreen onlineResult;
 FixedClock onlineResultClock;
+bool onlineFinishTickActive=false,onlineFinishTickDriving=false,onlineFinishTickViews=false;
+bool onlineResultPagePending=false;
 OriginalBattleResultsState onlineResultPoints;
 original::OriginalBattleProfile onlineResultProfile;
 original::OriginalRivalDialogScene onlineContinueArtwork;
@@ -13,6 +15,7 @@ std::vector<std::uint32_t> onlineResultPixels;
 
 void resetOnlineResult(){
     onlineResult={};onlineResultClock.reset();onlineResultPreview.reset();
+    onlineFinishTickActive=onlineFinishTickDriving=onlineFinishTickViews=onlineResultPagePending=false;
     onlineResultTextures=false;onlineResultBattlePoints=0;onlineResultLevel=1;
 }
 void beginOnlineResult(){
@@ -22,7 +25,13 @@ void beginOnlineResult(){
         if(onlineCarProfile(multiplayer.rewardSelection,saved))onlineResultProfile=saved;
     }
     onlineResultProfile.setu(16,multiplayer.config.localCar);
-    onlineResult.begin(multiplayer.pointsEarned,onlineResultProfile.u(72));onlineResultClock.reset();
+    // Linked067C8C invokes068520 on the remote goal packet too, propagating
+    // outer+624. This is a shared goal outcome, not only this car's crossing.
+    const bool goal=multiplayer.finishWinner>=0;
+    onlineResult.begin(multiplayer.pointsEarned,onlineResultProfile.u(72),goal,
+        multiplayer.finishWinner!=int(multiplayer.config.localSlot));
+    onlineResultClock.reset();onlineResultPagePending=false;
+    onlineFinishTickActive=false;onlineFinishTickDriving=onlineFinishTickViews=true;
     onlineResultPoints={};onlineResultPoints.profileMode=2;
     const bool won=multiplayer.finishWinner==int(multiplayer.config.localSlot);
     onlineResultPoints.resultStatus=multiplayer.finishWinner<0?2:won?0:1;
@@ -37,22 +46,52 @@ void beginOnlineResult(){
     onlineResultPoints.points={participation,multiplayer.pointsEarned-participation,0,
         multiplayer.pointsEarned,onlineResult.points.displayedBalance};
 }
+// Called before each source-cadence simulation attempt, sharing App::clock's
+// phase and catch-up batch. This owner does not load assets or mutate rewards.
+// EOS deliberately permits settled presentation to finish when post-winner
+// authority stalls: its watchdog no longer runs after a winner. Never invent
+// accepted inputs, authority frames, checkpoints or solver steps to move UI.
+void advanceOnlineFinishSourceTick(){
+    onlineFinishTickDriving=onlineResult.page<0||
+        (onlineResult.page==0&&!onlineResult.finish.done());
+    onlineFinishTickViews=onlineResult.page==0&&!onlineResult.blocked&&
+        (onlineResult.finish.phase==original::OriginalLinkedFinishPresentation::Phase::AwaitOutcome||
+         onlineResult.finish.phase==original::OriginalLinkedFinishPresentation::Phase::Hold);
+    if(onlineResult.page!=0)return;
+    // Actual modal/focus/recovery ownership freezes this presentation clock.
+    // A normal save in flight only holds the later EOS handoff, not driving.
+    onlineResult.advance(false);
+    if(onlineResult.page>0)onlineResultPagePending=true;
+}
+bool onlineFinishAcceptsDriving()const{
+    if(onlineResult.page<0)return true;
+    return onlineResult.page==0&&!onlineResult.blocked&&(onlineFinishTickActive?
+        onlineFinishTickDriving:!onlineResult.finish.done());
+}
+void materializeOnlineResultPage(){
+    if(!tuningTables)tuningTables=original::OriginalTuningData::load(root);
+    onlineResultPreview=std::make_unique<original::OriginalTuningPreviewPresentation>();
+    onlineResultPreview->load(root,onlineResultProfile,false,onlineResult.page==2);
+    onlineResultTextures=false;texturesPending=true;
+    if(!onlineResultFont.ready())onlineResultFont=MenuFont::load(root);
+    if(onlineResult.page==1)audio.beginResultMusic(true);
+    else if(!onlineContinueArtwork.loaded())onlineContinueArtwork.load(root);
+}
 void advanceOnlineResult(double dt){
-    if(onlineResult.page<0)return;
+    if(onlineResultPagePending){
+        onlineResultPagePending=false;onlineResultClock.reset();
+        materializeOnlineResultPage();
+        // This host sample began in Finish. Its elapsed time cannot also
+        // advance the new points owner, even after several catch-up ticks.
+        return;
+    }
+    if(onlineResult.page<=0)return;
     if(onlineResult.blocked){onlineResultClock.reset();return;}
     onlineResultClock.advance(dt,[&]{
         const auto page=onlineResult.page;
-        const auto cue=onlineResult.advance(audio.raceMusicFinished());
+        const auto cue=onlineResult.advance(false);
         if(cue)audio.playOriginalMenuCue(cue);
-        if(page!=onlineResult.page){
-            if(!tuningTables)tuningTables=original::OriginalTuningData::load(root);
-            onlineResultPreview=std::make_unique<original::OriginalTuningPreviewPresentation>();
-            onlineResultPreview->load(root,onlineResultProfile,false,onlineResult.page==2);
-            onlineResultTextures=false;texturesPending=true;
-            if(!onlineResultFont.ready())onlineResultFont=MenuFont::load(root);
-            if(onlineResult.page==1)audio.beginResultMusic(true);
-            else if(!onlineContinueArtwork.loaded())onlineContinueArtwork.load(root);
-        }
+        if(page!=onlineResult.page)materializeOnlineResultPage();
         if(onlineResult.page==1&&page==1){
             ++onlineResultPoints.frame60;
             onlineResultPoints.points[4]=onlineResult.pointsFrame.displayedBalance;

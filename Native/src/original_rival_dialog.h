@@ -1,6 +1,7 @@
 #pragma once
 #include "original_battle_profile.h"
 #include "original_rival_dialog_data.h"
+#include "original_dialog_particles.h"
 #include <array>
 #include <cstdint>
 #include <cstdio>
@@ -8,6 +9,10 @@
 #include <vector>
 
 namespace idas3::original {
+//0F8F5C..0F8F7A: one global1F9E60 draw, directly modulo7.
+inline std::uint32_t selectOriginalRivalSpectator(std::uint32_t& seed){
+    seed=seed*0x41c64e6du+12345u;return((seed>>16)&0x7fffu)%7u;
+}
 // Native rival-dialogue scene: the source script interpreter 0F6D40, its text
 // engine (the 0C5420 bank family), the 0F69E0 step machine and the 0FAD60
 // outer phase machine, producing an ordinary per-frame draw list. No guest
@@ -59,6 +64,7 @@ struct OriginalRivalDialogSetup {
 };
 
 struct OriginalRivalDialogState {
+    OriginalDialogParticles particles;
     // Outer object (0F8340/0F8780/0FAD60).
     std::uint32_t character=0,kind=0,course=0,night=0,weather=0,variant=0;
     std::uint32_t phase=0;                   // +420

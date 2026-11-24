@@ -27,18 +27,24 @@ int runPlayerReplayAppTests(App& a){
     auto local=original::makeOriginalFreshBattleProfile(),remote=local;remote.setu(16,1);
     a.startMultiplayer(config,&local,&remote);a.enableAuthority(7654321,true,false);
     original::OnlineRaceSetup setup;setup.condition=0;setup.boost=false;setup.profiles={local,remote};setup.automatic={true,true};
-    original::OnlineRaceSimulation peer(a.root,setup);original::OnlineRaceLink link(peer,7654321,false);
+    original::OnlineRaceSimulation peer(a.root,setup);
+    std::vector<ReplayFrame> expectedOpponent;
+    original::OnlineRaceLink link(peer,7654321,false,[&](const original::OnlineRaceFrame& frame,std::uint64_t){
+        if(frame.start.runRules)expectedOpponent.push_back(frame.replayPoses[1]);
+    });
     a.setMultiplayerGo(true);a.multiplayer.localName="LOCAL TEST";a.multiplayer.remoteName="OPPONENT TEST";
     DriverInput driving;driving.throttle=1;original::OriginalHostInputState peerState;
     const auto peerInput=original::adaptOriginalHostInput(peerState,{0,.65f,0,false,false},true,false,0);
     for(unsigned i=0;i<1000;++i){
         link.receive(a.authorityLink->packet());link.reconcile();a.receiveAuthority(link.packet());
         require(link.step(peerInput),"Peer stalled");a.simulate(driving);
-        if(a.race.phase==RacePhase::Running&&!a.recording.frames.empty()){
-            const auto& frame=a.rivalRecording.frames.back();const auto& car=a.authorityRace->car(1);
-            require(frame.detail.rpm==car.vehicle().transmission.tach1c&&frame.gear==int(car.vehicle().transmission.gear00),"Opponent RPM or gear not exact");
-            require(frame.speed==a.rivalVehicle.speed&&frame.detail.elapsed==a.authorityRace->rules(1).displayedElapsed(),"Opponent speed or clock not exact");
-        }
+    }
+    link.receive(a.authorityLink->packet());link.reconcile();
+    require(expectedOpponent.size()>=a.rivalRecording.frames.size(),"Peer did not confirm the recorded frames");
+    for(std::size_t i=0;i<a.rivalRecording.frames.size();++i){
+        const auto& frame=a.rivalRecording.frames[i];const auto& expected=expectedOpponent[i];
+        require(frame.detail.rpm==expected.detail.rpm&&frame.gear==expected.gear,"Opponent RPM or gear not exact");
+        require(frame.speed==expected.speed&&frame.detail.elapsed==expected.detail.elapsed,"Opponent speed or clock not exact");
     }
     require(a.recording.frames.size()>100&&a.rivalRecording.frames.size()==a.recording.frames.size(),"Authority capture omitted either car");
     a.validationMode=false;a.publishLocalReplay();require(!a.localReplayJson.empty()&&a.sharedFinishJson.empty(),"Online replay entered upload queue");write("online");

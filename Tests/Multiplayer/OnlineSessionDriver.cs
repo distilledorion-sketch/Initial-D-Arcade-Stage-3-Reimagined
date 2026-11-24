@@ -29,11 +29,11 @@ internal static class OnlineSessionDriver
     }
     static byte[] Hello(string build){
         using(var stream=new MemoryStream())using(var writer=new BinaryWriter(stream)){
-            writer.Write(0x504D3349u);writer.Write((ushort)11);writer.Write((byte)1);writer.Write(202UL);writer.Write(0UL);
+            writer.Write(0x504D3349u);writer.Write((ushort)14);writer.Write((byte)1);writer.Write(202UL);writer.Write(0UL);
             writer.Write(build);writer.Write(false);writer.Write("Compatible opponent");writer.Write(8);writer.Write(0u);
             writer.Write(3);writer.Write(false);writer.Write(false);writer.Write(true);
             writer.Write(0u);writer.Write(0u);writer.Write(1u);writer.Write(0u);
-            var car=new Idas3OnlineCar{Selection=13};car.Words[4]=8;car.Write(writer);return stream.ToArray();
+            var car=new Idas3OnlineCar{Selection=13};car.Words[4]=8;car.Write(writer);writer.Write(Idas3RankedMaps.AvailableMask);return stream.ToArray();
         }
     }
     static void Initialization(){

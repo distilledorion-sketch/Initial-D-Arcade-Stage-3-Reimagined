@@ -54,6 +54,8 @@ public sealed partial class Idas3ControlBindings
         public ushort buttons;
         public byte leftTrigger, rightTrigger;
         public short thumbLX, thumbLY, thumbRX, thumbRY;
+        public bool preciseTriggers;
+        public float preciseLeftTrigger,preciseRightTrigger;
     }
 
     private static readonly string[] ActionNames = { "Accelerate", "Brake", "Steer left", "Steer right", "Shift up", "Shift down", "Change camera", "Pause", "Online menu", "Toggle headlights", "Gear 1", "Gear 2", "Gear 3", "Gear 4", "Gear 5", "Gear 6", "Start" };
@@ -97,12 +99,36 @@ public sealed partial class Idas3ControlBindings
     public string CaptureError { get; private set; }
     public bool SuppressInput => IsCapturing || releaseBlocked;
     internal bool RawPauseHeld => Held(KeyCode.Escape) || ActionHeld(ActionId.Pause) || (((uint)pad.buttons&~(uint)reconnectHeldButtons&~StartFallbackMask()&~TransitionAliasMask()&0x10u)!=0);
+    // Only the native source-card capability uses this route. A configured
+    // Start=Escape (or another shared source) is a binding conflict owned by
+    // Start here, not a claim that physical Escape is invariably separate.
+    internal bool ExplicitPauseWithoutCabinetStart
+    {
+        get {
+            if(current==null)return false;
+            var start=current.actions[(int)ActionId.Start];
+            var pause=current.actions[(int)ActionId.Pause];
+            bool Key(KeyCode key)=>key!=KeyCode.None&&Held(key)&&!UsesStartKey(key)&&
+                (StartBindingConfigured(start)||(key!=KeyCode.Return&&key!=KeyCode.KeypadEnter));
+            bool sameControl=!string.IsNullOrEmpty(start.controlPath)&&start.controlPath==pause.controlPath;
+            bool defaultStartPad=!StartBindingConfigured(start)&&DefaultCabinetStartPadAvailable()&&
+                string.IsNullOrEmpty(pause.controlPath)&&pause.pad==PadInput.Start;
+            return Key(KeyCode.Escape)||Key(pause.key1)||Key(pause.key2)||Key(pause.key3)||
+                (!sameControl&&!defaultStartPad&&DigitalOther(pause))||rigAmounts[(int)ActionId.Pause]>=.5f;
+        }
+    }
     internal bool RawOnlineHeld => Held(KeyCode.F1) || ActionHeld(ActionId.Online) ||
         (current.actions[8].pad==PadInput.None&&string.IsNullOrEmpty(current.actions[8].controlPath)&&(pad.buttons&~reconnectHeldButtons&0x20)!=0);
     public bool PauseHeld => !SuppressInput && RawPauseHeld;
     public bool StartHeld
     {
         get { if(SuppressInput)return false;foreach(var source in StartSources())if(!startBlockedSources.Contains(source))return true;return false; }
+    }
+    // Separate cabinet input from host Pause and synthetic menu confirmation.
+    // Public StartHeld keeps its established configured-only menu behavior.
+    internal bool CabinetStartHeld
+    {
+        get { if(SuppressInput)return false;foreach(var source in StartSources(true))if(!startBlockedSources.Contains(source))return true;return false; }
     }
     public bool OnlineHeld => !SuppressInput && RawOnlineHeld;
     public bool ViewChangeHeld => !SuppressInput && ActionHeld(ActionId.Camera);
@@ -148,7 +174,7 @@ public sealed partial class Idas3ControlBindings
                     catch (Exception) { /* Preserve both files for recovery; defaults remain usable. */ }
             }
         }
-        savedProfiles.Clear();rigStates.Clear();Array.Clear(rigAmounts,0,rigAmounts.Length);activeProfileKey=LegacyProfile;genericProfile=false;
+        savedProfiles.Clear();rigStates.Clear();Array.Clear(rigAmounts,0,rigAmounts.Length);Array.Clear(rigPrecise,0,rigPrecise.Length);Array.Clear(rigPedalAmounts,0,rigPedalAmounts.Length);activeProfileKey=LegacyProfile;genericProfile=false;
         savedProfiles.Add(LegacyProfile,new ControllerProfile{key=LegacyProfile,label="Default controller",actions=CloneActions(current.actions)});
         if(current.controllerProfiles!=null)foreach(var profile in current.controllerProfiles)savedProfiles.Add(profile.key,profile.Clone());
         current.version=5;current.controllerProfiles=null;
@@ -449,10 +475,10 @@ public sealed partial class Idas3ControlBindings
         foreach(var pair in startTransitionControls)
             if(!controls.TryGetValue(pair.Key,out var control)||control.value<=.5f)expiredStartControls.Add(pair.Key);
         foreach(var path in expiredStartControls)startTransitionControls.Remove(path);
-        var heldStartSources=StartSources();startBlockedSources.RemoveWhere(source=>!heldStartSources.Contains(source));
+        var heldStartSources=StartSources(true);startBlockedSources.RemoveWhere(source=>!heldStartSources.Contains(source));
     }
 
-    private HashSet<string> StartSources()
+    private HashSet<string> StartSources(bool cabinetDefaults=false)
     {
         var result=polledStartSources;result.Clear();
         if(current==null)return result;
@@ -463,7 +489,24 @@ public sealed partial class Idas3ControlBindings
             if(CustomAmount(binding)>=.5f)result.Add("control:"+activeProfileKey+":"+binding.controlPath);
         }else if(binding.pad!=PadInput.None&&Digital(binding.pad))result.Add("pad:"+(int)binding.pad);
         foreach(var source in rigStartSources)result.Add(source);
+        if(cabinetDefaults&&!StartBindingConfigured(binding)){
+            AddKey(KeyCode.Return);AddKey(KeyCode.KeypadEnter);
+            if(DefaultCabinetStartPadAvailable()&&Digital(PadInput.Start))result.Add("pad:"+(int)PadInput.Start);
+        }
         return result;
+    }
+    private bool DefaultCabinetStartPadAvailable()
+    {
+        // Generic HID fallback buttons are aliases, not cabinet switches.
+        if(genericProfile||(TransitionAliasMask()&0x10u)!=0)return false;
+        for(int i=0;i<ActionCount;++i){
+            if(i==(int)ActionId.Pause||i==(int)ActionId.Start)continue;
+            var binding=current.actions[i];
+            if(string.IsNullOrEmpty(binding.controlPath)){
+                if(binding.pad==PadInput.Start)return false;
+            }else if(controls.TryGetValue(binding.controlPath,out var control)&&(control.fallbackButtons&0x10u)!=0)return false;
+        }
+        return true;
     }
     private static bool StartBindingConfigured(Binding binding)=>binding.key1!=KeyCode.None||binding.key2!=KeyCode.None||
         binding.key3!=KeyCode.None||binding.pad!=PadInput.None||!string.IsNullOrEmpty(binding.controlPath);
@@ -477,7 +520,7 @@ public sealed partial class Idas3ControlBindings
     }
     public void BlockStartUntilRelease()
     {
-        foreach(var source in StartSources())startBlockedSources.Add(source);
+        foreach(var source in StartSources(true))startBlockedSources.Add(source);
     }
     private void RememberStartSourceUntilRelease()
     {
@@ -552,8 +595,11 @@ public sealed partial class Idas3ControlBindings
         }
     }
     internal void ApplyDriving(ref Idas3Native.FrameInput frame)
+    { ApplyDriving(ref frame,out _); }
+    internal void ApplyDriving(ref Idas3Native.FrameInput frame,out Idas3PrecisePedals.Sample precisePedals)
     {
-        frame.flags &= ~0x3F00u; // Direct gear occupies bits 8..10, replay steering source 11..13.
+        precisePedals=default;
+        frame.flags &= ~0x7F00u; // Gear8..10, steering source11..13, cabinet Start14; host fills Start after mapping.
         // Remove all old action aliases before placing the mapped actions.
         // Unrelated native shortcuts and menu keys retain their existing bits.
         foreach (int key in DrivingKeys) ClearKey(ref frame, key);
@@ -581,6 +627,8 @@ public sealed partial class Idas3ControlBindings
         if (!pad.connected&&controls.Count==0) return;
         frame.padConnected = 1;
         frame.rightTrigger = Math.Max(Pedal(current.actions[0]),(uint)Math.Round(rigAmounts[0]*255)); frame.leftTrigger = Math.Max(Pedal(current.actions[1]),(uint)Math.Round(rigAmounts[1]*255));
+        bool preciseThrottle=PrecisePedal(0,out float throttle),preciseBrake=PrecisePedal(1,out float brake);
+        precisePedals=Idas3PrecisePedals.Mapped(frame,preciseThrottle,throttle,preciseBrake,brake);
         frame.thumbLX = Math.Max(-32768, Math.Min(32767, Math.Max(Axis(current.actions[3], false),(int)Math.Round(rigAmounts[3]*32767)) - Math.Max(Axis(current.actions[2], true),(int)Math.Round(rigAmounts[2]*32768))));
         frame.thumbLY = SteeringOrthogonal();
         if (DigitalOther(current.actions[4])||rigAmounts[4]>=.5f) frame.padButtons |= 0x2000;
@@ -736,6 +784,34 @@ public sealed partial class Idas3ControlBindings
         if(extent<=.0001f)return 0;return Math.Max(0,Math.Min(1,(control.value-binding.controlRest)*binding.controlDirection/extent));
     }
     private uint Pedal(Binding binding)=>StartAlias(binding)?0:string.IsNullOrEmpty(binding.controlPath)?Pedal(binding.pad):(uint)Math.Round(CustomAmount(binding)*255);
+    private bool PrecisePedal(int action,out float amount)
+    {
+        var binding=current.actions[action];amount=Pedal(binding)/255f;bool precise=false;
+        if(!StartAlias(binding)){
+            if(!string.IsNullOrEmpty(binding.controlPath)){
+                if(!binding.controlButton&&!reconnectHeldControls.Contains(binding.controlPath)&&controls.ContainsKey(binding.controlPath))
+                {amount=CustomAmount(binding);precise=true;}
+            }else if((reconnectHeldAxes&AxisMask(binding.pad))==0&&RawPrecisePedal(pad,binding.pad,out float raw))
+            {amount=raw;precise=true;}
+        }
+        if(rigPedalAmounts[action]>amount||(!precise&&rigPedalAmounts[action]==amount&&rigPrecise[action]))
+        {amount=rigPedalAmounts[action];precise=rigPrecise[action];}
+        return precise;
+    }
+    private static bool RawPrecisePedal(PadState source,PadInput input,out float amount)
+    {
+        amount=0;if(!source.connected)return false;
+        if(source.preciseTriggers){
+            if(input==PadInput.LeftTrigger){amount=source.preciseLeftTrigger;return true;}
+            if(input==PadInput.RightTrigger){amount=source.preciseRightTrigger;return true;}
+        }
+        if(input>=PadInput.LeftStickLeft&&input<=PadInput.RightStickDown){
+            // A saved stick-to-pedal mapping uses the same source half-axis
+            // magnitude, including saturated -32768. Keep legacy bytes apart.
+            amount=Math.Min(RawMagnitude(source,input),32767)/32767f;return true;
+        }
+        return false;
+    }
     private int Axis(Binding binding,bool negative)=>StartAlias(binding)?0:string.IsNullOrEmpty(binding.controlPath)?Axis(binding.pad,negative):(int)Math.Round(CustomAmount(binding)*(negative?32768:32767));
     private bool CustomControlHeld(string path){
         // Opposite directions can share an axis. Release only when all bound

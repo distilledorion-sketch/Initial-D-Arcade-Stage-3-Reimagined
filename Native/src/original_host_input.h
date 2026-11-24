@@ -7,6 +7,8 @@ struct OriginalHostControls {
     float steering=0,throttle=0,brake=0;
     bool shiftDown=false,shiftUp=false;
     std::uint8_t requestedGear=0;
+    int steeringAnalog=-1; // optional raw keyboard JVS word, after wire compensation
+    int throttleAnalog=-1,brakeAnalog=-1; // optional precise HID JVS pedals
 };
 struct OriginalHostInputState {std::uint8_t previousShiftButtons=0;};
 enum class ControllerResponse { FlycastGamepad=0, Previous=1, FlycastWheel=2 };
@@ -15,6 +17,9 @@ enum class ControllerResponse { FlycastGamepad=0, Previous=1, FlycastWheel=2 };
 // gamepad uses a 10% radial dead zone, wheel uses no dead zone.
 // The dead zone actually applied: -1 selects the response profile's default.
 float effectiveSteeringDeadzone(ControllerResponse response,float steeringDeadzone);
+// Host/replay amount for a precise pedal under the fixed original calibration.
+// The raw ADC is still forwarded independently to the numerical owner.
+float originalHostPedalAmount(std::uint16_t analog);
 OriginalHostControls controllerHostControls(std::int16_t steeringAxis,
     std::int16_t pairedAxis,std::uint8_t throttle,std::uint8_t brake,
     ControllerResponse response,float steeringDeadzone=-1.f);
