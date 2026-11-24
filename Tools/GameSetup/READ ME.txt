@@ -33,6 +33,7 @@ Windows, display drivers and online account services manage their own system dat
 The original nine courses and full Stage 3 soundtrack come from your disc.
 Extra songs and Sound Room tracks are included. The game runs with no mod maps.
 To install an optional track, extract its ZIP into Mods\Maps beside the game.
+Download mod maps at https://gamebanana.com/games/26479.
 For example, the Enna Skyline pack creates Mods\Maps\ENNA. Existing course
 installations are kept, including courses migrated from older game folders.
 To make a car or HUD skin, open Mods\Texture Workshop.cmd and choose a car

@@ -66,8 +66,8 @@ def assemble(base_package, player, output, program=None):
                     dest = PREFIX + relative
                     if relative.startswith("course-packs/"):
                         continue
-                    if relative=="converters/extract_original_menus.py":
-                        target.write(HERE.parents[1]/"Native/tools/extract_original_menus.py",dest)
+                    if relative in ("converters/extract_original_menus.py", "converters/texture_bank.py"):
+                        target.write(HERE.parents[1] / "Native/tools" / Path(relative).name, dest)
                         continue
                     local = HERE / relative
                     if local.parent == HERE and local.is_file() and local.suffix in (".py", ".ps1"):

@@ -1,5 +1,6 @@
 """Materialize sound driver records and music scores from a verified disc extraction."""
 import concurrent.futures
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -8,7 +9,23 @@ import subprocess
 import sys
 import tempfile
 
-def generate(game, project, converters, dependency_path=None, only_missing=False):
+def reuse_score(previous, relative, expected, destination):
+    if previous is None or expected is None:
+        return False
+    from disc_portable import plain
+    try:
+        source = plain(previous / relative)
+        if not source.is_file() or source.stat().st_size > 16 * 1024 * 1024:
+            return False
+        score = source.read_bytes()
+    except (OSError, ValueError):
+        return False
+    if hashlib.sha256(score).hexdigest() != expected:
+        return False
+    destination.write_bytes(score)
+    return True
+
+def generate(game, project, converters, dependency_path=None, only_missing=False, previous=None, reference=None):
     host = game / "driveA/HOSTFS"
     program = (game / "idas3_main_0C020000.bin").read_bytes()
     banks = host / "sound/pack"
@@ -44,12 +61,15 @@ def generate(game, project, converters, dependency_path=None, only_missing=False
             dest = directory / (name.lower() + ".idms")
             if only_missing and dest.is_file():
                 return
+            original = banks / (name + ".bin.nz")
+            shutil.copyfile(original, directory / (name + ".dtpk"))
+            relative = dest.relative_to(project / "data").as_posix()
+            if reuse_score(previous, relative, (reference or {}).get(relative), dest):
+                return True
             # Keep captures private to this invocation and release them after each cue.
             with tempfile.TemporaryDirectory(prefix=name + "-", dir=scratch) as work:
                 work = Path(work)
-                original = banks / (name + ".bin.nz")
                 shutil.copyfile(original, work / (name + "_sound.bin"))
-                shutil.copyfile(original, directory / (name + ".dtpk"))
                 with (project.parent / (project.name + "-" + name + ".log")).open("wb") as log:
                     command("reference_original_music_sequence", name, "--cue-id", index,
                             scope=dict(env, IDAS3_AUDIO_WORK=str(work)), log=log)
@@ -57,5 +77,7 @@ def generate(game, project, converters, dependency_path=None, only_missing=False
                 dest.with_suffix(".idms.lagged").unlink(missing_ok=True)
                 print("Generated music:", name, flush=True)
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as workers:
-            list(workers.map(score, cues.items()))
+            reused = sum(result is True for result in workers.map(score, cues.items()))
+            if previous is not None:
+                print(f"Reused {reused} of {len(cues)} verified music scores.", flush=True)
 

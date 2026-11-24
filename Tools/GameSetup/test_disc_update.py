@@ -8,6 +8,7 @@ from unittest.mock import patch
 import zipfile
 
 import disc_courses
+import disc_audio
 import disc_extras
 import disc_portable
 import disc_setup
@@ -15,6 +16,24 @@ from disc_storage import trim_conversion_files
 
 
 class DiscUpdateTests(unittest.TestCase):
+    def test_upgrade_only_reuses_scores_matching_the_disc_reference(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            old = root / "old"
+            old.mkdir()
+            source = old / "race.idms"
+            dest = root / "converted.idms"
+            source.write_bytes(b"original score")
+            expected = hashlib.sha256(source.read_bytes()).hexdigest()
+            self.assertTrue(disc_audio.reuse_score(old, source.name, expected, dest))
+            self.assertEqual(dest.read_bytes(), source.read_bytes())
+            dest.unlink()
+            source.write_bytes(b"edited score")
+            self.assertFalse(disc_audio.reuse_score(old, source.name, expected, dest))
+            source.unlink()
+            self.assertFalse(disc_audio.reuse_score(old, source.name, expected, dest))
+            self.assertFalse(dest.exists())
+
     def test_maps_are_optional_and_independently_installable(self):
         from package_optional_maps import package
         with tempfile.TemporaryDirectory() as folder:

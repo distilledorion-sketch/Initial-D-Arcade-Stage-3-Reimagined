@@ -6,7 +6,9 @@ PVR scan-order state. Use the corresponding original material/loader evidence.
 No resampling, replacement artwork, AI-generated pixels or alpha invention.
 """
 from __future__ import annotations
-import argparse, hashlib, json, math, struct, zlib
+import argparse, hashlib, json, math, struct, sys, zlib
+from array import array
+from functools import lru_cache
 from pathlib import Path
 
 def morton(x: int,y: int,size: int) -> int:
@@ -38,21 +40,36 @@ def pack_pixel(rgba: bytes|tuple[int,int,int,int],fmt:int)->int:
     if fmt==2:return ((a>>4)<<12)|((r>>4)<<8)|((g>>4)<<4)|(b>>4)
     raise ValueError('Unsupported format')
 
+@lru_cache(maxsize=3)
+def direct_colors(fmt):
+    colors = tuple(bytes(expand(word, fmt)) for word in range(65536))
+    if any(pack_pixel(color, fmt) != word for word, color in enumerate(colors)):
+        raise AssertionError('Pixel roundtrip failed')
+    return colors
+
+@lru_cache(maxsize=64)
+def twiddled_axes(width, height):
+    block = min(width, height)
+    area = block * block
+    x_offsets = tuple((x // block) * area + morton(x % block, 0, block) for x in range(width))
+    y_offsets = tuple((y // block) * (width // block) * area + morton(0, y % block, block) for y in range(height))
+    return x_offsets, y_offsets
+
 def decode(raw:bytes,width:int,height:int,fmt:int,layout:str)->bytes:
     if any(v<8 or v>2048 or v&(v-1) for v in (width,height)):
         raise ValueError('Invalid texture dimensions')
     if len(raw)!=width*height*2:raise ValueError('Unexpected direct texture byte length')
-    out=bytearray(width*height*4)
-    for y in range(height):
-        for x in range(width):
-            source=texel_index(x,y,width,height,layout)*2
-            px=struct.unpack_from('<H',raw,source)[0]
-            dest=(y*width+x)*4
-            out[dest:dest+4]=bytes(expand(px,fmt))
-            # Exact inverse confirms all original 16-bit channel information,
-            # including hidden RGB under alpha=0, survives export.
-            if pack_pixel(out[dest:dest+4],fmt)!=px:raise AssertionError('Pixel roundtrip failed')
-    return bytes(out)
+    words = array('H', raw)
+    if sys.byteorder != 'little':
+        words.byteswap()
+    colors = direct_colors(fmt)
+    if layout == 'linear':
+        return b''.join(b''.join(colors[p] for p in words[row:row + width])
+                        for row in range(0, len(words), width))
+    if layout != 'twiddled':
+        raise ValueError('Unknown texture layout')
+    xs, ys = twiddled_axes(width, height)
+    return b''.join(b''.join(colors[words[y + x]] for x in xs) for y in ys)
 
 def decode_vq(raw:bytes,width:int,height:int,fmt:int)->bytes:
     """Vector-quantised texels: a 256-entry codebook of 2x2 blocks, then one
@@ -63,17 +80,19 @@ def decode_vq(raw:bytes,width:int,height:int,fmt:int)->bytes:
     navigation line; 2048 + (w/2)*(h/2) is exactly the payload length."""
     blocks=(width//2)*(height//2)
     if len(raw)!=2048+blocks:raise ValueError('Unexpected VQ texture byte length')
-    book=raw[:2048];indices=raw[2048:]
-    out=bytearray(width*height*4)
-    bw,bh=width//2,height//2
-    for by in range(bh):
-        for bx in range(bw):
-            entry=indices[texel_index(bx,by,bw,bh,'twiddled')]
-            texels=struct.unpack_from('<4H',book,entry*8)
-            # Within a block the codebook holds the same twiddled order.
-            for k,(dx,dy) in enumerate(((0,0),(0,1),(1,0),(1,1))):
-                dest=((by*2+dy)*width+(bx*2+dx))*4
-                out[dest:dest+4]=bytes(expand(texels[k],fmt))
+    indices = raw[2048:]
+    top, bottom = [], []
+    for words in struct.iter_unpack('<4H', raw[:2048]):
+        a, b, c, d = (bytes(expand(word, fmt)) for word in words)
+        top.append(a + c)
+        bottom.append(b + d)
+    xs, ys = twiddled_axes(width // 2, height // 2)
+    out = bytearray(width * height * 4)
+    for by, y in enumerate(ys):
+        entries = [indices[y + x] for x in xs]
+        for dy, colors in enumerate((top, bottom)):
+            start = (by * 2 + dy) * width * 4
+            out[start:start + len(entries) * 8] = b''.join(colors[i] for i in entries)
     return bytes(out)
 
 def write_png(path:Path,width:int,height:int,rgba:bytes):

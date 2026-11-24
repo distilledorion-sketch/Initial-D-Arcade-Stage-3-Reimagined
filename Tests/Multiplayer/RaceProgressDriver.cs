@@ -9,6 +9,7 @@ using Idas3.Multiplayer;
 internal static class RaceProgressDriver
 {
     const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
+    static ushort protocol=14;
     static int checks;
     static void Check(bool value,string message){if(!value)throw new Exception(message);++checks;Console.WriteLine("PASS\t"+message);}
     static object Get(object target,string name)=>target.GetType().GetField(name,Private).GetValue(target);
@@ -31,6 +32,7 @@ internal static class RaceProgressDriver
                 w.Write(3);w.Write(false);w.Write(false);w.Write(true);
                 w.Write(0u);w.Write(0u);w.Write(1u);w.Write(0u);
                 var car=new Idas3OnlineCar{Selection=13};car.Words[4]=8;car.Write(w);
+                if(protocol>=14)w.Write(Idas3RankedMaps.AvailableMask);
             }));
             Check(Session.HandshakeComplete,"Fixture entered through the production compatibility handshake");
             Set(Session,"nativeRace",true);Set(Session,"raceId",99UL);Set(Session,"state","Racing");
@@ -40,7 +42,7 @@ internal static class RaceProgressDriver
         }
         byte[] Packet(byte kind,Action<BinaryWriter> payload){
             using(var m=new MemoryStream())using(var w=new BinaryWriter(m)){
-                w.Write(0x504D3349u);w.Write((ushort)11);w.Write(kind);w.Write(202UL);
+                w.Write(0x504D3349u);w.Write(protocol);w.Write(kind);w.Write(202UL);
                 w.Write(kind==1?0UL:(ulong)Get(Session,"localNonce"));payload(w);return m.ToArray();
             }
         }
@@ -143,7 +145,7 @@ internal static class RaceProgressDriver
         }
     }
     static int Main(string[] args){try{
-        if(args.Contains("baseline")){PermanentStall(true);return 0;}
+        if(args.Contains("baseline")){protocol=11;PermanentStall(true);return 0;}
         if(args.Contains("sustained")){SustainedFallback();return 0;}
         Recovery();PermanentStall(false);InactiveAndBoundary();SustainedFallback();HealthyRace();
         Console.WriteLine("TOTAL "+checks);return 0;

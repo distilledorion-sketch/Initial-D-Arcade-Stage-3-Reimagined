@@ -46,7 +46,7 @@ static class AdminStatsSessionDriver {
     }
     static byte[] ResultPacket(){
         using(var stream=new MemoryStream())using(var writer=new BinaryWriter(stream)){
-            writer.Write(0x504D3349u);writer.Write((ushort)11);writer.Write((byte)12);writer.Write(202UL);writer.Write(101UL);
+            writer.Write(0x504D3349u);writer.Write((ushort)14);writer.Write((byte)12);writer.Write(202UL);writer.Write(101UL);
             writer.Write(777UL);writer.Write(0);writer.Write(200UL);writer.Write(300UL);return stream.ToArray();
         }
     }

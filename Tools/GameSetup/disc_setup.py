@@ -73,7 +73,7 @@ def valid_cache(target):
     except (OSError, ValueError, KeyError, TypeError):
         return False
 
-def generate(game, project, converters, helpers, log):
+def generate(game, project, converters, helpers, log, previous_data=None):
     image = game / "idas3_main_0C020000.bin"
     host = game / "driveA/HOSTFS"
     if digest(image) != PROGRAM or not (host / "path/k_df_path.bin").is_file():
@@ -149,7 +149,8 @@ def generate(game, project, converters, helpers, log):
     convert("export_original_demo_course", image, host, project)
     run([helpers / "capture_original_ranking_records.exe", image, art / "attract/ranking/factory_records.idasrank"], log)
     from disc_audio import generate as generate_audio
-    generate_audio(game, project, converters)
+    reference = json.loads((HERE / "reference-checks.json").read_text())
+    generate_audio(game, project, converters, previous=previous_data, reference=reference)
     audio = data / "original_audio"
     shutil.copyfile(audio / "selection/builtin_samples.bin", audio / "music/builtin_samples.bin")
     shutil.copytree(HERE / "host", data, dirs_exist_ok=True)
@@ -336,7 +337,7 @@ def install(chd, security, target, helpers, converters):
             private = extract_original(chd, security, temp, helpers, log)
             from native_recipe import restore
             restore(private / "idas3_main_0C020000.bin", HERE, project / "data/disc-player/Idas3Unity.dll")
-            generate(private, project, converters, helpers, log)
+            generate(private, project, converters, helpers, log, target / "data" if upgrade else None)
         disc_extras.install_cache_files(project, HERE, disc_extras.manifest(HERE), {})
         files = inventory(project / "data")
         from disc_storage import trim_conversion_files

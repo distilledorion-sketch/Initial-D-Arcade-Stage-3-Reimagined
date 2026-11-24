@@ -8,7 +8,7 @@ using Idas3.Multiplayer;
 internal static class LobbyChatSessionDriver
 {
     const uint Magic=0x504D3349;
-    const ushort Protocol=11;
+    const ushort Protocol=14;
     const byte Chat=19;
     const ulong LocalNonce=101,RemoteNonce=202;
     const BindingFlags Private=BindingFlags.Instance|BindingFlags.NonPublic;
