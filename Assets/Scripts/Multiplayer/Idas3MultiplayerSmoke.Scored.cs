@@ -140,7 +140,7 @@ namespace Idas3.Multiplayer
                     roomCode=session.RoomCode;
                     File.WriteAllText(Path.Combine(root,"room.json"),JsonUtility.ToJson(new RoomNotice{role=role,code=roomCode,port=port,course=0,phase=phase},true));
                 }else{Phase("joining");session.JoinRoom(address);}
-                yield return Until(()=>session.HandshakeComplete&&PeerConnected()&&session.CanReady,60,"Scored handshake did not finish.");
+                yield return Until(()=>menu.IsOpen&&PeerConnected()&&session.CanReady,60,"Scored peers did not reach the lobby.");
                 roomCode=session.RoomCode;session.SetRaceOptions(0,false,false,false);
                 if(role=="host"){session.SetBoost(false);session.SetCollisions(false);}
                 yield return Until(()=>CarSelectionAgrees()&&session.RemoteChoice.Equals(session.LocalChoice)&&!session.BoostEnabled&&!session.CollisionsEnabled&&session.CanReady,20,"Scored profiles/rules did not agree.");

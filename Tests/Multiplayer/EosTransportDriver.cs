@@ -43,11 +43,29 @@ internal static class EosTransportDriver {
     }
     static void FailedCleanup(){
         var transport=Create();transport.HostPrivate("Canceled room");transport.Leave();Advance();transport.HostPrivate("Blocked retry");Lobby.CompleteCreate(Result.Success,Room);Pump();
-        for(int attempt=0;attempt<3;++attempt){Until(()=>Lobby.DestroyCallbacks.Count!=0,"cleanup retry");Check(Lobby.Destroys[attempt]==Room,"Cleanup retry keeps the exact canceled room identity");Advance();Lobby.CompleteDestroy(Result.ServiceFailure);Pump();}
+        for(int attempt=0;attempt<6;++attempt){Until(()=>Lobby.DestroyCallbacks.Count!=0,"cleanup retry");Check(Lobby.Destroys[attempt]==Room&&Lobby.Creates.Count==1,"Cleanup retry keeps the exact canceled room identity");Advance();Lobby.CompleteDestroy(Result.ServiceFailure);Pump();}
         Until(()=>errors.Count!=0,"surface failed cleanup to waiting request");
         Check(Lobby.Creates.Count==1&&!transport.InLobby&&!transport.IsBusy,"Failed canceled-room cleanup cannot release a waiting room creation");
-        Check(errors[errors.Count-1].Contains("previous online room")&&errors[errors.Count-1].Contains("Restart"),"Cleanup exhaustion preserves the actionable recovery error through the async barrier");
-        Advance();transport.HostPrivate("Another retry");Pump();Check(Lobby.Creates.Count==1,"Further operations remain blocked after uncertain remote cleanup");
+        Check(errors.Count==1&&errors[0].Contains("previous online room")&&errors[0].Contains("retry"),"Cleanup exhaustion asks for an in-game retry");
+        Advance();transport.HostPrivate("Another retry");Pump();
+        Check(Lobby.Creates.Count==1&&Lobby.DestroyCallbacks.Count==1&&Lobby.Destroys[6]==Room,"Retry targets the exact previous room before starting a fresh one");
+        Lobby.CompleteDestroy(Result.Success);Pump();Until(()=>Lobby.Creates.Count==2,"new room after recovery");
+        Lobby.CompleteCreate(Result.Success,OtherRoom);Pump();
+        Check(transport.RoomCode==OtherRoom&&errors.Count==1,"The same signed-in transport hosts again after service recovery");
+    }
+    static void ReconnectAfterRace(bool host){
+        var transport=Create();var room=Admit(transport);
+        if(!host){room.Info.LobbyOwnerUserId=new ProductUserId("remote");Set(transport,"originalOwner","remote");}
+        transport.Leave();Advance();
+        var next=Discoverable(transport,OtherRoom,"room");
+        next.Members.Add("other");next.Members.Add("local");next.MemberAttributes["other"]=new Dictionary<string,string>{{"build",transport.CompatibilityHash},{"name","Next driver"}};
+        Lobby.Rooms.Add(OtherRoom,next);
+        if(host)transport.StartMatchmaking();else transport.Join(OtherRoom);
+        Check(Lobby.Joins.Count==0,"New opponent waits for the old membership callback");
+        if(host)Lobby.CompleteDestroy(Result.LobbyInvalidSession);else Lobby.CompleteLeave(Result.LobbyInvalidSession);
+        Until(()=>Lobby.Joins.Count==1,"join after EOS reports old session already gone");
+        Lobby.CompleteJoin(Result.Success);Pump();transport.Poll();Pump();
+        Check(transport.Connected&&transport.RemoteId=="other"&&transport.RoomCode==OtherRoom&&errors.Count==0,"Connects to a different opponent without restarting");
     }
     static void RequestFailure(){
         var transport=Create();transport.Join(Room);Lobby.CompleteJoin(Result.AccessDenied);Pump();
@@ -59,6 +77,19 @@ internal static class EosTransportDriver {
         var transport=Create();transport.HostPrivate("Disposed room");transport.Dispose();Advance();Lobby.CompleteCreate(Result.Success,Room);Pump();
         Check(Lobby.Destroys.Count==1&&Lobby.Destroys[0]==Room&&!transport.Available&&!transport.InLobby,"Disposed transport still cleans a late-created SDK room without reviving itself");
         Lobby.CompleteDestroy(Result.Success);Pump();Check(errors.Count==0,"Disposed request completion cannot publish a stale UI error");
+    }
+    static void ReopenOnline(){
+        var first=Create();first.Join(Room);first.Dispose();Advance();
+        var next=Create();next.Join(Room);
+        Check(Lobby.Joins.Count==1,"Switching back to online waits for the first join to finish");
+        Lobby.CompleteJoin(Result.Success);Pump();
+        Check(Lobby.Leaves.Count==1&&Lobby.Leaves[0]==Room,"The retired transport releases the late membership");
+        var intermediate=new LeaveLobbyCallbackInfo{ResultCode=Result.OperationWillRetry};
+        Lobby.LeaveCallbacks.Peek()(ref intermediate);Pump();Advance();
+        Check(Lobby.Joins.Count==1&&Lobby.Leaves.Count==1,"An intermediate SDK callback cannot release or duplicate the pending leave");
+        Lobby.CompleteLeave(Result.NotFound);Pump();
+        Until(()=>Lobby.Joins.Count==2,"rejoin the same room from the replacement transport");
+        Check(Lobby.Joins[1]==Room&&errors.Count==0,"Rejoining the same host starts only after the old leave is terminal");
     }
     static FakeRoom SeedPeer(Idas3EosTransport transport){
         var room=new FakeRoom{Info=new LobbyDetailsInfo{LobbyId=Room,LobbyOwnerUserId=new ProductUserId("local"),MaxMembers=2,AvailableSlots=0,PermissionLevel=LobbyPermissionLevel.Publicadvertised}};
@@ -385,6 +416,7 @@ internal static class EosTransportDriver {
         case "sanctions-local":InitialAccess(true);break;case "sanctions-unavailable":InitialAccess(false);break;case "sanctions-peer":PeerAccess(false);break;case "sanctions-cancel-peer":PeerAccess(true);break;case "sanctions-cancel-init":CancelInitialAccess();break;case "sanctions-active-ban":RefreshAccess(false);break;case "sanctions-outage":RefreshAccess(true);break;case "sanctions-new-room":NewRoomAccess();break;
         case "sanctions-late-admission":DelayedAdmission("success");break;case "sanctions-admission-error":DelayedAdmission("error");break;case "sanctions-admission-peer-ban":DelayedAdmission("peer-ban");break;case "sanctions-admission-local-ban":DelayedAdmission("local-ban");break;case "sanctions-admission-reset":DelayedAdmission("reset");break;case "sanctions-admission-cancel":DelayedAdmission("cancel");break;case "sanctions-admission-timeout":DelayedAdmission("timeout");break;case "sanctions-admission-depart":DelayedAdmission("depart");break;case "sanctions-departed-peer":DepartedBeforeClear();break;case "sanctions-native-load":LoadingRestriction();break;
         case "early-listener":EarlyPeerListener(false);break;case "early-listener-failure":EarlyPeerListener(true);break;
+        case "requeue-after-race":ReconnectAfterRace(true);break;case "rejoin-after-race":ReconnectAfterRace(false);break;case "reopen-online":ReopenOnline();break;
         case "reset-initial":InitialReset(false);break;case "reset-write-failure":InitialReset(true);break;case "reset-live-local":LiveReset(false);break;case "reset-live-peer":LiveReset(true);break;case "reset-no-owner":ResetWithoutOwner();break;
         case "queue-long":LongQueue();break;case "queue-stalled-search":StalledQueue(false);break;case "queue-stalled-create":StalledQueue(true);break;case "queue-peer-deadline":QueuePeerDeadline(true);break;case "queue-peer-missing-attributes":QueuePeerDeadline(false);break;
         case "queue-shared-bucket":SharedBattleBucket();break;case "queue-public-host":QuickMatchManual(false);break;case "queue-prefers-public":QuickMatchManual(true);break;case "queue-waiting-public":WaitingQueueManual(false);break;case "queue-peer-before-public":WaitingQueueManual(true);break;case "queue-public-exclusions":QuickMatchExclusions();break;

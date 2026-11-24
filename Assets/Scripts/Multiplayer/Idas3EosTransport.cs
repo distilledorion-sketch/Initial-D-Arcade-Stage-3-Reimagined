@@ -25,7 +25,10 @@ namespace Idas3.Multiplayer
         readonly List<Idas3Room> rooms = new List<Idas3Room>();
         static readonly List<Idas3EosTransport> live = new List<Idas3EosTransport>();
         static readonly Dictionary<string, double> nextRequests = new Dictionary<string, double>();
-        static string cleanupFailure;
+        // EOS keeps one signed-in identity when the menu switches transports.
+        // Finish its old membership changes before starting another one.
+        static Task cleanupBarrier = Task.CompletedTask;
+        static readonly Dictionary<string, bool> roomsToRetire = new Dictionary<string, bool>();
         static double nextNativePump;
         LobbyInterface lobby;
         P2PInterface p2p;
@@ -42,7 +45,7 @@ namespace Idas3.Multiplayer
         double nextAccessRefresh;
         ulong memberNotify, updateNotify, memberUpdateNotify, incomingRequestNotify;
         string diagnosticStage = "idle";
-        Task pendingRequest = Task.CompletedTask, cleanupBarrier = Task.CompletedTask;
+        Task pendingRequest = Task.CompletedTask;
         CancellationTokenSource cancellation;
         public static long NativeLoadKeepAlivePumps { get; private set; }
         public static long NativeLoadBufferedEvents { get; private set; }
@@ -52,6 +55,8 @@ namespace Idas3.Multiplayer
         internal static void ShutdownAll()
         {
             foreach (var transport in live.ToArray()) transport.Dispose();
+            cleanupBarrier = Task.CompletedTask;
+            roomsToRetire.Clear();
         }
         public static void KeepAliveDuringNativeLoad()
         {
@@ -215,7 +220,10 @@ namespace Idas3.Multiplayer
         {
             try {
                 await prior; EnsureCurrent(token, cancel);
-                if (cleanupFailure != null) throw new Idas3EosCleanupException(cleanupFailure);
+                foreach (var oldRoom in new Dictionary<string, bool>(roomsToRetire)) {
+                    await Retire(oldRoom.Key, oldRoom.Value);
+                    EnsureCurrent(token, cancel);
+                }
                 await RequireLocalAccess(token, cancel);
                 if (match) await MatchLoop(token, cancel);
                 else if (code != null) await JoinRoom(token, code, cancel);
@@ -223,9 +231,6 @@ namespace Idas3.Multiplayer
             } catch (OperationCanceledException) { }
             catch (Idas3EosCleanupException ex) {
                 if (Current(token)) { Leave(); Fail(ex.Message); }
-                // This pending request participates in the cleanup barrier even
-                // after cancellation. Never turn failed retirement into success.
-                throw;
             }
             catch (Exception ex) { if (Current(token)) { DiagnosticFailure(ex); Leave(); Fail(AccessFailure(ex, "Could not connect online: ")); } }
         }
@@ -285,7 +290,7 @@ namespace Idas3.Multiplayer
             if (!Current(token) || cancel.IsCancellationRequested) { await Retire(created, true); return; }
             try {
                 await SetAttributes(created, true, name, kind, cancel);
-                if (!Current(token) || cancel.IsCancellationRequested) { await Retire(created, true); return; }
+                EnsureCurrent(token, cancel);
                 lobbyId = created; originalOwner = LocalId; privateRoom = isPrivate; members = 1;
                 busy = IsMatching ? "Finding another driver" : null;
                 Status = "Room " + RoomCode + " — waiting for another driver.";
@@ -312,7 +317,7 @@ namespace Idas3.Multiplayer
                     privateRoom = info.PermissionLevel != LobbyPermissionLevel.Publicadvertised;
                 } finally { details.Release(); }
                 await SetAttributes(code, false, null, null, cancel);
-                if (!Current(token) || cancel.IsCancellationRequested) { await Retire(code, false); return; }
+                EnsureCurrent(token, cancel);
                 lobbyId = code; members = 2; busy = "Connecting to driver";
                 RefreshMembership();
             } catch { await Retire(code, false); throw; }
@@ -569,19 +574,20 @@ namespace Idas3.Multiplayer
                 var done = new TaskCompletionSource<Result>();
                 if (host) {
                     var options = new DestroyLobbyOptions { LobbyId = id, LocalUserId = Idas3EosPlatform.User };
-                    lobby.DestroyLobby(ref options, null, (ref DestroyLobbyCallbackInfo info) => { var result = info.ResultCode; Idas3EosPlatform.Defer(() => done.TrySetResult(result)); });
+                    lobby.DestroyLobby(ref options, null, (ref DestroyLobbyCallbackInfo info) => { var result = info.ResultCode; if (Common.IsOperationComplete(result)) Idas3EosPlatform.Defer(() => done.TrySetResult(result)); });
                 } else {
                     var options = new LeaveLobbyOptions { LobbyId = id, LocalUserId = Idas3EosPlatform.User };
-                    lobby.LeaveLobby(ref options, null, (ref LeaveLobbyCallbackInfo info) => { var result = info.ResultCode; Idas3EosPlatform.Defer(() => done.TrySetResult(result)); });
+                    lobby.LeaveLobby(ref options, null, (ref LeaveLobbyCallbackInfo info) => { var result = info.ResultCode; if (Common.IsOperationComplete(result)) Idas3EosPlatform.Defer(() => done.TrySetResult(result)); });
                 }
                 var status = await done.Task;
-                if (status == Result.Success || status == Result.NotFound || status == Result.NoChange) return;
-                await Task.Delay(1000 * (retry + 1));
+                if (status == Result.Success || status == Result.NotFound || status == Result.NoChange || status == Result.LobbyInvalidSession) {
+                    roomsToRetire.Remove(id);
+                    return;
+                }
+                if (retry < 2) await Task.Delay(1000 * (retry + 1));
             }
-            // Do not let an old per-player Leave race a new join with this same
-            // identity. A failed cleanup is visible on the next room request.
-            cleanupFailure = "The previous online room could not be closed. Restart the game to reconnect.";
-            throw new Idas3EosCleanupException(cleanupFailure);
+            roomsToRetire[id] = host;
+            throw new Idas3EosCleanupException("The previous online room could not be closed. Please retry.");
         }
         public void Leave()
         {
@@ -595,17 +601,15 @@ namespace Idas3.Multiplayer
             Task oldRequest = pendingRequest; pendingRequest = Task.CompletedTask;
             Task retire = RetireCurrentRoom();
             cleanupBarrier = CleanupAll(cleanupBarrier, oldRequest, retire);
-            // Awaiting the barrier still propagates failure to new requests.
-            // Observe it even if the player never opens Online again.
-            _ = cleanupBarrier.ContinueWith(task => { var observed = task.Exception; }, TaskContinuationOptions.OnlyOnFaulted);
             Status = Available ? "Online ready." : "Online services are not connected.";
             if (notify) PeerChanged?.Invoke();
         }
         static async Task CleanupAll(Task prior, Task request, Task retire)
         {
-            // Task exceptions are retained by the barrier and observed before
-            // the next operation; an unrelated new room can never be detached.
-            await Task.WhenAll(prior, request, retire);
+            try { await Task.WhenAll(prior, request, retire); }
+            catch (Idas3EosCleanupException) {
+                // Retire retained the room ID and ownership for the next attempt.
+            }
         }
         public void Dispose()
         {
@@ -630,7 +634,6 @@ namespace Idas3.Multiplayer
         {
             if (disposed) return false;
             if (!Available) { Initialize(); return false; }
-            if (cleanupFailure != null) { Fail(cleanupFailure); return false; }
             if (Idas3EosPlatform.Failure != null) { Fail(Idas3EosPlatform.Failure); return false; }
             if (!ServiceConnected) { Fail("Online sign-in is reconnecting. Please retry shortly."); return false; }
             if (IsBusy) return false;

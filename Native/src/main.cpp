@@ -1958,7 +1958,7 @@ struct App {
             originalRaceStart.reset(numericMode);originalRaceOwnerFrame=0;originalRaceCountdownInitPending=false;
             if(resetEffects.resetPlatformDigitalInput)originalInput={};
             const auto held=driver(false);
-            const original::OriginalHostControls frozenControls{held.steer,held.throttle,held.brake,held.shiftDown,held.shiftUp,0,held.originalSteeringAnalog,held.originalThrottleAnalog,held.originalBrakeAnalog};
+            const original::OriginalHostControls frozenControls{held.steer,held.throttle,held.brake,held.shiftDown,held.shiftUp,0,-1,held.originalThrottleAnalog,held.originalBrakeAnalog};
             auto frozenInputs=original::adaptOriginalHostInput(originalInput,frozenControls,frontend.automatic,false,0);
             //ARace construction05DBC0 sets the raw-throttle gate before
             //061B00's60 warmups. Keep accepted ADCs intact;15CF76 applies it.
@@ -2104,7 +2104,7 @@ struct App {
             platformClockWriteWarning=true;
             std::clog<<"Platform clock persistence unavailable; continuing with the in-memory clock. Car saves are unaffected.\n";
         }
-        sampleHostSteering(hostMilliseconds);
+        updateSteeringSmoothingLifecycle();
         // Host overlays/focus/pause are extensions. Discard their interrupted
         // cabinet holds without synthesizing a delayed View action on resume.
         // This does not advance the source counter owner or clear its marker.
@@ -2527,31 +2527,12 @@ struct App {
         hostDrivingControlsBlocked=blocked;
         if(blocked){steering=0;steeringSmoothing.reset();steeringSource.reset();}
     }
-    bool hostSteeringSuspended()const{
-        return !active||hostDrivingControlsBlocked||paused||menu||loadingActive||
-            extraModeVisitActive()||legendVisitActive||preRaceDialogueActive||
-            (multiplayer.active&&multiplayer.waiting);
-    }
     void updateSteeringSmoothingLifecycle(){
-        if(hostSteeringSuspended()||(steeringControllerConnected&&!input.connected))
+        if(!active||hostDrivingControlsBlocked||paused||menu||loadingActive||
+            extraModeVisitActive()||legendVisitActive||preRaceDialogueActive||
+            (multiplayer.active&&multiplayer.waiting)||(steeringControllerConnected&&!input.connected))
             resetSteeringSmoothing();
         steeringControllerConnected=input.connected;
-    }
-    std::int16_t hostPairedSteeringAxis(){
-        const auto& p=input.pad.Gamepad;
-        const bool arcadePad=originalHandling&&controllerResponse==original::ControllerResponse::FlycastGamepad&&
-            (steeringDeadzone==-1.f||steeringDeadzone==.1f)&&steeringSmoothing.amount()==0.f;
-        return steeringSource.pairedAtHorizontalChange(p.sThumbLX,p.sThumbLY,arcadePad);
-    }
-    void sampleHostSteering(std::uint64_t milliseconds){
-        updateSteeringSmoothingLifecycle();
-        if(hostSteeringSuspended())return;
-        if(input.connected)hostPairedSteeringAxis();
-        // Both host loops call commands once per input/render sample, even
-        // with no solver tick. Match Flycast's ramp-before-new-events order;
-        // catch-up ticks and stalled online attempts only read this result.
-        steeringSource.sampleKeyboard(milliseconds,
-            input.down['A']||input.down[VK_LEFT],input.down['D']||input.down[VK_RIGHT]);
     }
     DriverInput driver(bool advanceSmoothing=true){
         DriverInput d;d.automatic=automatic;
@@ -2560,17 +2541,16 @@ struct App {
         }
         const float keyboard=float(input.down['D']||input.down[VK_RIGHT])-float(input.down['A']||input.down[VK_LEFT]);
         const auto pad=input.connected?original::controllerHostControls(input.pad.Gamepad.sThumbLX,
-            hostPairedSteeringAxis(),input.pad.Gamepad.bRightTrigger,input.pad.Gamepad.bLeftTrigger,
+            input.pad.Gamepad.sThumbLY,input.pad.Gamepad.bRightTrigger,input.pad.Gamepad.bLeftTrigger,
             controllerResponse,steeringDeadzone):original::OriginalHostControls{};
         steering=steeringSource.advance(steering,keyboard,pad.steering,input.connected,originalHandling,physicsDt);
         // Called once per physics tick. The race-start input snapshot observes
         // the neutral filter without advancing a tick before driving begins.
         d.steer=steeringSmoothing.advance(steering,advanceSmoothing?physicsDt:0.f);
-        if(originalHandling&&steeringSmoothing.amount()==0.f)
-            d.originalSteeringAnalog=steeringSource.keyboardAnalog();
         d.throttle=std::max(float(input.down['W']||input.down[VK_UP]),pad.throttle);
         d.brake=std::max(float(input.down['S']||input.down[VK_DOWN]||input.down[VK_SPACE]),pad.brake);
-        if(originalHandling&&controllerResponse!=original::ControllerResponse::Previous&&input.connected){
+        // Gamepads use the released byte trigger curve. Dedicated wheel profiles keep their high-resolution pedals.
+        if(originalHandling&&controllerResponse==original::ControllerResponse::FlycastWheel&&input.connected){
             if(!input.down['W']&&!input.down[VK_UP])d.originalThrottleAnalog=input.originalThrottleAnalog;
             if(!input.down['S']&&!input.down[VK_DOWN]&&!input.down[VK_SPACE])d.originalBrakeAnalog=input.originalBrakeAnalog;
             if(d.originalThrottleAnalog>=0)d.throttle=original::originalHostPedalAmount(std::uint16_t(d.originalThrottleAnalog));
@@ -3045,7 +3025,7 @@ struct App {
             //05C280 adds actorbit13 for automatic braking. It does not clear
             //the GO gear-enable bit or replace the cabinet's pedal/shift ADCs.
             //The original numerical owner performs its own throttle cut.
-            const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog};
+            const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,-1,d.originalThrottleAnalog,d.originalBrakeAnalog};
             const bool gearEnabled=(originalSession.actor().u(0x50)&0x8000u)!=0;
             auto inputs=original::adaptOriginalHostInput(originalInput,controls,d.automatic,gearEnabled,0);
             noteReplayShift(inputs,controls,gearEnabled);
@@ -3098,7 +3078,7 @@ struct App {
             //GO calls it after timer/chord consumption; neither phase polls
             //View on host-render frames or through the command fallback.
             if(originalOfflineCabinetContext())applyOriginalCabinetViewChange();
-            original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog};
+            original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,-1,d.originalThrottleAnalog,d.originalBrakeAnalog};
             //A finish crossing completes05C040 but still runs this solver
             //with its accepted controls. The next child applies automatic
             //braking on the following update; timeout rules own their brake.
@@ -3681,6 +3661,10 @@ struct App {
             renderer.courseFog=nullptr;renderer.courseLighting=nullptr;renderer.playerLighting=nullptr;renderer.rivalLighting=nullptr;
             renderer.vehicleLights=renderer.opponentLights=false;renderer.courseLampPositions.clear();
             const auto page=frontend.battleEntry.page;
+            if(Frontend::BattleEntry::usesSelectionMusic(page)){
+                frontend.advanceBattleSelectionMusic(dt);
+                for(const auto& command:frontend.takeSelectionMusicCommands())audio.selection(command);
+            }
             if(page==Frontend::BattlePage::Model||page==Frontend::BattlePage::Gearbox||page==Frontend::BattlePage::Waiting)return renderBattleCar(dt);
             const Mesh empty;
             if(frontend.battleEntry.page==Frontend::BattlePage::Loading&&loadingScreen.loaded()){
@@ -4194,7 +4178,7 @@ struct App {
             // The original race owner runs its solver during StandBy too.
             // Keep that same session (and audio instrument) through countdown.
             auto inputs=original::adaptOriginalHostInput(originalInput,
-                {d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog},d.automatic,false,0);
+                {d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,-1,d.originalThrottleAnalog,d.originalBrakeAnalog},d.automatic,false,0);
             //StandBy05B8A8 clears the constructor gate at OLD counter20,
             //before this outer solver. The source clock owns that counter;
             //render-only frames cannot shorten the first20 suppressed ticks.
@@ -4215,7 +4199,7 @@ struct App {
         // Compatibility path for the retired pose-only protocol. It has no
         // shared input timeline and must not mutate a remote car's authority.
         const auto& parameters=presentedSession().parameters();
-        const auto inputState=original::adaptOriginalHostInput(showcaseInput,{d.steer,d.throttle,d.brake,false,false,0,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog},d.automatic,false,0);
+        const auto inputState=original::adaptOriginalHostInput(showcaseInput,{d.steer,d.throttle,d.brake,false,false,0,-1,d.originalThrottleAnalog,d.originalBrakeAnalog},d.automatic,false,0);
         const auto controls=conditionOriginalInputs(inputState.analog,inputState.calibration,{},parameters.inputConstants,0);
         // Original actor+3C uses this wheel angle. Keep tire rotation and the
         // actual race actor unchanged while the showcase holds both cars.

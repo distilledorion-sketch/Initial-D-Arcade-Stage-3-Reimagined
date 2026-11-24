@@ -137,7 +137,7 @@ void receiveAuthority(std::span<const std::uint8_t> packet){
 }
 void simulateAuthority(const DriverInput& d,bool showcase=false){
     auto inputState=authorityInput;
-    const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog};
+    const original::OriginalHostControls controls{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,-1,d.originalThrottleAnalog,d.originalBrakeAnalog};
     const auto input=original::adaptOriginalHostInput(inputState,controls,automatic,false,0);
     if(!archivePublished&&authorityReplay.active()){
         std::array<OnlineReplayRecording::Lamps,2> lamps;

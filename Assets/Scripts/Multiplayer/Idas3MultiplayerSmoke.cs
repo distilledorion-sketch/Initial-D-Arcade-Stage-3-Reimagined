@@ -444,10 +444,10 @@ namespace Idas3.Multiplayer
         }
         private void CheckLockedCourseDraw(){
             Check(courseReadinessInvalidated&&session.HasCourseDraw,"Race started without the synchronized choice check.");
-            int winner=session.CourseWinnerSlot;Check(winner==session.CoursePickerSlot,"Course selection changed cabinets before the start.");
+            int winner=session.CourseWinnerSlot;Check(winner==0||winner==1,"Selected course winner is not a player slot.");
             var selected=winner==0?HostCoursePick:GuestCoursePick;
             Check(session.SelectedChoice.Equals(selected)&&CoursePicksAgree(GuestCoursePick),"Selected complete course does not match the winning player's agreed pick.");
-            string text=session.CourseDrawText;Check(text=="COURSE SELECTED","Missing shared course confirmation.");
+            string text=session.CourseDrawText;Check(text.Contains(winner==0?"SMOKE HOST":"SMOKE JOIN"),"Selected-player result uses the wrong identity.");
             var source=new Idas3PreRaceSmoke.PreRaceStatus{size=(uint)Marshal.SizeOf<Idas3PreRaceSmoke.PreRaceStatus>()};
             Check(Idas3SceneGetPreRaceStatus(ref source)==1&&host.Status.course==selected.Course&&source.condition==(uint)(selected.Course*2+(selected.Reverse?1:0)),"Actual native course/route differs from selected choice.");
             int car=session.LocalCar;session.SetRaceOptions(7,false,false,false);session.SetCar(34);session.SetReady(false);session.StartRace();
@@ -482,6 +482,12 @@ namespace Idas3.Multiplayer
                 yield return Until(()=>session.InLobby&&!string.IsNullOrEmpty(session.RoomCode),P2pRaceCheck?45:20,"Host room did not open.");
                 if(P2pRaceCheck)Check(session.PrivateRoom,"Online P2P diagnostic must create a private room.");
                 roomCode=session.RoomCode;
+                if(ArcadeEntryCheck){
+                    menu.SetOpen(false);
+                    pulse=116;
+                    yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&1)==0,40,"Could not drive while waiting for the match");
+                    StartCoroutine(RecordScreenBeforeChallenge());
+                }
                 if(ChallengerCheck){
                     var overlay=host.GetComponent<Idas3ChallengerOverlay>();
                     Check(!overlay.SearchingVisible,"Search badge visible in attract/menu");
@@ -513,14 +519,16 @@ namespace Idas3.Multiplayer
                     Check(notice!=null&&notice.role=="host"&&notice.probeScope==P2pScope&&!string.IsNullOrEmpty(notice.code),"The room notice belongs to a different Online P2P diagnostic.");
                     address=notice.code;
                 }
+                if(ArcadeEntryCheck){
+                    menu.SetOpen(true);StartCoroutine(RecordScreenBeforeChallenge());yield return Frames(3);
+                }
                 if(ChallengerCheck)session.QuickMatch();else session.JoinRoom(address);
             }
             yield return Until(()=>session.HandshakeComplete&&PeerConnected(),ArcadeEntryCheck?360:90,"Two-client handshake did not complete.");
             if(ArcadeEntryCheck){
                 yield return CheckArcadeEntry();Finish(true,null);yield break;
             }
-            // Connection and driving probes run unattended. The entry probe above exercises both real menu choices.
-            session.AcceptBattle();
+            yield return Until(()=>menu.IsOpen&&!session.ChallengerPending&&session.CanReady,12,"Classic lobby did not open after the challenge.");
             if(P2pRaceCheck){
                 connectionType=OnlineTransport().ConnectionType;
                 Check(connectionType=="direct"||connectionType=="relayed","EOS did not report the established peer connection type.");
@@ -529,7 +537,7 @@ namespace Idas3.Multiplayer
             }
             if(ChallengerCheck){
                 var overlay=host.GetComponent<Idas3ChallengerOverlay>();
-                yield return Until(()=>menu.BattleEntry.Active,5,"Admitted peer did not reach course selection");
+                yield return Until(()=>menu.IsOpen&&!menu.BattleEntry.Active&&!overlay.Active,8,"Admitted peer did not reach the lobby");
                 Check(!overlay.Active&&!overlay.SearchingVisible&&!session.ChallengerPending&&overlay.Announcements==1,"Match handoff retained the interruption or search badge");
                 if(Array.IndexOf(Environment.GetCommandLineArgs(),"-idas3-challenger-drop-check")>=0){
                     if(role=="join")session.LeaveRoom();
@@ -1356,95 +1364,55 @@ namespace Idas3.Multiplayer
                 active=overlay.Active,pending=session.ChallengerPending,connected=session.HandshakeComplete,
                 session=session.StateName,menuOpen=menu.IsOpen})+"\n");
         }
+        private IEnumerator RecordScreenBeforeChallenge(){
+            var end=new WaitForEndOfFrame();
+            Texture2D previous=null;
+            try{
+                while(!session.ChallengerPending){
+                    yield return end;
+                    if(session.ChallengerPending)break;
+                    if(previous!=null)Destroy(previous);
+                    previous=ScreenCapture.CaptureScreenshotAsTexture();
+                }
+                if(previous!=null)File.WriteAllBytes(Path.Combine(root,"BeforeChallenge.png"),previous.EncodeToPNG());
+            }finally{if(previous!=null)Destroy(previous);}
+        }
+        private IEnumerator EntryPicture(string name){
+            yield return new WaitForEndOfFrame();
+            var t=ScreenCapture.CaptureScreenshotAsTexture();
+            try{File.WriteAllBytes(Path.Combine(root,name+".png"),t.EncodeToPNG());}finally{Destroy(t);}
+        }
         private IEnumerator CheckArcadeEntry(){
             var entry=menu.BattleEntry;var overlay=host.GetComponent<Idas3ChallengerOverlay>();
             IEnumerator Photo(string name){
-                yield return Frames(2);yield return new WaitForEndOfFrame();
-                var t=ScreenCapture.CaptureScreenshotAsTexture();
-                try{File.WriteAllBytes(Path.Combine(root,name+".png"),t.EncodeToPNG());}finally{Destroy(t);}
+                yield return Frames(2);yield return EntryPicture(name);
             }
             IEnumerator Press(int key){pulse=key;yield return Frames(4);}
-            IEnumerator Page(Idas3ArcadeBattleEntry.Page expected){
-                yield return Until(()=>entry.Current==expected,expected==Idas3ArcadeBattleEntry.Page.Selected?55:20,"Missing cabinet page "+expected+" (current "+entry.Current+")");
-                yield return Until(()=>entry.FadeAlpha(Time.realtimeSinceStartupAsDouble)==0,3,"Page did not fade in: "+expected);
-                yield return Photo(expected.ToString());
+            yield return Until(()=>overlay.NoticeVisible,4,"Missing challenge over the previous screen");
+            yield return new WaitForSecondsRealtime(.75f);
+            Check(!entry.Active&&overlay.NoticeVisible&&session.ChallengerPending&&!session.CanReady,"Selection started during the announcement");
+            yield return EntryPicture("ChallengeReceived");
+            yield return Until(()=>overlay.BlackAlpha>0&&overlay.BlackAlpha<1,4,"Missing outgoing fade");
+            yield return EntryPicture("ChallengeFading");
+            yield return Until(()=>overlay.BlackAlpha==1&&!entry.Active,3,"Outgoing screen never reached black before selection");
+            yield return EntryPicture("ChallengeBlack");
+            yield return Until(()=>!overlay.Active&&menu.IsOpen&&session.CanReady,8,"Classic lobby did not open");
+            Check(!entry.Active&&!session.LocalReady&&session.CanChat,"Unexpected room controls after the announcement");
+            Check(session.SendLobbyChat(role+" in the lobby"),"Room rejected chat");
+            yield return Until(()=>HasChat((role=="host"?"join":"host")+" in the lobby",false),10,"Missing peer chat");
+            yield return CheckIndependentCoursePicks();
+            yield return Photo("ClassicLobby");
+            if(role=="host")session.SetBoost(false);
+            yield return Until(()=>!session.BoostEnabled&&session.CanReady,8,"Host settings did not reach both drivers");
+            // Simulate the same Ready and Start Battle actions as the lobby footer.
+            session.SetReady(true);
+            if(role=="host"){
+                yield return Until(()=>session.CanStart,10,"Start Battle did not enable");
+                session.StartRace();
             }
-            int firstPicker=session.CoursePickerSlot;
-            bool picks=session.LocalPicksCourse;
-            int selectedMusic=-1;
-            Check(entry.Current==(picks?Idas3ArcadeBattleEntry.Page.Course:Idas3ArcadeBattleEntry.Page.Waiting),
-                "First match screen was not the assigned course or opponent page: "+entry.Current);
-            Check(!overlay.Active&&!session.ChallengerPending&&overlay.Announcements==1,"Match handoff did not complete exactly once");
-            Check(Idas3MultiplayerSession.OpeningPicker(1,1)==0&&Idas3MultiplayerSession.OpeningPicker(3,1)==1&&
-                Idas3MultiplayerSession.OpeningPicker(1,3)==1&&Idas3MultiplayerSession.OpeningPicker(3,3)==0,"Opening draw biased by network slot");
-            if(!picks){
-                yield return Page(Idas3ArcadeBattleEntry.Page.Waiting);
-                Check(host.RaceMusicMenu.HintVisible,"Shared music prompt missing on opponent information");
-                yield return Press(67);yield return Photo("Times1");yield return Press(67);yield return Photo("Times2");
-                preloadHeldKey=67;
-                yield return Until(()=>host.RaceMusicMenu.IsOpen,5,"Holding View did not open the waiting driver's music catalog");
-                preloadHeldKey=0;yield return Frames(4);yield return Photo("WaitingMusic");
-                host.RaceMusicMenu.Search("EXPRESS LOVE");
-                selectedMusic=host.RaceMusicMenu.HighlightedTrackId;
-                Check(selectedMusic>=0,"Could not find a race song");
-                yield return Press(13);yield return Until(()=>!host.RaceMusicMenu.IsOpen,5,"Local song selection did not close");
-                host.RaceMusic.Refresh();
-                Check(host.RaceMusic.State.selectedIndex==selectedMusic,"Waiting driver's music selection was lost");
-                File.WriteAllText(Path.Combine(root,"wait-seen"),"ok");
-            }else{
-                yield return Page(Idas3ArcadeBattleEntry.Page.Course);
-                Check(host.RaceMusicMenu.HintVisible,"Shared music prompt missing on course selection");
-                int sharedMods=session.AvailableCourseCount-9;
-                yield return Press(37);
-                if(sharedMods>0){
-                    Check(session.LocalChoice.Course>=9,"Shared mods tile missing");
-                    int firstMod=session.LocalChoice.Course;
-                    yield return Press(13);Check(entry.ModsOpen,"MODS did not open the shared list");
-                    yield return Photo("ModsList");
-                    Check(host.RaceMusicMenu.ModsHintVisible,"Mod list is missing the regular music prompt");
-                    if(sharedMods>1){
-                        yield return Press(40);
-                        Check(session.LocalChoice.Course>=9&&session.LocalChoice.Course!=firstMod,"Second shared mod is unreachable");
-                    }
-                    yield return Press(27);Check(!entry.ModsOpen,"Back did not close MODS");
-                    yield return Press(37);
-                }
-                Check(session.LocalChoice.Course==7,"Carousel has duplicate MODS or incorrect arcade order");
-                yield return Press(39);if(sharedMods>0)yield return Press(39);
-                Check(session.LocalChoice.Course==0,"Carousel did not wrap to Myogi");
-                yield return Photo("PickerMusicPrompt");
-                host.RaceMusic.Refresh();int originalMusic=host.RaceMusic.State.selectedIndex;
-                yield return Press(39);yield return Press(67);host.RaceMusic.Refresh();
-                Check(host.RaceMusic.State.selectedIndex!=originalMusic,"Tapping View did not cycle the course picker's song");
-                yield return Until(()=>File.Exists(Path.Combine(peerRoot,"wait-seen")),15,"Peer did not display opponent pages.");
-                yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Route);
-                yield return Press(39);yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Surface);
-                yield return Press(39);yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Time);
-                yield return Press(39);
-                int beforeHold=host.RaceMusic.State.selectedIndex;
-                preloadHeldKey=67;
-                yield return Until(()=>host.RaceMusicMenu.IsOpen,5,"Course picker could not open the music catalog");
-                preloadHeldKey=0;yield return Frames(4);yield return Photo("PickerMusic");
-                host.RaceMusic.Refresh();
-                Check(host.RaceMusic.State.selectedIndex==beforeHold,"Holding View also changed the current song");
-                yield return new WaitForSecondsRealtime(11f);
-                Check(entry.Current==Idas3ArcadeBattleEntry.Page.Time&&host.RaceMusicMenu.IsOpen&&!session.HasCourseDraw,"Race selection expired while the picker was choosing music");
-                host.RaceMusicMenu.Search("OVER THE RAINBOW");selectedMusic=host.RaceMusicMenu.HighlightedTrackId;
-                Check(selectedMusic>=0,"Could not find the course picker's chosen song");
-                yield return Press(13);yield return Until(()=>!host.RaceMusicMenu.IsOpen,5,"Course picker's song selection did not close");
-                yield return Frames(4);Check(entry.Current==Idas3ArcadeBattleEntry.Page.Time,"Choosing race music confirmed the race conditions");
-                yield return Press(13);
-            }
-            yield return Page(Idas3ArcadeBattleEntry.Page.Selected);
-            if(!picks)yield return Until(()=>session.RemoteBrakeSelected,4,"Other driver's brake choice was not announced immediately");
-            yield return Press(83);
-            yield return Until(()=>session.LocalBrakeSelected&&session.RemoteBrakeSelected,4,"Both boost names were not visible");
-            yield return Photo("BoostVotes");
-            Check(session.CourseWinnerSlot==firstPicker&&session.Course==1&&session.Reverse&&session.Wet&&session.Night,"Peers did not use the challenger's settings");
-            yield return Page(Idas3ArcadeBattleEntry.Page.Loading);
             yield return Until(()=>session.IsRacing&&session.RaceReleased,45,"Both drivers did not release to the showcase");
-            Check(!session.BoostEnabled&&!entry.Active&&!menu.IsOpen,"Brake agreement or entry input ownership was lost");
-            yield return Photo("Showcase");
+            Check(!session.BoostEnabled&&!entry.Active&&!menu.IsOpen,"Host boost setting or lobby input ownership was lost");
+            CheckLockedCourseDraw();yield return Photo("Showcase");
             Idas3PreRaceSmoke.PreRaceStatus ReadIntro(){
                 var intro=new Idas3PreRaceSmoke.PreRaceStatus{size=(uint)Marshal.SizeOf<Idas3PreRaceSmoke.PreRaceStatus>()};
                 Check(Idas3SceneGetPreRaceStatus(ref intro)==1,"Missing native intro state");return intro;
@@ -1456,8 +1424,7 @@ namespace Idas3.Multiplayer
                 yield return Photo("Countdown"+digit);
             }
             yield return Until(()=>host.Status.racePhase==2,45,"Countdown did not reach GO.");
-            yield return Photo("Go");host.RaceMusic.Refresh();
-            Check(selectedMusic>=0&&host.RaceMusic.State.selectedIndex==selectedMusic&&host.RaceMusic.State.activeIndex==selectedMusic,$"Race music expected {selectedMusic}, selected {host.RaceMusic.State.selectedIndex}, active {host.RaceMusic.State.activeIndex}");
+            yield return Photo("Go");
             File.WriteAllText(Path.Combine(root,"go-seen"),"ok");
             yield return Until(()=>File.Exists(Path.Combine(peerRoot,"go-seen")),20,"Peer did not reach GO.");
             string firstRoom=session.RoomCode;ulong firstRace=SessionField<ulong>("raceId");
@@ -1471,41 +1438,16 @@ namespace Idas3.Multiplayer
             if(menu.ResultsPage==1)yield return Press(13);
             yield return Until(()=>menu.ResultsPage==2&&menu.CanAcknowledgeReturnToLobby,60,"Continue did not become available");
             yield return Photo("RematchContinue");yield return Press(13);
-            yield return Until(()=>!session.IsRacing&&entry.Active,25,"Continue did not start a rematch");
-            Check(session.RoomCode==firstRoom&&session.CoursePickerSlot==1-firstPicker&&session.LocalPicksCourse!=picks,"Rematch lost its opponent or failed to alternate the course picker");
-            if(session.LocalPicksCourse){
-                yield return Page(Idas3ArcadeBattleEntry.Page.Course);
-                if(session.AvailableCourseCount>9){
-                    while(session.LocalChoice.Course<9)yield return Press(37);
-                    yield return Press(13);
-                    if(session.AvailableCourseCount>10)yield return Press(40);
-                    int mod=session.LocalChoice.Course;
-                    yield return Press(13);yield return Press(39);
-                    yield return Press(13);yield return Press(39);
-                    yield return Press(13);
-                    if(!Idas3CourseCatalog.RequiresNight(mod))yield return Press(13);
-                    yield return Press(13);
-                    yield return Page(Idas3ArcadeBattleEntry.Page.Selected);
-                    Check(session.Course==mod&&session.Reverse&&session.Wet,"Real mod course or conditions lost at the handshake");
-                }else{
-                yield return Press(13);yield return Page(Idas3ArcadeBattleEntry.Page.Route);
-                yield return Press(13);
-                if(session.LocalChoice.Course!=8){
-                    yield return Page(Idas3ArcadeBattleEntry.Page.Surface);yield return Press(13);
-                    if(!Idas3CourseCatalog.RequiresNight(session.LocalChoice.Course)){
-                        yield return Page(Idas3ArcadeBattleEntry.Page.Time);yield return Press(13);
-                    }
-                }
-                }
-            }else yield return Page(Idas3ArcadeBattleEntry.Page.Waiting);
-            yield return Page(Idas3ArcadeBattleEntry.Page.Selected);
-            Check(!session.LocalBrakeSelected&&!session.RemoteBrakeSelected,"Previous boost votes leaked into the rematch");
-            if(picks)yield return Press(83);
-            else yield return Until(()=>session.RemoteBrakeSelected,4,"Single rematch boost vote was not visible");
-            yield return Photo("OneBoostVote");
+            yield return Until(()=>!session.IsRacing&&menu.IsOpen&&session.CanReady,25,"Continue did not return both drivers to the lobby");
+            Check(session.RoomCode==firstRoom&&!session.LocalReady&&!session.HasCourseDraw&&!entry.Active,"Rematch retained stale lobby state");
+            yield return Photo("RematchLobby");
+            session.SetReady(true);
+            if(role=="host"){
+                yield return Until(()=>session.CanStart,10,"Rematch Start Battle did not enable");
+                session.StartRace();
+            }
             yield return Until(()=>session.IsRacing&&session.RaceReleased&&host.Status.racePhase==2,75,"Rematch did not reach GO");
-            host.RaceMusic.Refresh();
-            Check(session.BoostEnabled&&SessionField<ulong>("raceId")!=firstRace&&host.RaceMusic.State.selectedIndex==selectedMusic,"One vote disabled boost, or the rematch lost music or reused its race ID");
+            Check(SessionField<ulong>("raceId")!=firstRace,"Rematch reused the last race ID");
             yield return Photo("RematchGo");
             File.WriteAllText(Path.Combine(root,"rematch-go"),"ok");
             yield return Until(()=>File.Exists(Path.Combine(peerRoot,"rematch-go")),20,"Peer did not reach rematch GO");

@@ -665,6 +665,16 @@ void Frontend::endSelectionMusic(std::int32_t scene){
     appendSelectionMusic(original::changeOriginalSelectionMusicScene(selectionMusic,scene));
     selectionMusicStageInitialized=false;selectionExitFrame=-1;
 }
+void Frontend::advanceBattleSelectionMusic(double seconds){
+    // The linked screens draw over the offline menu without advancing its inputs or timer.
+    selectionMusicStageInitialized=false;
+    appendSelectionMusic(original::changeOriginalSelectionMusicScene(selectionMusic,1));
+    appendSelectionMusic(original::requestOriginalSelectionMusic(selectionMusic,original::OriginalSelectionMusicCue::Select));
+    frameRemainder+=seconds*60.;
+    const auto ticks=int(std::floor(frameRemainder+1.e-9));
+    frameRemainder-=ticks;
+    for(int i=0;i<ticks;++i)appendSelectionMusic(original::tickOriginalSelectionMusic(selectionMusic));
+}
 void Frontend::synchronizeSelectionMusicStage(){
     if(selectionMusicStageInitialized&&selectionMusicObservedStage==stage)return;
     selectionMusicStageInitialized=true;selectionMusicObservedStage=stage;

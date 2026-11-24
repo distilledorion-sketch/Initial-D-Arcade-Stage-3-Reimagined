@@ -1,5 +1,4 @@
 #include "flycast_keyboard_steering.h"
-#include "host_steering_smoothing.h"
 #include "original_host_input.h"
 #include "sh4_scalar_reference.h"
 #include <array>
@@ -74,22 +73,9 @@ int main(int argc,char** argv)try{
     key.sample(211,true,false);require(key.raw()==-32768,"Clock restart lost next held direction");
     key.reset();require(key.raw()==0&&key.analog()==0x8000,"Lifecycle reset did not neutralize full raw ADC");
 
-    // Zero physics ticks must not swallow a short press. Conversely, reading
-    // one sampled input repeatedly must never accelerate the host ramp.
-    idas3::HostSteeringSource source;source.sampleKeyboard(1000,false,true);
-    source.sampleKeyboard(1010,false,false);
-    const float sampled=source.advance(0,0,0,true,true,1.f/60.f);
-    require(sampled>0,"Press/release between physics ticks lost its host axis");
-    const int adc=source.keyboardAnalog();
-    for(unsigned tick=0;tick<100;++tick){
-        require(bits(source.advance(sampled,0,0,true,true,1.f/60.f))==bits(sampled),"Catch-up tick advanced raw keyboard ramp");
-        require(source.keyboardAnalog()==adc,"Catch-up tick changed ADC sample");
-    }
-    require(source.advance(sampled,0,-.5f,true,true,1.f/60.f)==-.5f&&source.keyboardAnalog()==-1,"Stick did not retain immediate ownership");
-    require(source.advance(-.5f,0,0,true,true,1.f/60.f)==0&&source.keyboardAnalog()==-1,"Stick release inherited keyboard history");
     OriginalHostInputState state;OriginalHostControls invalid;invalid.steeringAnalog=65536;
     bool rejected=false;try{adaptOriginalHostInput(state,invalid,false,true,0);}catch(const std::invalid_argument&){rejected=true;}
     require(rejected,"Invalid raw ADC was silently wrapped");
     originalAdc(argc>1?argv[1]:nullptr);
-    std::cout<<"PASS "<<checks<<" keyboard owner/JVS checks, "<<instructions<<" original instructions; host event order, signed ramp, full raw ADC, catch-up, arbitration and lifecycle.\n";
+    std::cout<<"PASS "<<checks<<" keyboard owner/JVS checks, "<<instructions<<" original instructions; host event order, signed ramp, full raw ADC, clock reset and lifecycle.\n";
 }catch(const std::exception& e){std::cerr<<"FAIL "<<e.what()<<'\n';return 1;}

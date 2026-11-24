@@ -45,6 +45,7 @@ public:
     enum class BattlePage { Closed, Card, SavedCar, Make, Model, Gearbox, Course, Route, Surface, Time, Waiting, Selected, Loading, AcceptChallengers, EnterBattle };
     struct BattleEntry {
         BattlePage page=BattlePage::Closed;
+        static bool usesSelectionMusic(BattlePage p){return p>=BattlePage::Course&&p<=BattlePage::Selected;}
         int focus=0,seconds=0,frame=0,make=0,car=0,course=0,flags=0;
         unsigned points=0,wins=0,battles=0,streak=0,level=1;
         std::array<unsigned,36> times{};
@@ -184,6 +185,7 @@ public:
     std::vector<original::OriginalSelectionMusicCommand> takeSelectionMusicCommands(){auto result=std::move(selectionMusicCommands);selectionMusicCommands.clear();return result;}
     const original::OriginalSelectionMusicState& selectionMusicState()const{return selectionMusic;}
     void endSelectionMusic(std::int32_t scene=4);
+    void advanceBattleSelectionMusic(double seconds);
     void paintAttractPrompts(std::span<std::uint32_t>,int width,int height)const;
     unsigned attractScript()const{return gasstand.state().script;}
     bool confirmationInProgress()const{return carConfirmationFrame>=0 || (stage==FrontendStage::Name&&nameState.phase588>=2) || (stage==FrontendStage::TuningCourse&&tuningCourseMenu.phase464>=2) || (stage==FrontendStage::Title&&(titleConfirmPending||attractExit.pendingFrames348));}

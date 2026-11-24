@@ -34,7 +34,7 @@ int main(int argc,char**argv)try{
  unsigned showcase=0;while(a->vsActive){a->advanceHostClock(OriginalDrivingClock::step,[&]{a->simulate(a->driver());});++showcase;if(showcase>242)throw std::runtime_error("showcase did not finish");}
  check(showcase==241,"source showcase241 updates");check(a->originalSession.contactCompletion().elapsedFrames0C900E84==301,"showcase owns one solver each");
  check(a->originalRaceCountdownInitPending,"source handoff creation update missing");
- DriverInput neutral;neutral.automatic=false;neutral.originalSteeringAnalog=32768;neutral.originalThrottleAnalog=neutral.originalBrakeAnalog=0;
+ DriverInput neutral;neutral.automatic=false;neutral.originalThrottleAnalog=neutral.originalBrakeAnalog=0;
  a->simulate(neutral);check(!a->originalRaceCountdownInitPending,"creation update consumed once");check(a->originalRaceStart.remaining()==240,"creation update decremented auxiliary");
  check(a->originalSession.contactCompletion().elapsedFrames0C900E84==302,"creation update must own one solver");check(a->originalSession.vehicle().transmission.gear00==0,"creation update enabled gear");
  for(unsigned update=1;update<=180;++update){a->simulate(neutral);check(a->originalSession.contactCompletion().elapsedFrames0C900E84==302+update,"countdown extra/missing solver");check(a->originalRaceStart.remaining()==240-update,"countdown decrement");check(a->originalSession.vehicle().transmission.gear00==(update==180?1u:0u),"first GO must be solver482");}

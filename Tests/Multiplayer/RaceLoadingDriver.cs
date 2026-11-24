@@ -32,11 +32,7 @@ internal static class RaceLoadingDriver
             Check(Session.HandshakeComplete,"Production compatibility handshake admitted the fixture peer");
             Session.BeforeFrame();Session.CompleteChallengerPresentation();
             Set(Session,"localReady",true);Set(Session,"remoteReady",true);Set(Session,"bestRtt",.1);
-            if(host){
-                Session.StartRace();Frame(5.1);
-                Transport.Deliver(Packet(20,w=>{w.Write(Session.CurrentRaceId);w.Write(false);}));
-                Frame(0);Frame(1.6);
-            }else Load(99);
+            if(host)Session.StartRace();else Load(99);
             Check(Session.StateName=="Loading"&&Session.ErrorText==""&&Idas3MultiplayerNative.Starts==1,"Production Load path started the native race");
         }
         static void Choice(BinaryWriter w){w.Write(3);w.Write(false);w.Write(false);w.Write(true);}
@@ -47,10 +43,7 @@ internal static class RaceLoadingDriver
             }
         }
         internal void Load(ulong race){
-            Transport.Deliver(Packet(4,w=>{w.Write(race);w.Write((uint)Get(Session,"revision"));w.Write(Session.CoursePickerSlot);Choice(w);}));
-            Frame(5.1);
-            Transport.Deliver(Packet(21,w=>{w.Write(race);w.Write(true);}));
-            Frame(1.6);
+            Transport.Deliver(Packet(4,w=>{w.Write(race);w.Write((uint)Get(Session,"revision"));w.Write(0);Choice(w);}));
         }
         internal int Sent(byte kind)=>Transport.Sent.Count(p=>p[6]==kind);
         internal void Present(ulong race){
@@ -83,9 +76,8 @@ internal static class RaceLoadingDriver
             f.Release(UnityEngine.Time.realtimeSinceStartupAsDouble+1);
             Check(f.Sent(7)==1&&f.Session.ErrorText=="","Start is acknowledged after presentation completes");
             f.Frame(1.01);Check(f.Session.RaceReleased&&Idas3MultiplayerNative.Releases==1,"Guest releases native gameplay once at the agreed start");
-            int firstPicker=f.Session.CoursePickerSlot;
             typeof(Idas3MultiplayerSession).GetMethod("RetireNativeRace",Private).Invoke(f.Session,null);
-            Check(f.Session.CoursePickerSlot==1-firstPicker,"Rematch assigns course selection to the other driver");
+            Check(!f.Session.HasCourseDraw&&!f.Session.LocalReady,"Rematch returns to an editable lobby");
             Set(f.Session,"localReady",true);Set(f.Session,"remoteReady",true);f.Load(100);
             f.Present(99);f.Frame(0);Check(f.Sent(5)==1,"Rematch discards the preceding race's ready marker");
             f.Present(100);f.Frame(0);Check(f.Sent(5)==2,"Rematch requires its own completed presentation");
@@ -124,7 +116,11 @@ internal static class RaceLoadingDriver
                 Action pump=()=>{host.BeforeFrame();guest.BeforeFrame();};
                 PumpUntil(()=>host.HandshakeComplete&&guest.HandshakeComplete,pump);pump();
                 host.CompleteChallengerPresentation();guest.CompleteChallengerPresentation();
-                PumpUntil(()=>host.CanReady&&guest.CanReady,pump);
+                host.SetRaceOptions(1,false,true,false);
+                guest.SetRaceOptions(2,true,false,true);
+                PumpUntil(()=>host.RemoteChoice.Course==2&&guest.RemoteChoice.Course==1&&host.CanReady&&guest.CanReady,pump);
+                host.SetBoost(false);
+                PumpUntil(()=>!guest.BoostEnabled,pump);
                 host.SetReady(true);guest.SetReady(true);PumpUntil(()=>host.CanStart,pump);
                 Check(host.CanStart,"Real TCP sessions complete Hello, lobby and Ready before native loading");
                 bool checkedSlowLoad=false;
@@ -142,15 +138,9 @@ internal static class RaceLoadingDriver
                     Check(!(bool)Get(host,"remoteLoaded"),"Guest Loaded reply is not dispatched into the unfinished native host");
                 };
                 host.StartRace();
-                PumpUntil(()=>guest.ShowingCourseSelected,pump);
-                Check(host.CoursePickerSlot==guest.CoursePickerSlot&&host.LocalPicksCourse!=guest.LocalPicksCourse,"Both drivers agree on exactly one opening picker");
-                host.SampleBoostBrake(true);guest.SampleBoostBrake(true);
-                PumpUntil(()=>host.RemoteBrakeSelected&&guest.RemoteBrakeSelected,pump);
-                Check(host.LocalBrakeSelected&&guest.LocalBrakeSelected,"Both drivers see both boost selections");
-                UnityEngine.Time.realtimeSinceStartupAsDouble+=5.1;
-                PumpUntil(()=>host.ShowingLoadArtwork&&guest.ShowingLoadArtwork,pump);
-                Check(!host.BoostEnabled&&!guest.BoostEnabled,"Both brake votes disable boost on both drivers");
-                UnityEngine.Time.realtimeSinceStartupAsDouble+=1.6;host.BeforeFrame();
+                Check(host.CourseWinnerSlot==guest.CourseWinnerSlot&&host.SelectedChoice.Equals(guest.SelectedChoice)
+                    &&host.SelectedChoice.Equals(host.CourseWinnerSlot==0?host.LocalChoice:guest.LocalChoice),"Both drivers use the complete winning course pick");
+                Check(!host.BoostEnabled&&!guest.BoostEnabled,"Host boost setting survives loading");
                 Check(checkedSlowLoad&&host.IsRacing&&host.ErrorText=="","Host finishes native initialization and retains the connected guest");
                 host.ConfirmRacePresentation(host.CurrentRaceId);
                 PumpUntil(()=>(bool)Get(host,"releaseAck"),pump);
@@ -158,7 +148,6 @@ internal static class RaceLoadingDriver
                 Check(host.RaceReleased&&guest.RaceReleased,"Both real TCP sessions release after loading and presentation complete");
                 // The native result/points animation has its own tests. Exercise the production
                 // Continue handshake from its committed result boundary through the next race.
-                int firstPicker=host.CoursePickerSlot;
                 ulong firstRace=host.CurrentRaceId;
                 string room=host.RoomCode;
                 foreach(var driver in new[]{host,guest}){
@@ -169,24 +158,34 @@ internal static class RaceLoadingDriver
                 Check(host.CanReturnToLobby&&guest.IsRacing,"One Continue waits for the other driver");
                 host.ReturnToLobby();
                 PumpUntil(()=>host.IsRematch&&guest.IsRematch&&host.CanReady&&guest.CanReady,pump);
-                Check(host.RoomCode==room&&host.CoursePickerSlot==1-firstPicker&&guest.CoursePickerSlot==host.CoursePickerSlot,
-                    "Both Continue choices keep the same room and alternate the picker");
-                var picker=host.LocalPicksCourse?host:guest;
-                picker.SetRaceOptions(1,true,true,false);
-                PumpUntil(()=>host.CanReady&&guest.CanReady&&(picker==host?guest:host).RemoteChoice.Course==1,pump);
+                Check(host.RoomCode==room&&!host.HasCourseDraw&&!guest.HasCourseDraw,"Both Continue choices reopen the same lobby");
+                host.SetRaceOptions(1,true,true,false);guest.SetRaceOptions(1,true,true,false);
+                PumpUntil(()=>host.CanReady&&guest.CanReady&&host.RemoteChoice.Equals(host.LocalChoice)&&guest.RemoteChoice.Equals(guest.LocalChoice),pump);
                 host.SetReady(true);guest.SetReady(true);PumpUntil(()=>host.CanStart,pump);
-                host.StartRace();PumpUntil(()=>guest.ShowingCourseSelected,pump);
-                Check(host.CurrentRaceId!=firstRace&&host.Course==1&&guest.Course==1&&!host.LocalBrakeSelected&&!guest.RemoteBrakeSelected,
-                    "The rematch uses the new pick and clears the previous boost votes");
-                guest.SampleBoostBrake(true);PumpUntil(()=>host.RemoteBrakeSelected,pump);
-                UnityEngine.Time.realtimeSinceStartupAsDouble+=5.1;
-                PumpUntil(()=>host.ShowingLoadArtwork&&guest.ShowingLoadArtwork,pump);
-                Check(host.BoostEnabled&&guest.BoostEnabled,"A single brake vote keeps boost on for the rematch");
-                UnityEngine.Time.realtimeSinceStartupAsDouble+=1.6;pump();
+                host.StartRace();PumpUntil(()=>host.IsRacing&&guest.IsRacing,pump);
+                Check(host.CurrentRaceId!=firstRace&&host.Course==1&&guest.Course==1,"Rematch uses fresh agreed selections");
                 host.ConfirmRacePresentation(host.CurrentRaceId);guest.ConfirmRacePresentation(guest.CurrentRaceId);
                 PumpUntil(()=>(bool)Get(host,"releaseAck"),pump);
                 UnityEngine.Time.realtimeSinceStartupAsDouble+=2;pump();
                 Check(host.RaceReleased&&guest.RaceReleased,"Both drivers release into their second race");
+                foreach(var driver in new[]{host,guest}){
+                    Set(driver,"recordCommitted",true);Set(driver,"state","Results");
+                }
+                host.ReturnToMode();PumpUntil(()=>guest.ResultPeerLeft,pump);
+                guest.ReturnToLobby();
+                Check(!host.InLobby&&!guest.InLobby&&!host.IsRacing&&!guest.IsRacing,"Declining the rematch frees both sessions for a fresh opponent");
+                guest.HostRoom();host.JoinRoom(guest.RoomCode);
+                PumpUntil(()=>host.ChallengerPending&&guest.ChallengerPending,pump);
+                host.CompleteChallengerPresentation();guest.CompleteChallengerPresentation();
+                Check(!host.LocalReady&&!guest.LocalReady,"New room clears both Ready flags");
+                PumpUntil(()=>host.CanReady&&guest.CanReady,pump);
+                Check(!host.IsRematch&&!guest.IsRematch&&guest.IsHost&&!host.IsHost,"Both sessions accept a fresh challenge with reversed host roles");
+                host.SetReady(true);guest.SetReady(true);PumpUntil(()=>guest.CanStart,pump);
+                guest.StartRace();PumpUntil(()=>host.IsRacing&&guest.IsRacing,pump);
+                host.ConfirmRacePresentation(host.CurrentRaceId);guest.ConfirmRacePresentation(guest.CurrentRaceId);
+                PumpUntil(()=>(bool)Get(guest,"releaseAck"),pump);
+                UnityEngine.Time.realtimeSinceStartupAsDouble+=2;pump();
+                Check(host.RaceReleased&&guest.RaceReleased,"The fresh match reaches GO on both original sessions");
             } finally {
                 Idas3MultiplayerNative.StartAction=null;
                 Set(host,"nativeRace",false);Set(guest,"nativeRace",false);

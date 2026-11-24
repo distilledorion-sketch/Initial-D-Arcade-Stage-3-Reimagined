@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse
 import hashlib
 import json
-from disc_extras import map_packs, ranked_files
+from disc_extras import CACHE, WIDESCREEN_TITLE, digest, map_packs, ranked_files
 import shutil
 import tempfile
 import zipfile
@@ -47,6 +47,9 @@ def assemble(base_package, player, output, program=None):
             template, recipe = native_recipe(library, program.read_bytes())
         extra = json.loads(old.read(old_setup + "additional-content.json"))
         extra.update(ranked_files(HERE.parents[1]))
+        title = HERE.parents[1] / "Native/data" / WIDESCREEN_TITLE
+        title_member = "additional-data/" + WIDESCREEN_TITLE
+        extra[CACHE + WIDESCREEN_TITLE] = [title.stat().st_size, digest(title)]
         packs = map_packs(extra)
         ghost = {}
         for name in ("Mesh.json", "Shadow.png", "Body.png"):
@@ -59,7 +62,7 @@ def assemble(base_package, player, output, program=None):
                 name = info.filename
                 if name.startswith(old_setup):
                     relative = name[len(old_setup):]
-                    if relative in ("save_recovery.py", "Recover-PlayerData.ps1", "additional-content.json", "package-version.txt", "windows-56-files.json.gz", "runtime/InitialDUnity.bin", "skin_workshop.py"):
+                    if relative in (title_member, "save_recovery.py", "Recover-PlayerData.ps1", "additional-content.json", "package-version.txt", "windows-56-files.json.gz", "runtime/InitialDUnity.bin", "skin_workshop.py"):
                         continue
                     if template is not None and relative in ("native-player.template", "native-recipe.json"):
                         continue
@@ -86,6 +89,7 @@ def assemble(base_package, player, output, program=None):
             if template is not None:
                 target.writestr(PREFIX + "native-player.template", template)
                 target.writestr(PREFIX + "native-recipe.json", json.dumps(recipe))
+            target.write(title, PREFIX + title_member)
             for relative, source in ghost.items():
                 target.write(source, STREAMING + relative)
             target.writestr(PREFIX + "additional-content.json", json.dumps(extra, sort_keys=True))

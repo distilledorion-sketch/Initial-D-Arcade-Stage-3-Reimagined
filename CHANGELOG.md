@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.95-community-replays.59 - November 24, 2026
+
+- Restored the classic Online Battle lobby. After Challenge Received, both drivers can chat, choose their car, transmission, music, course and conditions, and press Ready. The host controls boost and collisions and presses Start Battle. Each driver's complete course pick has a 50% chance.
+- Choosing Continue after a race returns both drivers to the same lobby for a rematch. Fixed a connection cleanup issue that could prevent players from finding another opponent until they restarted the game.
+- Restored the keyboard and gamepad steering response from .56. Wheel users retain high-resolution pedal input.
+- Restored the widescreen title artwork and the challenge notification sound. The match-found notice appears over the current screen and fades into the lobby.
+
+Both drivers need .59 to race each other. In .58, select **Update** for the smaller patch. For a fresh install, download **Initial-D-Setup-0.3.95.59.zip**. [Optional mod maps on GameBanana](https://gamebanana.com/games/26479)
+
 ## 0.3.95-community-replays.58 - November 23, 2026
 
 - Restores all 113 alternate tachometers and 314 ornaments to the Windows build, including their textures, meshes and animations. Existing HUD choices use their original IDs.

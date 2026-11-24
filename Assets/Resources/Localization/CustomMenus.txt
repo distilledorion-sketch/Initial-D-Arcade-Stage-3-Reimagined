@@ -758,7 +758,7 @@ This room uses a different game build or online identity.	このルームはゲ�
 The room is no longer available.	このルームは利用できなくなりました。	此房间已不可用。
 Online room has an invalid player list.	オンラインルームの参加者情報が無効です。	在线房间的玩家列表无效。
 The other driver is using a different game build.	対戦相手のゲームのビルドが異なります。	对手使用的游戏版本不同。
-The previous online room could not be closed. Restart the game to reconnect.	前のオンラインルームを閉じられませんでした。ゲームを再起動して接続し直してください。	无法关闭之前的在线房间。请重启游戏后重新连接。
+The previous online room could not be closed. Please retry.	前のオンラインルームを閉じられませんでした。もう一度お試しください。	无法关闭之前的在线房间。请重试。
 Online sign-in is reconnecting. Please retry shortly.	オンライン認証に再接続しています。少し待ってから再試行してください。	正在重新连接在线身份验证。请稍后重试。
 Both game clients are using the same online identity. Use different devices or operating-system accounts.	両方のゲームが同じオンラインIDを使用しています。別の端末またはOSアカウントを使用してください。	两个游戏客户端正在使用同一在线身份。请使用不同的设备或操作系统账户。
 Could not register online connection notifications.	オンライン接続の通知を登録できませんでした。	无法注册在线连接通知。

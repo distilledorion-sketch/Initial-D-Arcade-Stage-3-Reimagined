@@ -10,6 +10,7 @@ import tempfile
 STREAMING = "InitialDUnity_Data/StreamingAssets/"
 CACHE = "IDAS3/data/"
 SOURCES = "setup/additional-data/"
+WIDESCREEN_TITLE = "authored_extensions/title_widescreen_v1.idastex"
 
 
 def ranked_files(repository):
@@ -76,6 +77,7 @@ def write_content(archive, streaming, repository, music):
         add("TimeAttackGhost/" + name, repository / "Assets/Resources/TimeAttackGhost" / filename)
 
     files.update(ranked_files(repository))
+    add(CACHE + WIDESCREEN_TITLE, repository / "Native/data" / WIDESCREEN_TITLE)
     titles = CACHE + "original_assets/hud/imported_start_names/titles.idastex"
     add(titles, streaming / titles)
 

@@ -18,14 +18,21 @@ public sealed class Idas3ChallengerBackdrop : MaskableGraphic
     public bool Captured { get; private set; }
     internal bool CaptureIsTopDown=>captureTopDown;
     public override Texture mainTexture=>capture!=null?capture:Texture2D.whiteTexture;
-    public void BeginCapture(Camera camera,int width,int height)
-    {
-        EndCapture();
+    void PrepareMaterial(){
         if(ownedMaterial==null){
             var shader=Resources.Load<Shader>("Challenger/CapturedBackground");
             if(shader==null)throw new InvalidOperationException("Missing challenger captured-background shader");
             ownedMaterial=new Material(shader){name="Original challenger captured background"};material=ownedMaterial;
         }
+    }
+    public void UseCompletedFrame(RenderTexture image){
+        EndCapture();PrepareMaterial();
+        // ScreenCapture copies from the screen just like the camera backbuffer.
+        capture=image;captureTopDown=SystemInfo.graphicsUVStartsAtTop;
+        Captured=true;captureMeshPending=true;raycastTarget=false;SetAllDirty();
+    }
+    public void BeginCapture(Camera camera,int width,int height){
+        EndCapture();PrepareMaterial();
         capture=new RenderTexture(width,height,0,RenderTextureFormat.ARGB32){
             name="Frozen challenger scene",filterMode=FilterMode.Point,wrapMode=TextureWrapMode.Clamp,
             useMipMap=false,autoGenerateMips=false,antiAliasing=1};

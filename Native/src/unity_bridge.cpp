@@ -1603,6 +1603,7 @@ int IDAS3_UNITY_CALL Idas3SceneBattleEntry(const int* values,int count,const cha
         for(int i=0;i<5;++i)b.courseTiles[i]=std::clamp(values[49+i],0,31);
         b.paint=std::clamp(values[54],0,92);
         constexpr int motion=55+307;
+        const int oldConfirm=b.confirmFrame,oldModFocus=b.modFocus;
         b.fade=count>motion?std::clamp(values[motion],0,255):0;
         b.confirmFrame=count>motion?values[motion+1]:-1;
         b.tileSlot=count>motion?std::clamp(values[motion+2],0,4):2;
@@ -1618,6 +1619,17 @@ int IDAS3_UNITY_CALL Idas3SceneBattleEntry(const int* values,int count,const cha
                 throw std::invalid_argument("Selected mod is outside the shared course list");
         }
         if(page==Page::SavedCar||page==Page::Waiting)std::copy_n(values+55,b.cardProfile.words.size(),b.cardProfile.words.begin());
+        if(b.usesSelectionMusic(b.page)){
+            if(!b.usesSelectionMusic(page)){
+                app.frontend.endSelectionMusic();
+                for(const auto& command:app.frontend.takeSelectionMusicCommands())app.audio.selection(command);
+            }else if(page==b.page){
+                if(oldConfirm<0&&b.confirmFrame>=0)app.audio.playMenuCue(idas3::OriginalMenuCue::Confirm);
+                else if(b.focus!=values[1]||oldModFocus!=b.modFocus||
+                        (page!=Page::Waiting&&(b.course!=values[6]||((b.flags^values[7])&7)!=0)))
+                    app.audio.playMenuCue(idas3::OriginalMenuCue::Change);
+            }
+        }
         b.page=page;b.focus=values[1];b.seconds=std::clamp(values[2],0,99);b.frame=values[3];
         b.make=values[4];b.car=values[5];b.course=values[6];b.flags=values[7];b.points=values[8];
         b.wins=values[9];b.battles=values[10];b.streak=values[11];b.level=values[12];
@@ -1643,12 +1655,15 @@ int IDAS3_UNITY_CALL Idas3SceneChallenger(int action){
             app.challengerNotice=true;app.clock.reset();return 1;
         }
         if(action!=2)throw std::invalid_argument("Unknown challenger action");
+        const bool alreadyAnnounced=app.challengerNotice;
         app.challengerNotice=false;
         app.audio.endChallenger();
         app.returnToCourseSelection(true);idas3::resetUnityAudioOutput();
         Idas3UiBeginFrame(app.renderer.width,app.renderer.height);
         if(!app.render(0))throw std::runtime_error(app.renderer.error);
-        app.updateAudioScene();publish(r,0);return 1;
+        app.updateAudioScene();
+        if(!alreadyAnnounced)app.audio.playChallengerNotice();
+        publish(r,0);return 1;
     }catch(const std::exception& e){unityError(e.what());return 0;}
 }
 int IDAS3_UNITY_CALL Idas3SceneReturnToCourse(){

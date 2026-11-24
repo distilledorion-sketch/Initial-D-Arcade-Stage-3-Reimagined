@@ -119,7 +119,7 @@ internal static class Idas3OnlineMenuScreens {
     static byte[] ChatPacket(string text,ulong sequence){
         using(var stream=new MemoryStream())using(var writer=new BinaryWriter(stream,Encoding.UTF8,true)){
             var bytes=Encoding.UTF8.GetBytes(text);
-            writer.Write(0x504D3349u);writer.Write((ushort)11);writer.Write((byte)19);writer.Write(202UL);writer.Write(101UL);
+            writer.Write(0x504D3349u);writer.Write((ushort)14);writer.Write((byte)19);writer.Write(202UL);writer.Write(101UL);
             writer.Write(0UL);writer.Write(sequence);writer.Write((ushort)bytes.Length);writer.Write(bytes);return stream.ToArray();
         }
     }
@@ -176,7 +176,7 @@ internal static class Idas3OnlineMenuScreens {
         Check((string)Read(menu,"chatDraft")==""&&transport.sent.Count==sent+1&&transport.lastReliable,"Submit must clear the draft and send one reliable message");
         Check(session.LobbyChatMessages[39].IsLocal&&session.LobbyChatMessages[39].Name=="テスト運転手","local echo must use the local driver name");
         using(var stream=new MemoryStream(transport.sent[sent]))using(var reader=new BinaryReader(stream,Encoding.UTF8)){
-            Check(reader.ReadUInt32()==0x504D3349u&&reader.ReadUInt16()==11&&reader.ReadByte()==19,"wire must use the chat packet type");
+            Check(reader.ReadUInt32()==0x504D3349u&&reader.ReadUInt16()==14&&reader.ReadByte()==19,"wire must use the chat packet type");
             Check(reader.ReadUInt64()==101UL&&reader.ReadUInt64()==202UL&&reader.ReadUInt64()==0UL&&reader.ReadUInt64()==1UL,"wire must identify this peer, room round and message");
             int length=reader.ReadUInt16();Check(Encoding.UTF8.GetString(reader.ReadBytes(length))=="よろしくお願いします！ Ready when you are."&&stream.Position==stream.Length,"wire must contain only the sanitized UTF-8 text");
         }

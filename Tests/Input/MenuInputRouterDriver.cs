@@ -355,15 +355,15 @@ internal static class MenuInputRouterDriver
     private static void MusicChecks()
     {
         var router = new Router();
-        var battle = new Router.MusicContext { Focused = true, LobbyAllowed = true, BattleMusicAllowed = true, DeltaSeconds = .1f };
+        var battle = new Router.MusicContext { Focused = true, LobbyAllowed = true, DeltaSeconds = .1f };
         var heldView = new Router.MusicSample { ViewHeld = true, AnyControlHeld = true };
         router.ProcessMusic(heldView, battle);
-        Check(router.ProcessMusic(default, battle).Kind == Router.MusicAction.BattleViewTap, "A short View tap keeps the cabinet shortcut");
+        Check(router.ProcessMusic(default, battle).Kind == Router.MusicAction.None, "A short View tap leaves the lobby music alone");
         Router.MusicCommand heldCommand = default;
         for(int i=0;i<7;++i)heldCommand=router.ProcessMusic(heldView,battle);
-        Check(heldCommand.Kind==Router.MusicAction.OpenLobby, "Holding View opens the personal music list in battle entry");
+        Check(heldCommand.Kind==Router.MusicAction.OpenLobby, "Holding View opens the personal music list in the lobby");
         router.MusicVisibilityChanged();
-        Check(router.ProcessMusic(default,battle).Kind==Router.MusicAction.None, "Dismissing the music list does not also cycle the cabinet shortcut");
+        Check(router.ProcessMusic(default,battle).Kind==Router.MusicAction.None, "Dismissing the music list does not open it again");
         router = new Router();
         // A race owns native input during the pre-race opponent presentation,
         // where the legitimate music-picker hold must still be available.

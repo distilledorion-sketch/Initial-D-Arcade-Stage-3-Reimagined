@@ -103,6 +103,7 @@ public:
     // Stop the preceding score/SFX and key off its continuous engine voices.
     // Preserve suspended clocks so a failed handshake can resume offline play.
     void beginChallenger();
+    void playChallengerNotice();
     void endChallenger();
     bool challengerActive()const{return challengerActive_;}
     void resetRaceEffects();

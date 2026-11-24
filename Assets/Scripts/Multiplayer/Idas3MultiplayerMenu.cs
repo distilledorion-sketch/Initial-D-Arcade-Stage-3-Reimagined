@@ -10,9 +10,6 @@ namespace Idas3.Multiplayer
     public sealed class Idas3MultiplayerMenu : MonoBehaviour
     {
         internal Idas3ArcadeBattleEntry BattleEntry {get;private set;}
-        internal Func<string,bool> SelectArcadeSong;
-        internal Func<string> CurrentArcadeSong;
-        internal void BeginBattleEntry(){SetOpen(true);BattleEntry.Begin();}
         bool searchRequested;
         internal bool CanChangeChallengeChoice {get;private set;}
         internal void OfferChallengers(){
@@ -128,7 +125,7 @@ namespace Idas3.Multiplayer
         {
             if(session!=null){session.RaceDisconnected-=OnRaceDisconnected;session.ReturnedToLobby-=OnReturnedToLobby;session.ReturnedToMode-=OnReturnedToMode;}
             session=owner??throw new ArgumentNullException(nameof(owner));
-            BattleEntry=new Idas3ArcadeBattleEntry(session,title=>SelectArcadeSong?.Invoke(title)==true,()=>CurrentArcadeSong?.Invoke());
+            BattleEntry=new Idas3ArcadeBattleEntry(session);
             BattleEntry.ChallengersChosen+=accept=>{
                 blockThroughFrame=Time.frameCount+1;
                 CanChangeChallengeChoice=true;
@@ -265,7 +262,7 @@ namespace Idas3.Multiplayer
             previousNativeRace=false;
             disconnectedEntered=disconnectedInputArmed=false;
             disconnectedInputBlocked=true;resultsEntered=resultsInputArmed=false;resultsInputBlocked=true;
-            BeginBattleEntry();
+            SetOpen(true);
         }
         private void OnReturnedToMode()
         {
@@ -453,14 +450,10 @@ namespace Idas3.Multiplayer
         }
         private void Section(Rect r,string text){Fill(r,Panel);Fill(new Rect(r.x,r.y,4,43),Red);Text(new Rect(r.x+18,r.y+12,r.width-36,28),text,heading);}
         private void OnGUI(){
-            if(session==null||session.ChallengerPending)return;
-            if(BattleEntry.Active){
-                if(!InputCovered&&!BattleEntry.ChoosingChallengers)DrawArcadePrompts();
-                return;
-            }
+            if(session==null||BattleEntry.Active||session.ChallengerPending&&!IsOpen)return;
             SynchronizeRaceVisibility();Styles();GUI.depth=DisconnectedFinishVisible?-13000:-10000;
             if(IsOpen&&!InputCovered&&(Event.current.type==EventType.MouseDown||Event.current.type==EventType.MouseDrag||Event.current.type==EventType.MouseUp))controllerFocus.Pointer();
-            bool enabled=GUI.enabled;GUI.enabled=enabled&&(DisconnectedFinishVisible||!InputCovered);var matrix=GUI.matrix;
+            bool enabled=GUI.enabled;GUI.enabled=enabled&&!session.ChallengerPending&&(DisconnectedFinishVisible||!InputCovered);var matrix=GUI.matrix;
             bool diagnostic=IsOpen&&diagnosticTarget!=null&&Event.current.type==EventType.Repaint;var target=RenderTexture.active;
             if(IsOpen&&Event.current.type==EventType.Repaint)++DiagnosticRepaints;
             if(diagnostic){RenderTexture.active=diagnosticTarget;GL.PushMatrix();GL.LoadPixelMatrix(0,Screen.width,Screen.height,0);}
@@ -474,11 +467,7 @@ namespace Idas3.Multiplayer
                 // Keep input capture, but do not cover them with an IMGUI panel.
                 if(ResultsVisible||session.StateName=="Returning"){
                     if(ResultRecoveryVisible)ResultRecoveryView();
-                    else if(ResultsVisible){
-                        OriginalResultsPointer();
-                        if(ResultsPage==2&&!session.ResultPeerLeft&&!session.LocalContinueRequested)
-                            DrawArcadePrompts(rematch:true);
-                    }
+                    else if(ResultsVisible)OriginalResultsPointer();
                     if(Event.current.isKey)Event.current.Use();return;
                 }
                 if(!IsOpen){
@@ -512,31 +501,6 @@ namespace Idas3.Multiplayer
                 if(Event.current.type==EventType.KeyDown&&Event.current.keyCode==KeyCode.Return&&GUI.GetNameOfFocusedControl()=="idas3-room-code"&&session.Available&&!session.Busy&&!string.IsNullOrWhiteSpace(joinCode)){session.JoinRoom(joinCode.Trim());joinEntry=false;Event.current.Use();}
                 if(Event.current.type==EventType.KeyDown||Event.current.type==EventType.KeyUp)Event.current.Use();
             }finally{if(IsOpen)controllerFocus.End();GUI.enabled=enabled;GUI.matrix=matrix;if(diagnostic){GL.PopMatrix();RenderTexture.active=target;diagnosticTarget=null;DiagnosticCaptureReady=true;}}
-        }
-        private void DrawArcadePrompts(bool rematch=false){
-            if(!rematch&&(BattleEntry.CanSelectMusic||!session.LocalBrakeSelected&&!session.RemoteBrakeSelected))return;
-            Styles();GUI.depth=-10000;
-            var previous=GUI.matrix;
-            float scale=Mathf.Min(Screen.width/640f,Screen.height/480f);
-            GUI.matrix=Matrix4x4.TRS(new Vector3((Screen.width-640*scale)/2,(Screen.height-480*scale)/2,0),Quaternion.identity,new Vector3(scale,scale,1));
-            void Caption(Rect area,string words,Color color){
-                Text(new Rect(area.x+1,area.y+2,area.width,area.height),words,button,Color.black,false);
-                Text(area,words,button,color,false);
-            }
-            try{
-                if(rematch){
-                    Caption(new Rect(75,452,490,23),Idas3MenuLocalization.T("Continue to rematch this driver"),Color.white);
-                }else{
-                    int y=447-(session.LocalBrakeSelected&&session.RemoteBrakeSelected?25:0);
-                    void Notice(string name){
-                        Caption(new Rect(76,y,488,23),Idas3MenuLocalization.Format("{0} has selected Boost Off",name),new Color(1f,.86f,.28f));
-                        y+=25;
-                    }
-                    if(session.IsHost&&session.LocalBrakeSelected)Notice(session.LocalDriverName);
-                    if(session.RemoteBrakeSelected)Notice(session.OpponentName);
-                    if(!session.IsHost&&session.LocalBrakeSelected)Notice(session.LocalDriverName);
-                }
-            }finally{GUI.matrix=previous;}
         }
         private void HeaderStatus(){
             string status=session.StateName=="Returning"?"RETURNING TO LOBBY":ResultsVisible?"RACE FINISHED":session.IsRacing?"LIVE RACE CONTINUES":session.IsQuickMatching?"FINDING A DRIVER":session.InLobby?"ROOM CONNECTED":session.Available?"LINK READY":"LINK OFFLINE";
@@ -682,11 +646,14 @@ namespace Idas3.Multiplayer
             if(session.InLobby)Text(new Rect(78,414,710,23),Idas3MenuLocalization.Format("ROOM / {0}",session.RoomCode),small);
         }
         private int ConnectedPlayers(){int count=0;foreach(var p in session.Players)if(p!=null&&p.Connected)++count;return count;}
-        private void RoomView(){
-            joinEntry=false;
+        private void RoomHeader(){
             Text(new Rect(28,115,590,25),Idas3MenuLocalization.Format("ROOM / {0}",session.RoomCode),small);
             if(ActionButton(new Rect(680,110,83,29),"COPY",!string.IsNullOrEmpty(session.RoomCode)))GUIUtility.systemCopyBuffer=session.RoomCode;
             Text(new Rect(782,116,94,24),Idas3MenuLocalization.Format("{0} / 2 DRIVERS",ConnectedPlayers()),small);
+        }
+        private void RoomView(){
+            joinEntry=false;
+            RoomHeader();
             bool terminal=ResultsVisible||session.StateName=="Returning";
             Section(new Rect(26,150,452,340),terminal?"BATTLE FINISHED":"DRIVERS");
             var players=session.Players;
@@ -707,13 +674,7 @@ namespace Idas3.Multiplayer
                 Text(new Rect(44,y+106,416,24),PickSummary(p.IsLocal?session.LocalChoice:session.RemoteChoice),small);
             }
             if(session.HasCourseDraw||session.IsRacing||terminal){SelectedCourse();return;}
-            if(session.IsHost){
-                Section(new Rect(498,150,376,340),"RACE COURSE");
-                Text(new Rect(517,212,335,82),"The first course picker is drawn at random. Drivers take turns on rematches.",wrapped);
-                OptionRow(429,"CAR COLLISIONS",session.CollisionsEnabled?"ON":"OFF",!session.Busy,()=>session.SetCollisions(!session.CollisionsEnabled));
-                return;
-            }
-            Section(new Rect(498,150,376,340),"YOUR COURSE PICK");
+            Section(new Rect(498,150,376,340),"YOUR COURSE PICK");Text(new Rect(791,164,63,23),"50/50",small);
             var c=session.LocalChoice;bool change=!session.IsRacing&&!session.Busy;
             if(ActionButton(new Rect(516,205,29,35),"<",change))ChangeOptions(session.NextAvailableCourse(c.Course,-1),c.Reverse,c.Wet,c.Night);
             Text(new Rect(550,205,266,35),Track(c.Course),button);

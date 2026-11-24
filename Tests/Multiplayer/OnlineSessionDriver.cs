@@ -109,7 +109,11 @@ internal static class OnlineSessionDriver
             Check(f.Session.HandshakeComplete&&f.Session.InLobby&&f.Session.StateName=="Lobby"&&announcements==1,"Compatible queued peer reaches the same lobby and challenger event");
             f.Session.BeforeFrame();Check(announcements==1,"The compatible opponent is announced only once");
             Check(f.Session.ChallengerPending&&!f.Session.CanReady,"Challenge presentation still gates Ready after queued matching");
-            f.Session.CompleteChallengerPresentation();f.Session.SetReady(true);
+            f.Session.SetReady(true);
+            Check(!f.Session.LocalReady,"The announcement cannot ready the local driver");
+            f.Session.CompleteChallengerPresentation();
+            Check(f.Session.CanChat&&f.Session.CanReady,"Classic lobby offers chat and Ready immediately");
+            f.Session.SetReady(true);
             Check(f.Session.LocalReady&&!f.Session.IsRacing,"Ready remains a player action and does not start the native simulation");
             f.Session.SelectTransport(1);Check(f.Session.TransportIndex==0,"An admitted lobby prevents switching transport");
             f.Transport.PollAction=f.Session.LeaveRoom;f.Session.LeaveRoom();

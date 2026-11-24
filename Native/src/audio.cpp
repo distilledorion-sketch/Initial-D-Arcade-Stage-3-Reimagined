@@ -41,6 +41,9 @@ void EngineAudio::configure(const std::filesystem::path& root){
     });
     nativeOneShots=std::make_unique<OriginalOneShotPlayback>(root);
 }
+void EngineAudio::playChallengerNotice(){
+    if(nativeOneShots)nativeOneShots->play(20,3);
+}
 void EngineAudio::beginChallenger(){
     if(challengerActive_)return;
     if(!challengerCue_||!nativeDsp)throw std::logic_error("Challenger audio requires configured source banks");

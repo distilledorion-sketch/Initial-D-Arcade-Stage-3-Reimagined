@@ -7,7 +7,7 @@ namespace {
 std::uint64_t checks=0;
 void check(bool ok,const char* text){++checks;if(!ok)throw std::runtime_error(text);}
 OriginalVehicleInputs packet(App& a){const auto d=a.driver(false);OriginalHostInputState state;
- return adaptOriginalHostInput(state,{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,d.originalSteeringAnalog,d.originalThrottleAnalog,d.originalBrakeAnalog},false,true,0);}
+ return adaptOriginalHostInput(state,{d.steer,d.throttle,d.brake,d.shiftDown,d.shiftUp,d.requestedGear,-1,d.originalThrottleAnalog,d.originalBrakeAnalog},false,true,0);}
 unsigned sourceAdc(unsigned raw){unsigned value=raw*2;if(value>=0x8000&&value<0x8100)value=0x8100;return std::min(value,0xff7fu);}
 std::string utf8(const fs::path& p){const auto s=p.u8string();return {s.begin(),s.end()};}
 }
@@ -17,7 +17,7 @@ int main(int argc,char**argv)try{
  const auto assets=utf8(fs::absolute(argv[1])),saves=utf8(output/"userdata");
  check(Idas3SceneInitialize(assets.c_str(),saves.c_str(),640,480)==1,"Actual scene init failed");
  auto& runtime=unityRuntime();auto& a=*runtime.app;a.validationMode=true;a.audio.enabled=false;a.originalHandling=true;
- a.controllerResponse=ControllerResponse::FlycastGamepad;
+ a.controllerResponse=ControllerResponse::FlycastWheel;
  // Exercise actual exported status publication at each presentation-owner
  // boundary. This flag enables mapped cabinet controls only while the local
  // original finish child still owns the visible course/car.
@@ -101,12 +101,13 @@ int main(int argc,char**argv)try{
  }
  precise={sizeof(precise),1,3,16578,0xff7f};frame.rightTrigger=65;frame.leftTrigger=255;
  for(unsigned mode=0;mode<3;++mode)for(unsigned keys=0;keys<4;++keys){
-  a.controllerResponse=ControllerResponse(mode);frame.keys['W'/32]=keys&1?1u<<('W'%32):0;frame.keys['S'/32]|=keys&2?1u<<('S'%32):0;
+  a.controllerResponse=ControllerResponse(mode);for(auto& key:frame.keys)key=0;frame.keys['W'/32]=keys&1?1u<<('W'%32):0;frame.keys['S'/32]|=keys&2?1u<<('S'%32):0;
   assignInput(a.input,frame,true,&precise);const auto got=packet(a);
-  check(got.analog.throttle==((keys&1)?171u<<8:mode==1?std::uint16_t((64+std::lround(65/255.f*107))<<8):precise.throttleAdc),"Throttle precedence/profile changed");
-  check(got.analog.brake==((keys&2)||mode==1?171u<<8:precise.brakeAdc),"Brake precedence/profile changed");
+  assignInput(a.input,frame,true);const auto byteOnly=packet(a);
+  check(got.analog.throttle==(mode==2&&!(keys&1)?precise.throttleAdc:byteOnly.analog.throttle),"Throttle precedence/profile changed");
+  check(got.analog.brake==(mode==2&&!(keys&2)?precise.brakeAdc:byteOnly.analog.brake),"Brake precedence/profile changed");
  }
- for(auto& key:frame.keys)key=0;a.controllerResponse=ControllerResponse::FlycastGamepad;
+ for(auto& key:frame.keys)key=0;a.controllerResponse=ControllerResponse::FlycastWheel;
  for(unsigned gate=0;gate<4;++gate){frame.flags=gate;assignInput(a.input,frame,(gate&1)!=0,&precise);a.setHostDrivingControlsBlocked((gate&2)!=0);
   check((a.input.originalThrottleAnalog>=0)==(gate==1),"Focus/block retained precise pedals");}
  a.setHostDrivingControlsBlocked(false);frame.flags=1;frame.padConnected=0;assignInput(a.input,frame,true,&precise);
