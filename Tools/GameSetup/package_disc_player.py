@@ -91,7 +91,7 @@ def package(args):
         z.writestr("setup/reference-checks.json", json.dumps(checked))
         recipes = disc_billboards.layout_for_packaging(ROOT / "Native", args.program.parent / "driveA/HOSTFS")
         z.writestr("setup/spectator-layout.json", json.dumps(recipes, separators=(",",":")))
-        for name in ("disc_audio.py", "disc_setup.py", "native_recipe.py", "disc_objects.py", "disc_billboards.py", "disc_extras.py", "disc_courses.py", "disc_storage.py", "disc_portable.py", "skin_workshop.py", "Play.ps1"):
+        for name in ("disc_audio.py", "disc_setup.py", "native_recipe.py", "disc_objects.py", "disc_billboards.py", "disc_extras.py", "disc_courses.py", "disc_storage.py", "disc_portable.py", "save_recovery.py", "Recover-PlayerData.ps1", "skin_workshop.py", "Play.ps1"):
             z.write(HERE / name, "setup/" + name)
         for src in dependencies:
             z.write(src, "setup/converters/" + src.name)

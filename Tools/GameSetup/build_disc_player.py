@@ -43,7 +43,11 @@ def prepare(work, plugin):
         authored = file.suffix in (".shader", ".cginc") or (
             file.parent.name == "Fonts" and file.suffix in (".otf", ".txt")
         ) or file.name in ("CustomMenus.txt", "RankedMaps.txt", "Idas3EosOnline.json", "UpdateInstaller.exe.bytes")
-        if authored:
+        # These separately shipped customization catalogs are not on the Stage 3 disc.
+        # Keep their Unity importer metadata so the serialized style IDs, rigs and art resolve.
+        custom_hud = file.relative_to(resources).parts[0] in ("ArcadeHud", "ArcadeOrnaments") and file.suffix in (
+            ".png", ".hdr", ".bytes", ".json")
+        if authored or custom_hud:
             selected_resources.add(file.relative_to(resources))
             put(file, file.relative_to(ROOT))
             meta = Path(str(file) + ".meta")

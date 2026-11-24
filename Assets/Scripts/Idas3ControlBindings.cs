@@ -111,24 +111,22 @@ public sealed partial class Idas3ControlBindings
             bool Key(KeyCode key)=>key!=KeyCode.None&&Held(key)&&!UsesStartKey(key)&&
                 (StartBindingConfigured(start)||(key!=KeyCode.Return&&key!=KeyCode.KeypadEnter));
             bool sameControl=!string.IsNullOrEmpty(start.controlPath)&&start.controlPath==pause.controlPath;
-            bool defaultStartPad=!StartBindingConfigured(start)&&DefaultCabinetStartPadAvailable()&&
-                string.IsNullOrEmpty(pause.controlPath)&&pause.pad==PadInput.Start;
             return Key(KeyCode.Escape)||Key(pause.key1)||Key(pause.key2)||Key(pause.key3)||
-                (!sameControl&&!defaultStartPad&&DigitalOther(pause))||rigAmounts[(int)ActionId.Pause]>=.5f;
+                (!sameControl&&DigitalOther(pause))||rigAmounts[(int)ActionId.Pause]>=.5f;
         }
     }
     internal bool RawOnlineHeld => Held(KeyCode.F1) || ActionHeld(ActionId.Online) ||
         (current.actions[8].pad==PadInput.None&&string.IsNullOrEmpty(current.actions[8].controlPath)&&(pad.buttons&~reconnectHeldButtons&0x20)!=0);
     public bool PauseHeld => !SuppressInput && RawPauseHeld;
-    public bool StartHeld
+    private enum StartDefaults { ConfiguredOnly, Frontend, Race, All }
+    public bool StartHeld => ReadStart(StartDefaults.ConfiguredOnly);
+    internal bool CabinetStartHeld => ReadStart(StartDefaults.Frontend);
+    internal bool RaceCabinetStartHeld => ReadStart(StartDefaults.Race);
+    private bool ReadStart(StartDefaults defaults)
     {
-        get { if(SuppressInput)return false;foreach(var source in StartSources())if(!startBlockedSources.Contains(source))return true;return false; }
-    }
-    // Separate cabinet input from host Pause and synthetic menu confirmation.
-    // Public StartHeld keeps its established configured-only menu behavior.
-    internal bool CabinetStartHeld
-    {
-        get { if(SuppressInput)return false;foreach(var source in StartSources(true))if(!startBlockedSources.Contains(source))return true;return false; }
+        if(SuppressInput)return false;
+        foreach(var source in StartSources(defaults))if(!startBlockedSources.Contains(source))return true;
+        return false;
     }
     public bool OnlineHeld => !SuppressInput && RawOnlineHeld;
     public bool ViewChangeHeld => !SuppressInput && ActionHeld(ActionId.Camera);
@@ -475,10 +473,10 @@ public sealed partial class Idas3ControlBindings
         foreach(var pair in startTransitionControls)
             if(!controls.TryGetValue(pair.Key,out var control)||control.value<=.5f)expiredStartControls.Add(pair.Key);
         foreach(var path in expiredStartControls)startTransitionControls.Remove(path);
-        var heldStartSources=StartSources(true);startBlockedSources.RemoveWhere(source=>!heldStartSources.Contains(source));
+        var heldStartSources=StartSources(StartDefaults.All);startBlockedSources.RemoveWhere(source=>!heldStartSources.Contains(source));
     }
 
-    private HashSet<string> StartSources(bool cabinetDefaults=false)
+    private HashSet<string> StartSources(StartDefaults defaults)
     {
         var result=polledStartSources;result.Clear();
         if(current==null)return result;
@@ -489,22 +487,29 @@ public sealed partial class Idas3ControlBindings
             if(CustomAmount(binding)>=.5f)result.Add("control:"+activeProfileKey+":"+binding.controlPath);
         }else if(binding.pad!=PadInput.None&&Digital(binding.pad))result.Add("pad:"+(int)binding.pad);
         foreach(var source in rigStartSources)result.Add(source);
-        if(cabinetDefaults&&!StartBindingConfigured(binding)){
+        if(defaults!=StartDefaults.ConfiguredOnly&&!StartBindingConfigured(binding)){
             AddKey(KeyCode.Return);AddKey(KeyCode.KeypadEnter);
-            if(DefaultCabinetStartPadAvailable()&&Digital(PadInput.Start))result.Add("pad:"+(int)PadInput.Start);
+            // In the frontend Menu retains its arcade role. While driving, respect
+            // the saved Pause binding and give cabinet Start a free stick click.
+            var pause=current.actions[(int)ActionId.Pause];
+            bool split=string.IsNullOrEmpty(pause.controlPath)&&pause.pad==PadInput.Start;
+            if((defaults!=StartDefaults.Race||!split)&&Digital(PadInput.Start)&&DefaultStartButtonAvailable(PadInput.Start))
+                result.Add("pad:"+(int)PadInput.Start);
+            if(defaults!=StartDefaults.Frontend&&split&&Digital(PadInput.LeftThumb)&&DefaultStartButtonAvailable(PadInput.LeftThumb))
+                result.Add("pad:"+(int)PadInput.LeftThumb);
         }
         return result;
     }
-    private bool DefaultCabinetStartPadAvailable()
+    private bool DefaultStartButtonAvailable(PadInput button)
     {
         // Generic HID fallback buttons are aliases, not cabinet switches.
-        if(genericProfile||(TransitionAliasMask()&0x10u)!=0)return false;
+        if(genericProfile||(TransitionAliasMask()&ButtonMask(button))!=0)return false;
         for(int i=0;i<ActionCount;++i){
             if(i==(int)ActionId.Pause||i==(int)ActionId.Start)continue;
             var binding=current.actions[i];
             if(string.IsNullOrEmpty(binding.controlPath)){
-                if(binding.pad==PadInput.Start)return false;
-            }else if(controls.TryGetValue(binding.controlPath,out var control)&&(control.fallbackButtons&0x10u)!=0)return false;
+                if(binding.pad==button)return false;
+            }else if(controls.TryGetValue(binding.controlPath,out var control)&&(control.fallbackButtons&ButtonMask(button))!=0)return false;
         }
         return true;
     }
@@ -520,7 +525,7 @@ public sealed partial class Idas3ControlBindings
     }
     public void BlockStartUntilRelease()
     {
-        foreach(var source in StartSources(true))startBlockedSources.Add(source);
+        foreach(var source in StartSources(StartDefaults.All))startBlockedSources.Add(source);
     }
     private void RememberStartSourceUntilRelease()
     {
@@ -983,7 +988,7 @@ public sealed partial class Idas3ControlBindings
     public string BindingName(ActionId action, Slot slot, bool draft = true)
     {
         EnsureInitialized(); CheckAction(action); CheckSlot(slot); var binding = (draft ? this.draft : current).actions[(int)action];
-        return slot == Slot.Controller ? (!string.IsNullOrEmpty(binding.controlPath)?(string.IsNullOrWhiteSpace(binding.controlLabel)?binding.controlPath:binding.controlLabel)+(binding.controlButton?"":binding.controlDirection<0?" −":" +"):PadName(binding.pad)) : KeyName(slot == Slot.Primary ? binding.key1 : slot == Slot.Secondary ? binding.key2 : binding.key3);
+        return slot == Slot.Controller ? (!string.IsNullOrEmpty(binding.controlPath)?(string.IsNullOrWhiteSpace(binding.controlLabel)?binding.controlPath:binding.controlLabel)+(binding.controlButton?"":binding.controlDirection<0?" âˆ’":" +"):PadName(binding.pad)) : KeyName(slot == Slot.Primary ? binding.key1 : slot == Slot.Secondary ? binding.key2 : binding.key3);
     }
     public static string KeyName(KeyCode key)
     {

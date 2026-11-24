@@ -1,4 +1,4 @@
-param([switch]$Verify, [switch]$InstallOnly)
+param([switch]$Verify, [switch]$InstallOnly, [switch]$RestoreSaves, [string]$RecoverySource, [switch]$KeepCurrentSaves)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $python = Join-Path $PSScriptRoot 'python\python.exe'
@@ -38,6 +38,11 @@ try {
         exit $LASTEXITCODE
     }
     $prepareLock = [IO.File]::Open((Join-Path $userData 'setup.lock'), 'OpenOrCreate', 'ReadWrite', 'None')
+    . (Join-Path $PSScriptRoot 'Recover-PlayerData.ps1')
+    if ($RestoreSaves) {
+        Invoke-PlayerRecovery -Manual -Source $RecoverySource
+        exit 0
+    }
     & $python -B $portable runtime
     if ($LASTEXITCODE -ne 0) { throw 'Could not install the game runtime beside the launcher.' }
     $source = Join-Path $cache 'disc-source.txt'
@@ -101,6 +106,14 @@ try {
         if ($other) { throw 'Close the other running copy of Initial D before moving the previous saves.' }
         & $python -B $portable migrate
         if ($LASTEXITCODE -ne 0) { throw 'Previous files could not all be moved. Close other copies of the game and retry in a writable folder.' }
+    }
+    $silentTest = $false
+    if ($env:IDAS3_DISC_ARGS) {
+        $forwardedArgs = ConvertFrom-Json ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:IDAS3_DISC_ARGS)))
+        $silentTest = $forwardedArgs -contains '-idas3-test-silent' -or $forwardedArgs -contains '-batchmode'
+    }
+    if (!$silentTest -or $RecoverySource -or $KeepCurrentSaves) {
+        Invoke-PlayerRecovery -Source $RecoverySource -Keep:$KeepCurrentSaves
     }
     if (!(Test-Path -LiteralPath (Join-Path $userData 'disc-upgrade-v1.json')) -or (Test-Path -LiteralPath (Join-Path $userData '.disc-cache-upgrade'))) {
         & $python -B $portable finish

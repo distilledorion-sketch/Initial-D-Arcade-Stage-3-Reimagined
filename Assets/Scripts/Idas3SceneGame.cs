@@ -161,7 +161,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
 
         if (Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-legacy-host") >= 0) return;
         if (FindAnyObjectByType<Idas3SceneGame>() != null) return;
-        new GameObject("Initial D — Unity scene").AddComponent<Idas3SceneGame>();
+        new GameObject("Initial D â€” Unity scene").AddComponent<Idas3SceneGame>();
     }
 
     private void Awake(){if(Idas3RomGate.Verified&&Idas3Updates.StartupFinished)InitializeGame();}
@@ -933,7 +933,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
         // Read the physical/configured source, never Enter/A emitted by menu
         // aliases. Native samples this HELD bit on accepted source updates.
         frame.flags &= ~Idas3Native.CabinetStartHeldFlag;
-        if((frame.flags&3u)==1u&&!pauseOpen&&!onlineBlocked&&bindings.CabinetStartHeld)
+        if((frame.flags&3u)==1u&&!pauseOpen&&!onlineBlocked&&
+            (driving&&racePhase<3?bindings.RaceCabinetStartHeld:bindings.CabinetStartHeld))
             frame.flags |= Idas3Native.CabinetStartHeldFlag;
         return pedals;
     }
@@ -942,7 +943,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
         bool eligible=multiplayerMenu.CanChangeChallengeChoice&&CanOpenPause&&Status.racePhase==2&&!OnlineRace&&
             !multiplayer.ChallengerPending&&(!multiplayer.InLobby||multiplayer.IsQuickMatching)&&!ReplayViewerOpen&&
             !pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&Focused&&!blocked;
-        bool start=controlBindings.CabinetStartHeld||(frame.flags&Idas3Native.CabinetStartHeldFlag)!=0;
+        bool start=controlBindings.RaceCabinetStartHeld||(frame.flags&Idas3Native.CabinetStartHeldFlag)!=0;
         bool view=controlBindings.ViewChangeHeld||MenuInputSample(frame).ViewChange;
         // Commit on release so a Start + View Change retirement chord always has priority.
         if(!eligible||view)challengeStartArmed=false;

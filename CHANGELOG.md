@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.95-community-replays.58 - November 23, 2026
+
+- Restores all 113 alternate tachometers and 314 ornaments to the Windows build, including their textures, meshes and animations. Existing HUD choices use their original IDs.
+- Keeps saves and settings during in-place updates. When another installation has missing data, setup offers to restore complete cards, per-car progress, local times, ghosts, replays, controls and HUD customizations. **Recover Saves and Settings.cmd** also accepts an earlier game folder on another drive.
+- Backs up replaced data and keeps other occupied slots. If .57 reset a tachometer or ornament and an earlier settings backup still has the selection, setup can restore just those HUD choices.
+- Fixes Xbox Menu opening Pause during a race. With default controls a free left-stick click handles arcade Start. Explicit controller and wheel bindings keep priority.
+
+Use **Update** in .57 for the changed-file patch. For a fresh installation, download **Initial-D-Setup-0.3.95.58.zip**. Optional tracks are available on [GameBanana](https://gamebanana.com/games/26479).
+
 ## 0.3.95-community-replays.57 - November 23, 2026
 
 Use **Update** in the game to upgrade an existing installation. Updating from `.56` downloads a 399 MB patch. Full Repair downloads the complete 732 MB Windows package. For a fresh installation, download **Initial-D-Setup-0.3.95.57.zip**, extract it and run **Install Initial D Arcade Stage 3 Reimagined.exe**. Setup includes the full Windows game package.

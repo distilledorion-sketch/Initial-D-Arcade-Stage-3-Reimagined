@@ -25,9 +25,17 @@ a local .idreplay recording in the running game.
 Saves, settings, replays, online records, logs and game caches live in UserData.
 On first play, close older Windows builds. The launcher moves previous game
 files from this Windows profile into UserData, verifying each file first.
-Older builds that shared those saves will no longer see them in AppData.
-When two files differ, the existing portable file stays active and the older
-copy is kept under UserData\Migration conflicts. Back up UserData for safekeeping.
+When another copy contains missing cards or settings, setup offers recovery.
+Choose the folder whose cards, wheel/controller bindings and HUD you want.
+For older installations on another drive, open Recover Saves and Settings.cmd
+in the game folder. Close both games before restoring. Existing slots absent
+from the source stay available. Replaced cards and settings are backed up in
+UserData/Save recovery backups. The selected game folder keeps its originals.
+The HUD includes the original meter, 113 alternate meters and 314 ornaments.
+Saved meter styles, layouts, ornament choices and custom HUD artwork carry over.
+If the previous settings backup contains a reset meter or ornament, setup can
+restore those selections separately. The Xbox Menu button opens Pause during
+a race. With default controls a free left-stick click operates arcade Start.
 Windows, display drivers and online account services manage their own system data.
 
 The original nine courses and full Stage 3 soundtrack come from your disc.

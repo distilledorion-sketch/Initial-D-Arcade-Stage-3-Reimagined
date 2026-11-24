@@ -181,9 +181,21 @@ def migrate(data, old, old_temp, name):
         if marker.is_file():
             return
         counts = {"files": 0, "conflicts": 0}
+        from save_recovery import WINDOWS_COPY, has_data
+        previous = plain(data / WINDOWS_COPY)
+        # A partially populated portable profile and the old Windows profile can
+        # contain unrelated drivers in the same numbered slot. Keep the incoming
+        # profile together until the player can choose it, including after a retry.
+        route = plain(data / "migration-route-v2.json")
+        if route.is_file():
+            separate = json.loads(route.read_text())["separate"]
+        else:
+            separate = previous.exists() or (has_data(data) and has_data(old))
+            write_text(route, json.dumps({"separate": separate}))
         for item in ("userdata", "userdata-unity-scene", "community-times", "EOS",
                      "Diagnostics", "last-error.txt"):
-            migrate_tree(old / item, data / item, data, counts)
+            target = previous if separate and item in ("userdata", "userdata-unity-scene") else data
+            migrate_tree(old / item, target / item, data, counts)
         for item in ("Player.log", "Player-prev.log"):
             migrate_tree(old / item, data / "Logs/Previous installation" / item, data, counts)
         game_temp = old_temp / "Chris/Initial D Unity"
@@ -272,6 +284,9 @@ def install_shortcuts():
         "Verify Game Files.cmd": ("276c1ffa36ac18f46a2dfc81eeb89a2bdf86df1c691881fac2c0cb2df70243bd",
                                  r'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0InitialDUnity_Data\GameSetup\Play.ps1" -Verify' + "\r\npause")
     }
+    recover = plain(ROOT / "Recover Saves and Settings.cmd")
+    if not recover.exists():
+        write_text(recover, '@echo off\r\n' + r'powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File "%~dp0InitialDUnity_Data\GameSetup\Play.ps1" -RestoreSaves' + '\r\nif errorlevel 1 pause\r\n')
     for name, (previous_hash, command) in shortcuts.items():
         path = plain(ROOT / name)
         known_hashes = {previous_hash}

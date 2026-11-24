@@ -59,7 +59,7 @@ def assemble(base_package, player, output, program=None):
                 name = info.filename
                 if name.startswith(old_setup):
                     relative = name[len(old_setup):]
-                    if relative in ("additional-content.json", "package-version.txt", "windows-56-files.json.gz", "runtime/InitialDUnity.bin", "skin_workshop.py"):
+                    if relative in ("save_recovery.py", "Recover-PlayerData.ps1", "additional-content.json", "package-version.txt", "windows-56-files.json.gz", "runtime/InitialDUnity.bin", "skin_workshop.py"):
                         continue
                     if template is not None and relative in ("native-player.template", "native-recipe.json"):
                         continue
@@ -97,7 +97,8 @@ def assemble(base_package, player, output, program=None):
             target.write(HERE / "windows-56-files.json.gz", PREFIX + "windows-56-files.json.gz")
             target.write(launcher, "InitialDUnity.exe")  # Path accepted by already-released updaters.
             target.write(HERE / "package-version.txt", PREFIX + "package-version.txt")
-            target.write(HERE / "skin_workshop.py", PREFIX + "skin_workshop.py")
+            for name in ("skin_workshop.py", "save_recovery.py", "Recover-PlayerData.ps1"):
+                target.write(HERE / name, PREFIX + name)
             target.write(HERE / "READ ME.txt", "READ ME.txt")
             target.write(HERE / "Replay Viewer.cmd", "Replay Viewer.cmd")
         with zipfile.ZipFile(temp) as finished:

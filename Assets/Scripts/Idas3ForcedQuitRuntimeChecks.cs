@@ -50,7 +50,8 @@ internal static class Idas3ForcedQuitRuntimeChecks
                     "Source reserve swallowed explicit Escape+View or paused Start");
             }
             defaults.Poll(_=>false,startPad,10+phase);var pad=Route(defaults,startPad,phase:phase);
-            Check((pad.flags&Start)!=0&&!Key(pad,27)&&(pad.padButtons&0x10)==0,"Default pad Start did not belong to cabinet");
+            Check((pad.flags&Start)==0&&Key(pad,27)&&Command(pad,true,false)==Idas3MenuInputRouter.Action.OpenPause,
+                "Bound Menu button did not open Pause independently of cabinet Start");
         }
         // Exactly the old host policy when the native source capability is absent.
         foreach(uint status in new[]{16u,16u|Card,16u|512u,16u|16384u}){
@@ -62,7 +63,7 @@ internal static class Idas3ForcedQuitRuntimeChecks
         Check(Command(legacy,true,true)==Idas3MenuInputRouter.Action.OpenPause,"Explicit source-context Escape got legacy chord ownership");
         defaults.Poll(k=>k==KeyCode.C||k==KeyCode.Return,default,16);
         var chord=Route(defaults);Check((chord.flags&Start)!=0&&Key(chord,'C')&&!Key(chord,27),"Default keyboard chord failed mapping");
-        var startViewPad=new Idas3ControlBindings.PadState{connected=true,buttons=0x8010};
+        var startViewPad=new Idas3ControlBindings.PadState{connected=true,buttons=0x8040};
         defaults.Poll(_=>false,startViewPad,17);chord=Route(defaults,startViewPad);
         Check((chord.flags&Start)!=0&&(chord.padButtons&0x8000)!=0&&!Key(chord,27),"Default pad chord lost View");
         for(int n=0;n<100;++n)Check((Route(defaults,startViewPad).flags&Start)!=0&&!Key(Route(defaults,startViewPad),27),
@@ -114,7 +115,16 @@ internal static class Idas3ForcedQuitRuntimeChecks
         defaults.ControllerDeviceChanged();defaults.Poll(_=>false,startPad,29);
         Check((Route(defaults,startPad).flags&Start)==0&&!Key(Route(defaults,startPad),27),"Reconnect converted held Start to cabinet/Pause");
         defaults.Poll(_=>false,new Idas3ControlBindings.PadState{connected=true},30);defaults.Poll(_=>false,startPad,31);
-        Check((Route(defaults,startPad).flags&Start)!=0,"Reconnected Start did not recover after release");
+        Check(Key(Route(defaults,startPad),27)&&(Route(defaults,startPad).flags&Start)==0,"Reconnected Pause did not recover after release");
+        var occupied=New(root,"occupied-click");
+        Values(occupied).actions[(int)Idas3ControlBindings.ActionId.Headlights].pad=Idas3ControlBindings.PadInput.LeftThumb;
+        var click=new Idas3ControlBindings.PadState{connected=true,buttons=0x40};
+        occupied.Poll(_=>false,click,31);
+        Check((Route(occupied,click).flags&Start)==0&&Key(Route(occupied,click),'H'),"Race Start stole a bound stick click");
+        defaults.Poll(_=>false,click,31);defaults.BlockStartUntilRelease();
+        Check(!defaults.RaceCabinetStartHeld,"Held race Start bypassed release guard");
+        defaults.Poll(_=>false,default,31);defaults.Poll(_=>false,click,31);
+        Check(defaults.RaceCabinetStartHeld&&!defaults.CabinetStartHeld,"Race Start did not rearm independently of menu Start");
         var wheel=New(root,"generic");wheel.SelectControllerProfile("private-fq-wheel","Private Forced Quit wheel",true);
         var w=Values(wheel);w.actions[(int)Idas3ControlBindings.ActionId.Start]=new Idas3ControlBindings.Binding{
             controlPath="start",controlButton=true,controlDirection=1,controlMin=0,controlMax=1};
