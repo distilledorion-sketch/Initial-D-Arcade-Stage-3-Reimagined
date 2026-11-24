@@ -11,7 +11,7 @@ JOIN DISCORD: [https://discord.gg/mJCZ5AvBb](https://discord.gg/fUZySYrPss)
 
 1. Download **Initial-D-Setup-0.3.95.57.zip** from **Releases**. Extract it and run **Install Initial D Arcade Stage 3 Reimagined.exe**.
 2. Choose a writable game folder. When prompted, select your original English GDS-0033 CHD and its matching `317-0384-COM.pic` or `initdv3e.zip`. Setup generates the original arcade assets on your PC.
-3. Launch **Initial D Arcade Stage 3 Reimagined.exe**. Optional track downloads extract into `Mods/Maps` beside the game. Open **Mods** in Time Attack to select an installed track.
+3. Launch **Initial D Arcade Stage 3 Reimagined.exe**. Extract optional tracks into `Mods/Maps` beside the game, then open **Mods** in Time Attack to select one. [Download mod maps on GameBanana](https://gamebanana.com/games/26479)
 
 **Windows update .57** can also be installed through the in-game updater. Setup and the updater use the same complete Windows ZIP. Keep older copies of the game closed during the first launch so setup can migrate your previous player files into `UserData`. Keep this folder when moving or backing up the game.
 

@@ -7,7 +7,7 @@ Use **Update** in the game to upgrade an existing installation. For a fresh inst
 Have your original English **GDS-0033 CHD** and its matching **317-0384-COM.pic** or **initdv3e.zip** available. On the first launch, setup uses these to generate the arcade assets. Allow time and free space for extraction. After setup, launch **Initial D Arcade Stage 3 Reimagined.exe**.
 
 - Keeps saves, settings, replays and game caches in `UserData` beside the game. The first launch migrates older local player data and keeps conflicting copies for recovery.
-- Makes all nine extra tracks optional. Existing installations move their installed tracks into `Mods\Maps`. For a fresh installation, extract any **Initial-D-Track** downloads you want into that folder. Select **Mods** in Time Attack to browse them.
+- Makes all nine extra tracks optional. Existing installations move their installed tracks into `Mods\Maps`. For a fresh installation, extract any **Initial-D-Track** downloads you want into that folder. Select **Mods** in Time Attack to browse them. [Download mod maps on GameBanana](https://gamebanana.com/games/26479)
 - Adds car skins and in-race HUD customization under `Mods`, and opens local replays in the game window.
 - Adds the arcade accept/refuse challengers screen and updates online course, music and opponent selection. Players can choose their own race music.
 - With **Community Times** off, the in-game leaderboard shows local results from all save slots on this installation.
