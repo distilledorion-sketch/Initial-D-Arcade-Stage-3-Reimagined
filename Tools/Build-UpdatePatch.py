@@ -68,8 +68,29 @@ def build(base,target,base_version,target_version,out):
     dest=out/f'Initial-D-Update-from-{base_version}-to-{target_version}-Patch.zip'
     assert not dest.exists(),dest
     with zipfile.ZipFile(base) as old,zipfile.ZipFile(target) as new:
-        before=inventory(old);after=inventory(new)
-        retired=validate_file_removals(before,after)
+        after=inventory(new)
+        setup_version='InitialDUnity_Data/GameSetup/package-version.txt'
+        transition=(base_version=='0.3.95-community-replays.56' and
+                    target_version=='0.3.95-community-replays.57' and setup_version in after)
+        if transition:
+            # Local setup owns migration of obsolete stock files after a successful
+            # restart. A patch only inventories files belonging to the new download.
+            if new.read(setup_version).decode().strip()!=target_version:
+                raise ValueError('The setup and patch versions differ.')
+            with Path(base).open('rb') as source:
+                if hashlib.file_digest(source,'sha256').hexdigest()!='e83f192b0887ccb515a1af679f51b2e37cf778ba8cb01ad69a8975cdc9375e56':
+                    raise ValueError('Use the original public .56 Windows ZIP for this migration.')
+            before={}
+            for name,record in after.items():
+                if name not in old.NameToInfo or old.getinfo(name).file_size!=record['size']:
+                    continue
+                with old.open(name) as source:
+                    if hashlib.file_digest(source,'sha256').hexdigest()==record['sha256']:
+                        before[name]=record
+            retired=[]
+        else:
+            before=inventory(old)
+            retired=validate_file_removals(before,after)
         files=[]
         for name,record in after.items():files.append(dict(record,included=before.get(name)!=record))
         manifest=dict(schema=1,baseVersion=base_version,targetVersion=target_version,files=files)
