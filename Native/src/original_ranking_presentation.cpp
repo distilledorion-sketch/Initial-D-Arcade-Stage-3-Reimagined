@@ -49,7 +49,7 @@ void OriginalRankingPresentation::synchronize(const OriginalRankingPlayback& pla
     // a separate fresh cabinet profile (0), never the user's saved driver.
     materials_->rebuild(input_.appearance,0);
     car_=materials_->apply(NativeModel::load(base/(std::string(folder)+".idasmesh")));
-    input_.visibility=originalCarVisibility(input_.appearance,std::int32_t(id)); //029000(id)
+    input_.visibility=originalCarVisibility(input_.appearance);
     input_.wheelOffsets=originalCarWheelOffsets(input_.appearance);
     input_.primaryUsesCurrent=input_.secondaryUsesCurrent=true; //02640E/026416
     advanceOriginalCarHeadlights(input_); //Lights stay off; this source state is stable thereafter.

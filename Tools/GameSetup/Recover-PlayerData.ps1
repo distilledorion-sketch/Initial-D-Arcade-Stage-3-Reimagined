@@ -1,7 +1,5 @@
 function Invoke-RecoveryTool([string[]]$Arguments) {
-    $output = & $python -B (Join-Path $PSScriptRoot 'save_recovery.py') @Arguments
-    if ($LASTEXITCODE -ne 0) { throw 'Save recovery could not finish. Close both games and retry. The source files are preserved.' }
-    return $output
+    Invoke-SetupTool (Join-Path $PSScriptRoot 'save_recovery.py') $Arguments 'Save recovery could not finish. Close both games and retry. The source files are preserved.' -ReadValue
 }
 
 function Assert-GameClosed([string]$DataPath) {

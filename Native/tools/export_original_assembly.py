@@ -13,7 +13,23 @@ import math
 import struct
 from pathlib import Path
 
-IMAGE_HASH = "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
+from arcade_program import BASE, ENGLISH_SHA256 as IMAGE_HASH, identify
+
+
+def read_car_capture(path, layout):
+    """Return common renderer call-site IDs for wheel and light animation binding."""
+    capture = json.loads(path.read_text())
+    if layout.sha256 != IMAGE_HASH and not capture.get("normalized_renderer_calls"):
+        # In Rev C the renderer starts at 026DC0. Only its instruction addresses
+        # move. Pointers to parts, object matrices and host scratch memory do not.
+        def call_site(address):
+            return address - 0x40 if 0x0C026DC0 <= address <= 0x0C0283A4 else address
+        for draw in capture["draws"]:
+            draw["return_pc"] = call_site(draw["return_pc"])
+            for op in draw["operations"]:
+                op["source"] = call_site(op["source"])
+        capture["normalized_renderer_calls"] = True
+    return capture
 
 def f32(x):
     return struct.unpack("<f", struct.pack("<f", x))[0]
@@ -71,14 +87,13 @@ def main():
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
     image = args.source_image.read_bytes()
-    if hashlib.sha256(image).hexdigest() != IMAGE_HASH:
-        raise ValueError("Assembly capture requires verified GDS-0033 retail image")
+    layout = identify(image)
     capture = json.loads(args.capture.read_text())
     bank = json.loads(args.bank_manifest.read_text())
     car_index = capture.get("car_index", 0)
     if capture["final_matrix_depth"] != 0 or not 0 <= car_index < 35:
         raise ValueError("Unexpected capture state or unbalanced original matrix stack")
-    slot_map = struct.unpack_from("<I", image, 0x0c33b250-0x0c020000+car_index*4)[0]
+    slot_map = struct.unpack_from("<I", image, layout.cars.slot_maps-BASE+car_index*4)[0]
     if len(capture["draws"]) != capture["draw_count"] or capture["draw_count"] > 4096:
         raise ValueError("Invalid capture draw count")
     for draw in capture["draws"]:
@@ -112,8 +127,8 @@ def main():
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
         "evidence": {
             "renderer": "0C026D80..0C028364",
-            "display_preset_bytes": f"{0x0c2f4758+car_index*12:08X}, 12 bytes; applied by original routine 0C035F00",
-            "car_table_root": f"{0x0c33b250+car_index*4:08X} -> {slot_map:08X}",
+            "display_preset_bytes": f"{layout.cars.presets+car_index*12:08X}, 12 bytes; applied by original routine 0C035F00",
+            "car_table_root": f"{layout.cars.slot_maps+car_index*4:08X} -> {slot_map:08X}",
             "slot_lookup": "0C026100; object+354 semantic map, object+358 render remap",
             "part_transforms": "0C0271CC onward; 23 records of 9 float32 values scaleXYZ/rotationXYZ/translationXYZ",
             "matrix_helpers": "1F6610 push,1F65C0 pop,1FD060/1F6AC0 translate,1F6950/1F68A0/1F67E0 rotateZ/Y/X,1F69D0 scale"

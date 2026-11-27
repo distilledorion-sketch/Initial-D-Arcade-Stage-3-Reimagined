@@ -177,7 +177,7 @@ public sealed partial class Idas3ReplayViewer : MonoBehaviour
                 if (!Application.isEditor && Array.IndexOf(Environment.GetCommandLineArgs(), "-idas3-enna-test") >= 0)
                     assets = File.ReadAllText(Path.Combine(Application.streamingAssetsPath, "d3-assets.txt")).Trim();
                 string storage = Path.Combine(PlayerStorage.temporaryCachePath, "replay-viewer-session");
-                if (Idas3Native.Idas3SceneConfigureLanguage(audioOptions.arcadeTextLanguage) != 1) throw new InvalidOperationException(Idas3Native.Error());
+                if (Idas3Native.Idas3SceneConfigureLanguage(Idas3GameOptions.UsesJapaneseDisc(assets)?1:0) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 if (Idas3SceneInitialize(assets, storage, Screen.width, Screen.height) != 1) throw new InvalidOperationException(Idas3Native.Error());
                 initialized = true;
                 if(Idas3Native.Idas3SceneSetSunGlare(audioOptions.sunGlare?1:0)!=1)throw new InvalidOperationException(Idas3Native.Error());

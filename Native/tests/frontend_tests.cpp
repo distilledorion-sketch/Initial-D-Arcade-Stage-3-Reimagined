@@ -27,6 +27,20 @@ void verifyBattleBackdrop(const std::filesystem::path& root){
     std::vector<Frontend::BattlePage> pages{Frontend::BattlePage::SavedCar};
     if(std::filesystem::exists(root/"data/original_assets/menus/v3/selreceive/selreceive.idasmesh")){
         pages.insert(pages.end(),{Frontend::BattlePage::Card,Frontend::BattlePage::AcceptChallengers,Frontend::BattlePage::EnterBattle});
+        menu.battleEntry.page=Frontend::BattlePage::AcceptChallengers;
+        for(int flags:{0,16}){
+            menu.battleEntry.flags=flags;
+            menu.battleEntry.confirmFrame=-1;
+            const auto selected=menu.paintBattleEntry(640,480);
+            menu.battleEntry.confirmFrame=0;
+            const auto dimmed=menu.paintBattleEntry(640,480);
+            require(selected!=dimmed,"Confirming either challenger choice must flash its highlight");
+            menu.battleEntry.confirmFrame=2;
+            require(menu.paintBattleEntry(640,480)==selected,"Selected highlight must return during confirmation");
+            menu.battleEntry.confirmFrame=8;
+            require(menu.paintBattleEntry(640,480)==dimmed,"Challenger confirmation must flash again before fading");
+        }
+        menu.battleEntry.confirmFrame=-1;
     }
     for(auto page:pages){
         menu.battleEntry.page=page;

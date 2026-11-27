@@ -22,7 +22,7 @@ struct Capture {
  unsigned hudGroup=0;bool enabled=false;UnityUiFrame frame{sizeof(UnityUiFrame)};Surface output;
  std::unordered_map<const std::uint32_t*,Surface> surfaces;
  std::vector<NativeImage> textures;
- std::unordered_map<const std::uint32_t*,std::pair<std::size_t,unsigned>> texturePointers;
+ std::unordered_map<const std::uint32_t*,unsigned> texturePointers;
  // Exported IDs outlive their original banks because cached surfaces refer
  // to them. Reuse identical immutable pixels on reload instead of retaining
  // another native copy and causing another Unity GPU upload each visit.
@@ -45,8 +45,11 @@ bool performanceBaseline(){
 }
 #endif
 unsigned texture(const NativeImage& image){
- auto& s=state();const auto pointer=image.argb.data();const auto bytes=image.argb.size();
- if(auto it=s.texturePointers.find(pointer);it!=s.texturePointers.end()&&it->second.first==bytes)return it->second.second;
+ auto& s=state();const auto pointer=image.argb.data();
+ if(auto it=s.texturePointers.find(pointer);it!=s.texturePointers.end()){
+  const auto& saved=s.textures[it->second];
+  if(saved.width==image.width&&saved.height==image.height&&saved.navigationDistanceField==image.navigationDistanceField)return it->second;
+ }
  std::uint64_t hash=1469598103934665603ull;
  hash=(hash^image.width)*1099511628211ull;hash=(hash^image.height)*1099511628211ull;
  hash=(hash^unsigned(image.navigationDistanceField))*1099511628211ull;
@@ -56,11 +59,11 @@ unsigned texture(const NativeImage& image){
   // The hash only selects candidates. Exact comparison keeps collisions,
   // alpha changes and same-sized but different artwork visually distinct.
   if(saved.width==image.width&&saved.height==image.height&&saved.navigationDistanceField==image.navigationDistanceField&&saved.argb==image.argb){
-   s.texturePointers[pointer]={bytes,it->second};return it->second;
+   s.texturePointers[pointer]=it->second;return it->second;
   }
  }
  if(s.textures.size()>=16384)throw std::runtime_error("Unity UI source texture budget exceeded");
- const auto index=unsigned(s.textures.size());s.textures.push_back(image);s.textureContents.emplace(hash,index);s.texturePointers[pointer]={bytes,index};return index;
+ const auto index=unsigned(s.textures.size());s.textures.push_back(image);s.textureContents.emplace(hash,index);s.texturePointers[pointer]=index;return index;
 }
 Surface& surface(const std::uint32_t* pointer,int width,int height){auto& s=state().surfaces[pointer];s.width=width;s.height=height;return s;}
 struct SourceClip{float left,top,right,bottom;};

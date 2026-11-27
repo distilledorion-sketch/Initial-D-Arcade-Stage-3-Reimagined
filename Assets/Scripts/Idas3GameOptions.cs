@@ -21,7 +21,8 @@ public sealed class Idas3GameOptions
         public int steeringSettingsVersion=1;
         public int aiDifficulty;
         public int customMenuLanguage; // English / Japanese / Simplified Chinese; custom menus only.
-        public int arcadeTextLanguage; // 0 = English, 1 = original Japanese artwork; restart required.
+        public int romLanguage=-1; // Missing in older saves. 0 = English export, 1 = Japanese Rev C.
+        public int arcadeTextLanguage; // Previous versions stored the Japanese artwork preference here.
         public float steeringDeadzoneGamepad=.1f,steeringDeadzonePrevious=.13f,steeringDeadzoneWheel;
         public float steeringSmoothing;
         public bool wheelForceFeedback,wheelFeedbackInvert;
@@ -159,20 +160,15 @@ public sealed class Idas3GameOptions
     public ResolutionChoice[] AvailableResolutions=>platform.Resolutions;
     public Idas3GameOptions(IPlatform environment=null){platform=environment??new UnityPlatform();}
     public Values Defaults(){
-        return new Values{width=Math.Max(640,platform.Width),height=Math.Max(360,platform.Height),
+        return new Values{romLanguage=JapaneseDisc?1:0,width=Math.Max(640,platform.Width),height=Math.Max(360,platform.Height),
             displayMode=Math.Max(0,Math.Min(2,platform.DisplayMode))};
     }
-    // Native menus preload asynchronously, before the normal settings event.
-    // Read the same validated setting before creating any native asset owners.
-    public static int LoadArcadeTextLanguage(string saveRoot){
-        try{
-            string path=Path.Combine(saveRoot,"game-options.json");
-            if(!File.Exists(path))return 0;
-            var saved=new Values{version=0};JsonUtility.FromJsonOverwrite(File.ReadAllText(path),saved);
-            return saved.version==1&&saved.arcadeTextLanguage==1?1:0;
-        }catch(Exception e){Debug.LogWarning("Using English arcade text: "+e.Message);return 0;}
+    internal static bool UsesJapaneseDisc(string assets){
+        return Idas3RomValidation.InstalledLanguage(assets)==1;
     }
-    public void Initialize(string saveRoot){
+    internal bool JapaneseDisc { get; private set; }
+    public void Initialize(string saveRoot,bool japaneseDisc=false){
+        JapaneseDisc=japaneseDisc;
         if(string.IsNullOrWhiteSpace(saveRoot))throw new ArgumentException("An options save directory is required.",nameof(saveRoot));
         file=Path.Combine(Path.GetFullPath(saveRoot),"game-options.json");
         current=Defaults();LastError=null;rollback=null;
@@ -185,6 +181,8 @@ public sealed class Idas3GameOptions
                 var loaded=new Values{version=0,steeringSettingsVersion=0,audioSettingsVersion=0,hudMeterLayout=-1};
                 JsonUtility.FromJsonOverwrite(File.ReadAllText(file),loaded);
                 if(loaded==null||loaded.version!=1)throw new InvalidDataException("Unsupported options format.");
+                if(loaded.romLanguage!=0&&loaded.romLanguage!=1)
+                    loaded.romLanguage=japaneseDisc||loaded.arcadeTextLanguage==1?1:0;
                 current=Normalize(loaded);loadedSaved=true;
             }catch(Exception error){LastError="Could not load options; using defaults. "+error.Message;}
         }
@@ -338,6 +336,7 @@ public sealed class Idas3GameOptions
         value.trackLighting=Math.Max(0,Math.Min(1,value.trackLighting));
         if(value.customMenuLanguage<0||value.customMenuLanguage>2)value.customMenuLanguage=0;
         if(value.arcadeTextLanguage!=1)value.arcadeTextLanguage=0;
+        if(value.romLanguage!=0&&value.romLanguage!=1)value.romLanguage=-1;
         if(value.controllerResponse<0||value.controllerResponse>2)value.controllerResponse=0;
         if(value.steeringSettingsVersion<1){value.steeringDeadzoneGamepad=.1f;value.steeringDeadzonePrevious=.13f;value.steeringDeadzoneWheel=0;}
         value.steeringSettingsVersion=1;
@@ -357,7 +356,7 @@ public sealed class Idas3GameOptions
     public static bool Equivalent(Values a,Values b)=>a!=null&&b!=null&&
         a.masterVolume==b.masterVolume&&a.musicVolume==b.musicVolume&&a.engineVolume==b.engineVolume&&a.effectsVolume==b.effectsVolume&&a.tireVolume==b.tireVolume&&a.audioSettingsVersion==b.audioSettingsVersion&&
         !DisplayChanged(a,b)&&a.vSync==b.vSync&&a.frameRateLimit==b.frameRateLimit&&a.antiAliasing==b.antiAliasing&&
-        a.aiDifficulty==b.aiDifficulty&&a.arcadeTextLanguage==b.arcadeTextLanguage&&a.customMenuLanguage==b.customMenuLanguage&&a.defaultCamera==b.defaultCamera&&a.cameraFovPercent==b.cameraFovPercent&&a.controllerResponse==b.controllerResponse&&a.timeAttackGhost==b.timeAttackGhost&&
+        a.aiDifficulty==b.aiDifficulty&&a.romLanguage==b.romLanguage&&a.customMenuLanguage==b.customMenuLanguage&&a.defaultCamera==b.defaultCamera&&a.cameraFovPercent==b.cameraFovPercent&&a.controllerResponse==b.controllerResponse&&a.timeAttackGhost==b.timeAttackGhost&&
         a.steeringSettingsVersion==b.steeringSettingsVersion&&a.steeringDeadzoneGamepad==b.steeringDeadzoneGamepad&&
         a.steeringDeadzonePrevious==b.steeringDeadzonePrevious&&a.steeringDeadzoneWheel==b.steeringDeadzoneWheel&&
         a.steeringSmoothing==b.steeringSmoothing&&

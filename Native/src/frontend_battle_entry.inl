@@ -131,7 +131,8 @@ const std::vector<std::uint32_t>& Frontend::paintBattleEntry(int width,int heigh
                 p.offsetX=artLeft+320*artScale;p.offsetY=artTop+128*artScale;p.invertY=true;p.authoredHeight=0;
                 compositeOriginalMenuChunk(pixels,w,h,bankData.textures,chunk,p);
             };
-            art("v3sV01challenge",(yes?right:left)+4,320,128);
+            if(b.confirmFrame<0||(b.confirmFrame&6)!=0)
+                art("v3sV01challenge",(yes?right:left)+4,320,128);
             choice(left,!yes);choice(right,yes);
             if(entering)opponentTable(120);else art("selreceive",0,0,128);
         }else if(page==BattlePage::Card){

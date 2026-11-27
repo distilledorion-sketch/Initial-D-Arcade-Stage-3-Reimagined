@@ -6,19 +6,64 @@ import json
 from pathlib import Path
 import struct
 from extract_original_menus import export_model_menu
+from arcade_program import BASE, identify, JAPANESE
 import texture_bank
 
 CANONICAL='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 
+def export_japanese(program, hostfs, root, bank):
+    if (bank['chunk_count'],bank['texture_count'])!=(55,14):
+        raise ValueError('Japanese gas station artwork changed')
+    source=hostfs/'font/gasstand'
+    mapping=(source/'gasstand_font.bin.nz').read_bytes()
+    textures=texture_bank.export_bank(source/'gasstand_spr.tbl',source/'gasstand_spr.bin.nz',
+                                      root/'gasstand/font','twiddled',font_map=mapping)
+    glyphs=struct.unpack('<9216H',mapping)
+    count=len(textures['textures'])
+    script=bytearray(b'IDAS3GSJ')
+    def words(address,n):
+        return struct.unpack_from('<'+'I'*n,program,address-BASE)
+    for variant,expected in enumerate((17,18,14)):
+        table,rows=words(0x0c2fc564+variant*8,2)
+        if rows!=expected:
+            raise ValueError('Unexpected Japanese gas station dialogue count')
+        script.append(rows)
+        for index in range(rows):
+            speaker,lines,width,text,zero1,zero2=words(table+24*index,6)
+            start=text-BASE
+            if not 0<=start<len(program):
+                raise ValueError('Gas station text outside program')
+            end=program.index(0,start,start+256)
+            message=program[start:end].removesuffix(b'\n').split(b'\n')
+            if speaker>2 or lines!=len(message) or lines not in (1,2) or max(map(len,message))!=width*2 or zero1 or zero2:
+                raise ValueError('Invalid Japanese gas station message')
+            script.extend((speaker,lines))
+            for line in message:
+                if not line or len(line)%2:
+                    raise ValueError('Incomplete Japanese gas station glyph')
+                script.append(len(line)//2)
+                for lead,trail in zip(line[::2],line[1::2]):
+                    if not (0xa1<=lead<=0xfe and 0xa1<=trail<=0xfe):
+                        raise ValueError('Invalid Japanese gas station character')
+                    glyph=glyphs[(lead-0xa0)*96+trail-0xa0]
+                    if glyph>=count or glyph>255:
+                        raise ValueError('Unmapped Japanese gas station character')
+                    script.append(glyph)
+    (root/'gasstand/dialogue.bin').write_bytes(script)
+    return dict(gasstand_chunks=bank['chunk_count'],gasstand_textures=bank['texture_count'],
+                alphabet_textures=count,source_image_sha256=JAPANESE.sha256)
+
 def export(image: Path, hostfs: Path, project: Path):
     program=image.read_bytes()
-    if hashlib.sha256(program).hexdigest()!=CANONICAL: raise ValueError('Unknown original image')
+    layout=identify(program)
     def u(address): return struct.unpack_from('<I',program,address-0x0c020000)[0]
     def string(address):
         begin=address-0x0c020000
         return program[begin:program.index(0,begin)].decode('ascii')
     root=project/'data/original_assets/attract'
     bank=export_model_menu(hostfs/'model/gasstand',root/'gasstand','twiddled')
+    if layout==JAPANESE:
+        return export_japanese(program,hostfs,root,bank)
     fontpath=hostfs/'font/alphabet'
     font=texture_bank.export_bank(fontpath/'alphabet_spr.tbl',fontpath/'alphabet_spr.bin.nz',root/'alphabet/textures','twiddled')
     scripts=[]

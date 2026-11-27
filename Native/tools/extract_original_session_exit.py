@@ -5,13 +5,13 @@ import json
 from pathlib import Path
 import shutil
 import tempfile
-from extract_original_menus import export_model_menu, ORIGINAL_IMAGE_SHA256
+from extract_original_menus import export_model_menu
+from arcade_program import identify
 
 
 def export(game, output):
     image = game / 'idas3_main_0C020000.bin'
-    if hashlib.sha256(image.read_bytes()).hexdigest() != ORIGINAL_IMAGE_SHA256:
-        raise ValueError('The verified Stage 3 source image is required')
+    layout = identify(image.read_bytes())
     specs = [('levelup', 'levelup_dr'), ('levelup', 'levelup_bu'),
              ('levelup', 'levelup_vs'), ('gameover_v3', 'gameover_v3'), ('ejectcard', 'ejectcard')]
     records = []
@@ -27,7 +27,7 @@ def export(game, output):
                 shutil.copyfile(work / name, dest)
                 hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
             records.append(dict(bank=bank, chunks=manifest['chunk_count'], textures=manifest['texture_count'], outputs=hashes))
-    (output / 'manifest.json').write_text(json.dumps(dict(source_image_sha256=ORIGINAL_IMAGE_SHA256,
+    (output / 'manifest.json').write_text(json.dumps(dict(source_image_sha256=layout.sha256,
         source='driveA/HOSTFS/model', banks=records, scope='Unmodified original artwork; no executable copied.'), indent=2)+'\n')
 
 

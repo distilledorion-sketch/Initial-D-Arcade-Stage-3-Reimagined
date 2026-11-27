@@ -4,9 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 import struct
-
-SOURCE_SHA256 = "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
-BASE = 0x0C020000
+from extract_original_models import read_payload
+from arcade_program import BASE, ENGLISH_SHA256 as SOURCE_SHA256, JAPANESE_SHA256, identify
 SECTIONS = [
     ("mode_masks", 0x0C283E08, 32 * 4),
     ("path_bounds", 0x0C283E88, 18 * 8),
@@ -22,9 +21,9 @@ SECTIONS = [
     ("transmission_rows_and_override", 0x0C28830C, 36 * 24),
     ("upgrade_coefficients", 0x0C28866C, 76 * 4),
 ]
-def course_paths(image, condition, weather=0):
+def course_paths(image, condition, weather=0, table_address=0x0C2EFF40):
     """Exact042700 setup record, eight64-byte source paths."""
-    address = 0x0C2EFF40 + condition * 1024 + weather * 512
+    address = table_address + condition * 1024 + weather * 512
     return [image[address - BASE + i * 64:address - BASE + (i + 1) * 64]
             .split(b"\0", 1)[0].decode("ascii") for i in range(8)]
 
@@ -36,17 +35,22 @@ def fnv1a(data):
 
 def export(image_path, hostfs, output):
     image = image_path.read_bytes()
-    if len(image) != 4194304 or hashlib.sha256(image).hexdigest() != SOURCE_SHA256:
-        raise ValueError("Physics export requires the verified canonical GDS-0033 program")
+    layout = identify(image)
+    source_hash = layout.sha256
+    # The entire contiguous vehicle table is byte-identical in Rev C at +0x77b4.
+    # Keep the canonical section IDs consumed by the native driver.
+    shift = layout.vehicle_table_shift
+    path_table = layout.course_paths
     output.mkdir(parents=True, exist_ok=True)
-    header = b"ID3TBL01" + struct.pack("<II", 1, len(SECTIONS)) + bytes.fromhex(SOURCE_SHA256)
+    header = b"ID3TBL01" + struct.pack("<II", 1, len(SECTIONS)) + bytes.fromhex(source_hash)
     cursor = len(header) + len(SECTIONS) * 16
     directory, payload, manifest_sections = bytearray(), bytearray(), []
     for name, address, size in SECTIONS:
-        data = image[address - BASE:address - BASE + size]
+        offset = address + shift - BASE
+        data = image[offset:offset + size]
         directory += struct.pack("<IIII", address, size, cursor, fnv1a(data))
         payload += data
-        manifest_sections.append(dict(name=name, original_address=f"0x{address:08X}",
+        manifest_sections.append(dict(name=name, original_address=f"0x{address + shift:08X}",
                                       bytes=size, pack_offset=cursor, sha256=hashlib.sha256(data).hexdigest()))
         cursor += size
     tables = header + directory + payload
@@ -55,10 +59,10 @@ def export(image_path, hostfs, output):
     for condition in range(18):
         # Source scene order places VH/Happogahara before IR/Irohazaka.
         # Derive the stem from the original table rather than a UI enum.
-        name = Path(course_paths(image, condition)[7]).name[5:] + ("o" if condition & 1 else "i")
+        name = Path(course_paths(image, condition, table_address=path_table)[7]).name[5:] + ("o" if condition & 1 else "i")
         source = hostfs / "binary" / f"PATH_{name}_0.bin"
-        raw = source.read_bytes()
-        last_index = struct.unpack_from("<I", image, 0x0C283E88 - BASE + condition * 8)[0]
+        raw = read_payload(source)
+        last_index = struct.unpack_from("<I", image, 0x0C283E88 + shift - BASE + condition * 8)[0]
         count = last_index + 1
         size = count * 12
         if len(raw) < size:
@@ -74,19 +78,19 @@ def export(image_path, hostfs, output):
     collision = []
     collision_sources = sorted({Path(record).name for condition in range(18)
                                 for weather in range(2)
-                                for record in course_paths(image, condition, weather)[5:7]})
+                                for record in course_paths(image, condition, weather, path_table)[5:7]})
     for stem in collision_sources:
         source = hostfs / "binary" / f"{stem}.bin.nz"
-        raw = source.read_bytes()
+        raw = read_payload(source)
         if struct.unpack_from("<II", raw) != (0x52434C31, 1):
             raise ValueError(f"Unsupported original collision format: {source}")
         filename = "collision_" + stem.replace("_colli", "") + ".rcl"
         (output / filename).write_bytes(raw)
         collision.append(dict(source=source.relative_to(hostfs).as_posix(), file=filename,
                               bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest(),
-                              policy="Byte-for-byte RCL1 source, already uncompressed; no geometry changes"))
+                              policy="Byte-for-byte RCL1 payload; no geometry changes"))
     manifest = dict(schema="idas3-original-physics-data-v1", source_program=image_path.name,
-                    source_program_sha256=SOURCE_SHA256, source_program_base=f"0x{BASE:08X}",
+                    source_program_sha256=source_hash, source_program_base=f"0x{BASE:08X}",
                     tables_sha256=hashlib.sha256(tables).hexdigest(), tables_bytes=len(tables),
                     sections=manifest_sections, paths=paths, collision=collision,
                     limitations=["The upgrade table exports 76 identified coefficient cells. Values outside indices0..75 are not accepted; valid profile upgrade progression is not yet lifted.",

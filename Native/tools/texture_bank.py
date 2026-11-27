@@ -112,11 +112,22 @@ def write_native_pack(path:Path,records:list[dict]):
             output.write(struct.pack('<4I',record['index'],record['width'],record['height'],len(rgba)))
             output.write(rgba)
 
-def export_bank(table:Path,payload:Path,out:Path,layout:str)->dict:
+def export_bank(table:Path,payload:Path,out:Path,layout:str,*,font_map:bytes|None=None)->dict:
     metadata=table.read_bytes();raw=payload.read_bytes()
     if not metadata or len(metadata)%16:raise ValueError('Invalid texture table record length')
+    count=len(metadata)//16
+    if font_map is not None:
+        if len(font_map)!=96*96*2:raise ValueError('Invalid JIS glyph map')
+        last=max(glyph for (glyph,) in struct.iter_unpack('<H',font_map) if glyph!=0xffff)
+        if last>=count:raise ValueError('Glyph map references an absent texture')
+        # Some Rev C font tables describe an additional unused page. Only the
+        # first page is present on disc and every mapped character indexes it.
+        for tile in range(last+1,count):
+            if struct.unpack_from('<I',metadata,tile*16+8)[0]>=len(raw):
+                count=tile
+                break
     records=[]
-    for i in range(len(metadata)//16):
+    for i in range(count):
         w,h,fmt,flags,reserved,offset,tail=struct.unpack_from('<HHBBHII',metadata,i*16)
         end=offset+w*h*2
         if offset>len(raw) or end>len(raw):raise ValueError(f'Texture {i} exceeds bank payload')

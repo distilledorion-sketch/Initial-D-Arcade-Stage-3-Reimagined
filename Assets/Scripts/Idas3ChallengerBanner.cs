@@ -5,12 +5,13 @@ using UnityEngine;
 // network owner so frame/layout verification does not need an online service.
 public sealed class Idas3ChallengerBanner : MonoBehaviour
 {
-    [Serializable] public sealed class Part {public int texture;public float[] vertices;public int[] triangles;}
-    [Serializable] public sealed class Geometry {public Part[] parts;}
+    [Serializable] public sealed class Part {public int texture;public bool flash;public float[] vertices;public int[] triangles;}
+    [Serializable] public sealed class Geometry {public Part[] parts;public int badgeTexture;}
+    internal int BadgeTexture {get; private set;}
     Idas3ChallengerGraphic[] graphics;
     RenderTexture repeatedBackground;
 #if IDAS3_PORTABLE_PLAYER
-    static readonly Texture2D[] discTextures = new Texture2D[5];
+    static readonly Texture2D[] discTextures = new Texture2D[7];
     static string DiscFile(string filename) => System.IO.Path.Combine(Application.streamingAssetsPath,
         "IDAS3", "data", "unity", "Challenger", filename);
 #endif
@@ -37,8 +38,14 @@ public sealed class Idas3ChallengerBanner : MonoBehaviour
         string json = source.text;
 #endif
         var geometry=JsonUtility.FromJson<Geometry>(json);
-        if(geometry?.parts==null||geometry.parts.Length!=4)throw new InvalidOperationException("Invalid challenger geometry");
-        graphics=new Idas3ChallengerGraphic[4];
+        if(geometry?.parts==null)throw new InvalidOperationException("Missing challenger geometry");
+        if(geometry.parts.Length==4 && geometry.badgeTexture==0){
+            BadgeTexture=4;
+            geometry.parts[3].flash=true;
+        }else if(geometry.parts.Length==6 && geometry.badgeTexture==6){
+            BadgeTexture=geometry.badgeTexture;
+        }else throw new InvalidOperationException("Invalid challenger geometry");
+        graphics=new Idas3ChallengerGraphic[geometry.parts.Length];
         for(int i=0;i<graphics.Length;i++){
             var part=geometry.parts[i];
             Texture texture=LoadTexture(part.texture);

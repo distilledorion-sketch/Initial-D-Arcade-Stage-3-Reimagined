@@ -7,8 +7,13 @@
 
 namespace idas3::original {
 namespace {
+#ifdef IDAS3_JAPANESE_PLAYER
+#include <regional/original_rival_dialog_tables.inc>
+#include <regional/original_bunta_dialog_tables.inc>
+#else
 #include "original_rival_dialog_tables.inc"
 #include "original_bunta_dialog_tables.inc"
+#endif
 
 // Screen origin of every dialogue layer: 0C66A8/0C66CC/0C66D0 map one model
 // unit to 100 pixels about (320,240), so (-3.2,2.4) is the top-left corner.
@@ -92,11 +97,12 @@ void appendJis(OriginalDialogLine& line,std::string_view jis,bool proportional){
         if(i+1>=jis.size())break;
         const auto b1=static_cast<unsigned char>(jis[i+1]);
         const std::uint32_t index=(std::uint32_t(b0)-0xA0u)*96u+(std::uint32_t(b1)-0xA0u);
-        if(index<=9216u){
+        if(index<9216u){
             std::uint16_t texture=0;
-            if(alphabetTexture(index,texture))pushGlyph(line,texture);
+            if(line.japanese)pushGlyph(line,std::uint16_t(index));
+            else if(alphabetTexture(index,texture))pushGlyph(line,texture);
             const auto code=std::uint16_t((std::uint32_t(b0)<<8)|b1);
-            line.cursorX=proportional?std::fma(line.cell,1.f-alphabetWidth(code),line.cursorX)
+            line.cursorX=proportional&&!line.japanese?std::fma(line.cell,1.f-alphabetWidth(code),line.cursorX)
                                      :std::fma(line.cell,line.scale,line.cursorX);
         }
         i+=2;
@@ -220,13 +226,19 @@ void Interpreter::dispatch(char command){
         const auto colour=speakerColours[n<speakerColours.size()?n:0];
         s.text.color=colour;s.name.color=colour;
         clearLine(s.name);
-        if(s.buntaChallenge)appendJis(s.name,buntaSpeakerName,true);
-        else{
-            const auto first=std::uint32_t(speakerNameLists[s.character<31?s.character:0].first);
-            const auto count=std::uint32_t(speakerNameLists[s.character<31?s.character:0].second);
-            if(count)appendJis(s.name,speakerNameStrings[first+(n<count?n:0)],true);
+        // Rev C's C command (0C0F6F60) selects a speech slot directly.
+        // Export added the speaker name and separator to the start of a line.
+#ifndef IDAS3_JAPANESE_PLAYER
+        if(!s.name.japanese){
+            if(s.buntaChallenge)appendJis(s.name,buntaSpeakerName,true);
+            else{
+                const auto first=std::uint32_t(speakerNameLists[s.character<31?s.character:0].first);
+                const auto count=std::uint32_t(speakerNameLists[s.character<31?s.character:0].second);
+                if(count)appendJis(s.name,speakerNameStrings[first+(n<count?n:0)],true);
+            }
+            appendJis(s.name,nameSeparator,true);
         }
-        appendJis(s.name,nameSeparator,true);
+#endif
         s.slotFlags.fill(0);
         clearText(s.text);resetCursor(s.text);
         if(!s.name.glyphs.empty())s.textAnchorX=std::int32_t(s.name.glyphs.back().x);
@@ -384,7 +396,8 @@ void Interpreter::dispatch(char command){
     default:
         if(inertCommands.find(command)==std::string_view::npos){
             positionText();
-            appendAscii(token(s.cursor));
+            if(s.text.japanese)appendJis(s.text,token(s.cursor),false);
+            else appendAscii(token(s.cursor));
         }
         break;
     }
@@ -455,6 +468,7 @@ void buildScript(OriginalRivalDialogState& s,const OriginalRivalDialogData& data
     const auto& record=s.buntaChallenge?data.buntaRecord(s.course,s.kind):data.record(s.character,s.kind);
     s.text=OriginalDialogLine{};
     s.name=OriginalDialogLine{};
+    s.name.japanese=s.text.japanese=data.japanese();
     s.text.interval=1;s.text.zOffset=glyphZOffset;
     s.name.interval=1;s.name.zOffset=glyphZOffset;
     setLineOrigin(s.name,nameOriginX,textBaselineY);

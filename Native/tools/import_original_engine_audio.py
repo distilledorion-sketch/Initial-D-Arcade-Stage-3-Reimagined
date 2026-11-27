@@ -2,7 +2,8 @@
 import argparse, hashlib, json, struct
 from pathlib import Path
 
-IMAGE_SHA256 = 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
+from arcade_program import identify
+from extract_original_models import read_payload
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -10,8 +11,7 @@ def main():
         parser.add_argument('--'+name, type=Path, required=True)
     args = parser.parse_args()
     image = args.image.read_bytes()
-    if hashlib.sha256(image).hexdigest() != IMAGE_SHA256:
-        raise ValueError('Canonical original program identity mismatch')
+    layout = identify(image)
     base = 0x0c020000
     word = lambda a: struct.unpack_from('<I', image, a-base)[0]
     string = lambda a: image[a-base:image.index(0, a-base)].decode('ascii')
@@ -29,10 +29,11 @@ def main():
     families, bank_names = [], {'PACK10.bin'}
     selections = bytearray(b'IDES0001'+struct.pack('<I',36))
     for family in range(36):
-        curve = word(0x0c2fba84+4*family)
+        curve = word(0x0c2fba84 + layout.engine_control_shift + 4*family)
         tables.extend(image[curve-base:curve-base+112])
-        tables.extend(image[0x0c25cd08+24*family-base:0x0c25cd0c+24*family-base])
-        descriptor = word(0x0c2fb3d4+family*4)
+        parameter = 0x0c25cd08 + layout.engine_parameters_shift + 24*family - base
+        tables.extend(image[parameter:parameter+4])
+        descriptor = word(0x0c2fb3d4 + layout.engine_control_shift + family*4)
         groups = []
         for i in range(2):
             entry = descriptor+24*i
@@ -46,14 +47,14 @@ def main():
                 parameters=[word(parameters+j*4) for j in range(9)], descriptor_address=f'{entry:08x}'))
         families.append(dict(family=family, curve_address=f'{curve:08x}', groups=groups))
     for i in range(3):
-        tables.extend(struct.pack('<I',struct.unpack_from('<H',image,0x0c2fbb14+2*i-base)[0]))
+        tables.extend(struct.pack('<I',struct.unpack_from('<H',image,0x0c2fbb14+layout.engine_control_shift+2*i-base)[0]))
     (dest/'control.bin').write_bytes(tables)
-    selections.extend(struct.pack('<II',10,word(0x0c25d37c)))
+    selections.extend(struct.pack('<II',10,word(0x0c25d37c+layout.engine_parameters_shift)))
     (dest/'selections.bin').write_bytes(selections)
     banks=[]
     for name in sorted(bank_names):
         path=args.hostfs/'sound/pack'/(name+'.nz')
-        data=path.read_bytes()
+        data=read_payload(path)
         if data[:4]!=b'DTPK' or struct.unpack_from('<I',data,8)[0]!=len(data):
             raise ValueError('Invalid original bank: '+name)
         if not struct.unpack_from('<I',data,0x34)[0]:
@@ -61,7 +62,7 @@ def main():
         target=Path(name).stem+'.dtpk'
         (dest/target).write_bytes(data)
         banks.append(dict(file=target, source=str(path.resolve()), bytes=len(data), sha256=hashlib.sha256(data).hexdigest()))
-    manifest=dict(schema='idas3-continuous-audio-v1',program_sha256=IMAGE_SHA256,
+    manifest=dict(schema='idas3-continuous-audio-v1',program_sha256=layout.sha256,
         driver_sha256=driver_sha,pitch_table_sha256=hashlib.sha256(pitch).hexdigest(),
         voice_tables_sha256=hashlib.sha256(voice).hexdigest(),
         control_sha256=hashlib.sha256(tables).hexdigest(),

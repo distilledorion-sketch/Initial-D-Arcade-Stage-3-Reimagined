@@ -1,18 +1,17 @@
 """Extract exact35-car tuning records from the canonical owner-supplied image."""
 import argparse, hashlib, json, pathlib, struct
 
-CANONICAL_SHA = 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
+from arcade_program import BASE, ENGLISH_SHA256 as CANONICAL_SHA, identify
 def export(image_path, output):
     image = pathlib.Path(image_path).read_bytes()
-    if hashlib.sha256(image).hexdigest() != CANONICAL_SHA:
-        raise ValueError('Canonical program identity mismatch')
+    layout = identify(image)
     def words(address, count):
-        return struct.unpack_from('<' + 'I' * count, image, address - 0x0c020000)
+        return struct.unpack_from('<' + 'I' * count, image, address - BASE)
     data = bytearray(b'IDASTN1\0' + struct.pack('<II', 1, 35))
     def put(*values): data.extend(struct.pack('<' + 'I' * len(values), *values))
     sources, strings = [], set()
     for car in range(35):
-        row = words(0x0c30ecc0 + car * 32, 8)
+        row = words(layout.tuning + car * 32, 8)
         put(*row)
         counts = []
         for package in range(row[1]):
@@ -33,8 +32,8 @@ def export(image_path, output):
         text_records[f'{address:08x}'] = text.decode('euc_jp')
     output = pathlib.Path(output); output.mkdir(parents=True, exist_ok=True)
     (output / 'tables.idastune').write_bytes(data)
-    (output / 'manifest.json').write_text(json.dumps({'schema': 'idas3-original-tuning-v1', 'program_sha256': CANONICAL_SHA,
-        'table_sha256': hashlib.sha256(data).hexdigest(), 'source_table': '0c30ecc0', 'cars': sources,
+    (output / 'manifest.json').write_text(json.dumps({'schema': 'idas3-original-tuning-v1', 'program_sha256': layout.sha256,
+        'table_sha256': hashlib.sha256(data).hexdigest(), 'source_table': f'{layout.tuning:08x}', 'cars': sources,
         'descriptions_euc_jp': text_records}, indent=2, ensure_ascii=True) + '\n', encoding='utf-8')
     print(f'Exported35 cars, {len(data)} bytes, {len(strings)} original descriptions')
 if __name__ == '__main__':

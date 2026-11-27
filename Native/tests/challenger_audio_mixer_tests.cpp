@@ -1,4 +1,5 @@
 #include "audio.h"
+#include "original_driving_clock.h"
 #include "original_tuning.h"
 #include <iostream>
 #include <stdexcept>

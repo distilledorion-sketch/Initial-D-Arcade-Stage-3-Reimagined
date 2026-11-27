@@ -28,6 +28,13 @@ int main(int argc,char**argv)try{
             require(((config.word>>25)&7)==expected&&(config.word&~(7u<<25))==preserved,"Paint recovery altered installed parts");
         }
         OriginalTuningPreviewPresentation preview;preview.load(argv[1],p);
+        if(car==20){
+            // CN9A texture 43 is the upside-down Night Kids wing decal,
+            // authored exclusively on the rival-only mesh in slot 209.
+            const unsigned decal=unsigned(preview.groundTextures().size())+43;
+            for(const auto& range:preview.mesh().ranges)
+                require(range.texture!=decal,"Player Evo IV shop preview carries the rival wing decal");
+        }
         const auto validate=[&]{const auto& mesh=preview.mesh();require(!mesh.vertices.empty(),"Preview empty");
             const auto bankSize=preview.groundTextures().size()+preview.carTextures().size()+preview.plateTextures().size()+preview.environmentTextures().size();
             unsigned reflections=0,environments=0;

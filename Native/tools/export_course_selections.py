@@ -3,7 +3,7 @@
 import argparse,json,struct,subprocess
 from pathlib import Path
 from export_original_assembly import identity
-from export_original_assembly import IMAGE_HASH
+from arcade_program import identify
 from extract_course_roster import COURSES
 def text(f,s):
     data=s.encode('utf-8');f.write(struct.pack('<I',len(data))+data)
@@ -11,6 +11,7 @@ def main():
     p=argparse.ArgumentParser()
     for n in ('image','project','capture_exe'):p.add_argument('--'+n.replace('_','-'),type=Path,required=True)
     p.add_argument('--courses',default='0,1,2');a=p.parse_args()
+    layout=identify(a.image.read_bytes())
     paths={r['id']:r for r in json.loads((a.project/'data/courses/manifest.json').read_text())['courses']}
     for ci in map(int,a.courses.split(',')):
         cid=COURSES[ci];base=a.project/'data/original_models/courses'/cid
@@ -27,7 +28,7 @@ def main():
                 path_id='k_df' if cid=='k_df3' else cid
                 subprocess.run([str(a.capture_exe),str(a.image),str(ci*2+night),str(reverse),str(paths[path_id]['points']),str(variant['world_chunk_count']),str(capture),str(weather)],check=True)
                 source=json.loads(capture.read_text());folder=base/'assemblies'/name;folder.mkdir(parents=True,exist_ok=True)
-                source['source_image_sha256']=IMAGE_HASH
+                source['source_image_sha256']=layout.sha256
                 source['weather']=weather
                 scene_index=ci*2+night
                 source['constructor_scene_index']=scene_index+int(scene_index!=8 and not night and weather==1)

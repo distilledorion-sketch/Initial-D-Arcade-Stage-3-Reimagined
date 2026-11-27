@@ -2,14 +2,22 @@
 import argparse,hashlib,json,struct
 from pathlib import Path
 from extract_original_menus import export_model_menu
+from arcade_program import identify
 CANONICAL='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('image',type=Path);p.add_argument('hostfs',type=Path);p.add_argument('project',type=Path);a=p.parse_args()
-    b=a.image.read_bytes();assert hashlib.sha256(b).hexdigest()==CANONICAL
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('image',type=Path);p.add_argument('hostfs',type=Path);p.add_argument('project',type=Path)
+    p.add_argument('--artwork-only',action='store_true',help='Export the player asset banks without regenerating developer C++ sources.')
+    a=p.parse_args()
+    b=a.image.read_bytes();layout=identify(b)
     def u(x):return struct.unpack_from('<I',b,x-0xc020000)[0]
     def s(x):return b[x-0xc020000:b.index(0,x-0xc020000)].decode('ascii')
     roots=a.project/'data/original_assets/attract/ranking';roots.mkdir(parents=True,exist_ok=True)
     banks={name:export_model_menu(a.hostfs/'model'/name,roots/name,'twiddled')for name in ['s_ground','v3sT13rankin','v3sT00common']}
+    if a.artwork_only:
+        print(json.dumps({k:{'chunks':v['chunk_count'],'textures':v['texture_count']} for k,v in banks.items()}))
+        return
+    if layout.sha256!=CANONICAL:
+        raise ValueError('The developer ranking header uses the GDS-0033 program layout.')
     dimensions=[[u(0xc23be08+i*44+j)for j in (0,8)]for i in range(35)]
     source=['#pragma once','#include <array>','namespace idas3::original::ranking_data {',
       'inline constexpr std::array<unsigned,9> courses{'+','.join(str(u(0xc2ef27c+4*i))for i in range(9))+'};',

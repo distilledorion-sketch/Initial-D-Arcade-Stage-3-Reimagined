@@ -9,23 +9,22 @@ import subprocess
 import sys
 
 from extract_original_models import parse_model, write_binary
-from export_original_assembly import IMAGE_HASH
+from arcade_program import BASE, identify
 from texture_bank import export_bank
 
 def original_catalog(image):
-    if hashlib.sha256(image).hexdigest() != IMAGE_HASH:
-        raise ValueError("Original car table requires the verified retail image")
+    cars = identify(image).cars
     rows = []
     for car in range(35):
-        mapped = struct.unpack_from("<I", image, 0x0c2ef384-0x0c020000+car*4)[0]
-        address = 0x0c2ef410 + mapped*64
+        mapped = struct.unpack_from("<I", image, cars.roster-BASE+car*4)[0]
+        address = cars.folders + mapped*64
         folder = image[address-0x0c020000:address-0x0c020000+64].split(b"\0")[0].decode("ascii")
         if not folder or any(c not in "abcdefghijklmnopqrstuvwxyz0123456789_" for c in folder):
             raise ValueError("Unsafe or unsupported original car folder")
         rows.append({"car_index":car,"mapped_index":mapped,"folder":folder,
             "name_address":f"{address:08X}",
-            "slot_map_address":f"{struct.unpack_from('<I',image,0x0c33b250-0x0c020000+car*4)[0]:08X}",
-            "preset_address":f"{0x0c2f4758+car*12:08X}",
+            "slot_map_address":f"{struct.unpack_from('<I',image,cars.slot_maps-BASE+car*4)[0]:08X}",
+            "preset_address":f"{cars.presets+car*12:08X}",
             "model":f"data/original_models/{folder}/{folder}.idasmesh",
             "assembly":f"data/original_models/{folder}/assembly/{folder}_default.idasasm",
             "textures":f"data/original_assets/cars/{folder}/textures/textures.idastex"})
@@ -39,11 +38,12 @@ def main():
     ap.add_argument("--project",type=Path,required=True)
     ap.add_argument("--catalog-only",action="store_true")
     args=ap.parse_args()
-    rows=original_catalog(args.image.read_bytes())
+    image=args.image.read_bytes()
+    rows=original_catalog(image)
     catalog=args.project/"data/original_models/car_catalog.json"
     catalog.parent.mkdir(parents=True,exist_ok=True)
     catalog.write_text(json.dumps({"schema":"idas3-original-car-catalog-v1",
-        "source_image_sha256":IMAGE_HASH,"cars":rows},indent=2)+"\n")
+        "source_image_sha256":hashlib.sha256(image).hexdigest(),"cars":rows},indent=2)+"\n")
     header=args.project/"src/car_catalog.h"
     header.write_text('#pragma once\n#include <array>\n#include <string_view>\nnamespace idas3 {\n'
         '// Original ID0..34 from0C2EF384/0C2EF410; no alphabetical remapping.\n'

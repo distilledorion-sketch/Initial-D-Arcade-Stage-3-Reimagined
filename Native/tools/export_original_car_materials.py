@@ -2,13 +2,13 @@
 import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
 from extract_original_models import parse_model,VERTEX_SIZE
-from export_original_assembly import IMAGE_HASH
+from arcade_program import BASE, identify
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('root','hostfs','image','capture-exe','work'):p.add_argument('--'+name,type=Path,required=True)
     a=p.parse_args();a.work.mkdir(parents=True,exist_ok=True)
-    if hashlib.sha256(a.image.read_bytes()).hexdigest()!=IMAGE_HASH:raise ValueError('Original program identity')
+    layout = identify(a.image.read_bytes())
     catalog=json.loads((a.root/'data/original_models/car_appearances_manifest.json').read_text())
     summary=[]
     for appearance in catalog['players']+catalog['rivals']:
@@ -37,7 +37,7 @@ def main():
         if unexpected:raise ValueError(f'Writes outside material/ICH records: {unexpected[:8]}')
         packed=b'ID3CMP1\0'+struct.pack('<II',1,len(patches))+b''.join(patches)
         (target/'materials.bin').write_bytes(packed)
-        record.update(schema='idas3-original-car-materials-v1',source_image_sha256=IMAGE_HASH,source_polygon_sha256=hashlib.sha256(source).hexdigest(),output_sha256=hashlib.sha256(packed).hexdigest(),batch_overrides=len(patches),diffuse_changes=painted,
+        record.update(schema='idas3-original-car-materials-v1',source_image_sha256=layout.sha256,source_polygon_sha256=hashlib.sha256(source).hexdigest(),output_sha256=hashlib.sha256(packed).hexdigest(),batch_overrides=len(patches),diffuse_changes=painted,
             source='0267C0 constructor material setup and masks;029040 through029AD0 including029E60→1911A0 palette→028DA0 RGB,028B80/028C80 alpha,028EC0 specular,029ABC gloss writes. Later suspension lookup excluded.',
             boundaries='Actual1D4BE0/1D4C40 parser. Explicit hooks: diagnostic output, completed texture upload/binding, byte-copy allocation and classification of shadow copies, discarded16D680 course-query return, compiler unsigned division. No host color invention.')
         (target/'materials_manifest.json').write_text(json.dumps(record,indent=2)+'\n');summary.append(record)

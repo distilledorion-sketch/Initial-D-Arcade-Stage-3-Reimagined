@@ -180,7 +180,7 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         if(Array.IndexOf(args,"-idas3-scene-language")>=0){
             int language=DiagnosticInt(args,"-idas3-scene-language",0,0,1);
             Directory.CreateDirectory(saves);
-            File.WriteAllText(Path.Combine(saves,"game-options.json"),"{\"version\":1,\"arcadeTextLanguage\":"+language+",\"discordPresence\":false,\"communityTimes\":false}");
+            File.WriteAllText(Path.Combine(saves,"game-options.json"),"{\"version\":1,\"romLanguage\":"+language+",\"discordPresence\":false,\"communityTimes\":false}");
         }
         if(Array.IndexOf(args,"-idas3-scene-night-check")>=0){Directory.CreateDirectory(saves);File.WriteAllText(Path.Combine(saves,"settings.txt"),"3 0 0 0 1 1 1 0\n");}
         bool requestedDepth=Array.IndexOf(args,"-idas3-scene-depth-check")>=0;
@@ -594,7 +594,8 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         Check((host.Status.flags&2)!=0,"Pause failed.");
         ulong ticks=host.Status.simulationTicks;yield return Frames(8);Check(host.Status.simulationTicks==ticks,"Paused solver advanced.");
         yield return Capture("race-paused",true);
-        Check(Idas3Native.Idas3SceneReturnToCourse()==1,"Paused return to course selection failed.");
+        if(Idas3Native.Idas3SceneReturnToCourse()!=1)
+            Check(false,"Paused return to course selection failed. "+Idas3Native.Error());
         pause.SetOpen(false);yield return Frames(30);
         Check((host.Status.flags&1)!=0&&host.Status.frontendStage==6,"Course return failed.");
         yield return Capture("course-menu",false);
@@ -622,7 +623,7 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         hires=new RenderTexture(Screen.width,Screen.height,24,RenderTextureFormat.ARGB32){name="Language artwork verification",antiAliasing=1};
         Check(hires.Create(),"Language verification target creation");host.GetComponent<Camera>().targetTexture=hires;
         int language=DiagnosticInt(Environment.GetCommandLineArgs(),"-idas3-scene-language",0,0,1);
-        Check(host.GameOptions.Current.arcadeTextLanguage==language,"Language was not loaded before native startup");
+        Check(host.GameOptions.Current.romLanguage==language&&host.GameOptions.JapaneseDisc==(language==1),"Loaded ROM does not match the selected regional game");
         Check(Idas3Native.Idas3SceneConfigureLanguage(1-language)==0,"Live scene allowed mixing language caches");
         Check(Idas3Native.Idas3SceneConfigureLanguage(language)==1,"Current language was not retained");
         yield return Frames(120);yield return Capture("attract",false);
@@ -636,6 +637,16 @@ public sealed partial class Idas3SceneSmoke : MonoBehaviour
         menu.SelectCategory(Idas3PauseMenu.Category.Gameplay);
         for(int row=0;row<5;++row)menu.Navigate(1);
         yield return Frames(3);yield return Capture("language-option",false);
+        int custom=host.GameOptions.Draft.customMenuLanguage;
+        menu.NavigateHorizontal(1);
+        Check(host.GameOptions.Draft.romLanguage==1-language&&host.GameOptions.Draft.customMenuLanguage==custom,"ROM selector changed the wrong language");
+        menu.Navigate(1);menu.NavigateHorizontal(1);
+        int nextCustom=(custom+1)%3;
+        Check(host.GameOptions.Draft.customMenuLanguage==nextCustom&&host.GameOptions.Draft.romLanguage==1-language,"Custom menu selector changed the ROM");
+        menu.Navigate(1);menu.Navigate(1);menu.Activate();
+        var saved=JsonUtility.FromJson<Idas3GameOptions.Values>(File.ReadAllText(host.GameOptions.FilePath));
+        Check(saved.romLanguage==1-language&&saved.customMenuLanguage==nextCustom&&Idas3MenuLocalization.Language==nextCustom,"Apply did not save both language selections independently");
+        Check(Idas3Native.Idas3SceneConfigureLanguage(language)==1,"Applying a menu preference changed the running regional game");
         Check(Idas3Native.Idas3SceneReturnToCourse()==1,"Language test could not return to course selection");
         menu.SetOpen(false);yield return Frames(60);
         Check(host.Status.frontendStage==6,"Expected course selection");yield return Capture("course-menu",false);

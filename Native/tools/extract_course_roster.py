@@ -5,7 +5,7 @@ from pathlib import Path
 from extract_original_models import parse_model,write_binary
 from texture_bank import export_bank
 from course_palette_bank import COURSE_PALETTES,export_palette_bank
-from export_original_assembly import IMAGE_HASH
+from arcade_program import identify
 
 COURSES=['k_ez','s_nm','h_hd','k_df','s_vh','s_uh','n_sy','k_tu','k_df3']
 def digest(p):return {'path':str(p.resolve()),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
@@ -14,7 +14,7 @@ def main():
     for n in ('image','hostfs','project'):p.add_argument('--'+n,type=Path,required=True)
     p.add_argument('--courses',default='0,1,2');p.add_argument('--weather',default='0');a=p.parse_args()
     raw=a.image.read_bytes()
-    if hashlib.sha256(raw).hexdigest()!=IMAGE_HASH:raise ValueError('Canonical image mismatch')
+    layout=identify(raw)
     for course in map(int,a.courses.split(',')):
         if not 0<=course<len(COURSES):raise ValueError('Original course index outside catalog')
         cid=COURSES[course];out=a.project/'data/original_models/courses'/cid;out.mkdir(parents=True,exist_ok=True)
@@ -58,12 +58,12 @@ def main():
         for night in (0,1):
             for weather in map(int,a.weather.split(',')):
                 if weather not in (0,1):raise ValueError('Original weather selector outside two records')
-                address=0xc2eff40+(course*2+night)*1024+weather*512
+                address=layout.course_paths+(course*2+night)*1024+weather*512
                 paths=[raw[address-0xc020000+i*64:address-0xc020000+(i+1)*64].split(b'\0',1)[0].decode('ascii') for i in range(8)]
                 print(f'{cid} night{night} weather{weather}: {paths[0]}',flush=True)
                 world=model(paths[0],paths[1]);background=model(paths[2],paths[3])
                 variants.append({'night':night,'weather':weather,'source_record':f'{address:08X}','paths':paths,'model':world['file'],'world_bank_counts':world['bank_counts'],'world_chunk_count':world['count'],'textures':texture(paths[1]),'background':background['file'],'background_chunk_count':background['count'],'background_textures':texture(paths[3])})
-        manifest={'schema':'idas3-course-bank-roster-v1','course':cid,'scene_course_index':course,'source_image_sha256':IMAGE_HASH,'coordinate_transform':'none; source XYZ/UV and material words retained','models':done_models,'textures':done_textures,'variants':variants,'selection_status':'Geometry imported; scene load metadata is published only after original render selection is captured.'}
+        manifest={'schema':'idas3-course-bank-roster-v1','course':cid,'scene_course_index':course,'source_image_sha256':layout.sha256,'coordinate_transform':'none; source XYZ/UV and material words retained','models':done_models,'textures':done_textures,'variants':variants,'selection_status':'Geometry imported; scene load metadata is published only after original render selection is captured.'}
         (out/'banks_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
         print(f'Converted {cid}: {len(done_models)} original model banks, {len(done_textures)} texture banks',flush=True)
 

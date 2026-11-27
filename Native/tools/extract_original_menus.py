@@ -278,7 +278,10 @@ def export_model_menus(source: Path, output: Path, layout: str, banks: list[str]
     for name in names:
         if Path(name).name != name or name in ('.', '..') or '/' in name or '\\' in name:
             raise ValueError('Bank must be a plain folder name')
-        result = export_model_menu(source / name, output / name, layout)
+        # Rev C retains older revisions in the same folder.
+        bank = 'adv2d_v3' if name == 'adv2d' else name
+        tables = (bank + '_pol.tbl', bank + '_tex.tbl') if (source / name / (bank + '_pol.tbl')).is_file() else (None, None)
+        result = export_model_menu(source / name, output / name, layout, *tables)
         summaries.append({'name': name, 'manifest': f'{name}/manifest.json',
                           'mesh_pack': f'{name}/{result["mesh_pack"]}',
                           'texture_pack': f'{name}/textures/textures.idastex',
@@ -294,9 +297,8 @@ def export_model_menus(source: Path, output: Path, layout: str, banks: list[str]
 
 def export_car_menu_mapping(image_path: Path, output: Path) -> dict:
     image = image_path.read_bytes()
-    if digest(image) != ORIGINAL_IMAGE_SHA256:
-        raise ValueError('Original menu table extraction requires the verified Stage3 image')
-    address, image_base = 0x0c2aae80, 0x0c020000
+    from arcade_program import BASE, identify
+    address, image_base = identify(image).cars.menu_order, BASE
     entries = list(struct.unpack_from('<35I', image, address-image_base))
     if sorted(entries) != list(range(35)):
         raise ValueError('Original car menu table is not the observed complete permutation')

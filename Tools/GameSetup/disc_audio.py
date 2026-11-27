@@ -28,12 +28,14 @@ def reuse_score(previous, relative, expected, destination):
 def generate(game, project, converters, dependency_path=None, only_missing=False, previous=None, reference=None):
     host = game / "driveA/HOSTFS"
     program = (game / "idas3_main_0C020000.bin").read_bytes()
+    from arcade_program import BASE, identify
+    cue_table = identify(program).music_cues
     banks = host / "sound/pack"
     audio = project / "data/original_audio"
     # Each 80-byte descriptor starts with the filename, followed by its command and volume.
     cues = {}
     for index in range(39):
-        start = 0x31df04 - 0x20000 + 80 * index
+        start = cue_table - BASE + 80 * index
         filename = program[start:start + 64].split(b"\0", 1)[0].decode("ascii")
         name = Path(filename).stem
         if filename != name + ".bin" or not name.replace("_", "").isalnum():
@@ -47,11 +49,15 @@ def generate(game, project, converters, dependency_path=None, only_missing=False
             env["PYTHONPATH"] = str(dependency_path)
         def command(filename, *args, scope, log):
             cmd = [sys.executable, str(converters / (filename + ".py")), *map(str,args)]
+            log.flush()
+            start = log.tell()
             result = subprocess.run(cmd, env=scope, stdout=log, stderr=subprocess.STDOUT)
             if result.returncode:
-                log.flush()
-                tail = Path(log.name).read_bytes()[-2000:].decode(errors="replace")
-                raise ValueError(f"Sound conversion failed during {filename}:\n{tail}")
+                with open(log.name, "rb") as reader:
+                    end = reader.seek(0, os.SEEK_END)
+                    reader.seek(max(start, end - 8192))
+                    tail = reader.read().decode("utf-8", errors="replace").strip()
+                raise ValueError(f"{Path(log.name).stem}: {filename} stopped (exit code {result.returncode}).\n{tail}")
         with (project.parent / (project.name + "-sounds.log")).open("wb") as log:
             command("import_original_oneshot", scope=env, log=log)
         def score(item):

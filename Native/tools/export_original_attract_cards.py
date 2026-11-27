@@ -4,13 +4,13 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from arcade_program import identify
 from extract_original_menus import export_model_menu
 import extract_original_models as models
 
-IMAGE_HASH='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 
 def export(image,hostfs,project):
-    if hashlib.sha256(image.read_bytes()).hexdigest()!=IMAGE_HASH:raise ValueError('Unexpected source image')
+    layout=identify(image.read_bytes())
     root=project/'data/original_assets/attract/cards';root.mkdir(parents=True,exist_ok=True)
     records=[]
     for name in ['segalogo','segarosso2d','adv_caution']:
@@ -29,7 +29,7 @@ def export(image,hostfs,project):
     (folder/'original_pol.bin').write_bytes(polygon)
     (folder/'original_pol.tbl').write_bytes(sources['table'].read_bytes())
     records.append({'name':prefix,'chunk_count':len(chunks),'texture_count':0,'source_files':{k:{'path':str(v),'sha256':hashlib.sha256(v.read_bytes()).hexdigest()} for k,v in sources.items()},'mesh_pack_sha256':hashlib.sha256((folder/(prefix+'.idasmesh')).read_bytes()).hexdigest()})
-    report={'schema':'idas3-original-attract-cards-v1','source_image_sha256':IMAGE_HASH,'banks':records,'source_owners':{'3':'0743A0/0746E0','4':'073660/073960','5':'0398E0/039BC0'},'transformation':'Original polygon positions/materials/UVs preserved; textured banks decode/repack every source texel; no replacement artwork.'}
+    report={'schema':'idas3-original-attract-cards-v1','source_image_sha256':layout.sha256,'banks':records,'source_owners':{'3':'0743A0/0746E0','4':'073660/073960','5':'0398E0/039BC0'},'transformation':'Original polygon positions/materials/UVs preserved; textured banks decode/repack every source texel; no replacement artwork.'}
     (root/'manifest.json').write_text(json.dumps(report,indent=2)+'\n')
     print('Exported214 original card chunks and3 texture banks, including all211 Rosso polygons')
 

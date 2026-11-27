@@ -10,7 +10,8 @@ namespace idas3 {
 // frame units, race timer increments and recorded frame indices stay intact.
 class OriginalDrivingClock {
 public:
-    static constexpr double step=852.0*530.0/27000000.0;
+    static constexpr unsigned pixelsPerFrame=852*530, pixelClockHz=27000000;
+    static constexpr double step=double(pixelsPerFrame)/pixelClockHz;
     static constexpr double frequency=1.0/step;
     double accumulator=0;
     template<class F> int advance(double elapsed,F&& f){

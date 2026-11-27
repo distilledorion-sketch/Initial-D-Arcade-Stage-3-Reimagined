@@ -30,11 +30,20 @@ public:
     std::vector<std::uint8_t> image;
     std::unordered_map<std::uint32_t,std::uint8_t> writes;
     std::vector<std::pair<std::uint32_t,std::uint32_t>> zeroRegions;
-    explicit RefMemory(const std::filesystem::path& path){
+    enum class SupportedImages { English, EnglishAndJapanRevC };
+    bool japanRevC = false;
+    explicit RefMemory(const std::filesystem::path& path, SupportedImages supported = SupportedImages::English){
         std::ifstream f(path,std::ios::binary);if(!f)throw std::runtime_error("Original image unavailable");
         image.assign(std::istreambuf_iterator<char>(f),{});
         if(image.size()!=4194304)throw std::runtime_error("Original reference requires canonical 4MiB image");
-        if(read32(0x0c15d0f4)!=0x42a00000||read32(0x0c15d0f8)!=0x42d60000)throw std::runtime_error("Original input literal identity mismatch");
+        const auto hasInputLiterals=[&](std::uint32_t address){
+            return read32(address)==0x42a00000 && read32(address+4)==0x42d60000;
+        };
+        if(!hasInputLiterals(0x0c15d0f4)){
+            if(supported!=SupportedImages::EnglishAndJapanRevC || !hasInputLiterals(0x0c170454))
+                throw std::runtime_error("Original input literal identity mismatch");
+            japanRevC=true;
+        }
     }
     void clear(){writes.clear();zeroRegions.clear();}
     void zeroRegion(std::uint32_t address,std::uint32_t size){if(size>0x2000000||address+size<address)throw std::runtime_error("Invalid reference region");zeroRegions.push_back({address,size});}

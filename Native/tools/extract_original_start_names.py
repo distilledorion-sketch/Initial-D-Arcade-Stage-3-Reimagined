@@ -7,7 +7,7 @@ from pathlib import Path
 import struct
 import texture_bank
 
-CANONICAL = 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
+from arcade_program import ENGLISH, identify
 BASE = 0x0C020000
 # These are transcriptions of the English text painted by the original
 # namekana images, not translations of the Japanese lookup-key bytes.
@@ -18,8 +18,8 @@ LOCALIZED = ['IGGY','KENJI','SHINGO','TORU','KAWAI','MAYA & SIMONE',
 
 def export(image: Path, source: Path, profile: Path, output: Path):
     program = image.read_bytes()
-    if hashlib.sha256(program).hexdigest() != CANONICAL:
-        raise ValueError('Unknown original source image')
+    layout = identify(program)
+    tables = layout.name_entry
     def u32(address): return struct.unpack_from('<I', program, address-BASE)[0]
     def cstring(address):
         begin = address-BASE
@@ -28,12 +28,12 @@ def export(image: Path, source: Path, profile: Path, output: Path):
     for enemy in range(32):
         lines = []
         for line in range(2):
-            address = u32(0x0C33B780 + (enemy*2+line)*4)
+            address = u32(tables.start_names + (enemy*2+line)*4)
             name = cstring(address)
             if len(name) >= 16 or len(name)%2: raise ValueError('Invalid original start name')
             names.append(name.ljust(16, b'\0'))
             lines.append({'address': f'{address:08X}', 'bytes': name.hex(), 'unicode': name.decode('euc_jp')})
-        records.append({'enemy': enemy, 'lines': lines, 'rendered_english':LOCALIZED[enemy]})
+        records.append({'enemy': enemy, 'lines': lines, **({'rendered_english':LOCALIZED[enemy]} if layout == ENGLISH else {})})
     indices = (source/'namekana_font.bin.nz').read_bytes()
     if len(indices) != 9216*2: raise ValueError('Invalid namekana index count')
     unicode = []
@@ -48,9 +48,9 @@ def export(image: Path, source: Path, profile: Path, output: Path):
     # 1917A0 returns6 and1917C0 returns this six-glyph-ID array. The HUD's
     # default Japanese-name key at33B88C belongs to another font and is blank
     # in namekana. This is the source start sequence's actual PLAYER fallback.
-    default_ids=struct.unpack_from('<6I',program,0x0C298958-BASE)
+    default_ids=struct.unpack_from(f'<{tables.default_length}I',program,tables.default_ids-BASE)
     default=b''.join(profile_bytes[20+2*g:22+2*g] for g in default_ids).ljust(16,b'\0')
-    animation = program[0x0C31EE90-BASE:0x0C31EE90-BASE+80*12]
+    animation = program[tables.animation-BASE:tables.animation-BASE+80*12]
     output.mkdir(parents=True, exist_ok=True)
     bank = texture_bank.export_bank(source/'namekana_spr.tbl', source/'namekana_spr.bin.nz', output/'textures', 'twiddled')
     payload = (b'IDAS3SN1' + struct.pack('<5I',1,len(bank['textures']),9216,221,80) +
@@ -62,9 +62,9 @@ def export(image: Path, source: Path, profile: Path, output: Path):
         'sources':[{'path':str(p.resolve()),'sha256':hashlib.sha256(p.read_bytes()).hexdigest()} for p in sources],
         'output':str((output/'start_names.bin').resolve()), 'output_sha256':hashlib.sha256(payload).hexdigest(),
         'font_count':len(bank['textures']), 'source_rules': '14BEC0 namekana 64px; 191940 table33B780[enemy][line]; 14C1E0 names at (224-32*n,104) and (416-32*n,312), two opponent lines y280/344; 14B700 animation31EE90 with 80 x/y/alpha triplets; VS41..70 after 100 phase ticks.',
-        'localization':'Japanese EUC-JP values are texture lookup keys; localized namekana rival textures themselves paint English. rendered_english is a visual transcription. General profile glyphs retain their normal text.',
+        'localization':'EUC-JP values index glyphs from the selected disc.',
         'default_player_glyph_ids':default_ids, 'default_player_bytes':default.hex(),
-        'motion_address':'0C31EE90', 'motion_sha256':hashlib.sha256(animation).hexdigest(),
+        'motion_address':f'{tables.animation:08X}', 'motion_sha256':hashlib.sha256(animation).hexdigest(),
         'names':records, 'motion_samples':[list(struct.unpack_from('<3f',animation,i*12)) for i in range(80)]}
     (output/'manifest.json').write_text(json.dumps(manifest,indent=2,ensure_ascii=True)+'\n',encoding='utf-8')
     return manifest

@@ -53,6 +53,7 @@ private:
     OriginalRivalDialogData data_;
     Bank scene_,portrait_,background_,choice_,prompt_;
     NativeTextureBank alphabet_,namekana_;
+    std::vector<std::uint16_t> dialogueFontMap_;
     std::string portraitName_,backgroundName_;
     OriginalRivalDialogState state_;
     bool loaded_=false;

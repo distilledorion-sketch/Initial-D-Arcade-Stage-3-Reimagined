@@ -1,5 +1,6 @@
 #include "unity_ui_capture.h"
 #include "original_tuning_course_presentation.h"
+#include "original_menu_chunks.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -25,7 +26,7 @@ struct OriginalTuningCoursePresentation::Impl {
     OriginalShowroom showroom;std::uint64_t ticks=0;unsigned kind=0,count=3,drawFrame=0;
     float sliderX=.5f,sliderScale=1;
     NativeModelChunk materialize(const OriginalTuningCourseDraw& d)const {
-        auto c=models[bankIndex(d.bank)].chunks.at(d.chunk);
+        auto c=models[bankIndex(d.bank)].chunks.at(d.bank==8?originalCommonMenuChunk(d.chunk):d.chunk);
         unsigned vertexNumber=0;
         for(auto& b:c.batches){
             if(d.labelSelection>=0){
@@ -66,7 +67,9 @@ OriginalTuningCoursePresentation OriginalTuningCoursePresentation::load(const st
     if(packages.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected tuning package data");
     std::ifstream pulse(base/"tuning_course/pulse.bin",std::ios::binary);read(pulse,p.pulse);if(pulse.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected tuning pulse data");
     std::ifstream wave(base/"tuning_course/cursor_scale.bin",std::ios::binary);read(wave,p.cursorWave);if(wave.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected cursor wave data");
-    if(p.models[1].chunks.size()!=73||p.models[2].chunks.size()!=62||p.models[3].chunks.size()!=9)throw std::runtime_error("Original tuning assets changed");return out;
+    if(p.models[1].chunks.size()!=73||p.models[2].chunks.size()!=62||
+       (p.models[3].chunks.size()!=9&&p.models[3].chunks.size()!=22))throw std::runtime_error("Original tuning assets changed");
+    return out;
 }
 void OriginalTuningCoursePresentation::reset(const original::OriginalTuningCourseMenu& state,const original::OriginalBattleProfile& profile){impl_->showroom.reset();impl_->ticks=0;impl_->drawFrame=0;impl_->kind=profile.byte(1192);impl_->count=state.count504;impl_->sliderX=.5f;impl_->sliderScale=1;}
 void OriginalTuningCoursePresentation::advance(const original::OriginalTuningCourseMenu& state,const original::OriginalBattleProfile& profile,float wheelPosition){
@@ -111,14 +114,17 @@ std::vector<OriginalTuningCourseDraw> OriginalTuningCoursePresentation::drawList
     // Parent12BB16..12BB74 draws this independently of child1AF680.
     // Current package keeps the installed parts; a changed package resets
     // its basic/body tuning when the source selection owner commits.
-    if(p.kind==1)draw(inspectionOptionBank,state.selected496==state.previous500?0:1,0,f(0xbfa3d70a));
+    if(p.kind==1){
+        const unsigned currentBanner=p.models[3].chunks.size()==22?1:0;
+        draw(inspectionOptionBank,currentBanner+unsigned(state.selected496!=state.previous500),0,f(0xbfa3d70a));
+    }
     return out;
 }
 void OriginalTuningCoursePresentation::paintBackground(std::span<unsigned> canvas,int width,int height)const{for(unsigned chunk:{54u,46u})impl_->paint(canvas,width,height,impl_->materialize({8,chunk}),8,false);}
 void OriginalTuningCoursePresentation::paintInspectionStatus(std::span<unsigned> canvas,int width,int height,unsigned frame,unsigned countdown)const{
     const auto color=impl_->pulse.at(frame);
     for(unsigned index:{21u,23u}){
-        auto chunk=impl_->models[0].chunks.at(index);
+        auto chunk=impl_->models[0].chunks.at(originalCommonMenuChunk(index));
         for(auto& batch:chunk.batches){
             batch.ich[2]|=0x001000c0;batch.ich[4]|=0x001000c0;
             batch.material[3]=color;batch.material[5]=color;

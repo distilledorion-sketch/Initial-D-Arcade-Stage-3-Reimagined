@@ -7,6 +7,7 @@ import native_recipe
 import disc_objects
 import disc_billboards
 import disc_extras
+import disc_language
 from disc_setup import PROGRAM, digest
 from pathlib import Path
 import re
@@ -21,11 +22,30 @@ TOOLS = {"chdman.exe", "idas3_game_file_setup.exe", "fsca-table.h"}
 PLAYER_CONTENT = {"D3D12", "InitialDUnity_Data", "MonoBleedingEdge", "dstorage.dll",
                   "dstoragecore.dll", "InitialDUnity.exe", "UnityPlayer.dll", "UnityCrashHandler64.exe"}
 
+def write_japanese_base(archive, prefix, library, program, english_program, previous_layouts):
+    sys.path.insert(0, str(ROOT / "Native/tools"))
+    from arcade_program import JAPANESE_SHA256
+    raw = program.read_bytes()
+    if native_recipe.checksum(raw) != JAPANESE_SHA256 or digest(english_program) != PROGRAM:
+        raise ValueError("Supply the verified Japanese and English developer program images.")
+    player = library.read_bytes()
+    template, recipe = native_recipe.build(player, raw)
+    # A bridge compiled with export-only dialogue tables would otherwise put
+    # those tables directly into a Japanese download. Check the stripped bytes.
+    if native_recipe.find_spans(player, english_program.read_bytes(), excluded=recipe["spans"]):
+        raise ValueError("The Japanese native template still contains English disc tables.")
+    prefix += "regions/gds-0032c/"
+    archive.writestr(prefix + "native-player.template", template)
+    archive.writestr(prefix + "native-recipe.json", json.dumps(recipe))
+    layouts = {**previous_layouts, recipe["library"]: recipe["spans"]}
+    archive.writestr(prefix + "native-base-spans.json", json.dumps(layouts,separators=(",",":")))
+    archive.write(HERE / "regions/gds-0032c/reference-checks.json", prefix + "reference-checks.json")
+
 def converter_sources():
     lookup = {p.stem: p for p in (ROOT / "Native/tools").glob("*.py")}
     for name in ("Import-OriginalAura", "Import-ChallengerAssets", "Import-ChallengerGeometry"):
         lookup[name] = ROOT / "Tools" / (name + ".py")
-    pending = [HERE / name for name in ("disc_audio.py", "disc_setup.py", "disc_objects.py")]
+    pending = [HERE / name for name in ("disc_audio.py", "disc_setup.py", "disc_objects.py", "disc_language.py")]
     selected = set(pending)
     while pending:
         source = pending.pop()
@@ -66,6 +86,8 @@ def package(args):
         template, recipe = native_recipe.build(bridge.read_bytes(), args.program.read_bytes())
         z.writestr("setup/native-player.template", template)
         z.writestr("setup/native-recipe.json", json.dumps(recipe))
+        z.write(HERE / "native-base-spans.json", "setup/native-base-spans.json")
+        write_japanese_base(z, "setup/", args.japanese_plugin, args.japanese_program, args.program, {})
         print(f"Removed {sum(s[2] for s in recipe['spans'])} original-program bytes from the distributed library.")
         with tempfile.TemporaryDirectory(dir=args.output.parent) as work:
             launcher = Path(work) / LAUNCHER_NAME
@@ -82,6 +104,9 @@ def package(args):
         layouts = disc_objects.layout_for_packaging(ROOT / "Native", args.program.read_bytes(), export_original_course_objects)
         z.writestr("setup/object-layout.json", json.dumps(layouts))
         reference = ROOT / "Native/data"
+        z.writestr("setup/japanese-artwork-checks.json", json.dumps(disc_language.reference(reference / "localization/ja")))
+        z.write(HERE / "disc_language.py", "setup/disc_language.py")
+        z.write(HERE / "disc_japan.py", "setup/disc_japan.py")
         patterns = ["original_audio/*/*.idms", "original_models/courses/*/*.idasobjects",
                     "original_models/courses/*/*.idasbillboards", "original_models/courses/*/*.idaslamps",
                     "original_assets/rival_dialog/dialog.idasdialog", "original_assets/rival_dialog/bunta.idasdialog"]
@@ -138,6 +163,7 @@ def package(args):
         paths = z.namelist()
         if len(paths) != len(set(paths)) or any(
             ("/streamingassets/" in p.lower() and p not in extra_members) or p.lower().endswith((".chd",".pic",".dtpk",".idms",".idasmesh",".idasasm",".cue",".gdi"))
+            or (Path(p).name.lower().startswith("initdv3") and p.lower().endswith(".zip"))
             for p in paths
         ):
             raise RuntimeError("Unexpected asset in the player ZIP.")
@@ -148,7 +174,7 @@ def package(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    for name in ("player", "helpers", "vendor", "flycast-license", "mame-license", "unicorn-licenses", "vc-runtime", "program", "output", "extras-from", "music-from"):
+    for name in ("player", "helpers", "vendor", "flycast-license", "mame-license", "unicorn-licenses", "vc-runtime", "program", "japanese-program", "japanese-plugin", "output", "extras-from", "music-from"):
         parser.add_argument("--" + name, type=Path, required=True)
     parser.add_argument("--python", type=Path, default=Path(sys.base_prefix))
     parser.add_argument("--setup-output", type=Path, help="Also create the standalone installer from the finished, versioned Windows ZIP.")

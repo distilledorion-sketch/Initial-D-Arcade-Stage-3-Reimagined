@@ -5,11 +5,13 @@ from pathlib import Path
 from extract_original_models import read_payload
 
 CANONICAL='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
+from arcade_program import identify, JAPANESE
+
 def main():
     p=argparse.ArgumentParser();p.add_argument('image',type=Path);p.add_argument('hostfs',type=Path);p.add_argument('project',type=Path)
     p.add_argument('--capture-exe',type=Path,help='Regenerate the demo rival presets directly from the disc')
     a=p.parse_args()
-    image=a.image.read_bytes();assert hashlib.sha256(image).hexdigest()==CANONICAL
+    image=a.image.read_bytes();layout=identify(image)
     def words(at,n):return struct.unpack_from('<'+'I'*n,image,at-0xc020000)
     root=a.project/'data/original_assets/attract/demo';root.mkdir(parents=True,exist_ok=True)
     evidence=a.project/'verification/original-demo';evidence.mkdir(parents=True,exist_ok=True)
@@ -21,7 +23,10 @@ def main():
     assert len(raw)%24==0 and len(poses)%336==0 and struct.unpack_from('<I',cameras)[0]==count
     # Original0E2240 constructs ACar from configuration+52, then0E1E00
     # applies035F00 enemy appearance from configuration+24. These are distinct.
-    car_ids=words(0xc2624d4,6);enemy_ids=words(0xc2624b8,6);pairs=words(words(0xc3129c4,1)[0],count*2)
+    japanese=layout==JAPANESE
+    car_ids=words(0xc268d58 if japanese else 0xc2624d4,6)
+    enemy_ids=words(0xc268d3c if japanese else 0xc2624b8,6)
+    pairs=words(words(0xc313070 if japanese else 0xc3129c4,1)[0],count*2)
     bindings=[car_ids[x] for x in pairs];(root/'cars.bin').write_bytes(struct.pack('<'+'I'*len(bindings),*bindings))
     enemies=[enemy_ids[x] for x in pairs];(root/'enemies.bin').write_bytes(struct.pack('<'+'I'*len(enemies),*enemies))
     appearances=[]
@@ -47,7 +52,7 @@ def main():
         shots.append({'shot':i,'source_table':list(raw_frames),'frames':frames,'camera_offset':cursor+4,'camera_bytes':n,'camera_type':cam[0],'actor_slots':list(pairs[i*2:i*2+2]),'car_ids':bindings[i*2:i*2+2],'enemy_ids':enemies[i*2:i*2+2],'material_variant':7});cursor+=4+n
     assert cumulative==len(poses)//336
     for s in shots:s['descriptor_offset']=cursor;s['descriptor']=list(struct.unpack_from('<11I',cameras,cursor));cursor+=44
-    report={'schema':'idas3-original-demo-v1','image_sha256':CANONICAL,'registered_child':7,'constructor':'0C0E5740','init':'0C0E6280','main':'0C0E6FC0','sources':sources,'frame_count':cumulative,'actor_count':2,'actor_bytes':168,'shots':shots,'camera_payload_consumed_bytes':cursor,'camera_padding_bytes':len(cameras)-cursor,'source_car_ids':list(car_ids),'source_scope':'Raw actor records, exact shot relocation0E64CC and original157580/157640 copy/advance. Camera types/parameters and descriptor words preserved. Native camera evaluation and whole-owner presentation are separate integration requirements.'}
+    report={'schema':'idas3-original-demo-v1','image_sha256':layout.sha256,'registered_child':7,'constructor':'0C0E5740','init':'0C0E6280','main':'0C0E6FC0','sources':sources,'frame_count':cumulative,'actor_count':2,'actor_bytes':168,'shots':shots,'camera_payload_consumed_bytes':cursor,'camera_padding_bytes':len(cameras)-cursor,'source_car_ids':list(car_ids),'source_scope':'Raw actor records, exact shot relocation0E64CC and original157580/157640 copy/advance. Camera types/parameters and descriptor words preserved. Native camera evaluation and whole-owner presentation are separate integration requirements.'}
     report['source_enemy_ids']=list(enemy_ids)
     report['presentation_events']={'body_submission':'both selected actors every frame','headlights_on':500,'headlights_off_actor1':5550,'headlights_off_actor0':5720,'light_effects_on':535,'finish_after_old_timeline':5830}
     report['path_seed']='At each shot reset, descriptor words7/9 become actor0/1 original authoring-path indices; fractions are explicitly zeroed. Each actor update projects raw XYZ through original096200 before selected actor0 index feeds03A2C0/03FCE0 scene selection.'

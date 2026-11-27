@@ -40,15 +40,18 @@ def check(ok,text):
     checks+=1
     if not ok: raise AssertionError(text)
 def hashes(path):
-    return {str(p.relative_to(path)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(path.rglob('*')) if p.is_file()}
+    # The live player exclusively holds its .lock files; these carry no save data.
+    return {str(p.relative_to(path)):hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(path.rglob('*')) if p.is_file() and p.suffix!='.lock'}
 class Client:
-    def __init__(self,directory,tag,source=None):
+    def __init__(self,directory,tag,source=None,*,assets=None,language=0):
         self.root=directory/tag;self.root.mkdir()
         self.saves=self.root/'saves';self.saves.mkdir()
         dll=self.root/(tag+'.dll');shutil.copy2(source or ROOT/'Assets/Plugins/x86_64/Idas3Unity.dll',dll)
         self.dll=C.CDLL(str(dll));self.error=C.create_string_buffer(2048)
         self.dll.Idas3SceneInitialize.argtypes=[C.c_char_p,C.c_char_p,C.c_int,C.c_int]
-        check(self.dll.Idas3SceneInitialize(str(ROOT/'Native').encode(),str(self.saves).encode(),1280,720)==1,self.reason())
+        if language:
+            check(self.dll.Idas3SceneConfigureLanguage(language)==1,self.reason())
+        check(self.dll.Idas3SceneInitialize(str(assets or ROOT/'Native').encode(),str(self.saves).encode(),1280,720)==1,self.reason())
         self.before=hashes(self.saves)
     def reason(self):
         self.dll.Idas3UnityCopyError(self.error,2048)

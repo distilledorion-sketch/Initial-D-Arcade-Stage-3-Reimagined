@@ -13,10 +13,15 @@ namespace Idas3.Multiplayer
         bool searchRequested;
         internal bool CanChangeChallengeChoice {get;private set;}
         internal void OfferChallengers(){
-            if(IsOpen||session.DisconnectedFinish||session.ChallengerPending||session.InLobby&&!session.IsQuickMatching)return;
-            BattleEntry.AskAboutChallengers(searchRequested||session.IsQuickMatching);
+            if(IsOpen||BattleEntry.Active||session.IsRacing||session.DisconnectedFinish||session.ChallengerPending)return;
+            if(!session.QuickMatchPending&&(session.InLobby||session.StateName=="Connecting"))return;
+            // No pending sign-in or assigned opponent can take over while
+            // the driver is choosing, including during the confirmation fade.
+            bool wasSearching=searchRequested||session.QuickMatchPending;
+            SetChallengerSearch(false);
+            BattleEntry.AskAboutChallengers(wasSearching);
         }
-        internal void ToggleChallengers()=>SetChallengerSearch(!(searchRequested||session.IsQuickMatching));
+        internal void ToggleChallengers()=>SetChallengerSearch(!(searchRequested||session.QuickMatchPending));
         void SetChallengerSearch(bool accept){
             searchRequested=false;
             if(!accept){session.CancelQuickMatch();return;}
@@ -768,7 +773,7 @@ namespace Idas3.Multiplayer
             else Text(new Rect(28,578+offset,370,23),"↑ ↓ SELECT   ENTER / A CONFIRM   ESC / B BACK",small);
             if(!session.InLobby)return;
             if(session.StateName=="Returning"){ActionButton(new Rect(498,567+offset,376,35),"RETURNING TO LOBBY…",false);return;}
-            if(ActionButton(new Rect(393,567+offset,126,35),"LEAVE ROOM",!session.Busy))session.LeaveRoom();
+            if(ActionButton(new Rect(393,567+offset,126,35),"LEAVE ROOM",!session.Busy))session.LeaveBattle();
             if(session.IsRacing){
                 if(session.CanReturnToLobby){if(ActionButton(new Rect(537,567+offset,337,35),"RETURN TO LOBBY",CanAcknowledgeReturnToLobby,true))RequestReturnToLobby();}
                 else if(session.StateName=="Results")ActionButton(new Rect(537,567+offset,337,35),"RETURNING TO LOBBY…",false);
@@ -785,7 +790,7 @@ namespace Idas3.Multiplayer
             const float width=700,height=146;float factor=Mathf.Min(1.5f,Mathf.Min(safe.width/(width+40),safe.height/720f));
             GUI.matrix=Matrix4x4.TRS(new Vector3(safe.x+(safe.width-width*factor)*.5f,Screen.height-safe.y-(height+22)*factor,0),Quaternion.identity,new Vector3(factor,factor,1));
             Fill(new Rect(0,0,width,height),Ink);Frame(new Rect(0,0,width,height),Edge);Fill(new Rect(0,0,width,4),Red);
-            Text(new Rect(20,14,658,42),"CONNECTION LOST",title);Text(new Rect(23,60,653,26),"Race ended. No result recorded.",label);
+            Text(new Rect(20,14,658,42),session.InterruptedRaceTitle,title);Text(new Rect(23,60,653,26),"Race ended. No result recorded.",label);
             Text(new Rect(23,104,345,25),"0 POINTS AWARDED",heading);
             if(ActionButton(new Rect(423,93,253,37),"RETURN TO MENU",CanAcknowledgeDisconnectedFinish,true))AcknowledgeDisconnectedFinish();
         }

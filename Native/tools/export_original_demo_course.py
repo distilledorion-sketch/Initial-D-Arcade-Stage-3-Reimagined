@@ -2,7 +2,7 @@ import argparse,hashlib,json,struct
 from pathlib import Path
 from extract_original_models import parse_model,write_binary
 from texture_bank import export_bank
-from export_original_demo import CANONICAL
+from arcade_program import identify, JAPANESE
 from export_course_selections import text
 from export_original_assembly import identity
 
@@ -10,11 +10,12 @@ def main():
  p=argparse.ArgumentParser()
  for n in ('image','hostfs','project'):p.add_argument(n,type=Path)
  a=p.parse_args();raw=a.image.read_bytes()
- if hashlib.sha256(raw).hexdigest()!=CANONICAL:raise ValueError('Canonical image mismatch')
- address=0xc23eae3;paths=[raw[address-0xc020000+i*64:address-0xc020000+(i+1)*64].split(b'\0',1)[0].decode('ascii') for i in range(8)]
+ layout=identify(raw)
+ address=0xc245ca3 if layout==JAPANESE else 0xc23eae3
+ paths=[raw[address-0xc020000+i*64:address-0xc020000+(i+1)*64].split(b'\0',1)[0].decode('ascii') for i in range(8)]
  if paths[0]!='/driveA/model/course/k_dfa/dfa_pol':raise ValueError('Demo scene path changed')
  target=a.project/'data/original_models/attract/demo';target.mkdir(parents=True,exist_ok=True)
- report={'source_image_sha256':CANONICAL,'scene':20,'reverse':0,'night':1,'weather':0,'path_record':hex(address),'paths':paths,'models':[]}
+ report={'source_image_sha256':layout.sha256,'scene':20,'reverse':0,'night':1,'weather':0,'path_record':hex(address),'paths':paths,'models':[]}
  for i in (0,2):
   stem=a.hostfs/paths[i][8:];texture=a.hostfs/paths[i+1][8:];tables=[stem.with_suffix('.tbl')] if stem.with_suffix('.tbl').exists() else [stem.parent/(stem.name+'_'+b+'.tbl') for b in 'abc'];chunks=[];counts=[]
   for table in tables:
@@ -42,7 +43,7 @@ def main():
    for file in files:text(out,file)
    for start,index in source['changes']:out.write(struct.pack('<II',start,index))
    out.write(struct.pack('<I',1)+struct.pack('<I16f',source['background_chunk'],*identity()))
-  source['source_image_sha256']=CANONICAL
+  source['source_image_sha256']=layout.sha256
   source['capture_scope']='Original03FCE0 primary and03FEA0 static selectors at every4089-point path index. Bounded submission/matrix/path dependencies; no hardware or whole-game emulation.'
   source['limitations']=['Original fog, dynamic light setup and separately owned objects are not part of this geometry selection capture.','Current view identity and source background XZ anchoring are reconstructed by native renderer.']
   capture.write_text(json.dumps(source,indent=2)+'\n')

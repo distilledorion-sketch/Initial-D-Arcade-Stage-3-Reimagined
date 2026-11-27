@@ -59,7 +59,7 @@ void deviceRateTests(){
         while(outputFrame<total){
             const unsigned frames=std::min(512u,total-outputFrame);
             const auto required=(std::uint64_t(frames)*44100+rate-1)/rate+1;
-            while(ring.statistics().queuedFrames<std::max<std::uint64_t>(2048,required+512)){
+            while(ring.statistics().queuedFrames<required+2048){
                 const auto input=sequence(source,512);require(ring.write(input)==512,"Device reader source overflow");source+=512;
             }
             const auto count=ring.readDevice(out.data(),frames,2,rate);require(count==frames,"Device reader inserted silence into available PCM");
@@ -82,6 +82,25 @@ void deviceRateTests(){
     for(auto value:mono)require(value==.125f,"Mono output did not average original stereo");
     std::array<float,512*6> surround{};require(ring.readDevice(surround.data(),512,6,44100)==512,"Surround device reader failed");
     for(unsigned i=0;i<512;++i)for(unsigned c=0;c<6;++c)require(surround[i*6+c]==(c==0?.5f:c==1?-.25f:0.f),"Surround output changed front stereo routing");
+}
+void unevenDeviceTimingTest(){
+    UnityStereoPcmRing ring;ring.setRunning(true);ring.setAudible(true);
+    constexpr unsigned rate=48000,block=256;
+    // The producer alternates a 37 ms render frame with three short frames.
+    const std::array<unsigned,4> renderIntervals{7*block,block,2*block,block};
+    std::array<float,2*block> out{};unsigned nextRender=0,interval=0,written=0;
+    bool started=false;
+    for(unsigned now=0;now<rate*10;now+=block){
+        if(now==nextRender){
+            const unsigned due=std::uint64_t(now)*44100/rate;
+            ring.write(sequence(written+1,due-written));written=due;
+            nextRender+=renderIntervals[interval++%renderIntervals.size()];
+        }
+        const auto got=ring.readDevice(out.data(),block,2,rate);
+        if(started)require(got==block,"Device output inserted silence between ordinary render frames");
+        if(got)started=true;
+    }
+    require(started&&!ring.statistics().underrunFrames&&!ring.statistics().discardedFrames,"Uneven render pacing lost PCM");
 }
 void concurrentTest(){
     UnityStereoPcmRing ring;ring.setRunning(true);ring.setAudible(true);
@@ -145,6 +164,6 @@ void mixerTest(const std::filesystem::path& root,bool selection){
 }
 }
 int main(int argc,char** argv){try{
-    require(argc==2,"Native asset root required");ringTests();deviceRateTests();concurrentTest();mixerTest(argv[1],false);mixerTest(argv[1],true);
+    require(argc==2,"Native asset root required");ringTests();deviceRateTests();unevenDeviceTimingTest();concurrentTest();mixerTest(argv[1],false);mixerTest(argv[1],true);
     std::cout<<"Unity audio PASS: "<<checks<<" checks; stereo SPSC wrap/overflow/trim/underrun/concurrency, exact44100 clock, original attract+TYPE PCM, pause/mute/reset; no audio device opened\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

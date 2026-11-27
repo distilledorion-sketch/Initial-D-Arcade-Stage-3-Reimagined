@@ -11,7 +11,6 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
 {
     // Scene geometry uses layer 30. A later UI camera must never redraw it.
     const int OverlayLayer=29;
-    Texture2D accepting;
     Idas3SceneGame host;
     Idas3MultiplayerSession session;
     enum Phase { Idle, Notice, Black, Reveal }
@@ -63,14 +62,14 @@ public sealed class Idas3ChallengerOverlay : MonoBehaviour
         bannerObject.layer=OverlayLayer;bannerObject.transform.SetParent(root.transform,false);
         var bannerRect=bannerObject.GetComponent<RectTransform>();bannerRect.anchorMin=bannerRect.anchorMax=bannerRect.pivot=new Vector2(0,1);bannerRect.sizeDelta=new Vector2(640,480);
         banner=bannerObject.GetComponent<Idas3ChallengerBanner>();banner.Initialize();
+        var accepting=Idas3ChallengerBanner.LoadTexture(banner.BadgeTexture);
+        if(accepting==null)throw new InvalidOperationException("Missing original challenger badge");
         badge=Image("Accepting challengers",root.transform,accepting,new Rect(518,286,114,28.5f));
         ApplyFrame();
     }
     public void Initialize(Idas3SceneGame owner,Idas3MultiplayerSession connection)
     {
         host=owner;session=connection;sourceCamera=host.GetComponent<Camera>();
-        Texture2D Load(int i){var t=Idas3ChallengerBanner.LoadTexture(i);if(t==null)throw new InvalidOperationException("Missing original challenger texture "+i);return t;}
-        accepting=Load(4);
         CreateCanvas();session.ChallengerFound+=Begin;
         StartCoroutine(RememberOpenMenu());
     }

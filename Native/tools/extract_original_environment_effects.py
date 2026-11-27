@@ -6,11 +6,11 @@ import struct
 from pathlib import Path
 from extract_original_models import parse_model, read_payload, write_binary
 from texture_bank import decode, write_native_pack, write_png
+from arcade_program import BASE, JAPANESE, identify
 
 def extract(hostfs, image, out):
     raw = image.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335':
-        raise ValueError('Expected the verified AS3 source image')
+    japanese = identify(raw) == JAPANESE
     report = {'schema': 'idas3-environment-effects-v1', 'image_sha256': hashlib.sha256(raw).hexdigest(), 'banks': {}}
     for name, relative in [('leaf', 'model/leaf'), ('flare', 'model/effect/flare')]:
         source, target = hostfs / relative, out / name
@@ -47,11 +47,14 @@ def extract(hostfs, image, out):
         return struct.unpack_from('<' + fmt, raw, address - 0x0c020000)
     # 180B00 indexes the original per-course path visibility as uint32 words.
     tables = bytearray(b'IDASENV1')
-    tables += raw[0x28e650-0x20000:0x28e650-0x20000+8*12]
-    tables += raw[0x28e5c0-0x20000:0x28e5c0-0x20000+12*12]
+    first = (0x0c295ea0 if japanese else 0x0c28e650) - BASE
+    second = first - 12*12
+    tables += raw[first:first+8*12]
+    tables += raw[second:second+12*12]
+    visibility = 0x0c342b74 if japanese else 0x0c337358
     for course in range(8):
-        ptr, = unpack(0x0c337358 + course*4, 'I')
-        last, = unpack(0x0c337378 + course*4, 'I')
+        ptr, = unpack(visibility + course*4, 'I')
+        last, = unpack(visibility + 32 + course*4, 'I')
         values = unpack(ptr, 'I'*(last+1))
         if any(v not in (0, 1) for v in values):
             raise ValueError(f'Invalid visibility table for course {course}')

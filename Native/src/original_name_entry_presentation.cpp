@@ -1,4 +1,5 @@
 #include "original_name_entry_presentation.h"
+#include "original_menu_chunks.h"
 #include "original_math.h"
 #include <algorithm>
 #include <bit>
@@ -19,7 +20,11 @@ OriginalNameEntryPresentation OriginalNameEntryPresentation::load(const std::fil
     const std::array<const char*,4> names{"v3sS00common","v3sS08name","select0302","select"};
     for(unsigned i=0;i<4;++i){out.models_[i]=NativeModel::load(paths[i]/(std::string(names[i])+".idasmesh"));out.textures_[i]=NativeTextureBank::load(paths[i]/"textures/textures.idastex");}
     std::ifstream input(base/"name_entry/cursor.bin",std::ios::binary);input.read(reinterpret_cast<char*>(out.positions_.data()),sizeof(out.positions_));
-    if(!input||input.peek()!=std::char_traits<char>::eof()||out.models_[1].chunks.size()!=7||out.models_[2].chunks.size()!=13||out.textures_[2].size()!=25)throw std::runtime_error("Original name-entry assets incomplete");
+    const bool japanese=out.models_[2].chunks.size()==46&&out.textures_[2].sourceSize()==52;
+    const bool english=out.models_[2].chunks.size()==13&&out.textures_[2].sourceSize()==25;
+    if(!input||input.peek()!=std::char_traits<char>::eof()||out.models_[1].chunks.size()!=7||
+       (!english&&!japanese)||out.models_[0].chunks.size()!=(japanese?54u:55u))
+        throw std::runtime_error("Original name-entry assets incomplete");
     for(const auto& row:out.positions_)for(float value:row)if(!std::isfinite(value))throw std::runtime_error("Nonfinite original name cursor");
     out.reset();return out;
 }
@@ -48,8 +53,10 @@ std::vector<OriginalNameEntryDraw> OriginalNameEntryPresentation::drawList(const
     std::vector<OriginalNameEntryDraw> out;
     const auto draw=[&](unsigned bank,unsigned chunk,float x=0,float y=0,float z=0,float scale=1,int glyph=-1,int alpha=-1){out.push_back({bank,chunk,x,y,z,scale,glyph,alpha});};
     // Common parent child1B1CA0, then the name panel child1B1300.
-    draw(8,54);draw(8,46);draw(16,6);draw(16,5);
-    draw(32,std::array<unsigned,3>{6,9,11}[state.page600],f(0x3e52f1aa),2.f,f(0x3dcccccd),f(0x3f6b851f));
+    const bool japanese=models_[2].chunks.size()==46;
+    draw(8,originalCommonMenuChunk(54));draw(8,originalCommonMenuChunk(46));draw(16,6);draw(16,5);
+    const std::array<unsigned,3> pages=japanese?std::array<unsigned,3>{35,38,40}:std::array<unsigned,3>{6,9,11};
+    draw(32,pages[state.page600],f(0x3e52f1aa),2.f,f(0x3dcccccd),f(0x3f6b851f));
     draw(16,4,cursor_[0]+f(0x3e4ccccc),cursor_[1]+f(0xbe4ccccc),f(0x3de147ae));
     float x=f(0x3d75c28f);
     for(unsigned i=0;i<5;++i){x+=f(0x3f866666);draw(16,i==state.length528?0:i>state.length528?2:1,x,f(0xc07851eb),0,1,-1,i==state.length528?int(alpha_):-1);}
@@ -108,7 +115,7 @@ void OriginalNameEntryPresentation::paintDraws(std::span<std::uint32_t> canvas,i
     for(const auto& layer:layers)compositeOriginalMenuChunk(canvas,width,height,textures_[layer.bank],layer.chunk,placement);
 }
 void OriginalNameEntryPresentation::paintBackground(std::span<std::uint32_t> canvas,int width,int height)const{
-    paintDraws(canvas,width,height,{{8,54},{8,46}},false);
+    paintDraws(canvas,width,height,{{8,originalCommonMenuChunk(54)},{8,originalCommonMenuChunk(46)}},false);
 }
 std::vector<OriginalNameEntryDraw> OriginalNameEntryPresentation::legacyDraws(const original::OriginalNameEntryState& state)const{
     if(state.profileKind1192!=2)return{};

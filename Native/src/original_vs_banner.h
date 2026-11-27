@@ -1,5 +1,6 @@
 #pragma once
 #include "native_assets.h"
+#include "menu_font.h"
 #include "original_battle_profile.h"
 #include <array>
 #include <cstdint>
@@ -108,6 +109,7 @@ private:
     NativeTextureBank textures_;
     NativeTextureBank nameFont_;
     NativeTextureBank recordFont_,importedTitles_;
+    MenuFont customTitleFont_;
     std::filesystem::path importedTitlePath_;
     struct BattleRecordLayout {
         float origin=0,width=367,winRight=207,percentRight=315,tenthsRight=341;

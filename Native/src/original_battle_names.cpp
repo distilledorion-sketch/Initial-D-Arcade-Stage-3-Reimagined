@@ -43,12 +43,12 @@ OriginalBattleNames OriginalBattleNames::load(const std::filesystem::path& root)
     std::ifstream unicodeFile(root/"data/original_assets/hud/start_names/start_names.bin",std::ios::binary);
     std::array<char,8> unicodeMagic{};std::array<std::uint32_t,5> unicodeHeader{};
     unicodeFile.read(unicodeMagic.data(),8);unicodeFile.read(reinterpret_cast<char*>(unicodeHeader.data()),sizeof(unicodeHeader));
-    if(unicodeMagic!=std::array<char,8>{'I','D','A','S','3','S','N','1'}||unicodeHeader!=std::array<std::uint32_t,5>{1,341,9216,221,80})
+    if(unicodeMagic!=std::array<char,8>{'I','D','A','S','3','S','N','1'}||(unicodeHeader!=std::array<std::uint32_t,5>{1,341,9216,221,80} && unicodeHeader!=std::array<std::uint32_t,5>{1,326,9216,221,80}))
         throw std::runtime_error("Invalid original Unicode name map");
     unicodeFile.seekg(std::streamoff(28+9216*2));unicodeFile.read(reinterpret_cast<char*>(out.unicode_.data()),sizeof(out.unicode_));
     if(!unicodeFile)throw std::runtime_error("Truncated original Unicode name map");
     out.font_=NativeTextureBank::load(folder/"textures/textures.idastex");out.labels_=OriginalBattleHudAssets::load(root);
-    if(out.font_.size()!=336)throw std::runtime_error("Original name font bank mismatch");
+    if(out.font_.size()!=336 && out.font_.size()!=313)throw std::runtime_error("Original name font bank mismatch");
     for(unsigned i=0;i<32;++i)(void)out.glyphs(i==31?0:i,i==31);
     return out;
 }

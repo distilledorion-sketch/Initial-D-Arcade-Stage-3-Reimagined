@@ -69,7 +69,11 @@ void appendUtf8(std::string& out,std::uint32_t code) {
 // sixth Happogahara -- so four and five cross over. Each chunk was rendered on
 // its own and read; guessing from the texture order gets this pair wrong.
 // 98..103 carry Japanese names and are not drawn here.
+#ifdef IDAS3_JAPANESE_PLAYER
+#include <regional/start_courses.inc>
+#else
 constexpr int courseChunk[]{72, 73, 74, 75, 77, 76, 78, 79, 80};
+#endif
 // Uphill, downhill, outbound, inbound, clockwise, counter-clockwise, reverse.
 // Each of these carries its bracket glyph in the same chunk.
 constexpr int directionChunk[]{113, 109, 114, 107, 115, 111, 108};
@@ -90,7 +94,9 @@ constexpr int weatherChunk[]{106, 118, 0};
 constexpr std::uint32_t directionAdvanceWords[]{0x3f63d70a,0x3fa00000,0x3fa3d70a,0x3f8e147b,0x3f9eb852,0x40051eb8,0x3f8a3d71};
 constexpr std::uint32_t directionOffsetWords[]{0,0,0xbf6b851f,0xbf6b851f,0,0,0xbd23d70a};
 constexpr std::uint32_t dayAdvanceWords[]{0x3f147ae1,0x3f4a3d71};
+#ifndef IDAS3_JAPANESE_PLAYER
 constexpr std::uint32_t courseAdvanceWords[]{0x3ed70a3c,0,0x3eb851e8,0x3ea8f5c0,0x3f9851eb,0x3f63d70a,0x3f6e147a,0x3f91eb85,0x3f5c28f6}; //2FCA18
+#endif
 float sourceWord(std::uint32_t value){return std::bit_cast<float>(value);}
 constexpr int restingVsChunk = 119;
 constexpr int backdropChunk = 120;
@@ -103,7 +109,8 @@ bool OriginalVsBanner::available(const std::filesystem::path& root) {
            std::filesystem::exists(root / directory / "textures" / "textures.idastex", ec) &&
            std::filesystem::exists(root / nameDirectory / "start_names.bin", ec) &&
            std::filesystem::exists(root / nameDirectory / "textures" / "textures.idastex", ec) &&
-           std::filesystem::exists(root / recordFontPath, ec);
+           (std::filesystem::exists(root / recordFontPath, ec) ||
+            std::filesystem::exists(root / "data/native_assets/menu_font/font.bin",ec));
 }
 
 void OriginalVsBanner::load(const std::filesystem::path& root) {
@@ -112,6 +119,10 @@ void OriginalVsBanner::load(const std::filesystem::path& root) {
     const auto folder = root / directory;
     model_ = NativeModel::load(folder / "start2d.idasmesh");
     textures_ = NativeTextureBank::load(folder / "textures" / "textures.idastex");
+    const bool japaneseBase=model_.chunks.size()==120 && textures_.sourceSize()==39;
+    // Rev C starts with the first shared chunk. The standalone SNOW badge
+    // was added at index zero in the export version.
+    if(japaneseBase)model_.chunks.insert(model_.chunks.begin(),NativeModelChunk{});
     if (model_.chunks.size() <= std::size_t(backdropChunk))
         throw std::runtime_error("Original start banner bank is missing its authored chunks");
     chunkBounds_.resize(model_.chunks.size());
@@ -163,16 +174,17 @@ void OriginalVsBanner::load(const std::filesystem::path& root) {
         titleInkBounds_[course]={float(left),float(top),float(right-left),float(bottom-top)};
     }
     nameFont_=NativeTextureBank::load(root/nameDirectory/"textures/textures.idastex");
-    recordFont_=NativeTextureBank::load(root/recordFontPath);
+    if(japaneseBase)customTitleFont_=MenuFont::load(root);
+    else recordFont_=NativeTextureBank::load(root/recordFontPath);
     importedTitlePath_=root/"data/original_assets/hud/imported_start_names/titles.idastex";
     importedTitles_={};
-    if(recordFont_.size()!=recordAlphabet::fontCharacters.size())
+    if(!japaneseBase && recordFont_.size()!=recordAlphabet::fontCharacters.size())
         throw std::runtime_error("Original battle-record alphabet bank has the wrong glyph count");
     std::ifstream names(root/nameDirectory/"start_names.bin",std::ios::binary);
     std::array<char,8> magic{}; std::array<std::uint32_t,5> header{};
     readValue(names,magic);readValue(names,header);
     if(magic!=std::array<char,8>{'I','D','A','S','3','S','N','1'} ||
-       header!=std::array<std::uint32_t,5>{1,341,9216,221,80} || nameFont_.size()!=341)
+       (header!=std::array<std::uint32_t,5>{1,341,9216,221,80} && header!=std::array<std::uint32_t,5>{1,326,9216,221,80}) || nameFont_.size()!=header[1])
         throw std::runtime_error("Invalid original start-name export");
     readValue(names,nameIndices_);readValue(names,nameUnicode_);readValue(names,profileGlyphs_);
     readValue(names,rivalNames_);readValue(names,defaultName_);readValue(names,nameMotion_);
@@ -406,7 +418,10 @@ OriginalVsMetadataPlacement OriginalVsBanner::projectedMetadataPlacement(int chu
     }else if(chunk==courseChunk[headerCourse()]){
         x=(bankX-.15f)*scale;y=(bankY+.06f+.65f)*scale;
     }else{
-        x=bankX*scale;x+=sourceWord(courseAdvanceWords[headerCourse()])*scale;
+        x=bankX*scale;
+#ifndef IDAS3_JAPANESE_PLAYER
+        x+=sourceWord(courseAdvanceWords[headerCourse()])*scale;
+#endif
         x+=-.8f*scale;x+=-.35f*scale;
         y=bankY*scale;y+=.06f*scale;y+=.67f*scale;
         const bool direction=std::find(std::begin(directionChunk),std::end(directionChunk),chunk)!=std::end(directionChunk);
@@ -602,6 +617,13 @@ void OriginalVsBanner::paintBattleRecords(std::span<std::uint32_t> target,int wi
             continue;
         }
         auto text=side==2?setup_.customCourseName:displayBattleRecords_[side];
+        if(customTitleFont_.ready()){
+            const float heightPx=std::min(bounds.height,bounds.width/std::max(1.f,customTitleFont_.width(text,1.f)));
+            const auto alpha=unsigned(255.f*bounds.opacity)<<24;
+            customTitleFont_.paint(target,width,height,text,(width-640.f*fit)*.5f+bounds.left*fit,
+                (height-480.f*fit)*.5f+bounds.top*fit,heightPx*fit,alpha|0xffffff,alpha|0x101020,fit);
+            continue;
+        }
         for(char& c:text)if(std::find(recordAlphabet::fontCharacters.begin(),recordAlphabet::fontCharacters.end(),c)==recordAlphabet::fontCharacters.end())c='?';
         const float scale=bounds.width/(recordTextWidth(text)+4.f);
         SpritePlacement p;p.scale=fit*scale;

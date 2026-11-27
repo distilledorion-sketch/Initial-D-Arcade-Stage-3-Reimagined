@@ -57,16 +57,15 @@ def export_bank(folder: Path, prefix: str, output: Path, layout: str, image: Pat
         texture_input.write_bytes(raw)
     metadata=sources['texture_table'].read_bytes()
     if len(metadata)==16 and metadata[4]==7:
-        from export_original_assembly import IMAGE_HASH
+        from arcade_program import identify
         if image is None: raise ValueError('Canonical program image required for loading palettes')
         program=image.read_bytes()
-        if hashlib.sha256(program).hexdigest()!=IMAGE_HASH: raise ValueError('Canonical palette image identity mismatch')
+        region=identify(program)
         number=int(prefix[4:]);base=0x0c020000
         # 16CEB8..16CEC6 indexes 28B8F8 by selected Load BG Number,
         # then calls191A40(palette ID,1). No palette search or inference.
-        palette_id=struct.unpack_from('<I',program,0x0c28b8f8-base+number*4)[0]
-        table=struct.unpack_from('<I',program,0x0c191aa8-base)[0]
-        address=struct.unpack_from('<I',program,table-base+palette_id*4)[0]
+        palette_id=struct.unpack_from('<I',program,region.loading_palette_ids-base+number*4)[0]
+        address=struct.unpack_from('<I',program,region.palettes-base+palette_id*4)[0]
         palette=program[address-base:address-base+1024];colors=struct.unpack('<256I',palette)
         w,h,fmt,flags,reserved,offset,tail=struct.unpack('<HHBBHII',metadata)
         if (w,h,fmt,flags,reserved,offset,tail)!=(512,512,7,7,0,0,0) or len(raw)!=w*h: raise ValueError('Loading PAL8 layout changed')
@@ -81,7 +80,8 @@ def export_bank(folder: Path, prefix: str, output: Path, layout: str, image: Pat
         (td/'original_indices.pal8').write_bytes(raw);(td/'original_palette.argb32').write_bytes(palette)
         textures={'textures':[{'index':0,'width':w,'height':h,'rgba_sha256':hashlib.sha256(rgba).hexdigest()}],
             'palette_id':palette_id,'palette_address':hex(address),'palette_sha256':hashlib.sha256(palette).hexdigest(),
-            'source_image_sha256':IMAGE_HASH,'evidence':'16CEB8..16CEC6 selects28B8F8[Load BG Number];191A40 uploads original ARGB8888 palette.'}
+            'source_image_sha256':region.sha256,'palette_id_table':hex(region.loading_palette_ids),
+            'palette_pointer_table':hex(region.palettes)}
         (td/'manifest.json').write_text(json.dumps(textures,indent=2)+'\n')
     else:
         textures = texture_bank.export_bank(sources['texture_table'], texture_input,output / 'textures', layout)

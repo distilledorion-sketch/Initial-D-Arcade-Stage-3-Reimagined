@@ -1,4 +1,5 @@
 #include "original_data.h"
+#include "original_program_identity.h"
 #include <fstream>
 #include <iomanip>
 #include <sstream>
@@ -69,9 +70,7 @@ OriginalPhysicsData OriginalPhysicsData::load(const std::filesystem::path& path)
     const auto file=readFile(path);identity(file,"ID3TBL01");
     if(u32(file,8)!=1||u32(file,12)!=expectedSections.size()||file.size()<48+16*expectedSections.size())
         throw std::runtime_error("Unsupported original physics data version/directory");
-    constexpr char digest[]="efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335";
-    const auto nibble=[](char c){return c<='9'?c-'0':c-'a'+10;};
-    for(std::size_t i=0;i<32;++i)if(file[16+i]!=std::byte(nibble(digest[i*2])*16+nibble(digest[i*2+1])))
+    if(!supportedProgramDigest(std::span<const std::byte>(file).subspan(16,32)))
         throw std::runtime_error("Original physics source identity mismatch");
     OriginalPhysicsData result;std::size_t cursor=48+16*expectedSections.size();
     for(std::size_t i=0;i<expectedSections.size();++i){

@@ -4,13 +4,23 @@
 
 namespace idas3::original {
 namespace {
+#ifdef IDAS3_JAPANESE_PLAYER
+#include <regional/appearance_reset.inc>
+unsigned resetMethod(unsigned index){
+    // CarCall addresses are stable host operation IDs. Rev C's equivalent
+    // appearance routines are 0x40 bytes later in its program.
+    return resetMethods[index]-0x40;
+}
+#else
 constexpr std::array<unsigned,11> resetMethods{
     0x0c0283c0,0x0c028480,0x0c028400,0x0c0284c0,0x0c028500,0x0c028540,
     0x0c028580,0x0c0285c0,0x0c0286c0,0x0c028720,0x0c028760};
+unsigned resetMethod(unsigned index){return resetMethods[index];}
+#endif
 }
 std::vector<OriginalTuningMutation::CarCall> originalTuningStockAppearanceCalls(bool rebuild){
     std::vector<OriginalTuningMutation::CarCall> out;out.reserve(12);
-    for(auto method:resetMethods)out.push_back({method,0,0});
+    for(unsigned i=0;i<resetMethods.size();++i)out.push_back({resetMethod(i),0,0});
     if(rebuild)out.push_back({0x0c029040,0,0});
     return out;
 }
@@ -30,7 +40,7 @@ OriginalTuningCandidateAppearance originalTuningCandidateAppearance(
             if(part==2&&car==15&&package==1)variant=0;
             if(part==6&&car==1&&package==2)variant=2;
             if(part==7&&((car==3&&package==3)||(car==4&&package==2)||(car==16&&package==1)))variant=1;
-            call(resetMethods[part],variant);
+            call(resetMethod(part),variant);
         }else if(part==9)call(0x0c0286c0,++upgrades);
         else if(part==8){
             const bool special=car==4||car==18||car==26||car==30||

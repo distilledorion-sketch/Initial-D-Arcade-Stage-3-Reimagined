@@ -1,8 +1,11 @@
 #pragma once
 #include "native_assets.h"
+#include "menu_font.h"
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -37,7 +40,7 @@ public:
     static bool available(const std::filesystem::path& root);
     void load(const std::filesystem::path& root);
     void reset(unsigned script=0){resetOriginalGasstand(state_,script);}
-    void step(){stepOriginalGasstand(state_);}
+    void step();
     const OriginalGasstandState& state()const{return state_;}
     bool completed()const{return state_.completed;}
     // Paint to caller's640x480 sourcecanvas; larger destinations use one final
@@ -52,6 +55,9 @@ public:
     // The center stays untouched; frame is an independent original 60Hz clock.
     void paintMenuMargins(std::span<std::uint32_t>,int width,int height,std::uint64_t frame)const;
 private:
+    struct DialogueRow { unsigned speaker=0; std::array<std::string,3> lines; };
+    std::array<std::vector<DialogueRow>,3> japaneseRows_;
+    MenuFont promptFont_;
     OriginalGasstandState state_;
     NativeModel gasstand_,etc_;
     NativeImage logoBackdrop_;

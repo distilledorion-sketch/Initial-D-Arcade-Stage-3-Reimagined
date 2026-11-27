@@ -6,7 +6,8 @@ import json
 from pathlib import Path
 import struct
 import subprocess
-from export_original_assembly import operations_matrix, IMAGE_HASH
+from arcade_program import BASE, identify
+from export_original_assembly import operations_matrix, read_car_capture
 
 KINDS = {'translate':0, 'scale':1, 'load_matrix':2, 'rotate_x_u16':3,
          'rotate_y_u16':4, 'rotate_z_u16':5, 'rotate_x_float':6,
@@ -24,8 +25,7 @@ def main():
     ap.add_argument('--hostfs',type=Path,required=True)
     ap.add_argument('--capture-exe',type=Path,required=True)
     a=ap.parse_args()
-    if hashlib.sha256(a.image.read_bytes()).hexdigest()!=IMAGE_HASH:
-        raise ValueError('Canonical source image mismatch')
+    layout = identify(a.image.read_bytes())
     cars=json.loads((a.root/'data/original_models/car_catalog.json').read_text())['cars']
     summary=[]
     for car in cars:
@@ -37,7 +37,7 @@ def main():
         if ci in (6,29,33,34):
             source=out/'stock_wheel_capture.json'
             subprocess.run([str(a.capture_exe),str(a.image),str(a.hostfs/'parts'/f'{folder}.bin'),str(source),str(ci),str(bank['chunk_count'])],check=True)
-        capture=json.loads(source.read_text())
+        capture=read_car_capture(source, layout)
         programs=[]; wheels=[]
         with (out/f'{folder}_playable.idasasm').open('wb') as f:
             f.write(b'IDAS3A1\0'+struct.pack('<II',1,len(capture['draws'])))
@@ -58,7 +58,7 @@ def main():
             raise ValueError(f'{folder}: original capture does not contain four wheel draws')
         (out/'wheel_motion.bin').write_bytes(b'ID3MOT1\0'+struct.pack('<II',1,len(programs))+b''.join(programs))
         summary.append({'car':ci,'folder':folder,'stock_wheel_repair':ci in (6,29,33,34),'wheels':wheels,'animated_instances':len(programs),'capture_sha256':hashlib.sha256(source.read_bytes()).hexdigest()})
-    manifest={'schema':'idas3-car-presentation-v1','source_image_sha256':IMAGE_HASH,
+    manifest={'schema':'idas3-car-presentation-v1','source_image_sha256':layout.sha256,
               'wheel_selection':'Four absent display-preset variants replaced by original 0285C0 stock input0; actual player invokes this setter from tuning byte7 at06311E.',
               'actor_binding':'034840 copies actor40..4C suspension,60..6C spin,3C steering into ACar2F4..314. 026D80 applies captured operations; left spins negated at027636/0277E0.',
               'scope':'Existing body/display configuration preserved. Wheel blur and other tuning choices remain outside this addition.',

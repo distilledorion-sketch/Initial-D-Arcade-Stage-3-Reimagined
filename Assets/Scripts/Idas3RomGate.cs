@@ -19,6 +19,7 @@ public sealed class Idas3RomGate : MonoBehaviour
     internal string Message => message;
     internal string RomFolder => Path.Combine(gameRoot, "rom");
     private string gameRoot, message = "Checking GDS-0033…";
+    private string discLabel = "GDS-0033";
     private Task<Idas3RomValidation.Result> validation;
     private CancellationTokenSource cancellation;
     private volatile float progress;
@@ -77,13 +78,16 @@ public sealed class Idas3RomGate : MonoBehaviour
             cancellation = new CancellationTokenSource();
             var token = cancellation.Token;
             progress = 0;
-            message = "Checking GDS-0033…";
+            int language = Idas3RomValidation.InstalledLanguage(Path.Combine(gameRoot, "InitialDUnity_Data", "StreamingAssets", "IDAS3"));
+            discLabel = language == 1 || (language < 0 && !File.Exists(Path.Combine(RomFolder, "gds-0033.chd")) && File.Exists(Path.Combine(RomFolder, "gds-0032c.chd")))
+                ? "GDS-0032C" : "GDS-0033";
+            message = Idas3MenuLocalization.T("Checking GDS-0033…").Replace("GDS-0033", discLabel);
             validation = Task.Run(() => Idas3RomValidation.Validate(gameRoot, value => progress = value, token), token);
         }
         catch (Exception error)
         {
             message = "Could not access the rom folder. Check the game folder permissions.";
-            Debug.LogWarning("GDS-0033 startup check: " + error.Message);
+            Debug.LogWarning(discLabel + " startup check: " + error.Message);
         }
     }
 
@@ -99,9 +103,9 @@ public sealed class Idas3RomGate : MonoBehaviour
                 var result = validation.GetAwaiter().GetResult();
                 Verified = result.Verified;
                 message = result.Message;
-                Debug.Log("GDS-0033 startup check: " + (Verified ? "verified " + result.Format : "blocked: " + message));
+                Debug.Log("Arcade disc check: " + message);
             }
-            catch (Exception error) { message = "Could not verify GDS-0033. Try again."; Debug.LogWarning(error.Message); }
+            catch (Exception error) { message = Idas3MenuLocalization.T("Could not verify GDS-0033. Try again.").Replace("GDS-0033", discLabel); Debug.LogWarning(error.Message); }
             validation = null;
             if (Verified) { background.enabled = false; return; }
         }
@@ -163,7 +167,7 @@ public sealed class Idas3RomGate : MonoBehaviour
         Fill(new Rect(0, 0, 1280, 720), Color.black);
         Fill(new Rect(160, 170, 960, 380), new Color(.04f, .045f, .05f));
         Fill(new Rect(160, 170, 960, 5), new Color(.89f, .08f, .16f));
-        Idas3MenuLocalization.Label(new Rect(195, 194, 880, 54), Checking ? "CHECKING GDS-0033" : "ROM REQUIRED", titleStyle);
+        Idas3MenuLocalization.Label(new Rect(195, 194, 880, 54), Checking ? Idas3MenuLocalization.T("CHECKING GDS-0033").Replace("GDS-0033", discLabel) : "ROM REQUIRED", titleStyle);
         Idas3MenuLocalization.Label(new Rect(198, 273, 875, 72), message, textStyle);
         Idas3MenuLocalization.Label(new Rect(198, 351, 875, 62), RomFolder, pathStyle, false);
         if (Checking)

@@ -16,6 +16,7 @@ import sys
 import tempfile
 import uuid
 import winreg
+import zipfile
 
 SETUP = Path(__file__).resolve().parent
 ROOT = SETUP.parent.parent if SETUP.parent.name == "InitialDUnity_Data" else SETUP.parent
@@ -212,35 +213,63 @@ def migrate(data, old, old_temp, name):
         print(f"Moved or verified {counts['files']} previous game files; {counts['conflicts']} conflicts preserved.")
 
 
-def import_original(disc, security, root=ROOT):
-    from disc_setup import CHD, check_source, read_pic
+def import_original(disc, security, root=ROOT, region="gds-0033", link_disc=True):
+    from disc_setup import SECURITY_NAMES, check_player_disc, read_pic
     folder = plain(root / "rom")
     folder.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(dir=folder) as work:
         scratch = Path(work)
         if disc:
-            local = plain(root / LOCAL_DISC)
-            check_source(disc, CHD, "GDS-0033 disc image")
+            relative_disc = f"rom/{region}.chd"
+            local = plain(root / relative_disc)
+            check_player_disc(disc, region)
             if not local.exists():
                 copied = scratch / local.name
                 shutil.copyfile(disc, copied)
-                check_source(copied, CHD, "copied GDS-0033 disc image")
+                check_player_disc(copied, region)
                 copied.rename(local)
             elif not local.samefile(disc):
-                check_source(local, CHD, "disc in the game folder")
+                check_player_disc(local, region)
         if security:
-            selected = read_pic(security, scratch)
-            local = plain(folder / "317-0384-com.pic")
-            if local.exists():
-                read_pic(local, scratch)
-            else:
+            selected = read_pic(security, scratch, region)
+            local = plain(folder / SECURITY_NAMES[region])
+            if not local.is_file() or checksum(local) != checksum(selected):
                 copied = scratch / local.name
                 shutil.copyfile(selected, copied)
-                read_pic(copied, scratch)
-                copied.rename(local)
+                read_pic(copied, scratch, region)
+                if local.is_file():
+                    backup = plain(folder / (local.name + "." + uuid.uuid4().hex + ".previous"))
+                    shutil.copyfile(local, backup)
+                os.replace(copied, local)
         source = root / "InitialDUnity_Data/StreamingAssets/IDAS3/disc-source.txt"
-        if disc and source.is_file() and source.read_text(encoding="utf-8").strip() != LOCAL_DISC:
-            write_text(source, LOCAL_DISC)
+        if link_disc and disc and source.is_file() and source.read_text(encoding="utf-8").strip() != relative_disc:
+            write_text(source, relative_disc)
+
+def find_security(discs, root=ROOT, region="gds-0033"):
+    from disc_setup import SECURITY_NAMES, read_pic
+    folder = plain(root / "rom")
+    folder.mkdir(exist_ok=True)
+    local = plain(folder / SECURITY_NAMES[region])
+    set_name = "initdv3j" if region == "gds-0032c" else "initdv3e"
+    directories = [folder, root]
+    for disc in discs:
+        directories.append(disc.parent)
+        if disc.parent.name.lower() in ("initdv3", set_name):
+            directories.append(disc.parent.parent)
+    with tempfile.TemporaryDirectory(dir=folder) as work:
+        for directory in dict.fromkeys(directories):
+            for name in (local.name, set_name + ".zip", "initdv3.zip"):
+                candidate = directory / name
+                if not candidate.is_file():
+                    continue
+                try:
+                    verified = read_pic(candidate, Path(work), region)
+                except (OSError, ValueError, zipfile.BadZipFile, RuntimeError):
+                    continue  # A different region or a damaged ZIP can sit beside a valid copy.
+                if candidate != local:
+                    import_original(None, verified, root, region)
+                return True
+    return False
 
 
 def prepare_runtime():
@@ -320,11 +349,16 @@ def retire_previous_installation():
             for row in json.loads(manifest.read_text(encoding="utf-8-sig"))["files"]:
                 entries.setdefault(row["path"], (row["bytes"], row["sha256"]))
         old_data = previous / "data"
+        active_data = ROOT / "InitialDUnity_Data/StreamingAssets/IDAS3/data"
         for name, (size, expected) in entries.items():
             item = plain(old_data / name)
             if not item.is_relative_to(old_data) or ".." in item.parts:
                 raise ValueError("Invalid previous Windows asset path.")
             if item.is_file() and item.stat().st_size == size and checksum(item) == expected:
+                if name.startswith("localization/ja/"):
+                    active = plain(active_data / name)
+                    if not active.is_file() or checksum(active) != expected:
+                        continue
                 item.unlink()
         if known_manifest:
             manifest.unlink()
@@ -404,9 +438,12 @@ def play():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("migrate", "import", "runtime", "finish", "play"))
+    parser.add_argument("action", choices=("migrate", "import", "disc-region", "find-security", "runtime", "finish", "play"))
+    parser.add_argument("--source-disc", type=Path, action="append", default=[])
     parser.add_argument("--chd", type=Path)
     parser.add_argument("--security", type=Path)
+    parser.add_argument("--region", choices=("gds-0033", "gds-0032c"), default="gds-0033")
+    parser.add_argument("--keep-source", action="store_true", help="Import an additional disc for artwork.")
     args = parser.parse_args()
     if args.action == "migrate":
         if not (USER / "migration-v1.json").is_file():
@@ -422,8 +459,15 @@ def main():
         install_shortcuts()
         retire_old_setup_name()
         retire_duplicate_course_packs()
+    elif args.action == "disc-region":
+        from disc_setup import disc_region
+        if not args.chd:
+            parser.error("Select a disc image.")
+        print(disc_region(args.chd))
+    elif args.action == "find-security":
+        return 0 if find_security(args.source_disc, region=args.region) else 3
     elif args.action == "import":
-        import_original(args.chd, args.security)
+        import_original(args.chd, args.security, region=args.region, link_disc=not args.keep_source)
     else:
         return play()
     return 0

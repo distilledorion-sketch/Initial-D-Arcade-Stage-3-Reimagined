@@ -1,10 +1,11 @@
 #include "audio.h"
+#include "original_driving_clock.h"
 #include <iostream>
 #include <vector>
 using namespace idas3;
 void require(bool value,const char* message){if(!value)throw std::runtime_error(message);}
-std::vector<short> capture(const std::filesystem::path& root,unsigned batch){
-    EngineAudio audio;auto profile=original::makeOriginalFreshBattleProfile();profile.setu(16,0);audio.selectOriginalEngine(root,profile);
+std::vector<short> capture(const std::filesystem::path& root,unsigned batch,unsigned car=0){
+    EngineAudio audio;auto profile=original::makeOriginalFreshBattleProfile();profile.setu(16,car);audio.selectOriginalEngine(root,profile);
     std::uint32_t seed=1;std::vector<short> result;
     for(unsigned frame=0;frame<600;){
         const unsigned count=std::min(batch,600-frame);
@@ -12,14 +13,19 @@ std::vector<short> capture(const std::filesystem::path& root,unsigned batch){
             original::OriginalEngineControlInput input;input.rpm=1000.f+float(frame%200)*32.f;input.throttle=frame%200<150?1.f:0.f;input.gear=1+int(frame/200);
             audio.stepOriginalEngine(input,seed);audio.finishSoundFrame(seed);
         }
-        for(unsigned i=0;i<count*735;++i){
+        const auto elapsedSamples=[](unsigned ticks){
+            return std::uint64_t(double(ticks)*OriginalDrivingClock::step*44100.0+1e-8);
+        };
+        for(auto i=elapsedSamples(frame-count);i<elapsedSamples(frame);++i){
             // Synthesizer inputs deliberately differ across render cadences.
             // Original handling must use the solver-bound PCM, not these args.
             const auto stereo=audio.renderStereo(float(batch)*1111.f,float(batch)*.1f,float(batch)*10.f,float(batch),true);
             result.insert(result.end(),stereo.begin(),stereo.end());
         }
     }
-    const auto stats=audio.engineStatistics();require(stats.pcmFrames==600*735&&stats.simulationFrames==600,"PCM clock differs from60Hz driving");
+    const auto stats=audio.engineStatistics();
+    if(stats.underflowFrames)std::cerr<<"Missing engine samples after 600 arcade ticks: "<<stats.underflowFrames<<"\n";
+    require(stats.pcmFrames==std::uint64_t(600*OriginalDrivingClock::step*44100.0)&&stats.simulationFrames==600,"Engine PCM does not cover the actual arcade driving period");
     require(!stats.droppedFrames&&!stats.underflowFrames,"Bounded frame cadence caused PCM loss");require(stats.dryEnergy>1e9,"Original engine silent");
     audio.scene(false,false,true);for(unsigned i=0;i<1000;++i)require(audio.renderStereo(9000,1,30,1,true)==std::array<short,2>{},"Paused mixer not silent");
     require(audio.engineStatistics().pcmFrames==stats.pcmFrames,"Pause advanced engine PCM");
@@ -54,6 +60,8 @@ std::vector<short> onlineCapture(const std::filesystem::path& root,bool delayed)
 int main(int argc,char** argv)try{
     if(argc!=2)throw std::invalid_argument("project root required");
     const auto reference=capture(argv[1],1);
+    for(unsigned car=1;car<35;++car)capture(argv[1],3,car);
+    std::cout<<"PASS all 35 car profiles: no lost engine or tire samples over 600 arcade ticks each.\n";
     for(unsigned batch:{2u,3u,4u,6u,10u})require(capture(argv[1],batch)==reference,"Engine waveform depends on render batching or synthesizer inputs");
     require(onlineCapture(argv[1],false)==onlineCapture(argv[1],true),"Network arrival timing changed steady engine PCM");
     const auto held=[&](float rpm,float throttle){

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.95-community-replays.60 - November 27, 2026
+
+- Fixed recurring gaps in engine and tire sound during races. The audio mixer now follows the arcade driving clock and keeps a buffer for uneven frame times.
+- Fresh installations accept an English or Japanese Rev C disc and its matching security file. Under **Options → Gameplay**, Custom Menu Language changes Reimagined menus immediately. ROM Language switches the full regional game on restart. Both regions share the same saves.
+- Refuse Challengers now cancels pending matchmaking. The challenger selection once again flashes and plays its confirmation sound.
+- Online races now distinguish a driver choosing Leave from a connection loss. The result screen explains the interruption.
+- Setup saves the underlying error and the path to its diagnostic log when installation fails.
+
+In .59, select **Update**. For a fresh installation, download **Initial-D-Setup-0.3.95.60.zip**.
+
 ## 0.3.95-community-replays.59 - November 24, 2026
 
 - Restored the classic Online Battle lobby. After Challenge Received, both drivers can chat, choose their car, transmission, music, course and conditions, and press Ready. The host controls boost and collisions and presses Start Battle. Each driver's complete course pick has a 50% chance.

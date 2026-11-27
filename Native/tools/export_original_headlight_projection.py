@@ -1,14 +1,14 @@
 """Preserve original road-projected headlight model, textures and mapping."""
 from pathlib import Path
+from arcade_program import identify
 import argparse,hashlib,json,struct
 from extract_original_menus import export_model_menu
 from extract_original_models import parse_model
-IMAGE_SHA='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('image',type=Path);p.add_argument('hostfs',type=Path);p.add_argument('project',type=Path)
     a=p.parse_args()
-    if hashlib.sha256(a.image.read_bytes()).hexdigest()!=IMAGE_SHA:raise ValueError('Unexpected canonical image')
+    layout=identify(a.image.read_bytes())
     out=a.project/'data/original_assets/headlight_projection';out.mkdir(parents=True,exist_ok=True)
     bank=export_model_menu(a.hostfs/'model/lightobj',out,'twiddled')
     # The reusable menu exporter has a title-quad diagnostic description. It
@@ -25,7 +25,7 @@ def main():
         src=a.hostfs/'binary'/('k_light_test8.'+ext);raw=src.read_bytes()
         if len(raw)!=expected:raise ValueError('Unexpected original projection mapping')
         (out/src.name).write_bytes(raw);records[src.name]={'source':str(src),'bytes':len(raw),'sha256':hashlib.sha256(raw).hexdigest()}
-    report={'source_image_sha256':IMAGE_SHA,'source_owner':'ACar+2636;034FA0 -> 0D4C80;034E60 draw then projection update',
+    report={'source_image_sha256':layout.sha256,'source_owner':'ACar+2636;034FA0 -> 0D4C80;034E60 draw then projection update',
             'chunk':7,'projection_points':9,'strip_vertices':12,'model_bank':bank,'mapping':records,
             'scope':'Original geometry,texels,UV,material and mapping records retained. Road-query inputs and results are separate source dependencies; no replacement beam artwork.'}
     (out/'projection_manifest.json').write_text(json.dumps(report,indent=2)+'\n')

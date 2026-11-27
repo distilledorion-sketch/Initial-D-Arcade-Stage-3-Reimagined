@@ -315,15 +315,25 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
             yield return Until(()=>entry.ChoosingChallengers,350,"Confirmed gearbox opens the challenger choice");
             Check(!entry.AcceptSelected,"Refuse is highlighted on entry");
             yield return Frames(30);
+            int cues=Idas3SceneModeFlowValue(66);
             if(!automatic)yield return Capture("refuse-challengers");
             else{
                 boundStartButtons=0x10;yield return Frames(3);boundStartButtons=0;yield return Frames(2);
                 Check(entry.AcceptSelected,"Start toggles the challenger choice");
+                Check(Idas3SceneModeFlowValue(66)==++cues,"Holding Start plays one selection sound");
                 yield return Pad(4);Check(!entry.AcceptSelected,"Steer left selects Refuse");
+                Check(Idas3SceneModeFlowValue(66)==++cues,"Selecting Refuse plays one change sound");
                 yield return Pad(8);Check(entry.AcceptSelected,"Steer right selects Accept");
+                Check(Idas3SceneModeFlowValue(66)==++cues,"Selecting Accept plays one change sound");
+                yield return Pad(8);
+                Check(Idas3SceneModeFlowValue(66)==cues,"Steering toward the selected option stays quiet");
                 yield return Capture("accept-challengers");
             }
-            yield return Pad(0x1000);yield return Until(()=>!entry.Active,350,"Confirmed challenger choice dismisses");
+            // A steer-right edge on the same frame as acceleration must confirm
+            // the displayed Refuse choice, even on a combined wheel/pedal report.
+            yield return Pad(automatic?0x1000u:0x1008u);
+            Check(Idas3SceneModeFlowValue(66)==cues+1,"Confirming the displayed option plays one confirmation sound");
+            yield return Until(()=>!entry.Active,350,"Confirmed challenger choice dismisses");
             yield return SaveStage(5,"The original mode selection resumes");
             Check(session.IsQuickMatching==automatic,"Only Accept starts the local match search");
             if(automatic)Check(session.LocalSavedCar.Automatic,"The search uses the confirmed transmission");
@@ -332,6 +342,7 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Pad(0x2000);yield return SaveStage(4,"Revisit the current challenger preference");
         yield return Pad(0x1000);yield return Until(()=>entry.ChoosingChallengers,350,"Choices reopen");
         Check(entry.AcceptSelected,"Existing search is reflected when revisiting");
+        Check(!session.QuickMatchPending&&!session.IsQuickMatching,"Reopened prompt suspends the previous search before an opponent can take over");
         yield return Frames(2);yield return Pad(4);yield return Pad(0x1000);
         yield return Until(()=>!entry.Active,350,"Refuse dismisses");
         Check(!session.IsQuickMatching,"Refuse cancels the previous search");
@@ -340,8 +351,13 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
         yield return Frames(30);yield return Capture("built-in-course");
         yield return Fixture(240);
         yield return Until(()=>host.Status.racePhase==2&&(host.Status.flags&3)==0,160,"Solo race is running");
+        Check(!session.QuickMatchPending&&!session.IsQuickMatching,"Refuse stays in effect through course selection and into the solo race");
         foreach(bool expected in new[]{true,false}){
-            boundStartButtons=0x10;yield return Frames(3);boundStartButtons=0;yield return Frames(3);
+            // With default controller bindings, Menu pauses and left-stick click
+            // is cabinet Start during a race. Menu is cabinet Start in the frontend.
+            boundStartButtons=0x40;yield return Frames(3);
+            Check(host.ControlBindings.RaceCabinetStartHeld,"Left-stick click reaches the race Start binding");
+            boundStartButtons=0;yield return Frames(3);
             Check((host.Status.flags&3)==0&&session.IsQuickMatching==expected,"Start toggles matchmaking while the solo race continues");
         }
         Finish(true,null);

@@ -46,7 +46,7 @@ def build(core, output):
             package.write(setup, setup.name)
             package.writestr(setup.name + ".config", '<configuration><runtime><AppContextSwitchOverrides value="Switch.System.IO.UseLegacyPathHandling=false;Switch.System.IO.BlockLongPaths=false"/></runtime></configuration>')
             package.writestr("Install Initial D.cmd", '@echo off\r\n"%~dp0Install Initial D Arcade Stage 3 Reimagined.exe" %*\r\n')
-            package.writestr("README.txt", "Extract this entire setup ZIP outside the game folder. Open Install Initial D Arcade Stage 3 Reimagined.exe and select your existing game folder, or choose an empty folder for a fresh install.\r\nKeep the full Windows game ZIP beside Setup. The game and conversion tools are included. Setup will ask for your original English GDS-0033 CHD and matching security PIC or initdv3e.zip if needed.\r\n")
+            package.writestr("README.txt", "Extract this entire setup ZIP outside the game folder. Open Install Initial D Arcade Stage 3 Reimagined.exe and select your existing game folder, or choose an empty folder for a fresh install.\r\nKeep the full Windows game ZIP beside Setup. The game and conversion tools are included. Setup reuses verified files when updating. For disc extraction, choose either the English GDS-0033 CHD and 317-0384-COM.pic (or initdv3e.zip), or the Japanese Rev C GDS-0032C CHD and 317-0379-jpn.pic (or initdv3j.zip). One matching pair is sufficient.\r\n")
         with zipfile.ZipFile(work / "setup.zip") as package:
             if package.testzip():
                 raise ValueError("Setup archive verification failed.")

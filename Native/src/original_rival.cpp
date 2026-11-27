@@ -1,4 +1,5 @@
 #include "original_rival.h"
+#include "original_program_identity.h"
 #include "original_math.h"
 #include <algorithm>
 #include <cmath>
@@ -21,8 +22,7 @@ std::int32_t ftrc(float v){if(v>=2147483648.f)return INT32_MAX;if(v<=-2147483648
 }
 OriginalRivalData OriginalRivalData::load(const std::filesystem::path& root){
     auto file=read(root/"tables.bin");
-    constexpr std::array<std::uint8_t,32> sourceSha{0xef,0xda,0x83,0x1f,0x12,0x12,0xdb,0x54,0xcc,0x2e,0x4b,0xa5,0x34,0x24,0xfe,0x39,0x0f,0x91,0xb2,0xda,0xab,0xb0,0x7e,0x93,0xc1,0xe3,0x89,0xc3,0x73,0x6d,0x03,0x35};
-    if(file.size()!=56+tableEnd-tableBase||std::memcmp(file.data(),"ID3RIV01",8)||u32(file,8)!=1||u32(file,12)!=tableBase||u32(file,16)!=tableEnd-tableBase||std::memcmp(file.data()+24,sourceSha.data(),32))throw std::runtime_error("Original rival table identity mismatch");
+    if(file.size()!=56+tableEnd-tableBase||std::memcmp(file.data(),"ID3RIV01",8)||u32(file,8)!=1||u32(file,12)!=tableBase||u32(file,16)!=tableEnd-tableBase||!supportedProgramDigest(std::span<const std::byte>(file).subspan(24,32)))throw std::runtime_error("Original rival table identity mismatch");
     const auto payload=std::span<const std::byte>(file).subspan(56);if(fnv(payload)!=u32(file,20))throw std::runtime_error("Original rival table checksum mismatch");
     OriginalRivalData out;out.bytes_.assign(payload.begin(),payload.end());return out;
 }

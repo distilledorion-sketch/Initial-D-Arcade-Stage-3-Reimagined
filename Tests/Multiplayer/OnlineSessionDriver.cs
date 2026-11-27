@@ -69,6 +69,24 @@ internal static class OnlineSessionDriver
         }
     }
     static void QueueCancellationAndErrors(){
+        foreach(bool helloArrived in new[]{false,true}){
+            using(var f=new Fixture()){
+                int notices=0;f.Session.ChallengerFound+=()=>++notices;
+                f.Session.QuickMatch();f.Transport.EstablishRoute();
+                if(helloArrived)f.Transport.Deliver(Hello("fixture-build"));
+                f.Session.CancelQuickMatch();
+                f.Transport.Deliver(Hello("fixture-build"));f.Session.BeforeFrame();
+                Check(!f.Session.InLobby&&!f.Session.HandshakeComplete&&!f.Session.ChallengerPending&&notices==0,
+                    "Refuse discards an assigned Quick Match "+(helloArrived?"after":"before")+" its greeting");
+                f.Session.QuickMatch();f.Transport.EstablishRoute();f.Transport.Deliver(Hello("fixture-build"));f.Session.BeforeFrame();
+                f.Session.CancelQuickMatch();
+                Check(f.Session.InLobby&&f.Session.HandshakeComplete&&notices==1,"A later deliberate match still opens its lobby once");
+            }
+        }
+        using(var f=new Fixture()){
+            f.Session.HostRoom();f.Transport.EstablishRoute();f.Session.CancelQuickMatch();
+            Check(f.Session.InLobby&&f.Transport.Leaves==0,"Changing the arcade preference preserves an explicitly hosted room");
+        }
         using(var f=new Fixture()){
             f.Session.QuickMatch();
             Check(f.Transport.Starts==1&&f.Session.IsQuickMatching&&f.Session.Busy,"Quick Match uses the managed queue without fallback room discovery");

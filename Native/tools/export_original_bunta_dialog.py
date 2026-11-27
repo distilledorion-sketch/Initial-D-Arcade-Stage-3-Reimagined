@@ -7,23 +7,25 @@ from pathlib import Path
 import argparse, hashlib, json, struct
 import extract_original_models as models
 import texture_bank
+from arcade_program import identify, JAPANESE
 
 SHA256='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 def export(image,hostfs,root):
     raw=image.read_bytes()
-    if hashlib.sha256(raw).hexdigest()!=SHA256:raise ValueError('Canonical image required')
+    layout=identify(raw)
+    japanese=layout==JAPANESE
     def word(a):return struct.unpack_from('<I',raw,a-0x0c020000)[0]
     def string(a):
         if not 0x0c020000<=a<0x0c420000:raise ValueError(f'Invalid token address {a:x}')
         start=a-0x0c020000;end=raw.find(b'\0',start,start+4096)
         if end<0:raise ValueError('Unterminated original token')
         return raw[start:end]
-    if string(0x0c263af4)!=b'/driveA/model/rival/r_bunta_challenge/rival_bunta_challenge_pol':raise ValueError('Portrait path differs')
+    if string(0x0c26c44c if japanese else 0x0c263af4)!=b'/driveA/model/rival/r_bunta_challenge/rival_bunta_challenge_pol':raise ValueError('Portrait path differs')
     out=root/'data/original_assets/rival_dialog';out.mkdir(parents=True,exist_ok=True)
-    data=bytearray(b'IDAS3BD1'+struct.pack('<3I',1,8,51));records=[]
+    data=bytearray(b'IDAS3BD1'+struct.pack('<3I',2 if japanese else 1,8,51));records=[]
     for course in range(8):
         for kind in range(51):
-            address=0x0c363100+course*0x660+kind*32
+            address=(0x0c31557c if japanese else 0x0c363100)+course*0x660+kind*32
             words=[word(address+i*4)for i in range(8)];script=words[0];cache={}
             def entry(j):
                 if j>=512:raise ValueError('Script exceeds bounded token window')
@@ -49,15 +51,16 @@ def export(image,hostfs,root):
             tokens=[entry(j)for j in range(max(seen)+1)]
             data+=struct.pack('<10I',address,*words,len(tokens))
             for p,t in tokens:data+=struct.pack('<2I',p,len(t))+t
-            records.append(dict(course=course,kind=kind,source_record=f'{address:08X}',source_script=f'{script:08X}',tokens=[dict(address=f'{p:08X}',bytes=t.decode('ascii'))for p,t in tokens]))
+            records.append(dict(course=course,kind=kind,source_record=f'{address:08X}',source_script=f'{script:08X}',tokens=[dict(address=f'{p:08X}',bytes=t.decode('euc_jp',errors='backslashreplace') if japanese else t.decode('ascii'))for p,t in tokens]))
     (out/'bunta.idasdialog').write_bytes(data)
     # 0F4660/0F4D20 character31 uses these nineteen elements, and bypasses
     # the ordinary portrait part remap. Preserve source words for inspection.
-    table=word(0x0c31a008+31*8);count=word(0x0c31a00c+31*8)
-    if table!=0x0c319cc4 or count!=19:raise ValueError('Bunta element table differs')
+    descriptor=0x0c324b98 if japanese else 0x0c31a008+31*8
+    table=word(descriptor);count=word(descriptor+4)
+    if table!=(0x0c324854 if japanese else 0x0c319cc4) or count!=19:raise ValueError('Bunta element table differs')
     elements=[[word(table+j*44+i*4)for i in range(11)]for j in range(count)]
-    name=string(word(word(0x0c31ba18+31*8)))
-    generated='// Generated from canonical SHA256 '+SHA256+'; Bunta character31.\n'
+    name=string(0x0c2a00d4 if japanese else word(word(0x0c31ba18+31*8)))
+    generated='// Generated from canonical SHA256 '+layout.sha256+'; Bunta character31.\n'
     generated+='inline constexpr std::array<std::array<std::uint32_t,11>,19> buntaDialogElements{{\n'
     generated+=''.join('    {{'+','.join(f'0x{x:08x}u'for x in row)+'}},\n'for row in elements)+'}};\n'
     generated+='inline constexpr std::string_view buntaSpeakerName("'+''.join(f'\\x{x:02x}'for x in name)+'",'+str(len(name))+');\n'
@@ -80,7 +83,9 @@ def export(image,hostfs,root):
         result=texture_bank.export_bank(source/(prefix+'_tex.tbl'),target/'original_texture_decoded.bin',target/'textures','twiddled')
         entry=dict(name=prefix,source_folder=folder,chunks=len(chunks),textures=len(result['textures']),polygon_sha256=hashlib.sha256(pol).hexdigest(),texture_sha256=hashlib.sha256(tex).hexdigest())
         (target/'manifest.json').write_text(json.dumps(entry,indent=2)+'\n');banks.append(entry)
-    report=dict(source_image_sha256=SHA256,source_configure='0C0F88C0',source_loader='0C0F9A00',source_script_selector='0C0F5FE0-0C0F6122',rows=408,tokens=sum(len(r['tokens'])for r in records),bunta_data_sha256=hashlib.sha256(data).hexdigest(),element_table='0C319CC4',elements=elements,banks=banks,records=records)
+    report=dict(source_image_sha256=layout.sha256,rows=408,tokens=sum(len(r['tokens'])for r in records),bunta_data_sha256=hashlib.sha256(data).hexdigest(),element_table=f'{table:08X}',elements=elements,banks=banks,records=records)
+    if not japanese:
+        report.update(source_configure='0C0F88C0',source_loader='0C0F9A00',source_script_selector='0C0F5FE0-0C0F6122')
     (out/'bunta-scripts.json').write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({k:v for k,v in report.items()if k not in('records','elements')},indent=2))
 if __name__=='__main__':

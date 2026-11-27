@@ -4,6 +4,7 @@
 #include <span>
 
 namespace idas3 {
+void bindOriginalGameHudChunks(NativeModel& model, const NativeTextureBank& textures);
 // Original065032..0650D8, table2F4E48. Optional bytes are the source
 // globals31CA38+8 and31CA34; defaults select each car's stock dial.
 unsigned originalTachTypeForCar(unsigned carId,std::uint8_t tuningByte8=0,std::uint8_t tuneSelectionByte0=0);

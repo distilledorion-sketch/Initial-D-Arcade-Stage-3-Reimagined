@@ -103,7 +103,20 @@ internal static class RaceLoadingDriver
         while(!done()&&clock.Elapsed.TotalSeconds<3){pump();UnityEngine.Time.realtimeSinceStartupAsDouble+=.001;Thread.Sleep(1);}
         if(!done())throw new TimeoutException("Local session did not reach its expected loading state");
     }
-    static void TcpHostLoad(){
+    static void LeaveNotice(){
+        using(var f=new Fixture()){
+            f.Transport.Deliver(f.Packet(20,w=>w.Write(98UL)));
+            Check(!f.Session.DisconnectedFinish,"A delayed leave from a different race cannot interrupt this race");
+            f.Session.LeaveBattle();f.Session.LeaveBattle();
+            var packet=f.Transport.Sent.Single(p=>p[6]==20);
+            Check(BitConverter.ToUInt64(packet,23)==99&&f.Transport.Reliable[f.Transport.Sent.IndexOf(packet)],
+                "Confirming Leave sends one reliable notice for this race");
+            Check(!f.Session.IsRacing&&f.Session.Busy&&f.Transport.Connected,"Local race exits while the leave notice is in flight");
+            f.Frame(4);
+            Check(!f.Session.Busy&&!f.Session.InLobby&&!f.Session.DisconnectedFinish,"An unresponsive peer cannot keep the departing player in the room");
+        }
+    }
+    static void TcpHostLoad(bool breakConnection){
         var reservation=new TcpListener(IPAddress.Loopback,0);reservation.Start();
         int port=((IPEndPoint)reservation.LocalEndpoint).Port;reservation.Stop();
         UnityEngine.Time.realtimeSinceStartupAsDouble=10;
@@ -186,11 +199,23 @@ internal static class RaceLoadingDriver
                 PumpUntil(()=>(bool)Get(guest,"releaseAck"),pump);
                 UnityEngine.Time.realtimeSinceStartupAsDouble+=2;pump();
                 Check(host.RaceReleased&&guest.RaceReleased,"The fresh match reaches GO on both original sessions");
+                // The second room has reversed roles. Exercise a real socket
+                // closure from its guest and a confirmed Leave from its host.
+                var departing=breakConnection?host:guest;
+                var remaining=breakConnection?guest:host;
+                if(breakConnection)((Idas3TcpTransport)Get(departing,"transport")).Leave();
+                else departing.LeaveBattle();
+                PumpUntil(()=>remaining.DisconnectedFinish&&!departing.InLobby,pump);
+                var expected=breakConnection?"PLAYER DISCONNECTED":"PLAYER LEFT THE RACE";
+                Check(remaining.InterruptedRaceTitle==expected&&remaining.ResultText.StartsWith(expected+" — NO RESULT RECORDED"),
+                    "Opponent sees "+expected+" on the interrupted race screen");
+                remaining.ReturnToLobby();
+                Check(!remaining.DisconnectedFinish&&remaining.InterruptedRaceTitle==""&&!remaining.InLobby,"Acknowledging the notice clears the previous race's reason");
             } finally {
                 Idas3MultiplayerNative.StartAction=null;
                 Set(host,"nativeRace",false);Set(guest,"nativeRace",false);
             }
         }
     }
-    static int Main(string[] args){try{if(args.Contains("baseline"))Baseline();else{Guest();Host();Timeout();TcpHostLoad();}return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
+    static int Main(string[] args){try{if(args.Contains("baseline"))Baseline();else{Guest();Host();Timeout();LeaveNotice();TcpHostLoad(false);TcpHostLoad(true);}return 0;}catch(Exception e){Console.Error.WriteLine(e);return 1;}}
 }

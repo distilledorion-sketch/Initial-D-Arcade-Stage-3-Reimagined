@@ -72,7 +72,7 @@ internal static class ResultSettlementDriver
             f.Frame(10.25);f.Frame(10.75);
             Check(advances==attempts&&Idas3MultiplayerNative.NativeAwards==1,"Pending frames throttle disk retries and do not repeat native tuning awards");
             if(peerLeaves){
-                Call(f.Session,"DisconnectRace","Fixture peer disappeared");
+                Call(f.Session,"Fail","Fixture peer disappeared");
                 Check(f.Session.ResultPeerLeft&&!f.Session.DisconnectedFinish&&f.Session.ResultText=="YOU WIN"&&Idas3MultiplayerNative.Disconnects==0,"Peer departure during a failed save preserves the earned win");
             }
             File.Delete(blocker);int sent=f.Transport.Sent.Count;f.Frame(12);

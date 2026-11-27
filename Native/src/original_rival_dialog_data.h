@@ -29,8 +29,10 @@ public:
     const OriginalRivalDialogIdentity& enemy(std::uint32_t index)const;
     const OriginalRivalDialogRecord& record(std::uint32_t character,std::uint32_t kind)const;
     bool hasBunta()const{return !buntaRecords_.empty();}
+    bool japanese()const{return japanese_;}
     const OriginalRivalDialogRecord& buntaRecord(std::uint32_t course,std::uint32_t kind)const;
 private:
+    bool japanese_=false;
     std::array<OriginalRivalDialogIdentity,31> identities_;
     std::array<OriginalRivalDialogRecord,31*24> records_;
     std::vector<OriginalRivalDialogRecord> buntaRecords_;

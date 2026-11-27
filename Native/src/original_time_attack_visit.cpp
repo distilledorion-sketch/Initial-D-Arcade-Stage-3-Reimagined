@@ -12,6 +12,7 @@
 #include <bit>
 #include <cmath>
 #include <cstdio>
+#include <fstream>
 #include <limits>
 #include <stdexcept>
 
@@ -42,19 +43,23 @@ struct Canvas {
     void text(const MenuFont& font,const char* value,float x,float y,float size,std::uint32_t color=0xffffffff)const{
         font.paint(target,width,height,value,left+x*fit,top+y*fit,size*fit,color);
     }
-    void alphabet(const NativeTextureBank& bank,std::string_view text,float x,float y)const{
+    void alphabet(const NativeTextureBank& bank,std::string_view text,float x,float y,bool mappedJapanese=false)const{
         //1CB200(mode1,color4,full strlen): exact62-glyph alphabet/width table,
         // also recovered by the original gas-station conversation renderer.
         SpritePlacement placement;placement.scale=fit;placement.offsetX=left+x*fit;placement.offsetY=top+y*fit;
         float advance=0;
-        for(char value:text){const auto found=std::find(gasstand_data::fontCharacters.begin(),gasstand_data::fontCharacters.end(),value);
-            if(found==gasstand_data::fontCharacters.end()){advance+=5;continue;}
-            const auto i=std::size_t(found-gasstand_data::fontCharacters.begin());
+        for(char value:text){
+            unsigned i=static_cast<unsigned char>(value);
+            if(!mappedJapanese){
+                const auto found=std::find(gasstand_data::fontCharacters.begin(),gasstand_data::fontCharacters.end(),value);
+                if(found==gasstand_data::fontCharacters.end()){advance+=5;continue;}
+                i=unsigned(found-gasstand_data::fontCharacters.begin());
+            }
             constexpr std::uint32_t ink=0xff010101;OriginalSprite sprite;
             sprite.vertices={OriginalSpriteVertex{advance,0,0,0,1,ink,0},{advance,32,0,0,0,ink,0},
                 {advance+32,0,0,1,1,ink,0},{advance+32,32,0,1,0,ink,0}};
             compositeOriginalSprite(target,width,height,bank.at(unsigned(i)),sprite,placement);
-            advance=std::fma(gasstand_data::word(gasstand_data::fontWidthWords[i]),1.f,advance);
+            advance+=mappedJapanese?16.f:gasstand_data::word(gasstand_data::fontWidthWords[i]);
         }
     }
     void rectangle(float x,float y,float w,float h,std::uint32_t color)const{
@@ -136,7 +141,22 @@ void OriginalTimeAttackVisit::load(const std::filesystem::path& root){
     ranking_=loadBank(rank,"v3sT13rankin");common_=loadBank(rank,"v3sT00common");
     select_=loadBank(root/"data/original_assets/name_entry","select");
     logoBackdrop_=buildMenuLogoBackdrop(select_.textures,select_.model.chunks.at(45));
-    alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
+    japaneseAdviceLoaded_=std::filesystem::exists(base/"font/textures.idastex");
+    if(japaneseAdviceLoaded_){
+        alphabet_=NativeTextureBank::load(base/"font/textures.idastex");
+        std::ifstream input(base/"advice.bin",std::ios::binary);
+        std::array<char,8> magic{};
+        if(!input.read(magic.data(),magic.size())||std::string_view(magic.data(),8)!="ID3LEC01")
+            throw std::runtime_error("Invalid Japanese lecture advice");
+        for(auto& line:japaneseAdvice_){
+            const int size=input.get();
+            if(size<0)throw std::runtime_error("Missing Japanese lecture line");
+            line.resize(size);
+            if(!input.read(line.data(),size))throw std::runtime_error("Incomplete Japanese lecture line");
+            for(unsigned char glyph:line)if(glyph>=alphabet_.size())throw std::runtime_error("Invalid Japanese lecture glyph");
+        }
+        if(input.peek()!=std::char_traits<char>::eof())throw std::runtime_error("Unexpected Japanese lecture data");
+    }else alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
     auto spritePath=root/"data/original_assets/saved_data/password_sprite";
     if(originalUiLanguage()==1&&std::filesystem::exists(root/"data/localization/ja/original_assets/saved_data/password_sprite/original_rip.tbl"))spritePath=root/"data/localization/ja/original_assets/saved_data/password_sprite";
     passwordSprites_=NativeSpriteBank::load(spritePath/"original_rip.tbl",spritePath/"original_rip.bin");
@@ -326,8 +346,18 @@ void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int w
     //18E0A0 passes172,70/93/116;1CB200 adds font mode1's24-pixel Y offset.
     // The original letters/widths fit the original panel, without host fonts
     // or an invented performance graph occupying the advice window.
-    if(setup_.sourceAnalysisAvailable)for(unsigned i=0;i<3;++i)
-        c.alphabet(alphabet_,setup_.analysis.lines[i],172.f,94.f+23.f*i);
+    if(setup_.sourceAnalysisAvailable)for(unsigned i=0;i<3;++i){
+        const auto& analysis=setup_.analysis;
+        std::string_view line=analysis.lines[i];
+        if(japaneseAdviceLoaded_){
+            constexpr std::array<unsigned,3> starts{0,8,11};
+            unsigned index=(starts.at(kind)+analysis.adviceIndex)*3+i;
+            if(i==0&&((kind==1&&analysis.adviceIndex==2)||(kind==2&&analysis.adviceIndex==5)))
+                index=51+(course<2?0u:3u)+analysis.worstSection;
+            line=japaneseAdvice_.at(index);
+        }
+        c.alphabet(alphabet_,line,172.f,94.f+23.f*i,japaneseAdviceLoaded_);
+    }
     auto timing=setup_.analysisInput;timing.course=course;
     for(const auto& draw:originalTimeAttackStatDraws(setup_.telemetry,timing))
         c.chunk(lecture_.model,lecture_.textures,draw.chunk,draw.x,draw.y);

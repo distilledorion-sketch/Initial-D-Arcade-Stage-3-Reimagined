@@ -25,11 +25,13 @@ The force-feedback plugin is also supplied. To rebuild it after configuring the 
 cmake --build Native/build-unity-d --target Idas3WheelFeedback
 ```
 
+For a distributable Windows build, compile the Japanese `Idas3Unity` target in a separate CMake build directory. Set `IDAS3_JAPANESE_PROGRAM` to the extracted Rev C `idas3_main_0C020000.bin` and `IDAS3_PLUGIN_OUTPUT_DIRECTORY` to a separate output folder. Pass that DLL and program to the Windows packager as `--japanese-plugin` and `--japanese-program`, alongside the English `--program`. Setup uses the player's selected disc to restore the matching native library.
+
 ## Unity player
 
 Run `Build Unity.cmd` to build the native plugin and Windows player. The output is `Builds/Current/InitialDUnity.exe`. The script stages all native runtime data and all nine imported courses beside the player.
 
-Windows builds also create `Builds/Current/rom/README.txt` with the same instructions shown by the startup validator. Place your original dump beside those instructions as either `rom/gds-0033.chd` or the complete set `rom/gds-0033.cue`, `rom/gds-0033-track1.bin`, `rom/gds-0033-track2.bin` and `rom/gds-0033-track3.bin`. Startup validates the dump before gameplay. Building does not need a ROM, inspect existing ROMs or copy them from the checkout or another installation.
+The Windows package accepts either the English GDS-0033 CHD with its matching security file or the Japanese Rev C GDS-0032C CHD with its matching security file. First launch creates `rom/README.txt` with the accepted filenames. The English player also recognizes the original CUE and three BIN tracks when its assets are already installed. To exercise a new card from the title screen into a race, run `python Tools/check_disc_first_race.py <installed-game> <new-test-folder>` against each regional installation. Test saves go into the new test folder.
 
 Release ZIPs must exclude every `rom/` entry, including the instructions and empty directory entries. First launch creates the folder and instructions locally. This keeps updates compatible with previous installers, whose archive allowlists reject the `rom` directory. Never include or hash players' dumps when packaging a release. See [release patch packaging](Tools/Update-Patches.md).
 

@@ -7,9 +7,20 @@ For a fresh manual install, extract the full Windows ZIP into a writable
 folder and open InitialDUnity.exe once to run setup. After setup, launch
 Initial D Arcade Stage 3 Reimagined.exe. Existing shortcuts to the original
 name continue to work.
-Select your original English GDS-0033 Arcade Stage 3 CHD. Keep the matching
-317-0384-COM.pic or initdv3e.zip beside it, or choose it when prompted.
-The security PIC is needed to read the encrypted arcade disc.
+For first-time setup, choose either supported original Arcade Stage 3 disc:
+  Japanese Rev C: GDS-0032C CHD with initdv3j.zip or 317-0379-jpn.pic.
+  English: GDS-0033 CHD with 317-0384-COM.pic or an arcade ZIP containing it
+  (setup checks initdv3e.zip and initdv3.zip).
+Place the matching ZIP or PIC beside the CHD or in the game's rom folder.
+You can also select the files when prompted. The ZIP provides the security
+file needed to read the CHD. One matching pair supplies the complete base.
+Options > Gameplay has two language settings. Custom Menu Language changes
+Reimagined menus to English, Japanese, or Simplified Chinese when you apply it.
+ROM Language selects the full English or Japanese Rev C arcade game on restart.
+The first switch needs the selected region's CHD and matching security file.
+Cancel the file picker to play the current ROM. Setup keeps each prepared region
+in the game folder for later switches. Both versions use the same player saves.
+Updates reuse verified files from a previous installation when they contain the data the new version needs.
 
 Setup reads the disc and builds the local files for the original courses,
 cars, sounds and interface. Leave the window open until setup finishes.
@@ -115,7 +126,7 @@ It reuses your local ROM and previously verified game files.
 Upgrading the original Windows release builds its disc cache before retiring
 the previous assets. Altered or unrecognized previous assets are kept under
 UserData/Previous Windows Assets. If you supplied CUE/BIN files to the old
-player, select your GDS-0033 CHD when asked. Leave setup open until it finishes.
+player, select your GDS-0033 or GDS-0032C CHD when asked. Leave setup open until it finishes.
 The Windows player and conversion tools run locally. No Python installation,
 Unity Editor or external downloads are required for setup.
 

@@ -53,9 +53,11 @@ def layout_for_packaging(native, program, object_export):
     return layouts
 
 def generate(game, project, helpers, log):
+    from arcade_program import JAPANESE, identify
     from export_original_course_objects import BASE, COURSES, OWNERS, source_paths, read_owners, write_sidecar
     image = game / "idas3_main_0C020000.bin"
     code = image.read_bytes()
+    japanese = identify(code) == JAPANESE
     host = game / "driveA/HOSTFS"
     layouts = json.loads((Path(__file__).parent / "object-layout.json").read_text())
     scratch = project / "verification/objects"
@@ -67,8 +69,13 @@ def generate(game, project, helpers, log):
             descriptor = OWNERS[ci][int(bool(night or wet))] if ci in OWNERS else None
             setup = []
             if descriptor:
-                for (_,path), layout in zip(source_paths(code, descriptor), layouts[str(descriptor[0])], strict=True):
-                    words = [struct.unpack_from("<I",code,a)[0] if a is not None else 0 for a in layout["words"]]
+                constructor, table, count, pointers = descriptor
+                if japanese:
+                    table += 0xB9D8 if pointers else 0x7CB0
+                    descriptor = (constructor + 0x13380, table, count, pointers)
+                literal_shift = 0x13380 if japanese else 0
+                for (_,path), layout in zip(source_paths(code, descriptor), layouts[str(constructor)], strict=True):
+                    words = [struct.unpack_from("<I",code,a+literal_shift)[0] if a is not None else 0 for a in layout["words"]]
                     basis = struct.unpack("<16I", matrix(layout["angle"]))
                     setup.append(dict(path=path,sector_mode=layout["mode"],
                                       settings_words=[*basis,*words[:4],*layout["grid"],*words[4:]]))

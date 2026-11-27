@@ -5,6 +5,12 @@
 namespace idas3::original::gasstand_data {
 constexpr float word(unsigned u){return std::bit_cast<float>(u);}
 struct Message {unsigned speaker;std::array<std::string_view,3> lines;};
+#ifdef IDAS3_JAPANESE_PLAYER
+// Rev C loads its dialogue and glyphs from the installed gas station bank.
+inline constexpr std::array<Message,17> script0{};
+inline constexpr std::array<Message,18> script1{};
+inline constexpr std::array<Message,14> script2{};
+#else
 inline constexpr std::array<Message,17> script0{{
 {0, {"HEY, COLE.","",""}},
 {0, {"I'VE HEARD THAT I CAN CUSTOMIZE MY CAR","IF I HAVE AN INITIAL D CARD.",""}},
@@ -60,6 +66,7 @@ inline constexpr std::array<Message,14> script2{{
 {1, {"SO DON'T WORRY IF YOU","FORGET TO WRITE IT DOWN!",""}},
 {0, {"OKAY!","I'M GOING TO PUT UP A REAL FAST TIME!",""}},
 }};
+#endif
 inline constexpr std::array<char,62> fontCharacters{32,44,46,97,58,59,63,33,39,40,41,43,45,61,60,62,36,37,38,42,64,48,49,50,51,52,53,54,55,56,57,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,89,90,98,99,100,101,102};
 inline constexpr std::array<unsigned,62> fontWidthWords{0x41200000u,0x40c00000u,0x40c00000u,0x40a00000u,0x40a00000u,0x40c00000u,0x41100000u,0x40800000u,0x40800000u,0x40c00000u,0x40c00000u,0x41300000u,0x40c00000u,0x41300000u,0x41100000u,0x41100000u,0x41300000u,0x41500000u,0x41500000u,0x41200000u,0x41800000u,0x41600000u,0x40c00000u,0x41400000u,0x41600000u,0x41600000u,0x41500000u,0x41600000u,0x41200000u,0x41600000u,0x41600000u,0x41500000u,0x41500000u,0x41400000u,0x41400000u,0x41400000u,0x41300000u,0x41800000u,0x41400000u,0x40c00000u,0x41300000u,0x41400000u,0x41100000u,0x41600000u,0x41400000u,0x41500000u,0x41500000u,0x41400000u,0x41400000u,0x41500000u,0x41400000u,0x41300000u,0x41400000u,0x41700000u,0x41300000u,0x41600000u,0x41400000u,0x41500000u,0x41880000u,0x41a00000u,0x41200000u,0x41700000u};
 inline constexpr std::array<unsigned,41> brandOrder{18,3,10,20,25,40,23,19,0,4,11,24,41,13,15,39,38,17,21,31,26,27,1,35,2,36,29,14,30,9,5,22,7,12,16,6,37,32,34,28,8};

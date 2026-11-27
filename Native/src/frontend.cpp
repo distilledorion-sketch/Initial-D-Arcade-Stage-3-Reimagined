@@ -2,6 +2,7 @@
 #include "frontend.h"
 #include "car_catalog.h"
 #include "original_choice_menu.h"
+#include "original_menu_chunks.h"
 #include "original_menu_backdrop.h"
 #include "original_record_rules.h"
 #include "original_legend_menu.h"
@@ -19,6 +20,16 @@
 
 namespace idas3 {
 namespace {
+int regionalMenuChunk(std::string_view bank,int index){
+#ifdef IDAS3_JAPANESE_PLAYER
+    // GDS-0032C's course table at 0C2A942C omits two export-only panels.
+    // The common frame and car-selection banks each omit one as well.
+    if(bank=="v3sK00common")return index-int(index>26)-int(index>40);
+    if(bank=="v3sS00common"&&index>=0)return int(originalCommonMenuChunk(unsigned(index)));
+    if(bank=="v3sS05cars")return index-int(index>41);
+#endif
+    return index;
+}
 // Exact 35-u32 permutation from original image 0C2AAE80. Each entry is a
 // zero-based menu car index; original car identity remains ID0..34.
 constexpr std::array<int,35> menuCarIndex = {
@@ -1199,8 +1210,9 @@ void Frontend::drawChoiceMenu(int width,int height,bool movingWidgets) {
         const auto& command=commands[index];
         const bool widget=command.y!=0;
         if(index>=underlayCount && widget!=movingWidgets)continue;
-        auto& assets=bank(original::originalChoiceBankName(command.selector>>16));
-        const auto& chunk=assets.model.chunks.at(command.selector&0xffffu);
+        const auto name=original::originalChoiceBankName(command.selector>>16);
+        auto& assets=bank(name);
+        const auto& chunk=assets.model.chunks.at(regionalMenuChunk(name,command.selector&0xffffu));
         SpritePlacement placement;placement.scale=100.f*fit*command.scale;
         placement.offsetX=(width-640.f*fit)*.5f+command.x*100.f*fit;
         placement.offsetY=(height-480.f*fit)*.5f-command.y*100.f*fit;
@@ -1284,7 +1296,8 @@ void Frontend::drawCarColorIndicator(int width,int height,unsigned selected,unsi
 }
 void Frontend::draw(const std::string& name,int chunk,int width,int height,float x,float y,float multiplier,float opacity) {
     auto& selected=bank(name);
-    if(chunk<0 || chunk>=int(selected.model.chunks.size())) throw std::out_of_range("Original menu chunk outside bank");
+    chunk=regionalMenuChunk(name,chunk);
+    if(chunk<0 || chunk>=int(selected.model.chunks.size())) throw std::out_of_range("Original menu chunk outside bank: "+name+" #"+std::to_string(chunk));
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     SpritePlacement placement;
     placement.scale=100.f*fit*multiplier;

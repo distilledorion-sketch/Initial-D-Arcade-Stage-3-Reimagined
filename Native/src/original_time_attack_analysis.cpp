@@ -4,7 +4,11 @@
 
 namespace idas3::original {
 namespace {
+#ifdef IDAS3_JAPANESE_PLAYER
+#include <regional/original_time_attack_analysis_tables.inc>
+#else
 #include "original_time_attack_analysis_tables.inc"
+#endif
 std::int32_t s32(std::uint32_t v){return std::bit_cast<std::int32_t>(v);}
 float f32(std::uint32_t v){return std::bit_cast<float>(v);}
 void valid(unsigned course){if(course>=9)throw std::out_of_range("Original Time Attack analysis course");}

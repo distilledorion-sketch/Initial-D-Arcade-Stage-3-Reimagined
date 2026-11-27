@@ -1,19 +1,20 @@
 """Preserve original race effect banks, with source identity and cue tables."""
 import argparse,hashlib,json,struct
 from pathlib import Path
+from arcade_program import identify
+from extract_original_models import read_payload
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--hostfs',type=Path,required=True);p.add_argument('--image',type=Path,required=True);p.add_argument('--project',type=Path,required=True)
     a=p.parse_args();program=a.image.read_bytes();base=0xc020000
-    if hashlib.sha256(program).hexdigest()!='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335':
-        raise ValueError('Canonical original program identity mismatch')
+    layout = identify(program)
     u32=lambda at:struct.unpack_from('<I',program,at-base)[0]
     dest=a.project/'data/original_audio/race';dest.mkdir(parents=True,exist_ok=True);records=[]
     for bank in (2,3,4,5):
-        entry=0xc31ed30+12*bank;address=u32(entry)
+        entry=layout.sound_banks+12*bank;address=u32(entry)
         name=program[address-base:program.index(0,address-base)].decode('ascii')
-        src=a.hostfs/'sound/pack'/(name+'.nz');data=src.read_bytes()
+        src=a.hostfs/'sound/pack'/(name+'.nz');data=read_payload(src)
         if data[:4]!=b'DTPK' or struct.unpack_from('<I',data,8)[0]!=len(data):raise ValueError('Invalid original DTPK')
         target=dest/(Path(name).stem+'.dtpk');target.write_bytes(data)
         table=u32(entry+4);cues=[]

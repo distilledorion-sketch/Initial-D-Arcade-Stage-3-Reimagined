@@ -80,8 +80,11 @@ unsigned UnityStereoPcmRing::readDevice(float* out,unsigned frames,unsigned chan
         primed_=false;devicePhase_=0;return 0;
     }
     const auto required=(devicePhase_+std::uint64_t(frames)*sampleRate+rate-1)/rate+1;
-    const auto prebuffer=std::max<std::uint64_t>(prebufferFrames,std::min<std::uint64_t>(required,capacityFrames));
-    const auto latency=std::max<std::uint64_t>(maximumLatencyFrames,prebuffer);
+    // The mixer writes on render frames. Keep a reserve *after* filling the
+    // first device callback so an uneven render frame cannot immediately
+    // expose a hole in every channel. Refill the reserve after a real underrun.
+    const auto prebuffer=std::min<std::uint64_t>(capacityFrames,required+2048);
+    const auto latency=std::max<std::uint64_t>(maximumLatencyFrames,std::min<std::uint64_t>(capacityFrames,prebuffer+1024));
     if(w-r>latency){const auto trim=w-r-latency;r+=trim;devicePhase_=0;discarded_.fetch_add(trim,std::memory_order_relaxed);}
     if(!primed_&&w-r<prebuffer){priming_.fetch_add(frames,std::memory_order_relaxed);read_.store(r,std::memory_order_release);return 0;}
     primed_=true;const auto available=w-r;auto phase=devicePhase_;unsigned count=0;

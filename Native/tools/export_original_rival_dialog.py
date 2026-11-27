@@ -6,7 +6,7 @@ This importer does not guess scene draw matrices or flatten portraits to PNGs.
 """
 from pathlib import Path
 import argparse, hashlib, json, struct
-from extract_original_menus import ORIGINAL_IMAGE_SHA256
+from arcade_program import identify, JAPANESE
 import extract_original_models as models
 import texture_bank
 
@@ -14,7 +14,8 @@ def digest(b):return hashlib.sha256(b).hexdigest()
 
 def export(image, hostfs, root, art=True):
     raw=image.read_bytes()
-    if digest(raw)!=ORIGINAL_IMAGE_SHA256:raise ValueError('Canonical source image required')
+    layout=identify(raw)
+    japanese=layout==JAPANESE
     def u32(a):return struct.unpack_from('<I',raw,a-0x0c020000)[0]
     def text(a):return raw[a-0x0c020000:].split(b'\0',1)[0].decode('ascii')
     expected={0x0c263950:'/driveA/model/rival_scene/rival_scene_pol',
@@ -26,6 +27,10 @@ def export(image, hostfs, root, art=True):
         0x0c263ad0:'/driveA/font/namekana/namekana_font',
         0x0c263460:'/driveA/font/alphabet/alphabet_spr',
         0x0c263484:'/driveA/font/alphabet/alphabet_font'}
+    if japanese:
+        expected={a+0x8958:s for a,s in expected.items() if a>=0x0c263950}
+        expected.update({0x0c26b73c:'/driveA/font/msg_%s/msg_%s_spr',
+                         0x0c26b75c:'/driveA/font/msg_%s/msg_%s_font'})
     for a,s in expected.items():
         if text(a)!=s:raise ValueError(f'Source resource string changed at {a:x}')
     out=root/'data/original_assets/rival_dialog';out.mkdir(parents=True,exist_ok=True)
@@ -36,11 +41,13 @@ def export(image, hostfs, root, art=True):
     def readstr():
         nonlocal p
         n=read32();v=data[p:p+n];p+=n;return v
-    if data[:20]!=b'IDAS3RD1'+struct.pack('<3I',1,31,24):raise ValueError('Original captured dialogue header')
+    if data[:20]!=b'IDAS3RD1'+struct.pack('<3I',2 if japanese else 1,31,24):raise ValueError('Original captured dialogue header')
+    characters,courses,nights,portraits=((0x0c27307c,0x0c26c150,0x0c26c1cc,0x0c3269b8) if japanese else
+                                        (0x0c26b81c,0x0c2637f8,0x0c263874,0x0c31abe4))
     identities=[]
     for enemy in range(31):
         character,course,night=read32(),read32(),read32();portrait=readstr().decode('ascii')
-        if (character,course,night,portrait)!=(u32(0x0c26b81c+4*enemy),u32(0x0c2637f8+4*enemy),u32(0x0c263874+4*enemy),text(u32(0x0c31abe4+4*enemy))):raise ValueError('Captured identity mismatch')
+        if (character,course,night,portrait)!=(u32(characters+4*enemy),u32(courses+4*enemy),u32(nights+4*enemy),text(u32(portraits+4*enemy))):raise ValueError('Captured identity mismatch')
         identities.append(dict(enemy=enemy,character=character,background_course=course,background_night=night,portrait=portrait))
     records=[];opcodes={};token_count=0
     for char in range(31):
@@ -49,7 +56,10 @@ def export(image, hostfs, root, art=True):
             for _ in range(count):
                 a=read32();token=readstr()
                 if raw[a-0x0c020000:a-0x0c020000+len(token)+1]!=token+b'\0':raise ValueError('Captured token bytes differ from source')
-                tokens.append(dict(source_address=f'{a:08X}',bytes=token.decode('ascii')))
+                # Some Rev C glyph pairs are game-specific. The captured runtime
+                # stream retains both bytes; escape them in the readable report.
+                text_value=token.decode('euc_jp', errors='backslashreplace') if japanese else token.decode('ascii')
+                tokens.append(dict(source_address=f'{a:08X}',bytes=text_value))
                 opcodes[chr(token[0])]=opcodes.get(chr(token[0]),0)+1
             token_count+=count
             records.append(dict(character=char,kind=kind,source_record=f'{address:08X}',source_script=f'{script:08X}',layout_words=[f'{v:08X}'for v in words],tokens=tokens))
@@ -78,16 +88,22 @@ def export(image, hostfs, root, art=True):
             result=texture_bank.export_bank(source/(prefix+'_tex.tbl'),target/'original_texture_decoded.bin',target/'textures','twiddled')
             entry=dict(name=prefix,source_folder=folder,chunks=len(chunks),textures=len(result['textures']),polygon_sha256=digest(pol),texture_sha256=digest(texraw),material_words_preserved=True)
             (target/'manifest.json').write_text(json.dumps(entry,indent=2)+'\n');banks.append(entry);print(prefix,len(chunks),len(result['textures']),flush=True)
-        for name in ['alphabet','namekana']:
+        fonts=['namekana']
+        if japanese:
+            fonts+=sorted({'msg_'+row['portrait'] for row in identities}|{'msg_bunta_challenge'})
+        else:
+            fonts.insert(0,'alphabet')
+        for name in fonts:
             source=hostfs/'font'/name;target=out/'fonts'/name
-            result=texture_bank.export_bank(source/(name+'_spr.tbl'),source/(name+'_spr.bin.nz'),target/'textures','twiddled')
+            mapping=(source/(name+'_font.bin.nz')).read_bytes() if japanese else None
+            result=texture_bank.export_bank(source/(name+'_spr.tbl'),source/(name+'_spr.bin.nz'),target/'textures','twiddled',font_map=mapping)
             # The _font bank is text-layout metadata consumed by0C5420, not
             # an independently chosen desktop font. Keep both table/payload.
             for suffix in ['_font.tbl','_font.bin.nz']:
                 path=source/(name+suffix)
                 if path.exists():(target/path.name).write_bytes(path.read_bytes())
             banks.append(dict(name=name,font=True,textures=len(result['textures'])))
-    report=dict(schema='original-rival-dialog-recovery-v1',source_image_sha256=ORIGINAL_IMAGE_SHA256,
+    report=dict(schema='original-rival-dialog-recovery-v1',source_image_sha256=layout.sha256,
         source_owner='0F8340/0F8780/0F8B00',source_script_owner='0F5F40/0F69E0/0F6D40',
         private_original_assets=True,dialog_data_sha256=digest(data),row_count=len(records),token_count=token_count,
         command_initials=opcodes,banks=banks,ready_for_game=False,

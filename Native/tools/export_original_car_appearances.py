@@ -2,15 +2,16 @@
 import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
 from export_car_presentation import KINDS,CHANNELS,WHEEL_CALLS
-from export_original_assembly import operations_matrix,IMAGE_HASH
+from arcade_program import BASE, identify
+from export_original_assembly import operations_matrix, read_car_capture
 
-def export(root,host,image,exe,car,enemy):
+def export(root,host,image,exe,car,enemy,layout):
     ci,folder=car['car_index'],car['folder'];base=root/'data/original_models'/folder
     target=base/'fresh_player' if enemy<0 else root/'data/original_models/rivals'/f'enemy_{enemy:02}'
     target.mkdir(parents=True,exist_ok=True);source=target/'source_capture.json'
     count=json.loads((base/'model_manifest.json').read_text())['chunk_count']
     subprocess.run([str(exe),str(image),str(host/'parts'/f'{folder}.bin'),str(source),str(ci),str(count),str(enemy)],check=True,capture_output=True)
-    capture=json.loads(source.read_text());programs=[];wheels=[]
+    capture=read_car_capture(source, layout);programs=[];wheels=[]
     with (target/'car.idasasm').open('wb') as out:
         out.write(b'IDAS3A1\0'+struct.pack('<II',1,len(capture['draws'])))
         for index,draw in enumerate(capture['draws']):
@@ -36,16 +37,16 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ('root','image','hostfs','capture-exe'):p.add_argument('--'+name,type=Path,required=True)
     a=p.parse_args();program=a.image.read_bytes()
-    if hashlib.sha256(program).hexdigest()!=IMAGE_HASH:raise ValueError('Canonical program mismatch')
+    layout = identify(program)
     cars=json.loads((a.root/'data/original_models/car_catalog.json').read_text())['cars'];players=[];enemies=[]
     for car in cars:
-        players.append(export(a.root,a.hostfs,a.image,a.capture_exe,car,-1))
+        players.append(export(a.root,a.hostfs,a.image,a.capture_exe,car,-1,layout))
         print('Fresh player',car['car_index'],car['folder'],players[-1]['draws'],flush=True)
     for enemy in range(31):
-        ci=struct.unpack_from('<I',program,0x31d8a8-0x020000+enemy*32+8)[0]
-        enemies.append(export(a.root,a.hostfs,a.image,a.capture_exe,cars[ci],enemy))
+        ci=struct.unpack_from('<I',program,layout.cars.rivals-BASE+enemy*32+8)[0]
+        enemies.append(export(a.root,a.hostfs,a.image,a.capture_exe,cars[ci],enemy,layout))
         print('Rival',enemy,cars[ci]['folder'],enemies[-1]['draws'],flush=True)
-    manifest=dict(schema='idas3-original-car-appearances-v1',source_image_sha256=IMAGE_HASH,
+    manifest=dict(schema='idas3-original-car-appearances-v1',source_image_sha256=layout.sha256,
         source='Fresh profile134A60; constructor228DC0/026436..0264BC; player0630B4..06316E versus rival035F00(enemy); semantic visibility029040..02988E; draw026D80.',
         boundaries='Unsigned division2223B8 is a bounded arithmetic hook. Graphics/matrix call arguments captured, matrices reconstructed.02988E onward material alpha/paint and dynamic popup-headlight interpolation remain separate; no hardware rendering parity claimed.',
         players=players,rivals=enemies)

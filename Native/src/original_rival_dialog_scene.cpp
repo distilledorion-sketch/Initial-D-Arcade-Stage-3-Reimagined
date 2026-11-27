@@ -3,6 +3,7 @@
 #include "unity_ui_capture.h"
 #include <vector>
 #include <algorithm>
+#include <fstream>
 #include <stdexcept>
 
 namespace idas3::original {
@@ -16,12 +17,17 @@ constexpr float alphabetCell=32.f,namekanaCell=48.f;
 bool OriginalRivalDialogScene::available(const fs::path& root){
     const auto base=dialogRoot(root);
     return fs::exists(base/"dialog.idasdialog")&&fs::exists(base/"banks/rival_scene/rival_scene.idasmesh")
-        &&fs::exists(base/"fonts/alphabet/textures/textures.idastex")
+        &&(fs::exists(base/"fonts/alphabet/textures/textures.idastex")||
+           fs::exists(base/"fonts/msg_itsuki/textures/textures.idastex"))
         &&fs::exists(base/"banks/continue/continue.idasmesh")
         &&fs::exists(base/"banks/v3sK17continue/v3sK17continue.idasmesh");
 }
 
 void OriginalRivalDialogScene::load(const fs::path& root){
+    loaded_=false;
+    portraitName_.clear();
+    backgroundName_.clear();
+    dialogueFontMap_.clear();
     root_=root;
     data_=OriginalRivalDialogData::load(root);
     const auto base=dialogRoot(root);
@@ -31,7 +37,7 @@ void OriginalRivalDialogScene::load(const fs::path& root){
         NativeTextureBank::load(base/"banks/continue/textures/textures.idastex")};
     prompt_={NativeModel::load(base/"banks/v3sK17continue/v3sK17continue.idasmesh"),
         NativeTextureBank::load(base/"banks/v3sK17continue/textures/textures.idastex")};
-    alphabet_=NativeTextureBank::load(base/"fonts/alphabet/textures/textures.idastex");
+    if(!data_.japanese())alphabet_=NativeTextureBank::load(base/"fonts/alphabet/textures/textures.idastex");
     namekana_=NativeTextureBank::load(base/"fonts/namekana/textures/textures.idastex");
     loaded_=true;
 }
@@ -46,6 +52,19 @@ void OriginalRivalDialogScene::begin(const OriginalBattleProfile& profile,
         std::string("rival_bg0")+std::to_string(setup.buntaCourse)+(setup.buntaCourse==8?"":"nf"):
         originalRivalDialogBackgroundBank(data_,setup.enemy,setup.weather);
     if(portrait!=portraitName_){
+        if(data_.japanese()){
+            const auto name="msg_"+portrait.substr(6);
+            const auto font=base/"fonts"/name;
+            std::ifstream input(font/(name+"_font.bin.nz"),std::ios::binary);
+            std::vector<std::uint16_t> map(96*96);
+            if(!input.read(reinterpret_cast<char*>(map.data()),std::streamsize(map.size()*2))||
+               input.peek()!=std::ifstream::traits_type::eof())throw std::runtime_error("Invalid Japanese rival font map");
+            auto textures=NativeTextureBank::load(font/"textures/textures.idastex");
+            for(auto index:map)if(index!=0xffff&&index>=textures.size())throw std::runtime_error("Invalid Japanese rival glyph");
+            for(unsigned i=0;i<alphabet_.size();++i)unityUiForgetTexture(alphabet_.at(i));
+            alphabet_=std::move(textures);
+            dialogueFontMap_=std::move(map);
+        }
         for(unsigned i=0;i<portrait_.textures.size();++i)unityUiForgetTexture(portrait_.textures.at(i));
         portrait_={NativeModel::load(base/"banks"/portrait/(portrait+".idasmesh")),
             NativeTextureBank::load(base/"banks"/portrait/"textures/textures.idastex")};
@@ -94,7 +113,12 @@ void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,i
             // The source glyph part is one square cell; its position is the
             // top-left corner in original pixels.
             const auto& bank=draw.bank==OriginalRivalDialogBank::Alphabet?alphabet_:namekana_;
-            if(draw.chunk>=bank.size())continue;
+            auto texture=draw.chunk;
+            if(draw.bank==OriginalRivalDialogBank::Alphabet&&data_.japanese()){
+                if(texture>=dialogueFontMap_.size())continue;
+                texture=dialogueFontMap_[texture];
+            }
+            if(texture>=bank.size())continue;
             const float cell=draw.bank==OriginalRivalDialogBank::Alphabet?alphabetCell:namekanaCell;
             const float px=320.f+draw.x*100.f,py=240.f-draw.y*100.f;
             SpritePlacement placement;
@@ -104,7 +128,7 @@ void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,i
                 {px,py+cell,0,0,0,draw.color,0},
                 {px+cell,py,0,1,1,draw.color,0},
                 {px+cell,py+cell,0,1,0,draw.color,0}};
-            compositeOriginalSprite(target,width,height,bank.at(draw.chunk),sprite,placement);
+            compositeOriginalSprite(target,width,height,bank.at(texture),sprite,placement);
             continue;
         }
         const Bank* bank=nullptr;

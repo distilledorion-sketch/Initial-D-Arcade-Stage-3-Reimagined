@@ -1,4 +1,5 @@
 #include "audio.h"
+#include "original_driving_clock.h"
 #include "original_stream_gain.h"
 #include "music_loudness.h"
 #include <cmath>
@@ -157,7 +158,7 @@ void EngineAudio::appendEngineFrame(const OriginalIcsMixFrame& frame,std::int32_
 void EngineAudio::resetEngineVoiceHistory(){
     // Checkpoints and queued PCM share the same absolute sample origin.
     // Clear them together, including reconfiguration/development-mode resets.
-    engineRead=engineCount=0;enginePrimed=false;pendingEngineFrame=false;
+    engineRead=engineCount=0;enginePrimed=false;pendingEngineFrame=false;engineSampleRemainder_=0;
     stoppedEngine_.reset();
     engineVoiceCheckpoints_.clear();engineSamplesWritten_=0;lastEngineOutputSource_=EngineOutputSource::None;
 }
@@ -249,11 +250,14 @@ void EngineAudio::applyConfirmedOnlineAudio(std::span<const original::OriginalEn
 }
 void EngineAudio::renderOriginalEngineFrame(){
     if(!pendingEngineFrame)return;pendingEngineFrame=false;
-    // Two waveOut blocks absorb ordinary host frame jitter. PCM synthesis
-    // still advances exactly735 frames for each original60Hz driving frame.
+    // Carry the part of a sample left over from each arcade tick. Rounding
+    // every tick individually drains the engine queue during sustained races.
+    const auto elapsed=44100ull*OriginalDrivingClock::pixelsPerFrame+engineSampleRemainder_;
+    const auto frames=unsigned(elapsed/OriginalDrivingClock::pixelClockHz);
+    engineSampleRemainder_=std::uint32_t(elapsed%OriginalDrivingClock::pixelClockHz);
     if(!enginePrimed){for(unsigned i=0;i<1024;++i)appendEngineFrame({});enginePrimed=true;}
     engineVoiceCheckpoints_.push_back({engineSamplesWritten_,nativeEngine->snapshotVoices()});
-    for(unsigned i=0;i<735;++i){auto pcm=nativeEngine->renderFrame();const auto tire=nativeTire->renderFrame();
+    for(unsigned i=0;i<frames;++i){auto pcm=nativeEngine->renderFrame();const auto tire=nativeTire->renderFrame();
         for(const auto value:pcm.dry)engineStats.dryEnergy+=double(value)*value;
         for(const auto value:pcm.effects)engineStats.effectSendEnergy+=double(value)*value;
         engineStats.tireEnergy+=double(tire)*tire;appendEngineFrame(pcm,std::int32_t(float(tire)*.45f));++engineStats.pcmFrames;

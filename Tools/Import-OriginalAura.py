@@ -11,6 +11,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT.parent / 'InitialDRemake/tools'))
 from extract_original_models import parse_model, read_payload
 from texture_bank import decode
+from arcade_program import identify, JAPANESE
 
 IMAGE_SHA = 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
 DEFAULT_FILES = Path(r'C:/Users/Developer/Documents/Codex/Initial D Arcade Stage 3 Recompiled - Crash Safe Test/game files')
@@ -34,7 +35,9 @@ def generate(files):
     host = files / 'driveA/HOSTFS'
     image_path = files / 'idas3_main_0C020000.bin'
     image = image_path.read_bytes()
-    if len(image) != 4194304 or sha(image) != IMAGE_SHA: raise ValueError('Canonical original image mismatch')
+    layout = identify(image)
+    indices_address = 0x0c32b85c if layout == JAPANESE else 0x0c320040
+    dimensions_address = 0x0c2950e0 if layout == JAPANESE else 0x0c28d890
     source = host / 'model/effect/aura'
     _, chunks, _, polygon = parse_model(source)
     if len(chunks) != 1 or len(chunks[0]['batches']) != 1: raise ValueError('Unexpected aura geometry')
@@ -53,10 +56,10 @@ def generate(files):
         out['colors/' + p.name] = b
         sources[p.name] = {'path': str(p), 'bytes': len(b), 'sha256': sha(b)}
     def region(address, size): return image[address - 0x0c020000:address - 0x0c020000 + size]
-    mapping = region(0x0c320040, 3474 * 4)
+    mapping = region(indices_address, 3474 * 4)
     if max(struct.unpack('<3474I', mapping)) != 1787: raise ValueError('Original aura color remap mismatch')
     out['vertex_color_indices.bin'] = mapping
-    out['car_dimensions.bin'] = region(0x0c28d890, 35 * 44)
+    out['car_dimensions.bin'] = region(dimensions_address, 35 * 44)
     table = (source / 'aura_tex.tbl').read_bytes()
     raw = read_payload(source / 'aura_tex.bin.nz')
     w,h,fmt,flags,reserved,offset,tail = struct.unpack('<HHBBHII', table)
@@ -65,12 +68,12 @@ def generate(files):
     # All actual effect submissions are untextured. Preserve its original
     # texture bank as provenance, without assigning it to the color mesh.
     manifest = {
-        'schema': 'idas3-original-aura-v1', 'sourceImage': str(image_path), 'sourceImageSha256': IMAGE_SHA,
+        'schema': 'idas3-original-aura-v1', 'sourceImage': str(image_path), 'sourceImageSha256': layout.sha256,
         'sourceFiles': sources, 'vertices': 3474, 'triangles': 3378,
         'colorFrames': 30, 'colorsPerFrame': 1788, 'colorByteOrder': 'big-endian ARGB',
         'paletteOrder': list(COLORS), 'imageTables': {
-            'vertex_color_indices.bin': {'address':'0C320040','bytes':len(mapping)},
-            'car_dimensions.bin': {'address':'0C28D890','rows':35,'rowBytes':44}},
+            'vertex_color_indices.bin': {'address':f'{indices_address:08X}','bytes':len(mapping)},
+            'car_dimensions.bin': {'address':f'{dimensions_address:08X}','rows':35,'rowBytes':44}},
         'runtimeMaterial': {'pcw':'8a00072f','isp':'91c00000','tsp':'849804c0','gmp':'000006aa'},
         'sourceOwners': ['0C17B0A0','0C17B7E0','0C17B900'],
         'files': {n: {'bytes':len(b),'sha256':sha(b)} for n,b in sorted(out.items())}}

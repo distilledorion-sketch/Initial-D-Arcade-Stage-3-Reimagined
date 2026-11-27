@@ -101,6 +101,9 @@ private:
     struct Bank { NativeModel model; NativeTextureBank textures; };
     Bank lecture_,ranking_,common_,select_,password_,passwordTitle_,selectionCommon_;
     NativeTextureBank alphabet_,passwordSpriteTextures_;
+    // 17 three-line advice messages followed by 7 per-section substitutions.
+    std::array<std::string,58> japaneseAdvice_;
+    bool japaneseAdviceLoaded_=false;
     NativeImage logoBackdrop_;
     NativeSpriteBank passwordSprites_;
     std::array<Bank,8> maps_;

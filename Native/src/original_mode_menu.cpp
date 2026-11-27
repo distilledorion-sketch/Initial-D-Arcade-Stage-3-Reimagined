@@ -1,5 +1,6 @@
 #include "unity_ui_capture.h"
 #include "original_mode_menu.h"
+#include "original_menu_chunks.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -209,7 +210,8 @@ void OriginalModeMenu::renderOriginalCanvas(const OriginalModeMenuState& state,s
     constexpr int width=640,height=480;
     originalCanvas.assign(width*height,0xff000000u);unityUiClear(originalCanvas.data(),width,height,0xff000000);
     auto draws=originalModeMenuDraws(state);
-    for(const auto& command:draws) {
+    for(auto& command:draws) {
+        if(command.bank==8)command.chunk=originalCommonMenuChunk(command.chunk);
         const auto& model=command.bank==8?common:mode;
         const auto& textures=command.bank==8?commonTextures:modeTextures;
         if(command.chunk>=model.chunks.size())throw std::out_of_range("Original mode artwork bank missing");
@@ -228,6 +230,9 @@ void OriginalModeMenu::renderOriginalCanvas(const OriginalModeMenuState& state,s
     // UVs and material state. Use the same flat640x480 presentation boundary
     // as the other legacy HUD/menu banks; keep the source bank order.
     SpritePlacement p;p.scale=100;p.invertY=true;p.authoredHeight=0;
+#ifdef IDAS3_JAPANESE_PLAYER
+    if(warningChunks[0]>=0)warningChunks[0]+=3;
+#endif
     for(std::size_t i=0;i<warningChunks.size();++i)if(warningChunks[i]>=0)
         compositeOriginalMenuChunk(originalCanvas,width,height,warningTextures[i],warnings[i].chunks.at(std::size_t(warningChunks[i])),p);
 }

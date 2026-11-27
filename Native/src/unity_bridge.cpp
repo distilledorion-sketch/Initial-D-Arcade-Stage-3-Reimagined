@@ -597,6 +597,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneModeFlowValue(int field){
     case 63:return a.frontend.savedData()&&a.frontend.savedData()->inspectionCompletion();
     case 64:return a.frontend.savedData()&&a.frontend.savedData()->inspectionOverlayVisible();
     case 65:return 0;
+    case 66:return int(a.audio.oneShotStatistics().cues);
     case 41:return unsigned(a.frontend.reverse)|(unsigned(a.frontend.wet)<<1)|(unsigned(a.frontend.night)<<2);
     case 40:return int(a.smokeTextureBase);
     case 38:return int(a.drivingEffects.markCount());
@@ -1619,16 +1620,17 @@ int IDAS3_UNITY_CALL Idas3SceneBattleEntry(const int* values,int count,const cha
                 throw std::invalid_argument("Selected mod is outside the shared course list");
         }
         if(page==Page::SavedCar||page==Page::Waiting)std::copy_n(values+55,b.cardProfile.words.size(),b.cardProfile.words.begin());
-        if(b.usesSelectionMusic(b.page)){
-            if(!b.usesSelectionMusic(page)){
-                app.frontend.endSelectionMusic();
-                for(const auto& command:app.frontend.takeSelectionMusicCommands())app.audio.selection(command);
-            }else if(page==b.page){
-                if(oldConfirm<0&&b.confirmFrame>=0)app.audio.playMenuCue(idas3::OriginalMenuCue::Confirm);
-                else if(b.focus!=values[1]||oldModFocus!=b.modFocus||
-                        (page!=Page::Waiting&&(b.course!=values[6]||((b.flags^values[7])&7)!=0)))
-                    app.audio.playMenuCue(idas3::OriginalMenuCue::Change);
-            }
+        if(b.usesSelectionMusic(b.page)&&!b.usesSelectionMusic(page)){
+            app.frontend.endSelectionMusic();
+            for(const auto& command:app.frontend.takeSelectionMusicCommands())app.audio.selection(command);
+        }
+        const bool challengerChoice=page==Page::AcceptChallengers||page==Page::EnterBattle;
+        if(page==b.page&&(challengerChoice||b.usesSelectionMusic(page))){
+            const bool changed=challengerChoice?((b.flags^values[7])&16)!=0:
+                b.focus!=values[1]||oldModFocus!=b.modFocus||
+                (page!=Page::Waiting&&(b.course!=values[6]||((b.flags^values[7])&7)!=0));
+            if(oldConfirm<0&&b.confirmFrame>=0)app.audio.playMenuCue(idas3::OriginalMenuCue::Confirm);
+            else if(changed)app.audio.playMenuCue(idas3::OriginalMenuCue::Change);
         }
         b.page=page;b.focus=values[1];b.seconds=std::clamp(values[2],0,99);b.frame=values[3];
         b.make=values[4];b.car=values[5];b.course=values[6];b.flags=values[7];b.points=values[8];

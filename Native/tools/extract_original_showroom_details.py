@@ -2,6 +2,7 @@
 from pathlib import Path
 import argparse, hashlib, json, struct
 from extract_original_models import parse_model, write_binary
+from arcade_program import identify, JAPANESE, BASE
 
 def main():
     ap=argparse.ArgumentParser(description=__doc__)
@@ -15,10 +16,13 @@ def main():
     out=args.game/'data/original_models/showroom';out.mkdir(parents=True,exist_ok=True)
     write_binary(out/'selcrs.idasmesh',chunks)
     image=args.image.read_bytes()
-    assert len(image)==4194304
-    strings={hex(a):image[a-0xc020000:].split(b'\0',1)[0].decode('ascii') for a in (0xc266d4c,0xc266d6c)}
-    assert strings['0xc266d4c']=='/driveA/model/selcrs/selcrs_pol'
-    dimensions=[struct.unpack_from('<2I',image,0xc265af4-0xc020000+44*i)[0:1]+struct.unpack_from('<I',image,0xc265afc-0xc020000+44*i) for i in range(35)]
+    japanese=identify(image)==JAPANESE
+    prefix=0xc26e4ec if japanese else 0xc266d4c
+    table=0xc26d294 if japanese else 0xc265af4
+    strings={hex(a):image[a-BASE:].split(b'\0',1)[0].decode('ascii') for a in (prefix,prefix+32)}
+    if strings[hex(prefix)]!='/driveA/model/selcrs/selcrs_pol':
+        raise ValueError('Showroom model resource mismatch')
+    dimensions=[struct.unpack_from('<I4xI',image,table-BASE+44*i) for i in range(35)]
     manifest={'schema':'idas3-original-showroom-shadow-v1','source_image_sha256':hashlib.sha256(image).hexdigest(),
       'source_files':{k:{'path':str(v),'sha256':hashlib.sha256(v.read_bytes()).hexdigest()} for k,v in files.items()},
       'loader_strings':strings,'bank_binding':'11D940 -> owner+120 -> 12D1E0 stack[1] -> selector+436 -> 12DC60/05A8E0 chunk4 -> 10F040 display+16 -> 10FA00',

@@ -85,6 +85,7 @@ internal static class RaceProgressDriver
                     "Published session remains stuck indefinitely with healthy pings but no confirmed race progress");return;
             }
             Check(f.Session.DisconnectedFinish&&f.Session.StateName=="Disconnected", "An unrecoverable race ends despite continuing valid pings and input packets");
+            Check(f.Session.ResultText.StartsWith("PLAYER DISCONNECTED —"),"An expired connection watchdog never attributes a voluntary leave to the opponent");
             Check(f.Disconnected==1&&Idas3MultiplayerNative.Disconnects==1&&f.Transport.Leaves==1,
                 "Progress timeout performs one neutral native disconnect and one transport cleanup");
             Check(f.Session.ResultText.Contains("NO RESULT RECORDED")&&f.Session.ResultText.Contains("0 POINTS"),

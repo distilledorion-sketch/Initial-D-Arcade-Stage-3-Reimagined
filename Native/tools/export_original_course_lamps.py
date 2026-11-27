@@ -1,13 +1,13 @@
 """Capture original lamp draws without changing existing scene assets."""
 import argparse,hashlib,json,struct,subprocess
 from pathlib import Path
-from export_original_assembly import IMAGE_HASH
+from arcade_program import identify
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     for n in ('image','hostfs','project','capture_exe'):p.add_argument('--'+n.replace('_','-'),type=Path,required=True)
     p.add_argument('--courses',default='1,4,5');a=p.parse_args()
-    if hashlib.sha256(a.image.read_bytes()).hexdigest()!=IMAGE_HASH:raise ValueError('Canonical image mismatch')
+    layout=identify(a.image.read_bytes())
     rules={1:('s_nm',4),4:('s_vh',72),5:('s_uh',189)}
     paths={r['id']:r['points'] for r in json.loads((a.project/'data/courses/manifest.json').read_text())['courses']}
     output=a.project/'verification/course-lamps-0317';output.mkdir(parents=True,exist_ok=True);records=[]
@@ -47,5 +47,5 @@ def main():
                     f.write(struct.pack('<'+'I'*len(insertions),*insertions))
                 records.append(dict(course=cid,variant=name,enabled=enabled,chunk=chunk,positions=count if enabled else 0,assemblies=len(insertions),source_path=str(lampPath.resolve()),source_sha256=hashlib.sha256(lampBytes).hexdigest(),original_instructions=new['original_instructions'],capture_sha256=hashlib.sha256(capture.read_bytes()).hexdigest(),file=str(destination.relative_to(a.project)),sha256=hashlib.sha256(destination.read_bytes()).hexdigest()))
                 print(f'Exported {cid} {name}: {count if enabled else 0} original lamp instances in {len(insertions)} unchanged base assemblies.',flush=True)
-    (output/'manifest.json').write_text(json.dumps(dict(source_image_sha256=IMAGE_HASH,records=records,boundaries='Original complete primary/static selectors execute. Matrix/graphics boundaries are captured; all lamp culling queries admit geometry for native clipping. Other dynamic owners remain excluded. Lamp billboard matrix reset is separately compared against original instructions.'),indent=2)+'\n')
+    (output/'manifest.json').write_text(json.dumps(dict(source_image_sha256=layout.sha256,records=records,boundaries='Original complete primary/static selectors execute. Matrix/graphics boundaries are captured; all lamp culling queries admit geometry for native clipping. Other dynamic owners remain excluded. Lamp billboard matrix reset is separately compared against original instructions.'),indent=2)+'\n')
 if __name__=='__main__':main()

@@ -44,7 +44,8 @@ void queuedOutput(const std::filesystem::path& root,unsigned car,unsigned blocks
     EngineAudio interrupted,uninterrupted;
     for(auto* a:{&interrupted,&uninterrupted})prepareRace(*a,root,profile);
     OriginalEnginePlayback source(root);source.select(profile);
-    const unsigned written=1024+735*blocks,dropped=written>8820?written-8820:0;
+    const auto sampleAtTick=[](unsigned tick){return unsigned(44100.0*OriginalDrivingClock::step*tick+1e-8);};
+    const unsigned written=1024+sampleAtTick(blocks),dropped=written>8820?written-8820:0;
     const unsigned available=written-dropped,head=dropped+std::min(consume,available);
     const bool sounding=consume&&consume<=available&&head>1024;
     std::unique_ptr<OriginalIcsPlayer> outputState;
@@ -56,7 +57,7 @@ void queuedOutput(const std::filesystem::path& root,unsigned car,unsigned blocks
         source.step(controls,seedSource,{});source.finishSoundFrame();
         // The reference has no ring or checkpoints: capture it while rendering
         // the desired sample in sequence, before any later controls are applied.
-        for(unsigned i=0;i<735;++i,++at){
+        for(unsigned i=sampleAtTick(block);i<sampleAtTick(block+1);++i,++at){
             if(sounding&&at==head)outputState=std::make_unique<OriginalIcsPlayer>(source.snapshotVoices());
             source.renderFrame();
         }

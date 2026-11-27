@@ -44,6 +44,18 @@ int main(int argc,char** argv)try{
  require(frame().textureCount==repeatedTextures+2,"different pixels/dimensions were merged");
  std::vector<unsigned char> rgba(512*512*4);require(Idas3UiCopyTextureRGBA(0,rgba.data(),int(rgba.size()))==int(rgba.size()),"old export unavailable");
  require(rgba[0]==0x12&&rgba[1]==0x34&&rgba[2]==0x56&&rgba[3]==0x7f,"replaced source changed cached pixels");
+ // Reuse the same allocation across an encoded navigation image and ordinary
+ // artwork, as can happen when a bank is unloaded and its memory is reused.
+ NativeImage route{2,2,std::vector<unsigned>(4,0xffff66bb),true};
+ triangle(source.argb.data(),route);
+ NativeImage sprite{2,2,std::move(route.argb)};
+ std::fill(sprite.argb.begin(),sprite.argb.end(),0xff112233);
+ const auto beforeSprite=frame().textureCount;
+ triangle(source.argb.data(),sprite);
+ require(frame().textureCount==beforeSprite+1,"Ordinary sprite reused the encoded minimap texture");
+ sprite.width=1;sprite.height=4;
+ triangle(source.argb.data(),sprite);
+ require(frame().textureCount==beforeSprite+2,"Reshaped sprite reused old texture dimensions");
  // Exercise copy, clipping, image-copy and same-surface aliases. The parity
  // hash normalizes texture IDs to dimensions/pixels, so deduplication may
  // change IDs but can never change rendered commands or artwork.

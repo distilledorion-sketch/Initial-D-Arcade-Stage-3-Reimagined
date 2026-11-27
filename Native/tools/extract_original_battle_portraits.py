@@ -8,15 +8,14 @@ import struct
 import extract_original_models as models
 import texture_bank
 
-CANONICAL='efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
+from arcade_program import BASE, identify
 
 def export(image: Path, source: Path, output: Path) -> dict:
     program=image.read_bytes()
-    if hashlib.sha256(program).hexdigest()!=CANONICAL:
-        raise ValueError('Portrait selectors require the verified canonical image')
+    layout=identify(program)
     names=[]
     for enemy in range(31):
-        address=struct.unpack_from('<I',program,0x2FBB24-0x020000+4*enemy)[0]-0x0C020000
+        address=struct.unpack_from('<I',program,layout.portraits-BASE+4*enemy)[0]-0x0C020000
         name=program[address:program.index(b'\0',address)].decode('ascii')
         if not name.startswith('face_') or not name.replace('_','').isalnum():
             raise ValueError('Invalid original portrait filename')
@@ -38,7 +37,7 @@ def export(image: Path, source: Path, output: Path) -> dict:
             'source_polygon_sha256':hashlib.sha256(raw).hexdigest(),
             'source_files':{key:{'path':str(path.resolve()),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()}for key,path in sources.items()if path.exists()},
             'chunk_count':len(chunks),'coordinate_transform':'none','uv_transform':'none'})
-    result={'schema':'idas3-original-battle-portraits-v1','canonical_image_sha256':CANONICAL,
+    result={'schema':'idas3-original-battle-portraits-v1','canonical_image_sha256':layout.sha256,
         'selector':'0C0C9F20 reads2FBB24[enemy]; profile2 forces2FBB9C=face_bunt',
         'private_original_assets':True,'enemy_to_bank':names,'banks':records}
     (output/'manifest.json').write_text(json.dumps(result,indent=2)+'\n',encoding='utf-8')

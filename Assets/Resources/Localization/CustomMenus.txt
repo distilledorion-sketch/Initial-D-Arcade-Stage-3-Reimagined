@@ -341,7 +341,7 @@ EXPERT (+10% PACE)	エキスパート（速度 +10%）	专家（速度 +10%）
 TIME ATTACK GHOST	タイムアタックのゴースト	计时赛幽灵车
 FULL TUNE	フルチューン	完全改装
 999999 POINTS + UPGRADES	999999ポイント＋改造	999999点数＋升级
-ARCADE TEXT LANGUAGE	原作テキストの言語	原版文字语言
+ROM LANGUAGE	ROMの言語	ROM 语言
 CUSTOM MENU LANGUAGE	追加メニューの言語	自定义菜单语言
 JAPANESE	日本語	日语
 ENGLISH	英語	英语
@@ -349,8 +349,8 @@ Choose a save, then a make and car for upgrades.	セーブを選び、メーカ�
 Finish the current screen and leave online play to use Full Tune.	現在の画面を終了し、オンライン対戦から退出してから使用してください。	请先完成当前画面并退出在线模式，再使用完全改装。
 Race your best saved run. New bests are saved with the ghost off, too.	保存された自己ベストと対戦します。オフでも自己ベストは保存されます。	与已保存的个人最佳记录竞速。关闭幽灵车仍会保存新纪录。
 Legend of the Streets only. Bunta Challenge keeps its original difficulty.	公道最速伝説のみ。文太に挑戦は原作の難易度のままです。	仅影响公路最速传说。文太挑战保留原版难度。
-Original menu and race text artwork. Apply, then restart the game. Separate from Custom Menu Language.	原作メニューとレースの文字画像。適用後に再起動してください。追加メニューの言語とは別設定です。	原版菜单和比赛中的文字贴图。应用后请重启游戏。与自定义菜单语言互不影响。
-Pause, online, music and other custom menus only. Apply to change now. Original arcade artwork stays unchanged.	ポーズ・オンライン・音楽などの追加メニューのみ。適用ですぐに切り替わります。原作の文字画像は変わりません。	仅影响暂停、在线、音乐等自定义菜单。应用后立即生效，不改变原版文字贴图。
+Running {0}. Apply and restart to switch ROMs. First use requires the matching disc and security file.	現在のROM：{0}。適用後に再起動すると切り替わります。初回は対応するディスクとセキュリティファイルが必要です。	当前 ROM：{0}。应用并重启后切换。首次使用需要对应的光盘和安全文件。
+Choose the language for pause, online, music and other Reimagined menus. Apply to change it now.	ポーズ、オンライン、音楽などの追加メニューの言語です。適用するとすぐに切り替わります。	选择暂停、联机、音乐等重制版菜单的语言。应用后立即生效。
 COMMUNITY TIMES	オンラインランキング	社区排行榜
 VIEW LEADERBOARDS	ランキングを見る	查看排行榜
 DISCORD RICH PRESENCE	Discordにプレイ状況を表示	Discord游戏状态
@@ -624,6 +624,10 @@ START BATTLE	対戦開始	开始对战
 WAITING FOR HOST	ホストを待っています	等待房主
 GET READY	準備してください	请准备
 CONNECTION LOST	接続が切れました	连接已断开
+PLAYER LEFT THE RACE	対戦相手がレースを退出しました	对手已退出比赛
+PLAYER DISCONNECTED	対戦相手との接続が切れました	与对手的连接已断开
+RACE ENDED	レースが終了しました	比赛已结束
+Leaving the race…	レースから退出しています…	正在退出比赛…
 Race ended. No result recorded.	レースが終了しました。結果は記録されません。	比赛已结束。未记录结果。
 0 POINTS AWARDED	獲得ポイント：0	获得点数：0
 RETURN TO MENU	メニューに戻る	返回菜单

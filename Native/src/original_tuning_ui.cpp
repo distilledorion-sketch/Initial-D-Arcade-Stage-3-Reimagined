@@ -1,4 +1,5 @@
 #include "original_tuning_ui.h"
+#include "original_menu_chunks.h"
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -19,7 +20,9 @@ OriginalTuningUi OriginalTuningUi::load(const std::filesystem::path& root){
     std::ifstream map(fontPath/"font.bin",std::ios::binary),spacing(fontPath/"spacing.bin",std::ios::binary);
     map.read(reinterpret_cast<char*>(out.glyphMap_.data()),sizeof(out.glyphMap_));
     for(auto& [code,trim]:out.spacing_){std::uint16_t padding;spacing.read(reinterpret_cast<char*>(&code),2);spacing.read(reinterpret_cast<char*>(&padding),2);spacing.read(reinterpret_cast<char*>(&trim),4);}
-    if(!map||!spacing||out.font_.size()!=40)throw std::runtime_error("Invalid original option-font data");
+    if(!map||!spacing||map.peek()!=std::ifstream::traits_type::eof()||spacing.peek()!=std::ifstream::traits_type::eof()||
+       (out.font_.size()!=40&&out.font_.size()!=131))throw std::runtime_error("Invalid original option-font data");
+    for(auto glyph:out.glyphMap_)if(glyph!=0xffff&&glyph>=out.font_.size())throw std::runtime_error("Invalid option-font glyph index");
     return out;
 }
 std::vector<OriginalTuningUiDraw> OriginalTuningUi::drawList(const original::OriginalTuningChild& s,const original::OriginalTuningData& data,std::uint32_t sharedCountdown)const{
@@ -132,7 +135,9 @@ void OriginalTuningUi::paintImpl(std::span<std::uint32_t> argb,int width,int hei
     const float fit=std::min(float(width)/640,float(height)/480);
     SpritePlacement place;place.scale=100*fit;place.offsetX=(float(width)-640*fit)*.5f;place.offsetY=(float(height)-480*fit)*.5f;place.invertY=true;place.authoredHeight=0;place.defaultOriginalUiColors=true;
     place.straightAlphaOverlay=straightAlphaOverlay;
-    for(const auto& draw:draws){auto chunk=models_[unsigned(draw.bank)].chunks.at(draw.index);
+    for(const auto& draw:draws){
+        const auto index=draw.bank==OriginalTuningUiDraw::Bank::common?originalCommonMenuChunk(draw.index):draw.index;
+        auto chunk=models_[unsigned(draw.bank)].chunks.at(index);
         if(draw.choiceColors>=0)applyChoiceColors(chunk,draw.choiceColors==1);
         for(auto& batch:chunk.batches)for(auto& v:batch.vertices){v.position.x=v.position.x*draw.scaleX+draw.x;v.position.y=v.position.y*draw.scaleY+draw.y;v.position.z+=draw.z;}
         const auto depth=[](const NativeModelBatch& b){float total=0;for(const auto& v:b.vertices)total+=v.position.z;return b.vertices.empty()?0:total/float(b.vertices.size());};

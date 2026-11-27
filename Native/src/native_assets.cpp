@@ -172,7 +172,10 @@ void triangle(std::span<std::uint32_t> target,int width,int height,const NativeI
 }
 }
 void NativeTextureBank::replaceImage(std::uint32_t index,NativeImage image){
-    auto& current=images.at(index);unityUiForgetTexture(current);current=std::move(image);
+    auto& current=images.at(index);
+    unityUiForgetTexture(current);
+    unityUiForgetTexture(image);
+    current=std::move(image);
 }
 NativeTextureBank NativeTextureBank::load(const std::filesystem::path& path){
     const auto selected=localizedUiAssetPath(path);
@@ -197,6 +200,9 @@ NativeTextureBank NativeTextureBank::load(const std::filesystem::path& path){
     }
     if(!reader.end())throw std::runtime_error("Unexpected native texture trailing bytes");
     applyTextureSkin(path, bank.images);
+    // An unloaded bank can leave a lookup at an address reused by this bank.
+    // Its uploaded pixels still belong to previous frames.
+    for(const auto& image:bank.images)unityUiForgetTexture(image);
     return bank;
 }
 const NativeImage& NativeTextureBank::at(std::uint32_t index)const{return images.at(index);}

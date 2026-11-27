@@ -21,11 +21,12 @@ args = parser.parse_args()
 source = args.hostfs / 'model/interrupt'
 table = (source / 'interrupt02_tex.tbl').read_bytes()
 raw = read_payload(source / 'interrupt02_tex.bin.nz')
-assert len(table) == 80 and len(raw) == 204800
+if (len(table), len(raw)) not in ((80, 204800), (112, 172032)):
+    raise ValueError('Unrecognized interrupt02 texture bank')
 dest = args.out
 dest.mkdir(parents=True, exist_ok=True)
 records = []
-for i in range(5):
+for i in range(len(table) // 16):
     w, h, fmt, flags, reserved, offset, tail = struct.unpack_from('<HHBBHII', table, i * 16)
     pixels = decode(raw[offset:offset + w*h*2], w, h, fmt, 'twiddled')
     path = dest / f'interrupt_{i}.png'
@@ -52,4 +53,4 @@ else:
         soundSource=str(args.hostfs / 'sound/pack/PACK20.bin.nz'), soundSha256=hashlib.sha256(sound).hexdigest(),
         cueEvidence='Original interrupt owner0C16CCC4 calls0C141F40(3,1). Cue table0C31EB5C contains0x000300A9: PACK20 cue3.',
         coordinateTransform='Negative original V is flipped by Unity RawImage UV rect.'), indent=2) + '\n')
-print('PASS: five exact original textures and unchanged PACK20 bank' if args.check else 'Imported original challenger assets')
+print(f'Verified {len(records)} original textures and PACK20 bank' if args.check else 'Imported original challenger assets')

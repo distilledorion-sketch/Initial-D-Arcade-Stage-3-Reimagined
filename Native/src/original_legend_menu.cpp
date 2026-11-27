@@ -8,9 +8,21 @@
 namespace idas3::original {
 namespace {
 constexpr float lit(std::uint32_t bits){return std::bit_cast<float>(bits);}
+// Only the host's fixed artwork uses export IDs. The per-course and per-rival
+// tables already contain selectors from the selected original program.
+constexpr unsigned fixedArtwork(unsigned selector){
+#ifdef IDAS3_JAPANESE_PLAYER
+    if(selector==0x20053)return 0x20051;
+    if((selector>>16)==5&&(selector&0xffff)>=38)return selector+9;
+#endif
+    return selector;
+}
 // Exact original2A2088 and33BD50 pointer-target data, canonical efda831f...
 using Row=std::array<std::uint32_t,8>;
 struct CourseRow {std::uint32_t banner,background,count;std::array<Row,6> rivals;};
+#ifdef IDAS3_JAPANESE_PLAYER
+#include <regional/legend_courses.inc>
+#else
 constexpr std::array<CourseRow,9> courses{{
     {0x20024u,0x20019u,0x3u,{{
         {{0x3000au,0x1u,0x50051u,0x50067u,0x50036u,0x50010u,0x50008u,0x50004u}},
@@ -85,6 +97,7 @@ constexpr std::array<CourseRow,9> courses{{
         {},
     }}},
 }};
+#endif
 
 }
 OriginalLegendStartMetadata originalLegendStartMetadata(std::uint32_t enemy){
@@ -109,7 +122,7 @@ std::vector<OriginalChoiceDraw> originalLegendMenuDraws(const OriginalBattleProf
     const auto& c=courses[course];const auto& r=c.rivals[choice];const auto& opponent=originalRival(originalLegendRivalId(course,choice));
     std::vector<OriginalChoiceDraw> out;
     const auto draw=[&](unsigned selector,float x=0.f,float y=0.f,float z=0.f,float scale=1.f,OriginalChoiceColors colors=OriginalChoiceColors::Source){out.push_back({selector,x,y,z,scale,colors});};
-    for(unsigned selector:{0x20053u,0x5002fu,0x5002eu,0x50000u,0x50026u,0x5002bu,0x50029u})draw(selector);
+    for(unsigned selector:{0x20053u,0x5002fu,0x5002eu,0x50000u,0x50026u,0x5002bu,0x50029u})draw(fixedArtwork(selector));
     draw(c.banner,0,lit(0xc00b851f));draw(c.background);draw(0x50025);
     //196D9A..DCE: retain the two actual FMACs and F32 operation order.
     const float gap=std::fma(float(6-c.count),12.f,8.f);
@@ -120,7 +133,7 @@ std::vector<OriginalChoiceDraw> originalLegendMenuDraws(const OriginalBattleProf
         if(i==choice){
             x+=lit(0x3ecccccc);z+=lit(0x3ca3d70a);
             draw(c.rivals[i][0],x,y,z,1.f,OriginalChoiceColors::Selected);
-            if(phase<lit(0x3c23d70a)||(frame&6u))draw(0x50028,x,y,z+lit(0xbc23d70a));
+            if(phase<lit(0x3c23d70a)||(frame&6u))draw(fixedArtwork(0x50028),x,y,z+lit(0xbc23d70a));
             float advance=40.f+gap;advance*=lit(0x3c23d70a);x+=advance;
         }else{
             x+=lit(0x3e999999);
@@ -132,15 +145,15 @@ std::vector<OriginalChoiceDraw> originalLegendMenuDraws(const OriginalBattleProf
             //196FAE..196FDC: completed-cycle marker shares the portrait's
             // scaled matrix and is submitted only for unselected portraits.
             const auto clears=profile.byte(116+originalLegendRivalId(course,i))>>4;
-            if(clears)draw(clears==1?0x5002c:0x5002d,x,y,z,.75f);
+            if(clears)draw(fixedArtwork(clears==1?0x5002c:0x5002d),x,y,z,.75f);
             float advance=30.f+gap;advance*=lit(0x3c23d70a);x+=advance;
         }
     }
     x=lit(0x408ae147);
-    for(unsigned i=0;i<r[1];++i){draw(0x5002a,x,lit(0xc0199999),lit(0x3c23d70a));x+=lit(0x3e23d70a);}
+    for(unsigned i=0;i<r[1];++i){draw(fixedArtwork(0x5002a),x,lit(0xc0199999),lit(0x3c23d70a));x+=lit(0x3e23d70a);}
     draw(r[2]);
     const float detailZ=r[3]==0xffffffff?0.f:lit(0x3c23d70a);
-    draw(r[3]==0xffffffff?0x5006c:r[3],0,0,detailZ);draw(r[4],0,0,detailZ);draw(r[5]);
+    draw(r[3]==0xffffffff?fixedArtwork(0x5006c):r[3],0,0,detailZ);draw(r[4],0,0,detailZ);draw(r[5]);
     x=lit(0x400a3d70);const float infoY=-3.75f,infoZ=lit(0x3c23d70a);
     const auto info=[&](unsigned selector){draw(selector,x,infoY,infoZ);};
     info(0x5000a);x+=lit(0x3e75c28f);info(r[6]);

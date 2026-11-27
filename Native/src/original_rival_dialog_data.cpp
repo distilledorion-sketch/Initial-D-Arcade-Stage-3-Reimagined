@@ -19,12 +19,17 @@ void require(bool v){if(!v)throw std::runtime_error("Original rival dialogue ide
 }
 OriginalRivalDialogData OriginalRivalDialogData::load(const std::filesystem::path&root){
     Reader f(root/"data/original_assets/rival_dialog/dialog.idasdialog");
-    require(f.bytes(8)==std::string("IDAS3RD1",8));require(f.word()==1&&f.word()==31&&f.word()==24);
+    require(f.bytes(8)==std::string("IDAS3RD1",8));const auto version=f.word();require((version==1||version==2)&&f.word()==31&&f.word()==24);
     OriginalRivalDialogData out;
+    out.japanese_=version==2;
     for(auto&id:out.identities_){id.character=f.word();id.backgroundCourse=f.word();id.backgroundNight=f.word();id.portrait=f.text(31);
         require(id.character<31&&id.backgroundCourse<9&&id.backgroundNight<2&&!id.portrait.empty());
         for(char c:id.portrait)require((c>='a'&&c<='z')||(c>='0'&&c<='9')||c=='_');}
-    for(auto&r:out.records_){r.sourceRecord=f.word();r.sourceScript=f.word();require(r.sourceRecord>=0x0c35f168&&r.sourceRecord<0x0c36a600);
+    unsigned index=0;
+    for(auto&r:out.records_){r.sourceRecord=f.word();r.sourceScript=f.word();
+        if(version==2)require(r.sourceRecord==0x0c318bb0+32*index);
+        else require(r.sourceRecord>=0x0c35f168&&r.sourceRecord<0x0c36a600);
+        ++index;
         for(auto&v:r.portraitCoordinates){v=std::bit_cast<float>(f.word());require(std::isfinite(v));}
         r.portraitKinds=f.word();const auto count=f.word();require(count<=4096);
         require((r.sourceScript==0)==(count==0));
@@ -35,11 +40,11 @@ OriginalRivalDialogData OriginalRivalDialogData::load(const std::filesystem::pat
     f.end();
     const auto buntaPath=root/"data/original_assets/rival_dialog/bunta.idasdialog";
     if(std::filesystem::exists(buntaPath)){
-        Reader b(buntaPath);require(b.bytes(8)=="IDAS3BD1");require(b.word()==1&&b.word()==8&&b.word()==51);
+        Reader b(buntaPath);require(b.bytes(8)=="IDAS3BD1");require(b.word()==version&&b.word()==8&&b.word()==51);
         out.buntaRecords_.resize(8*51);
         for(std::size_t index=0;index<out.buntaRecords_.size();++index){
             auto&r=out.buntaRecords_[index];r.sourceRecord=b.word();r.sourceScript=b.word();
-            require(r.sourceRecord==0x0c363100+std::uint32_t(index)*32);
+            require(r.sourceRecord==(version==2?0x0c31557cu:0x0c363100u)+std::uint32_t(index)*32);
             require(r.sourceScript>=0x0c020000&&r.sourceScript<0x0c420000);
             for(auto&v:r.portraitCoordinates){v=std::bit_cast<float>(b.word());require(std::isfinite(v));}
             r.portraitKinds=b.word();const auto count=b.word();require(count>0&&count<=512);

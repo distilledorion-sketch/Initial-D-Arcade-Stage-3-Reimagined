@@ -1,15 +1,17 @@
 """Extract the original menu PCM waveforms and preserve the source DTPK bank."""
 import argparse, hashlib, json, struct, wave
 from pathlib import Path
+from arcade_program import identify
+from extract_original_models import read_payload
 
 def export(bank: bytes, program: bytes, dest: Path):
     u32=lambda b,p:struct.unpack_from('<I',b,p)[0]
     assert bank[:4]==b'DTPK' and u32(bank,8)==len(bank)
     base=0x0c020000
-    table=u32(program,0x0c143580-base)
+    table=identify(program).sound_banks
     cue_table=u32(program,table+12+4-base)
     count=u32(program,table+12+8-base)
-    assert table==0x0c31ed30 and cue_table==0x0c31eb68 and count==15
+    assert count==15
     seq,spd,samples=(u32(bank,p) for p in (0x2c,0x30,0x3c))
     dest.mkdir(parents=True,exist_ok=True)
     (dest/'PACK21.dtpk').write_bytes(bank)
@@ -53,7 +55,7 @@ def main():
     source=args.hostfs/'sound/pack/PACK21.bin.nz'
     if not source.exists():source=args.hostfs/'sound/pack/PACK21.bin'
     dest=args.project/'data/original_audio/menu'
-    result=export(source.read_bytes(),args.image.read_bytes(),dest)
+    result=export(read_payload(source),args.image.read_bytes(),dest)
     result['source']=str(source.resolve())
     (dest/'manifest.json').write_text(json.dumps(result,indent=2)+'\n')
     print(f"Preserved PACK21 and exported {len(result['cues'])} original PCM cues")

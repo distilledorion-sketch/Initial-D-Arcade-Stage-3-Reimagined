@@ -71,8 +71,8 @@ void OriginalTuningPreviewPresentation::rebuild(){
             for(auto& batch:car_.chunks.at(unsigned(chunk)).batches)if(batch.material[9]==texture)
                 batch.material[9]=unsigned(carTextures_.size()+plateTextures_.size());
     }
-    //077C80 calls029000 with the car ID, rather than the race player's -1.
-    input_.visibility=originalCarVisibility(input_.appearance,std::int32_t(carId_));
+    // 029000 sets the model at +0x34c. The shop keeps the constructor's rival ID of -1 at +0x350.
+    input_.visibility=originalCarVisibility(input_.appearance);
     input_.wheelOffsets=originalCarWheelOffsets(input_.appearance);meshDirty_=true;
 }
 void OriginalTuningPreviewPresentation::consume(std::span<const OriginalTuningPreviewEvent> events,

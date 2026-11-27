@@ -4,6 +4,7 @@
 #include "original_gasstand_data.h"
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <stdexcept>
 
 namespace idas3::original {
@@ -17,22 +18,22 @@ void validate(const OriginalGasstandState& s){const auto rows=script(s.script);i
 }
 void resetOriginalGasstand(OriginalGasstandState& s,unsigned id){(void)script(id);s={};s.script=id;s.brandX=gasstand_data::lit_0C0D095C;}
 unsigned nextOriginalGasstandScript(unsigned previous,bool skipBattle,bool skipCustomization){if(previous>2)throw std::invalid_argument("Invalid prior gasstand script");unsigned next=(previous+1)%3;if(skipCustomization&&next==0)next=1;if(skipBattle&&next==1)next=2;return next;}
-void stepOriginalGasstand(OriginalGasstandState& s){
-    validate(s);if(s.completed)return;const auto rows=script(s.script);
+static void advanceMessage(OriginalGasstandState& s,const Message& row,unsigned rowCount){
+    validate(s);if(s.completed)return;
     //0D0D20 four-state Main. The renderer also owns two source animation
     // writes, so advance those once here rather than at host refresh rate.
     switch(s.phase){
     case 0:if(--s.fade<0){s.fade=0;s.fadeEnabled=false;++s.phase;}break;
     case 1:{
-        const auto& row=rows[s.message];s.speaker=row.speaker;s.bubble=true;
+        s.speaker=row.speaker;s.bubble=true;
         s.bubbleX=gasstand_data::speakerXY[s.speaker][0]*gasstand_data::lit_0C0D0F30-gasstand_data::lit_0C0D0F34;
         s.bubbleY=std::fma(-gasstand_data::speakerXY[s.speaker][1],gasstand_data::lit_0C0D0F30,gasstand_data::lit_0C0D0F38);
         if(s.script==0&&s.message==6)s.brands=true;
         if(s.script==2&&s.message==7)s.ranking=true;
         ++s.phase;break;}
-    case 2:{unsigned count=0;for(const auto line:rows[s.message].lines)count+=unsigned(line.size());
+    case 2:{unsigned count=0;for(const auto line:row.lines)count+=unsigned(line.size());
         if(++s.elapsed>count*3+40){s.elapsed=0;++s.message;s.bubble=false;
-            if(s.message>=rows.size()){++s.phase;s.fadeEnabled=true;}else s.phase=1;}
+            if(s.message>=rowCount){++s.phase;s.fadeEnabled=true;}else s.phase=1;}
         break;}
     case 3:if(++s.fade>15){s.fade=15;s.completed=true;}break;
     }
@@ -40,9 +41,23 @@ void stepOriginalGasstand(OriginalGasstandState& s){
     if(float(++s.backgroundPhase)*gasstand_data::lit_0C112E28>=gasstand_data::lit_0C112F88)s.backgroundPhase=0;
     if(s.script==0&&s.brands)s.brandX-=gasstand_data::lit_0C0D14F0;
 }
+void stepOriginalGasstand(OriginalGasstandState& s){
+    const auto rows=script(s.script);
+    advanceMessage(s,s.message<rows.size()?rows[s.message]:Message{},unsigned(rows.size()));
+}
+void OriginalGasstandAttract::step(){
+    const auto& rows=japaneseRows_.at(state_.script);
+    if(rows.empty()){stepOriginalGasstand(state_);return;}
+    Message active{};
+    if(state_.message<rows.size()){
+        const auto& row=rows[state_.message];
+        active={row.speaker,{row.lines[0],row.lines[1],row.lines[2]}};
+    }
+    advanceMessage(state_,active,unsigned(rows.size()));
+}
 std::uint32_t originalGasstandFadeArgb(const OriginalGasstandState& s){validate(s);return s.fadeEnabled?std::uint32_t(float(s.fade)/15.f*255.f)<<24:0;}
 float originalAlphabetTextWidth(std::string_view text){float sum=0;for(const char c:text){const int i=glyph(c);sum=std::fma(i<0?5.f:gasstand_data::word(gasstand_data::fontWidthWords[std::size_t(i)]),1.f,sum);}return sum;}
-std::vector<OriginalGasstandDraw> originalGasstandDraws(const OriginalGasstandState& s){
+static std::vector<OriginalGasstandDraw> dialogueDraws(const OriginalGasstandState& s,const Message* message,bool japanese){
     validate(s);using namespace gasstand_data;using Bank=OriginalGasstandDraw::Bank;
     std::vector<OriginalGasstandDraw> out;out.reserve(180);
     const auto draw=[&](Bank bank,unsigned i,Vec3 pos=Vec3{},float sx=1,float sy=1){out.push_back({bank,i,pos,sx,sy});};
@@ -56,19 +71,17 @@ std::vector<OriginalGasstandDraw> originalGasstandDraws(const OriginalGasstandSt
         draw(Bank::gasstand,57,{(originX+x)-originX,(originY-y)-originY,-100.f-word(0xbe19999a)});
     }
     draw(Bank::gasstand,13,{0,lit_0C0D1130,0});
-    const auto rows=script(s.script);
-    const Message* message=s.message<rows.size()?&rows[s.message]:nullptr;
     const unsigned lines=message?lineCount(*message):1;
     if(s.phase==2&&message){
         constexpr std::array<std::array<float,3>,3> lineOffsets{{{-10,0,0},{-36,-10,0},{-36,-10,16}}};
         for(unsigned line=0;line<lines;++line){
             float advance=0;const float x=speakerXY[s.speaker][0],y=speakerXY[s.speaker][1]+lineOffsets[lines-1][line]+24.f;
-            for(const char c:message->lines[line]){const int i=glyph(c);
+            for(const char c:message->lines[line]){const int i=japanese?int(static_cast<unsigned char>(c)):glyph(c);
                 if(i>=0){draw(Bank::alphabet,unsigned(i),{x+advance,y,gasstand_data::word(0x3727c5ac)});
                     //1CB200 color4 with dimming argument-1 yieldsRGB010101;
                     //1E7E80 restores full alpha from descriptor opacity1.
                     out.back().color=0xff010101;}
-                advance=std::fma(i<0?5.f:word(fontWidthWords[std::size_t(i)]),1.f,advance);
+                advance+=japanese?16.f:i<0?5.f:word(fontWidthWords[std::size_t(i)]);
             }
         }
     }
@@ -80,7 +93,8 @@ std::vector<OriginalGasstandDraw> originalGasstandDraws(const OriginalGasstandSt
         if(lines==1)tail.y+=lit_0C0D1214;else if(lines==3)tail.y-=lit_0C0D13B0;
         tail.x+=lit_0C0D13B4;if(s.speaker==1)tail.x+=lit_0C0D13B8;
         draw(Bank::gasstand,2,tail,lit_0C0D13BC,lit_0C0D13C0);
-        p.x+=lit_0C0D13C4;float widest=0;for(auto line:message->lines)widest=std::max(widest,originalAlphabetTextWidth(line));
+        p.x+=lit_0C0D13C4;float widest=0;
+        for(auto line:message->lines)widest=std::max(widest,japanese?float(line.size())*16.f:originalAlphabetTextWidth(line));
         draw(Bank::gasstand,middle,p,lit_0C0D13CC*widest,lit_0C0D13C0);
         p.x=std::fma(widest*lit_0C0D13D0,lit_0C0D13D4,p.x);
         draw(Bank::gasstand,right,p,lit_0C0D13C0,lit_0C0D13C0);
@@ -99,26 +113,61 @@ std::vector<OriginalGasstandDraw> originalGasstandDraws(const OriginalGasstandSt
     }
     return out;
 }
+std::vector<OriginalGasstandDraw> originalGasstandDraws(const OriginalGasstandState& s){
+    const auto rows=script(s.script);
+    return dialogueDraws(s,s.message<rows.size()?&rows[s.message]:nullptr,false);
+}
 bool OriginalGasstandAttract::available(const std::filesystem::path& root){
-    for(const char* file:{"data/original_assets/attract/gasstand/gasstand.idasmesh","data/original_assets/attract/gasstand/textures/textures.idastex","data/original_assets/attract/alphabet/textures/textures.idastex","data/original_assets/menus/v3/v3sA00etc/v3sA00etc.idasmesh","data/original_assets/menus/v3/v3sA00etc/textures/textures.idastex"})
+    for(const char* file:{"data/original_assets/attract/gasstand/gasstand.idasmesh","data/original_assets/attract/gasstand/textures/textures.idastex","data/original_assets/menus/v3/v3sA00etc/v3sA00etc.idasmesh","data/original_assets/menus/v3/v3sA00etc/textures/textures.idastex"})
         if(!std::filesystem::is_regular_file(root/file))return false;
-    return true;
+    auto attract=root/"data/original_assets/attract";
+    return std::filesystem::is_regular_file(attract/"alphabet/textures/textures.idastex")||
+        (std::filesystem::is_regular_file(attract/"gasstand/dialogue.bin")&&std::filesystem::is_regular_file(attract/"gasstand/font/textures.idastex"));
 }
 void OriginalGasstandAttract::load(const std::filesystem::path& root){
     const auto gas=root/"data/original_assets/attract/gasstand",etc=root/"data/original_assets/menus/v3/v3sA00etc";
     gasstand_=NativeModel::load(gas/"gasstand.idasmesh");gasstandTextures_=NativeTextureBank::load(gas/"textures/textures.idastex");
     etc_=NativeModel::load(etc/"v3sA00etc.idasmesh");etcTextures_=NativeTextureBank::load(etc/"textures/textures.idastex");
-    alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
-    if(gasstand_.chunks.size()!=58||gasstandTextures_.sourceSize()!=15||alphabet_.size()!=62||etc_.chunks.size()<5)throw std::runtime_error("Original gasstand asset identity mismatch");reset();
-    logoBackdrop_=buildMenuLogoBackdrop(gasstandTextures_,gasstand_.chunks.at(57));
+    const bool japanese=gasstand_.chunks.size()==55;
+    japaneseRows_={};
+    if(japanese){
+        alphabet_=NativeTextureBank::load(gas/"font/textures.idastex");
+        promptFont_=MenuFont::load(root);
+        std::ifstream input(gas/"dialogue.bin",std::ios::binary);
+        char magic[8];input.read(magic,8);
+        if(!input||std::string_view(magic,8)!="IDAS3GSJ")throw std::runtime_error("Missing Japanese gas station dialogue");
+        for(unsigned variant=0;variant<3;++variant){
+            const int rows=input.get();
+            if(rows!=int(script(variant).size()))throw std::runtime_error("Invalid gas station script length");
+            for(int i=0;i<rows;++i){
+                const int speaker=input.get(),lines=input.get();
+                if(speaker<0||speaker>2||lines<1||lines>2)throw std::runtime_error("Invalid gas station dialogue row");
+                auto& row=japaneseRows_[variant].emplace_back();
+                row.speaker=unsigned(speaker);
+                for(int j=0;j<lines;++j){
+                    const int length=input.get();
+                    if(length<1||length>127)throw std::runtime_error("Invalid gas station line length");
+                    row.lines[j].resize(length);
+                    if(!input.read(row.lines[j].data(),length))throw std::runtime_error("Truncated gas station text");
+                    for(unsigned char index:row.lines[j])if(index>=alphabet_.size())throw std::runtime_error("Missing gas station glyph");
+                }
+            }
+        }
+        if(input.peek()!=std::ifstream::traits_type::eof())throw std::runtime_error("Trailing gas station dialogue");
+    }else alphabet_=NativeTextureBank::load(root/"data/original_assets/attract/alphabet/textures/textures.idastex");
+    if(gasstand_.chunks.size()!=(japanese?55:58)||gasstandTextures_.sourceSize()!=(japanese?14:15)||
+       alphabet_.size()!=(japanese?196:62)||etc_.chunks.size()<5)throw std::runtime_error("Original gasstand asset identity mismatch");
+    reset();
+    logoBackdrop_=buildMenuLogoBackdrop(gasstandTextures_,gasstand_.chunks.back());
     preparedAlphabet_.clear();preparedAlphabet_.reserve(alphabet_.size());
     for(unsigned i=0;i<alphabet_.size();++i){auto glyph=alphabet_.at(i);
-        for(auto& color:glyph.argb){if((color&0xffffff)!=0xffffff)throw std::runtime_error("Original alphabet expects white source glyphs");color=(color&0xff000000)|0x010101;}
+        for(auto& color:glyph.argb){if(!japanese&&(color&0xffffff)!=0xffffff)throw std::runtime_error("Original alphabet expects white source glyphs");color=(color&0xff000000)|0x010101;}
         preparedAlphabet_.push_back(std::move(glyph));}
 }
 void OriginalGasstandAttract::paint(std::span<std::uint32_t> target,int width,int height)const{paintImpl(target,width,height,true);}
 void OriginalGasstandAttract::paintReference(std::span<std::uint32_t> target,int width,int height)const{paintImpl(target,width,height,false);}
 void OriginalGasstandAttract::paintText(std::span<std::uint32_t> target,int width,int height,std::string_view text,float x,float y,float scale,std::uint32_t color)const{
+    if(!japaneseRows_[0].empty()){promptFont_.paint(target,width,height,text,x,y,20.f*scale,color);return;}
     SpritePlacement p;p.scale=scale;p.offsetX=x;p.offsetY=y;
     float advance=0;
     for(const char c:text){const int i=glyph(c);if(i>=0){
@@ -133,14 +182,27 @@ void OriginalGasstandAttract::paintMenuMargins(std::span<std::uint32_t> target,i
 void OriginalGasstandAttract::paintImpl(std::span<std::uint32_t> target,int width,int height,bool optimized)const{
     if(width<=0||height<=0||target.size()!=std::size_t(width)*height)throw std::invalid_argument("Invalid gasstand destination");
     if(optimized)paintMenuLogoBackdrop(target,width,height,logoBackdrop_,state_.displayedBackgroundPhase);
-    using Bank=OriginalGasstandDraw::Bank;auto commands=originalGasstandDraws(state_);
+    using Bank=OriginalGasstandDraw::Bank;
+    const auto& rows=japaneseRows_.at(state_.script);
+    std::vector<OriginalGasstandDraw> commands;
+    if(rows.empty())commands=originalGasstandDraws(state_);
+    else{
+        Message active{};
+        if(state_.message<rows.size()){
+            const auto& row=rows[state_.message];
+            active={row.speaker,{row.lines[0],row.lines[1],row.lines[2]}};
+        }
+        commands=dialogueDraws(state_,state_.message<rows.size()?&active:nullptr,true);
+    }
     // These source depth bands put the moving tile behind the source full
     // panel, and text at1e-5 in front. Preserve the original list separately.
     const float fit=std::min(float(width)/640.f,float(height)/480.f),ox=(width-640.f*fit)*.5f,oy=(height-480.f*fit)*.5f;
     struct Batch{NativeModelChunk chunk;const NativeTextureBank* textures;float depth;};std::vector<Batch> batches;
     for(const auto& d:commands){if(d.bank==Bank::alphabet||(optimized&&d.bank==Bank::gasstand&&d.index==57))continue;
         const auto& model=d.bank==Bank::gasstand?gasstand_:etc_;const auto* textures=d.bank==Bank::gasstand?&gasstandTextures_:&etcTextures_;
-        for(auto batch:model.chunks.at(d.index).batches){float depth=0;
+        // The English model adds three three-line bubble pieces at 7..9.
+        const auto index=d.bank==Bank::gasstand&&!rows.empty()&&d.index>=10?d.index-3:d.index;
+        for(auto batch:model.chunks.at(index).batches){float depth=0;
             for(auto& v:batch.vertices){v.position.x=v.position.x*d.scaleX+d.position.x;v.position.y=v.position.y*d.scaleY+d.position.y;v.position.z+=d.position.z;depth+=v.position.z;}
             // The independent reference mesh uses the same pixel-center tie
             // convention as the baked texture. Source strip roundoff can

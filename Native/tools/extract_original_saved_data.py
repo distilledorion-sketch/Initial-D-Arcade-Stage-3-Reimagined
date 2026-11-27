@@ -7,14 +7,14 @@ import shutil
 import tempfile
 import struct
 import texture_bank
-from extract_original_menus import export_model_menu, export_menu, ORIGINAL_IMAGE_SHA256
+from extract_original_menus import export_model_menu, export_menu
+from arcade_program import JAPANESE, identify
 
 
 def export(game, output):
     image = game / 'idas3_main_0C020000.bin'
     program = image.read_bytes()
-    if hashlib.sha256(program).hexdigest() != ORIGINAL_IMAGE_SHA256:
-        raise ValueError('The verified Stage 3 source image is required')
+    region = identify(program)
     records = []
     with tempfile.TemporaryDirectory() as temporary:
         for bank in ('v3sS10conf', 'cardcheck', 'cardcheck2', 'cardcheck_car',
@@ -39,6 +39,12 @@ def export(game, output):
             records.append(dict(bank=bank, outputs=hashes))
         # Configuration uses m_s10_font and spacing mode5, not the shop's
         # option font (which lacks periods and has different proportions).
+        # Rev C draws its configuration help from cardcheck; only the
+        # English screen uses m_s10_font to draw separate strings.
+        if region == JAPANESE:
+            (output/'manifest.json').write_text(json.dumps(dict(source_image_sha256=region.sha256,
+                banks=records, help_source='cardcheck'), indent=2)+'\n')
+            return
         source = game / 'driveA/HOSTFS/font/m_s10_font'
         work = Path(temporary) / 'help_font'
         texture_bank.export_bank(source/'m_s10_font_spr.tbl', source/'m_s10_font_spr.bin.nz', work/'textures', 'twiddled')
@@ -56,7 +62,7 @@ def export(game, output):
             shutil.copyfile(work/name, dest)
             hashes[name] = hashlib.sha256(dest.read_bytes()).hexdigest()
         records.append(dict(bank='help_font', outputs=hashes))
-    (output/'manifest.json').write_text(json.dumps(dict(source_image_sha256=ORIGINAL_IMAGE_SHA256,
+    (output/'manifest.json').write_text(json.dumps(dict(source_image_sha256=region.sha256,
         banks=records, scope='Original artwork only; no executable or personal profile copied.'), indent=2)+'\n')
 
 

@@ -25,6 +25,7 @@ struct OriginalDialogGlyph { std::uint16_t texture{}; float x{},y{},z{}; };
 
 // Source text-line object: 0C60C0 builds the page, 0C5EE0 the speaker label.
 struct OriginalDialogLine {
+    bool japanese=false;
     float cell=32,linePitch=24,scale=1;
     float cursorX=0,cursorY=0,startX=0,startY=0,lineStart=0;
     std::vector<OriginalDialogGlyph> glyphs;

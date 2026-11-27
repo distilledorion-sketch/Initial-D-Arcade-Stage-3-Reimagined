@@ -25,6 +25,20 @@ float originalTachDisplayRpm(float rpm,unsigned tachType){
     const float maximum=tachType==3?12000.f:float(tachType+8)*1000.f;
     return std::clamp(rpm,0.f,maximum);
 }
+void bindOriginalGameHudChunks(NativeModel& model, const NativeTextureBank& textures){
+    if(model.chunks.size()==212 && textures.sourceSize()==76)return;
+    if(model.chunks.size()!=190 || textures.sourceSize()!=66)
+        throw std::runtime_error("Unrecognized race HUD model and texture bank");
+    // Draw commands use English object numbers. Rev C has four contiguous
+    // runs of shared/localized artwork and a separate final speedometer face.
+    // Leave objects exclusive to the English release empty.
+    auto regional=std::move(model.chunks);
+    model.chunks.resize(212);
+    for(unsigned i=0;i<regional.size();++i){
+        const unsigned slot=i<5?i:i<96?i+1:i<98?i+2:i<189?i+3:203;
+        model.chunks[slot]=std::move(regional[i]);
+    }
+}
 OriginalRaceHud OriginalRaceHud::load(const std::filesystem::path& root){
     OriginalRaceHud out;
     const auto poly=root/"data/original_assets/hud/game2d",spr=root/"data/original_assets/menus/game2d";
@@ -33,7 +47,8 @@ OriginalRaceHud OriginalRaceHud::load(const std::filesystem::path& root){
     out.sprites_=NativeSpriteBank::load(spr/"original_rip.tbl",spr/"original_rip.bin");
     out.spriteTextures_=NativeTextureBank::load(spr/"textures/textures.idastex");
     out.trig_=original::OriginalFscaTable::load(root/"data/original_physics/fsca_table.bin");
-    if(out.model_.chunks.size()!=212||out.modelTextures_.sourceSize()!=76||out.sprites_.sprites.size()!=15||out.spriteTextures_.size()!=41)throw std::runtime_error("Original race HUD bank identity mismatch");
+    bindOriginalGameHudChunks(out.model_,out.modelTextures_);
+    if(out.sprites_.sprites.size()!=15||out.spriteTextures_.size()!=41)throw std::runtime_error("Original race HUD sprite bank identity mismatch");
     for(const auto& chunk:out.model_.chunks){
         std::size_t count=0;for(const auto& batch:chunk.batches)count+=batch.vertices.size();
         out.maxChunkVertices_=std::max(out.maxChunkVertices_,count);

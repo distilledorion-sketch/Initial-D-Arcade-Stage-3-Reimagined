@@ -247,7 +247,8 @@ public sealed class Idas3SceneGame : MonoBehaviour
             // load stale tuning profiles or offline play can modify them.
             if(Idas3BattleRecordSettlement.RecoverPending(saves))
                 Debug.Log("IDAS3 recovered a previously interrupted online result.");
-            if (Idas3Native.Idas3SceneConfigureLanguage(Idas3GameOptions.LoadArcadeTextLanguage(saves)) != 1)
+            bool japaneseDisc=Idas3GameOptions.UsesJapaneseDisc(assets);
+            if (Idas3Native.Idas3SceneConfigureLanguage(japaneseDisc?1:0) != 1)
                 throw new InvalidOperationException(Idas3Native.Error());
             Idas3Native.Idas3SceneSetLoadKeepAlive(loadKeepAliveCallback);loadKeepAliveRegistered=true;
             if (Idas3SceneInitialize(assets, saves, renderWidth, renderHeight) != 1)
@@ -271,7 +272,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             if(!diagnosticMode){multiplayer.InitializeOnlinePresence();multiplayer.PublishActivity=!Application.isEditor;}
             gameOptions = new Idas3GameOptions();
             gameOptions.Changed += ApplyNativeOptions;
-            gameOptions.Initialize(saves);
+            gameOptions.Initialize(saves,japaneseDisc);
             controlBindings = new Idas3ControlBindings();
             controlBindings.Initialize(saves);
             multiplayerMenu.ManagedControlInput = true;
@@ -889,7 +890,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                     if (result == 1) pauseMenu.SetOpen(false);
                     break;
                 case Idas3PauseMenu.Command.LeaveOnline:
-                    multiplayer.LeaveRoom(); pauseMenu.SetOpen(false); break;
+                    multiplayer.LeaveBattle(); pauseMenu.SetOpen(false); break;
                 case Idas3PauseMenu.Command.Quit:
                     StopNative();
 #if UNITY_EDITOR
@@ -948,7 +949,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
     bool challengeStartArmed, challengeStartWasHeld, challengeChoiceInputGuard;
     bool RouteChallengeStart(Idas3Native.FrameInput frame,bool blocked){
         bool eligible=multiplayerMenu.CanChangeChallengeChoice&&CanOpenPause&&Status.racePhase==2&&!OnlineRace&&
-            !multiplayer.ChallengerPending&&(!multiplayer.InLobby||multiplayer.IsQuickMatching)&&!ReplayViewerOpen&&
+            !multiplayer.ChallengerPending&&(!multiplayer.InLobby||multiplayer.QuickMatchPending)&&!ReplayViewerOpen&&
             !pauseMenu.IsOpen&&!multiplayerMenu.BlocksGameInput&&!raceMusicMenu.BlocksGameInput&&Focused&&!blocked;
         bool start=controlBindings.RaceCabinetStartHeld||(frame.flags&Idas3Native.CabinetStartHeldFlag)!=0;
         bool view=controlBindings.ViewChangeHeld||MenuInputSample(frame).ViewChange;

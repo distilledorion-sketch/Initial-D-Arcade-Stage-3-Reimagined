@@ -4,19 +4,58 @@ import hashlib
 import json
 import struct
 from pathlib import Path
+from arcade_program import BASE, JAPANESE, identify
+import texture_bank
 
 CANONICAL_SHA256 = "efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335"
-BASE = 0x0C020000
+
+def export_japanese_advice(data, host, native):
+    source = host / "font/lecture"
+    output = native / "data/original_assets/time_attack"
+    mapping = (source / "lecture_font.bin.nz").read_bytes()
+    glyphs = struct.unpack("<9216H", mapping)
+    font = texture_bank.export_bank(source / "lecture_spr.tbl", source / "lecture_spr.bin.nz",
+                                    output / "font", "twiddled", font_map=mapping)
+    def read_line(slot):
+        pointer, = struct.unpack_from("<I", data, slot-BASE)
+        offset = pointer-BASE
+        if not 0 <= offset < len(data):
+            raise ValueError("Lecture text pointer outside Rev C program")
+        raw = data[offset:data.index(0, offset, offset+512)]
+        if len(raw)%2:
+            raise ValueError("Truncated Japanese lecture text")
+        line = bytearray()
+        for lead, trail in zip(raw[::2], raw[1::2]):
+            if not (160 <= lead <= 255 and 160 <= trail <= 255):
+                raise ValueError("Invalid Japanese lecture character")
+            index = glyphs[(lead-160)*96 + trail-160]
+            if index >= len(font["textures"]):
+                raise ValueError("Missing Japanese lecture glyph")
+            line.append(index)
+        return bytes([len(line)]) + line
+    result = bytearray(b"ID3LEC01")
+    for table, count in ((0x0C344464,8),(0x0C3446B8,3),(0x0C344A4C,6)):
+        for row in range(count):
+            for line in (1,2,3):
+                result.extend(read_line(table + 16*row + 4*line))
+    for table,count in ((0x0C344ADC,3),(0x0C344B38,4)):
+        for line in range(count):
+            result.extend(read_line(table + 4*line))
+    (output/"advice.bin").write_bytes(result)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("image", type=Path)
     parser.add_argument("--native", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--proof", type=Path, required=True)
+    parser.add_argument("--hostfs", type=Path, help="Disc assets for regional player fonts")
     args = parser.parse_args()
     data = args.image.read_bytes()
-    if hashlib.sha256(data).hexdigest() != CANONICAL_SHA256:
-        raise ValueError("Canonical original image hash mismatch")
+    if identify(data) == JAPANESE:
+        if args.hostfs is None:
+            parser.error("Japanese lecture extraction requires --hostfs")
+        export_japanese_advice(data,args.hostfs,args.native)
+        return
     def word(address): return struct.unpack_from("<I", data, address-BASE)[0]
     def text(address):
         begin = address-BASE

@@ -52,11 +52,13 @@ void OriginalSavedData::load(const std::filesystem::path& root){
     add("shift",base/"hud/shift");
     japanese_=originalUiLanguage()==1;
     const auto fontPath=base/"saved_data/help_font";
-    optionFont_=NativeTextureBank::load(fontPath/"textures/textures.idastex");
-    std::ifstream map(fontPath/"font.bin",std::ios::binary),spacing(fontPath/"spacing.bin",std::ios::binary);
-    map.read(reinterpret_cast<char*>(glyphMap_.data()),sizeof(glyphMap_));
-    for(auto& [code,trim]:spacing_){std::uint16_t padding;spacing.read(reinterpret_cast<char*>(&code),2);spacing.read(reinterpret_cast<char*>(&padding),2);spacing.read(reinterpret_cast<char*>(&trim),4);}
-    if(!map||!spacing||optionFont_.size()!=36)throw std::runtime_error("Invalid Saved Data help font");
+    if(!japanese_){
+        optionFont_=NativeTextureBank::load(fontPath/"textures/textures.idastex");
+        std::ifstream map(fontPath/"font.bin",std::ios::binary),spacing(fontPath/"spacing.bin",std::ios::binary);
+        map.read(reinterpret_cast<char*>(glyphMap_.data()),sizeof(glyphMap_));
+        for(auto& [code,trim]:spacing_){std::uint16_t padding;spacing.read(reinterpret_cast<char*>(&code),2);spacing.read(reinterpret_cast<char*>(&padding),2);spacing.read(reinterpret_cast<char*>(&trim),4);}
+        if(!map||!spacing||optionFont_.size()!=36)throw std::runtime_error("Invalid Saved Data help font");
+    }
     tuning_=OriginalTuningData::load(root);
 }
 void OriginalSavedData::begin(OriginalBattleProfile& p){

@@ -10,27 +10,27 @@ import struct
 import tempfile
 from pathlib import Path
 from extract_original_models import parse_model, read_payload, write_binary
-from export_original_assembly import IMAGE_HASH
+from arcade_program import BASE, JAPANESE, identify
 import texture_bank
 
 
 def export(hostfs, image, output):
     raw = image.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != IMAGE_HASH:
-        raise ValueError('Canonical original executable mismatch')
+    layout = identify(raw)
+    replay, live = (0x0c347fcc, 0x0c3432ec) if layout == JAPANESE else (0x0c33c5f4, 0x0c337ad0)
     source = hostfs / 'model/effect/taillight'
     _, chunks, files, payload = parse_model(source)
     if len(chunks) != 8:
         raise ValueError('Expected eight authored lamp-trail sprite chunks')
     records = []
     for car in range(35):
-        pointer, width, rear, front = struct.unpack_from('<IfII', raw, 0x33c5f4-0x20000+car*16)
+        pointer, width, rear, front = struct.unpack_from('<IfII', raw, replay-BASE+car*16)
         if rear not in (2, 4) or front not in (2, 4) or not 0 < width < 1:
             raise ValueError('Unexpected original lamp-trail record')
         points = raw[pointer-0xc020000:pointer-0xc020000+12*(rear+front)]
         if len(points) != 12*(rear+front):
             raise ValueError('Truncated original lamp anchors')
-        live_pointer, *live_values = struct.unpack_from('<IfII', raw, 0x337ad0-0x20000+car*16)
+        live_pointer, *live_values = struct.unpack_from('<IfII', raw, live-BASE+car*16)
         if live_values != [width, rear, front] or raw[live_pointer-0xc020000:live_pointer-0xc020000+len(points)] != points:
             raise ValueError('Driving/replay anchor tables differ')
         records.append((width, rear, front, points))
@@ -46,9 +46,9 @@ def export(hostfs, image, output):
         f.write(b'ID3LTR1\0'); f.write(struct.pack('<I', len(records)))
         for width, rear, front, points in records:
             f.write(struct.pack('<fII', width, rear, front)); f.write(points)
-    report = dict(schema='idas3-original-lamp-trails-v1', source_image_sha256=IMAGE_HASH,
-                  source='HOSTFS/model/effect/taillight', anchor_table='0C33C5F4',
-                  equivalent_driving_anchor_table='0C337AD0',
+    report = dict(schema='idas3-original-lamp-trails-v1', source_image_sha256=layout.sha256,
+                  source='HOSTFS/model/effect/taillight', anchor_table=f'{replay:08X}',
+                  equivalent_driving_anchor_table=f'{live:08X}',
                   owner='0C1A9CE0', lamp='0C1A9320', strip='0C1A91A0',
                   chunks=8, textures=2, cars=35,
                   decoded_polygon_sha256=hashlib.sha256(payload).hexdigest(),

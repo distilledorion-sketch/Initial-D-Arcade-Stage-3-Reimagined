@@ -202,14 +202,15 @@ private:
     // Confirmations update instrument controls, not the output clock. A late
     // peer must not drain a fixed amount of pre-rendered engine PCM.
     bool onlineEngineOutput=false;
-    // PCM follows the60Hz simulation clock, independently of rendering FPS.
+    // Engine and tire samples follow the arcade video period at 44100 Hz.
     // Bounded queue prevents diagnostics or a stalled output from growing RAM.
     // Keep the source DSP sends on the same clock as their dry samples. The
     // larger frames live on the heap instead of consuming the window stack.
     std::vector<OriginalIcsMixFrame> engineFrames=std::vector<OriginalIcsMixFrame>(8820);
     std::vector<std::int32_t> tireFrames=std::vector<std::int32_t>(8820);
     std::size_t engineRead=0,engineCount=0;
-    // One voice checkpoint per generated735-sample block, retaining the block
+    std::uint32_t engineSampleRemainder_=0;
+    // One voice checkpoint per driving tick, retaining the block
     // at the output head. Reconstruct only when interrupted, not per sample.
     struct EngineVoiceCheckpoint {
         std::uint64_t firstSample;

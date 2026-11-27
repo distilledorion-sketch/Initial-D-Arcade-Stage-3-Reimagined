@@ -2,7 +2,8 @@
 import argparse, concurrent.futures, hashlib, json, struct, subprocess
 from pathlib import Path
 from extract_original_models import parse_model, VERTEX_SIZE
-from export_original_assembly import IMAGE_HASH, operations_matrix
+from arcade_program import BASE, identify
+from export_original_assembly import operations_matrix, read_car_capture
 from export_car_presentation import KINDS, CHANNELS, WHEEL_CALLS
 
 def run(args):
@@ -56,14 +57,13 @@ def main():
         parser.add_argument('--' + name, type=Path, required=True)
     args = parser.parse_args()
     program = args.image.read_bytes()
-    if hashlib.sha256(program).hexdigest() != IMAGE_HASH:
-        raise ValueError('Canonical image identity mismatch')
+    layout = identify(program)
     word = lambda address: struct.unpack_from('<I', program, address - 0x0c020000)[0]
     catalog = json.loads((args.root / 'data/original_models/car_catalog.json').read_text())['cars']
 
     def capture(car):
         index, folder = car['car_index'], car['folder']
-        count = word(0x0c30ecd4 + index * 32)  #133B00 ->0DDB40
+        count = word(layout.tuning + 20 + index * 32)  #133B00 ->0DDB40
         if not 1 <= count <= 8:
             raise ValueError('Original factory color count outside config field')
         work = args.work / folder
@@ -92,10 +92,10 @@ def main():
                 descriptors.append((chunk['index'], batch, material, pos, old))
                 batch += 1
                 pos += 32 + VERTEX_SIZE[words[6]] * words[7]
-        reference_draws = json.loads((base / 'fresh_player/source_capture.json').read_text())['draws']
+        reference_draws = read_car_capture(base / 'fresh_player/source_capture.json', layout)['draws']
         chunk_count = json.loads((base / 'model_manifest.json').read_text())['chunk_count']
         parts = (args.hostfs / 'parts' / f'{folder}.bin').read_bytes()
-        phase = word(word(0xc19145c) + index * 4)
+        phase = word(layout.cars.headlight_phases + index * 4)
         records = []
         for color in range(count):
             output = base / 'colors' / f'color_{color:02}'
@@ -103,10 +103,10 @@ def main():
             changed, metadata, geometry = work / 'changed.bin', work / 'material.json', work / f'geometry_{color:02}.json'
             run([args.material_exe, args.image, raw, paths['table'], index, -1, changed, metadata, color])
             run([args.geometry_exe, args.image, args.hostfs / 'parts' / f'{folder}.bin', geometry, index, chunk_count, -1, 0, color])
-            draw = json.loads(geometry.read_text())
+            draw = read_car_capture(geometry, layout)
             night_path = work / f'night_{color:02}.json'
             run([args.geometry_exe, args.image, args.hostfs / 'parts' / f'{folder}.bin', night_path, index, chunk_count, -1, 1, color])
-            night = json.loads(night_path.read_text())
+            night = read_car_capture(night_path, layout)
             pack_geometry(output, draw, night, parts, phase)
             (output / 'source_capture.json').write_text(geometry.read_text())
             (output / 'night_capture.json').write_text(night_path.read_text())
@@ -123,7 +123,7 @@ def main():
                 raise ValueError('Default factory color differs from released source appearance')
             (output / 'materials.bin').write_bytes(packed)
             record = json.loads(metadata.read_text())
-            palette = word(0x0c33b1a0 + index * 4) + color * 36
+            palette = word(layout.cars.palettes + index * 4) + color * 36
             r, g, b = program[palette - 0x0c020000:palette - 0x0c020000 + 3]
             if record['rgb'] != [r, g, b] or (draw['config_word'] >> 25) & 7 != color:
                 raise ValueError('Source palette/config color mismatch')
@@ -139,7 +139,7 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
         cars = sorted(executor.map(capture, catalog), key=lambda item: item['car'])
-    manifest = dict(schema='idas3-original-factory-paint-v1', source_image_sha256=IMAGE_HASH, cars=cars,
+    manifest = dict(schema='idas3-original-factory-paint-v1', source_image_sha256=layout.sha256, cars=cars,
                     source='133B00/0DDB40 counts; profile64 through0630B4..06316E;0267C0 and029040..029AD0 materials;1911A0 palette;026D80 geometry.',
                     boundaries='CPU-only original instruction captures. Every factory color includes its complete assembly, wheel/headlight programs, plate placement and material state, including color-specific geometry. Explicit capture hooks documented in the capture tools; no hardware image equivalence claim.')
     (args.root / 'data/original_models/car_colors_manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')

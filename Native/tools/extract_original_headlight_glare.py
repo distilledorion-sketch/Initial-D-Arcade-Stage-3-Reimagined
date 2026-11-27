@@ -6,6 +6,7 @@ import struct
 from pathlib import Path
 from extract_original_models import parse_model, read_payload, write_binary
 import texture_bank
+from arcade_program import BASE, JAPANESE, identify
 
 def export(hostfs, image, output):
     source = hostfs / 'model/hilight'
@@ -21,17 +22,18 @@ def export(hostfs, image, output):
     texture_manifest = output / 'textures/manifest.json'
     texture_manifest.write_text(texture_manifest.read_text(encoding='utf-8'), encoding='utf-8', newline='\n')
     data = image.read_bytes()
+    anchor_table = 0x0c2fc8f4 if identify(data) == JAPANESE else 0x0c2fc2e8
     with (output / 'anchors.bin').open('wb') as out:
         out.write(b'ID3HLG1\0')
         out.write(struct.pack('<I', 35))
         for car in range(35):
-            pointer, count, style = struct.unpack_from('<3I', data, 0x0c2fc2e8 - 0x0c020000 + car*12)
+            pointer, count, style = struct.unpack_from('<3I', data, anchor_table - BASE + car*12)
             if count not in (2, 4) or style >= len(chunks):
                 raise ValueError('Unexpected original lamp anchor record')
             out.write(struct.pack('<II', count, style))
             out.write(data[pointer-0x0c020000:pointer-0x0c020000+count*12])
     manifest = {
-        'source': 'HOSTFS/model/hilight', 'anchor_table': '0C2FC2E8',
+        'source': 'HOSTFS/model/hilight', 'anchor_table': f'{anchor_table:08X}',
         'factory': '0C0D2E20', 'visibility': '0C0D36A0', 'draw': '0C0D40A0',
         'chunks': len(chunks), 'textures': len(bank['textures']), 'cars': 35,
         'source_image_sha256': hashlib.sha256(data).hexdigest(),

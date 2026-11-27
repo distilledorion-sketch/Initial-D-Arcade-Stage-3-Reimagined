@@ -35,6 +35,19 @@ int main()try{
     require(closeEnough(a.driver().steer,.4f-10.f/60.f),"Keyboard release");
     a.input.down['A']=true;
     require(closeEnough(a.driver().steer,.4f-22.f/60.f),"Keyboard countersteer");
+    // Players reported that holding a steering key eventually stopped turning.
+    // Check every driving tick for five seconds in both directions, including
+    // a connected but centered pad competing for the steering axis.
+    for(const bool connected : {false,true}){
+        for(const char key : {'A','D'}){
+            prepareKeyboardApp(a);a.input.connected=connected;a.input.down[key]=true;
+            const float lock=key=='A'?-1.f:1.f;
+            for(int tick=0;tick<300;++tick){
+                const float steer=a.driver().steer;
+                if(tick>=10)require(closeEnough(steer,lock),"Held steering key lost full lock");
+            }
+        }
+    }
     // A neutral pad must let a keyboard release finish. Moving the pad
     // takes control immediately, including its first centered sample.
     prepareKeyboardApp(a);a.input.connected=true;a.input.down['D']=true;

@@ -53,6 +53,8 @@ int main(int argc,char**argv){try{
         const auto total=presentation.groundTextures().size()+presentation.carTextures().size()+presentation.plateTextures().size()+presentation.environmentTextures().size();
         const auto env=unsigned(total-1);unsigned environmentDraws=0;
         for(const auto& range:mesh.ranges){environmentDraws+=range.texture==env;
+            if(car==20&&range.texture==presentation.groundTextures().size()+43)
+                throw std::runtime_error("Player Evo IV ranking car carries the rival wing decal");
             if(range.texture!=0xffffffffu&&range.texture>=total)throw std::runtime_error("All-car ranking texture bound");}
         if(!environmentDraws)throw std::runtime_error("All-car source environment binding missing");
         const auto* address=mesh.vertices.data();

@@ -8,21 +8,23 @@ from pathlib import Path
 from extract_original_models import parse_model, write_binary
 from texture_bank import export_bank
 
-CANONICAL = 'efda831f1212db54cc2e4ba53424fe390f91b2daabb07e93c1e389c3736d0335'
+from arcade_program import JAPANESE, identify
 
 def export(image, hostfs, project):
     code = image.read_bytes()
-    if hashlib.sha256(code).hexdigest() != CANONICAL:
-        raise ValueError('Canonical source image mismatch')
+    layout = identify(code)
     files = {'model': (0x0c23e624, '/driveA/model/crow/crow_pol'),
              'texture': (0x0c23e640, '/driveA/model/crow/crow_tex'),
              'flight': (0x0c2a3bf4, '/driveA/path/k_ez1_crow_fly.bin'),
              'group': (0x0c2a3c14, '/driveA/path/k_ez1_crow_grp.bin')}
+    if layout == JAPANESE:
+        files = {key: (addr + (0x71C0 if key in ('model', 'texture') else 0x7CB0), path)
+                 for key, (addr, path) in files.items()}
     for address, expected in files.values():
         offset = address - 0x0c020000
         if code[offset:code.index(0, offset)].decode('ascii') != expected:
             raise ValueError('Original crow resource path changed')
-    report = {'schema': 'idas3-original-course-crows-v1', 'source_image_sha256': CANONICAL,
+    report = {'schema': 'idas3-original-course-crows-v1', 'source_image_sha256': layout.sha256,
               'owner_constructor': '041D20', 'course_constructor': '19EA40',
               'course': 'Myogi day/dry, both directions', 'owner_offset': 1280,
               'readiness': '042620', 'initialize': '042440', 'update': '0424C0', 'draw': '042520',
