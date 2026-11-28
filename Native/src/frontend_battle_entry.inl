@@ -136,14 +136,21 @@ const std::vector<std::uint32_t>& Frontend::paintBattleEntry(int width,int heigh
             choice(left,!yes);choice(right,yes);
             if(entering)opponentTable(120);else art("selreceive",0,0,128);
         }else if(page==BattlePage::Card){
+            // select01 has a different panel and label order on Japan Rev C.
+            struct CardArtwork { int title, panel; std::array<int,6> labelsAndHands; };
+#ifdef IDAS3_JAPANESE_PLAYER
+            constexpr CardArtwork card{10,9,{58,59,61,62,24,25}};
+#else
+            constexpr CardArtwork card{12,11,{39,40,42,43,23,24}};
+#endif
             logoBackdrop();
-            common(54);art("select01",12);
+            common(54);art("select01",card.title);
             for(int i=0;i<2;++i){
-                art("select01",11,320,128+180.f*i);
+                art("select01",card.panel,320,128+180.f*i);
                 const bool pulse=i==b.focus&&(b.frame/16)%2;
                 rect(122,104+i*180,396,38,i?(pulse?0xffc11b12:0xff9e120c):(pulse?0xff233dba:0xff112a8b));
             }
-            for(int i:{39,40,42,43,23,24})art("select01",i,0,16);
+            for(int i:card.labelsAndHands)art("select01",i,0,16);
         }else if(page==BattlePage::SavedCar){
             if(!savedData_){savedData_=std::make_unique<original::OriginalSavedData>();savedData_->load(projectRoot);}
             const original::OriginalSavedData::CarPicker picker{unsigned(b.frame),unsigned(b.seconds),unsigned(std::clamp(b.focus,0,6))};

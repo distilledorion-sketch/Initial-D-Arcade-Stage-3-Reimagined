@@ -176,6 +176,7 @@ IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneStepWithPedals(const Idas3Unit
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSaveMenuPointer(float x,float y,int width,int height,int click);
 // Read-only menu projection of the same per-model battle levels used for aura.
 // Exactly 35 values: 1..99 for a valid record, 0 when unavailable.
+IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSaveCarRecords(const Idas3BattleRecord* records,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneReplaySession(int open);
 IDAS3_UNITY_EXPORT int IDAS3_UNITY_CALL Idas3SceneShutdown(void);

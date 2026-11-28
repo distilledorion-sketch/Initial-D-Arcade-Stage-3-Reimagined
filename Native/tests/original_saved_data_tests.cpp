@@ -30,8 +30,43 @@ int main(int argc,char** argv){try{
   }
   check(std::set<std::vector<unsigned>>(strips.begin(),strips.end()).size()==7,"Saved Data collapses different manufacturers to the same label");
  }
- auto before=profile;for(unsigned page:{0u,1u,2u,3u,5u,6u,7u}){
+ const bool rawJapan=NativeModel::load(root/"data/original_assets/saved_data/cardcheck/cardcheck.idasmesh").chunks.size()==177;
+ if(rawJapan){
+  // These eight frames can be compared directly to the Rev C card-reader test on Flycast.
+  auto cabinet=makeOriginalFreshBattleProfile();cabinet.setu(16,0);cabinet.setu(76,5);
+  for(unsigned i=0;i<5;++i)cabinet.setu(44+4*i,0);
+  cabinet.setu(72,2000);cabinet.setu(1140,50);
+  OriginalSavedData reference=screen;reference.begin(cabinet);
+  for(unsigned i=0;i<16;++i)reference.advance(cabinet);
+  for(unsigned page=0;page<8;++page){
+   check(reference.state().page492==page,"Japanese card reader skipped a cabinet page");
+   std::vector<unsigned> rendered(640*480);reference.paint(rendered,640,480,cabinet);
+   picture(out/("cabinet-"+std::to_string(page)+".ppm"),rendered);
+   reference.nextPage();reference.advance(cabinet);
+  }
+ }
+ auto before=profile;for(unsigned page=0;page<8;++page){
+  if(page==4&&!rawJapan)continue;
   check(screen.state().page492==page,"Saved Data page order differs from supplied video");std::vector<unsigned> pixels(640*480,0xff000000);screen.paint(pixels,640,480,profile);picture(out/("page-"+std::to_string(page)+".ppm"),pixels);
+  if(rawJapan&&(page==2||page==3||page==5||page==6)){
+   unsigned black=0;
+   for(int y=158;y<190;++y)for(int x=80;x<175;++x)black+=pixels[y*640+x]==0xff000000u;
+   check(black>1200,"Japanese course names lost their solid black backing");
+  }
+  if(page==4){
+   auto alternate=profile;alternate.setu(464,23);alternate.setu(468,7);alternate.setu(472,12);alternate.setu(488,3);
+   auto card=screen;card.begin(alternate);
+   const auto battlePage=[&]{for(unsigned i=0;i<16;++i)card.advance(alternate);
+    for(unsigned i=0;i<4;++i){card.nextPage();card.advance(alternate);}
+    std::vector<unsigned> result(640*480);card.paint(result,640,480,alternate);return result;};
+   const auto cardPixels=battlePage();Idas3BattleRecord online{30,23,12,3};
+   card.begin(alternate,&online);check(cardPixels==battlePage(),"Saved online record disagrees with equivalent arcade card fields");
+   for(unsigned y:{150u,190u,230u,264u,298u}){
+    unsigned delta=0;for(unsigned yy=y;yy<y+18;++yy)for(unsigned x=254;x<552;++x)delta+=cardPixels[yy*640+x]!=pixels[yy*640+x];
+    check(delta>10,"Battle record row did not draw the saved values");
+   }
+   picture(out/"page-4-online.ppm",cardPixels);
+  }
   if(page==2){auto night=profile;registerOriginalPersonalTimeAttackRecord(night,originalRecordPartition(6,false),1185882,1,{});
    std::vector<unsigned> alternate(640*480,0xff000000);screen.paint(alternate,640,480,night);unsigned changed=0;
    for(unsigned y=295;y<310;++y)for(unsigned x=332;x<346;++x)changed+=alternate[y*640+x]!=pixels[y*640+x];
@@ -84,7 +119,7 @@ int main(int argc,char** argv){try{
      constexpr std::array<float,5> labelCenters{160,194,228,262,296};
      const float expected=top+labelCenters[row]*fit;
      check(yellow>80&&std::abs((minY+maxY)*.5f-expected)<=1.5f*fit,"Configuration selection box is not centered on its label");
-     const float expectedX=left+(164.f+(originalUiLanguage()==1?13.168f:0.f))*fit;
+     const float expectedX=left+(164.f+(originalUiLanguage()==1&&!rawJapan?13.168f:0.f))*fit;
      check(std::abs((minX+maxX)*.5f-expectedX)<=1.5f*fit,"Configuration cursor misses the localized label column");
      if(w==640)picture(out/("config-row-"+std::to_string(row)+(editing?"-editing":"-focused")+".ppm"),pixels);
     }

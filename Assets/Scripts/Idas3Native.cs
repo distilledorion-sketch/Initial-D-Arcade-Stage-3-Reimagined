@@ -8,6 +8,8 @@ internal static class Idas3Native
     internal static extern int Idas3SceneSaveMenuPointer(float x, float y, int width, int height, int click);
     [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
     internal static extern int Idas3SceneSetSaveCarLevels([In] uint[] levels, int count);
+    [DllImport(Library, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern int Idas3SceneSetSaveCarRecords([In] Idas3.Multiplayer.Idas3BattleRecord[] records, int count);
     private const string Library = "Idas3Unity";
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     internal delegate void LoadKeepAliveCallback();

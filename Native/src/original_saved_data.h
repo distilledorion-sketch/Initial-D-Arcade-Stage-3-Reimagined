@@ -1,17 +1,20 @@
 #pragma once
 #include "native_assets.h"
 #include "original_card_check.h"
+#include "native_multiplayer.h"
 #include "original_tuning.h"
 #include <map>
 #include <string>
 namespace idas3::original {
+// Resolve a Saved Data field against the loaded regional cardcheck bank.
+unsigned originalCardCheckChunk(const NativeModel&,unsigned field);
 // 10A700, the original installed-part flags at owner+1168..1177.
 std::array<bool,16> originalSavedPartFlags(const OriginalBattleProfile&);
 // iSelCheck: a review of the selected car's actual profile, not a second save.
 class OriginalSavedData {
 public:
     void load(const std::filesystem::path& root);
-    void begin(OriginalBattleProfile&);
+    void begin(OriginalBattleProfile&,const Idas3BattleRecord* onlineRecord=nullptr);
     // Cosmetic inspection playback. This short source page cannot edit
     // options, renew tuning or write any part of the saved profile.
     void beginInspectionCompletion(const OriginalBattleProfile&);
@@ -42,6 +45,7 @@ private:
     OriginalRenewCardCheckState renewal_;
     bool inspectionCompletion_=false;
     unsigned background_=0,countdown_=2479,animationFrame_=0;
-    bool japanese_=false;
+    bool japanese_=false,rawJapanese_=false;
+    Idas3BattleRecord versus_{};
 };
 }

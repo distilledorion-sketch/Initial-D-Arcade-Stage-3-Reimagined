@@ -16,6 +16,19 @@ namespace idas3::original {
 namespace {
 constexpr std::array<unsigned,5> ranges{3,3,9,2,2};
 }
+unsigned originalCardCheckChunk(const NativeModel& model,unsigned field){
+    // Raw Japan Rev C has 177 objects. English and the older translated
+    // English banks already use the field numbers supplied by the caller.
+    if(model.chunks.size()!=177)return field;
+    if(field<=5)return field;
+    if(field>=6&&field<=46)return field+2;       // paint, makers and digits
+    if(field>=48&&field<=54)return field+4;      // transmission and tune
+    if(field>=55&&field<=60)return field+18;     // tuning steps
+    if(field==64||field==65)return field+21;     // recorded day and night
+    if(field==88||field==89)return field+37;     // cursor and inspection banner
+    if(field>=92&&field<=136)return field+38;   // configuration
+    throw std::out_of_range("Unknown Japanese Saved Data field "+std::to_string(field));
+}
 std::array<bool,16> originalSavedPartFlags(const OriginalBattleProfile& p){
     std::array<bool,16> flags{};const unsigned car=p.u(16),package=p.byte(152);
     for(unsigned slot=0;slot<10;++slot){const auto value=p.byte(156+slot);if(!value)continue;
@@ -50,7 +63,19 @@ void OriginalSavedData::load(const std::filesystem::path& root){
     add("v3sS00common",base/"menus/v3/v3sS00common");
     add("v3sS07tune",base/"tuning_course/v3sS07tune");
     add("shift",base/"hud/shift");
-    japanese_=originalUiLanguage()==1;
+    rawJapanese_=banks_.at("cardcheck").model.chunks.size()==177;
+    japanese_=originalUiLanguage()==1||rawJapanese_;
+    if(rawJapanese_){
+        // In Rev C the black card panel occludes the patterned backing strips
+        // behind the course names. Keep the white course names and table cells.
+        auto& panels=banks_.at("v3sS10conf").model.chunks;
+        for(unsigned page:{16u,17u,19u,20u}){
+            const unsigned backing=page==20?23u:20u;
+            std::erase_if(panels.at(page).batches,[backing](const auto& batch){
+                return batch.material[9]==backing||batch.material[9]==backing+1;
+            });
+        }
+    }
     const auto fontPath=base/"saved_data/help_font";
     if(!japanese_){
         optionFont_=NativeTextureBank::load(fontPath/"textures/textures.idastex");
@@ -61,7 +86,10 @@ void OriginalSavedData::load(const std::filesystem::path& root){
     }
     tuning_=OriginalTuningData::load(root);
 }
-void OriginalSavedData::begin(OriginalBattleProfile& p){
+void OriginalSavedData::begin(OriginalBattleProfile& p,const Idas3BattleRecord* onlineRecord){
+    const unsigned wins=std::min(p.u(464),999u),losses=std::min(p.u(468),999u);
+    versus_=onlineRecord&&onlineRecord->level?*onlineRecord:Idas3BattleRecord{
+        wins+losses,wins,std::clamp(p.u(472),1u,99u),std::min(p.u(488),99u)};
     inspectionCompletion_=false;renewal_={};
     state_={};state_.fade464=15;state_.overlay460=1;input_={};background_=0;animationFrame_=0;
     loadOriginalCardCheckOptions(state_,p);
@@ -102,9 +130,8 @@ OriginalCardCheckEvents OriginalSavedData::advance(OriginalBattleProfile& p){
     countdown_=workspace.u(1176);workspace.setu(1176,p.u(1176));
     events.profileWritten=events.profileWritten&&workspace.words!=p.words;
     p=workspace;
-    // This desktop profile does not own the cabinet's physical network-battle
-    // page. The reference cycles straight from Time Attack2 to Password1.
-    if(state_.page492==4)state_.page492=5;
+    // Japan Rev C shows the linked-battle card between Time Attack 2 and Password 1.
+    if(!rawJapanese_&&state_.page492==4)state_.page492=5;
     if(state_.row1460!=previousRow||state_.editPhase1456!=previousEdit)
         state_.selectedValue1452=state_.draft1544[state_.row1460];
     input_={};input_.selectorValue=state_.selectedValue1452;
@@ -118,23 +145,30 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
         placement.offsetX=left+x*fit;placement.offsetY=top+y*fit;placement.defaultOriginalUiColors=true;
         compositeOriginalMenuChunk(pixels,width,height,bank.textures,chunk,placement);
     };
-    const auto draw=[&](const char* name,unsigned index,float x=0,float y=0){const auto& b=banks_.at(name);render(b,b.model.chunks.at(index),x,y);};
+    const auto chunkFor=[](const char* name,const Bank& bank,unsigned index)->const NativeModelChunk&{
+        if(std::string_view(name)=="cardcheck")index=originalCardCheckChunk(bank.model,index);
+        return bank.model.chunks.at(index);
+    };
+    const auto draw=[&](const char* name,unsigned index,float x=0,float y=0){const auto& b=banks_.at(name);render(b,chunkFor(name,b,index),x,y);};
     // Keep authored padding when applying the cabinet's object scale.
-    const auto scaled=[&](const char* name,unsigned index,float x,float y,float sx,float sy){const auto& b=banks_.at(name);auto c=b.model.chunks.at(index);
+    const auto scaled=[&](const char* name,unsigned index,float x,float y,float sx,float sy){const auto& b=banks_.at(name);auto c=chunkFor(name,b,index);
         for(auto& batch:c.batches)for(auto& v:batch.vertices){v.position.x*=sx;v.position.y*=sy;}render(b,c,x,y);};
     const auto placed=[&](const char* name,unsigned index,float x,float y,float w,float h,bool black=false){
-        const auto& b=banks_.at(name);auto c=b.model.chunks.at(index);
+        const auto& b=banks_.at(name);auto c=chunkFor(name,b,index);
         float minx=1e9f,maxx=-1e9f,miny=1e9f,maxy=-1e9f;
         for(const auto& batch:c.batches)for(const auto& v:batch.vertices){minx=std::min(minx,v.position.x);maxx=std::max(maxx,v.position.x);miny=std::min(miny,v.position.y);maxy=std::max(maxy,v.position.y);}
         for(auto& batch:c.batches){if(black){batch.material[2]=0x600;batch.material[3]=batch.material[5]=0xff000000u;}
             for(auto& v:batch.vertices){v.position.x=(v.position.x-minx)/(maxx-minx)*w/100;v.position.y=(v.position.y-maxy)/(maxy-miny)*h/100;if(black){v.color0=0xff000000u;v.color1=0;}}}
         render(b,c,x,y);
     };
+    const auto fill=[&](int x,int y,int w,int h,unsigned color){if(unityUiEnabled()){unityUiSolid(pixels.data(),width,height,left+x*fit,top+y*fit,w*fit,h*fit,color);return;}
+        for(int yy=int(top+y*fit);yy<std::min(height,int(top+(y+h)*fit));++yy)for(int xx=int(left+x*fit);xx<std::min(width,int(left+(x+w)*fit));++xx)if(xx>=0&&yy>=0)pixels[yy*width+xx]=color;};
     const auto digits=[&](std::string value,float x,float y,float size=16.f){for(char ch:value){if(ch>='0'&&ch<='9')placed("cardcheck",36+ch-'0',x,y,size,size*2);else if(ch!=' ')placed("cardcheck",46,x,y,size,size*2);x+=size;}};
     paintMenuLogoBackdrop(pixels,width,height,logoBackdrop_,picker?picker->frame:background_);
     draw("v3sS00common",20);
     const unsigned page=picker?picker->page:state_.page492;
-    draw("v3sS10conf",inspection?28u:page==7?(state_.editPhase1456==2?24u:state_.editPhase1456==1?25u:26u):22u);
+    const bool rawJapanesePanels=banks_.at("v3sS10conf").model.chunks.size()==27;
+    draw("v3sS10conf",inspection?(rawJapanesePanels?22u:28u):page==7?(state_.editPhase1456==2?24u:state_.editPhase1456==1?25u:26u):22u);
     for(const auto& d:originalTimeAttackCountdownDraws(picker?picker->seconds*80:countdown_))draw("select",d.chunk,d.x,d.y);
     // 10EF40 uses the six-row inspection panel at -0.48, and passes
     // -0.32 into109300 for its fields (ordinary review uses -0.16).
@@ -157,8 +191,6 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
         // Paint is now shared across cars: retain the source swatch shape but
         // use the actual selected RGB instead of a misleading stock label.
         // The cabinet swatches include a dark rim around the paint sample.
-        const auto fill=[&](int x,int y,int w,int h,unsigned color){if(unityUiEnabled()){unityUiSolid(pixels.data(),width,height,left+x*fit,top+y*fit,w*fit,h*fit,color);return;}
-            for(int yy=int(top+y*fit);yy<std::min(height,int(top+(y+h)*fit));++yy)for(int xx=int(left+x*fit);xx<std::min(width,int(left+(x+w)*fit));++xx)if(xx>=0&&yy>=0)pixels[yy*width+xx]=color;};
         const int swatchY=inspection?16:0;
         fill(382,264+swatchY,48,22,0xff343434);fill(384,266+swatchY,44,18,0xff000000u|rgb);
         // AE86 factory paints retain their original contrasting lower body.
@@ -169,8 +201,8 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
             draw("cardcheck",package==count-1?4:package,0,32);
             if(inspectionOverlayVisible())draw("cardcheck",89);
         }else{
-            const auto points=std::to_string(p.u(72));digits(points,444-float(points.size())*16,339);
-            const auto inspection=std::to_string(p.u(1140));digits(inspection,414-float(inspection.size())*16,381);
+            const auto points=std::to_string(p.u(72));digits(points,444-float(points.size())*16,rawJapanese_?341.f:339.f);
+            const auto inspection=std::to_string(p.u(1140));digits(inspection,414-float(inspection.size())*16,rawJapanese_?383.f:381.f);
         }
     }else if(page==1){
         const auto& car=tuning_.car(p.u(16));const unsigned package=std::min<unsigned>(p.byte(152),unsigned(car.packages.size()-1));
@@ -202,10 +234,29 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
             }else{
                 const auto ms=record.ticks6000/6;char text[16];std::snprintf(text,sizeof(text),"%u%02u%03u",ms/60000,(ms/1000)%60,ms%1000);
                 constexpr std::array<float,6> offsets{0,17,27,43,53,63};
-                for(unsigned i=0;i<6;++i)placed("cardcheck",record.ticks6000?36+text[i]-'0':46,x+offsets[i],y,10,19.2f);
+                constexpr std::array<float,6> japaneseOffsets{0,17,26,44,53,62};
+                for(unsigned i=0;i<6;++i){
+                    const auto field=record.ticks6000?36+text[i]-'0':46;
+                    if(rawJapanese_)scaled("cardcheck",field,x+japaneseOffsets[i],y,.55f,.60f);
+                    else placed("cardcheck",field,x+offsets[i],y,10,19.2f);
+                }
                 if(record.ticks6000)scaled("cardcheck",64+unsigned(record.night!=0),330+weather*192,y+3,.62f,.6f);
             }
         }
+    }else if(page==4){
+        // The panel contains the units. The original draws both decimal points separately.
+        const auto number=[&](unsigned value,float right,float top){
+            const auto text=std::to_string(value);
+            digits(text,right-16.f*text.size(),top);
+        };
+        const auto wins=std::min(versus_.wins,versus_.battles);
+        const auto tenths=versus_.battles?unsigned(std::uint64_t(wins)*1000/versus_.battles):0;
+        number(std::min(versus_.battles,999u),364,145);
+        number(std::min(wins,999u),368,185);
+        number(std::min(versus_.battles-wins,999u),496,185);
+        number(tenths/10,346,225);number(tenths%10,368,225);
+        fill(347,245,4,4,0xff000000u);fill(389,279,4,4,0xff000000u);
+        number(versus_.level,425,258);number(versus_.streak,405,292);
     }else if(page==7){
         for(unsigned row=0;row<5;++row){
             const unsigned count=ranges[row],value=state_.draft1544[row];
@@ -220,10 +271,12 @@ void OriginalSavedData::paint(std::span<std::uint32_t> pixels,int width,int heig
         }
         // Match the authored label strips (centers160,194,228,262,296).
         // A32-pixel step drifts8 pixels above Forced Quit on the last row.
-        // The Japanese panel's label column is13.168pixels farther right;
-        // its shared cursor mesh retains the English authoring coordinates.
-        if(state_.editPhase1456)draw("cardcheck",88,japanese_?13.168f:0.f,32+state_.row1460*34);
-        if(japanese_){draw("cardcheck",state_.editPhase1456?std::array<unsigned,5>{95,108,130,134,101}[state_.row1460]:104,0,32);}
+        // Only the older translated English bank needs the adapted label offset.
+        if(state_.editPhase1456)draw("cardcheck",88,japanese_&&!rawJapanese_?13.168f:0.f,32+state_.row1460*34);
+        if(japanese_){
+            if(state_.editPhase1456)draw("cardcheck",std::array<unsigned,5>{95,108,130,134,101}[state_.row1460],0,32);
+            else draw("cardcheck",104,rawJapanese_?48.f:0.f,rawJapanese_?48.f:32.f);
+        }
         else{
             constexpr std::array<const char*,5> help{
                 "SET RACE BACKGROUND MUSIC.",

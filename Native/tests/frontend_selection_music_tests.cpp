@@ -53,6 +53,27 @@ int main(){try{
         f.advance(0);initialLoad(f,1);f.advance(1./60.);startTick(f,1);
         f.stage=FrontendStage::Title;f.advance(0);auto title=f.takeSelectionMusicCommands();check(title.size()==2,"Returning to attract must stop and unload");check(f.selectionMusicState().scene==0&&f.selectionMusicState().selectedCue28==-1,"Attract retained a pending selection cue");
     }
+    {
+        // The classic online lobby covers Mode and blocks its navigation until Ready.
+        Frontend f;f.stage=FrontendStage::Mode;f.advance(0,true);initialLoad(f,1);
+        f.advance(1./60.,true);startTick(f,1);
+        f.advance(5./60.,true);f.takeSelectionMusicCommands();
+        f.advance(5.,true);
+        check(f.stage==FrontendStage::Mode&&f.selectionMusicState().playing4&&f.takeSelectionMusicCommands().empty(),
+              "A waiting room interrupted its background selection music");
+    }
+    for(const auto first:{Frontend::BattlePage::Course,Frontend::BattlePage::Waiting}){
+        Frontend f;f.battleEntry.page=first;
+        check(Frontend::BattleEntry::usesSelectionMusic(first),"Linked course selector or waiting driver lost selection music");
+        f.advanceBattleSelectionMusic(0);initialLoad(f,1);
+        f.advanceBattleSelectionMusic(1./60.);startTick(f,1);
+        f.advanceBattleSelectionMusic(5./60.);f.takeSelectionMusicCommands();
+        for(const auto page:{Frontend::BattlePage::Route,Frontend::BattlePage::Surface,Frontend::BattlePage::Time,Frontend::BattlePage::Selected}){
+            check(Frontend::BattleEntry::usesSelectionMusic(page),"Linked course condition lost music");
+            f.battleEntry.page=page;f.advanceBattleSelectionMusic(1./60.);
+            check(f.takeSelectionMusicCommands().empty()&&f.selectionMusicState().playing4,"Linked course navigation interrupted SELECT");
+        }
+    }
     for(const int course:{3,4,8}){
         Frontend f;f.course=course;f.stage=course==4?FrontendStage::Weather:course==8?FrontendStage::Route:FrontendStage::Time;
         f.advance(6./60.);f.takeSelectionMusicCommands();f.confirm();

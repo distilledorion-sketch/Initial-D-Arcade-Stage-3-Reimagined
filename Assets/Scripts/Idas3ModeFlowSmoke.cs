@@ -168,7 +168,8 @@ public sealed partial class Idas3ModeFlowSmoke : MonoBehaviour {
     }
     private IEnumerator SavedDataToTransmission(bool inspect=false){
         yield return SaveStage(13,"Continue opens the original Saved Data screen");yield return Frames(20);
-        if(inspect)foreach(int page in new[]{0,1,2,3,5,6,7}){
+        bool japanese=Idas3GameOptions.UsesJapaneseDisc(Path.Combine(Application.streamingAssetsPath,"IDAS3"));
+        if(inspect)foreach(int page in japanese?new[]{0,1,2,3,4,5,6,7}:new[]{0,1,2,3,5,6,7}){
             Check(Idas3SceneModeFlowValue(58)==page,"Saved Data page order: "+page);
             yield return Capture("saved-data-page-"+page);
             yield return Pad(0x8000);

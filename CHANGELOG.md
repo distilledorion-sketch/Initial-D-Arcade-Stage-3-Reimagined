@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.95-community-replays.62 - November 28, 2026
+
+- The Japanese card-selection screen now shows the original card prompt, panels and hand icons. The scrolling background fills the widescreen margins cleanly.
+- Corrected the Japanese Saved Data artwork and alignment on the car, tuning, Time Attack records, Internet Ranking password and configuration pages.
+- Saved Data now shows the selected car’s battle count, wins, losses, win rate, level and winning streak. Course-selection records show the car associated with each time.
+
+Players on .61 can select **Update** in the game. For a fresh Windows installation, download **Initial-D-Setup-0.3.95.62.zip**.
+
 ## 0.3.95-community-replays.61 - November 28, 2026
 
 - Japanese rival dialogue now reads vertically beside the speaker’s portrait. Gas-station dialogue uses the arcade’s character spacing and speech-bubble placement.

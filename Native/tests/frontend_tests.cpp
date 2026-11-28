@@ -545,7 +545,7 @@ int main(int argc,char**argv) {
             {
                 Frontend records;records.initialize(argv[1]);records.stage=FrontendStage::Course;
                 TimeAttackBest best{1000000,1100000,34};records.timeAttackBest=[&](unsigned,unsigned,unsigned){return best;};
-                require(records.courseRecordCars()==std::array<unsigned,2>{34,0},"TOTAL and MODEL must identify different record cars");
+                require(records.courseRecordCars()==std::array<unsigned,3>{34,0,0},"TOTAL and MODEL must identify different record cars");
                 const auto rx8=records.paint(640,480);best.courseCar=7;
                 const auto skyline=records.paint(640,480);
                 if(argc>2){const std::filesystem::path out=argv[2];std::filesystem::create_directories(out);
@@ -559,6 +559,13 @@ int main(int argc,char**argv) {
                 const auto after=records.paint(1280,720);require(before!=after,"New course record did not invalidate menu cache");
                 const auto partition=original::originalRecordPartition(6,false);
                 records.battleProfile.setu(176+4*partition.personalIndex(),1000123);
+                const auto ae86Past=records.paint(640,480);
+                records.battleProfile.setu(16,7);
+                const auto skylinePast=records.paint(640,480);unsigned pastLabelPixels=0;
+                for(unsigned y=396;y<422;++y)for(unsigned x=145;x<430;++x)
+                    pastLabelPixels+=ae86Past[y*640+x]!=skylinePast[y*640+x];
+                require(pastLabelPixels>25,"PAST must display and refresh the model of the card that owns the time");
+                records.battleProfile.setu(16,0);
                 require(records.paint(1280,720)!=after,"Personal record update did not repaint");
                 records.gameMode=original::OriginalGameMode::LegendOfTheStreets;const auto legend=records.paint(640,480);
                 best.course=800000;require(records.paint(640,480)==legend,"TA panel leaked into Legend");

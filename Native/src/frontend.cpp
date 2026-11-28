@@ -490,7 +490,7 @@ void Frontend::selectSavedCarTuningCourse(){
 }
 void Frontend::selectSavedData(){
     if(!savedData_){savedData_=std::make_unique<original::OriginalSavedData>();savedData_->load(projectRoot);}
-    stage=FrontendStage::SavedData;synchronizeStage();savedData_->begin(battleProfile);
+    stage=FrontendStage::SavedData;synchronizeStage();savedData_->begin(battleProfile,battleProfile.u(16)<savedBattleRecords.size()?&savedBattleRecords[battleProfile.u(16)]:nullptr);
 }
 void Frontend::selectInspectionCompletion(){
     inspectionAwaitingSave=inspectionCommitRequested=inspectionCompleteRequested=inspectionCancelRequested=false;
@@ -1119,10 +1119,13 @@ std::array<std::uint32_t,3> Frontend::courseRecordTimes()const {
     return {saved.course?std::min(saved.course,baseline):baseline,
             saved.model?std::min(saved.model,baseline):baseline,personal.ticks6000};
 }
-std::array<unsigned,2> Frontend::courseRecordCars()const {
-    if(!timeAttackBest)return {35,35};
-    const auto saved=timeAttackBest(unsigned(course*2)+unsigned(reverse),unsigned(wet||course==8),unsigned(car));
-    return {saved.course?saved.courseCar:35,saved.model?unsigned(car):35};
+std::array<unsigned,3> Frontend::courseRecordCars()const {
+    // PAST is owned by the active car's card. Imported personal times are
+    // partitioned by the selected car in the per-card record store.
+    const auto pastCar=isImportedCourse(course)?unsigned(car):battleProfile.u(16);
+    const auto best=timeAttackBest?timeAttackBest(unsigned(course*2)+unsigned(reverse),
+        unsigned(wet||course==8),unsigned(car)):TimeAttackBest{};
+    return {best.course?best.courseCar:35,best.model?unsigned(car):35,pastCar};
 }
 void Frontend::drawCourseRecords(int width,int height) {
     // Original d3h_TA_BestTimeDisp (199B20/199960/199880): authored
@@ -1141,7 +1144,7 @@ void Frontend::drawCourseRecords(int width,int height) {
             draw("v3sT02route",chunk,width,height,x,360.f+20.f*row);
             x+=digit>=10?8.f:10.f;
         }
-        if(row<cars.size()&&cars[row]<35)
+        if(times[row]&&cars[row]<35)
             draw("v3sT00common",carNameChunk(int(cars[row]))-1,width,height,148,360.f+20.f*row);
     }
 }
@@ -1296,7 +1299,7 @@ void Frontend::drawCarColorIndicator(int width,int height,unsigned selected,unsi
 }
 void Frontend::draw(const std::string& name,int chunk,int width,int height,float x,float y,float multiplier,float opacity) {
     auto& selected=bank(name);
-    chunk=regionalMenuChunk(name,chunk);
+    chunk=name=="cardcheck"?int(original::originalCardCheckChunk(selected.model,unsigned(chunk))):regionalMenuChunk(name,chunk);
     if(chunk<0 || chunk>=int(selected.model.chunks.size())) throw std::out_of_range("Original menu chunk outside bank: "+name+" #"+std::to_string(chunk));
     const float fit=std::min(float(width)/640.f,float(height)/480.f);
     SpritePlacement placement;

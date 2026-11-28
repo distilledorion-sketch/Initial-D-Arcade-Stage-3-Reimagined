@@ -59,6 +59,7 @@ public:
         std::string driver,musicHint,caption,music;
     } battleEntry;
     const std::vector<std::uint32_t>& paintBattleEntry(int width,int height);
+    std::array<Idas3BattleRecord,35> savedBattleRecords{};
     std::vector<std::uint32_t> battleCanvas,battleOutput;
     NativeImage battleLogoBackdrop;
     int make = 6, car = 0, course = 3;
@@ -88,7 +89,7 @@ public:
     std::function<TimeAttackBest(unsigned,unsigned,unsigned)> timeAttackBest;
     std::function<TimeAttackEntry(unsigned,unsigned,unsigned)> importedPersonalBest;
     std::array<std::uint32_t,3> courseRecordTimes()const;
-    std::array<unsigned,2> courseRecordCars()const;
+    std::array<unsigned,3> courseRecordCars()const;
     int saveSelected=0;
     bool saveActionsEnabled=true,saveActionsOpen=false;
     int saveActionSelected=0;

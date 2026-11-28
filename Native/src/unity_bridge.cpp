@@ -1002,11 +1002,22 @@ int IDAS3_UNITY_CALL Idas3SceneSetSaveCarLevels(const uint32_t* levels,int count
     auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
     if(!r.sceneMode||!r.app||!levels||count!=35)return 0;
     for(int car=0;car<count;++car)if(levels[car]>99)return 0;
-    auto& app=*r.app;std::copy_n(levels,count,app.saveCarLevels.begin());
-    for(unsigned slot=0;slot<LocalSaveSlots::count;++slot){
-        auto& summary=app.frontend.saveFiles[slot];
-        summary.level=summary.used?app.saveCarLevels.at(app.saveSlots.at(slot).car):0;
+    r.app->refreshSaveCarLevels(levels);
+    return 1;
+}
+int IDAS3_UNITY_CALL Idas3SceneSetSaveCarRecords(const Idas3BattleRecord* records,int count){
+    auto& r=unityRuntime();std::lock_guard lock(r.renderMutex);
+    if(!r.sceneMode||!r.app||!records||count!=35)return 0;
+    for(int i=0;i<count;++i){
+        const auto& value=records[i];
+        const bool unknown=!value.level&&!value.battles&&!value.wins&&!value.streak;
+        if(!unknown&&!idas3::validBattleRecord(value))return 0;
     }
+    auto& app=*r.app;
+    std::copy_n(records,count,app.frontend.savedBattleRecords.begin());
+    std::array<uint32_t,35> levels{};
+    for(int i=0;i<count;++i)levels[i]=records[i].level;
+    app.refreshSaveCarLevels(levels.data());
     return 1;
 }
 void IDAS3_UNITY_CALL Idas3SceneSetLoadKeepAlive(Idas3LoadKeepAliveCallback callback){

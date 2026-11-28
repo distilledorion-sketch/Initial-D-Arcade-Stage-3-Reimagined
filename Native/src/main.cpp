@@ -285,6 +285,13 @@ struct App {
     // stores, so a file's car, parts, balance and progress belong to it alone.
     LocalSaveSlots saveSlots{fs::path{}};
     std::array<unsigned,35> saveCarLevels{};
+    void refreshSaveCarLevels(const uint32_t* levels){
+        std::copy_n(levels,saveCarLevels.size(),saveCarLevels.begin());
+        for(unsigned slot=0;slot<LocalSaveSlots::count;++slot){
+            auto& summary=frontend.saveFiles[slot];
+            summary.level=summary.used?saveCarLevels.at(saveSlots.at(slot).car):0;
+        }
+    }
     int activeSaveSlot=-1;
     bool saveFilesShown=false;
     double saveSlotSeconds=0;

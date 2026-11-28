@@ -987,15 +987,15 @@ public sealed class Idas3SceneGame : MonoBehaviour
     {
         if(!ownsPointer){saveCarLevelsLoaded=false;return;}
         if(saveCarLevelsLoaded||multiplayer==null)return;
-        var levels=new uint[35];
-        for(int car=0;car<levels.Length;++car)
+        var records=new Idas3BattleRecord[35];
+        for(int car=0;car<records.Length;++car)
         {
-            try{levels[car]=multiplayer.ReadCarBattleRecord(car).level;}
+            try{records[car]=multiplayer.ReadCarBattleRecord(car);}
             catch(Exception error)when(error is IOException||error is InvalidDataException||error is UnauthorizedAccessException||error is ArgumentException)
             {
                 // Unknown history stays unknown. Reading the save menu must
                 // never reset or overwrite a damaged online record.
-                levels[car]=0;
+                records[car]=default;
                 if(!saveCarLevelsWarned)
                 {
                     saveCarLevelsWarned=true;
@@ -1003,7 +1003,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
                 }
             }
         }
-        if(Idas3Native.Idas3SceneSetSaveCarLevels(levels,levels.Length)!=1&&!saveCarLevelsWarned)
+        if(Idas3Native.Idas3SceneSetSaveCarRecords(records,records.Length)!=1&&!saveCarLevelsWarned)
         {
             saveCarLevelsWarned=true;
             Debug.LogWarning("Save menu car levels could not be refreshed: "+Idas3Native.Error());
