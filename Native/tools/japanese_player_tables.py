@@ -138,17 +138,20 @@ def generate(program, destination):
     write("appearance_reset.inc", [
         'constexpr std::array<unsigned,11> resetMethods' +
         values((*words(0x0C028950, 10), 0x0C0287A0)) + ';'])
-    # Draw commands use the common bank's numbering. The renderer translates
-    # to the loaded bank once. These labels follow its extra slot 1.
+    # Keep the original Rev C words so setup can restore the tables from
+    # a Japanese disc. Draw commands use common numbering (extra slot 1).
     def ranking_labels(address, count):
         slots = words(address, count)
         if any(slot < 1 or slot >= 38 for slot in slots):
             raise ValueError("Unexpected regional ranking label slot")
-        return values(slot + 1 for slot in slots)
+        return values(slots)
 
     write("ranking_chunks.inc", [
-        'inline constexpr std::array<unsigned,9> courseChunks' + ranking_labels(0x0C2C2E48, 9) + ';',
-        'inline constexpr std::array<unsigned,18> routeChunks' + ranking_labels(0x0C2C2E6C, 18) + ';'])
+        'template<unsigned N> struct RankingLabels {',
+        '    std::array<unsigned,N> physicalSlots;',
+        '    constexpr unsigned operator[](unsigned i) const {return physicalSlots[i]+1;} };',
+        'inline constexpr RankingLabels<9> courseChunks{' + ranking_labels(0x0C2C2E48, 9) + '};',
+        'inline constexpr RankingLabels<18> routeChunks{' + ranking_labels(0x0C2C2E6C, 18) + '};'])
     # The renderer inserts the export-only snow slot at zero when loading
     # this bank, so convert the original chunk index at point of lookup.
     write("start_courses.inc", [
