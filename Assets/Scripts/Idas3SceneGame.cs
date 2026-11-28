@@ -503,7 +503,7 @@ public sealed class Idas3SceneGame : MonoBehaviour
             ApplyCabinetPauseRouting(ref frame,controlBindings,Status.flags,pauseMenu.IsOpen,multiplayerMenu.IsOpen,raceMusicMenu.IsOpen,challengeStart);
             multiplayerMenu.ProcessResultsInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
                 controlBindings.PauseHeld || controlBindings.StartHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,
-                !Focused || bindingInputBlocked);
+                !Focused || bindingInputBlocked,Held(frame,13) || controlBindings.StartHeld);
             bool disconnectedFinish = multiplayer.DisconnectedFinish;
             multiplayerMenu.ProcessDisconnectedInput(Held(frame, 13) || (frame.padButtons & 0x1000) != 0,
                 controlBindings.PauseHeld || controlBindings.StartHeld || Held(frame, 27) || Held(frame, 8) || (frame.padButtons & 0x2000) != 0,

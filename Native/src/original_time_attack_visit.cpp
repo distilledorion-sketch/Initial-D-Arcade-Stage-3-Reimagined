@@ -56,8 +56,9 @@ struct Canvas {
                 i=unsigned(found-gasstand_data::fontCharacters.begin());
             }
             constexpr std::uint32_t ink=0xff010101;OriginalSprite sprite;
-            sprite.vertices={OriginalSpriteVertex{advance,0,0,0,1,ink,0},{advance,32,0,0,0,ink,0},
-                {advance+32,0,0,1,1,ink,0},{advance+32,32,0,1,0,ink,0}};
+            const float size=mappedJapanese?16.f:32.f;
+            sprite.vertices={OriginalSpriteVertex{advance,0,0,0,1,ink,0},{advance,size,0,0,0,ink,0},
+                {advance+size,0,0,1,1,ink,0},{advance+size,size,0,1,0,ink,0}};
             compositeOriginalSprite(target,width,height,bank.at(unsigned(i)),sprite,placement);
             advance+=mappedJapanese?16.f:gasstand_data::word(gasstand_data::fontWidthWords[i]);
         }
@@ -144,6 +145,16 @@ void OriginalTimeAttackVisit::load(const std::filesystem::path& root){
     japaneseAdviceLoaded_=std::filesystem::exists(base/"font/textures.idastex");
     if(japaneseAdviceLoaded_){
         alphabet_=NativeTextureBank::load(base/"font/textures.idastex");
+        // The disc stores dark strokes on opaque white. Recover their
+        // coverage once so the speech bubble shows through between strokes.
+        for(unsigned i=0;i<alphabet_.size();++i){
+            auto glyph=alphabet_.at(i);
+            for(auto& pixel:glyph.argb){
+                const unsigned coverage=(255u-(pixel&255u))*(pixel>>24)/255u;
+                pixel=(coverage<<24)|0x00ffffffu;
+            }
+            alphabet_.replaceImage(i,std::move(glyph));
+        }
         std::ifstream input(base/"advice.bin",std::ios::binary);
         std::array<char,8> magic{};
         if(!input.read(magic.data(),magic.size())||std::string_view(magic.data(),8)!="ID3LEC01")
@@ -356,11 +367,17 @@ void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int w
                 index=51+(course<2?0u:3u)+analysis.worstSection;
             line=japaneseAdvice_.at(index);
         }
-        c.alphabet(alphabet_,line,172.f,94.f+23.f*i,japaneseAdviceLoaded_);
+        // The English glyphs have an inset inside their 32px cells. The
+        // Japanese masks fill their 16px cells, so inset those in the bubble.
+        c.alphabet(alphabet_,line,172.f,(japaneseAdviceLoaded_?106.f:94.f)+23.f*i,japaneseAdviceLoaded_);
     }
     auto timing=setup_.analysisInput;timing.course=course;
-    for(const auto& draw:originalTimeAttackStatDraws(setup_.telemetry,timing))
-        c.chunk(lecture_.model,lecture_.textures,draw.chunk,draw.x,draw.y);
+    for(const auto& draw:originalTimeAttackStatDraws(setup_.telemetry,timing)){
+        // The Japanese lecture bank inserts its heading before TOTAL and UP.
+        unsigned chunk=draw.chunk;
+        if(lecture_.model.chunks.size()==50&&chunk>=42)++chunk;
+        c.chunk(lecture_.model,lecture_.textures,chunk,draw.x,draw.y);
+    }
 }
 void OriginalTimeAttackVisit::paintRanking(std::span<std::uint32_t> target,int width,int height)const{
     using namespace ranking_data;const Canvas c(target,width,height);const auto course=setup_.condition/2,direction=setup_.condition&1;
@@ -388,7 +405,7 @@ void OriginalTimeAttackVisit::paintRanking(std::span<std::uint32_t> target,int w
         if(!rowMetadata_[i]&&row.size()>=2)row.resize(row.size()-2);
         draws.insert(draws.end(),row.begin(),row.end());y-=f(lit_0C1BDBE0);}
     for(const auto& draw:draws){const auto& bank=draw.bank==OriginalRankingBoardDraw::Bank::ranking?ranking_:common_;
-        auto chunk=bank.model.chunks.at(draw.chunk);unsigned vertex=0;
+        auto chunk=bank.model.chunks.at(draw.sourceChunk(bank.model));unsigned vertex=0;
         for(auto& batch:chunk.batches){if(draw.overrideMaterial)batch.material[3]=batch.material[5]=draw.color;
             for(auto& v:batch.vertices){v.position+=draw.position;if(draw.overrideUv){if(vertex>=4)throw std::runtime_error("Time Attack ranking glyph bounds");v.u=draw.u[vertex];v.v=draw.v[vertex];++vertex;}}}
         SpritePlacement p;p.scale=100*c.fit;p.invertY=true;p.authoredHeight=0;p.offsetX=c.left;p.offsetY=c.top;

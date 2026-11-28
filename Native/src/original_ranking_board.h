@@ -27,6 +27,7 @@ struct OriginalRankingBoardDraw {
     bool overrideMaterial=false,overrideUv=false;
     std::uint32_t color=0xffffffff;
     std::array<float,4> u{},v{};
+    unsigned sourceChunk(const NativeModel& model)const;
 };
 std::vector<OriginalRankingBoardDraw> originalRankingRowDraws(const OriginalRankingRecord&,float y,int age);
 std::vector<OriginalRankingBoardDraw> originalRankingBoardDraws(const OriginalRankingRecords&,unsigned course,unsigned direction,unsigned wet,unsigned sourceFrame);

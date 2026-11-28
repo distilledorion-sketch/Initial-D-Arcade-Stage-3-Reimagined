@@ -71,8 +71,14 @@ internal static class Idas3OnlineFinishInputRuntimeChecks
                 Check(Idas3PrecisePedals.ForSubmission(frame,sample,false).throttleAdc==16578,"Page0 precise pedal lost");
             }
             menu.ProcessResultsInput(true,true,false,tick++,false);
-            Put(menu,"resultsInputArmed",true);menu.AdvanceResultsPage();
-            Check(confirms==0&&cancels==0,"Finish driving/manual/pointer action skipped linked cinematic");
+            Check(confirms==0&&cancels==0,"Driving controls skipped linked cinematic");
+            menu.ProcessResultsInput(false,false,false,tick++,false,true);
+            menu.ProcessResultsInput(false,false,false,tick++,false,true);
+            Check(confirms==1&&cancels==0,"Fresh Finish skip should submit once");
+            menu.ProcessResultsInput(false,false,false,tick++,false,false);
+            menu.AdvanceResultsPage();
+            Check(confirms==2&&cancels==0,"Finish pointer skip did not submit");
+            confirms=0;
             // Critical same-Update race: mapper sees old page0/capability;
             // native page read now reports1; final route must neutralize it.
             var changed=Frame(pad);var changedSample=Idas3SceneGame.ApplyControlBindings(ref changed,pad,bindings,Original|Finish,3,false,menu.BlocksGameInputAt(tick),false);

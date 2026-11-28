@@ -38,6 +38,10 @@ struct OnlineResultScreen {
         confirmPending=cancelPending=false;
         ++frame;
         if(page==0){
+            // Enter/Start or a click advances the online result through the
+            // same exit and save handoff as the timed presentation.
+            if(confirm&&finish.phase==original::OriginalLinkedFinishPresentation::Phase::Hold)
+                finish.phase=original::OriginalLinkedFinishPresentation::Phase::Exit;
             // Child4 End unblanks on update609. A different owner cannot
             // dispatch until the following source update. The arcade's next
             // owner is SSNC link synchronization, not the points painter.

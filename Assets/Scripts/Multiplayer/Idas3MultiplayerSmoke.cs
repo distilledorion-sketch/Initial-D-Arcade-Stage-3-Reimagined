@@ -1005,10 +1005,8 @@ namespace Idas3.Multiplayer
                 int priorHeldResultKey=preloadHeldKey,finishPageObservations=0;
                 bool holdAcrossFinish=menu.ResultsPage==0;
                 try{
-                    // This is the existing diagnostic raw Enter/menu-confirm
-                    // path, not a manufactured cabinet Start edge. Native
-                    // linked Finish ignores manual skip. We wait for its real
-                    // page transition; exact duration has separate source tests.
+                    // Hold the result key across the page transition. The
+                    // next page requires its own release and fresh press.
                     if(holdAcrossFinish)preloadHeldKey=13;
                     yield return Until(()=>{
                         if(menu.ResultsPage==0){

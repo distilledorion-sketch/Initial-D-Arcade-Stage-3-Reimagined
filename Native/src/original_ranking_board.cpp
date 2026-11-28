@@ -49,6 +49,13 @@ OriginalRankingRecord OriginalRankingRecords::modelRecord(unsigned course,unsign
     OriginalRankingRecord out;std::copy_n(data_.begin()+at,16,out.bytes.begin());
     if(out.car()!=car)throw std::runtime_error("Original model ranking identity");return out;
 }
+unsigned OriginalRankingBoardDraw::sourceChunk(const NativeModel& model)const{
+    // Rev C's ranking bank omits export slots 1 (English headings) and
+    // 39 (extra glyph quad). Its course and route tables start at 0x0C2C2E48.
+    if(bank!=Bank::ranking||model.chunks.size()!=49)return chunk;
+    if(chunk==1||chunk==39)throw std::out_of_range("No corresponding Japanese ranking artwork");
+    return chunk-(chunk>1)-(chunk>39);
+}
 std::vector<OriginalRankingBoardDraw> originalRankingRowDraws(const OriginalRankingRecord&r,float y,int age){
     using namespace ranking_data;std::vector<OriginalRankingBoardDraw> out;if(age<0||!r.word(0))return out;
     float slide=0;if(age<=10){float t=float(age)*f(lit_0C1BE0AC);slide=f(lit_0C1BE0B0)-t;}
@@ -97,7 +104,7 @@ void OriginalRankingBoard::paint(std::span<std::uint32_t>target,int width,int he
     if(width!=640||height!=480||target.size()<640*480)throw std::invalid_argument("Original ranking source canvas must be640x480");
     SpritePlacement p;p.scale=100;p.invertY=true;p.authoredHeight=0;
     const auto draws=modelMode?originalModelRankingBoardDraws(records,course,direction,wet,frame,modelPage):originalRankingBoardDraws(records,course,direction,wet,frame);
-    for(const auto&d:draws){const auto&model=d.bank==OriginalRankingBoardDraw::Bank::ranking?ranking_:common_;const auto&textures=d.bank==OriginalRankingBoardDraw::Bank::ranking?rankingTextures_:commonTextures_;auto chunk=model.chunks.at(d.chunk);
+    for(const auto&d:draws){const auto&model=d.bank==OriginalRankingBoardDraw::Bank::ranking?ranking_:common_;const auto&textures=d.bank==OriginalRankingBoardDraw::Bank::ranking?rankingTextures_:commonTextures_;auto chunk=model.chunks.at(d.sourceChunk(model));
         // These authored multi-manufacturer headers submit their background
         // after the logos, relying on original Z testing. Our2D overlay has no
         // depth buffer, so preserve that occlusion by painting far to near.

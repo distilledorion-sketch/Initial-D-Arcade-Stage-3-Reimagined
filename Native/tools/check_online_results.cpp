@@ -14,7 +14,7 @@ int main(int argc,char** argv)try{
         unsigned ticks=0,transition=0;
         for(unsigned i=0;i<fps*11&&!transition;++i)clock.advance(1./fps,[&]{
             if(screen.page!=0)return;
-            ++ticks;screen.input(true,true,1,0);screen.advance(false);
+            ++ticks;screen.input(false,false,0,0);screen.advance(false);
             if(screen.page==1)transition=ticks;
         });
         check(transition==610&&screen.frame==0,"Linked finish duration/input depends on host cadence");
@@ -23,6 +23,15 @@ int main(int argc,char** argv)try{
         check(screen.page==1&&screen.points.displayedBalance==14000&&screen.frame==120,"Points UI clock changed");
     }
     {
+        for(bool lost:{false,true}){
+            OnlineResultScreen screen;screen.begin(1000,9000,true,lost);
+            for(unsigned i=0;i<130;++i)screen.advance(false);
+            screen.input(true,false,0,16);screen.advance(false);
+            for(unsigned i=0;i<10;++i)screen.advance(false);
+            check(screen.page==0&&screen.finish.done(),"Skip bypassed pending result save");
+            screen.input(false,false,0,0);screen.advance(false);
+            check(screen.page==1&&!screen.frame&&!screen.decision,"Skip did not reach points after save");
+        }
         OnlineResultScreen screen;screen.begin(0,9000);screen.page=2;
         screen.input(true,false,1,0);screen.input(false,false,0,1);screen.advance(true);
         check(!screen.confirming&&screen.countdown==879,"Focus loss retained a queued confirmation");
@@ -233,6 +242,8 @@ int main(int argc,char** argv)try{
             owner->input.pad.Gamepad.sThumbLX=12000;owner->input.pad.Gamepad.bRightTrigger=65;
             owner->input.pad.Gamepad.bLeftTrigger=32;
             owner->input.originalThrottleAnalog=16578;owner->input.originalBrakeAnalog=8191;
+            // This fixture checks the dedicated wheel's full-resolution ADCs.
+            owner->controllerResponse=original::ControllerResponse::FlycastWheel;
             owner->input.pad.Gamepad.wButtons=XINPUT_GAMEPAD_B;
             owner->steeringSmoothing.setAmount(0);
             const auto oldView=owner->drivingView;
@@ -252,7 +263,7 @@ int main(int argc,char** argv)try{
                 owner->simulate(d);
             });
             check(owner->onlineResult.frame==0&&cameraKey(*owner)==camera,"Blocked authority presenter advanced finish camera/counter");
-            owner->onlineResult.input(true,true,0,0);owner->clock.reset();
+            owner->onlineResult.input(false,false,0,0);owner->clock.reset();
         }
         exchange();exchange();
         std::array<unsigned,2> attempts{},accepted{},blankCalls{};

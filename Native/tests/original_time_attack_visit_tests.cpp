@@ -142,6 +142,13 @@ int main(int argc,char** argv){try{
     setup.telemetry.ditchCount=2;setup.telemetry.startIntervalTicks6000=4321;
     visit.beginLecture(setup);require(visit.countdownTicks()==setup.analysis.countdownTicks,"Use source classifier countdown");
     const auto storedSeed=seed;for(unsigned i=0;i<16;++i)visit.advance({});picture(out/"lecture-advice.ppm",visit);picture(out/"lecture-advice-wide.ppm",visit,1280,720);
+    if(std::filesystem::exists(root/"data/original_assets/time_attack/font/textures.idastex")){
+        std::vector<std::uint32_t> pixels(640*480);visit.paint(pixels,640,480);
+        unsigned ink=0;
+        for(int y=106;y<122;++y)for(int x=172;x<172+8*16;++x)
+            if((pixels[y*640+x]&255)<128)++ink;
+        require(ink>50&&ink<8*16*16/2,"Japanese advice must draw distinct strokes inside the bubble");
+    }
     require(seed==storedSeed&&visit.setup().analysis.lineAddresses==setup.analysis.lineAddresses,"Drawing preserves prepared source advice and RNG");
     setup.analysis.kind=2;setup.analysis.countdownTicks=1679;visit.beginLecture(setup);require(visit.countdownTicks()==1679,"Successful analysis kind2 gets recovered longer timer");
     visit.beginAfterResults(setup);require(visit.stage()==OriginalTimeAttackVisit::Stage::Ranking,"Qualifying finish enters real local ranking");

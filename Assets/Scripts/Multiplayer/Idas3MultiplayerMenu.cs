@@ -122,7 +122,7 @@ namespace Idas3.Multiplayer
         public bool ResultsVisible=>session!=null&&!session.DisconnectedFinish&&session.IsRacing&&session.StateName=="Results";
         internal bool ResultRecoveryVisible=>ResultsVisible&&session.ResultSavePending&&!string.IsNullOrEmpty(session.ErrorText);
         internal int DiagnosticResultRetryClicks { get; private set; }
-        public bool CanAcknowledgeReturnToLobby=>ResultsVisible&&session.CanReturnToLobby&&resultsInputArmed&&!resultsInputBlocked;
+        public bool CanAcknowledgeReturnToLobby=>ResultsVisible&&ResultsPage>0&&session.CanReturnToLobby&&resultsInputArmed&&!resultsInputBlocked;
         public int ResultsPage { get; private set; }
         int resultsNavigation;
 
@@ -314,8 +314,7 @@ namespace Idas3.Multiplayer
         {
             int page=ReadResultScreen(0);
             if(page<0)return;
-            // The linked finish child is timed, including pointer input.
-            if(page==0)confirm=cancel=false;
+            if(page!=ResultsPage)confirm=cancel=false;
             uint flags=(resultsInputBlocked?1u:0u)|(session.ResultPeerLeft?2u:0u)|(session.RemoteContinueRequested?4u:0u)|(!string.IsNullOrEmpty(session.ErrorText)?8u:0u)|(session.ResultSavePending?16u:0u);
             if(WriteResultInput(confirm?1:0,cancel?1:0,resultsInputArmed?resultsNavigation:0,flags)!=1)
                 Debug.LogError("Original online result input was rejected: "+Idas3Native.Error());
@@ -337,11 +336,15 @@ namespace Idas3.Multiplayer
         }
         public void ProcessResultsInput(bool confirmHeld,bool cancelHeld,bool blocked=false)
         {
+            ProcessResultsInput(confirmHeld,cancelHeld,blocked,confirmHeld);
+        }
+        internal void ProcessResultsInput(bool confirmHeld,bool cancelHeld,bool blocked,bool finishConfirmHeld)
+        {
             ProcessResultsInput(confirmHeld,cancelHeld,blocked,Time.frameCount,
-                ResultsVisible&&(previousOnlineHeld||Input.GetKey(KeyCode.F1)||Input.GetMouseButton(0)));
+                ResultsVisible&&(previousOnlineHeld||Input.GetKey(KeyCode.F1)||Input.GetMouseButton(0)),finishConfirmHeld);
         }
         // The public entry and isolated checks share this actual input owner.
-        internal void ProcessResultsInput(bool confirmHeld,bool cancelHeld,bool blocked,int frame,bool otherHeld)
+        internal void ProcessResultsInput(bool confirmHeld,bool cancelHeld,bool blocked,int frame,bool otherHeld,bool finishConfirmHeld=false)
         {
             if(!ResultsVisible){resultsEntered=resultsInputArmed=false;return;}
             blocked|=InputCovered||ResultRecoveryVisible||CapturesTextInputAt(frame);
@@ -359,11 +362,10 @@ namespace Idas3.Multiplayer
             int decision=ReadResultScreen(2);
             if(decision==2){session.ReturnToMode();return;}
             if(decision==1&&!session.LocalContinueRequested){session.ReturnToLobby();if(!ResultsVisible)return;}
-            // Original linked finish ignores manual skip. Keep held driving
-            // inputs observed so points/Continue require a release then press.
+            // The driver can still shift in Finish. Only the dedicated
+            // Enter/Start input is a skip while the driving bindings are live.
             if(page==0){
-                resultsInputArmed=false;resultsPreviousConfirm=confirmHeld;resultsPreviousCancel=cancelHeld;
-                OriginalResultsInput();return;
+                confirmHeld=finishConfirmHeld;cancelHeld=false;
             }
             if(blocked||frame<=resultsOpenedFrame){
                 resultsInputArmed=false;resultsPreviousConfirm=confirmHeld;resultsPreviousCancel=cancelHeld;OriginalResultsInput();return;
