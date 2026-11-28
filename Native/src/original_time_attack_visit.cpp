@@ -369,7 +369,8 @@ void OriginalTimeAttackVisit::paintLecture(std::span<std::uint32_t> target,int w
         }
         // The English glyphs have an inset inside their 32px cells. The
         // Japanese masks fill their 16px cells, so inset those in the bubble.
-        c.alphabet(alphabet_,line,172.f,(japaneseAdviceLoaded_?106.f:94.f)+23.f*i,japaneseAdviceLoaded_);
+        // Rev C's 0C1A1440 places the first Japanese line at (180,106).
+        c.alphabet(alphabet_,line,japaneseAdviceLoaded_?180.f:172.f,(japaneseAdviceLoaded_?106.f:94.f)+23.f*i,japaneseAdviceLoaded_);
     }
     auto timing=setup_.analysisInput;timing.course=course;
     for(const auto& draw:originalTimeAttackStatDraws(setup_.telemetry,timing)){

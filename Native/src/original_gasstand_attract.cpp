@@ -57,6 +57,7 @@ void OriginalGasstandAttract::step(){
 }
 std::uint32_t originalGasstandFadeArgb(const OriginalGasstandState& s){validate(s);return s.fadeEnabled?std::uint32_t(float(s.fade)/15.f*255.f)<<24:0;}
 float originalAlphabetTextWidth(std::string_view text){float sum=0;for(const char c:text){const int i=glyph(c);sum=std::fma(i<0?5.f:gasstand_data::word(gasstand_data::fontWidthWords[std::size_t(i)]),1.f,sum);}return sum;}
+static constexpr float japaneseDialogueCell=20.f;
 static std::vector<OriginalGasstandDraw> dialogueDraws(const OriginalGasstandState& s,const Message* message,bool japanese){
     validate(s);using namespace gasstand_data;using Bank=OriginalGasstandDraw::Bank;
     std::vector<OriginalGasstandDraw> out;out.reserve(180);
@@ -75,13 +76,13 @@ static std::vector<OriginalGasstandDraw> dialogueDraws(const OriginalGasstandSta
     if(s.phase==2&&message){
         constexpr std::array<std::array<float,3>,3> lineOffsets{{{-10,0,0},{-36,-10,0},{-36,-10,16}}};
         for(unsigned line=0;line<lines;++line){
-            float advance=0;const float x=speakerXY[s.speaker][0],y=speakerXY[s.speaker][1]+lineOffsets[lines-1][line]+24.f;
+            float advance=0;const float x=speakerXY[s.speaker][0],y=speakerXY[s.speaker][1]+lineOffsets[lines-1][line]+(japanese?36.f:24.f);
             for(const char c:message->lines[line]){const int i=japanese?int(static_cast<unsigned char>(c)):glyph(c);
                 if(i>=0){draw(Bank::alphabet,unsigned(i),{x+advance,y,gasstand_data::word(0x3727c5ac)});
                     //1CB200 color4 with dimming argument-1 yieldsRGB010101;
                     //1E7E80 restores full alpha from descriptor opacity1.
                     out.back().color=0xff010101;}
-                advance+=japanese?16.f:i<0?5.f:word(fontWidthWords[std::size_t(i)]);
+                advance+=japanese?japaneseDialogueCell:i<0?5.f:word(fontWidthWords[std::size_t(i)]);
             }
         }
     }
@@ -91,10 +92,10 @@ static std::vector<OriginalGasstandDraw> dialogueDraws(const OriginalGasstandSta
         draw(Bank::gasstand,left,p,lit_0C0D1208,lit_0C0D1208);
         Vec3 tail{s.bubbleX,s.bubbleY-lit_0C0D1210,0};
         if(lines==1)tail.y+=lit_0C0D1214;else if(lines==3)tail.y-=lit_0C0D13B0;
-        tail.x+=lit_0C0D13B4;if(s.speaker==1)tail.x+=lit_0C0D13B8;
+        tail.x+=lit_0C0D13B4;if(!japanese&&s.speaker==1)tail.x+=lit_0C0D13B8;
         draw(Bank::gasstand,2,tail,lit_0C0D13BC,lit_0C0D13C0);
         p.x+=lit_0C0D13C4;float widest=0;
-        for(auto line:message->lines)widest=std::max(widest,japanese?float(line.size())*16.f:originalAlphabetTextWidth(line));
+        for(auto line:message->lines)widest=std::max(widest,japanese?float(line.size())*japaneseDialogueCell:originalAlphabetTextWidth(line));
         draw(Bank::gasstand,middle,p,lit_0C0D13CC*widest,lit_0C0D13C0);
         p.x=std::fma(widest*lit_0C0D13D0,lit_0C0D13D4,p.x);
         draw(Bank::gasstand,right,p,lit_0C0D13C0,lit_0C0D13C0);
@@ -222,7 +223,8 @@ void OriginalGasstandAttract::paintImpl(std::span<std::uint32_t> target,int widt
     p={};p.scale=fit;p.offsetX=ox;p.offsetY=oy;
     for(const auto& d:commands)if(d.bank==Bank::alphabet){const float x=d.position.x,y=d.position.y;
         const auto color=optimized?0xffffffffu:d.color;
-        OriginalSprite glyphSprite;glyphSprite.vertices={OriginalSpriteVertex{x,y,0,0,1,color,0},{x,y+32,0,0,0,color,0},{x+32,y,0,1,1,color,0},{x+32,y+32,0,1,0,color,0}};
+        const float size=rows.empty()?32.f:japaneseDialogueCell;
+        OriginalSprite glyphSprite;glyphSprite.vertices={OriginalSpriteVertex{x,y,0,0,1,color,0},{x,y+size,0,0,0,color,0},{x+size,y,0,1,1,color,0},{x+size,y+size,0,1,0,color,0}};
         compositeOriginalSprite(target,width,height,optimized?preparedAlphabet_.at(d.index):alphabet_.at(d.index),glyphSprite,p);
     }
 }

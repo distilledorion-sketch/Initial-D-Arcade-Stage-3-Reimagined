@@ -42,12 +42,24 @@ def generate(program, destination):
     # 104400 builds a character-indexed descriptor array. Slot zero has
     # its own literal, followed by the destination pointer and slots 1..31.
     records, remap, ranges = [], [], []
+    speech_ranges, speech_anchors = [], []
     for character in range(32):
         descriptor = word(0x0C104534 if character == 0 else 0x0C104538 + character * 4)
         table, count = words(descriptor, 2)
         if not 0 < count <= 32:
             raise ValueError("Unexpected Rev C conversation table size")
         entries = [words(table + 44 * row, 11) for row in range(count)]
+        # 0C0F4800 indexes a separate array of (x, y, side) per picture.
+        for entry in entries:
+            anchors, speakers = entry[9:11]
+            if not 1 <= speakers <= 10:
+                raise ValueError("Invalid Japanese dialogue speaker count")
+            speech_ranges.append((len(speech_anchors), speakers))
+            for speaker in range(speakers):
+                x, y, side = struct.unpack_from('<ffI', image, anchors - BASE + 12 * speaker)
+                if not (x.is_integer() and y.is_integer() and side <= 1):
+                    raise ValueError("Invalid Japanese dialogue position")
+                speech_anchors.append((int(x), int(y)))
         if character == 31:
             if count != 19:
                 raise ValueError("Invalid Bunta scene table")
@@ -59,6 +71,10 @@ def generate(program, destination):
             records.extend(entries)
             mapping = words(word(0x0C326454 + character * 4), count)
             remap.extend(x if x < 128 else -1 for x in mapping)
+
+    write("rival_speech.inc", [
+        'constexpr SpeechRange speechRanges[]{' + ','.join('{%d,%d}' % row for row in speech_ranges) + '};',
+        'constexpr SpeechAnchor speechAnchors[]{' + ','.join('{%d,%d}' % row for row in speech_anchors) + '};'])
 
     # The host uses the same glyph index conventions and shared interpreter
     # constants. Replace the declarations whose contents belong to the disc.
@@ -122,9 +138,17 @@ def generate(program, destination):
     write("appearance_reset.inc", [
         'constexpr std::array<unsigned,11> resetMethods' +
         values((*words(0x0C028950, 10), 0x0C0287A0)) + ';'])
+    # Draw commands use the common bank's numbering. The renderer translates
+    # to the loaded bank once. These labels follow its extra slot 1.
+    def ranking_labels(address, count):
+        slots = words(address, count)
+        if any(slot < 1 or slot >= 38 for slot in slots):
+            raise ValueError("Unexpected regional ranking label slot")
+        return values(slot + 1 for slot in slots)
+
     write("ranking_chunks.inc", [
-        'inline constexpr std::array<unsigned,9> courseChunks' + values(words(0x0C2C2E48, 9)) + ';',
-        'inline constexpr std::array<unsigned,18> routeChunks' + values(words(0x0C2C2E6C, 18)) + ';'])
+        'inline constexpr std::array<unsigned,9> courseChunks' + ranking_labels(0x0C2C2E48, 9) + ';',
+        'inline constexpr std::array<unsigned,18> routeChunks' + ranking_labels(0x0C2C2E6C, 18) + ';'])
     # The renderer inserts the export-only snow slot at zero when loading
     # this bank, so convert the original chunk index at point of lookup.
     write("start_courses.inc", [

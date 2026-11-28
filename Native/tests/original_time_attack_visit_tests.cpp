@@ -98,6 +98,21 @@ int main(int argc,char** argv){try{
     if(argc==4)setOriginalUiLanguage(std::stoi(argv[3]));
     const std::filesystem::path root=argv[1],out=argv[2];std::filesystem::create_directories(out);
     OriginalTimeAttackVisit visit;require(OriginalTimeAttackVisit::available(root),"Extracted original visit assets available");visit.load(root);
+    {
+        const auto base=root/"data/original_assets/attract/ranking";
+        const auto bank=NativeModel::load(base/"v3sT13rankin/v3sT13rankin.idasmesh");
+        if(bank.chunks.size()==49){
+            const auto records=OriginalRankingRecords::load(base/"factory_records.idasrank");
+            // Physical labels in Rev C tables 0C2C2E48 and 0C2C2E6C.
+            constexpr unsigned courses[]{12,15,7,9,10,11,13,14,8};
+            constexpr unsigned routes[]{34,36,34,36,33,32,33,32,37,31,33,35,37,31,37,31,33,32};
+            for(unsigned c=0;c<9;++c)for(unsigned d=0;d<2;++d){
+                const auto draws=originalRankingBoardDraws(records,c,d,0,160);
+                require(draws.at(1).sourceChunk(bank)==courses[c]&&draws.at(2).sourceChunk(bank)==routes[2*c+d],
+                    "Japanese ranking course and direction must resolve to their original labels");
+            }
+        }
+    }
     mapArtworkAndTrace(root,out);
     require(originalTimeAttackStartIntervalText(0)=="--","Zero start interval remains unavailable dashes");
     require(originalTimeAttackStartIntervalText(4321)=="0.720"&&originalTimeAttackStartIntervalText(5999)=="0.999"&&originalTimeAttackStartIntervalText(6000)=="1.000","Start interval preserves source6000Hz millisecond truncation");

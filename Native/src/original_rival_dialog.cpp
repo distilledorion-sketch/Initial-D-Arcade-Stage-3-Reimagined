@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <bit>
 #include <cmath>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -10,6 +11,9 @@ namespace {
 #ifdef IDAS3_JAPANESE_PLAYER
 #include <regional/original_rival_dialog_tables.inc>
 #include <regional/original_bunta_dialog_tables.inc>
+struct SpeechRange { unsigned short first,count; };
+struct SpeechAnchor { short x,y; };
+#include <regional/rival_speech.inc>
 #else
 #include "original_rival_dialog_tables.inc"
 #include "original_bunta_dialog_tables.inc"
@@ -82,6 +86,11 @@ void setLineOrigin(OriginalDialogLine& line,float x,float y){
 }
 // Every cursor advance is one source FMAC, a true fused multiply-add.
 void newLine(OriginalDialogLine& line){
+    if(line.vertical){
+        line.cursorX-=line.linePitch*line.scale;
+        line.cursorY=line.startY;
+        return;
+    }
     line.cursorX=line.lineStart;
     line.cursorY=std::fma(line.linePitch,line.scale,line.cursorY);
 }
@@ -102,7 +111,8 @@ void appendJis(OriginalDialogLine& line,std::string_view jis,bool proportional){
             if(line.japanese)pushGlyph(line,std::uint16_t(index));
             else if(alphabetTexture(index,texture))pushGlyph(line,texture);
             const auto code=std::uint16_t((std::uint32_t(b0)<<8)|b1);
-            line.cursorX=proportional&&!line.japanese?std::fma(line.cell,1.f-alphabetWidth(code),line.cursorX)
+            if(line.vertical)line.cursorY=std::fma(line.cell,line.scale,line.cursorY);
+            else line.cursorX=proportional&&!line.japanese?std::fma(line.cell,1.f-alphabetWidth(code),line.cursorX)
                                      :std::fma(line.cell,line.scale,line.cursorX);
         }
         i+=2;
@@ -154,6 +164,21 @@ enum : std::size_t {
 };
 constexpr std::string_view inertCommands="!#)->]abfghijloqstvyz|}";
 
+void setSpeechOrigin(OriginalRivalDialogState& s){
+#ifdef IDAS3_JAPANESE_PLAYER
+    if(s.text.vertical){
+        const auto picture=s.buntaChallenge ?
+            std::size(scrollRecords)+s.picture%buntaDialogElements.size() :
+            scrollTables.at(s.character).first+s.picture%scrollTables.at(s.character).second;
+        const auto range=speechRanges[picture];
+        const auto anchor=speechAnchors[range.first+s.speaker%range.count];
+        setLineOrigin(s.text,float(anchor.x),float(anchor.y));
+        return;
+    }
+#endif
+    setLineOrigin(s.text,float(s.textAnchorX),textBaselineY);
+}
+
 struct Interpreter {
     OriginalRivalDialogState& s;
     const OriginalRivalDialogRecord& record;
@@ -195,8 +220,8 @@ struct Interpreter {
     void positionText(){
         if(positioned)return;
         positioned=true;
-        setLineOrigin(s.text,float(s.textAnchorX),textBaselineY);
-        s.text.color=speakerColours[s.speaker<speakerColours.size()?s.speaker:0];
+        setSpeechOrigin(s);
+        s.text.color=s.text.vertical?0xffffffffu:speakerColours[s.speaker<speakerColours.size()?s.speaker:0];
         clearText(s.text);
         resetCursor(s.text);
     }
@@ -222,6 +247,15 @@ void Interpreter::dispatch(char command){
     const auto n=argument();
     switch(command){
     case 'C':{                                        // 0F6E60 speaker change
+        if(s.text.vertical){
+            if(n>=s.otherSpeech.size())throw std::out_of_range("Invalid Japanese dialogue speaker");
+            if(s.slotFlags[s.speaker])s.otherSpeech[s.speaker]=s.text;
+            s.speaker=n;s.slotFlags[n]=1;
+            s.otherSpeech[n].glyphs.clear();
+            clearText(s.text);setSpeechOrigin(s);
+            positioned=true;yield=true;
+            break;
+        }
         s.speaker=n;
         const auto colour=speakerColours[n<speakerColours.size()?n:0];
         s.text.color=colour;s.name.color=colour;
@@ -255,6 +289,10 @@ void Interpreter::dispatch(char command){
         s.endFlag=true;yield=true;break;
     case 'K':                                         // 0F6FC0 clear page
         if(n<s.slotFlags.size())s.slotFlags[n]=0;
+        if(s.text.vertical&&n<s.otherSpeech.size()){
+            s.otherSpeech[n].glyphs.clear();
+            if(n!=s.speaker)break;
+        }
         clearText(s.text);resetCursor(s.text);clearLine(s.name);
         break;
     case 'R':                                         // 0F7020 name-plate cue
@@ -469,6 +507,14 @@ void buildScript(OriginalRivalDialogState& s,const OriginalRivalDialogData& data
     s.text=OriginalDialogLine{};
     s.name=OriginalDialogLine{};
     s.name.japanese=s.text.japanese=data.japanese();
+    s.otherSpeech.clear();
+#ifdef IDAS3_JAPANESE_PLAYER
+    if(data.japanese()){
+        s.text.vertical=true;s.text.cell=16;s.text.linePitch=18;s.text.color=0xffffffff;
+        s.otherSpeech.resize(s.slotFlags.size());
+        s.speechStyles=record.portraitKinds;
+    }
+#endif
     s.text.interval=1;s.text.zOffset=glyphZOffset;
     s.name.interval=1;s.name.zOffset=glyphZOffset;
     setLineOrigin(s.name,nameOriginX,textBaselineY);
@@ -624,6 +670,8 @@ std::vector<OriginalRivalDialogDraw> originalRivalDialogDraws(const OriginalRiva
                 draws.push_back(draw);
             }
         };
+        for(unsigned i=0;i<s.otherSpeech.size();++i)
+            if(i!=s.speaker&&s.slotFlags[i])emit(s.otherSpeech[i]);
         emit(s.text);
         emit(s.name);
     }

@@ -12,6 +12,60 @@ namespace fs=std::filesystem;
 fs::path dialogRoot(const fs::path& root){return root/"data/original_assets/rival_dialog";}
 // Every alphabet and namekana glyph is a single square sprite of its own cell.
 constexpr float alphabetCell=32.f,namekanaCell=48.f;
+
+unsigned speechStyle(const OriginalRivalDialogState& state,unsigned speaker){
+    // Rev C 0C0F6012 overrides the record's packed styles for guest speakers.
+    if(speaker==3){
+        constexpr std::array<unsigned,13> blue{4,5,8,9,14,15,18,19,21,22,23,26,28};
+        if(std::find(blue.begin(),blue.end(),state.character)!=blue.end())return 1;
+    }
+    if(state.character==28){
+        if(speaker==4||speaker==7)return 2;
+        if(speaker==5)return 0;
+    }
+    if(state.character==29){
+        if(speaker==3||speaker==5)return 0;
+        if(speaker==4||speaker==6)return 1;
+        if(speaker==7)return 2;
+    }
+    return speaker<4?(state.speechStyles>>(4*speaker))&3:0;
+}
+
+void paintSpeechPanel(std::span<std::uint32_t> target,int width,int height,
+    const NativeModel& model,const NativeTextureBank& textures,const SpritePlacement& placement,
+    const OriginalDialogLine& line,unsigned style){
+    if(line.glyphs.empty())return;
+    float minX=line.glyphs.front().x,maxX=minX,minY=line.glyphs.front().y,maxY=minY;
+    for(const auto& g:line.glyphs){
+        minX=std::min(minX,g.x);maxX=std::max(maxX,g.x);
+        minY=std::min(minY,g.y);maxY=std::max(maxY,g.y);
+    }
+    // Rev C 0C0F6B6E measures the occupied 16px cells; 0C0F54C0 places
+    // the four frame joints around them. The frame parts are 16px quads.
+    const float left=minX-9,right=maxX+25,top=minY-9,bottom=maxY+25;
+    const float innerWidth=right-left-16,innerHeight=bottom-top-16;
+    constexpr unsigned frames[]{8,4,13,8};
+    const unsigned frame=frames[style&3];
+    const auto part=[&](unsigned id,float x,float y,float sx,float sy){
+        const auto& chunk=model.chunks.at(id);
+        std::array<Vec3,4> vertices;
+        const auto& source=chunk.batches.at(0).vertices;
+        if(chunk.batches.size()!=1||source.size()!=vertices.size())
+            throw std::runtime_error("Invalid rival speech panel quad");
+        for(unsigned i=0;i<vertices.size();++i){
+            const auto& p=source[i].position;
+            vertices[i]={x+100.f*sx*p.x,y-100.f*sy*p.y,p.z};
+        }
+        compositeOriginalMenuChunk(target,width,height,textures,chunk,placement,vertices);
+    };
+    part(12,right,top,(right-left)/16,(bottom-top)/16);
+    part(frame,right,top,1,1);part(frame,left,top,-1,1);
+    part(frame,right,bottom,1,-1);part(frame,left,bottom,-1,-1);
+    part(frame+1,right,top+8,1,innerHeight/16);
+    part(frame+1,left,top+8,-1,innerHeight/16);
+    part(frame+3,right-8,top,innerWidth/16,1);
+    part(frame+3,right-8,bottom,innerWidth/16,-1);
+}
 }
 
 bool OriginalRivalDialogScene::available(const fs::path& root){
@@ -99,6 +153,7 @@ void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,i
     // and the portrait, border and glyphs on the translucent one, so the
     // composite order is background, portrait, window, then text.
     const auto all=originalRivalDialogDraws(state_);
+    bool paintedSpeech=false;
     std::vector<const OriginalRivalDialogDraw*> ordered;
     ordered.reserve(all.size());
     for(const auto pass:{OriginalRivalDialogBank::Background,OriginalRivalDialogBank::Portrait,
@@ -110,6 +165,15 @@ void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,i
         const bool glyph=draw.bank==OriginalRivalDialogBank::Alphabet
             ||draw.bank==OriginalRivalDialogBank::Namekana;
         if(glyph){
+            if(state_.text.vertical&&!paintedSpeech&&state_.phase==1){
+                SpritePlacement panel;panel.scale=fit;panel.offsetX=left;panel.offsetY=top;
+                for(unsigned i=0;i<state_.otherSpeech.size();++i){
+                    if(!state_.slotFlags[i])continue;
+                    const auto& line=i==state_.speaker?state_.text:state_.otherSpeech[i];
+                    paintSpeechPanel(target,width,height,scene_.model,scene_.textures,panel,line,speechStyle(state_,i));
+                }
+                paintedSpeech=true;
+            }
             // The source glyph part is one square cell; its position is the
             // top-left corner in original pixels.
             const auto& bank=draw.bank==OriginalRivalDialogBank::Alphabet?alphabet_:namekana_;
@@ -119,7 +183,8 @@ void OriginalRivalDialogScene::paint(std::span<std::uint32_t> target,int width,i
                 texture=dialogueFontMap_[texture];
             }
             if(texture>=bank.size())continue;
-            const float cell=draw.bank==OriginalRivalDialogBank::Alphabet?alphabetCell:namekanaCell;
+            const float cell=draw.bank==OriginalRivalDialogBank::Namekana?namekanaCell:
+                state_.text.vertical?state_.text.cell:alphabetCell;
             const float px=320.f+draw.x*100.f,py=240.f-draw.y*100.f;
             SpritePlacement placement;
             placement.scale=fit;placement.offsetX=left;placement.offsetY=top;

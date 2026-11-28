@@ -26,6 +26,7 @@ struct OriginalDialogGlyph { std::uint16_t texture{}; float x{},y{},z{}; };
 // Source text-line object: 0C60C0 builds the page, 0C5EE0 the speaker label.
 struct OriginalDialogLine {
     bool japanese=false;
+    bool vertical=false;
     float cell=32,linePitch=24,scale=1;
     float cursorX=0,cursorY=0,startX=0,startY=0,lineStart=0;
     std::vector<OriginalDialogGlyph> glyphs;
@@ -90,6 +91,8 @@ struct OriginalRivalDialogState {
     // Scene selection bytes at 31CE45..31CE48; 31CE45 is the loader's random.
     std::uint32_t cheer=0,sceneByte46=0,sceneByte47=0,sceneByte48=0;
     OriginalDialogLine text,name;
+    std::vector<OriginalDialogLine> otherSpeech;
+    std::uint32_t speechStyles=0;
     std::string playerName;
     bool initialized=false;
     bool buntaChallenge=false;
