@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.95-community-replays.61 - November 28, 2026
+
+- Japanese rival dialogue now reads vertically beside the speaker’s portrait. Gas-station dialogue uses the arcade’s character spacing and speech-bubble placement.
+- Japanese rankings show the correct course and direction. Time Attack results use the correct analysis artwork and align the advice text with the original arcade screen.
+- After an online finish, press Enter or Start to advance to points. A held driving input no longer carries through as a confirmation.
+
+In .60, select **Update** in the game. For a fresh installation, download **Initial-D-Setup-0.3.95.61.zip**.
+
 ## 0.3.95-community-replays.60 - November 27, 2026
 
 - Fixed recurring gaps in engine and tire sound during races. The audio mixer now follows the arcade driving clock and keeps a buffer for uneven frame times.
